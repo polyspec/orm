@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: acc7a1929577a8b690acb8be8d5885cb565de64dd361926e22ab35504a7d928d -->
+<!-- source-sha256: 2f653eea3b553ad2d14ec9ea5c10eef9c168666ba577be2697c95b2a35e4bb5e -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -541,7 +541,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 
 ### Catalog 값 규칙
 
-- **INT-165** driver 값의 catalog 변환은 Go, TypeScript, Python, PHP, PHP 확장, Rust에서 각 데이터베이스마다 아래 표의 규칙을 검사한다: 읽기 전용 그리드 조회, 시간 값이 그 그리드 셀의 텍스트인 일반 읽기 전용 조회(INT-153), 기술된 테이블의 모든 읽기(테이블 페이지, 행 조회, insert와 update의 되읽기)에서다. 규칙마다 code 하나와 텍스트 하나가 있고, 모든 runtime에서 같다. 텍스트는 호출자나 데이터베이스가 준 값(INT-163), host 타입, driver가 알리는 타입 이름을 쓰지 않는다. 컬럼 label도 쓰지 않는다: 그리드 컬럼의 label은 값을 담을 수 있는 query 텍스트다(식 `YEAR('2020-01-02')` 같은 것). 컬럼은 결과에서 1부터 센 위치로 쓰며, 그리드 조회와 기술된 읽기에서 같다: message는 `<CODE>: column <n>: <text>`이고, n은 행 순서로, 행 안에서는 컬럼 순서로 처음 규칙을 어기는 값의 컬럼이다. 규칙은 그 입력이 생길 수 있는 모든 데이터베이스에서 성립한다. Reach 열은 데이터베이스나 driver가 그 입력을 보낼 수 없는 곳을 적으며, 그것이 규칙을 빼는 이유는 아니다. markdown corpus는 SQLite의 dialect로 SQL을 실행하므로(DIA-185), SQLite 행은 flowmark에서도 성립한다. 모든 규칙에서 NULL은 null 셀이며, 거부되는 타입의 컬럼에서도 그렇다: MySQL `YEAR`와 `TIMESTAMP`, PostgreSQL `timestamptz`와 `timetz`, INT-170의 모든 타입이다(INT-103). SQLite 텍스트는 범위보다 형식(INT-176부터 INT-178)을 먼저 검사하고, INT-173이 INT-174보다 앞서므로 MySQL 영날짜는 범위 밖이다. driver나 library의 실패는 INT-172이며 그 실패를 cause로 남긴다. 그것은 `DRIVER` 오류가 아니며, 변환의 어떤 오류도 catalog code 없이 나가지 않는다.
+- **INT-165** driver 값의 catalog 변환은 Go, TypeScript, Python, PHP, PHP 확장, Rust에서 각 데이터베이스마다 아래 표의 규칙을 검사한다: 읽기 전용 그리드 조회, 시간 값이 그 그리드 셀의 텍스트인 일반 읽기 전용 조회(INT-153), 기술된 테이블의 모든 읽기(테이블 페이지, 행 조회, insert와 update의 되읽기)에서다. 규칙마다 code 하나와 텍스트 하나가 있고, 모든 runtime에서 같다. 텍스트는 호출자나 데이터베이스가 준 값(INT-163), host 타입, driver가 알리는 타입 이름을 쓰지 않는다. 컬럼 label도 쓰지 않는다: 그리드 컬럼의 label은 값을 담을 수 있는 query 텍스트다(식 `YEAR('2020-01-02')` 같은 것). 컬럼은 결과에서 1부터 센 위치로 쓰며, 그리드 조회와 기술된 읽기에서 같다: message는 `<CODE>: column <n>: <text>`이고, n은 행 순서로, 행 안에서는 컬럼 순서로 처음 규칙을 어기는 값의 컬럼이다. 규칙은 그 입력이 생길 수 있는 모든 데이터베이스에서 성립한다. Reach 열은 데이터베이스나 driver가 그 입력을 보낼 수 없는 곳을 적으며, 그것이 규칙을 빼는 이유는 아니다. markdown corpus는 SQLite의 dialect로 SQL을 실행하므로(DIA-185), SQLite 행은 flowmark에서도 성립한다. 모든 규칙에서 NULL은 null 셀이며, 거부되는 타입의 컬럼에서도 그렇다: MySQL `YEAR`와 `TIMESTAMP`, PostgreSQL `timestamptz`와 `timetz`, INT-170의 모든 타입이다(INT-103). 다만 PostgreSQL multirange를 담은 컬럼은 INT-185가 그 타입으로 거부한다. SQLite 텍스트는 범위보다 형식(INT-176부터 INT-178)을 먼저 검사하고, INT-173이 INT-174보다 앞서므로 MySQL 영날짜는 범위 밖이다. driver나 library의 실패는 INT-172이며 그 실패를 cause로 남긴다. 그것은 `DRIVER` 오류가 아니며, 변환의 어떤 오류도 catalog code 없이 나가지 않는다.
 
 | ID | 데이터베이스 | 값 | 거부 조건 | Code | 텍스트 | Reach |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -569,9 +569,10 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
   - MySQL `BIT`와 공간 타입(`GEOMETRY`, `POINT` 등)은 bytes 셀이다: 서버는 bit 값을 binary 문자열로, geometry를 SRID 4바이트 뒤에 WKB를 붙인 형태로 돌려준다. `JSON`, `ENUM`, `SET`은 텍스트 셀이다: 서버는 JSON 값을 어떤 session 변수로도 바뀌지 않는 정규화된 `utf8mb4` 형태로 쓰고, `ENUM`과 `SET`은 그 member의 텍스트로 쓴다.
   - PostgreSQL `uuid`, `json`, `jsonb`, `xml`, `bit`, `bit varying`, enum 타입, `inet`, `cidr`, `macaddr`, `macaddr8`, `tsvector`, `tsquery`, `pg_lsn`, `oid`는 텍스트 셀이다: 어떤 설정도 그 출력을 바꾸지 않으며, `xmloption`은 `xml`과 문자열 사이의 변환을 정할 뿐 출력을 정하지 않는다.
   - PostgreSQL `interval`은 `IntervalStyle`을, `money`는 `lc_monetary`를, 기하 타입(`point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle`)은 `extra_float_digits`를 따르고, schema로 묶이는 OID alias 타입(`regclass`, `regtype`, `regproc`, `regprocedure`, `regoper`, `regoperator`, `regconfig`, `regdictionary`, `regcollation`)은 `search_path`에 따라 이름에 schema를 붙인다. 모두 INT-170으로 거부된다.
-  - PostgreSQL array, range, multirange, composite는 각 원소나 field를 그 타입의 출력으로 쓰므로, 그 타입들 어느 것의 텍스트 출력도 설정으로 바뀌지 않으면 텍스트 셀이고(`integer[]`, `text[]`, `int4range`) 그렇지 않으면 INT-170으로 거부된다: float는 `extra_float_digits`를, 날짜와 시간은 `DateStyle`과 `TimeZone`을, `bytea`는 `bytea_output`을 따르고, 거부되는 타입은 그대로 거부된다(`date[]`, `double precision[]`, `bytea[]`).
+  - PostgreSQL array, range, composite는 각 원소나 field를 그 타입의 출력으로 쓰므로, 그 타입들 어느 것의 텍스트 출력도 설정으로 바뀌지 않으면 텍스트 셀이고(`integer[]`, `text[]`, `int4range`) 그렇지 않으면 INT-170으로 거부된다: float는 `extra_float_digits`를, 날짜와 시간은 `DateStyle`과 `TimeZone`을, `bytea`는 `bytea_output`을 따르고, 거부되는 타입은 그대로 거부된다(`date[]`, `double precision[]`, `bytea[]`).
   - 셀 종류가 있는 PostgreSQL 타입은 정확히 이것들이다: 정수 `smallint`, `integer`, `bigint`; float `real`, `double precision`; decimal `numeric`; boolean `boolean`; 날짜 `date`; 시간 `time`; datetime `timestamp`; 텍스트 `text`, `varchar`, `bpchar`(`char(n)`), `"char"`, `name`; binary `bytea`. 이 절이 이름을 들지 않은 다른 내장 타입(`jsonpath`, `xid`, `tid` 등)은 INT-170으로 거부된다.
   - 이 절이 이름을 들지 않은 네이티브 타입, 곧 extension의 base 타입(`citext`)이나 사용자가 정의한 base 타입은 모든 runtime에서 INT-170으로 거부된다: catalog는 그 출력 함수가 어떤 설정에도 기대지 않음을 알 수 없다.
+  - multirange 타입의 컬럼, 또는 multirange를 담은 array, range, domain, composite의 컬럼은 그 값이 NULL이든 아니든 모든 runtime에서 그 타입으로 INT-170에 의해 거부된다: 그런 컬럼이 있는 statement는 그 첫 컬럼에서 실패한다. 한 runtime의 driver(Rust sqlx)가 그런 컬럼이 있는 statement를 describe하지 못하므로 어느 runtime도 그것을 읽지 않는다.
 
 ### Rust 네이티브 도구 규칙
 
