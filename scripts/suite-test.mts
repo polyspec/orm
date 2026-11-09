@@ -42,11 +42,19 @@ export const OWNED_ELSEWHERE: Record<string, string> = {
   'packages/ts/tests/public_interface-none.test.mjs': 'Makefile',
 };
 
+/**
+ * MARIADB_ENTRY is the name of a recipe entry of the database mariadb in a lane of the suites: <recipe>-mariadb.test.mjs, the
+ * Python module <recipe>_mariadb and the PHP class <Name>Mariadb...Test. The entries need the MariaDB servers, which a runner of
+ * the MySQL servers of a suite cannot hold (scripts/ci/server-programs.mts), and make mariadb-recipes-check/<runtime> runs them
+ * (DIA-200, FCV-3).
+ */
+export const MARIADB_ENTRY = /(?:-mariadb\.test\.mjs|\/[a-z_]+_mariadb\.py|\/[A-Za-z]+Mariadb[A-Za-z]*Test\.php)$/;
+
 /** suiteTests is the test files of `lane` that its suite runs, in byte order. */
 export function suiteTests(lane: SuiteLane, tests: Record<string, string[]> = implementationTestInventory(implementationFiles(root)).tests): string[] {
   const files = tests[lane];
   if (files === undefined) throw new Error(`suite-test: contracts/implementations.json declares no implementation ${lane}`);
-  return files.filter(file => !Object.hasOwn(OWNED_ELSEWHERE, file)).sort();
+  return files.filter(file => !Object.hasOwn(OWNED_ELSEWHERE, file) && !MARIADB_ENTRY.test(file)).sort();
 }
 
 /** suiteCommand is the process that runs one test file of `lane`, from the checkout root. */

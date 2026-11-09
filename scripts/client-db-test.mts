@@ -59,8 +59,10 @@ export const GO_LANE_PACKAGES = [
   './packages/go/testcase',
 ];
 // TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
-// perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result.
-export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
+// perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result. The
+// recipe entries of mariadb, TestRecipe<Name>Mariadb, need the MariaDB servers, which a runner of the MySQL servers cannot hold
+// (scripts/ci/server-programs.mts); mariadb-recipes-check/go runs them.
+export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite)|TestRecipe[A-Za-z]*Mariadb)$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
   'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
@@ -149,7 +151,8 @@ export function rustPoolerThreadArguments(backends: number, poolSize: number): s
 /**
  * Returns the exact Rust symbols that another target owns, for the generic client test run to skip, as GO_LANE_SKIP does for Go: the
  * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server, and the measurements of
- * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11).
+ * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11). The recipe entries of mariadb are the test program
+ * mariadb, which a plain cargo test does not run (test = false), so the workspace run needs no skip of them.
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);

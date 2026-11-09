@@ -984,6 +984,7 @@
       ],
       "support": [
         "packages/rust/tests/tests/all/main.rs",
+        "packages/rust/tests/tests/mariadb/main.rs",
         "packages/rust/tests/tests/all/integration_program/bench_set.rs",
         "packages/rust/build/tests/cases/lock_probe/mod.rs",
         "packages/rust/build/tests/cases/row_insert_identity/expression.rs",
