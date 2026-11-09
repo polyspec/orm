@@ -81430,7 +81430,7 @@
     {
      "op": "sql.exec",
      "reason": "the check would refuse a boolean cell of 2",
-     "sql": "ALTER TABLE typed_value DROP CHECK `typed_value$active`"
+     "sql": "ALTER TABLE typed_value DROP CONSTRAINT `typed_value$active`"
     },
     {
      "op": "sql.exec",

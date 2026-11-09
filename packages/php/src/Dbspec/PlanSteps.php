@@ -848,10 +848,13 @@ final class PlanSteps
         }
     }
 
+    /**
+     * Drops a check by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read
+     * alike (probes mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206).
+     */
     private function dropCheck(string $table, string $name): string
     {
-        return 'ALTER TABLE ' . $this->q($table)
-            . ($this->r->dialect === 'mysql' ? ' DROP CHECK ' : ' DROP CONSTRAINT ') . $this->q($name);
+        return 'ALTER TABLE ' . $this->q($table) . ' DROP CONSTRAINT ' . $this->q($name);
     }
 
     private function dropRendererCheck(string $table, string $name, string $expression): void

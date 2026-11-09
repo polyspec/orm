@@ -60,6 +60,7 @@ final class DbspecSqliteLockCases
             PlanApply::apply(
                 $driver,
                 'sqlite',
+                'sqlite',
                 [],
                 static fn() => new \DateTimeImmutable(),
                 null

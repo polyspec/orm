@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -45,6 +47,12 @@ type introspectVector struct {
 	Statements  json.RawMessage     `json:"statements"`
 	Document    []string            `json:"document"`
 	Unsupported [][]string          `json:"unsupported"`
+	// MariaDB is the answer of MariaDB where the server itself answers otherwise, in place of Document and Unsupported
+	// (DIA-200, rule 4).
+	MariaDB *struct {
+		Document    []string   `json:"document"`
+		Unsupported [][]string `json:"unsupported"`
+	} `json:"mariadb"`
 }
 
 // introspectSource is the documents of a step by name and its vector, which is empty for a step with paths.
@@ -123,84 +131,108 @@ func introspectSchemaName(database, dsn string) (string, error) {
 // introspectStep runs one dbspec.introspect step: on one native connection of the case database, the connection rules, the
 // rendered documents and the statements of the vector, then the public Introspect. A vector with a document compares the
 // emitted document and the unsupported objects; any other requires none unsupported and the schema text of the source. It
-// returns the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
-func introspectStep(s databaseStep, c *databaseContext) (int, error) {
+// returns the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198). Where that expect names
+// refused, a statement of the vector that the server refuses ends the step with the server's error number, which the expect
+// compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
+func introspectStep(s databaseStep, c *databaseContext) (queries int, refused int, err error) {
 	texts, vector, err := introspectSource(s, c.dir)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	documents, err := introspectParseSet(texts)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	rendered, diagnostics := dbspec.Render(documents, dbspec.Dialect(c.dialect()))
 	if len(diagnostics) > 0 {
-		return 0, fmt.Errorf("render: %v", diagnostics)
+		return 0, 0, fmt.Errorf("render: %v", diagnostics)
 	}
 	// tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
 	var extra []string
 	if len(vector.Statements) > 0 && vector.Statements[0] == '[' {
 		if err := json.Unmarshal(vector.Statements, &extra); err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 	}
 	schema, err := introspectSchemaName(c.database, c.dsn)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
 	raw.SetMaxOpenConns(1)
-	for _, statement := range slices.Concat(introspectConnectionRules[c.dialect()], rendered, extra) {
+	refusable := introspectRefusable(s, c.database)
+	statements := slices.Concat(introspectConnectionRules[c.dialect()], rendered, extra)
+	for i, statement := range statements {
 		if _, err := raw.ExecContext(c.ctx, strings.ReplaceAll(statement, "{schema}", schema)); err != nil {
-			return 0, fmt.Errorf("%s: %w", statement, err)
+			var server *mysql.MySQLError
+			if refusable && i >= len(statements)-len(extra) && errors.As(err, &server) {
+				return 0, int(server.Number), nil
+			}
+			return 0, 0, fmt.Errorf("%s: %w", statement, err)
 		}
 	}
+	if refusable {
+		return 0, 0, fmt.Errorf("the statements of vector %s ran on %s, whose expect names their refusal", s.k("case").Case, c.database)
+	}
 	counter := &countingCatalog{querier: raw}
-	document, unsupported, err := dbspec.Introspect(c.ctx, counter, dbspec.Dialect(c.dialect()), "introspected")
+	document, unsupported, err := dbspec.Introspect(c.ctx, counter, dbspec.Dialect(c.dialect()), c.server(), "introspected")
 	if err != nil {
-		return 0, err
+		return 0, 0, err
+	}
+	if c.database == "mariadb" && vector.MariaDB != nil {
+		vector.Document, vector.Unsupported = vector.MariaDB.Document, vector.MariaDB.Unsupported
 	}
 	if vector.Document != nil {
 		if got := dbspec.Emit(document); got != strings.Join(vector.Document, "\n")+"\n" {
-			return 0, fmt.Errorf("the introspected document differs:\n%s", got)
+			return 0, 0, fmt.Errorf("the introspected document differs:\n%s", got)
 		}
 		if len(unsupported) != len(vector.Unsupported) {
-			return 0, fmt.Errorf("unsupported objects %+v, want %v", unsupported, vector.Unsupported)
+			return 0, 0, fmt.Errorf("unsupported objects %+v, want %v", unsupported, vector.Unsupported)
 		}
 		for index, want := range vector.Unsupported {
 			item := unsupported[index]
 			if !slices.Equal([]string{item.Kind, item.Table, item.Name}, want[:3]) {
-				return 0, fmt.Errorf("unsupported objects %+v, want %v", unsupported, vector.Unsupported)
+				return 0, 0, fmt.Errorf("unsupported objects %+v, want %v", unsupported, vector.Unsupported)
 			}
 			if item.Reason == "" {
-				return 0, fmt.Errorf("the reason of %v is empty", want[:3])
+				return 0, 0, fmt.Errorf("the reason of %v is empty", want[:3])
 			}
 			if len(want) == 4 && !strings.Contains(item.Reason, want[3]) {
-				return 0, fmt.Errorf("the reason of %v: %s, want rule %s", want[:3], item.Reason, want[3])
+				return 0, 0, fmt.Errorf("the reason of %v: %s, want rule %s", want[:3], item.Reason, want[3])
 			}
 		}
-		return counter.count, nil
+		return counter.count, 0, nil
 	}
 	if len(unsupported) > 0 {
-		return 0, fmt.Errorf("unsupported objects %+v", unsupported)
+		return 0, 0, fmt.Errorf("unsupported objects %+v", unsupported)
 	}
 	got, diagnostics := dbspec.ManifestOf([]*dbspec.Document{document})
 	if len(diagnostics) > 0 {
-		return 0, fmt.Errorf("the manifest of the result: %v", diagnostics)
+		return 0, 0, fmt.Errorf("the manifest of the result: %v", diagnostics)
 	}
 	want, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
-		return 0, fmt.Errorf("the manifest of the source: %v", diagnostics)
+		return 0, 0, fmt.Errorf("the manifest of the source: %v", diagnostics)
 	}
 	if got.SchemaText != want.SchemaText {
-		return 0, fmt.Errorf("the schema text differs:\n%s\nwant\n%s", got.SchemaText, want.SchemaText)
+		return 0, 0, fmt.Errorf("the schema text differs:\n%s\nwant\n%s", got.SchemaText, want.SchemaText)
 	}
-	return counter.count, nil
+	return counter.count, 0, nil
 }
 
-// dbspecIntrospectRefusal runs dbspec.introspect_refusal: Introspect with a dialect of no reader, on an in-memory SQLite
-// connection, panics with a message that names the dialect (DBS-174).
+// introspectRefusable reports whether the expect of dbspec.introspect on database names refused.
+func introspectRefusable(s databaseStep, database string) bool {
+	var want struct {
+		Refused *int `json:"refused"`
+	}
+	raw, ok := s.k("expect").Expect[dialectKey(database, s.k("expect").Expect)]
+	return ok && json.Unmarshal(raw, &want) == nil && want.Refused != nil
+}
+
+// dbspecIntrospectRefusal runs dbspec.introspect_refusal: Introspect with a dialect of no reader, or with a server that is
+// not a server of the dialect, on an in-memory SQLite connection, panics with a message that names the dialect or the
+// server (DBS-174).
 func dbspecIntrospectRefusal(s step) (any, error) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -211,8 +243,13 @@ func dbspecIntrospectRefusal(s step) (any, error) {
 			fmt.Fprintln(os.Stderr, "close the SQLite memory connection:", closeErr)
 		}
 	}()
-	return dialectRefusal(s.k("dialect").Dialect, func() {
-		_, _, _ = dbspec.Introspect(context.Background(), db, dbspec.Dialect(s.k("dialect").Dialect), "introspected") //nolint:errcheck // The call panics.
+	dialect, server := s.k("dialect").Dialect, s.k("server").Server
+	refused := server
+	if server == "" {
+		server, refused = dialect, dialect
+	}
+	return dialectRefusal(refused, func() {
+		_, _, _ = dbspec.Introspect(context.Background(), db, dbspec.Dialect(dialect), dbspec.Server(server), "introspected") //nolint:errcheck // The call panics.
 	})
 }
 
@@ -221,7 +258,7 @@ func dbspecIntrospectRefusal(s step) (any, error) {
 func introspectFailureStep(s databaseStep, c *databaseContext) error {
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
-	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(s.k("catalog_of").CatalogOf), "introspected"); err == nil {
+	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(s.k("catalog_of").CatalogOf), dbspec.Server(s.k("catalog_of").CatalogOf), "introspected"); err == nil {
 		return fmt.Errorf("the %s catalog queries did not fail on %s", s.k("catalog_of").CatalogOf, c.database)
 	}
 	return nil

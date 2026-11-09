@@ -757,6 +757,53 @@
       ]
     },
     {
+      "id": "mysql_functional_index",
+      "requirements": [
+        "DIA-133",
+        "DIA-70"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-functional-index",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "mariadb": {
+              "refused": 1064
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_fk_set_default",
+      "requirements": [
+        "DIA-133",
+        "DIA-143"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-fk-set-default",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "postgres_unsupported",
       "requirements": [
         "DIA-133"

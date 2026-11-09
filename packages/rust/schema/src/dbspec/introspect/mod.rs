@@ -53,51 +53,123 @@ pub struct Introspection {
     pub unsupported: Vec<Unsupported>,
 }
 
-/// The catalog queries of `dialect` in the order [`read_catalog`] expects
-/// their rows. Every query reads all tables at once, so their number does not
-/// depend on the table count.
-pub fn catalog_queries(dialect: Dialect) -> &'static [&'static str] {
+/// The database server that a connection reached (DIA-200): MySQL and MariaDB are the servers of the mysql dialect,
+/// PostgreSQL and SQLite each the server of its own. Its name prints as `mysql`, `mariadb`, `postgres` and `sqlite`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Server {
+    MySql,
+    MariaDb,
+    Postgres,
+    Sqlite,
+}
+
+impl Server {
+    /// The name of the server: `mysql`, `mariadb`, `postgres` or `sqlite`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Server::MySql => "mysql",
+            Server::MariaDb => "mariadb",
+            Server::Postgres => "postgres",
+            Server::Sqlite => "sqlite",
+        }
+    }
+
+    /// The dialect of the server.
+    pub fn dialect(self) -> Dialect {
+        match self {
+            Server::MySql | Server::MariaDb => Dialect::MySql,
+            Server::Postgres => Dialect::Postgres,
+            Server::Sqlite => Dialect::Sqlite,
+        }
+    }
+}
+
+impl fmt::Display for Server {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// The name of a dialect, as a refusal names it.
+fn dialect_name(dialect: Dialect) -> &'static str {
     match dialect {
-        Dialect::MySql => &mysql::QUERIES,
+        Dialect::MySql => "mysql",
+        Dialect::Postgres => "postgres",
+        Dialect::Sqlite => "sqlite",
+    }
+}
+
+/// Refuses a server that is not a server of `dialect` (DBS-174, DIA-203): a programming error, so it panics with a message
+/// that names the server. Dialect is an enum, so no unknown dialect reaches it.
+///
+/// # Panics
+///
+/// When `server` is not a server of `dialect`.
+pub fn check_server(dialect: Dialect, server: Server) {
+    if server.dialect() != dialect {
+        panic!("dbspec: server {server} is not a server of the dialect {}", dialect_name(dialect));
+    }
+}
+
+/// The catalog queries of `dialect` on `server` in the order [`read_catalog`] expects
+/// their rows. Every query reads all tables at once, so their number does not
+/// depend on the table count. The caller passes the server that the connection read
+/// when it connected (DIA-203); no query reads a version.
+///
+/// # Panics
+///
+/// When `server` is not a server of `dialect` ([`check_server`]).
+pub fn catalog_queries(dialect: Dialect, server: Server) -> &'static [&'static str] {
+    check_server(dialect, server);
+    match dialect {
+        Dialect::MySql => mysql::queries(server),
         Dialect::Postgres => &postgres::QUERIES,
         Dialect::Sqlite => &sqlite::QUERIES,
     }
 }
 
-/// The follow-up queries of `dialect`, given the rows of its [`catalog_queries`]:
+/// The follow-up queries of `dialect` on `server`, given the rows of its [`catalog_queries`]:
 /// queries whose text depends on those rows, which the client runs after the
 /// catalog queries in this order. Their rows follow the catalog rows in the
 /// slice that [`read_catalog`] reads. MySQL reads the `SHOW CREATE TABLE` of a
 /// table whose CHECK_CLAUSE holds non-ASCII text; the other dialects have none.
-pub fn catalog_followups(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>]) -> Result<Vec<String>, String> {
-    let queries = catalog_queries(dialect);
+///
+/// # Panics
+///
+/// When `server` is not a server of `dialect` ([`check_server`]).
+pub fn catalog_followups(dialect: Dialect, server: Server, results: &[Vec<Vec<CatalogValue>>]) -> Result<Vec<String>, String> {
+    let queries = catalog_queries(dialect, server);
     if results.len() != queries.len() {
         return Err(format!("{} catalog results for {} queries", results.len(), queries.len()));
     }
     let results = Results { results };
     match dialect {
-        Dialect::MySql => mysql::followups(&results),
+        Dialect::MySql => mysql::followups(&results, server),
         Dialect::Postgres | Dialect::Sqlite => Ok(Vec::new()),
     }
 }
 
-/// Reads the rows of the [`catalog_queries`] of `dialect`, one result per
+/// Reads the rows of the [`catalog_queries`] of `dialect` on `server`, one result per
 /// query in order, followed by the rows of the [`catalog_followups`] in
 /// order, into the document `name` and its unsupported objects. A result
 /// count that differs from the query and follow-up count, a value of an
 /// unexpected type, and a document that cannot be built are errors.
-pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: &str) -> Result<Introspection, String> {
-    let queries = catalog_queries(dialect);
+///
+/// # Panics
+///
+/// When `server` is not a server of `dialect` ([`check_server`]).
+pub fn read_catalog(dialect: Dialect, server: Server, results: &[Vec<Vec<CatalogValue>>], name: &str) -> Result<Introspection, String> {
+    let queries = catalog_queries(dialect, server);
     if results.len() < queries.len() {
         return Err(format!("{} catalog results for {} queries", results.len(), queries.len()));
     }
-    let followups = catalog_followups(dialect, &results[..queries.len()])?;
+    let followups = catalog_followups(dialect, server, &results[..queries.len()])?;
     if results.len() != queries.len() + followups.len() {
         return Err(format!("{} catalog results for {} queries and {} follow-up queries", results.len(), queries.len(), followups.len()));
     }
     let results = Results { results };
     let catalog = match dialect {
-        Dialect::MySql => mysql::read(&results)?,
+        Dialect::MySql => mysql::read(&results, server)?,
         Dialect::Postgres => postgres::read(&results)?,
         Dialect::Sqlite => sqlite::read(&results)?,
     };

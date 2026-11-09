@@ -660,10 +660,22 @@ final class Dbspec
 
     /**
      * Reads the current database (MySQL), the current schema (PostgreSQL) or the main database (SQLite) of the
-     * connection into one document named `$name` and the objects it leaves out. A failing query, or a catalog
-     * that yields no document, is a RuntimeException; an unknown dialect is an InvalidArgumentException.
+     * connection into one document named `$name` and the objects it leaves out. `$server` is the server that the
+     * connection reached, which the caller read when it connected: `mysql` or `mariadb` for the dialect `mysql`, and
+     * the dialect's name otherwise; the introspection reads no version. A failing query, or a catalog that yields no
+     * document, is a RuntimeException; an unknown dialect, or a server that is not a server of the dialect, is an
+     * InvalidArgumentException.
      */
-    public static function introspect(\PDO $connection, string $dialect, string $name): IntrospectResult {}
+    public static function introspect(\PDO $connection, string $dialect, string $server, string $name): IntrospectResult {}
+
+    /**
+     * Refuses a dialect other than mysql, postgres and sqlite, naming the dialect, and a server that is not a server of
+     * the dialect, naming the server (DBS-174): MySQL and MariaDB are the servers of the mysql dialect, PostgreSQL and
+     * SQLite each the server of its own (DIA-200).
+     *
+     * @internal
+     */
+    public static function checkServer(string $dialect, string $server): void {}
 
     /** The manifest of the document set, whose documents are taken in document name order, or its diagnostics. */
     public static function manifest(array $documents): ManifestResult {}
@@ -698,19 +710,20 @@ final class Dbspec
     /**
      * Applies the plans of the chain that the database has not recorded, one statement at a time, each plan up to
      * its finalize steps, verifying the schema after each plan. A failure is an ApplyError, or an
-     * ApplyCleanupError when restoring the session after it fails too; an unknown dialect, or a connection whose
-     * error mode is not PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException.
+     * ApplyCleanupError when restoring the session after it fails too; an unknown dialect, a server that is not a
+     * server of the dialect, or a connection whose error mode is not PDO::ERRMODE_EXCEPTION, is an
+     * InvalidArgumentException. `$server` is the server of the connection, as for introspect, which the verification reads by.
      */
-    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function apply(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Continues the interrupted plan forward. Failures and arguments are as for apply. */
-    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function recover(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Undoes the last plan of the history with its rollback statements and deletes its row. Failures and arguments are as for apply. */
-    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function rollback(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Runs the finalize steps of every applied plan in chain order and records the plans done. Failures and arguments are as for apply. */
-    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function finalize(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Writes the document as a standard Mermaid erDiagram and lists what the diagram leaves out. */
     public static function exportMermaid(Document $document): MermaidExportResult {}
@@ -730,16 +743,16 @@ final class PlanApply
     private function __construct() {}
 
     /** Dbspec::apply, which calls it. */
-    public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function apply(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::recover. */
-    public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function recover(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::rollback. */
-    public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function rollback(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::finalize. */
-    public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function finalize(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Reads whether one effect holds in the database of the connection. */
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}
@@ -1671,6 +1684,11 @@ final class Db
     public function config(): Config {}
     /** @internal */
     public function pdo(): \PDO {}
+    /**
+     * @internal The server of the connection: on mysql, mysql or mariadb, which connect read by VERSION() (DIA-201);
+     * on postgres and sqlite, the driver's name.
+     */
+    public function server(): string {}
     /** @internal */
     public function driverError(\PDOException $e): OrmException {}
     /** The operations outside the query syntax. */

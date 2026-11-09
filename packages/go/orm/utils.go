@@ -389,7 +389,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 					return err
 				}
 			}
-			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, s.u.db.dbspecServer(), "schema"); err != nil {
 				return mapDriverErrContext(err, ctx, s.u.db.server)
 			}
 		}
@@ -455,7 +455,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		}
 		// After running the steps, it rereads the database and checks that it matches the set.
 		if len(steps) > 0 {
-			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, s.u.db.dbspecServer(), "schema"); err != nil {
 				return mapDriverErrContext(err, ctx, s.u.db.server)
 			}
 		}
@@ -485,20 +485,29 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	return added, nil
 }
 
+// dbspecServer is the server of the connection that introspection reads by (DIA-203): the server that open read on a
+// mysql connection, and the driver's own on PostgreSQL and SQLite.
+func (d *DB) dbspecServer() dbspec.Server {
+	if d.driver == "mysql" {
+		return dbspec.Server(d.server)
+	}
+	return dbspec.Server(d.driver)
+}
+
 // introspectSet introspects the connection's database, and if the set uses a table from an external document
 // and that table differs from the external document, it is CONFIG (docs/spec/dbspec.md "External documents").
 // introspectObserved introspects the schema of m through the runner r as a
 // schema statement; it returns the observer too, for the statements that follow.
 func introspectObserved(ctx context.Context, r runner, dialect dbspec.Dialect, m *runtimemodel.Model) (*observed, *dbspec.Document, []dbspec.Unsupported, error) {
 	q := &observed{r: r, kind: KindSchema, tables: noTables}
-	live, unsupported, err := introspectSet(ctx, q, dialect, m, r.d.server)
+	live, unsupported, err := introspectSet(ctx, q, dialect, m, r.d)
 	return q, live, unsupported, err
 }
 
-func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model, server string) (*dbspec.Document, []dbspec.Unsupported, error) {
-	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
+func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model, d *DB) (*dbspec.Document, []dbspec.Unsupported, error) {
+	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, d.dbspecServer(), "schema")
 	if err != nil {
-		return nil, nil, mapDriverErrContext(err, ctx, server)
+		return nil, nil, mapDriverErrContext(err, ctx, d.server)
 	}
 	if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
 		return nil, nil, externalErr(differences)

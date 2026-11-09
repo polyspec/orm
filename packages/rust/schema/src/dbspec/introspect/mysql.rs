@@ -4,10 +4,10 @@ use super::super::literal::quote;
 use super::super::model::Type;
 use super::super::names::rendered_column;
 use super::super::render::{Dialect, UUID_PATTERN};
-use super::check::decode_check;
+use super::check::{decode_check, escape_mysql_clause, read_sql_string};
 use super::number;
 use super::trigger::ITrigger;
-use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results};
+use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Server};
 use regex::Regex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
@@ -24,7 +24,7 @@ const EVENTS: usize = 8;
 
 // Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the table count (at 2000 tables
 // it takes over 60 seconds), so the two are read by two queries and joined by name. A MySQL CHECK name is unique within the database.
-pub(super) const QUERIES: [&str; 9] = [
+const QUERIES: [&str; 9] = [
     "SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME",
     "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA,
@@ -48,12 +48,38 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     "SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME",
 ];
 
+/// The catalog queries of MariaDB: those of MySQL but for the two check queries (DIA-203). MariaDB scopes a CHECK name to
+/// its table (probe mariadb.check.name_schema_scope), so its clauses are read by table and name, and it has no NOT ENFORCED
+/// CHECK and no ENFORCED column, so each of its checks is enforced.
+const MARIADB_QUERIES: [&str; 9] = [
+    QUERIES[TABLES],
+    QUERIES[COLUMNS],
+    QUERIES[INDEXES],
+    QUERIES[FOREIGN_KEYS],
+    "SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME",
+    "SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME",
+    QUERIES[TRIGGERS],
+    QUERIES[ROUTINES],
+    QUERIES[EVENTS],
+];
+
+/// The catalog queries of a server of the mysql dialect.
+pub(super) fn queries(server: Server) -> &'static [&'static str] {
+    if server == Server::MariaDb {
+        &MARIADB_QUERIES
+    } else {
+        &QUERIES
+    }
+}
+
 static TYPE_PATTERN: LazyLock<Regex> = super::lazy_pattern!(
     r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
     "MySQL type pattern"
 );
 
-pub(super) fn read(results: &Results) -> Result<Catalog, String> {
+pub(super) fn read(results: &Results, server: Server) -> Result<Catalog, String> {
     let mut c = Catalog::default();
     for row in results.rows(TABLES) {
         let (name, kind, options) = (row.text(0)?, row.text(1)?, row.text(2)?);
@@ -73,14 +99,17 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     let mut pending: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for row in results.rows(COLUMNS) {
         let (table, name, column_type, nullable) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?);
-        let dflt = row.opt_text(4)?;
-        let (extra, charset, collation, generation) = (row.text(5)?, row.text(6)?, row.text(7)?, row.text(8)?);
+        let mut dflt = row.opt_text(4)?;
+        let (mut extra, charset, collation, generation) = (row.text(5)?, row.text(6)?, row.text(7)?, row.text(8)?);
         if !c.has_table(&table) {
             continue;
         }
         if !generation.is_empty() {
             c.report("column", &table, &name, "a generated column has no dbspec definition");
             continue;
+        }
+        if server == Server::MariaDb {
+            (dflt, extra) = mariadb_default(dflt, extra).map_err(|error| format!("column {table}.{name}: {error}"))?;
         }
         let Some((typ, needs_check)) = mysql_type(&column_type, &charset, &collation)? else {
             c.report("column", &table, &name, format!("type {column_type} {charset} {collation} has no dbspec type"));
@@ -113,10 +142,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     read_indexes(results, &mut c)?;
     read_foreign_keys(results, &mut c)?;
     let mut checked: BTreeMap<String, BTreeMap<String, bool>> = BTreeMap::new();
-    let mut clauses: BTreeMap<String, String> = BTreeMap::new();
-    for row in results.rows(CHECK_CLAUSES) {
-        clauses.insert(row.text(0)?, row.text(1)?);
-    }
+    let clauses = check_clauses(results, server)?;
     // The follow-up rows are the SHOW CREATE TABLE of each table that needs them.
     let mut shown: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for index in QUERIES.len()..results.count() {
@@ -126,7 +152,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     }
     for row in results.rows(CHECKS) {
         let (table, name, enforced) = (row.text(0)?, row.text(1)?, row.text(2)?);
-        let stored = clauses.get(&name).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK_CLAUSE"))?;
+        let stored = clauses.get(&check_key(server, &table, &name)).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK_CLAUSE"))?;
         let clause = if stored.is_ascii() {
             stored
         } else {
@@ -142,7 +168,8 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
                 let column = rendered_column(&table, &name, cols.keys().map(String::as_str))?;
                 Some((column, cols[column]))
             });
-            let Some((column, _)) = found.filter(|&(column, typ)| without_introducers(&clause) == without_introducers(&renderer_check(column, typ))) else {
+            let Some((column, _)) = found.filter(|&(column, typ)| without_introducers(&clause) == without_introducers(&renderer_check(server, column, typ)))
+            else {
                 c.report("check", &table, &name, format!("the check {clause} is not the renderer CHECK"));
                 continue;
             };
@@ -200,9 +227,11 @@ fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Result<Optio
     };
     let fractional = precision();
     Ok(match group(&m, 1) {
-        "smallint" => plain(Type::I16, width.is_empty()),
-        "int" => plain(Type::I32, width.is_empty()),
-        "bigint" => plain(Type::I64, width.is_empty()),
+        // An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it
+        // (probes mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width (DIA-204).
+        "smallint" => plain(Type::I16, true),
+        "int" => plain(Type::I32, true),
+        "bigint" => plain(Type::I64, true),
         "tinyint(1)" => Some((Type::Bool, column_type.to_owned())),
         "double" => plain(Type::F64, width.is_empty()),
         "longtext" => plain(Type::Text, text),
@@ -229,15 +258,12 @@ static TIME_FRACTION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\'(\d\d:\
 /// encoded a second time, so `café` reads as `cafÃ©`; SHOW CREATE TABLE writes
 /// the literal correctly). Table names come from the first results: the rows of
 /// the CHECK_CLAUSES and CHECKS queries.
-pub(super) fn followups(results: &Results) -> Result<Vec<String>, String> {
-    let mut clauses: BTreeMap<String, String> = BTreeMap::new();
-    for row in results.rows(CHECK_CLAUSES) {
-        clauses.insert(row.text(0)?, row.text(1)?);
-    }
+pub(super) fn followups(results: &Results, server: Server) -> Result<Vec<String>, String> {
+    let clauses = check_clauses(results, server)?;
     let mut tables: BTreeSet<String> = BTreeSet::new();
     for row in results.rows(CHECKS) {
         let (table, name) = (row.text(0)?, row.text(1)?);
-        if clauses.get(&name).is_some_and(|clause| !clause.is_ascii()) {
+        if clauses.get(&check_key(server, &table, &name)).is_some_and(|clause| !clause.is_ascii()) {
             tables.insert(table);
         }
     }
@@ -254,7 +280,7 @@ fn shown_checks(create: &str) -> BTreeMap<String, String> {
         let after = &rest[at + "CONSTRAINT `".len()..];
         let Some(close) = after.find("` CHECK (") else { break };
         if let Some(body) = check_body(&after[close + "` CHECK (".len()..]) {
-            checks.insert(after[..close].to_owned(), body.replace('\\', "\\\\").replace('\'', "\\'"));
+            checks.insert(after[..close].to_owned(), escape_mysql_clause(body));
         }
         rest = after;
     }
@@ -301,12 +327,22 @@ fn without_introducers(clause: &str) -> String {
 }
 
 /// The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection",
-/// "Checks"). A type without a renderer CHECK is an empty string.
-fn renderer_check(column: &str, typ: Type) -> String {
+/// "Checks"). A type without a renderer CHECK is an empty string. MariaDB writes it without the outer parentheses and the
+/// introducers, in the escaped form that [`read`] gives its CHECK_CLAUSE (probes mariadb.check.catalog_text,
+/// mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
+fn renderer_check(server: Server, column: &str, typ: Type) -> String {
     let c = format!("`{column}`");
+    if server == Server::MariaDb {
+        return match typ {
+            Type::Bool => format!("{c} in (0,1)"),
+            Type::Uuid => format!("{c} regexp \\'{UUID_PATTERN}\\'"),
+            Type::Time(_) => format!("{c} >= \\'00:00:00\\' and {c} < \\'24:00:00\\'"),
+            _ => String::new(),
+        };
+    }
     match typ {
         Type::Bool => format!("({c} in (0,1))"),
-        Type::Uuid => format!("regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\',_utf8mb4\\'c\\')"),
+        Type::Uuid => format!("regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\')"),
         Type::Time(_) => format!("(({c} >= _utf8mb4\\'00:00:00\\') and ({c} < _utf8mb4\\'24:00:00\\'))"),
         _ => String::new(),
     }
@@ -319,6 +355,71 @@ fn mysql_now(text: &str, typ: Type) -> bool {
         Type::DateTime(p) => text == format!("CURRENT_TIMESTAMP({p})"),
         _ => false,
     }
+}
+
+/// The CHECK_CLAUSE of each check by [`check_key`], in the escaped form of MySQL's CHECK_CLAUSE. MariaDB writes CHECK_CLAUSE
+/// as SQL text, escaping a string literal once (probes mariadb.check.catalog_text, mariadb.check.string_escaped_twice), and
+/// MySQL escapes it once more; the MariaDB text takes that escape so that one reader reads both (DIA-203).
+fn check_clauses(results: &Results, server: Server) -> Result<BTreeMap<String, String>, String> {
+    let mut clauses = BTreeMap::new();
+    for row in results.rows(CHECK_CLAUSES) {
+        if server == Server::MariaDb {
+            let (table, name, clause) = (row.text(0)?, row.text(1)?, row.text(2)?);
+            clauses.insert(check_key(server, &table, &name), escape_mysql_clause(&clause));
+        } else {
+            clauses.insert(row.text(0)?, row.text(1)?);
+        }
+    }
+    Ok(clauses)
+}
+
+/// The key of a check in the clauses of [`read`]: its name on MySQL, whose CHECK names are unique in the database, and its
+/// table and name on MariaDB, which scopes a CHECK name to its table (probes mysql.check.name_schema_scope,
+/// mariadb.check.name_schema_scope).
+fn check_key(server: Server, table: &str, name: &str) -> String {
+    if server == Server::MariaDb {
+        format!("{table}\0{name}")
+    } else {
+        name.to_owned()
+    }
+}
+
+/// A number literal of COLUMN_DEFAULT.
+static NUMBER: LazyLock<Regex> = super::lazy_pattern!(r"^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$", "MySQL number literal pattern");
+
+/// A clock default of MariaDB's COLUMN_DEFAULT, `current_timestamp()` or `current_timestamp(p)`.
+static MARIADB_CLOCK: LazyLock<Regex> = super::lazy_pattern!(r"^current_timestamp\(([1-6]?)\)$", "MariaDB clock default pattern");
+
+/// Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL
+/// for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as written, and an
+/// expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe mariadb.default.catalog_text). MySQL gives a
+/// NULL default as SQL NULL, a literal without quotes and escapes, and an expression default, CURRENT_TIMESTAMP and
+/// CURRENT_TIMESTAMP(p) among them, with EXTRA DEFAULT_GENERATED (probe mysql.default.catalog_text). A quoted text that is
+/// not one whole literal is an error.
+fn mariadb_default(dflt: Option<String>, extra: String) -> Result<(Option<String>, String), String> {
+    let Some(text) = dflt else { return Ok((None, extra)) };
+    if !extra.is_empty() {
+        return Ok((Some(text), extra));
+    }
+    if text == "NULL" {
+        return Ok((None, extra));
+    }
+    if text.starts_with('\'') {
+        return match read_sql_string(Dialect::MySql, &text) {
+            Ok((value, n)) if n == text.len() => Ok((Some(value), extra)),
+            _ => Err(format!("default {text} is not one string literal")),
+        };
+    }
+    if NUMBER.is_match(&text) {
+        return Ok((Some(text), extra));
+    }
+    let generated = "DEFAULT_GENERATED".to_owned();
+    if let Some(m) = MARIADB_CLOCK.captures(&text) {
+        let precision = group(&m, 1);
+        let clock = if precision.is_empty() { "CURRENT_TIMESTAMP".to_owned() } else { format!("CURRENT_TIMESTAMP({precision})") };
+        return Ok((Some(clock), generated));
+    }
+    Ok((Some(text), generated))
 }
 
 /// Writes the COLUMN_DEFAULT value with its escapes undone as a dbspec literal. parse decides its canonical form and

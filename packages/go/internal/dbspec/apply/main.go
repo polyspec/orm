@@ -88,15 +88,15 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 	case "lock-wait":
 		return lockWait(ctx, conn, dialect, uri, vectors, now)
 	case "apply-first":
-		res, err = dbspec.Apply(ctx, conn, d, plans[:1], now, nil)
+		res, err = dbspec.Apply(ctx, conn, d, dbspec.Server(d), plans[:1], now, nil)
 	case "apply":
-		res, err = dbspec.Apply(ctx, conn, d, plans, now, nil)
+		res, err = dbspec.Apply(ctx, conn, d, dbspec.Server(d), plans, now, nil)
 	case "recover":
-		err = dbspec.Recover(ctx, conn, d, plans, now, nil)
+		err = dbspec.Recover(ctx, conn, d, dbspec.Server(d), plans, now, nil)
 	case "rollback":
-		err = dbspec.Rollback(ctx, conn, d, plans, now, nil)
+		err = dbspec.Rollback(ctx, conn, d, dbspec.Server(d), plans, now, nil)
 	case "stop":
-		res, err = dbspec.Apply(ctx, conn, d, plans, now, func(ev dbspec.ApplyEvent) error {
+		res, err = dbspec.Apply(ctx, conn, d, dbspec.Server(d), plans, now, func(ev dbspec.ApplyEvent) error {
 			if ev.Kind == "applied" && ev.Plan == plans[1].Name && ev.Step == 1 {
 				return errStop
 			}
@@ -143,7 +143,7 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 		return "", err
 	}
 	if dialect != "sqlite" {
-		if _, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans[:1], now, nil); err != nil {
+		if _, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), dbspec.Server(dialect), plans[:1], now, nil); err != nil {
 			return "", err
 		}
 	}
@@ -180,7 +180,7 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 	}
 	var events []string
 	started := time.Now()
-	res, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans, now, func(ev dbspec.ApplyEvent) error {
+	res, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), dbspec.Server(dialect), plans, now, func(ev dbspec.ApplyEvent) error {
 		if ev.Kind == "statement" || ev.Kind == "applied" {
 			events = append(events, fmt.Sprintf("%s:%d", ev.Kind, ev.Step))
 		}
@@ -224,7 +224,7 @@ func sqliteLockWait(ctx context.Context, conn, blocker *sql.Conn, plans []*dbspe
 	}
 	release := &releaseSQLiteBlocker{Execer: conn, blocker: blocker}
 	started := time.Now()
-	result, applyError := dbspec.Apply(ctx, release, dbspec.DialectSQLite, plans, now, nil)
+	result, applyError := dbspec.Apply(ctx, release, dbspec.DialectSQLite, dbspec.ServerSQLite, plans, now, nil)
 	if !release.released {
 		_, cleanupErr := blocker.ExecContext(context.Background(), "ROLLBACK")
 		if cleanupErr != nil {

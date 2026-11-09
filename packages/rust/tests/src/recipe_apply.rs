@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
-use polyspec_orm::dbspec::{self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan};
+use polyspec_orm::dbspec::{self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan, Server};
 use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
@@ -225,6 +225,18 @@ fn dialect_of(database: &str) -> Result<Dialect, String> {
     }
 }
 
+/// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on a case of MariaDB, and the
+/// server of the dialect's own database otherwise; a markdown corpus, already read as sqlite, answers in SQLite's dialect, as
+/// its server.
+fn server_of(database: &str, mariadb: bool) -> Result<Server, String> {
+    match (dialect_of(database)?, mariadb) {
+        (Dialect::MySql, true) => Ok(Server::MariaDb),
+        (Dialect::MySql, false) => Ok(Server::MySql),
+        (Dialect::Postgres, _) => Ok(Server::Postgres),
+        (Dialect::Sqlite, _) => Ok(Server::Sqlite),
+    }
+}
+
 /// The database name of a case DSN.
 fn name_of(dsn: &str) -> &str {
     let path = dsn.split('?').next().unwrap_or(dsn);
@@ -351,7 +363,8 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         "dbspec.schema" => {
             let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
-            let introspection = dbspec::introspect(session, dialect_of(database)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
+            let introspection =
+                dbspec::introspect(session, dialect_of(database)?, server_of(database, state.mariadb)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
             if !introspection.unsupported.is_empty() {
                 return Err(format!("dbspec.schema: unsupported {:?}", introspection.unsupported));
             }
@@ -416,6 +429,7 @@ fn first_failure(error: &ApplyError) -> &ApplyError {
 /// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
 async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
     let dialect = dialect_of(database)?;
+    let server = server_of(database, state.mariadb)?;
     let target = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default().to_owned();
     let mut plans: Vec<Plan> = Vec::new();
     for name in crate::recipe_reads::read(step, "plans")["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
@@ -469,10 +483,10 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         };
         let mut connection = Shared { inner: Arc::clone(&shared) };
         match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
-            "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.finalize" => dbspec::finalize(&mut connection, dialect, &plans, &now, &mut handler).await,
+            "dbspec.apply" => dbspec::apply(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.recover" => dbspec::recover(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.finalize" => dbspec::finalize(&mut connection, dialect, server, &plans, &now, &mut handler).await,
             other => return Err(format!("OP_UNKNOWN {other}")),
         }
     };

@@ -43,6 +43,40 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   statement runner case `a_text_literal_compares_by_code_point_on_every_connection` holds it on every database;
   PostgreSQL compares under `COLLATE "C"` and SQLite under `BINARY` to the same result.
 
+- **DIA-203** The server of the introspection — MySQL 8.4 / MariaDB 11.8 (probes `mysql.check.not_enforced_option`,
+  `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,
+  `mysql.check.catalog_text`, `mariadb.check.catalog_text`, `mariadb.check.string_escaped_twice`): the introspection of
+  dbspec, and the verification of an apply that introspects, take the server that the connection read when it
+  connected (DIA-201) next to the dialect, in every runtime, and read no version of their own; a server that is not a
+  server of the dialect is refused as an unknown dialect is (DBS-174). MySQL states a CHECK that is not enforced in
+  `TABLE_CONSTRAINTS.ENFORCED`; MariaDB has no `NOT ENFORCED` CHECK and no `ENFORCED` column (1054), so no common query
+  exists (DIA-200, rule 2) and every CHECK of MariaDB is read as enforced. MariaDB scopes a CHECK name to its table, so
+  its `CHECK_CLAUSE` is read by table and name, and it writes `CHECK_CLAUSE` as SQL text without outer parentheses and
+  introducers whose string literals carry one escape; that text takes the second escape of MySQL's `CHECK_CLAUSE`, and
+  then one reader reads the clause of either server (DIA-146). Its renderer CHECKs are `` `c` in (0,1) ``,
+  `` `c` regexp '^…$' `` and `` `c` >= '00:00:00' and `c` < '24:00:00' `` (probes `mariadb.render.bool_check`,
+  `mariadb.render.uuid_check`, `mariadb.render.time_of_day_check`; DIA-144).
+
+- **DIA-204** The integer display width — MySQL 8.4 / MariaDB 11.8 (probes `mysql.int.display_width_dropped`,
+  `mariadb.int.display_width_dropped`): MySQL writes `COLUMN_TYPE` of `smallint`, `int` and `bigint` without a display
+  width and MariaDB with one (`smallint(6)`, `int(11)`, `bigint(20)`). The width changes no value, so the introspection
+  of both servers reads an integer type with or without a width as the same type (DIA-200, rule 1); `tinyint(1)` stays
+  `bool` on both.
+
+- **DIA-205** The column default in the catalog — MySQL 8.4 / MariaDB 11.8 (probes `mysql.default.catalog_text`,
+  `mariadb.default.catalog_text`): MySQL gives `COLUMN_DEFAULT` a literal without quotes, a `NULL` default as SQL
+  `NULL`, and an expression default, `CURRENT_TIMESTAMP(p)` among them, with `EXTRA` `DEFAULT_GENERATED`. MariaDB writes
+  `COLUMN_DEFAULT` as SQL text: `NULL` for a `NULL` default, a string or temporal literal in quotes with its SQL escapes,
+  a number as written, an expression as its text and the clock as `current_timestamp()` or `current_timestamp(p)`, and
+  `EXTRA` has no `DEFAULT_GENERATED`. No query gives both forms (DIA-200, rule 2), so the introspection reads the MariaDB
+  text in the MySQL form: `NULL` is no default, a quoted literal is its value with its escapes undone, a number is
+  itself, and any other text is an expression default as MySQL marks it, the clock among them; a quoted text that is not
+  one whole literal is an error.
+
+- **DIA-206** Dropping a CHECK — MySQL 8.4 / MariaDB 11.8 (probes `mysql.check.drop_constraint`,
+  `mariadb.check.drop_constraint`): a plan drops a CHECK by `ALTER TABLE t DROP CONSTRAINT c`, which both servers accept
+  with the same result, and MariaDB has no `DROP CHECK` (1064) (DIA-200, rule 1).
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
@@ -129,7 +163,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 - **DIA-45** `text` — MySQL 8.4: `TEXT` ≤ 65535 bytes (1406), `LONGTEXT` ≤ 4 GiB; a literal default needs `DEFAULT ('x')` (1101); an index needs a prefix (1170); PostgreSQL 17: `text` without length; 1 MiB stored in the probe; field limit 1 GB; SQLite: `TEXT`, limited by `SQLITE_MAX_LENGTH` (default 10^9 bytes); Probes: `mysql.text.max_bytes`, `mysql.text.literal_default_needs_expression`, `mysql.text.index_needs_prefix`, `postgres.text.unlimited`; Decision and neutral rendering: **Decision:** supported as `text`: MySQL `LONGTEXT`, PostgreSQL `text`, SQLite `TEXT`. A `text` column cannot be part of a key or index. The largest value is the smallest of PostgreSQL's 1 GB field limit, SQLite's `SQLITE_MAX_LENGTH` and MySQL's `max_allowed_packet`. Ordered JSON is `text` with a codec setting; Introspection: MySQL `DATA_TYPE`; PostgreSQL `atttypid`; SQLite declared type
 - **DIA-46** U+0000 in text — MySQL 8.4: Stored; PostgreSQL 17: Rejected (22021); SQLite: Stored; `length()` stops at it; Probes: `mysql.text.nul_preserved`, `postgres.text.nul_rejected`, `sqlite.text.nul_preserved`; Decision and neutral rendering: **Decision:** U+0000 is not a neutral text value. Clients reject it in `text` and `varchar` with `CODEC_ENCODE` before any statement on every database (the conformance vector `text_nul_rejected`); Introspection: Not applicable
 - **DIA-47** Bytes — MySQL 8.4: `BINARY(n)` pads with zero bytes; `VARBINARY(n)` enforces its length (1406); `LONGBLOB`; PostgreSQL 17: `bytea` has no length (42601); SQLite: `BLOB` has no length; Probes: `mysql.binary.zero_padded`, `mysql.varbinary.length_enforced`, `postgres.bytea.no_length`; Decision and neutral rendering: **Decision:** `bytes` without length supported: MySQL `LONGBLOB`, PostgreSQL `bytea`, SQLite `BLOB`. `binary(n)` and `varbinary(n)` are unsupported: padding and length exist on MySQL only; Introspection: MySQL `DATA_TYPE`; PostgreSQL `atttypid`; SQLite declared type
-- **DIA-48** UUID — MySQL 8.4: No type (1064); PostgreSQL 17: `uuid` accepts braces and upper case and returns lower case; SQLite: No type; Probes: `mysql.uuid.no_type`, `postgres.uuid.native_normalized`, `mysql.render.uuid_check`, `sqlite.render.uuid_check`; Decision and neutral rendering: **Decision:** supported as `uuid` holding lower-case canonical text: PostgreSQL `uuid`, MySQL `char(36) CHARACTER SET ascii COLLATE ascii_bin` with renderer CHECK `REGEXP_LIKE(u, '^[0-9a-f]{8}-…$', 'c')`, SQLite `TEXT` with renderer CHECK `u GLOB` of 36 character classes. Clients write lower-case canonical text and reject another form with `CODEC_ENCODE` before any statement (the conformance vector `uuid_form_rejected`), so the conversion of other input forms by PostgreSQL is never used; Introspection: PostgreSQL `uuid`; MySQL and SQLite type and CHECK text
+- **DIA-48** UUID — MySQL 8.4: No type (1064); PostgreSQL 17: `uuid` accepts braces and upper case and returns lower case; SQLite: No type; Probes: `mysql.uuid.no_type`, `postgres.uuid.native_normalized`, `mysql.render.uuid_check`, `mariadb.render.uuid_check`, `mariadb.check.alter_rewrites_introducers`, `sqlite.render.uuid_check`; Decision and neutral rendering: **Decision:** supported as `uuid` holding lower-case canonical text: PostgreSQL `uuid`, MySQL `char(36) CHARACTER SET ascii COLLATE ascii_bin` with renderer CHECK `u REGEXP '^[0-9a-f]{8}-…$'`, which matches by case on its `ascii_bin` column on MySQL and MariaDB alike, and MariaDB has no `REGEXP_LIKE` (1305, 1901 in a CHECK), SQLite `TEXT` with renderer CHECK `u GLOB` of 36 character classes. Clients write lower-case canonical text and reject another form with `CODEC_ENCODE` before any statement (the conformance vector `uuid_form_rejected`), so the conversion of other input forms by PostgreSQL is never used; Introspection: PostgreSQL `uuid`; MySQL and SQLite type and CHECK text
 - **DIA-49** Enum — MySQL 8.4: `ENUM` rejects unknown values (1265), stores the first value for an omitted NOT NULL column and sorts by list position; PostgreSQL 17: `CREATE TYPE … AS ENUM` is a separate type object (`USER-DEFINED`, `pg_enum`), rejects unknown values (22P02), sorts by list position; SQLite: `enum('a','b')` is a syntax error; Probes: `mysql.enum.rejects_unknown`, `mysql.enum.not_null_first_value_default`, `mysql.enum.sorts_by_position`, `postgres.enum.type_object`, `sqlite.enum.type_name_rejected`; Decision and neutral rendering: **Decision:** native enums unsupported. A value list is a `varchar(n)` column with an `in` CHECK definition; it sorts as text on every database; Introspection: MySQL `ENUM` columns and PostgreSQL enum types are reported as unsupported
 - **DIA-50** JSON — MySQL 8.4: `JSON` keeps the last duplicate key and reorders members; PostgreSQL 17: `json` keeps the text; `jsonb` keeps the last duplicate key and reorders; SQLite: Text; `json()` keeps duplicate keys; Probes: `mysql.json.normalizes`, `postgres.json.text_jsonb_normalized`, `sqlite.json.text_kept`; Decision and neutral rendering: **Decision:** native JSON types unsupported. Ordered JSON is a `text` column with the ordered-json codec setting; Introspection: MySQL `JSON` and PostgreSQL `json`/`jsonb` columns are reported as unsupported
 
@@ -322,7 +356,7 @@ Sources: [MySQL implicit commit](https://dev.mysql.com/doc/refman/8.4/en/implici
 | `decimal(p,s)` | | | `typeof(c) IN ('integer', 'null') AND c BETWEEN -(10^p − 1) AND 10^p − 1` |
 | `f64` | | | `typeof(c) IN ('real', 'null')` |
 | `varchar(n)` | | | `length(c) <= n` |
-| `uuid` | `REGEXP_LIKE(c, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')` | | `c GLOB` 36 character classes |
+| `uuid` | `c REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'` | | `c GLOB` 36 character classes |
 | `date` | | | `c IS date(c)` |
 | `time(0)` | `c >= '00:00:00' AND c < '24:00:00'` | `c < '24:00:00'` | `c IS time(c) AND c < '24:00:00'` |
 | `time(p)`, p > 0 | as `time(0)` | as `time(0)` | `length(c) = 9 + p AND substr(c, 1, 8) IS time(substr(c, 1, 8)) AND substr(c, 1, 8) < '24:00:00' AND substr(c, 9, 1) = '.' AND substr(c, 10) GLOB` p digit classes |
@@ -379,7 +413,7 @@ Sources: [MySQL implicit commit](https://dev.mysql.com/doc/refman/8.4/en/implici
 
 ### Checks
 
-- **DIA-144** A check named `<table>$<column>` is a renderer CHECK. It must equal the catalog form of the renderer output for the column's type: MySQL `` (`c` in (0,1)) `` for `bool`, `` regexp_like(`c`,_utf8mb4\'^…$\',_utf8mb4\'c\') `` for `uuid`, `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) `` for `time(p)`; PostgreSQL `CHECK ((c < '24:00:00'::time without time zone))` with the column name as `quote_ident` writes it; SQLite the rendered text itself. MySQL writes `CHECK_CLAUSE` again on every `ALTER TABLE` of the table, giving the uuid pattern an `_ascii` introducer and the time literals none (`mysql.check.alter_rewrites_introducers`), and writes a time literal that meets a `time(p)` column with `p` zero fraction digits (`mysql.check.alter_writes_time_precision`), so a MySQL clause is compared with its character set introducers and the zero fractions of its time literals removed; the literals of these templates are ASCII and a zero fraction keeps the value, so the comparison keeps their meaning. A renderer CHECK that differs, and a name with `$` that is no renderer CHECK, are unsupported.
+- **DIA-144** A check named `<table>$<column>` is a renderer CHECK. It must equal the catalog form of the renderer output for the column's type: MySQL `` (`c` in (0,1)) `` for `bool`, `` regexp_like(`c`,_utf8mb4\'^…$\') `` for `uuid`, `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) `` for `time(p)`, and on MariaDB the forms of DIA-203; PostgreSQL `CHECK ((c < '24:00:00'::time without time zone))` with the column name as `quote_ident` writes it; SQLite the rendered text itself. MySQL writes `CHECK_CLAUSE` again on every `ALTER TABLE` of the table, giving the uuid pattern an `_ascii` introducer and the time literals none (`mysql.check.alter_rewrites_introducers`), and writes a time literal that meets a `time(p)` column with `p` zero fraction digits (`mysql.check.alter_writes_time_precision`), so a MySQL clause is compared with its character set introducers and the zero fractions of its time literals removed; the literals of these templates are ASCII and a zero fraction keeps the value, so the comparison keeps their meaning. A renderer CHECK that differs, and a name with `$` that is no renderer CHECK, are unsupported.
 
 - **DIA-145** Every other check is read into a predicate of [dbspec](dbspec.md#checks) and written in canonical form:
 
@@ -427,6 +461,7 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.check.between_kept` | CHECK_CLAUSE keeps BETWEEN and writes a negative literal as -n |
 | `mariadb.check.bool_column_rejected` | a bool column alone is a CHECK expression, which refuses 0 (4025) |
 | `mariadb.check.catalog_text` | CHECK_CLAUSE is the expression without outer parentheses and without a character set introducer |
+| `mariadb.check.drop_constraint` | the MySQL fact holds |
 | `mariadb.check.enforced_null_passes` | CHECK is enforced (4025, SQLSTATE 23000) and NULL passes |
 | `mariadb.check.fk_action_column_rejected` | a column of a foreign key with a referential action cannot appear in a CHECK (1901) |
 | `mariadb.check.name_schema_scope` | CHECK names are scoped to their table: two tables may each have a CHECK ck |
@@ -453,7 +488,7 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.decimal.overflow_rejected` | the MySQL fact holds |
 | `mariadb.decimal.precision_limits` | DECIMAL precision is at most 65 (1426) and scale at most 38 (1425), so DECIMAL(65,31) is accepted |
 | `mariadb.decimal.scale_rounds` | the MySQL fact holds |
-| `mariadb.default.catalog_text` | COLUMN_DEFAULT quotes a literal, writes an expression default as its text, and EXTRA has no DEFAULT_GENERATED |
+| `mariadb.default.catalog_text` | COLUMN_DEFAULT quotes a literal with its SQL escapes, writes NULL for a NULL default, an expression default as its text and the clock as current_timestamp(p), and EXTRA has no DEFAULT_GENERATED |
 | `mariadb.enum.not_null_first_value_default` | the MySQL fact holds |
 | `mariadb.enum.rejects_unknown` | the MySQL fact holds |
 | `mariadb.enum.sorts_by_position` | the MySQL fact holds |

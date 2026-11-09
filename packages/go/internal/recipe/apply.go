@@ -178,7 +178,7 @@ func applySchema(s databaseStep, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.dialect()], "x")
+	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.dialect()], c.server(), "x")
 	if err != nil {
 		return outcome{}, err
 	}
@@ -285,18 +285,18 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.k("op").Op {
 	case "dbspec.apply":
 		var res dbspec.ApplyResult
-		res, err = dbspec.Apply(c.ctx, conn, dialect, plans, applyNow, handler)
+		res, err = dbspec.Apply(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 		if err == nil && res.Failure != nil {
 			err = res.Failure
 		} else if err == nil && res.Stopped {
 			err = res.Stop
 		}
 	case "dbspec.recover":
-		err = dbspec.Recover(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Recover(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	case "dbspec.rollback":
-		err = dbspec.Rollback(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Rollback(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	case "dbspec.finalize":
-		err = dbspec.Finalize(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Finalize(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	}
 	elapsed := time.Since(started).Milliseconds()
 	code := "ok"

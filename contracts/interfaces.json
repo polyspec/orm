@@ -3305,27 +3305,27 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/introspect.go::Introspect",
-          "signature": "func(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error)"
+          "signature": "func(ctx context.Context, q Querier, dialect Dialect, server Server, name string) (*Document, []Unsupported, error)"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
-          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $server, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "rust": {
           "symbol": "packages/rust/orm/src/dbspec.rs::introspect",
-          "signature": "pub async fn introspect<Q: CatalogQuerier + ?Sized>(connection: &mut Q, dialect: Dialect, name: &str) -> Result<Introspection, IntrospectError>"
+          "signature": "pub async fn introspect < Q : CatalogQuerier + ? Sized > (connection : & mut Q , dialect : Dialect , server : Server , name : & str) -> Result < Introspection , IntrospectError >"
         },
         "typescript": {
           "symbol": "packages/ts/src/dbspec/introspect.ts::introspectDbspec",
-          "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection>"
+          "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, server: DbspecServer, name: string): Promise<DbspecIntrospection>"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
-          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $server, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec",
-          "signature": "def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict"
+          "signature": "def introspect_dbspec(connection: Connection, dialect: str, server: str, name: str) -> dict"
         }
       }
     },
@@ -3665,27 +3665,27 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/apply.go::Apply",
-          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error)"
+          "signature": "func(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error)"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
-          "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function apply(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
           "symbol": "packages/rust/orm/src/dbspec/apply.rs::apply",
-          "signature": "pub async fn apply<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
+          "signature": "pub async fn apply < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
           "symbol": "packages/ts/src/dbspec/apply.ts::applyPlans",
-          "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+          "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
-          "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function apply(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::apply_plans",
-          "signature": "def apply_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
+          "signature": "def apply_plans(connection: Connection, dialect: str, server: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -3701,27 +3701,27 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/apply.go::Recover",
-          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
+          "signature": "func(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
-          "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function recover(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
           "symbol": "packages/rust/orm/src/dbspec/apply.rs::recover",
-          "signature": "pub async fn recover<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
+          "signature": "pub async fn recover < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
           "symbol": "packages/ts/src/dbspec/apply.ts::recoverPlans",
-          "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+          "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
-          "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function recover(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::recover_plans",
-          "signature": "def recover_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
+          "signature": "def recover_plans(connection: Connection, dialect: str, server: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -3737,27 +3737,27 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/apply.go::Rollback",
-          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
+          "signature": "func(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
-          "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function rollback(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
           "symbol": "packages/rust/orm/src/dbspec/apply.rs::rollback",
-          "signature": "pub async fn rollback<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
+          "signature": "pub async fn rollback < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
           "symbol": "packages/ts/src/dbspec/apply.ts::rollbackPlans",
-          "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+          "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
-          "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function rollback(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::rollback_plans",
-          "signature": "def rollback_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
+          "signature": "def rollback_plans(connection: Connection, dialect: str, server: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -3773,27 +3773,27 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/apply.go::Finalize",
-          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
+          "signature": "func(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
-          "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function finalize(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
           "symbol": "packages/rust/orm/src/dbspec/apply.rs::finalize",
-          "signature": "pub async fn finalize<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
+          "signature": "pub async fn finalize < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
           "symbol": "packages/ts/src/dbspec/apply.ts::finalizePlans",
-          "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+          "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
-          "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+          "signature": "public static function finalize(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::finalize_plans",
-          "signature": "def finalize_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
+          "signature": "def finalize_plans(connection: Connection, dialect: str, server: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },

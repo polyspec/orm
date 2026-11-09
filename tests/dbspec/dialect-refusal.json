@@ -1,7 +1,7 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "version": 1,
-  "note": "The refusal of a dialect that is none of mysql, postgres and sqlite (DBS-174). Rust takes a dialect by an enum type, so it has no such call: its compile fixtures dbs174-plan-unknown-dialect-e0308 and dbs174-render-unknown-dialect-e0308 hold the rule, and this recipe binds the other five runtimes.",
+  "note": "The refusal of a dialect that is none of mysql, postgres and sqlite, and of a server that is not a server of the dialect (DBS-174). Rust takes a dialect by an enum type, so it has no such call: its compile fixtures dbs174-plan-unknown-dialect-e0308 and dbs174-render-unknown-dialect-e0308 hold the rule, and this recipe binds the other five runtimes.",
   "requirements": [
     "DBS-174"
   ],
@@ -76,6 +76,42 @@
         {
           "op": "dbspec.introspect_refusal",
           "dialect": "oracle",
+          "expect": {
+            "none": {
+              "refused": "oracle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "introspect-server-of-another-dialect",
+      "requirements": [
+        "DBS-174"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_refusal",
+          "dialect": "postgres",
+          "server": "mariadb",
+          "expect": {
+            "none": {
+              "refused": "mariadb"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "introspect-unknown-server",
+      "requirements": [
+        "DBS-174"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_refusal",
+          "dialect": "mysql",
+          "server": "oracle",
           "expect": {
             "none": {
               "refused": "oracle"

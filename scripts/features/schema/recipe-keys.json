@@ -653,7 +653,8 @@
     "dbspec.introspect_refusal": [
       "dialect",
       "expect",
-      "op"
+      "op",
+      "server"
     ],
     "dbspec.add_tables_steps": [
       "dialect",

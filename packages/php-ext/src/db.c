@@ -4231,6 +4231,14 @@ ZEND_METHOD(Polyspec_Orm_Db, withCancellation)
     RETURN_COPY_VALUE(&copy);
 }
 
+/* The server of the connection: on mysql the server that Orm::connect read by VERSION() (DIA-201), on postgres and sqlite the
+ * driver's name. */
+ZEND_METHOD(Polyspec_Orm_Db, server)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    RETURN_COPY(error_driver(ZEND_THIS));
+}
+
 /* Records the server of a mysql connection, which Orm::connect reads by VERSION() (DIA-201). */
 ZEND_METHOD(Polyspec_Orm_Db, setServer)
 {

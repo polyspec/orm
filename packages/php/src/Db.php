@@ -186,12 +186,20 @@ final class Db
         return Listen::listen($this, $channel);
     }
 
+    /**
+     * @internal The server of the connection: on mysql, mysql or mariadb, which connect read by VERSION() (DIA-201);
+     * on postgres and sqlite, the driver's name.
+     */
+    public function server(): string
+    {
+        return $this->driver === 'mysql' ? $this->state->server : $this->driver;
+    }
+
     /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {
         // A mysql error number is read by the table of its server (DIA-201).
-        $driver = $this->driver === 'mysql' ? $this->state->server : $this->driver;
-        return OrmException::fromDriver($e, $driver, $this->handle());
+        return OrmException::fromDriver($e, $this->server(), $this->handle());
     }
 
     /** The operations outside the query syntax. */

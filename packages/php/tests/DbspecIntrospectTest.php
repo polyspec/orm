@@ -25,6 +25,7 @@ class DbspecIntrospectTest extends TestCase
         Dbspec::introspect(
             new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT]),
             'mysql',
+            'mysql',
             'introspected'
         );
     }

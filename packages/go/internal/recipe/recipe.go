@@ -85,6 +85,8 @@ type step struct {
 	Source       json.RawMessage   `json:"source"`
 	Target       json.RawMessage   `json:"target"`
 	Dialect      string            `json:"dialect"`
+	// Server is the server that dbspec.introspect_refusal passes with Dialect; without it the call passes the dialect's name.
+	Server string `json:"server"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
 	Documents []string  `json:"documents"`
 	Document  string    `json:"document"`
@@ -2071,7 +2073,7 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 			return err
 		}
 	}
-	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, dbspec.ServerSQLite, "introspected")
 	if err != nil {
 		return err
 	}

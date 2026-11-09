@@ -21,7 +21,7 @@ from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.database import parse_dsn
 from polyspec.orm.markdown import MarkdownConnection
 
-from .case_database import case_database
+from .case_database import case_database, case_server
 from .dbspec_apply_runner import Adapter
 from .runner_connect import mysql_connect
 
@@ -162,7 +162,10 @@ def _connect(step: dict, context: dict) -> dict:
 
 def _schema(step: dict, context: dict) -> dict:
     result = introspect_dbspec(
-        _session_of(step, context).adapter, _dialect_of(context["database"]), "x"
+        _session_of(step, context).adapter,
+        _dialect_of(context["database"]),
+        case_server(context["database"]),
+        "x",
     )
     if result["unsupported"]:
         raise AssertionError(f"dbspec.schema: unsupported {result['unsupported']}")
@@ -232,6 +235,7 @@ def apply_ops(sql, run_step) -> dict:
             _COMMANDS[step["op"]](
                 session.adapter,
                 _dialect_of(context["database"]),
+                case_server(context["database"]),
                 plans,
                 lambda: _NOW,
                 handler,

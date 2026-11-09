@@ -9,7 +9,7 @@
 
 use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::{
-    apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan,
+    apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan, Server,
 };
 use sqlx::Connection;
 use std::path::Path;
@@ -94,13 +94,13 @@ async fn statement_lock_wait<C: ApplyConnection + Connection + Send>(uri: &str, 
 
 async fn quiet_apply<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<(), String> {
     let mut quiet = |_: &ApplyEvent| -> Result<(), EventError> { Ok(()) };
-    apply(c, dialect, plans, &fixed_now, &mut quiet).await.map_err(|e| e.to_string())
+    apply(c, dialect, server_of(dialect), plans, &fixed_now, &mut quiet).await.map_err(|e| e.to_string())
 }
 
 async fn check_statement_wait<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<String, String> {
     let mut events = Vec::new();
     let started = std::time::Instant::now();
-    let result = apply(c, dialect, plans, &fixed_now, &mut record_steps(&mut events)).await;
+    let result = apply(c, dialect, server_of(dialect), plans, &fixed_now, &mut record_steps(&mut events)).await;
     let elapsed = started.elapsed();
     let (plan, step, source) = match result {
         Err(ApplyError::Failed { plan, step, source, .. }) => (plan, step, source),
@@ -127,7 +127,7 @@ async fn check_sqlite_lock_wait(c: &mut sqlx::SqliteConnection, blocker: &mut sq
     let mut quiet = |_: &ApplyEvent| -> Result<(), EventError> { Ok(()) };
     let mut guarded = ReleaseSqliteBlocker { inner: c, blocker, released: false, release_error: None };
     let started = std::time::Instant::now();
-    let result = apply(&mut guarded, Dialect::Sqlite, plans, &fixed_now, &mut quiet).await;
+    let result = apply(&mut guarded, Dialect::Sqlite, Server::Sqlite, plans, &fixed_now, &mut quiet).await;
     let elapsed = started.elapsed();
     let released = guarded.released;
     let release_error = guarded.release_error.take();
@@ -225,6 +225,15 @@ fn fixed_now() -> DateTime<Utc> {
 }
 
 /// Runs the connection rules on the connection, then runs the action and returns the result line.
+/// The server of a dialect's own database: this tool connects to MySQL, PostgreSQL or SQLite by the dialect's name.
+fn server_of(dialect: Dialect) -> Server {
+    match dialect {
+        Dialect::MySql => Server::MySql,
+        Dialect::Postgres => Server::Postgres,
+        Dialect::Sqlite => Server::Sqlite,
+    }
+}
+
 async fn on<C: ApplyConnection + Send>(mut c: C, dialect: Dialect, rules: &[&str], action: &str, plans: &[Plan]) -> Result<String, String> {
     for rule in rules {
         c.execute(rule).await.map_err(|e| format!("{rule}: {e}"))?;
@@ -238,11 +247,11 @@ async fn on<C: ApplyConnection + Send>(mut c: C, dialect: Dialect, rules: &[&str
         Ok(())
     };
     let result = match action {
-        "apply-first" => apply(&mut c, dialect, &plans[..1], &fixed_now, &mut quiet).await,
-        "apply" => apply(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
-        "recover" => recover(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
-        "rollback" => rollback(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
-        "stop" => match apply(&mut c, dialect, plans, &fixed_now, &mut stop).await {
+        "apply-first" => apply(&mut c, dialect, server_of(dialect), &plans[..1], &fixed_now, &mut quiet).await,
+        "apply" => apply(&mut c, dialect, server_of(dialect), plans, &fixed_now, &mut quiet).await,
+        "recover" => recover(&mut c, dialect, server_of(dialect), plans, &fixed_now, &mut quiet).await,
+        "rollback" => rollback(&mut c, dialect, server_of(dialect), plans, &fixed_now, &mut quiet).await,
+        "stop" => match apply(&mut c, dialect, server_of(dialect), plans, &fixed_now, &mut stop).await {
             Err(ApplyError::Event(e)) if e.downcast_ref::<Stop>().is_some() => return Ok("stopped".to_owned()),
             Ok(()) => return Err("stop: apply did not stop".to_owned()),
             other => other,

@@ -187,9 +187,10 @@ class SchemaUtils:
         model = _schema_model(schema)
         target = _schema_target(model)
         driver = self.db.sql_driver
+        server = self.db._server
 
         def apply(run) -> list:
-            live = _introspect_set(run, driver, model)
+            live = _introspect_set(run, driver, server, model)
             result = add_tables_and_columns_steps(
                 live.document, live.unsupported, target, driver
             )
@@ -204,7 +205,7 @@ class SchemaUtils:
                 table = step["effect"]["table"]
                 run("schema", [] if table == "" else [table], step["statement"], [])
             if result["steps"]:
-                live = _introspect_set(run, driver, model)
+                live = _introspect_set(run, driver, server, model)
             differences = installed_differences(live.document, live.unsupported, target)
             if differences:
                 raise OrmError(
@@ -235,6 +236,7 @@ class SchemaUtils:
 
         model = _schema_model(schema)
         driver = self.db.sql_driver
+        server = self.db._server
         rendered = render_dbspec_statements(list(model.documents), driver)
         if rendered["statements"] is None:
             d = rendered["diagnostics"][0]
@@ -251,7 +253,7 @@ class SchemaUtils:
             )
 
         def apply(run) -> None:
-            live = _introspect_set(run, driver, model)
+            live = _introspect_set(run, driver, server, model)
             found = {t.name for t in live.tables} | {
                 u["table"] for u in live.unsupported
             }
@@ -265,7 +267,7 @@ class SchemaUtils:
             if not present:
                 for statement in statements:
                     run("schema", [statement["table"]], statement["sql"], [])
-                live = _introspect_set(run, driver, model)
+                live = _introspect_set(run, driver, server, model)
             differences = installed_differences(live, live.unsupported, target)
             if differences:
                 raise OrmError(
@@ -648,14 +650,15 @@ def _schema_target(model):
     return document
 
 
-def _introspect_set(run, driver: str, model):
+def _introspect_set(run, driver: str, server: str, model):
     """The live document of the connection's database, after the check that the tables the set uses
-    from external documents match them (CONFIG otherwise)."""
+    from external documents match them (CONFIG otherwise). server is the server that the connection read when it
+    connected (DIA-203)."""
     from polyspec.orm.dbspec import external_differences
     from polyspec.orm.dbspec.introspect import introspect_dbspec
     from polyspec.orm.errors import OrmError
 
-    live = introspect_dbspec(_Runner(run), driver, "schema")
+    live = introspect_dbspec(_Runner(run), driver, server, "schema")
     live_document = live["document"]
     differences = external_differences(live_document, model.documents)
     if differences:

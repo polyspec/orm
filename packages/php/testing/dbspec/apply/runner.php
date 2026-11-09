@@ -57,11 +57,11 @@ function dbspec_apply_runner_run(array $argv): int
     $stop = new RuntimeException('stop');
     try {
         match ($action) {
-            'apply-first' => Dbspec::apply($pdo, $dialect, [$plans[0]], $now, null),
-            'apply' => Dbspec::apply($pdo, $dialect, $plans, $now, null),
-            'recover' => Dbspec::recover($pdo, $dialect, $plans, $now, null),
-            'rollback' => Dbspec::rollback($pdo, $dialect, $plans, $now, null),
-            'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (
+            'apply-first' => Dbspec::apply($pdo, $dialect, $dialect, [$plans[0]], $now, null),
+            'apply' => Dbspec::apply($pdo, $dialect, $dialect, $plans, $now, null),
+            'recover' => Dbspec::recover($pdo, $dialect, $dialect, $plans, $now, null),
+            'rollback' => Dbspec::rollback($pdo, $dialect, $dialect, $plans, $now, null),
+            'stop' => Dbspec::apply($pdo, $dialect, $dialect, $plans, $now, static function (
                 ApplyEvent $event
             ) use (
                 $plans,
@@ -142,7 +142,7 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
             foreach ($rules[$dialect] as $rule) {
                 $connection->exec($rule);
             }
-            Dbspec::apply($connection, $dialect, [$source], $now, null);
+            Dbspec::apply($connection, $dialect, $dialect, [$source], $now, null);
             ApplyLockWait::holdArchiveRows($blocker);
             $blockerTransaction = true;
             $plans = [$source, $target];
@@ -152,7 +152,7 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
         $events = [];
         $started = hrtime(true);
         try {
-            Dbspec::apply($connection, $dialect, $plans, $now, ApplyLockWait::recorder($events));
+            Dbspec::apply($connection, $dialect, $dialect, $plans, $now, ApplyLockWait::recorder($events));
         } catch (ApplyError $error) {
             $elapsed = (hrtime(true) - $started) / 1_000_000_000;
             if ($error->code_ !== $wantCode) {

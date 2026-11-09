@@ -3,7 +3,7 @@
     "cases": ["DBS-42", "DBS-84", "DBS-94", "DIA-39", "DIA-44", "DIA-49", "DIA-50", "DIA-59", "DIA-71", "DIA-110", "DIA-111", "DIA-112", "DIA-133", "DIA-134", "DIA-135", "DIA-136", "DIA-137", "DIA-138", "DIA-139", "DIA-140", "DIA-141", "DIA-142", "DIA-143", "DIA-144", "DIA-145", "DIA-146", "DIA-147", "DIA-148", "DIA-149", "DIA-150", "DIA-151", "DIA-152", "DIA-153"]
   },
   "version": 1,
-  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; an entry may add a fourth element, a rule that the reason of that object must contain, and otherwise reasons are not compared. docs/spec/dialects.md \"Introspection\".",
+  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; an entry may add a fourth element, a rule that the reason of that object must contain, and otherwise reasons are not compared. A case may add mariadb, the document and the unsupported objects that MariaDB answers in their place where the server itself answers otherwise (DIA-200, rule 4). docs/spec/dialects.md \"Introspection\".",
   "cases": [
     {
       "id": "mysql-unsupported",
@@ -25,7 +25,6 @@
         "ALTER TABLE `orders` ADD COLUMN `doc` json NULL",
         "ALTER TABLE `orders` ADD COLUMN `flag` tinyint(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `orders` ADD INDEX `ix_name_prefix` (`name`(10))",
-        "ALTER TABLE `orders` ADD INDEX `ix_name_expr` ((lower(`name`)))",
         "ALTER TABLE `orders` ADD CONSTRAINT `ck_name` CHECK (char_length(`name`) > 0)",
         "CREATE TABLE `loose` (`a` int)",
         "CREATE TABLE `parts` (`id` bigint NOT NULL, PRIMARY KEY (`id`)) PARTITION BY HASH (`id`) PARTITIONS 2",
@@ -33,12 +32,12 @@
         "CREATE PROCEDURE `p_touch`() SELECT 1",
         "CREATE EVENT `e_tick` ON SCHEDULE EVERY 1 DAY DISABLE DO SELECT 1",
         "CREATE TRIGGER `orders_bi` BEFORE INSERT ON `orders` FOR EACH ROW SET NEW.`name` = NEW.`name`",
-        "ALTER TABLE `orders` ADD COLUMN `next_id` bigint AS (char_length(`name`) + 1) STORED NOT NULL",
+        "ALTER TABLE `orders` ADD COLUMN `next_id` bigint AS (char_length(`name`) + 1) STORED",
         "ALTER TABLE `orders` ADD COLUMN `name_size` bigint AS (char_length(`name`)) VIRTUAL",
         "ALTER TABLE `orders` ADD COLUMN `ts` timestamp(6) NULL",
         "ALTER TABLE `orders` ADD COLUMN `ch` char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL",
         "ALTER TABLE `orders` ADD COLUMN `fl` float NULL",
-        "CREATE TABLE `refs` (`id` bigint NOT NULL, `b` bigint NULL, PRIMARY KEY (`id`), INDEX `ix_refs_b` (`b`), CONSTRAINT `fk_refs_b` FOREIGN KEY (`b`) REFERENCES `orders` (`id`) ON DELETE RESTRICT ON UPDATE SET DEFAULT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
+        "CREATE TABLE `refs` (`id` bigint NOT NULL, `b` bigint NULL, PRIMARY KEY (`id`), INDEX `ix_refs_b` (`b`), CONSTRAINT `fk_refs_b` FOREIGN KEY (`b`) REFERENCES `orders` (`id`) ON DELETE RESTRICT ON UPDATE NO ACTION) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
       ],
       "document": [
         "dbspec 1 introspected",
@@ -120,11 +119,6 @@
         [
           "index",
           "orders",
-          "ix_name_expr"
-        ],
-        [
-          "index",
-          "orders",
           "ix_name_prefix"
         ],
         [
@@ -152,7 +146,214 @@
           "v_orders",
           "v_orders"
         ]
+      ],
+      "mariadb": {
+        "document": [
+          "dbspec 1 introspected",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}",
+          "",
+          "table refs {",
+          "  id i64",
+          "  b i64 null",
+          "  primary key (id)",
+          "  index ix_refs_b (b)",
+          "}"
+        ],
+        "unsupported": [
+          [
+            "event",
+            "",
+            "e_tick"
+          ],
+          [
+            "routine",
+            "",
+            "p_touch"
+          ],
+          [
+            "table",
+            "loose",
+            "loose"
+          ],
+          [
+            "check",
+            "orders",
+            "ck_name"
+          ],
+          [
+            "check",
+            "orders",
+            "doc"
+          ],
+          [
+            "column",
+            "orders",
+            "ch"
+          ],
+          [
+            "column",
+            "orders",
+            "doc"
+          ],
+          [
+            "column",
+            "orders",
+            "fl"
+          ],
+          [
+            "column",
+            "orders",
+            "flag"
+          ],
+          [
+            "column",
+            "orders",
+            "name_size"
+          ],
+          [
+            "column",
+            "orders",
+            "next_id"
+          ],
+          [
+            "column",
+            "orders",
+            "qty"
+          ],
+          [
+            "column",
+            "orders",
+            "ts"
+          ],
+          [
+            "index",
+            "orders",
+            "ix_name_prefix"
+          ],
+          [
+            "index",
+            "orders",
+            "ix_qty"
+          ],
+          [
+            "trigger",
+            "orders",
+            "orders_bi"
+          ],
+          [
+            "partition",
+            "parts",
+            "parts"
+          ],
+          [
+            "foreign_key",
+            "refs",
+            "fk_refs_b"
+          ],
+          [
+            "view",
+            "v_orders",
+            "v_orders"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "mysql-functional-index",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `orders` ADD INDEX `ix_name_expr` ((lower(`name`)))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "index",
+          "orders",
+          "ix_name_expr"
+        ]
       ]
+    },
+    {
+      "id": "mysql-fk-set-default",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "CREATE TABLE `refs` (`id` bigint NOT NULL, `b` bigint NULL, PRIMARY KEY (`id`), INDEX `ix_refs_b` (`b`), CONSTRAINT `fk_refs_b` FOREIGN KEY (`b`) REFERENCES `orders` (`id`) ON DELETE RESTRICT ON UPDATE SET DEFAULT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "",
+        "table refs {",
+        "  id i64",
+        "  b i64 null",
+        "  primary key (id)",
+        "  index ix_refs_b (b)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_b"
+        ]
+      ],
+      "mariadb": {
+        "document": [
+          "dbspec 1 introspected",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table refs {",
+          "  id i64",
+          "  b i64 null",
+          "  primary key (id)",
+          "  index ix_refs_b (b)",
+          "  foreign key fk_refs_b (b) references orders (id) on delete restrict on update restrict",
+          "}"
+        ],
+        "unsupported": []
+      }
     },
     {
       "id": "postgres-unsupported",

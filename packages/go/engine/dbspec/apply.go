@@ -104,9 +104,11 @@ const (
 
 // applier is the state of one command.
 type applier struct {
-	ctx     context.Context
-	c       Execer
-	r       renderer
+	ctx context.Context
+	c   Execer
+	r   renderer
+	// server is the server of the connection, which the caller read when it connected; verify introspects by it (DIA-203).
+	server  Server
 	now     func() time.Time
 	events  func(ApplyEvent) error
 	chain   []*Plan
@@ -126,17 +128,13 @@ type schemaMismatchError struct{ message string }
 
 func (e *schemaMismatchError) Error() string { return e.message }
 
-func newApplier(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error) {
-	switch dialect {
-	case DialectMySQL, DialectPostgres, DialectSQLite:
-	default:
-		panic("dbspec: unknown dialect " + string(dialect))
-	}
+func newApplier(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error) {
+	checkServer(dialect, server)
 	chain, diagnostics := Chain(plans)
 	if len(diagnostics) > 0 {
 		return nil, &ApplyError{Code: "chain", Message: diagnostics[0].Message}
 	}
-	return &applier{ctx: ctx, c: c, r: renderer{d: dialect}, now: now, events: events, chain: chain}, nil
+	return &applier{ctx: ctx, c: c, r: renderer{d: dialect}, server: server, now: now, events: events, chain: chain}, nil
 }
 
 // ApplyResult is how an Apply run ended, apart from the error Apply returns.
@@ -154,7 +152,7 @@ type ApplyResult struct {
 // A stop by an event alone is reported by Stopped with a nil error, and an ApplyError alone is reported by Failure
 // with a nil error. The error is non-nil for any other failure, and for a cleanup failure after a stop or a failure,
 // which is returned joined with it.
-func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error) {
+func Apply(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error) {
 	var res ApplyResult
 	if events != nil {
 		callback := events
@@ -166,7 +164,7 @@ func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now fu
 			return err
 		}
 	}
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
+	a, err := newApplier(ctx, c, dialect, server, plans, now, events)
 	if err == nil {
 		err = a.session(func() error {
 			position, err := a.settled()
@@ -208,8 +206,8 @@ func isOnly(err, target error) bool {
 
 // Recover judges an interrupted plan from the effects in the catalog and carries it forward. If there is no
 // interrupted plan, it changes nothing.
-func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	return lastPlan(ctx, c, dialect, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
+func Recover(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
+	return lastPlan(ctx, c, dialect, server, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
 		if row.state == stateApplied || row.state == stateDone {
 			return nil
 		}
@@ -239,8 +237,8 @@ func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now 
 
 // Rollback rolls the last plan in history back to step 0 with its rollback statements, and then
 // deletes its row. If there is no row, it changes nothing.
-func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	return lastPlan(ctx, c, dialect, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
+func Rollback(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
+	return lastPlan(ctx, c, dialect, server, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
 		steps, err := a.steps(p)
 		if err != nil {
 			return err
@@ -303,8 +301,8 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 
 // Finalize runs the finalize steps of all applied plans in chain order, deleting hidden tables and
 // columns.
-func Finalize(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	return inSession(ctx, c, dialect, plans, now, events, func(a *applier) error {
+func Finalize(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
+	return inSession(ctx, c, dialect, server, plans, now, events, func(a *applier) error {
 		position, err := a.settled()
 		if err != nil {
 			return err
@@ -352,8 +350,8 @@ func (a *applier) irreversible(p *Plan, steps []PlanStep, i int) error {
 
 // inSession runs fn in a session of the applier of plans; the applier is
 // created with the plans and the arguments of the caller.
-func inSession(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier) error) error {
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
+func inSession(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier) error) error {
+	a, err := newApplier(ctx, c, dialect, server, plans, now, events)
 	if err != nil {
 		return err
 	}
@@ -363,8 +361,8 @@ func inSession(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, no
 // lastPlan runs fn in a session of the applier of plans, with the last plan of
 // the history chain and its history row. With no recorded plan it changes
 // nothing.
-func lastPlan(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier, p *Plan, row historyRow) error) error {
-	return inSession(ctx, c, dialect, plans, now, events, func(a *applier) error {
+func lastPlan(ctx context.Context, c Execer, dialect Dialect, server Server, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier, p *Plan, row historyRow) error) error {
+	return inSession(ctx, c, dialect, server, plans, now, events, func(a *applier) error {
 		position, err := a.position()
 		if err != nil || position == 0 {
 			return err
@@ -702,7 +700,7 @@ func (a *applier) verified(p *Plan, want string, steps int) error {
 // verify checks that the database's introspection equals want schemaHash (an empty string means an empty
 // database) and that there are no unsupported objects.
 func (a *applier) verify(want string) error {
-	document, unsupported, err := Introspect(a.ctx, a.c, a.r.d, "schema")
+	document, unsupported, err := Introspect(a.ctx, a.c, a.r.d, a.server, "schema")
 	if err != nil {
 		return err
 	}

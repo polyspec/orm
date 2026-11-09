@@ -542,8 +542,12 @@ class PlanWriter {
     }
   }
 
+  /**
+   * Drops a check by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read alike (probes
+   * mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206).
+   */
   private dropCheck(table: string, name: string): string {
-    return this.r.d === 'mysql' ? `ALTER TABLE ${this.q(table)} DROP CHECK ${this.q(name)}` : `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
+    return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
 
   private dropRendererCheck(table: string, name: string, expression: string): void {

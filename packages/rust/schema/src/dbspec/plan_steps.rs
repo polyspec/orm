@@ -734,11 +734,10 @@ impl<'d> PlanWriter<'_, 'd> {
         }
     }
 
+    /// Drops a check by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read alike
+    /// (probes mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206).
     fn drop_check(&self, table: &str, name: &str) -> String {
-        match self.r.d {
-            Dialect::MySql => format!("ALTER TABLE {} DROP CHECK {}", self.q(table), self.q(name)),
-            Dialect::Postgres | Dialect::Sqlite => format!("ALTER TABLE {} DROP CONSTRAINT {}", self.q(table), self.q(name)),
-        }
+        format!("ALTER TABLE {} DROP CONSTRAINT {}", self.q(table), self.q(name))
     }
 
     fn drop_renderer_check(&mut self, table: &str, name: &str, expression: &str) {

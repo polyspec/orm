@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::markdown;
 use crate::recipe_generator;
 use polyspec_orm::codec;
-use polyspec_orm::dbspec::{self, Dialect, Document, Position};
+use polyspec_orm::dbspec::{self, Dialect, Document, Position, Server};
 use polyspec_orm::dbspec::{export_mermaid, import_mermaid, Unsupported};
 use polyspec_orm::engine;
 use polyspec_orm::ordered_json::{self, Kind};
@@ -635,13 +635,13 @@ fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(
     let name = case["name"].as_str().unwrap_or_default();
     let catalog = &vectors["catalog"];
     let mut results = Vec::new();
-    for query in dbspec::catalog_queries(Dialect::MySql) {
+    for query in dbspec::catalog_queries(Dialect::MySql, Server::MySql) {
         results.push(shown_catalog_rows(catalog, name, &create, query)?);
     }
-    for query in dbspec::catalog_followups(Dialect::MySql, &results)? {
+    for query in dbspec::catalog_followups(Dialect::MySql, Server::MySql, &results)? {
         results.push(shown_catalog_rows(catalog, name, &create, &query)?);
     }
-    let read = dbspec::read_catalog(Dialect::MySql, &results, "introspected");
+    let read = dbspec::read_catalog(Dialect::MySql, Server::MySql, &results, "introspected");
     let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     if let Some(want) = expect["error"].as_str() {
         return match read {
@@ -751,7 +751,9 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
         let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
         if crate::recipe_reads::read(step, "applied_first")["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
-            dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
+            dbspec::apply(&mut fault, Dialect::Sqlite, Server::Sqlite, &plans, &apply_fault_now, &mut quiet)
+                .await
+                .map_err(|error| format!("apply: {error}"))?;
         }
         if let Some(statements) = crate::recipe_reads::read(step, "sql")["sql"].as_array() {
             for statement in statements {
@@ -783,9 +785,9 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                 }
             };
             if crate::recipe_reads::read(step, "call")["call"] == "rollback" {
-                dbspec::rollback(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
+                dbspec::rollback(&mut fault, Dialect::Sqlite, Server::Sqlite, &plans, &apply_fault_now, &mut events).await
             } else {
-                dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
+                dbspec::apply(&mut fault, Dialect::Sqlite, Server::Sqlite, &plans, &apply_fault_now, &mut events).await
             }
         };
         let error = result.as_ref().err().ok_or("the call succeeded")?;
@@ -839,6 +841,43 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     })
 }
 
+/// The dbspec.introspect_refusal op (FCV-4, DBS-174): introspect, on a memory SQLite connection, with a server that is not a
+/// server of the dialect panics before any query with a message that names the server. The step passes the dialect's name as
+/// the server when it names none. Rust takes the dialect and the server by enum types, so a name that is none of them has no
+/// call: the step is an error that says so, and the compile fixtures of DBS-174 hold that refusal.
+fn dbspec_introspect_refusal(step: &Value, database: &str) -> Result<(), String> {
+    use sqlx::Connection;
+    let dialect_name = crate::recipe_reads::read(step, "dialect")["dialect"].as_str().unwrap_or_default().to_owned();
+    let server_name = crate::recipe_reads::read(step, "server")["server"].as_str().map_or_else(|| dialect_name.clone(), str::to_owned);
+    let dialect = plan_dialect(&dialect_name).map_err(|error| format!("{error}: Dialect is an enum, so Rust has no such call"))?;
+    let server = match server_name.as_str() {
+        "mysql" => Server::MySql,
+        "mariadb" => Server::MariaDb,
+        "postgres" => Server::Postgres,
+        "sqlite" => Server::Sqlite,
+        other => return Err(format!("server {other} is not mysql, mariadb, postgres or sqlite: Server is an enum, so Rust has no such call")),
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let mut connection = runtime.block_on(sqlx::SqliteConnection::connect("sqlite::memory:")).map_err(|error| error.to_string())?;
+    let result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| runtime.block_on(dbspec::introspect(&mut connection, dialect, server, "introspected"))));
+    runtime.block_on(connection.close()).map_err(|error| error.to_string())?;
+    let refusal = match result {
+        Ok(_) => return Err(format!("the call accepted the server {server_name} of the dialect {dialect_name}")),
+        Err(panic) => panicked("the call", &*panic),
+    };
+    if !refusal.contains(&server_name) {
+        return Err(format!("the refusal {refusal} does not name {server_name:?}"));
+    }
+    let want = &crate::recipe_reads::read(step, "expect")["expect"][database];
+    let got = json!({ "refused": server_name });
+    if *want == got {
+        Ok(())
+    } else {
+        Err(format!("{got}, want {want}"))
+    }
+}
+
 /// The dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of its own, then the
 /// public introspect, whose unsupported objects it compares with the expect of `database` (DIA-191).
 fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> {
@@ -850,7 +889,7 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
             let text = statement.as_str().ok_or("a statement is not a string")?.to_owned();
             sqlx::query(sqlx::AssertSqlSafe(text)).execute(&mut connection).await.map_err(|error| error.to_string())?;
         }
-        let introspection = dbspec::introspect(&mut connection, Dialect::Sqlite, "introspected").await.map_err(|error| error.to_string())?;
+        let introspection = dbspec::introspect(&mut connection, Dialect::Sqlite, Server::Sqlite, "introspected").await.map_err(|error| error.to_string())?;
         connection.close().await.map_err(|error| error.to_string())?;
         Ok::<_, String>(introspection.unsupported)
     })?;
@@ -972,6 +1011,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.render_statements" => return dbspec_render_statements(step, dir),
         "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
+        "dbspec.introspect_refusal" => return dbspec_introspect_refusal(step, database),
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
         "markdown.session" => return markdown_session(step, database),
@@ -2827,6 +2867,7 @@ mod database {
     use std::sync::{Arc, Mutex};
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
+    use polyspec_orm::dbspec::Server;
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{has_temporal_form, GridCell, GridQueryResult, ParamType, Val, P};
@@ -3260,6 +3301,17 @@ mod database {
             return dialect_of(database);
         }
         database
+    }
+
+    /// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on mariadb, and the markdown corpus,
+    /// which answers in SQLite's dialect, as SQLite.
+    fn case_server(database: &str) -> Server {
+        match database {
+            MARIADB => Server::MariaDb,
+            "mysql" => Server::MySql,
+            "postgres" => Server::Postgres,
+            _ => Server::Sqlite,
+        }
     }
 
     /// Runs one case on a database of its own and removes it: a case database, or on flowmark a corpus that flowmark install
@@ -4303,10 +4355,7 @@ mod database {
                 introspect_failure_step(step, &context.dsn).await.map_err(fault)?;
                 Output::fields(json!({ "failed": true }))
             }
-            "dbspec.introspect" => {
-                let queries = introspect_step(step, context.database, &context.dsn, context.dir).await.map_err(fault)?;
-                Output::fields(json!({ "queries": queries }))
-            }
+            "dbspec.introspect" => Output::fields(introspect_step(step, context.database, &context.dsn, context.dir).await.map_err(fault)?),
             "dbspec.ddl_behavior" => {
                 ddl_behavior(step, context.database, &context.dsn, context.dir).await.map_err(fault)?;
                 Output::fields(json!({}))
@@ -4925,6 +4974,9 @@ mod database {
     trait NativeSql {
         /// Runs one statement.
         async fn exec(&mut self, sql: &str) -> Result<(), String>;
+        /// Runs one statement; a failure holds the error number of a MySQL or MariaDB server that refused it, and None for any
+        /// other failure.
+        async fn exec_numbered(&mut self, sql: &str) -> Result<(), (Option<u16>, String)>;
         /// The first value of the first row of a query as text: None without a row, Some(None) for NULL.
         async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String>;
     }
@@ -4934,6 +4986,15 @@ mod database {
             impl NativeSql for $connection {
                 async fn exec(&mut self, sql: &str) -> Result<(), String> {
                     sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut *self).await.map(drop).map_err(|e| e.to_string())
+                }
+                async fn exec_numbered(&mut self, sql: &str) -> Result<(), (Option<u16>, String)> {
+                    sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut *self).await.map(drop).map_err(|e| {
+                        let number = match &e {
+                            sqlx::Error::Database(database) => database.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().map(|server| server.number()),
+                            _ => None,
+                        };
+                        (number, e.to_string())
+                    })
                 }
                 async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String> {
                     use sqlx::Row as _;
@@ -4948,6 +5009,10 @@ mod database {
     impl NativeSql for polyspec_orm::markdown::MarkdownLease {
         async fn exec(&mut self, sql: &str) -> Result<(), String> {
             self.raw(sql).await.map_err(|e| e.to_string())
+        }
+        /// A corpus is no MySQL server, so no failure holds a MySQL error number.
+        async fn exec_numbered(&mut self, sql: &str) -> Result<(), (Option<u16>, String)> {
+            self.raw(sql).await.map_err(|e| (None, e.to_string()))
         }
         /// The value as text, as SQLite's sqlite3_column_text gives it.
         async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String> {
@@ -4998,10 +5063,11 @@ mod database {
 
     /// Checks that the public introspect reads the schema text `want`, with nothing unsupported; an empty database has the empty text.
     macro_rules! plan_schema_is {
-        ($connection:ident, $dialect:expr, $what:expr, $want:expr) => {{
+        ($connection:ident, $dialect:expr, $server:expr, $what:expr, $want:expr) => {{
             let what: &str = $what;
             let want: &str = $want;
-            let introspection = dbspec::introspect(&mut $connection, $dialect, "introspected").await.map_err(|e| format!("{what}: introspect: {e}"))?;
+            let introspection =
+                dbspec::introspect(&mut $connection, $dialect, $server, "introspected").await.map_err(|e| format!("{what}: introspect: {e}"))?;
             if !introspection.unsupported.is_empty() {
                 return Err(format!("{what}: unsupported objects {:?}", introspection.unsupported));
             }
@@ -5092,6 +5158,7 @@ mod database {
     /// the rollback statements return to the source and the steps run again; then the after steps and the finalize steps run,
     /// the target is read again and no table or column named dbspec$ remains.
     async fn plan_physical(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
+        let server = case_server(database);
         // A corpus runs the statements of SQLite (DIA-185).
         let database = dialect_of(database);
         use dbspec::Dialect;
@@ -5166,19 +5233,19 @@ mod database {
                 plan_exec!(connection, &s.statement);
             }
             plan_foreign_keys!(connection, sqlite);
-            plan_schema_is!(connection, dialect, "applied", &target);
+            plan_schema_is!(connection, dialect, server, "applied", &target);
             if reversible {
                 // A rollback that goes all the way back recreates the old table with the added column hidden.
                 for s in steps.iter().rev().filter(|s| !s.finalize) {
                     plan_exec!(connection, if s.rollback_restore.is_empty() { &s.rollback } else { &s.rollback_restore });
                 }
                 plan_foreign_keys!(connection, sqlite);
-                plan_schema_is!(connection, dialect, "rolled back", &source_text);
+                plan_schema_is!(connection, dialect, server, "rolled back", &source_text);
                 for s in steps.iter().take_while(|s| !s.finalize) {
                     plan_exec!(connection, if s.restore.is_empty() { &s.statement } else { &s.restore });
                 }
                 plan_foreign_keys!(connection, sqlite);
-                plan_schema_is!(connection, dialect, "applied again", &target);
+                plan_schema_is!(connection, dialect, server, "applied again", &target);
             }
             if sqlite {
                 plan_exec!(connection, "PRAGMA foreign_keys = ON");
@@ -5195,7 +5262,7 @@ mod database {
             if sqlite {
                 plan_exec!(connection, "PRAGMA foreign_keys = ON");
             }
-            plan_schema_is!(connection, dialect, "finalized", &target);
+            plan_schema_is!(connection, dialect, server, "finalized", &target);
             let left = plan_value!(connection, hidden);
             if left != "0" {
                 return Err(format!("{left} tables or columns named dbspec$ remain after finalize"));
@@ -5262,12 +5329,13 @@ mod database {
     /// The only case runs on SQLite, and on a corpus, with the queries of MySQL.
     async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
-        let dialect = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
-            Some("mysql") => dbspec::Dialect::MySql,
-            Some("postgres") => dbspec::Dialect::Postgres,
+        let (dialect, server) = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
+            Some("mysql") => (dbspec::Dialect::MySql, Server::MySql),
+            Some("postgres") => (dbspec::Dialect::Postgres, Server::Postgres),
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
         };
-        let failed = on_native_connection!(dsn, |connection| { Ok::<_, String>(dbspec::introspect(&mut connection, dialect, "introspected").await.is_err()) })?;
+        let failed =
+            on_native_connection!(dsn, |connection| { Ok::<_, String>(dbspec::introspect(&mut connection, dialect, server, "introspected").await.is_err()) })?;
         if failed {
             Ok(())
         } else {
@@ -5276,15 +5344,27 @@ mod database {
     }
 
     /// The dbspec.introspect op (FCV-4): on one native connection of the case database, the connection rules, the rendered
-    /// documents and the statements of the vector, then the public introspect. A vector with a document compares the emitted
-    /// document and the unsupported objects; any other requires none unsupported and the schema text of the source. It returns
-    /// the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
-    async fn introspect_step(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<usize, String> {
+    /// documents and the statements of the vector, then the public introspect with the server of the case database (DIA-203).
+    /// A vector with a document compares the emitted document and the unsupported objects, on MariaDB those of its mariadb
+    /// entry where it has one; any other requires none unsupported and the schema text of the source. Its fields are the
+    /// number of catalog queries, which the expect of the database compares (DIA-133, DIA-198). Where that expect names
+    /// refused, a statement of the vector that the server refuses ends the step with the server's error number, which the
+    /// expect compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
+    async fn introspect_step(step: &Value, case_database: &str, dsn: &str, dir: &Path) -> Result<Value, String> {
         // A corpus runs the statements of SQLite (DIA-185).
-        let database = dialect_of(database);
+        let database = dialect_of(case_database);
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
-        let (texts, vector) = introspect_source(step, dir)?;
+        let server = case_server(case_database);
+        let expect = &crate::recipe_reads::read(step, "expect")["expect"];
+        let refusable = expect[dialect_key(case_database, expect)].get("refused").is_some();
+        let (texts, mut vector) = introspect_source(step, dir)?;
+        if case_database == MARIADB {
+            if let Some(answer) = vector.get("mariadb").cloned() {
+                vector["document"] = answer["document"].clone();
+                vector["unsupported"] = answer["unsupported"].clone();
+            }
+        }
         let mut documents = Vec::new();
         for (name, text) in &texts {
             let others: std::collections::BTreeMap<String, String> =
@@ -5308,16 +5388,32 @@ mod database {
         // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
         let extra: Vec<String> =
             vector["statements"].as_array().map(|list| list.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
-        let (introspection, count) = on_native_connection!(dsn, |connection| {
-            for statement in rules.iter().map(|rule| (*rule).to_owned()).chain(rendered.iter().cloned()).chain(extra.iter().cloned()) {
+        let ran = on_native_connection!(dsn, |connection| {
+            for statement in rules.iter().map(|rule| (*rule).to_owned()).chain(rendered.iter().cloned()) {
                 let statement = statement.replace("{schema}", &schema);
                 plan_exec!(connection, &statement);
             }
+            for statement in &extra {
+                let statement = statement.replace("{schema}", &schema);
+                match NativeSql::exec_numbered(&mut connection, &statement).await {
+                    Ok(()) => {}
+                    Err((Some(number), _)) if refusable => return Ok::<_, String>(Err(number)),
+                    Err((_, error)) => return Err(format!("{statement}: {error}")),
+                }
+            }
+            if refusable {
+                let case = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
+                return Err(format!("the statements of vector {case} ran on {case_database}, whose expect names their refusal"));
+            }
             let mut counter = CountingCatalog { inner: &mut connection, count: 0 };
-            let introspection = dbspec::introspect(&mut counter, dialect, "introspected").await.map_err(|e| format!("introspect: {e}"))?;
+            let introspection = dbspec::introspect(&mut counter, dialect, server, "introspected").await.map_err(|e| format!("introspect: {e}"))?;
             let count = counter.count;
-            Ok::<_, String>((introspection, count))
+            Ok::<_, String>(Ok((introspection, count)))
         })?;
+        let (introspection, count) = match ran {
+            Ok(read) => read,
+            Err(number) => return Ok(json!({ "refused": number })),
+        };
         if let Some(lines) = vector["document"].as_array() {
             let lines: Vec<&str> = lines.iter().filter_map(Value::as_str).collect();
             let got = dbspec::emit(&introspection.document);
@@ -5342,7 +5438,7 @@ mod database {
                     }
                 }
             }
-            return Ok(count);
+            return Ok(json!({ "queries": count }));
         }
         if !introspection.unsupported.is_empty() {
             return Err(format!("unsupported objects {:?}", introspection.unsupported));
@@ -5352,7 +5448,7 @@ mod database {
         if got != want {
             return Err(format!("the schema text differs:\n{got}\nwant\n{want}"));
         }
-        Ok(count)
+        Ok(json!({ "queries": count }))
     }
 
     /// Runs DDL or DML through the native driver on one connection of its own.

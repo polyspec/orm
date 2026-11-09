@@ -414,7 +414,9 @@ func (r renderer) typeCheck(c Column) string {
 		case TypeBool:
 			return q + " IN (0, 1)"
 		case TypeUUID:
-			return "REGEXP_LIKE(" + q + ", '" + uuidPattern + "', 'c')"
+			// REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
+			// mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
+			return q + " REGEXP '" + uuidPattern + "'"
 		case TypeTime:
 			return q + " >= '00:00:00' AND " + q + " < '24:00:00'"
 		}

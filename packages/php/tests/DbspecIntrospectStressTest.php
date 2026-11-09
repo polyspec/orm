@@ -50,7 +50,7 @@ final class DbspecIntrospectStressTest extends TestCase
             fwrite(STDERR, 'applied ' . count($statements) . ' statements' . "\n");
             unset($statements);
             $introspectStarted = hrtime(true);
-            $result = Dbspec::introspect($pdo, 'sqlite', 'stress');
+            $result = Dbspec::introspect($pdo, 'sqlite', 'sqlite', 'stress');
             $introspectMs = (hrtime(true) - $introspectStarted) / 1e6;
             Assert::assertSame([], $result->unsupported, 'unsupported objects: ' . count($result->unsupported));
             $got = Dbspec::manifest([$result->document])->manifest?->schemaText;

@@ -61,7 +61,7 @@ def coded_error(code):
 def failing_session(error, locked=False):
     """The fake connection that fails BEGIN EXCLUSIVE with error, and the applier over it."""
     connection = FailingSqlite(error, locked)
-    return connection, _Applier(connection, "sqlite", [], lambda: 0, None)
+    return connection, _Applier(connection, "sqlite", "sqlite", [], lambda: 0, None)
 
 
 class SqliteLockResultTest(unittest.TestCase):

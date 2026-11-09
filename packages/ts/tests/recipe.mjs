@@ -2695,13 +2695,16 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.introspect_refusal': {
+      // A dialect of no reader, or a server that is not a server of the dialect, is refused with a message that names the dialect
+      // or the server (DBS-174); without a server the call passes the dialect's name.
+      const server = step.server ?? step.dialect;
       const connection = new DatabaseSync(':memory:');
       try {
-        await assert.rejects(introspectDbspec(connection, step.dialect, 'introspected'), { name: 'TypeError', message: new RegExp(step.dialect) });
+        await assert.rejects(introspectDbspec(connection, step.dialect, server, 'introspected'), { name: 'TypeError', message: new RegExp(server) });
       } finally {
         connection.close();
       }
-      assert.deepEqual({ refused: step.dialect }, expect, 'refused dialect');
+      assert.deepEqual({ refused: server }, expect, 'refused dialect or server');
       break;
     }
     case 'dbspec.render': {
@@ -2924,7 +2927,7 @@ async function checkApplyFault(step, bound, database) {
     },
   };
   try {
-    if (step.applied_first) await applyPlans(connection, 'sqlite', plans, now, null);
+    if (step.applied_first) await applyPlans(connection, 'sqlite', 'sqlite', plans, now, null);
     for (const statement of step.sql ?? []) db.exec(statement);
     if (step.fail_catalog_read !== undefined) {
       cause = new Error('catalog read failed');
@@ -2941,7 +2944,7 @@ async function checkApplyFault(step, bound, database) {
       kinds.push(event.kind);
       if (step.stop_on_applied !== undefined && event.kind === 'applied') throw new Error(step.stop_on_applied);
     };
-    const error = await call(connection, 'sqlite', plans, now, events).then(() => null, failed => failed);
+    const error = await call(connection, 'sqlite', 'sqlite', plans, now, events).then(() => null, failed => failed);
     assert.notEqual(error, null, 'the call succeeded');
     // An AggregateError holds the failure, then the cleanup errors in order (PLN-99, PLN-106).
     const [failure, ...cleanup] = error instanceof AggregateError ? error.errors : [error];
@@ -3023,10 +3026,10 @@ async function checkIntrospectShown(step, dir, database) {
   const connection = { query: async ({ sql }) => [shownCatalogRows(sql, vectors.catalog, vector)] };
   const expect = step.expect[dialectKey(database, step.expect)];
   if (expect.error !== undefined) {
-    await assert.rejects(introspectDbspec(connection, 'mysql', 'introspected'), error => error.message === expect.error);
+    await assert.rejects(introspectDbspec(connection, 'mysql', 'mysql', 'introspected'), error => error.message === expect.error);
     return;
   }
-  const result = await introspectDbspec(connection, 'mysql', 'introspected');
+  const result = await introspectDbspec(connection, 'mysql', 'mysql', 'introspected');
   const checks = emitDbspec(result.document).split('\n').map(line => line.trim()).filter(line => line.startsWith('check '));
   const unsupported = result.unsupported.map(item => `${item.kind} ${item.name}: ${item.reason.split(': ', 1)[0]}`);
   assert.deepEqual(checks, expect.checks, 'introspected checks');
@@ -3039,7 +3042,7 @@ async function checkIntrospectSqlite(step, database) {
   const connection = new DatabaseSync(':memory:');
   try {
     for (const statement of step.sql) connection.exec(statement);
-    const result = await introspectDbspec(connection, 'sqlite', 'introspected');
+    const result = await introspectDbspec(connection, 'sqlite', 'sqlite', 'introspected');
     const got = result.unsupported.map(({ kind, table, name, reason }) => ({ kind, table, name, reason }));
     assert.deepEqual(got, step.expect[dialectKey(database, step.expect)].unsupported);
   } finally {

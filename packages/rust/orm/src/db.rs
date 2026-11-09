@@ -686,7 +686,11 @@ impl Db {
         // The server is read once by VERSION(), never by the handshake, whose version a pooler may state for itself (DIA-201).
         let server = match &pool {
             Pool::MySql(p) => {
-                let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(p).await?;
+                // The connection returns to the pool before open ends, as a completed statement does (INT-79): the drop
+                // handler of SQLx returns it from a task of its own, and the pool statistics after open count it idle.
+                let mut connection = p.acquire().await?;
+                let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(&mut *connection).await?;
+                connection.return_to_pool().await;
                 if version.contains("-MariaDB") {
                     crate::MySqlServer::MariaDb
                 } else {
@@ -760,6 +764,18 @@ impl Db {
         match &self.inner.pool {
             Pool::Markdown(_) => "sqlite",
             _ => self.driver(),
+        }
+    }
+
+    /// The server of the connection that dbspec introspects by (DIA-203): the server that connect read on a mysql
+    /// connection (DIA-201), and the database's own on PostgreSQL and SQLite; a markdown connection answers in SQLite's
+    /// dialect, as its server (DIA-185).
+    pub(crate) fn dbspec_server(&self) -> crate::dbspec::Server {
+        match (&self.inner.pool, self.inner.server) {
+            (Pool::MySql(_), crate::MySqlServer::MariaDb) => crate::dbspec::Server::MariaDb,
+            (Pool::MySql(_), crate::MySqlServer::MySql) => crate::dbspec::Server::MySql,
+            (Pool::Postgres(_), _) => crate::dbspec::Server::Postgres,
+            (Pool::Sqlite(_) | Pool::Markdown(_), _) => crate::dbspec::Server::Sqlite,
         }
     }
 

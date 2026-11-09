@@ -603,9 +603,14 @@ final class Recipe
                 'differences' => $result[2],
             ];
         } elseif ($op === 'dbspec.introspect_refusal') {
+            // Introspect with a dialect of no reader, or with a server that is not a server of the dialect, is refused
+            // with a message that names the dialect or the server; without a server the call passes the dialect's name
+            // (DBS-174).
+            $dialect = $step['dialect'];
+            $server = $step['server'] ?? $dialect;
             $got = self::dialectRefusal(
-                $step['dialect'],
-                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+                $server,
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $dialect, $server, 'introspected'),
             );
             $want = $expect instanceof RecipeStep ? $expect->all() : $expect;
             Assert::assertSame(self::sortedKeys($want), self::sortedKeys($got), "$op: result differs from the expect");
@@ -1753,7 +1758,7 @@ final class Recipe
         $noRow = array_fill_keys($step['no_row_queries'] ?? [], 'SELECT 1 WHERE 0');
         $pdo = dbspec_failing_pdo('dbspec_apply_fault', [], $noRow);
         if (($step['applied_first'] ?? false) === true) {
-            Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+            Dbspec::apply($pdo, 'sqlite', 'sqlite', $plans, $now, null);
         }
         foreach ($step['sql'] ?? [] as $statement) {
             $pdo->exec($statement);
@@ -1781,9 +1786,9 @@ final class Recipe
         $error = null;
         try {
             if ($step['call'] === 'rollback') {
-                Dbspec::rollback($pdo, 'sqlite', $plans, $now, $events);
+                Dbspec::rollback($pdo, 'sqlite', 'sqlite', $plans, $now, $events);
             } else {
-                Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
+                Dbspec::apply($pdo, 'sqlite', 'sqlite', $plans, $now, $events);
             }
         } catch (\Throwable $caught) {
             $error = $caught;
@@ -1956,7 +1961,7 @@ final class Recipe
         $pdo = new CannedCatalogPdo($vectors['catalog'], implode("\n", $found['create']) . "\n", $found['name']);
         $expect = $step['expect'][$database];
         try {
-            $result = Dbspec::introspect($pdo, 'mysql', 'introspected');
+            $result = Dbspec::introspect($pdo, 'mysql', 'mysql', 'introspected');
         } catch (RuntimeException $error) {
             Assert::assertSame($expect['error'] ?? null, $error->getMessage());
             return;
@@ -1989,7 +1994,7 @@ final class Recipe
         foreach ($step['sql'] as $statement) {
             $pdo->exec($statement);
         }
-        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+        $result = Dbspec::introspect($pdo, 'sqlite', 'sqlite', 'introspected');
         $got = array_map(
             static fn($item): array => [
                 'kind' => $item->kind,

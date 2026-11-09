@@ -105,10 +105,10 @@ func mariadbFacts() []Probe {
 			e.Want("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "longtext")
 		}),
 		// Defaults and generated columns.
-		p("default.catalog_text", "COLUMN_DEFAULT quotes a literal, writes an expression default as its text, and EXTRA has no DEFAULT_GENERATED", func(e *Env) {
-			e.Exec("CREATE TABLE t (a varchar(5) DEFAULT 'x', b int DEFAULT 0, c text DEFAULT ('y'), d datetime(6) DEFAULT CURRENT_TIMESTAMP(6), u varchar(36) DEFAULT (uuid()), n varchar(5) DEFAULT NULL, s varchar(5) DEFAULT 'NULL', m int NOT NULL)")
+		p("default.catalog_text", "COLUMN_DEFAULT quotes a literal with its SQL escapes, writes NULL for a NULL default, an expression default as its text and the clock as current_timestamp(p), and EXTRA has no DEFAULT_GENERATED", func(e *Env) {
+			e.Exec("CREATE TABLE t (a varchar(5) DEFAULT 'x', b int DEFAULT 0, c text DEFAULT ('y'), d datetime(6) DEFAULT CURRENT_TIMESTAMP(6), u varchar(36) DEFAULT (uuid()), n varchar(5) DEFAULT NULL, s varchar(5) DEFAULT 'NULL', m int NOT NULL, k datetime DEFAULT CURRENT_TIMESTAMP, q varchar(9) DEFAULT 'a''b\\\\c\\n', r text DEFAULT 'a''b\\\\c', g decimal(5,2) DEFAULT -7.50)")
 			e.WantRows("SELECT COLUMN_DEFAULT, EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't' ORDER BY ORDINAL_POSITION",
-				`'x'|,0|,'y'|,current_timestamp(6)|,uuid()|,NULL|,'NULL'|,NULL|`)
+				`'x'|,0|,'y'|,current_timestamp(6)|,uuid()|,NULL|,'NULL'|,NULL|,current_timestamp()|,'a''b\\c\n'|,'a\'b\\c'|,-7.50|`)
 			e.Want("SELECT COLUMN_DEFAULT IS NULL FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't' AND COLUMN_NAME = 'n'", "0")
 			e.Want("SELECT COLUMN_DEFAULT IS NULL FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't' AND COLUMN_NAME = 'm'", "1")
 		}),

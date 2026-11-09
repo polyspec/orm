@@ -21,6 +21,18 @@ bool dbs_dialect(str name, dialect *out)
     return dbs_throw(spl_ce_InvalidArgumentException, fmt("Unknown dialect `%S`; the dialects are mysql, postgres and sqlite", name));
 }
 
+bool dbs_server(dialect d, str server, bool *mariadb)
+{
+    /* MySQL and MariaDB are the servers of the mysql dialect, PostgreSQL and SQLite each the server of its own (DIA-200). */
+    bool of = d == D_MYSQL ? str_eqc(server, "mysql") || str_eqc(server, "mariadb") : str_eqc(server, dbs_dialect_names[d]);
+    if (!of) {
+        return dbs_throw(spl_ce_InvalidArgumentException,
+            fmt("dbspec: server %S is not a server of the dialect %s", server, dbs_dialect_names[d]));
+    }
+    *mariadb = str_eqc(server, "mariadb");
+    return true;
+}
+
 static bool invalid(const char *what, str detail)
 {
     return dbs_throw(spl_ce_InvalidArgumentException, fmt("%s%S", what, detail));
@@ -214,7 +226,9 @@ str r_type_check(renderer *r, const column *c)
 #define IS(x) str_eqc(t->name, x)
     if (r->d == D_MYSQL) {
         if (IS("bool")) return fmt("%S IN (0, 1)", q);
-        if (IS("uuid")) return fmt("REGEXP_LIKE(%S, '" UUID_PATTERN "', 'c')", q);
+        /* REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
+         * mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48). */
+        if (IS("uuid")) return fmt("%S REGEXP '" UUID_PATTERN "'", q);
         if (IS("time")) return fmt("%S >= '00:00:00' AND %S < '24:00:00'", q, q);
         return SL("");
     }

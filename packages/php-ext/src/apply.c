@@ -50,6 +50,8 @@ typedef struct {
 typedef struct applier {
     zval *c;
     renderer r;
+    /* The server of the connection, which the caller read when it connected; verify introspects by it (DIA-203). */
+    str server;
     planv chain;
     zval *now, *events;
     smap history;   /* plan name => hrow* */
@@ -544,7 +546,7 @@ typedef enum {
 static verify_result verify(applier *a, str want, str *message)
 {
     unsupportedv skipped = {0};
-    document *d = dbs_introspect(a->c, a->r.d, SL("schema"), &skipped);
+    document *d = dbs_introspect(a->c, a->r.d, a->server, SL("schema"), &skipped);
     if (d == NULL || dbs_failed()) {
         return VERIFY_ERROR;
     }
@@ -1398,8 +1400,9 @@ static bool session(applier *a, operation op)
 
 /* ------------------------------------------------------------------ API */
 
-/* PlanApply's constructor: checks the dialect, the error mode, and the chain order. */
-static bool applier_init(applier *a, zval *c, str dialect_name, zval *plans, zval *now, zval *events)
+/* PlanApply's constructor: checks the dialect, the server when one is given (an effect read introspects nothing), the error mode,
+ * and the chain order. */
+static bool applier_init(applier *a, zval *c, str dialect_name, const str *server, zval *plans, zval *now, zval *events)
 {
     *a = (applier){0};
     a->c = c;
@@ -1407,6 +1410,13 @@ static bool applier_init(applier *a, zval *c, str dialect_name, zval *plans, zva
     a->events = events;
     if (!dbs_dialect(dialect_name, &a->r.d)) {
         return false;
+    }
+    if (server != NULL) {
+        bool mariadb;
+        if (!dbs_server(a->r.d, *server, &mariadb)) {
+            return false;
+        }
+        a->server = *server;
     }
     zval mode, ret;
     ZVAL_LONG(&mode, 3 /* PDO::ATTR_ERRMODE */);
@@ -1432,10 +1442,10 @@ static bool applier_init(applier *a, zval *c, str dialect_name, zval *plans, zva
     return true;
 }
 
-bool dbs_apply(const char *op, zval *c, str dialect_name, zval *plans, zval *now, zval *events)
+bool dbs_apply(const char *op, zval *c, str dialect_name, str server, zval *plans, zval *now, zval *events)
 {
     applier a;
-    if (!applier_init(&a, c, dialect_name, plans, now, events)) {
+    if (!applier_init(&a, c, dialect_name, &server, plans, now, events)) {
         return false;
     }
     operation o = strcmp(op, "apply") == 0 ? OP_APPLY : strcmp(op, "recover") == 0 ? OP_RECOVER : strcmp(op, "rollback") == 0 ? OP_ROLLBACK : OP_FINALIZE;
@@ -1447,7 +1457,7 @@ bool dbs_effect_on(zval *c, str dialect_name, const effect *e, bool *out)
     applier a;
     zval now;
     ZVAL_NULL(&now);
-    if (!applier_init(&a, c, dialect_name, NULL, &now, NULL)) {
+    if (!applier_init(&a, c, dialect_name, NULL, NULL, &now, NULL)) {
         return false;
     }
     return effect_holds(&a, e, out);

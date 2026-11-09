@@ -27,11 +27,13 @@ final class RecipeIntrospect
      * On one native connection of the case database, the connection rules, the rendered documents and the statements of
      * the vector, then the public Dbspec::introspect. A vector with a document compares the emitted document and the
      * unsupported objects; any other requires none unsupported and the schema text of the source. It returns the number
-     * of catalog queries, which the expect of the database compares.
+     * of catalog queries, which the expect of the database compares. Where that expect names refused, a statement of
+     * the vector that the server refuses ends the step with the server's error number, which the expect compares; a
+     * refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
      *
      * @param array<string, mixed> $step
      * @param array<string, mixed> $context
-     * @return array{queries: int}
+     * @return array{queries: int}|array{refused: int}
      */
     public static function step(RecipeStep $step, array $context): array
     {
@@ -39,6 +41,7 @@ final class RecipeIntrospect
         // SQLite's; MariaDB runs SQL in MySQL's (DIA-200).
         $markdown = $context['database'] === 'markdown';
         $database = self::DIALECT_OF[$context['database']] ?? $context['database'];
+        $server = self::server($context['database']);
         if (isset($step['catalog_of'])) {
             return self::catalogQueryFailure($step['catalog_of'], $context['dsn']);
         }
@@ -62,13 +65,38 @@ final class RecipeIntrospect
             'postgres' => 'public',
             default => 'main',
         };
-        foreach ([...self::CONNECTION_RULES[$database], ...$rendered->statements, ...$extra] as $statement) {
+        foreach ([...self::CONNECTION_RULES[$database], ...$rendered->statements] as $statement) {
             $pdo->exec(str_replace('{schema}', $schema, $statement));
         }
+        $refusable = self::refusable($step, $context['database']);
+        foreach ($extra as $statement) {
+            try {
+                $pdo->exec(str_replace('{schema}', $schema, $statement));
+            } catch (\PDOException $error) {
+                // A MySQL error number of the server, which the driver gives as the second field of errorInfo.
+                $number = $error->errorInfo[1] ?? null;
+                if ($refusable && $database === 'mysql' && is_int($number)) {
+                    return ['refused' => $number];
+                }
+                throw $error;
+            }
+        }
+        if ($refusable) {
+            throw new RuntimeException(
+                "the statements of vector {$step['case']} ran on {$context['database']}, "
+                    . 'whose expect names their refusal'
+            );
+        }
         $pdo->queries = 0;
-        $result = Dbspec::introspect($pdo, $database, 'introspected');
+        $result = Dbspec::introspect($pdo, $database, $server, 'introspected');
         $queries = $pdo->queries;
         $pdo = null;
+        // A vector may hold what MariaDB answers where the server itself answers otherwise, in place of its document
+        // and unsupported objects (DIA-200, rule 4).
+        if ($context['database'] === 'mariadb' && isset($vector['mariadb'])) {
+            $vector['document'] = $vector['mariadb']['document'] ?? null;
+            $vector['unsupported'] = $vector['mariadb']['unsupported'] ?? null;
+        }
         if (isset($vector['document'])) {
             $got = Dbspec::emit($result->document);
             if ($got !== implode("\n", $vector['document']) . "\n") {
@@ -188,8 +216,9 @@ final class RecipeIntrospect
                 }
             }
         };
-        $schemaIs = static function (string $what, string $want) use ($pdo, $database): void {
-            $result = Dbspec::introspect($pdo, $database, 'introspected');
+        $server = self::server($context['database']);
+        $schemaIs = static function (string $what, string $want) use ($pdo, $database, $server): void {
+            $result = Dbspec::introspect($pdo, $database, $server, 'introspected');
             if ($result->unsupported !== []) {
                 throw new RuntimeException("$what: unsupported objects " . json_encode($result->unsupported));
             }
@@ -263,6 +292,27 @@ final class RecipeIntrospect
         return [];
     }
 
+    /**
+     * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
+     * as its server.
+     */
+    private static function server(string $database): string
+    {
+        return $database === 'markdown' ? 'sqlite' : $database;
+    }
+
+    /**
+     * Whether the expect of dbspec.introspect on database names refused: on the entry of database, or else of its
+     * dialect.
+     */
+    private static function refusable(RecipeStep $step, string $database): bool
+    {
+        $expect = $step['expect'] ?? [];
+        $key = array_key_exists($database, $expect) ? $database : (self::DIALECT_OF[$database] ?? $database);
+        $outcome = $expect[$key] ?? null;
+        return $outcome !== null && isset($outcome['refused']);
+    }
+
     /** The schema text of one document. */
     private static function planSchemaText(Document $document): string
     {
@@ -281,7 +331,7 @@ final class RecipeIntrospect
     {
         $pdo = case_admin($dsn);
         try {
-            Dbspec::introspect($pdo, $dialect, 'introspected');
+            Dbspec::introspect($pdo, $dialect, $dialect, 'introspected');
         } catch (RuntimeException) {
             return ['failed' => true];
         }

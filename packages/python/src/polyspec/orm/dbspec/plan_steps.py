@@ -858,8 +858,8 @@ class _PlanWriter:
             )
 
     def _drop_check(self, table: str, name: str) -> str:
-        if self.r.d == "mysql":
-            return f"ALTER TABLE {self._q(table)} DROP CHECK {self._q(name)}"
+        """Drops a check by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read
+        alike (probes mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206)."""
         return f"ALTER TABLE {self._q(table)} DROP CONSTRAINT {self._q(name)}"
 
     def _drop_renderer_check(self, table: str, name: str, expression: str) -> None:

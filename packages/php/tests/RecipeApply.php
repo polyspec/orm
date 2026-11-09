@@ -100,6 +100,15 @@ final class RecipeApply
     }
 
     /**
+     * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
+     * as its server.
+     */
+    private static function server(string $database): string
+    {
+        return $database === 'markdown' ? 'sqlite' : $database;
+    }
+
+    /**
      * The key of a value that names its text by database: a corpus reads the SQLite entry unless the value states its
      * own (DIA-185).
      */
@@ -190,7 +199,12 @@ final class RecipeApply
     /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function schema(RecipeStep $s, array $context): array
     {
-        $result = Dbspec::introspect(self::session($s, $context), self::dialect($context['database']), 'x');
+        $result = Dbspec::introspect(
+            self::session($s, $context),
+            self::dialect($context['database']),
+            self::server($context['database']),
+            'x'
+        );
         if ($result->unsupported !== []) {
             Assert::fail('dbspec.schema: unsupported ' . json_encode($result->unsupported));
         }
@@ -247,7 +261,14 @@ final class RecipeApply
         $started = hrtime(true);
         $code = 'ok';
         try {
-            Dbspec::$command($session, self::dialect($context['database']), $plans, $now, $handler);
+            Dbspec::$command(
+                $session,
+                self::dialect($context['database']),
+                self::server($context['database']),
+                $plans,
+                $now,
+                $handler
+            );
         } catch (Throwable $error) {
             $failure = $error instanceof ApplyCleanupError ? ($error->getPrevious() ?? $error) : $error;
             if ($failure instanceof Stop) {

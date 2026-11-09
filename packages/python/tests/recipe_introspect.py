@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+import pymysql
+
 from polyspec.orm.dbspec import (
     dbspec_manifest,
     emit_dbspec,
@@ -19,6 +21,7 @@ from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
 from polyspec.orm.markdown import MarkdownConnection
 
+from .case_database import case_server
 from .dbspec_introspect_runner import connect
 from .dbspec_plans import plan_cases
 from .runner_connect import Adapter
@@ -120,7 +123,7 @@ def _catalog_query_failure(dialect: str, database: str, dsn: str) -> dict:
     (DIA-133)."""
     native = _Native(database, dsn)
     try:
-        introspect_dbspec(native.adapter, dialect, "introspected")
+        introspect_dbspec(native.adapter, dialect, dialect, "introspected")
     except native.errors:
         return {"failed": True}
     finally:
@@ -128,11 +131,20 @@ def _catalog_query_failure(dialect: str, database: str, dsn: str) -> dict:
     raise AssertionError(f"the {dialect} catalog queries did not fail on {database}")
 
 
+def _refusable(step: dict, native: str) -> bool:
+    """Whether the expect of dbspec.introspect on the case database names refused."""
+    expect = step["expect"]
+    outcome = expect[native if native in expect else _sql_dialect(native)]
+    return isinstance(outcome, dict) and "refused" in outcome
+
+
 def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     """dbspec.introspect (FCV-4): on one native connection of the case database, the connection rules, the rendered
     documents and the statements of the vector, then the public introspect_dbspec. A vector with a document compares
     the emitted document and the unsupported objects; any other requires none unsupported and the schema text of the
-    source. The catalog queries are the expect of the database (DIA-133, DIA-198)."""
+    source. The catalog queries are the expect of the database (DIA-133, DIA-198). Where that expect names refused, a
+    statement of the vector that the server refuses ends the step with the server's error number, which the expect
+    compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4)."""
     native, dsn = context["database"], context["dsn"]
     database = _sql_dialect(native)
     if "catalog_of" in step:
@@ -145,30 +157,55 @@ def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     # tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
     extra = vector.get("statements", [])
     extra = extra if isinstance(extra, list) else []
+    refusable = _refusable(step, native)
+    statements = [*CONNECTION_RULES[database], *rendered["statements"], *extra]
     connection = _Native(native, dsn)
     try:
         adapter = connection.adapter
         schema = _schema_name(database, dsn)
-        for sql in [
-            *CONNECTION_RULES[database],
-            *rendered["statements"],
-            *extra,
-        ]:
-            adapter.execute(sql.replace("{schema}", schema))
+        for i, sql in enumerate(statements):
+            try:
+                adapter.execute(sql.replace("{schema}", schema))
+            except pymysql.err.MySQLError as error:
+                if (
+                    refusable
+                    and i >= len(statements) - len(extra)
+                    and isinstance(error.args[0], int)
+                ):
+                    return {"refused": error.args[0]}
+                raise
+        if refusable:
+            raise AssertionError(
+                f"the statements of vector {step['case']} ran on {native}, whose expect names their refusal"
+            )
         counting = _CountingAdapter(adapter)
-        result = introspect_dbspec(counting, database, "introspected")
+        result = introspect_dbspec(
+            counting, database, case_server(native), "introspected"
+        )
     finally:
         connection.close()
+    # A vector states MariaDB's own answer where the server itself answers otherwise (DIA-200, rule 4).
+    # It replaces the document and the unsupported objects of the vector.
+    if native == "mariadb" and "mariadb" in vector:
+        answer = vector["mariadb"]
+        vector = {
+            key: value
+            for key, value in vector.items()
+            if key not in ("document", "unsupported")
+        }
+        vector.update(
+            {key: answer[key] for key in ("document", "unsupported") if key in answer}
+        )
     unsupported = result["unsupported"]
     if "document" in vector:
         got = emit_dbspec(result["document"])
         if got != "\n".join(vector["document"]) + "\n":
             raise AssertionError(f"the introspected document differs:\n{got}")
         triples = [[u["kind"], u["table"], u["name"]] for u in unsupported]
-        want = [entry[:3] for entry in vector["unsupported"]]
+        want = [entry[:3] for entry in vector.get("unsupported", [])]
         if triples != want:
             raise AssertionError(f"unsupported objects {triples}, want {want}")
-        for item, entry in zip(unsupported, vector["unsupported"]):
+        for item, entry in zip(unsupported, vector.get("unsupported", [])):
             if not item["reason"]:
                 raise AssertionError(f"the reason of {entry[:3]} is empty")
             if len(entry) == 4 and entry[3] not in item["reason"]:
@@ -185,21 +222,25 @@ def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     return {"queries": counting.count}
 
 
-def _introspect_refusal(dialect):
-    """dbspec.introspect_refusal: introspect_dbspec with a dialect of no reader, on an in-memory SQLite connection, raises a
-    TypeError that names the dialect (DBS-174)."""
+def _introspect_refusal(dialect, server=None):
+    """dbspec.introspect_refusal: introspect_dbspec with a dialect of no reader, or with a server that is not a server of
+    the dialect, on an in-memory SQLite connection, raises a TypeError that names the dialect or the server (DBS-174).
+    Without a server, the call passes the dialect's name as the server."""
+    refused = dialect if server is None else server
     connection = sqlite3.connect(":memory:", isolation_level=None)
     try:
-        introspect_dbspec(Adapter(connection), dialect, "introspected")
+        introspect_dbspec(Adapter(connection), dialect, refused, "introspected")
     except TypeError as refusal:
-        if dialect not in str(refusal):
+        if refused not in str(refusal):
             raise AssertionError(
-                f"the refusal {refusal!r} does not name {dialect}"
+                f"the refusal {refusal!r} does not name {refused}"
             ) from refusal
-        return {"refused": dialect}
+        return {"refused": refused}
     finally:
         connection.close()
-    raise AssertionError(f"the call accepted the dialect {dialect}")
+    raise AssertionError(
+        f"the call accepted the dialect {dialect} and the server {refused}"
+    )
 
 
 _PLAN_HIDDEN_LEFT = {
@@ -289,7 +330,9 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
                     raise AssertionError(f"foreign_key_check returns {violations} rows")
 
         def schema_is(what: str, want: str) -> None:
-            result = introspect_dbspec(session, database, "introspected")
+            result = introspect_dbspec(
+                session, database, case_server(native), "introspected"
+            )
             if result["unsupported"]:
                 raise AssertionError(
                     f"{what}: unsupported objects {result['unsupported']}"

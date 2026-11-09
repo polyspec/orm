@@ -26,6 +26,9 @@ function required(name) {
 
 /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
 const dialectOf = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
+// The server of a case database that the public dbspec calls take (DIA-203): the markdown corpus answers in SQLite's dialect, as its
+// server.
+const serverOf = database => (database === 'markdown' ? 'sqlite' : database);
 
 /** A driver connection with the form of statement each driver has: run returns the rows as arrays, close ends it. */
 async function open(database, target) {
@@ -119,7 +122,7 @@ async function command(s, context, runStep) {
   const started = Date.now();
   let code = 'ok';
   try {
-    await COMMANDS[s.op](session.connection, dialectOf(context.database), plans, NOW, handler);
+    await COMMANDS[s.op](session.connection, dialectOf(context.database), serverOf(context.database), plans, NOW, handler);
   } catch (error) {
     const failure = error instanceof AggregateError ? error.errors[0] : error;
     if (failure === STOP) code = 'stopped';
@@ -162,7 +165,7 @@ export function applyOps({ sql, runStep }) {
       return { value: { array: rows.map(row => ({ array: Array.from(row, cell) })) } };
     },
     'dbspec.schema': async (s, context) => {
-      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, dialectOf(context.database), 'x');
+      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, dialectOf(context.database), serverOf(context.database), 'x');
       if (unsupported.length > 0) throw new Error(`dbspec.schema: unsupported ${JSON.stringify(unsupported)}`);
       return { value: { text: document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '' } };
     },

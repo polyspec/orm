@@ -1823,7 +1823,11 @@ class Db:
         self._shared.pool = _Pool(self._open, self.pool_config)
         # The first connection opens now, so a DSN that does not connect fails here; a markdown session checks that
         # the server accepts the corpus and token.
-        self._shared.pool.release(self._shared.pool.acquire())
+        first = self._shared.pool.acquire()
+        # The server of the connection, which a mysql connection read once by VERSION() when it connected (DIA-201), and
+        # the dialect's own on PostgreSQL and SQLite; the introspection reads by it (DIA-203).
+        self._server = first.server if self.sql_driver == "mysql" else self.sql_driver
+        self._shared.pool.release(first)
         self._connection = _Leased(self)
 
     def utils(self) -> Utils:

@@ -38,7 +38,9 @@ def main() -> None:
     connection = connect(dialect, uri)
     try:
         start = time.perf_counter()
-        result = introspect_dbspec(Adapter(connection), dialect, "introspected")
+        result = introspect_dbspec(
+            Adapter(connection), dialect, dialect, "introspected"
+        )
         elapsed = (time.perf_counter() - start) * 1000
         out = emit_dbspec(result["document"])
         for u in result["unsupported"]:

@@ -1382,9 +1382,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			return outcome{fields: map[string]any{"failed": true}}, nil
 		}
-		queries, err := introspectStep(s, c)
+		queries, refused, err := introspectStep(s, c)
 		if err != nil {
 			return outcome{}, err
+		}
+		if refused != 0 {
+			return outcome{fields: map[string]any{"refused": refused}}, nil
 		}
 		return outcome{fields: map[string]any{"queries": queries}}, nil
 	case "events.server_transactions":
@@ -1929,6 +1932,15 @@ func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) 
 // dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
 func (c *databaseContext) dialect() string {
 	return dialectOf(c.database)
+}
+
+// server is the server of the case database that the public dbspec calls take (DIA-203): the markdown corpus answers in
+// SQLite's dialect, as its server.
+func (c *databaseContext) server() dbspec.Server {
+	if c.database == "markdown" {
+		return dbspec.ServerSQLite
+	}
+	return dbspec.Server(c.database)
 }
 
 // dialectOf is the SQL dialect of database.

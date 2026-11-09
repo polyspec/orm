@@ -2320,6 +2320,10 @@
                 },
                 "queries": {
                   "type": "integer"
+                },
+                "refused": {
+                  "type": "integer",
+                  "description": "A statement of the vector is refused by the server with this error number, which ends the step: the server cannot hold the object (DIA-200, rule 4)."
                 }
               }
             }
@@ -3232,7 +3236,7 @@
       },
       "dbspec.introspect_refusal": {
         "type": "object",
-        "description": "Introspection on an in-memory SQLite connection with a dialect that is none of DBS-174.",
+        "description": "Introspection on an in-memory SQLite connection with a dialect that is none of DBS-174, or with a server that is not a server of the dialect.",
         "required": [
           "op",
           "dialect",
@@ -3245,6 +3249,10 @@
           },
           "dialect": {
             "type": "string"
+          },
+          "server": {
+            "type": "string",
+            "description": "The server passed with the dialect; without it the call passes the dialect's name as the server."
           },
           "expect": {
             "type": "object",

@@ -8,7 +8,7 @@ import pg from 'pg';
 import { inspect } from 'node:util';
 import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
 import { dbspecManifest } from './index.js';
-import { introspectCatalog } from './introspect.js';
+import { checkServer, introspectCatalog, type DbspecServer } from './introspect.js';
 import { CatalogRow } from './introspect_catalog.js';
 import type { DbspecDocument } from './model.js';
 import { chainPlans, type DbspecPlan } from './plan.js';
@@ -275,6 +275,8 @@ class Applier {
   constructor(
     readonly connection: unknown,
     readonly dialect: DbspecDialect,
+    // The server of the connection, which the caller read when it connected; verify introspects by it (DIA-203).
+    readonly server: DbspecServer,
     readonly chain: readonly DbspecPlan[],
     readonly now: () => number,
     readonly events: DbspecApplyHandler | null,
@@ -484,7 +486,7 @@ class Applier {
 
   /** Checks that the introspection of the database is the want schemaHash (an empty string means an empty database) and that there are no unsupported objects. */
   async verify(want: string): Promise<void> {
-    const { document, unsupported } = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, 'schema');
+    const { document, unsupported } = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, this.server, 'schema');
     if (unsupported.length > 0) {
       const u = present(unsupported[0], 'unsupported[0]');
       throw new SchemaMismatchError(`the database has ${unsupported.length} objects that dbspec cannot express, first ${u.kind} ${u.table} ${u.name}: ${u.reason}`);
@@ -725,13 +727,13 @@ function appliedAt(micros: number): string {
   return `${date.toISOString().slice(0, 19)}.${String(fraction).padStart(6, '0')}Z`;
 }
 
-function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events: DbspecApplyHandler | null | undefined): Applier {
-  if (dialect !== 'mysql' && dialect !== 'postgres' && dialect !== 'sqlite') throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
+function newApplier(connection: unknown, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events: DbspecApplyHandler | null | undefined): Applier {
+  checkServer(dialect, server);
   if (typeof now !== 'function') throw new TypeError('now must be a function that returns the microseconds since the epoch');
   if (events !== undefined && events !== null && typeof events !== 'function') throw new TypeError('events must be a function or null');
   const { plans: chain, diagnostics } = chainPlans(plans);
   if (chain === null) throw new DbspecApplyError('chain', '', 0, present(diagnostics[0], 'diagnostics[0]').message);
-  return new Applier(connection, dialect, chain, now, events ?? null);
+  return new Applier(connection, dialect, server, chain, now, events ?? null);
 }
 
 type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | DbspecApplySqliteConnection;
@@ -740,7 +742,10 @@ type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | D
  * Applies, step by step and in chain order, the plans that the database has
  * not applied, up to their finalize steps, on one connection under the
  * dialect's lock (docs/spec/plans.md "Apply"). A database that has applied the
- * whole chain is left unchanged. `now` gives the microseconds since the
+ * whole chain is left unchanged. `server` is the server that the connection
+ * reached, which the caller read when it connected, and by which the
+ * verification introspects (DIA-203); a server that is not a server of the
+ * dialect is refused. `now` gives the microseconds since the
  * epoch recorded in `applied_at` (as wallMicros returns them); `events`
  * receives each event. A failure rejects unchanged with a DbspecApplyError,
  * the handler's error or the driver's error; an advisory unlock that
@@ -749,11 +754,11 @@ type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | D
  * after it, the command rejects with an AggregateError whose `errors` are the
  * failure and then the cleanup errors in order.
  */
-export function applyPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function applyPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function applyPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
-  const a = newApplier(connection, dialect, plans, now, events);
+export function applyPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', server: 'mysql' | 'mariadb', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function applyPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', server: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function applyPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', server: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export async function applyPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+  const a = newApplier(connection, dialect, server, plans, now, events);
   await a.session(async () => {
     const position = await a.settled();
     for (const p of a.chain.slice(position)) await a.applyPlan(p);
@@ -773,12 +778,13 @@ export async function applyPlans(connection: Connection, dialect: DbspecDialect,
 async function lastPlan(
   connection: Connection,
   dialect: DbspecDialect,
+  server: DbspecServer,
   plans: readonly DbspecPlan[],
   now: () => number,
   events: DbspecApplyHandler | null | undefined,
   body: (a: Applier, p: DbspecPlan, row: HistoryRow) => Promise<void>,
 ): Promise<void> {
-  const a = newApplier(connection, dialect, plans, now, events);
+  const a = newApplier(connection, dialect, server, plans, now, events);
   await a.session(async () => {
     const position = await a.position();
     if (position === 0) return;
@@ -788,11 +794,11 @@ async function lastPlan(
   });
 }
 
-export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
-  await lastPlan(connection, dialect, plans, now, events, async (a, p, row) => {
+export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', server: 'mysql' | 'mariadb', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', server: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', server: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export async function recoverPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+  await lastPlan(connection, dialect, server, plans, now, events, async (a, p, row) => {
     if (row.state === APPLIED || row.state === DONE) return;
     const steps = a.steps(p);
     const k = await a.resolve(p, row, steps, true);
@@ -814,11 +820,11 @@ export async function recoverPlans(connection: Connection, dialect: DbspecDialec
  * stops it with an irreversible DbspecApplyError. Without a row nothing
  * changes. Failures are reported as for applyPlans.
  */
-export function rollbackPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function rollbackPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function rollbackPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
-  await lastPlan(connection, dialect, plans, now, events, async (a, p, row) => {
+export function rollbackPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', server: 'mysql' | 'mariadb', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function rollbackPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', server: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function rollbackPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', server: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+  await lastPlan(connection, dialect, server, plans, now, events, async (a, p, row) => {
     const steps = a.steps(p);
     let k = row.step;
     const applied = row.state === APPLIED || row.state === DONE;
@@ -862,11 +868,11 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
  * hidden tables and columns, and records the plans done (docs/spec/plans.md
  * "Apply"). Failures are reported as for applyPlans.
  */
-export function finalizePlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function finalizePlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function finalizePlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
-  const a = newApplier(connection, dialect, plans, now, events);
+export function finalizePlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', server: 'mysql' | 'mariadb', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function finalizePlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', server: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function finalizePlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', server: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export async function finalizePlans(connection: Connection, dialect: DbspecDialect, server: DbspecServer, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+  const a = newApplier(connection, dialect, server, plans, now, events);
   await a.session(async () => {
     const position = await a.settled();
     for (const p of a.chain.slice(0, position)) {

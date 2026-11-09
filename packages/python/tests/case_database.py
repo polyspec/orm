@@ -33,6 +33,12 @@ def case_database(dialect: str, directory: str, prefix: str):
         yield case_dsn
 
 
+def case_server(database: str) -> str:
+    """The server of a case database that the public dbspec calls take (DIA-203): the markdown corpus answers in SQLite's
+    dialect, as its server; every other case database is its own server, MariaDB among them (DIA-200)."""
+    return "sqlite" if database == "markdown" else database
+
+
 CORPUS = "recipe"
 LISTENING = re.compile(
     r"^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$"

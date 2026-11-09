@@ -1461,7 +1461,7 @@
                 {
                   "effect": "absent constraint a ck_a_n",
                   "rollback": "ALTER TABLE `a` ADD CONSTRAINT `ck_a_n` CHECK (`n` > 0)",
-                  "statement": "ALTER TABLE `a` DROP CHECK `ck_a_n`"
+                  "statement": "ALTER TABLE `a` DROP CONSTRAINT `ck_a_n`"
                 },
                 {
                   "effect": "absent index a ix_a_code",
@@ -2432,7 +2432,7 @@
                 {
                   "effect": "absent constraint users ck_users_mail",
                   "rollback": "ALTER TABLE `users` ADD CONSTRAINT `ck_users_mail` CHECK (`mail` <> 'café')",
-                  "statement": "ALTER TABLE `users` DROP CHECK `ck_users_mail`"
+                  "statement": "ALTER TABLE `users` DROP CONSTRAINT `ck_users_mail`"
                 },
                 {
                   "effect": "present column users email",
@@ -2441,7 +2441,7 @@
                 },
                 {
                   "effect": "present constraint users ck_users_mail",
-                  "rollback": "ALTER TABLE `users` DROP CHECK `ck_users_mail`",
+                  "rollback": "ALTER TABLE `users` DROP CONSTRAINT `ck_users_mail`",
                   "statement": "ALTER TABLE `users` ADD CONSTRAINT `ck_users_mail` CHECK (`email` <> 'café')"
                 }
               ]
@@ -2707,17 +2707,17 @@
                 {
                   "effect": "absent constraint flags flags$active",
                   "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$active` CHECK (`active` IN (0, 1))",
-                  "statement": "ALTER TABLE `flags` DROP CHECK `flags$active`"
+                  "statement": "ALTER TABLE `flags` DROP CONSTRAINT `flags$active`"
                 },
                 {
                   "effect": "absent constraint flags flags$at",
                   "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$at` CHECK (`at` >= '00:00:00' AND `at` < '24:00:00')",
-                  "statement": "ALTER TABLE `flags` DROP CHECK `flags$at`"
+                  "statement": "ALTER TABLE `flags` DROP CONSTRAINT `flags$at`"
                 },
                 {
                   "effect": "absent constraint flags flags$ref",
-                  "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$ref` CHECK (REGEXP_LIKE(`ref`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))",
-                  "statement": "ALTER TABLE `flags` DROP CHECK `flags$ref`"
+                  "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$ref` CHECK (`ref` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')",
+                  "statement": "ALTER TABLE `flags` DROP CONSTRAINT `flags$ref`"
                 },
                 {
                   "effect": "present table switches",
@@ -2731,18 +2731,18 @@
                 },
                 {
                   "effect": "present constraint switches switches$at",
-                  "rollback": "ALTER TABLE `switches` DROP CHECK `switches$at`",
+                  "rollback": "ALTER TABLE `switches` DROP CONSTRAINT `switches$at`",
                   "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$at` CHECK (`at` >= '00:00:00' AND `at` < '24:00:00')"
                 },
                 {
                   "effect": "present constraint switches switches$enabled",
-                  "rollback": "ALTER TABLE `switches` DROP CHECK `switches$enabled`",
+                  "rollback": "ALTER TABLE `switches` DROP CONSTRAINT `switches$enabled`",
                   "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$enabled` CHECK (`enabled` IN (0, 1))"
                 },
                 {
                   "effect": "present constraint switches switches$ref",
-                  "rollback": "ALTER TABLE `switches` DROP CHECK `switches$ref`",
-                  "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$ref` CHECK (REGEXP_LIKE(`ref`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))"
+                  "rollback": "ALTER TABLE `switches` DROP CONSTRAINT `switches$ref`",
+                  "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$ref` CHECK (`ref` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')"
                 }
               ]
             }
@@ -3692,7 +3692,7 @@
               "steps": [
                 {
                   "effect": "present constraint k ck_k_n",
-                  "rollback": "ALTER TABLE `k` DROP CHECK `ck_k_n`",
+                  "rollback": "ALTER TABLE `k` DROP CONSTRAINT `ck_k_n`",
                   "statement": "ALTER TABLE `k` ADD CONSTRAINT `ck_k_n` CHECK (`n` >= 0)"
                 }
               ]
@@ -4081,7 +4081,7 @@
                 {
                   "effect": "absent constraint archive ck_archive_note",
                   "rollback": "ALTER TABLE `archive` ADD CONSTRAINT `ck_archive_note` CHECK (`note` <> '')",
-                  "statement": "ALTER TABLE `archive` DROP CHECK `ck_archive_note`"
+                  "statement": "ALTER TABLE `archive` DROP CONSTRAINT `ck_archive_note`"
                 },
                 {
                   "effect": "absent index archive ix_archive_user",
@@ -4178,7 +4178,7 @@
                 },
                 {
                   "effect": "present constraint orders orders$shipped",
-                  "rollback": "ALTER TABLE `orders` DROP CHECK `orders$shipped`",
+                  "rollback": "ALTER TABLE `orders` DROP CONSTRAINT `orders$shipped`",
                   "statement": "ALTER TABLE `orders` ADD CONSTRAINT `orders$shipped` CHECK (`shipped` IN (0, 1))"
                 },
                 {

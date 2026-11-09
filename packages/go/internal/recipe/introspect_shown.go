@@ -139,7 +139,7 @@ func checkIntrospectShown(t *testing.T, dir string, s step, database string) err
 	db.SetMaxOpenConns(1)
 	found := vectors.Cases[at]
 	querier := shownQuerier{db: db, vectors: &vectors, create: strings.Join(found.Create, "\n") + "\n", name: found.Name}
-	document, unsupported, err := dbspec.Introspect(context.Background(), querier, dbspec.DialectMySQL, "introspected")
+	document, unsupported, err := dbspec.Introspect(context.Background(), querier, dbspec.DialectMySQL, dbspec.ServerMySQL, "introspected")
 	if want.Error != "" {
 		if err == nil {
 			return fmt.Errorf("the introspection succeeded, want the error %q", want.Error)

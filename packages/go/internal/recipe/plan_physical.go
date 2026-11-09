@@ -272,7 +272,7 @@ func (r planRun) foreignKeys(sqlite bool) error {
 // schemaIs checks that the public Introspect reads the schema text want, with nothing unsupported; an empty database has
 // the empty text.
 func (r planRun) schemaIs(what, want string) error {
-	document, unsupported, err := dbspec.Introspect(r.c.ctx, r.raw, r.dialect, "introspected")
+	document, unsupported, err := dbspec.Introspect(r.c.ctx, r.raw, r.dialect, r.c.server(), "introspected")
 	if err != nil {
 		return fmt.Errorf("%s: introspect: %w", what, err)
 	}

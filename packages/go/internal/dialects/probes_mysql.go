@@ -458,10 +458,14 @@ func mysqlProbes() []Probe {
 		}),
 		p("check.alter_rewrites_introducers", "ALTER TABLE writes CHECK_CLAUSE again: a literal that meets an ascii column takes _ascii and a literal that meets a time column loses its introducer", func(e *Env) {
 			const q = "SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME"
-			e.Exec("CREATE TABLE t (a char(36) CHARACTER SET ascii COLLATE ascii_bin, t time, CONSTRAINT ck1 CHECK (REGEXP_LIKE(a, '^x$', 'c')), CONSTRAINT ck2 CHECK (t < '24:00:00'))")
-			e.WantRows(q, "regexp_like(`a`,_utf8mb4\\'^x$\\',_utf8mb4\\'c\\'),(`t` < _utf8mb4\\'24:00:00\\')")
+			e.Exec("CREATE TABLE t (a char(36) CHARACTER SET ascii COLLATE ascii_bin, t time, CONSTRAINT ck1 CHECK (a REGEXP '^x$'), CONSTRAINT ck2 CHECK (t < '24:00:00'))")
+			e.WantRows(q, "regexp_like(`a`,_utf8mb4\\'^x$\\'),(`t` < _utf8mb4\\'24:00:00\\')")
 			e.Exec("ALTER TABLE t ADD INDEX ix (t)")
-			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\',_utf8mb4\\'c\\'),(`t` < \\'24:00:00\\')")
+			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\'),(`t` < \\'24:00:00\\')")
+		}),
+		p("check.drop_constraint", "ALTER TABLE ... DROP CONSTRAINT drops a CHECK", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0))", "ALTER TABLE t DROP CONSTRAINT ck", "INSERT INTO t VALUES (0)")
+			e.Want("SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "0")
 		}),
 		p("check.alter_writes_time_precision", "ALTER TABLE writes a time literal that meets a time(p) column with p fraction digits", func(e *Env) {
 			e.Exec("CREATE TABLE t (a time(3), CONSTRAINT ck CHECK (a < '24:00:00'))", "ALTER TABLE t ADD INDEX ix (a)")
@@ -630,8 +634,8 @@ func mysqlProbes() []Probe {
 				utc, "ALTER TABLE t MODIFY d datetime(6) NULL")
 			e.Want("SELECT CONCAT(COLUMN_TYPE, ' ', (SELECT d FROM t)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "datetime(6) 2020-01-01 00:00:00.000000")
 		}),
-		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP_LIKE CHECK accepts only lower-case canonical UUID text (3819)", func(e *Env) {
-			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (REGEXP_LIKE(u, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')))",
+		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP CHECK, which CHECK_CLAUSE writes as regexp_like, accepts only lower-case canonical UUID text (3819)", func(e *Env) {
+			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (u REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))",
 				"INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
 			e.Fails("INSERT INTO t VALUES ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')", "3819")
 		}),

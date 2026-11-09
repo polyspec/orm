@@ -72,6 +72,11 @@ interface DriverConnection {
 
 export interface DriverPool extends DriverConnection {
   /**
+   * The server that the pool reached (DIA-201, DIA-203): on mysql, mysql or mariadb as the session setup read it by VERSION(), which
+   * a reserve waits for, so it is known once Db.connect has reserved its connection; on postgres and sqlite, the driver's name.
+   */
+  readonly server: MySqlServer | 'postgres' | 'sqlite';
+  /**
    * Takes one connection. It is used by a transaction, and by statements that must run on one connection outside a transaction (MySQL
    * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys).
    */
@@ -436,9 +441,9 @@ async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: Sta
 /**
  * The failure of the session setup that runs on each new MySQL connection, and the server that the setup read by VERSION(),
  * never by the handshake (DIA-201). The setup runs ahead of every statement of its connection, so the server is known when a
- * statement settles.
+ * statement settles. read settles when the first connection has read the server, or failed to.
  */
-interface SessionSetup { error?: unknown; server: MySqlServer; }
+interface SessionSetup { error?: unknown; server: MySqlServer; readonly read: Promise<void>; }
 
 function sessionError(setup: SessionSetup): OrmError | undefined {
   if (setup.error === undefined) return undefined;
@@ -448,6 +453,7 @@ function sessionError(setup: SessionSetup): OrmError | undefined {
 class MySqlPoolDriver implements DriverPool {
   public readonly name = 'mysql' as const;
   public constructor(private readonly pool: MySqlPool, private readonly setup: SessionSetup, private readonly maxOpen: number) {}
+  public get server(): MySqlServer { return this.setup.server; }
   // The session setup is queued ahead of the statement on the same
   // connection, so its outcome is known when the statement settles.
   private checked<T>(result: Promise<T>): Promise<T> {
@@ -471,7 +477,8 @@ class MySqlPoolDriver implements DriverPool {
   }
   public async reserve(): Promise<DriverSession> {
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error, this.setup.server); }
+    // The session takes the server that the setup read, so the reserve waits for that read (DIA-201).
+    try { connection = await this.checked(this.pool.getConnection().then(async held => { await this.setup.read; return held; })); } catch (error) { throw driverError(this.name, error, this.setup.server); }
     return new MySqlSession(connection, this.pool, this.setup.server);
   }
   public stats(): PoolStats {
@@ -656,6 +663,7 @@ function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
 
 class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
+  public readonly server = 'postgres' as const;
   public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {
     // The server can end a connection while it waits in the pool (pg_terminate_backend, DROP
     // DATABASE ... WITH (FORCE), a server shutdown) or while the pool closes it. pg removes that
@@ -816,6 +824,7 @@ function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValu
 
 class SqlitePoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
+  public readonly server = 'sqlite' as const;
   private readonly state: SqliteState;
   private waiters: Array<{ wake: () => void }> = [];
   public constructor(db: DatabaseSync, cacheSize: number) { this.state = new SqliteState(db, cacheSize); }
@@ -1116,15 +1125,17 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null; buffer(): Buffer | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : field.type === 'GEOMETRY' ? field.buffer() : next()) } : {}),
         maxPreparedStatements: statementCacheSize,
       });
-      const setup: SessionSetup = { server: 'mysql' };
+      let serverRead = (): void => {};
+      const setup: SessionSetup = { server: 'mysql', read: new Promise<void>(resolve => { serverRead = resolve; }) };
       const core = mysqlCorePool(created);
       core.on('connection', connection => {
         connection.query(MYSQL_SET_NAMES, error => { if (error) setup.error = error; });
         // The server is read by VERSION() (DIA-201).
         connection.query('SELECT VERSION() AS version', (error: unknown, rows?: unknown) => {
-          if (error) { setup.error = error; return; }
+          if (error) { setup.error = error; serverRead(); return; }
           const version = Array.isArray(rows) ? property(rows[0], 'version') : undefined;
           setup.server = typeof version === 'string' && version.includes('-MariaDB') ? 'mariadb' : 'mysql';
+          serverRead();
         });
         // MySQL bounds SELECT statements with max_execution_time.
         const zone = `SET time_zone = '+00:00', sql_mode = '${MYSQL_SQL_MODE}'`;

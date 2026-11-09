@@ -4,7 +4,7 @@
 //!
 //! Usage: dbspec_introspect <mysql|postgres|sqlite> <uri>
 
-use polyspec_orm::dbspec::{emit, introspect, Dialect, IntrospectError, Introspection};
+use polyspec_orm::dbspec::{emit, introspect, Dialect, IntrospectError, Introspection, Server};
 use sqlx::Connection;
 use std::time::Instant;
 
@@ -16,9 +16,9 @@ async fn main() {
         std::process::exit(2);
     };
     let result = match dialect.as_str() {
-        "mysql" => run(sqlx::MySqlConnection::connect(uri).await, Dialect::MySql).await,
-        "postgres" => run(sqlx::PgConnection::connect(uri).await, Dialect::Postgres).await,
-        "sqlite" => run(sqlx::SqliteConnection::connect(uri).await, Dialect::Sqlite).await,
+        "mysql" => run(sqlx::MySqlConnection::connect(uri).await, Dialect::MySql, Server::MySql).await,
+        "postgres" => run(sqlx::PgConnection::connect(uri).await, Dialect::Postgres, Server::Postgres).await,
+        "sqlite" => run(sqlx::SqliteConnection::connect(uri).await, Dialect::Sqlite, Server::Sqlite).await,
         other => {
             eprintln!("unknown dialect {other}");
             std::process::exit(2);
@@ -40,12 +40,12 @@ async fn main() {
 }
 
 /// Introspects the connection and returns the time the introspection took, in ms.
-async fn run<C>(connection: Result<C, sqlx::Error>, dialect: Dialect) -> Result<(Introspection, f64), String>
+async fn run<C>(connection: Result<C, sqlx::Error>, dialect: Dialect, server: Server) -> Result<(Introspection, f64), String>
 where
     C: polyspec_orm::dbspec::CatalogQuerier,
 {
     let mut connection = connection.map_err(|e| e.to_string())?;
     let start = Instant::now();
-    let found = introspect(&mut connection, dialect, "introspected").await.map_err(|e: IntrospectError| format!("{e:?}"))?;
+    let found = introspect(&mut connection, dialect, server, "introspected").await.map_err(|e: IntrospectError| format!("{e:?}"))?;
     Ok((found, start.elapsed().as_secs_f64() * 1000.0))
 }

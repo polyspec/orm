@@ -1224,7 +1224,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
     fault = _FaultConnection()
     try:
         if step.get("applied_first"):
-            apply_plans(fault, "sqlite", plans, now)
+            apply_plans(fault, "sqlite", "sqlite", plans, now)
         for statement in step.get("sql", []):
             fault.execute(statement, [])
         if "fail_catalog_read" in step:
@@ -1245,7 +1245,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
 
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
-            call(fault, "sqlite", plans, now, events)
+            call(fault, "sqlite", "sqlite", plans, now, events)
         except Exception as error:
             if "code" in expect and getattr(error, "code", None) != expect["code"]:
                 raise AssertionError(
@@ -1397,7 +1397,7 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
     expect = step["expect"][database]
     if "error" in expect:
         try:
-            introspect_dbspec(connection, "mysql", "introspected")
+            introspect_dbspec(connection, "mysql", "mysql", "introspected")
         except ValueError as error:
             if str(error) != expect["error"]:
                 raise AssertionError(
@@ -1405,7 +1405,7 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
                 ) from error
             return
         raise AssertionError(f"no error, want {expect['error']}")
-    result = introspect_dbspec(connection, "mysql", "introspected")
+    result = introspect_dbspec(connection, "mysql", "mysql", "introspected")
     checks = [
         line.strip()
         for line in emit_dbspec(result["document"]).splitlines()
@@ -1440,7 +1440,7 @@ def _dbspec_introspect_sqlite(step: dict, database: str) -> None:
         for statement in step["sql"]:
             connection.execute(statement)
         result = introspect_dbspec(
-            _SqliteCatalogConnection(connection), "sqlite", "introspected"
+            _SqliteCatalogConnection(connection), "sqlite", "sqlite", "introspected"
         )
     finally:
         connection.close()
@@ -1800,7 +1800,7 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
     elif op == "dbspec.introspect_refusal":
-        got = _introspect_refusal(step["dialect"])
+        got = _introspect_refusal(step["dialect"], step.get("server"))
     elif op == "dbspec.plan_steps" and step["dialect"] not in (
         "mysql",
         "postgres",

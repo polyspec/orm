@@ -143,19 +143,19 @@ def run(action: str, dialect: str, connection, plans: list) -> str:
 
     try:
         if action == "apply-first":
-            apply_plans(adapter, dialect, plans[:1], lambda: NOW)
+            apply_plans(adapter, dialect, dialect, plans[:1], lambda: NOW)
         elif action == "apply":
-            apply_plans(adapter, dialect, plans, lambda: NOW)
+            apply_plans(adapter, dialect, dialect, plans, lambda: NOW)
         elif action == "recover":
-            recover_plans(adapter, dialect, plans, lambda: NOW)
+            recover_plans(adapter, dialect, dialect, plans, lambda: NOW)
         elif action == "rollback":
-            rollback_plans(adapter, dialect, plans, lambda: NOW)
+            rollback_plans(adapter, dialect, dialect, plans, lambda: NOW)
         elif action == "apply-representative":
-            apply_plans(adapter, dialect, plans, lambda: NOW)
+            apply_plans(adapter, dialect, dialect, plans, lambda: NOW)
         elif action == "finalize":
-            finalize_plans(adapter, dialect, plans, lambda: NOW)
+            finalize_plans(adapter, dialect, dialect, plans, lambda: NOW)
         elif action == "stop":
-            apply_plans(adapter, dialect, plans, lambda: NOW, stop)
+            apply_plans(adapter, dialect, dialect, plans, lambda: NOW, stop)
             raise RuntimeError("stop: apply did not stop")
         else:
             raise ValueError(f"unknown action {action}")
@@ -185,7 +185,7 @@ def run_lock_wait(
             adapter.connection = ReleaseSQLiteBlocker(adapter.connection, blocker)
         else:
             plans = representative_chain(vectors)
-            apply_plans(adapter, dialect, plans[:1], lambda: NOW)
+            apply_plans(adapter, dialect, dialect, plans[:1], lambda: NOW)
             if dialect == "mysql":
                 blocker.autocommit(False)
                 cursor = blocker.cursor()
@@ -209,9 +209,9 @@ def run_lock_wait(
 
         try:
             if dialect == "sqlite":
-                apply_plans(adapter, dialect, [], lambda: NOW)
+                apply_plans(adapter, dialect, dialect, [], lambda: NOW)
             else:
-                apply_plans(adapter, dialect, plans, lambda: NOW, observe)
+                apply_plans(adapter, dialect, dialect, plans, lambda: NOW, observe)
         except DbspecApplyError as error:
             elapsed = time.monotonic() - started
             if error.code != want_code:
