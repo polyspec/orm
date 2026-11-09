@@ -341,7 +341,25 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         context.setdefault("closers", []).append(db.close)
         return {"bind": db}
 
+    def ranked_task_set(db, values):
+        """A RankedTask with the columns of values; its order column is one the application writes (DBS-79)."""
+        model = models.RankedTask().connect(db)
+        for column in sorted(values):
+            if column == "title":
+                model.set_title(values[column])
+            elif column == "position":
+                model.set_position(values[column])
+            else:
+                raise AssertionError(f"RankedTask column {column} has no recipe setter")
+        return model
+
     def model_create(step, context):
+        if step["model"] == "RankedTask":
+            ranked_task_set(
+                connection(step["connection"], context),
+                values_of(step["values"], context),
+            ).create()
+            return {}
         if step["model"] != "CompositeAccount":
             raise AssertionError(f"model {step['model']} has no model.create entry")
         model = composite_set(
@@ -455,6 +473,10 @@ def model_ops(native, database_value, step_argument, audit_source_of):
                     chain(db, values_of(step.get("where"), context), []).get_count()
                 )
             }
+        if step["model"] == "RankedTask":
+            if step.get("where"):
+                raise AssertionError("RankedTask model.count has no recipe where")
+            return {"value": {"int": str(models.RankedTask().connect(db).get_count())}}
         if step["model"] == "CompositeMembership":
             return {
                 "value": {

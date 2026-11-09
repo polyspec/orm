@@ -11,11 +11,6 @@ import (
 // These cases cover rules and canonical forms that the recipes of tests/dbspec
 // do not cover yet. Each document is written with LF line ends.
 
-type ruleCase struct {
-	id    string
-	lines []string
-}
-
 func errs(spec ...any) []vectorError {
 	var out []vectorError
 	for i := 0; i < len(spec); i += 3 {
@@ -94,34 +89,6 @@ func TestParseReturnsModel(t *testing.T) {
 	})
 }
 
-func TestStateMachineSetting(t *testing.T) {
-	cases := []ruleCase{
-		{id: "setting-state-machine", lines: with(block(
-			"table jobs {",
-			"  id i64 identity",
-			"  status varchar(16)",
-			"  evidence text null",
-			"  primary key (id)",
-			"  settings {",
-			"    state_machine status waiting -> doing",
-			"    state_machine status doing -> done require (evidence)",
-			"    state_machine status terminal done require (evidence)",
-			"  }",
-			"}",
-		))},
-	}
-	testcase.Start(t, testcase.Compute)
-	text := joinLines(cases[0].lines, false)
-	document := parseStable(t, text)
-	machine := document.Tables[0].Settings.StateMachine
-	if machine == nil || machine.Column != "status" || len(machine.Lines) != 3 ||
-		machine.Lines[1].From != "doing" || machine.Lines[1].To != "done" ||
-		len(machine.Lines[1].Requires) != 1 || machine.Lines[1].Requires[0] != "evidence" ||
-		!machine.Lines[2].Terminal || machine.Lines[2].State != "done" {
-		t.Fatalf("machine: %+v", machine)
-	}
-}
-
 // markdown: the manifest trait that names a markdown prose column.
 func TestMarkdownSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -150,34 +117,28 @@ var markdownColumns = []string{
 	"  title varchar(255)",
 	"  body text",
 	"  position i64",
-	"  status varchar(16)",
+	"  status varchar(1)",
 	"  reason varchar(200) null",
 }
 
-// historyColumns are the columns of the ticket_history table that state_machine history names.
-var historyColumns = []string{
+// ticketHistory is the ticket_history table, an ordinary child table of tickets.
+var ticketHistory = []string{
+	"table ticket_history {",
 	"  id i64 identity",
 	"  ticket_id varchar(32)",
 	"  from_status varchar(16)",
 	"  to_status varchar(16)",
 	"  changed_at datetime(6)",
 	"  reason varchar(200) null",
+	"  primary key (id)",
+	"  index ix_ticket_history_ticket (ticket_id)",
+	"  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+	"}",
 }
 
-// ticketHistory writes a ticket_history table with the given columns, key, and foreign key, an index leading the foreign key, and a foreign key that points to tickets.
-func ticketHistory(columns []string) []string {
-	out := []string{"table ticket_history {"}
-	out = append(out, columns...)
-	return append(out,
-		"  primary key (id)",
-		"  index ix_ticket_history_ticket (ticket_id)",
-		"  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-		"}",
-	)
-}
-
-// markdownDoc writes the tickets table with the given columns, key lines, and settings, and then writes the history table. Each setting is indented inside the settings block.
-func markdownDoc(columns, key, history []string, settings ...string) []string {
+// markdownDoc writes the tickets table with the given columns, key lines, and settings, and then the ticket_history
+// table. Each setting is indented inside the settings block.
+func markdownDoc(columns, key []string, settings ...string) []string {
 	body := []string{"table tickets {"}
 	body = append(body, columns...)
 	body = append(body, key...)
@@ -186,70 +147,35 @@ func markdownDoc(columns, key, history []string, settings ...string) []string {
 		body = append(body, "    "+s)
 	}
 	body = append(body, "  }", "}")
-	return with(body, []string{""}, history)
+	return with(body, []string{""}, ticketHistory)
 }
 
 var (
 	pkID             = []string{"  primary key (id)"}
-	standardHistory  = ticketHistory(historyColumns)
 	markdownSettings = []string{
 		"store document list",
-		"key_prefix 'T'",
 		"title title",
 		"body body",
 		"order position",
-		"checkbox status waiting '-'",
-		"checkbox status doing '/'",
-		"checkbox status done 'x'",
-		"state_machine status initial waiting",
-		"state_machine status waiting -> doing",
-		"state_machine status doing -> done require (reason)",
-		"state_machine status terminal done",
-		"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-		"state_machine status limit doing 3",
+		"task_marker status",
 	}
 )
 
-// TestMarkdownStorageSetting: the storage, key, title, body, order, checkbox, and state_machine settings of markdown storage are parsed, emitted canonically, and reach the settings model.
+// TestMarkdownStorageSetting: the storage, title, body, order, and task_marker settings of markdown storage are parsed, emitted canonically, and reach the settings model.
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	text := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
+	text := joinLines(markdownDoc(markdownColumns, pkID, markdownSettings...), false)
 	document := parseStable(t, text)
 	s := document.Tables[0].Settings
 	if s.Store == nil || s.Store.Kind != "document" || s.Store.Shape != "list" {
 		t.Fatalf("store: %+v", s.Store)
 	}
-	if s.KeyPrefix == nil || s.KeyPrefix.Prefix != "T" || s.Title == nil || s.Title.Column != "title" ||
+	if s.Title == nil || s.Title.Column != "title" ||
 		s.Body == nil || s.Body.Column != "body" || s.Order == nil || s.Order.Column != "position" {
-		t.Fatalf("key, title, body or order: %+v %+v %+v %+v", s.KeyPrefix, s.Title, s.Body, s.Order)
+		t.Fatalf("title, body or order: %+v %+v %+v", s.Title, s.Body, s.Order)
 	}
-	if len(s.Checkboxes) != 3 || s.Checkboxes[1].State != "doing" || s.Checkboxes[1].Glyph != "/" {
-		t.Fatalf("checkboxes: %+v", s.Checkboxes)
-	}
-	machine := s.StateMachine
-	if machine == nil || len(machine.Lines) != 4 || !machine.Lines[0].Initial || machine.Lines[0].State != "waiting" ||
-		machine.History == nil || machine.History.Table != "ticket_history" || machine.History.At != "changed_at" ||
-		len(machine.Limits) != 1 || machine.Limits[0].State != "doing" || machine.Limits[0].Count != 3 {
-		t.Fatalf("machine: %+v", machine)
-	}
-}
-
-// TestStateMachineKeywordStates: a state with the same name as a state_machine line keyword is still a transition state when a transition arrow follows it.
-func TestStateMachineKeywordStates(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	text := joinLines(with(block(
-		"table jobs {", "  id i64 identity", "  status varchar(16)", "  primary key (id)",
-		"  settings {",
-		"    state_machine status initial -> waiting",
-		"    state_machine status limit -> history",
-		"    state_machine status initial initial",
-		"  }", "}",
-	)), false)
-	document := parseStable(t, text)
-	lines := document.Tables[0].Settings.StateMachine.Lines
-	if len(lines) != 3 || lines[0].From != "initial" || lines[0].Initial || lines[1].From != "limit" ||
-		lines[1].To != "history" || !lines[2].Initial || lines[2].State != "initial" {
-		t.Fatalf("lines: %+v", lines)
+	if s.TaskMarker == nil || s.TaskMarker.Column != "status" {
+		t.Fatalf("task_marker: %+v", s.TaskMarker)
 	}
 }
 

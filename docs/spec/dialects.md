@@ -379,8 +379,8 @@ markdown connection too. flowmark's [operations](https://github.com/polyspec/flo
 - **DIA-156** ordering — Result: as on SQLite: NULL before every value ascending and after every value descending.
 - **DIA-157** `group_by` — Result: as on SQLite, by orm's rule.
 - **DIA-158** `paginate`, `lookahead_paginate`, `group_lookahead_paginate` — Result: as on SQLite; a statement reads one consistent corpus.
-- **DIA-159** `insert` (single and multi-row) — Result: as on SQLite; Rule: the `key_prefix` key and the `order` column are
-  the corpus's to assign, so an insert may leave them out (PRT-73).
+- **DIA-159** `insert` (single and multi-row) — Result: as on SQLite; Rule: the corpus assigns no column that the
+  other databases leave to the application, so an insert that leaves out a required column is `IR_INVALID` (DBS-79).
 - **DIA-160** `update` — Result: as on SQLite; Rule: a `COMMIT` that finds a file changed outside the engine since the
   transaction read it is `WRITE_CONFLICT`, which the client never retries (PRT-71).
 - **DIA-161** `delete`, `restore` — Result: as on SQLite; Rule: the foreign keys are SQLite's, and the corpus's rules judge

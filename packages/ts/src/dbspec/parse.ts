@@ -11,7 +11,6 @@ import type {
   DbspecSetting,
   DbspecTable,
   DbspecType,
-  DbspecStateLine,
 } from './model.js';
 import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
@@ -167,31 +166,11 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       /** `shard <column> <period>`: the shard keyword token, the column and the period, or null without the clause. */
       readonly shard: { readonly at: Tk; readonly column: Tk; readonly period: Tk } | null;
     }
-  | { readonly kind: 'key_prefix'; readonly prefix: Tk }
-  | { readonly kind: 'title' | 'body' | 'order'; readonly column: Tk }
-  | { readonly kind: 'checkbox'; readonly column: Tk; readonly state: Tk; readonly glyph: Tk }
-  | { readonly kind: 'state_machine'; readonly column: Tk; readonly line: IStateLine }
+  | { readonly kind: 'title' | 'body' | 'order' | 'task_marker'; readonly column: Tk }
 );
 
-/** A state_machine line after its column, with the tokens it names. */
-type IStateLine =
-  | { readonly form: 'initial'; readonly state: Tk }
-  | { readonly form: 'terminal'; readonly state: Tk; readonly requires: Tk[] | null }
-  | { readonly form: 'transition'; readonly from: Tk; readonly to: Tk; readonly requires: Tk[] | null }
-  | { readonly form: 'history'; readonly table: Tk; readonly row: Tk; readonly from: Tk; readonly to: Tk; readonly at: Tk }
-  | { readonly form: 'limit'; readonly state: Tk; readonly count: Tk };
-
-/**
- * The identity of an initial, terminal or transition line and its description: a line of the same identity adds no
- * meaning, and one with another require list contradicts it, so a repeat is a `setting` error (docs/spec/dbspec.md "Settings").
- */
-function machineLine(line: Extract<IStateLine, { form: 'initial' | 'terminal' | 'transition' }>): [string, string] {
-  if (line.form === 'transition') return [`transition ${line.from.t} ${line.to.t}`, `${line.from.t} -> ${line.to.t}`];
-  return [`${line.form} ${line.state.t}`, `${line.form} ${line.state.t}`];
-}
-
-type IStateMachine = Extract<ISetting, { kind: 'state_machine' }>;
-type ICheckbox = Extract<ISetting, { kind: 'checkbox' }>;
+/** A setting that names one column of its table: title, body, order or task_marker. */
+type IColumnSetting = Extract<ISetting, { kind: 'title' | 'body' | 'order' | 'task_marker' }>;
 
 interface ISettings {
   readonly open: Tk;
@@ -356,14 +335,6 @@ function settingIdentity(s: ISetting): string[] {
       return [s.column.t];
     case 'navigation':
       return [s.foreignKey.t];
-    case 'checkbox':
-      return [s.column.t, s.state.t];
-    case 'state_machine': {
-      const line = s.line;
-      if (line.form === 'transition') return ['transition', line.from.t, line.to.t];
-      if (line.form === 'history') return ['history'];
-      return [line.form, line.state.t];
-    }
     default:
       return [];
   }
@@ -502,10 +473,6 @@ function isWord(tok: Tk | undefined, text: string): boolean {
 
 function isPunct(tok: Tk | undefined, text: string): boolean {
   return tok !== undefined && tok.k === K.Punct && tok.t === text;
-}
-
-function isOp(tok: Tk | undefined, text: string): boolean {
-  return tok !== undefined && tok.k === K.Op && tok.t === text;
 }
 
 function stringValue(tok: Tk): string {
@@ -1480,13 +1447,6 @@ class DocumentParser {
         entry = parsed;
         break;
       }
-      case 'key_prefix': {
-        const prefix = toks[1];
-        if (prefix === undefined || prefix.k !== K.Str) return this.syntax(toks, 1, line, 'expected a key prefix in quotes');
-        if (toks.length > 2) return this.syntax(toks, 2, line, 'expected the end of the line');
-        entry = { kw, comments, kind: 'key_prefix', prefix };
-        break;
-      }
       case 'title':
       case 'order':
       case 'body': {
@@ -1496,21 +1456,10 @@ class DocumentParser {
         entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: present(w[0], 'w[0]') };
         break;
       }
-      case 'checkbox': {
-        const column = this.settingWord(toks, 1, line, 'the state column');
-        if (column === null) return;
-        const state = this.settingWord(toks, 2, line, 'a state name');
-        if (state === null) return;
-        const glyph = toks[3];
-        if (glyph === undefined || glyph.k !== K.Str) return this.syntax(toks, 3, line, 'expected a glyph in quotes');
-        if (toks.length > 4) return this.syntax(toks, 4, line, 'expected the end of the line');
-        entry = { kw, comments, kind: 'checkbox', column, state, glyph };
-        break;
-      }
-      case 'state_machine': {
-        const parsed = this.stateMachineLine(toks, line, kw, comments);
-        if (parsed === null) return;
-        entry = parsed;
+      case 'task_marker': {
+        const column = this.settingWord(toks, 1, line, 'a column name');
+        if (column === null || !this.settingEnd(toks, 2, line)) return;
+        entry = { kw, comments, kind: 'task_marker', column };
         break;
       }
       case 'audit': {
@@ -1557,9 +1506,21 @@ class DocumentParser {
         break;
       }
       default:
-        return this.at('setting', kw, `${kw.t} is not a setting`);
+        return this.at('setting', kw, `setting "${kw.t}" is unknown`);
     }
     present(this.settingsBlock, 'this.settingsBlock').entries.push(entry);
+  }
+
+  /**
+   * The end of a setting line whose arguments are read: a token after them, such as the state of the per-state task_marker form, is
+   * a syntax error that shows the token as every runtime does (DBS-80), a string by its value and any other token by its text.
+   */
+  private settingEnd(toks: Tk[], i: number, line: number): boolean {
+    const tok = toks[i];
+    if (tok === undefined) return true;
+    const shown = tok.k === K.Str ? `string '${stringValue(tok)}'` : `'${tok.t}'`;
+    this.syntax(toks, i, line, `unexpected ${shown}, expected the end of the line`);
+    return false;
   }
 
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
@@ -1620,116 +1581,6 @@ class DocumentParser {
       return null;
     }
     return { kw, comments, kind: 'store', storage, foreignKey, shape, shard };
-  }
-
-  /**
-   * Reads one state_machine line, with the forms of the Go reference: a state
-   * word followed by `->` is a transition, and `initial`, `terminal`, `history`
-   * and `limit` are forms only when no `->` follows them.
-   */
-  private stateMachineLine(toks: Tk[], line: number, kw: Tk, comments: string[]): ISetting | null {
-    let i = 1;
-    const take = (what: string): Tk | null => {
-      const t = this.settingWord(toks, i, line, what);
-      if (t !== null) i++;
-      return t;
-    };
-    const keyword = (text: string): boolean => {
-      if (isWord(toks[i], text)) {
-        this.mark(toks[i], 'keyword');
-        i++;
-        return true;
-      }
-      this.syntax(toks, i, line, `'${text}'`);
-      return false;
-    };
-    const formAhead = (text: string): boolean => isWord(toks[i], text) && !isOp(toks[i + 1], '-');
-    const requireList = (): Tk[] | null | undefined => {
-      if (!isWord(toks[i], 'require')) return null;
-      this.mark(toks[i], 'keyword');
-      i++;
-      if (!isPunct(toks[i], '(')) {
-        this.syntax(toks, i, line, "expected '('");
-        return undefined;
-      }
-      const listed = this.list(toks, i + 1, line, ')');
-      if (listed === null) return undefined;
-      i = listed[1];
-      for (const w of listed[0]) this.mark(w, 'name');
-      return listed[0];
-    };
-    const column = take('the state column');
-    if (column === null) return null;
-    const done = (form: IStateLine): ISetting | null => {
-      if (i < toks.length) {
-        this.syntax(toks, i, line, 'the end of the line');
-        return null;
-      }
-      return { kw, comments, kind: 'state_machine', column, line: form };
-    };
-    if (formAhead('initial') || formAhead('terminal')) {
-      const terminal = present(toks[i], 'toks[i]').t === 'terminal';
-      this.mark(toks[i], 'keyword');
-      i++;
-      const state = take('a state name');
-      if (state === null) return null;
-      if (!terminal) return done({ form: 'initial', state });
-      const requires = requireList();
-      if (requires === undefined) return null;
-      return done({ form: 'terminal', state, requires });
-    }
-    if (formAhead('history')) {
-      this.mark(toks[i], 'keyword');
-      i++;
-      const table = take('the history table');
-      if (table === null || !keyword('row')) return null;
-      const row = take('the foreign key column');
-      if (row === null || !keyword('from')) return null;
-      const from = take('the from column');
-      if (from === null || !keyword('to')) return null;
-      const to = take('the to column');
-      if (to === null || !keyword('at')) return null;
-      const at = take('the at column');
-      if (at === null) return null;
-      return done({ form: 'history', table, row, from, to, at });
-    }
-    if (formAhead('limit')) {
-      this.mark(toks[i], 'keyword');
-      i++;
-      const state = take('a state name');
-      if (state === null) return null;
-      const t = toks[i];
-      let count: Tk;
-      if (isOp(t, '-')) {
-        const n = toks[i + 1];
-        if (n === undefined || n.k !== K.Word || !UNSIGNED_NUMBER.test(n.t)) {
-          this.syntax(toks, i + 1, line, "expected a number after '-'");
-          return null;
-        }
-        count = { k: K.Word, t: '-' + n.t, s: present(t, 't').s, e: n.e, line };
-        i += 2;
-      } else if (t !== undefined && t.k === K.Word) {
-        this.markValue(t);
-        count = t;
-        i++;
-      } else {
-        this.syntax(toks, i, line, 'expected a row count');
-        return null;
-      }
-      return done({ form: 'limit', state, count });
-    }
-    const from = take('the from state');
-    if (from === null) return null;
-    if (!isOp(toks[i], '-') || !isOp(toks[i + 1], '>')) {
-      this.syntax(toks, i, line, "expected '->'");
-      return null;
-    }
-    i += 2;
-    const to = take('the to state');
-    if (to === null) return null;
-    const requires = requireList();
-    if (requires === undefined) return null;
-    return done({ form: 'transition', from, to, requires });
   }
 
   private placement(diagram: IDiagram, toks: Tk[], line: number, comments: string[]): void {
@@ -2299,24 +2150,22 @@ class DocumentParser {
     for (const s of entries) if (s.kind === 'codec' && s.stages.some(stage => stage.t === 'aes')) aesColumns.add(s.column.t);
     const lookup = (tok: Tk): IColumn | null | undefined => this.lookup(table, tok, 'setting');
     for (const s of entries) {
-      // state_machine and checkbox are written on several lines, so they are excluded from the repeated check.
-      if (s.kind !== 'state_machine' && s.kind !== 'checkbox') {
-        const key =
-          s.kind === 'codec'
-            ? `codec ${s.column.t}`
-            : s.kind === 'navigation'
-              ? `navigation ${s.foreignKey.t}`
-              : s.kind === 'blind_index'
-                ? `blind_index ${s.column.t}`
-                : s.kind === 'markdown'
-                  ? `markdown ${s.column.t}`
-                  : s.kind;
-        if (seen.has(key)) {
-          this.at('setting', s.kw, `setting ${key} repeats`);
-          continue;
-        }
-        seen.add(key);
+      const key =
+        s.kind === 'codec'
+          ? `codec ${s.column.t}`
+          : s.kind === 'navigation'
+            ? `navigation ${s.foreignKey.t}`
+            : s.kind === 'blind_index'
+              ? `blind_index ${s.column.t}`
+              : s.kind === 'markdown'
+                ? `markdown ${s.column.t}`
+                : s.kind;
+      if (seen.has(key)) {
+        // A setting that a table may hold once per name repeats for that name, as Go states it (DBS-80).
+        this.at('setting', s.kw, key === s.kind ? `setting ${key} repeats` : `${s.kind} repeats for "${key.slice(s.kind.length + 1)}"`);
+        continue;
       }
+      seen.add(key);
       switch (s.kind) {
         case 'entity':
           break;
@@ -2366,9 +2215,6 @@ class DocumentParser {
           if (s.storage.t === 'block' && s.foreignKey !== null) this.checkForeignKeyName(table, s.foreignKey);
           this.checkStoreShard(table, s, entries.some(e => e.kind === 'order'));
           break;
-        case 'key_prefix':
-          this.checkKeyPrefix(table, s);
-          break;
         case 'title':
         case 'body':
           this.checkTextColumn(table, s);
@@ -2376,8 +2222,8 @@ class DocumentParser {
         case 'order':
           this.checkOrder(table, s);
           break;
-        case 'state_machine':
-          this.checkStateMachine(table, s);
+        case 'task_marker':
+          this.checkTaskMarker(table, s);
           break;
         case 'immutable':
           if (actionChild) this.at('setting', s.kw, 'immutable is rejected on a child of a cascade or set_null foreign key');
@@ -2387,7 +2233,6 @@ class DocumentParser {
           break;
       }
     }
-    this.checkStateMachineConsistency(table, entries, available);
   }
 
   /** Reports a malformed name as Go's ref does; says whether the name can be resolved. */
@@ -2416,22 +2261,8 @@ class DocumentParser {
     if (!table.fks.some(f => f.name.t === tok.t)) this.at('setting', tok, `foreign key ${tok.t} is not a foreign key of the table`);
   }
 
-  /** The primary key is one varchar column. */
-  private checkKeyPrefix(table: ITable, s: Extract<ISetting, { kind: 'key_prefix' }>): void {
-    if (table.failedPrimary) return;
-    const pk = table.pks;
-    if (pk.length !== 1 || present(pk[0], 'pk[0]').cols.length !== 1) {
-      this.at('setting', s.kw, 'key_prefix needs a single-column primary key');
-      return;
-    }
-    const c = table.colMap.get(present(present(pk[0], 'pk[0]').cols[0], 'pk[0].cols[0]').tok.t);
-    if (c !== undefined && c.type !== null && c.type.kind !== 'varchar') {
-      this.at('setting', s.kw, `key_prefix needs a varchar primary key, not ${typeText(c.type)}`);
-    }
-  }
-
   /** The title and body columns are non-null varchar or text columns. */
-  private checkTextColumn(table: ITable, s: Extract<ISetting, { kind: 'title' | 'body' | 'order' }>): void {
+  private checkTextColumn(table: ITable, s: IColumnSetting): void {
     const c = this.columnRef(table, s.column);
     if (c && ((c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') || c.nullable)) {
       this.at('setting', s.column, `${s.kw.t} needs a non-null varchar or text column`);
@@ -2456,7 +2287,7 @@ class DocumentParser {
   }
 
   /** The order column is a non-null i32 or i64 column with no default, in no key, index or check. */
-  private checkOrder(table: ITable, s: Extract<ISetting, { kind: 'title' | 'body' | 'order' }>): void {
+  private checkOrder(table: ITable, s: IColumnSetting): void {
     const c = this.columnRef(table, s.column);
     if (!c) return;
     if ((c.type !== null && c.type.kind !== 'i32' && c.type.kind !== 'i64') || c.nullable || c.dflt !== null) {
@@ -2466,212 +2297,14 @@ class DocumentParser {
     if (inKeyOrCheck(table, s.column.t)) this.at('setting', s.column, `order column ${s.column.t} is in a key, index or check`);
   }
 
-  /** Each state_machine line: its column is a non-null varchar or text column, and its require list names columns. */
-  private checkStateMachine(table: ITable, s: IStateMachine): void {
+  /**
+   * The task_marker column, whose value a list row writes between the brackets of its task marker, is a varchar(1) or a
+   * bool column (docs/spec/dbspec.md "Settings").
+   */
+  private checkTaskMarker(table: ITable, s: IColumnSetting): void {
     const c = this.columnRef(table, s.column);
-    if (c && ((c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') || c.nullable)) {
-      this.at('setting', s.column, 'state_machine needs a non-null varchar or text column');
-    }
-    if (s.line.form === 'terminal' || s.line.form === 'transition') {
-      for (const ref of s.line.requires ?? []) this.columnRef(table, ref);
-    }
-  }
-
-  /**
-   * Checks the state_machine lines against each other: one column per table,
-   * one history line, initial and terminal states that agree with the
-   * transitions, limit lines, the default of the state column, and checkbox lines.
-   */
-  private checkStateMachineConsistency(table: ITable, entries: ISetting[], available: Map<string, ITable | null>): void {
-    let column = '';
-    const states = new Set<string>();
-    const initials = new Set<string>();
-    const terminals = new Set<string>();
-    const lines: IStateMachine[] = [];
-    const limits: IStateMachine[] = [];
-    let history: IStateMachine | null = null;
-    const requires: Tk[] = [];
-    const boxes: ICheckbox[] = [];
-    // The identity of an initial, terminal or transition line: its form and states, never its require list.
-    const seen = new Set<string>();
-    for (const s of entries) {
-      if (s.kind === 'checkbox') {
-        boxes.push(s);
-        continue;
-      }
-      if (s.kind !== 'state_machine') continue;
-      if (column === '') column = s.column.t;
-      else if (s.column.t !== column) {
-        this.at('setting', s.column, `state_machine repeats for ${s.column.t}; a table holds one machine`);
-      }
-      const line = s.line;
-      if (line.form === 'history') {
-        if (history !== null) {
-          this.at('setting', s.kw, 'state_machine repeats history');
-          continue;
-        }
-        history = s;
-        continue;
-      }
-      if (line.form === 'limit') {
-        limits.push(s);
-        continue;
-      }
-      // A line of another column already reports that a table holds one machine; it is no line of this one.
-      if (s.column.t === column) {
-        const [key, what] = machineLine(line);
-        if (seen.has(key)) {
-          this.at('setting', s.kw, `state_machine repeats ${what}`);
-          continue;
-        }
-        seen.add(key);
-      }
-      lines.push(s);
-      if (line.form === 'transition' || line.form === 'terminal') requires.push(...(line.requires ?? []));
-      if (line.form === 'initial') {
-        initials.add(line.state.t);
-        states.add(line.state.t);
-      } else if (line.form === 'terminal') {
-        terminals.add(line.state.t);
-        states.add(line.state.t);
-      } else if (line.form === 'transition') {
-        states.add(line.from.t);
-        states.add(line.to.t);
-      }
-    }
-    for (const s of lines) {
-      const line = s.line;
-      if (line.form === 'initial' && terminals.has(line.state.t)) {
-        this.at('setting', s.kw, `an initial state ${line.state.t} is also terminal`);
-      } else if (line.form === 'transition' && terminals.has(line.from.t)) {
-        this.at('setting', s.kw, `a transition leaves the terminal state ${line.from.t}`);
-      }
-    }
-    this.checkLimits(limits, states);
-    if (history !== null) this.checkHistory(table, history, table.colMap.get(column), requires, available);
-    const c = table.colMap.get(column);
-    if (c !== undefined && c.valueTok !== null) {
-      const value = c.valueTok.k === K.Str ? stringValue(c.valueTok) : c.valueTok.t;
-      if (!initials.has(value)) {
-        this.at('setting', c.valueTok, `the default ${value} of the state column is not an initial state`);
-      }
-    }
-    this.checkCheckboxes(table, column, states, boxes);
-  }
-
-  /** Each limit names a state of the machine once, with a positive row count that fits 64 bits. */
-  private checkLimits(lines: IStateMachine[], states: Set<string>): void {
-    const seen = new Set<string>();
-    for (const s of lines) {
-      if (s.line.form !== 'limit') continue;
-      const state = s.line.state;
-      if (!states.has(state.t)) this.at('setting', state, `limit names state ${state.t} outside the state set`);
-      else if (seen.has(state.t)) this.at('setting', state, `limit repeats for state ${state.t}`);
-      seen.add(state.t);
-      const count = s.line.count;
-      const n = /^-?[0-9]+$/.test(count.t) ? BigInt(count.t) : BigInt(0);
-      if (n < BigInt(1) || n > BigInt('9223372036854775807')) {
-        this.at('setting', count, `limit needs a positive row count, not ${count.t}`);
-      }
-    }
-  }
-
-  /**
-   * The history line names a history table that has a foreign key to this
-   * table, a from and a to column of the state type, an at column of
-   * datetime(6), a nullable column of each required column's type, and no
-   * column the line leaves out; it declares no title or body.
-   */
-  private checkHistory(
-    table: ITable,
-    s: IStateMachine,
-    state: IColumn | undefined,
-    requires: Tk[],
-    available: Map<string, ITable | null>,
-  ): void {
-    if (s.line.form !== 'history') return;
-    const line = s.line;
-    const name = line.table;
-    if (!this.ref(name)) return;
-    if (!available.has(name.t)) {
-      this.at('setting', name, `history table ${name.t} is not a table of this document or a used table`);
-      return;
-    }
-    const h = available.get(name.t) ?? null;
-    if (h === null) return;
-    if (state === undefined || state.type === null) return;
-    const stateType = state.type;
-    const row = line.row;
-    if (!h.fks.some(f => f.cols.length === 1 && present(f.cols[0], 'f.cols[0]').t === row.t && f.table.t === table.name.t)) {
-      this.at('setting', name, `history table ${name.t} has no foreign key of ${row.t} to table ${table.name.t}`);
-    }
-    const named = new Set<string>([row.t]);
-    const typed = (ref: Tk, want: DbspecType): void => {
-      named.add(ref.t);
-      const c = h.colMap.get(ref.t);
-      if (c === undefined) {
-        if (!h.failed.has(ref.t)) this.at('setting', name, `history table ${name.t} has no column ${ref.t}`);
-      } else if (c.type !== null && !sameType(c.type, want)) {
-        this.at('setting', name, `history column ${ref.t} has type ${typeText(c.type)}, not ${typeText(want)}`);
-      }
-    };
-    typed(line.from, stateType);
-    typed(line.to, stateType);
-    typed(line.at, { kind: 'datetime', precision: 6 });
-    for (const r of requires) {
-      named.add(r.t);
-      const c = table.colMap.get(r.t);
-      if (c === undefined || c.type === null) continue;
-      const hc = h.colMap.get(r.t);
-      if (hc === undefined) {
-        if (!h.failed.has(r.t)) this.at('setting', name, `history table ${name.t} has no column ${r.t} of the required column`);
-      } else if (!hc.nullable || (hc.type !== null && !sameType(hc.type, c.type))) {
-        this.at('setting', name, `history column ${r.t} is not a nullable ${typeText(c.type)} column`);
-      }
-    }
-    for (const k of h.pks) for (const c of k.cols) named.add(c.tok.t);
-    for (const c of h.columns) {
-      if (!named.has(c.name.t)) {
-        this.at('setting', name, `history table ${name.t} has column ${c.name.t}, which the history line does not name`);
-      }
-    }
-    for (const e of h.settings?.entries ?? []) {
-      if (e.kind === 'title' || e.kind === 'body') {
-        this.at('setting', name, `history table ${name.t} declares ${e.kind}, which a history table does not`);
-      }
-    }
-  }
-
-  /**
-   * The checkbox lines name the machine's column, one state of the machine
-   * each, one glyph character each with no glyph repeated, and every state
-   * has one.
-   */
-  private checkCheckboxes(table: ITable, column: string, states: Set<string>, boxes: ICheckbox[]): void {
-    if (boxes.length === 0) return;
-    const first = present(boxes[0], 'boxes[0]');
-    if (column === '') {
-      this.at('setting', first.column, `checkbox needs a state_machine on column ${first.column.t}`);
-      return;
-    }
-    const covered = new Set<string>();
-    const glyphs = new Set<string>();
-    for (const b of boxes) {
-      if (!this.columnRef(table, b.column)) continue;
-      if (b.column.t !== column) {
-        this.at('setting', b.column, `checkbox names column ${b.column.t}, but the state_machine column is ${column}`);
-        continue;
-      }
-      if (!states.has(b.state.t)) this.at('setting', b.state, `checkbox names state ${b.state.t} outside the state set`);
-      else if (covered.has(b.state.t)) this.at('setting', b.state, `checkbox repeats for state ${b.state.t}`);
-      covered.add(b.state.t);
-      const glyph = stringValue(b.glyph);
-      if (Array.from(glyph).length !== 1) this.at('setting', b.glyph, 'a checkbox glyph is one character');
-      else if (glyphs.has(glyph)) this.at('setting', b.glyph, `checkbox glyph ${glyph} repeats`);
-      glyphs.add(glyph);
-    }
-    for (const state of [...states].sort()) {
-      if (!covered.has(state)) this.at('setting', first.kw, `checkbox does not cover state ${state}`);
+    if (c && c.type !== null && c.type.kind !== 'bool' && !(c.type.kind === 'varchar' && c.type.length === 1)) {
+      this.at('setting', s.column, `task_marker needs a varchar(1) or bool column, not ${typeText(c.type)}`);
     }
   }
 
@@ -3032,22 +2665,6 @@ function inKeyOrCheck(table: ITable, column: string): boolean {
   );
 }
 
-function stateLineOf(line: IStateLine): DbspecStateLine {
-  const names = (list: Tk[] | null): readonly string[] | null => (list === null ? null : Object.freeze(list.map(c => c.t)));
-  switch (line.form) {
-    case 'initial':
-      return Object.freeze({ form: 'initial', state: line.state.t });
-    case 'terminal':
-      return Object.freeze({ form: 'terminal', state: line.state.t, requires: names(line.requires) });
-    case 'transition':
-      return Object.freeze({ form: 'transition', from: line.from.t, to: line.to.t, requires: names(line.requires) });
-    case 'history':
-      return Object.freeze({ form: 'history', table: line.table.t, row: line.row.t, from: line.from.t, to: line.to.t, at: line.at.t });
-    case 'limit':
-      return Object.freeze({ form: 'limit', state: line.state.t, count: BigInt(line.count.t).toString() });
-  }
-}
-
 function settingOf(s: ISetting): DbspecSetting {
   const comments = Object.freeze(s.comments);
   let setting: DbspecSetting;
@@ -3088,19 +2705,11 @@ function settingOf(s: ISetting): DbspecSetting {
         shard: s.shard === null ? null : { column: s.shard.column.t, period: oneOf(PERIODS, s.shard.period.t, 'the shard period') },
       };
       break;
-    case 'key_prefix':
-      setting = { comments, kind: s.kind, prefix: stringValue(s.prefix) };
-      break;
     case 'title':
     case 'body':
     case 'order':
+    case 'task_marker':
       setting = { comments, kind: s.kind, column: s.column.t };
-      break;
-    case 'checkbox':
-      setting = { comments, kind: s.kind, column: s.column.t, state: s.state.t, glyph: stringValue(s.glyph) };
-      break;
-    case 'state_machine':
-      setting = { comments, kind: s.kind, column: s.column.t, line: stateLineOf(s.line) };
       break;
     case 'audit':
       setting = {

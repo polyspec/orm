@@ -190,10 +190,8 @@ final class Setting
     public array $comments;
     public ?array $exclude;
     public ?array $include;
-    public ?string $form;
-    public ?array $requires;
 
-    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null, ?string $form = null, ?array $requires = null) {}
+    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null) {}
 
     public function records(string $column): bool {}
 
@@ -1534,17 +1532,13 @@ final class Engine
     public readonly RuntimeModel $model;
     private readonly int $cacheSize;
 
-    /**
-     * assigns plans for a database that assigns the key_prefix keys and the order positions that an insert leaves out,
-     * as a flowmark corpus does.
-     */
-    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize, bool $assigns = false) {}
+    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize) {}
 
     /**
-     * The engine shared by the generated model of a manifest hash, by the dialect and by assigns. The hash
+     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
      * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false): Engine {}
+    public static function for(string $manifestHash, string $dialect, int $cacheSize): Engine {}
 
     /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array {}
@@ -1570,12 +1564,7 @@ final class Planner
 {
     private readonly RuntimeModel $m;
     private readonly Dialect $d;
-    private readonly bool $assigns;
-    /**
-     * assigns says that the database assigns the key_prefix key and the order position of a row that an insert leaves
-     * them out of, as a flowmark corpus does.
-     */
-    public function __construct(RuntimeModel $m, Dialect $d, bool $assigns = false) {}
+    public function __construct(RuntimeModel $m, Dialect $d) {}
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array {}
 }
@@ -2164,17 +2153,8 @@ final class RuntimeModel
     public readonly string $manifestText;
     public readonly array $entities;
     public readonly string $externalText;
-    /** @var array<string, array{key: string, order: string}>|null the columns of each entity that a corpus assigns */
-    private ?array $assigned = null;
 
     public function __construct(string $manifestHash, string $manifestText, array $entities, string $externalText = '') {}
-
-    /**
-     * @internal The columns of entity $name that a database which assigns keys and positions, as a flowmark corpus does,
-     * fills in when an insert leaves them out (docs/spec/protocol.md PRT-73): key and order, '' when there is none.
-     * @return array{key: string, order: string}
-     */
-    public function assignedColumns(string $name): array {}
 
     /**
      * @param array $texts

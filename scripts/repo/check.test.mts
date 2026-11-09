@@ -99,6 +99,26 @@ caseTest('the Go model build regenerates models', COMPUTE, () => {
   assert.match(result.stdout, /go run \.\/cmd\/orm-gen sets/);
 });
 
+// A model generator's key covers the directory of the document set of each of its entries, which holds the set and its documents, so a
+// fixture change regenerates the models that it is read into: the Go and PHP keys once named only their own package.
+caseTest('the key of a model generator covers the document set of each of its entries', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const sets = (file: string, base: string) => [...text(file).matchAll(/^--set (\S+)/gm)].map(match => posix.dirname(posix.normalize(posix.join(base, match[1] ?? ''))));
+  const expected: [string, string[]][] = [
+    ['go-models', sets('packages/go/models.txt', 'packages/go')],
+    ['php-models', sets('packages/php/models.txt', '.')],
+    ['python-models', [posix.dirname(/^PYTHON_MODELS_SET = (\S+)$/m.exec(text('Makefile'))?.[1] ?? '')]],
+  ];
+  for (const [target, dirs] of expected) {
+    const result = spawnSync('make', ['-n', '--no-print-directory', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(result.status, 0, result.stderr);
+    const line = result.stdout.split('\n').find(entry => entry.includes('once.mts') && entry.includes(`/${target}.key `));
+    assert.ok(line !== undefined, `${target} runs no keyed generator: ${result.stdout}`);
+    const inputs = (line.split(' -- ')[0] ?? '').split(/\s+/).map(path => path.replace(/\/$/, ''));
+    for (const dir of dirs) assert.ok(inputs.includes(dir), `${target} does not key on ${dir}: ${line.split(' -- ')[0]}`);
+  }
+});
+
 caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });

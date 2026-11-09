@@ -31,28 +31,20 @@ final class Engine
     private readonly Validator $validator;
     private readonly Planner $planner;
 
-    /**
-     * $assigns plans for a database that assigns the key_prefix keys and the order positions that an insert leaves
-     * out, as a flowmark corpus does (docs/spec/protocol.md PRT-73).
-     */
-    public function __construct(
-        public readonly RuntimeModel $model,
-        string $dialect,
-        private readonly int $cacheSize,
-        bool $assigns = false,
-    ) {
+    public function __construct(public readonly RuntimeModel $model, string $dialect, private readonly int $cacheSize)
+    {
         $this->validator = new Validator($model);
-        $this->planner = new Planner($model, new Dialect($dialect), $assigns);
+        $this->planner = new Planner($model, new Dialect($dialect));
     }
 
     /**
-     * The engine shared by the generated model of a manifest hash, by the dialect and by whether the database assigns
-     * keys. The hash of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
+     * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false): self
+    public static function for(string $manifestHash, string $dialect, int $cacheSize): self
     {
-        return self::$engines[$manifestHash . "\0" . $dialect . "\0" . ($assigns ? 'assigns' : '')]
-            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize, $assigns);
+        return self::$engines[$manifestHash . "\0" . $dialect]
+            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize);
     }
 
     /** The plan of a value-free request (docs/spec/protocol.md). */

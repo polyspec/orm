@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { waitForHolderLock } from '@polyspec/kit/holder-lock';
 import { readPackage } from '../json/formats.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
@@ -58,14 +58,17 @@ function compile(config: string, outDir: string): number | null {
   return built.status === 0 ? null : built.status ?? 1;
 }
 
+// The directories of the document sets of the generated entries, relative to the repository.
+const modelSets = [...new Set(generatedModels.map(model => relative(root, dirname(join(client, model.set)))))].sort();
+
 /**
  * The key of the client's build: the SHA-256 of every tracked file that the build reads, each with its name, the generated entry of
  * the client's codes (packages/ts/src/codes.ts, which orm-codes writes), and the manifests of node and typescript. The tracked files are
- * the client and its tests, the build and model scripts, the fixtures that the models are generated from, and the thin-slice main that
- * orm-gen scans.
+ * the client and its tests, the build and model scripts, the directory of the document set of each generated entry (which holds the set
+ * and its documents, so a fixture change rebuilds the models that it is read into), and the thin-slice main that orm-gen scans.
  */
 function buildKey(): string {
-  const listed = spawnSync('git', ['ls-files', '-z', '--', 'packages/ts', 'scripts/typescript', 'scripts/json', 'tests/errors.mts', 'contracts/fixtures', 'examples/thin-slice/ts'], { cwd: root, encoding: 'utf8' });
+  const listed = spawnSync('git', ['ls-files', '-z', '--', 'packages/ts', 'scripts/typescript', 'scripts/json', 'tests/errors.mts', ...modelSets, 'examples/thin-slice/ts'], { cwd: root, encoding: 'utf8' });
   if (listed.status !== 0) throw new Error(`typescript build: git ls-files exited with ${listed.status ?? listed.signal}; run make install`);
   const digest = createHash('sha256');
   for (const file of listed.stdout.split('\0').filter(Boolean).sort()) {

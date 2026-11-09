@@ -2,7 +2,7 @@
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
 import { lastAffected } from '../dist/testing.js';
-import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, SharedNote, User } from '../dist/index.js';
+import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, RankedTask, SharedNote, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -129,6 +129,18 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
     }
     return model;
   };
+  // RankedTask values: its title and its order column, which the application writes (DBS-79).
+  const rankedTaskSet = (db, values) => {
+    const model = new RankedTask().connect(db);
+    for (const column of columnsOf(values)) {
+      switch (column) {
+        case 'title': model.setTitle(values[column]); break;
+        case 'position': model.setPosition(Number(values[column])); break;
+        default: throw new Error(`RankedTask column ${column} has no recipe setter`);
+      }
+    }
+    return model;
+  };
   // CompositeMembership filters: the tenant_id equality of the recipe count.
   const membershipFilter = (db, where) => {
     const model = new CompositeMembership().connect(db);
@@ -214,6 +226,10 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return { bind: db };
     },
     async 'model.create'(s, context) {
+      if (s.model === 'RankedTask') {
+        await rankedTaskSet(connection(s.connection, context), objectValues(s.values, context)).create();
+        return {};
+      }
       if (s.model !== 'CompositeAccount') throw new Error(`model ${s.model} has no model.create entry`);
       await compositeSet(s.unconnected === true ? undefined : connection(s.connection, context), objectValues(s.values, context)).create();
       return {};
@@ -288,6 +304,10 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       if (s.unconnected === true) return { value: { int: String(await compositeFilter(undefined, objectValues(s.where ?? {}, context)).getCount()) } };
       const db = connection(s.connection, context);
       if (s.model === 'Author') return { value: wrap(await chain(db, objectValues(s.where, context), []).getCount()) };
+      if (s.model === 'RankedTask') {
+        if (Object.keys(s.where ?? {}).length > 0) throw new Error(`RankedTask where ${JSON.stringify(s.where)} has no recipe entry`);
+        return { value: { int: String(await new RankedTask().connect(db).getCount()) } };
+      }
       const filter = s.model === 'CompositeMembership' ? membershipFilter : compositeFilter;
       return { value: { int: String(await filter(db, objectValues(s.where, context)).getCount()) } };
     },

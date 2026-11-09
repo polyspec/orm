@@ -691,8 +691,8 @@ def conflict_key(ent: Entity, assignments) -> list:
     """The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while
     PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
     reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
-    of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor
-    assigns), and each unique key; a blind index column counts as assigned with its AES source."""
+    of it. The candidates are the primary key, unless the insert leaves it out (an identity), and each unique key; a
+    blind index column counts as assigned with its AES source."""
     assigned = {a["column"] for a in assignments}
     assigned |= {
         f.blind_index for f in ent.fields if f.blind_index and f.name in assigned

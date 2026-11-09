@@ -5,10 +5,10 @@
 #include "dbspec.h"
 #include "compare_by_field.h"
 
-/* Canonical order: mapping settings (markdown through state_machine) come before immutable and audit. */
+/* Canonical order: mapping settings (markdown through task_marker) come before immutable and audit. */
 static const char *const setting_kinds[] = {
     "entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-    "key_prefix", "title", "body", "order", "checkbox", "state_machine", "immutable", "audit", NULL,
+    "title", "body", "order", "task_marker", "immutable", "audit", NULL,
 };
 
 static int kind_rank(str kind)
@@ -51,18 +51,6 @@ static void *sorted_copy(void *items, size_t n, size_t size, int (*cmp)(const vo
     return copy;
 }
 
-/* Order of state_machine lines: transitions, initial and terminal lines, history, limit; within the same kind, declaration order. */
-static int state_form_rank(const setting *s)
-{
-    if (s->form.s != NULL && str_eqc(s->form, "history")) {
-        return 1;
-    }
-    if (s->form.s != NULL && str_eqc(s->form, "limit")) {
-        return 2;
-    }
-    return 0;
-}
-
 static int cmp_setting(const void *a, const void *b, void *ctx)
 {
     (void)ctx;
@@ -75,43 +63,7 @@ static int cmp_setting(const void *a, const void *b, void *ctx)
         str ax = x->args.n > 0 ? x->args.v[0] : SL(""), ay = y->args.n > 0 ? y->args.v[0] : SL("");
         return str_cmp(ax, ay);
     }
-    if (str_eqc(x->kind, "state_machine")) {
-        int fx = state_form_rank(x), fy = state_form_rank(y);
-        return fx < fy ? -1 : fx > fy ? 1 : 0;
-    }
     return 0;
-}
-
-/* Canonical text of a row count: leading zeros removed (Go strconv.FormatInt). A number that passes the check is a positive integer. */
-static str count_text(str s)
-{
-    size_t i = 0;
-    while (i + 1 < s.n && s.s[i] == '0') {
-        i++;
-    }
-    return str_sub(s, i, s.n - i);
-}
-
-/* Text of one state_machine line. args are the column and the format's arguments, and requires is the require list of transition and terminal lines. */
-static str state_machine_text(const setting *s)
-{
-    const strs *a = &s->args;
-    str column = a->v[0], form = s->form;
-    if (str_eqc(form, "initial")) {
-        return fmt("state_machine %S initial %S", column, a->v[1]);
-    }
-    if (str_eqc(form, "history")) {
-        return fmt("state_machine %S history %S row %S from %S to %S at %S", column, a->v[1], a->v[2], a->v[3], a->v[4], a->v[5]);
-    }
-    if (str_eqc(form, "limit")) {
-        return fmt("state_machine %S limit %S %S", column, a->v[1], count_text(a->v[2]));
-    }
-    str text = str_eqc(form, "terminal") ? fmt("state_machine %S terminal %S", column, a->v[1])
-        : fmt("state_machine %S %S -> %S", column, a->v[1], a->v[2]);
-    if (s->requires != NULL && s->requires->n > 0) {
-        text = fmt("%S require (%S)", text, strs_join(s->requires, ", "));
-    }
-    return text;
 }
 
 static str setting_text(const setting *s, const table *t, dbs_view view)
@@ -129,15 +81,6 @@ static str setting_text(const setting *s, const table *t, dbs_view view)
             return setting_audit_line(s, "include", s->include);
         }
         return setting_audit_line(s, "exclude", s->exclude);
-    }
-    if (str_eqc(s->kind, "state_machine")) {
-        return state_machine_text(s);
-    }
-    if (str_eqc(s->kind, "key_prefix")) {
-        return fmt("key_prefix %S", literal_quote(s->args.v[0]));
-    }
-    if (str_eqc(s->kind, "checkbox")) {
-        return fmt("checkbox %S %S %S", s->args.v[0], s->args.v[1], literal_quote(s->args.v[2]));
     }
     /* For store, if the shard clause's column and period follow the kind's arguments, `shard` is written before them (Setting::STORE_ARGUMENTS). */
     size_t shard = s->args.n;

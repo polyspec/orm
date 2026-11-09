@@ -31,10 +31,6 @@ pub struct Entity {
     pub soft_delete: Option<String>,
     /// `aes_version` column.
     pub aes_version: Option<String>,
-    /// The `key_prefix` setting: a corpus allocates the primary key of an insert that leaves it out (docs/spec/protocol.md PRT-73).
-    pub key_prefix: Option<String>,
-    /// The `order` column: a corpus assigns the position of an insert that leaves it out (docs/spec/protocol.md PRT-73).
-    pub order: Option<String>,
     pub audit: Option<Audit>,
     pub immutable: bool,
     /// A used table of an external document: it is read like any entity, and every write fails with `CONFIG` before
@@ -204,8 +200,6 @@ fn entity(table: &Table) -> Entity {
         updated: column(|s| if let Setting::Updated(n) = s { Some(n) } else { None }),
         soft_delete: column(|s| if let Setting::SoftDelete(n) = s { Some(n) } else { None }),
         aes_version: column(|s| if let Setting::AesVersion(n) = s { Some(n) } else { None }),
-        key_prefix: column(|s| if let Setting::KeyPrefix(n) = s { Some(n) } else { None }),
-        order: column(|s| if let Setting::Order(n) = s { Some(n) } else { None }),
         audit: lines.iter().find_map(|s| match s {
             Setting::Audit { into, column, references, action, previous, .. } => Some(Audit {
                 history: into.text.clone(),

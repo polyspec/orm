@@ -45,7 +45,7 @@
           ],
           "expect": {
             "none": {
-              "manifest_hash": "sha256:43337b132ed06ed4fe341883b765adec1a559d9ef174f9bc4a82193fb88e0795"
+              "manifest_hash": "sha256:ae9782cbc72378bc855287e823eca6d2e0cf54e83b24977fac7ac7c150a33ef2"
             }
           }
         }

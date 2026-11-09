@@ -127,6 +127,7 @@ trait RecipeModel
             'Author' => self::authorOp($s, $context, $db),
             'User' => self::userOp($s, $context, $db),
             'NoteReader' => self::noteReaderOp($s, $context, $db),
+            'RankedTask' => self::rankedTaskOp($s, $context, $db),
             default => Assert::fail("model {$s['model']} has no recipe entry"),
         };
     }
@@ -714,5 +715,29 @@ trait RecipeModel
             $rows[] = [self::modelWrapper($row->toArray()['seq']), self::modelWrapper($note->toArray()['title'])];
         }
         return ['rows' => $rows];
+    }
+
+    /** Runs model.create and model.count of s on RankedTask, whose order column the application writes (DBS-79). */
+    private static function rankedTaskOp(RecipeStep $s, array $context, Db $db): array
+    {
+        switch ($s['op']) {
+            case 'model.create':
+                $model = (new \Polyspec\Orm\Tests\Model\RankedTask())($db);
+                foreach (self::modelValues($s['values'], $context) as $column => $value) {
+                    match ($column) {
+                        'title' => $model->setTitle($value),
+                        'position' => $model->setPosition($value),
+                        default => Assert::fail("RankedTask column $column has no recipe setter"),
+                    };
+                }
+                $model->create();
+                return [];
+            case 'model.count':
+                if (($s['where'] ?? []) !== []) {
+                    Assert::fail('RankedTask where has no recipe entry');
+                }
+                return ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\RankedTask())($db)->getCount()]];
+        }
+        Assert::fail("op {$s['op']} has no RankedTask entry");
     }
 }

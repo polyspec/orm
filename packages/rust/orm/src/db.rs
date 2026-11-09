@@ -822,8 +822,7 @@ impl Db {
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
-        let mut plan = engine::compile_for(&manifest, dialect, &req.ir, self.is_markdown())?;
+        let mut plan = engine::compile(&manifest, dialect, &req.ir)?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }

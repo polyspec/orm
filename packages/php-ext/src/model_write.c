@@ -511,11 +511,6 @@ static bool model_column_value(zval *model, zval *column, zval *value, zval *db,
     return ok;
 }
 
-static bool array_has_key(zval *array, zend_string *key)
-{
-    return Z_TYPE_P(array) == IS_ARRAY && zend_hash_exists(Z_ARRVAL_P(array), key);
-}
-
 static bool array_has_string_value(zval *array, zend_string *needle)
 {
     if (Z_TYPE_P(array) != IS_ARRAY) return false;
@@ -672,41 +667,9 @@ static bool model_create(zval *model, zval *result_model)
         }
     } ZEND_HASH_FOREACH_END();
 
+    /* The column that takes the key it is given is the identity. */
     zval *identity = array_key(&meta, "identity");
     zend_string *assigned_key = identity != NULL && Z_TYPE_P(identity) == IS_STRING ? Z_STR_P(identity) : NULL;
-    /* The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a primary
-     * key the request did not supply (docs/spec/protocol.md PRT-73). */
-    if (assigned_key == NULL || ZSTR_LEN(assigned_key) == 0) {
-        zval *pk = array_key(&meta, "pk");
-        zval *pk_name = pk != NULL && Z_TYPE_P(pk) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(pk)) == 1
-            ? zend_hash_index_find(Z_ARRVAL_P(pk), 0) : NULL;
-        if (id != NULL && Z_TYPE_P(id) == IS_STRING && pk_name != NULL && Z_TYPE_P(pk_name) == IS_STRING
-            && !array_has_key(sets, Z_STR_P(pk_name))) {
-            zval *hash = array_key(&meta, "manifest_hash"), *entity = array_key(&meta, "entity");
-            zval hash_arg, model, columns;
-            ZVAL_COPY(&hash_arg, hash);
-            bool found = named_call("Polyspec\\Orm\\Registry::model", &model, 1, &hash_arg);
-            zval_ptr_dtor(&hash_arg);
-            if (!found) {
-                zval_ptr_dtor(&row);
-                goto failed;
-            }
-            zval entity_arg;
-            ZVAL_COPY(&entity_arg, entity);
-            bool read = dynamic_call(&model, "assignedColumns", &columns, 1, &entity_arg);
-            zval_ptr_dtor(&entity_arg);
-            zval_ptr_dtor(&model);
-            if (!read) {
-                zval_ptr_dtor(&row);
-                goto failed;
-            }
-            zval *key = Z_TYPE(columns) == IS_ARRAY ? array_key(&columns, "key") : NULL;
-            if (key != NULL && Z_TYPE_P(key) == IS_STRING && zend_string_equals(Z_STR_P(key), Z_STR_P(pk_name))) {
-                assigned_key = Z_STR_P(pk_name);
-            }
-            zval_ptr_dtor(&columns);
-        }
-    }
     if (assigned_key != NULL && ZSTR_LEN(assigned_key) != 0) {
         zval *names_array = array_key(&row, "names");
         bool present = false;

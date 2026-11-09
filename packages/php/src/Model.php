@@ -2177,16 +2177,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 $m->values[$column] = null;
             }
         }
-        // The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a
-        // primary key the request did not supply (docs/spec/protocol.md PRT-73).
+        // The column that takes the key it is given is the identity.
         $assignedKey = $meta['identity'];
-        if (
-            $assignedKey === '' && is_string($id) && count($meta['pk']) === 1
-            && !array_key_exists($meta['pk'][0], $this->sets)
-            && Registry::model($meta['manifest_hash'])->assignedColumns($meta['entity'])['key'] === $meta['pk'][0]
-        ) {
-            $assignedKey = $meta['pk'][0];
-        }
         if ($assignedKey !== '') {
             if (!in_array($assignedKey, $st['names'], true)) {
                 $st['names'][] = $assignedKey;

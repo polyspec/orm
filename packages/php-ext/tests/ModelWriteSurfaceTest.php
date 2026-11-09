@@ -97,9 +97,9 @@ final class ModelWriteSurfaceTest extends TestCase
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
         foreach (
             [
-            // The insert of a key_prefix key returns the key that the corpus allocated (PRT-73).
-            ['{"columns":[{"name":"id","type":"TEXT"}],"rows":[["P1"],["P2"]],"affected":1,"last_insert_id":1,'
-                . '"more":false}', ['P1', 1]],
+            // The insert of an identity returns the first identity that the corpus answered.
+            ['{"columns":[{"name":"id","type":"INTEGER"}],"rows":[[1],[2]],"affected":1,"last_insert_id":1,'
+                . '"more":false}', [1, 1]],
             ['{"columns":[{"name":"id","type":"TEXT"}],"rows":[],"affected":0,"last_insert_id":0,"more":false}',
                 [null, 0]],
             ] as [$answer, $expected]
@@ -118,8 +118,9 @@ final class ModelWriteSurfaceTest extends TestCase
             }
             try {
                 $request = new Request('insert', $manifestHash);
-                $request->ir['entity'] = 'people';
-                $request->ir['set'][] = ['column' => 'name', 'p' => $request->param('Ann')];
+                $request->ir['entity'] = 'logs';
+                $request->ir['set'][] = ['column' => 'task', 'p' => $request->param('T1')];
+                $request->ir['set'][] = ['column' => 'note', 'p' => $request->param('Ann')];
                 self::assertSame($expected, $db->writeOf(null, $request));
             } finally {
                 $db->close();

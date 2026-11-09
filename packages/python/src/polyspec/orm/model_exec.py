@@ -534,16 +534,8 @@ def create(c: Core):
             )
         else:
             core.values[s.column] = convert(type_, s.value, ex.db.zone, field)
-    # The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a
-    # primary key the request did not supply.
+    # The column that takes the key it is given is the identity.
     assigned_key = schema.identity
-    if (
-        assigned_key == ""
-        and isinstance(written["id"], str)
-        and schema.key_prefix != ""
-        and all(s.column != schema.primary_key[0] for s in c.sets)
-    ):
-        assigned_key = schema.primary_key[0]
     if assigned_key != "":
         core.row.add_name(assigned_key)
         core.values[assigned_key] = written["id"]

@@ -2884,14 +2884,12 @@ static bool plan_of(zval *self, zval *r, zval *out)
         return false;
     }
     zval_ptr_dtor(&model);
-    zval eargs[4], engine, rr, shape;
+    zval eargs[3], engine, rr, shape;
     ZVAL_COPY(&eargs[0], hash);
     ZVAL_COPY(&eargs[1], rd(self, "driver"));
     ZVAL_LONG(&eargs[2], as_long(rd(rd(self, "config"), "planCacheSize")));
-    /* A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
-    ZVAL_BOOL(&eargs[3], is_corpus(self));
-    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 4, eargs);
-    for (int i = 0; i < 4; i++) {
+    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 3, eargs);
+    for (int i = 0; i < 3; i++) {
         zval_ptr_dtor(&eargs[i]);
     }
     if (!ok) {

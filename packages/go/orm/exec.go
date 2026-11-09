@@ -1294,7 +1294,7 @@ func lookahead(ex executor, r *request, perPage int) (*result, bool, error) {
 
 // write runs an insert, update, delete, or restore and returns the key of the
 // inserted row and the affected row count: the generated identity on a SQL
-// database, the key_prefix key that a corpus allocated on a markdown connection.
+// database and on a markdown connection.
 func write(ex executor, r *request) (key any, affected int64, err error) {
 	return writeAfterHook(ex, r, nil)
 }
@@ -1354,7 +1354,7 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
-		// The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
+		// The returned key is the identity, an integer.
 		var returned any
 		err = stmt.QueryRowContext(ctx, args...).Scan(&returned)
 		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx)
@@ -1364,8 +1364,6 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		switch v := returned.(type) {
 		case int32:
 			return int64(v), 1, nil
-		case []byte:
-			return string(v), 1, nil
 		}
 		return returned, 1, nil
 	}

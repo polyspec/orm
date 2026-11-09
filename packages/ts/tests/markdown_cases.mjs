@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { OrmError, StyledValue, orm } from '../dist/index.js';
-import { CodecRows, Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
+import { CodecRows, Logs, People, Tags, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 /** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
 
@@ -48,18 +48,18 @@ async function installCatalog(s, name) {
 /** A function that runs the case for each id in cases.json and returns the result value that README defines. A thrown OrmError becomes {"error": code} with its code. */
 export const conformanceCases = {
   insert_one: async s => {
-    const m = await new People().connect(s.db).setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
+    const m = await new People().connect(s.db).setId('P1').setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
     return { id: m.getId() };
   },
   insert_rows: async s => {
-    const bob = new People().setName('Bob').setEmail('bob@example.com').setAge(25).setScore('2.00');
-    const cara = new People().setName('Cara').setEmail(null).setAge(null).setScore('0.50');
+    const bob = new People().setId('P2').setName('Bob').setEmail('bob@example.com').setAge(25).setScore('2.00');
+    const cara = new People().setId('P3').setName('Cara').setEmail(null).setAge(null).setScore('0.50');
     return new People().connect(s.db).creates([bob, cara], 2);
   },
   insert_rows_tasks: async s => new Tasks().connect(s.db).creates([
-    new Tasks().setOwner('P1').setTitle('write spec').setPoints(3).setDue('2026-10-01'),
-    new Tasks().setOwner('P1').setTitle('review').setPoints(5).setDue(null),
-    new Tasks().setOwner('P2').setTitle('ship').setPoints(8).setDue('2026-10-05'),
+    new Tasks().setId('T1').setOwner('P1').setTitle('write spec').setPoints(3).setDue('2026-10-01'),
+    new Tasks().setId('T2').setOwner('P1').setTitle('review').setPoints(5).setDue(null),
+    new Tasks().setId('T3').setOwner('P2').setTitle('ship').setPoints(8).setDue('2026-10-05'),
   ], 3),
   insert_identity: async s => {
     const m = await new Logs().connect(s.db).setTask('T1').setNote('started').create();
@@ -133,10 +133,17 @@ export const conformanceCases = {
     return stale.setAge(27).update(true);
   },
   insert_on_duplicate: async s => {
-    const m = await new People().connect(s.db).setName('Ann B').setEmail('ann@example.com')
+    const m = await new People().connect(s.db).setId('P1').setName('Ann B')
       .duplication(new People().setName('Ann B')).create();
     const read = await new People().connect(s.db).id('P1').get();
     return { created: m.getId(), name: read.getName() };
+  },
+  insert_on_duplicate_unique: async s => {
+    const created = await new Tags().connect(s.db).setName('spec').setUses(1).create();
+    const met = await new Tags().connect(s.db).setName('spec').setUses(1)
+      .duplication(new Tags().setUses(2)).create();
+    const read = await new Tags().connect(s.db).name('spec').get();
+    return { created: created.getId(), met: met.getId(), uses: read.getUses(), count: await new Tags().connect(s.db).getCount() };
   },
   delete: async s => {
     const m = await new Tasks().connect(s.db).id('T2').get();

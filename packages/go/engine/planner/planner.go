@@ -20,9 +20,6 @@ import (
 type Planner struct {
 	M *runtimemodel.Model
 	D dialect.Dialect
-	// Assigns says that the database assigns the key_prefix key and the order position of a row that an insert leaves
-	// them out of, as a flowmark corpus does.
-	Assigns bool
 }
 
 // scope is one entity occurrence in a statement (root or a join) with its alias.
@@ -1175,7 +1172,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
-	if err := validateRequiredAssignments(ent, set, p.Assigns); err != nil {
+	if err := validateRequiredAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	// load writes a row under its stored key, so it takes and requires the value of the identity column.
@@ -1256,12 +1253,8 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		sql += p.D.Upsert(target, strings.Join(sets, ", "))
 	}
-	switch {
-	case p.D.InsertReturningID() && ent.Identity != "":
+	if p.D.InsertReturningID() && ent.Identity != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
-	case p.Assigns && ent.KeyPrefix != "" && len(ent.PK) == 1:
-		// The key that the database allocated, or the key of the row an upsert met.
-		sql += " RETURNING " + p.D.Quote(ent.PK[0])
 	}
 	return b.mainStep(sql)
 }
@@ -1336,14 +1329,10 @@ func validateAuditAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 
 // validateRequiredAssignments rejects, before the database is reached, an insert that omits a non-null
 // column with no default. Identity, AES key version, and audit
-// columns are filled in by the executor or the database, and so are the key_prefix key and the order
-// position on a database that assigns them.
-func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign, assigns bool) error {
+// columns are filled in by the executor or the database.
+func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 	for _, col := range ent.Fields {
 		if col.Null || col.Default || col.Identity || col.Name == ent.AESVersion || ent.Audit != nil && col.Name == ent.Audit.Column || assigned(set, col.Name) {
-			continue
-		}
-		if assigns && (ent.KeyPrefix != "" && len(ent.PK) == 1 && col.Name == ent.PK[0] || col.Name == ent.Order) {
 			continue
 		}
 		return &ir.Error{Code: "IR_INVALID", Msg: "required column " + ent.Name + "." + col.Name + " is not set"}
