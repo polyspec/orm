@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- 정수이거나 YYYY-MM-DD가 아닌 텍스트인 SQLite의 저장 date는 모든 runtime이 실행하는 recipe conformance_verification의 case invalid_stored_dates_sqlite다(T400-1, COD-1, COD-61): 각각의 row 읽기와 그룹 값은 CODEC_DECODE day_cell.day: date cell is not a date로 실패한다. 이를 홀로 지키던 PHP 확장 시험 InvalidDateReadNativeTest.php는 지운다.
 - collection, 빈 collection과 관계 행의 JSON 출력은 모든 runtime이 모든 database에서 실행하는 recipe model_writes_chain의 case model_json_output_writes_collections_and_related_rows다(T400-1, COD-26, COD-68): 모든 recipe runner의 model.query가 json_output을 받아 행의 JSON text를 돌려준다. recipe가 담는 test_model_json_text.py의 Python 시험은 지우고, recipe 값으로 쓸 수 없는 Python 값의 시험은 FCV-2 줄과 함께 남는다.
 - zone.rs의 Rust pool 시험 pool_size와 pool_idle_size_and_lifetime을 지운다(T400-1): pool이 있는 모든 client가 실행하는 recipe connection_pool의 case가 pool 크기, idle 크기와 lifetime을 담는다(CFG-4, CFG-5). pool_lifetime_ms가 없을 때 Rust pool만 지키는 30분 lifetime은 native 시험 pool_keeps_the_thirty_minute_lifetime_when_unset으로 남는다.
 - FCV-2가 collection_identity.rs의 Rust composite_components_preserve_typed_identity_and_shared_encoding을 다른 runtime의 composite key 시험 곁에 이름 짓는다(T400-1): 그 성분은 그것들처럼 어떤 key column도 담지 않는 형태다(PRT-35).

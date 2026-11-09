@@ -128,7 +128,7 @@ table service_config {
 - **COD-58** A NULL stored version of a non-NULL AES value is `CODEC_DECODE`.
 - **COD-59** A NULL AES value with a NULL version is NULL on the read path: its version is neither read nor checked, and no error is raised.
 - **COD-60** A rotation leaves a NULL AES cell unchanged whatever its version holds, since there are no stored bytes to re-encrypt.
-- **COD-61** PHP-extension package `polyspec/orm-php-ext` reads a date column of a model row or a grouped value as the PHP library does (COD-1): a text `YYYY-MM-DD` of a real day reads as that date, and any other stored value, such as `2026-1-1`, throws the `CODEC_DECODE` `OrmException` of COD-1, `<entity>.<column>: <type> cell is not a <type>`, which names no value.
+- **COD-61** PHP-extension package `polyspec/orm-php-ext` reads a date column of a model row or a grouped value as the PHP library does (COD-1): a text `YYYY-MM-DD` of a real day reads as that date, and any other stored value, such as `2026-1-1`, throws the `CODEC_DECODE` `OrmException` of COD-1, `<entity>.<column>: <type> cell is not a <type>`, which names no value. The case `invalid_stored_dates_sqlite` of the recipe `conformance_verification`, which every runtime runs, reads an integer and the text `2026-1-1` in a date column of SQLite on a row read and on a grouped value, and the case `invalid_stored_cells_sqlite` a text that no date form reads and a day that is no day.
 
 ## Stage refusals {#stage-refusals}
 

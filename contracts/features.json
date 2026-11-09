@@ -913,7 +913,6 @@
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/InvalidDateReadNativeTest.php",
         "packages/go/orm/recipe_model_queries_test.go",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",

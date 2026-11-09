@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: acf09d63dbeb69babae90384af520827d73ab0981044b6919ce6797201712e8c -->
+<!-- source-sha256: 8b8ad6e02c49cf2f813a871969005f750fc1392b6c81b56fc5745861b6e259c6 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. 모든 클라이언트에서 host 인코딩과 blind index는 host 단계 목록이 비었거나 값이 텍스트·바이트가 아니면 `CODEC_ENCODE`를 반환한다: host 단계는 텍스트의 UTF-8이나 받은 바이트를 받고 값을 그 종류대로 bind하므로, 정수·실수·bool은 평문이 아니다(`tests/codec/codec.json`의 case `host_values_by_kind`). SQL NULL은 host 단계를 SQL NULL로 지난다. `aes`, `hex`, `ip`가 아닌 style은 `serialize` 같은 codec style을 포함해 값이나 cell을 읽기 전에 `CODEC_UNSUPPORTED`를 반환하고, hex가 아닌 `hex` cell과 header, nonce, tag보다 짧은 `aes` cell은 `CODEC_DECODE`를 반환한다(case `host_stage_errors`). 생성 모델이 읽은 값을 그 타입으로 변환하지 못한 모델 컬럼은 변환의 code와, 변환 message 앞에 entity와 컬럼을 적은 message로 실패하며, 이 텍스트는 모든 클라이언트에서 같다: `<CODE>: <entity>.<column>: <message>`, COD-41의 형태이다. 변환 message는 모든 클라이언트에서 컬럼 타입마다 한 텍스트이며 host 타입도 값도 적지 않는다: `i16 cell is not an exact integer in its range`(`i32`, `i64`도 같다), `f64 cell is not a finite number`, `bool cell is not boolean`, `decimal cell is not a decimal of its precision and scale`, `date cell is not a date`(`datetime`, `time`도 같다), text가 아닌 셀에는 `varchar cell is not text`(`text`, `uuid`도 같다), bytes가 UTF-8이 아닌 셀에는 `text is not valid UTF-8`(COD-69), `bytes cell is not bytes`, `non-null column received SQL NULL`. 예를 들면 `CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range`이다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -130,7 +130,7 @@ table service_config {
 - **COD-58** NULL이 아닌 AES 값의 NULL stored version은 `CODEC_DECODE`다.
 - **COD-59** NULL AES 값과 NULL version은 read 경로에서 NULL이다. version을 읽지도 검사하지도 않으며, 오류가 없다.
 - **COD-60** rotation은 NULL AES cell을 그대로 둔다. version이 무엇이든 재암호화할 저장 바이트가 없기 때문이다.
-- **COD-61** PHP-extension 패키지 `polyspec/orm-php-ext`는 model row와 그룹 값의 date 컬럼을 PHP 라이브러리와 같이 읽는다(COD-1). 실제 날짜의 텍스트 `YYYY-MM-DD`는 그 날짜로 읽고, `2026-1-1` 같은 다른 모든 저장 값은 COD-1의 `CODEC_DECODE` `OrmException` `<entity>.<column>: <type> cell is not a <type>`를 던지며, 이 메시지는 값을 적지 않는다.
+- **COD-61** PHP-extension 패키지 `polyspec/orm-php-ext`는 model row와 그룹 값의 date 컬럼을 PHP 라이브러리와 같이 읽는다(COD-1). 실제 날짜의 텍스트 `YYYY-MM-DD`는 그 날짜로 읽고, `2026-1-1` 같은 다른 모든 저장 값은 COD-1의 `CODEC_DECODE` `OrmException` `<entity>.<column>: <type> cell is not a <type>`를 던지며, 이 메시지는 값을 적지 않는다. 모든 runtime이 실행하는 recipe `conformance_verification`의 case `invalid_stored_dates_sqlite`는 SQLite date 컬럼의 정수와 텍스트 `2026-1-1`을 row 읽기와 그룹 값에서 읽고, case `invalid_stored_cells_sqlite`는 어떤 date 형식도 읽지 않는 텍스트와 실제 날짜가 아닌 날을 읽는다.
 
 ## 단계의 거부 {#stage-refusals}
 

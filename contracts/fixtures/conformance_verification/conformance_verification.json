@@ -4,6 +4,7 @@
   "INT-164",
   "PRT-69",
   "COD-1",
+  "COD-61",
   "INT-163",
   "COD-69",
   "INT-5",
@@ -82080,6 +82081,120 @@
       "sqlite": {
        "error": "CODEC_DECODE",
        "message": "CODEC_DECODE: time_cell.at: datetime cell is not a datetime"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "invalid_stored_dates_sqlite",
+   "requirements": [
+    "COD-1",
+    "COD-61"
+   ],
+   "only": [
+    "sqlite"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite checks a type only through the declared check, so the table is made again without one",
+     "sql": "DROP TABLE day_cell"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a day column with no type affinity, which holds a cell of any storage class",
+     "sql": "CREATE TABLE day_cell (seq INTEGER PRIMARY KEY, label TEXT NOT NULL, day, at_time)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "an integer in the date column of the schema, and a date text that is not YYYY-MM-DD",
+     "sql": "INSERT INTO day_cell (seq, label, day) VALUES (1, 'a', 5), (2, 'b', '2026-1-1')"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DayCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "day"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DayCell",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": [
+      "day"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DayCell",
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "day"
+      ]
+     },
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DayCell",
+     "where": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "day"
+      ]
+     },
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
       }
      }
     }
