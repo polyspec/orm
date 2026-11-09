@@ -1,8 +1,13 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 9fa960474b81abebf480a3155db65588d05d6c1ec0d9cd2d32f27ddfa47934ed -->
+<!-- source-sha256: 8c40992b5b51dc2f6a5474b7d15f5671e05bc6953798ac1654b3ef86b002c0be -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
+
+- **DIA-200** MariaDB는 `mysql` dialect의 server이며 dialect가 따로 있지 않다. Dialect는 DSN의 scheme이 고르는 것이고,
+  scheme `mysql://`([config](config.ko.md))은 MySQL에 닿듯 MariaDB server에도 닿는다. 클라이언트는 각 요청을 MySQL에서처럼
+  계획하고 같은 문을 server에 전한다. orm에는 MariaDB의 scheme이 없으므로 고를 두 번째 rendering도 없다. MariaDB가 어떤 문에 MySQL과
+  다르게 답하면 그것은 한 dialect를 다른 server에서 실행한 결과이며, 그 server의 결과로 적는다. 별도의 rendering은 없다.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

@@ -4,6 +4,12 @@
 A SQL dialect is the SQL syntax and execution rule set for one database system. In this project, `mysql`, `postgres`, and `sqlite` select identifier quoting, placeholders, type mapping, write syntax, and supported SQL functions. The planner asks the selected SQL dialect for every database-specific part; the IR and plan format do not change.
 Executors still see the same plan shape: steps, bind slots, assemble.
 
+- **DIA-200** MariaDB is a server of the `mysql` dialect, not a dialect of its own. A dialect is what the scheme of the DSN
+  selects, and the scheme `mysql://` ([config](config.md)) reaches a MariaDB server as it reaches MySQL: the client plans
+  each request as on MySQL and sends the same statements. orm has no scheme of MariaDB, so it has no second rendering to
+  select; where MariaDB answers a statement otherwise than MySQL, that is the result of the one dialect on another server,
+  stated as that server's result, and never a rendering of its own.
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+ / MariaDB 10.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
