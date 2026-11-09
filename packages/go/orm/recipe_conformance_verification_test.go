@@ -19,6 +19,13 @@ func TestRecipeConformanceVerificationMysql(t *testing.T) {
 	recipe.Run(t, conformanceVerificationRecipe, "mysql")
 }
 
+// TestRecipeConformanceVerificationMariadb runs the conformance_verification recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeConformanceVerificationMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, conformanceVerificationRecipe, "mariadb")
+}
+
 // TestRecipeConformanceVerificationPostgres runs the conformance_verification recipe on PostgreSQL, each case on a case database (FCV-3).
 func TestRecipeConformanceVerificationPostgres(t *testing.T) {
 	testcase.Group(t)

@@ -132,7 +132,8 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
 
 // expectFaults are the steps of a recipe with a fixture whose expect names another set than the databases that run the step:
 // those of the only of the step, else of its case, else all three (FCV-4, FCV-10). A markdown connection is a SQLite
-// connection, so it reads the sqlite entry, and an entry of its own is named only where its result differs (DIA-154).
+// connection, so it reads the sqlite entry, and an entry of its own is named only where its result differs (DIA-154); MariaDB
+// is a server of the MySQL dialect, so it reads the mysql entry and names its own only where its answer differs (DIA-200).
 const DATABASES = ['mysql', 'postgres', 'sqlite'];
 function expectFaults(recipe: Json): string[] {
   const faults: string[] = [];
@@ -144,10 +145,10 @@ function expectFaults(recipe: Json): string[] {
       for (const key of ['expect', 'expect_unnamed']) {
         const expect = step[key];
         if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
-        const servers = (names: string[]) => names.filter(name => name !== 'markdown').sort().join(',');
+        const servers = (names: string[]) => names.filter(name => name !== 'markdown' && name !== 'mariadb').sort().join(',');
         const named = Object.keys(expect);
         const want = servers(only);
-        if (servers(named) !== want || (named.includes('markdown') && !only.includes('sqlite'))) {
+        if (servers(named) !== want || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) {
           faults.push(`${where} ${label(step.op)} ${key} names ${[...named].sort().join(',')}, want ${want}`);
         }
       }

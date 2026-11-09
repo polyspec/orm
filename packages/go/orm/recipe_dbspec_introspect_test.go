@@ -26,6 +26,13 @@ func TestRecipeDbspecIntrospectMysql(t *testing.T) {
 	recipe.Run(t, dbspecIntrospectRecipe, "mysql")
 }
 
+// TestRecipeDbspecIntrospectMariadb runs the dbspec_introspect recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeDbspecIntrospectMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecIntrospectRecipe, "mariadb")
+}
+
 // TestRecipeDbspecIntrospectPostgres runs the dbspec_introspect recipe on PostgreSQL (FCV-3).
 // Requirements: DBS-42, DBS-84, DBS-94, DIA-110, DIA-111, DIA-112, DIA-133, DIA-134, DIA-135, DIA-136, DIA-137
 // Requirements: DIA-138, DIA-139, DIA-140, DIA-141, DIA-142, DIA-143, DIA-144, DIA-145, DIA-146, DIA-147, DIA-148

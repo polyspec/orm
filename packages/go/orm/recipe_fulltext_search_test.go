@@ -19,6 +19,13 @@ func TestRecipeFulltextSearchMysql(t *testing.T) {
 	recipe.Run(t, fulltextSearchRecipe, "mysql")
 }
 
+// TestRecipeFulltextSearchMariadb runs the fulltext_search recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeFulltextSearchMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, fulltextSearchRecipe, "mariadb")
+}
+
 // TestRecipeFulltextSearchPostgres runs the fulltext_search recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75.
 func TestRecipeFulltextSearchPostgres(t *testing.T) {

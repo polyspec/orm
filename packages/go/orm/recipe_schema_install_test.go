@@ -20,6 +20,13 @@ func TestRecipeSchemaInstallMysql(t *testing.T) {
 	recipe.Run(t, schemaInstallRecipe, "mysql")
 }
 
+// TestRecipeSchemaInstallMariadb runs the schema_install recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeSchemaInstallMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, schemaInstallRecipe, "mariadb")
+}
+
 // TestRecipeSchemaInstallPostgres runs the schema_install recipe on PostgreSQL (FCV-3).
 // Requirements: DBS-104, DBS-107, DBS-108, DBS-119, DBS-120, INT-54, INT-55, INT-132, INT-133, PLN-44, SCH-7, SCH-10, SCH-11., INT-56, INT-57, INT-58, SCH-8, SCH-9
 func TestRecipeSchemaInstallPostgres(t *testing.T) {

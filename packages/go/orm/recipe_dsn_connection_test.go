@@ -17,6 +17,13 @@ func TestRecipeDsnConnectionMysql(t *testing.T) {
 	recipe.Run(t, dsnConnectionRecipe, "mysql")
 }
 
+// TestRecipeDsnConnectionMariadb runs the dsn_connection recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeDsnConnectionMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dsnConnectionRecipe, "mariadb")
+}
+
 // TestRecipeDsnConnectionPostgres runs the dsn_connection recipe on PostgreSQL (FCV-3).
 // Requirements: CFG-1.
 func TestRecipeDsnConnectionPostgres(t *testing.T) {

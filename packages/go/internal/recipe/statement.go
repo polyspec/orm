@@ -169,7 +169,7 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		if err != nil {
 			return outcome{}, true, err
 		}
-		if err := applyMasks(events, s.k("masks").Masks, c.dialect()); err != nil {
+		if err := applyMasks(events, s.k("masks").Masks, dialectKey(c.database, s.k("masks").Masks)); err != nil {
 			return outcome{}, true, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": events}}}, true, nil

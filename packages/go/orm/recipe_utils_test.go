@@ -18,6 +18,13 @@ func TestRecipeUtilsMysql(t *testing.T) {
 	recipe.Run(t, utilsRecipe, "mysql")
 }
 
+// TestRecipeUtilsMariadb runs the utils recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeUtilsMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, utilsRecipe, "mariadb")
+}
+
 // TestRecipeUtilsPostgres runs the utils recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: INT-51, INT-52, INT-53, INT-61, INT-73, INT-134.
 func TestRecipeUtilsPostgres(t *testing.T) {

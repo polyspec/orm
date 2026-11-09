@@ -3,7 +3,7 @@
 
 ## Unreleased
 
-- MariaDB 11.8.6 joins the database checks as the database `mariadb`, a server of the MySQL dialect (DIA-200, FCV-3): `make orm-install-mariadb` builds it from the source release of the MariaDB Foundation, pinned by version and sha256 (`scripts/mariadb-build.mts`), and `make orm-test-mariadb` starts its primary, its read-only replica, a privilege probe server with trust-function-creators off and a ProxySQL in front of the primary, with the TLS files of the MySQL TLS cases, and writes `.runtime/servers/mariadb.env` (`ORM_TEST_MARIADB_*`).
+- MariaDB 11.8.6 joins the database checks as the database `mariadb`, a server of the MySQL dialect (DIA-200, FCV-3): `make orm-install-mariadb` builds it from the source release of the MariaDB Foundation, pinned by version and sha256 (`scripts/mariadb-build.mts`), and `make orm-test-mariadb` starts its primary, its read-only replica, a privilege probe server with trust-function-creators off and a ProxySQL in front of the primary, with the TLS files of the MySQL TLS cases, and writes `.runtime/servers/mariadb.env` (`ORM_TEST_MARIADB_*`). Every recipe entry of mysql has a mariadb entry in Go, which reads the `mysql` entries of a recipe unless it states its own and the `ORM_TEST_MARIADB_` server where a step names `ORM_TEST_MYSQL_`; `make mariadb-recipes-check/<runtime>` runs them, and the CI groups `mariadb_<runtime>` install the Ubuntu MariaDB packages in place of the MySQL ones (`make orm-install-server-programs MARIADB=true`).
 
 ## 0.0.27
 

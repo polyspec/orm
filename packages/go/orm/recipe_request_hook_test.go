@@ -20,6 +20,13 @@ func TestRecipeRequestHookMysql(t *testing.T) {
 	recipe.Run(t, requestHookRecipe, "mysql")
 }
 
+// TestRecipeRequestHookMariadb runs the request_hook recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeRequestHookMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, requestHookRecipe, "mariadb")
+}
+
 // TestRecipeRequestHookPostgres runs the request_hook recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
 func TestRecipeRequestHookPostgres(t *testing.T) {

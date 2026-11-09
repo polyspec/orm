@@ -18,3 +18,10 @@ func TestRecipeModelSocketMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, modelSocketRecipe, "mysql")
 }
+
+// TestRecipeModelSocketMariadb runs the model_socket recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeModelSocketMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, modelSocketRecipe, "mariadb")
+}

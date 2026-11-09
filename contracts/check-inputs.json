@@ -5328,6 +5328,13 @@
         "contracts/implementations.json",
         "scripts/json/schema/implementations.schema.json"
       ]
+    },
+    "mariadb-recipes-check/go": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "mariadb-server"
+      ]
     }
   },
   "paths": {

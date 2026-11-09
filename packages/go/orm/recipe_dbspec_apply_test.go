@@ -18,6 +18,13 @@ func TestRecipeDbspecApplyMysql(t *testing.T) {
 	recipe.Run(t, dbspecApplyRecipe, "mysql")
 }
 
+// TestRecipeDbspecApplyMariadb runs the dbspec_apply recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeDbspecApplyMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecApplyRecipe, "mariadb")
+}
+
 // TestRecipeDbspecApplyPostgres runs the dbspec_apply recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplyPostgres(t *testing.T) {

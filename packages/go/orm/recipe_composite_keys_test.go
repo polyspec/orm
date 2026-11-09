@@ -17,6 +17,13 @@ func TestRecipeCompositeKeysMysql(t *testing.T) {
 	recipe.Run(t, compositeKeysRecipe, "mysql")
 }
 
+// TestRecipeCompositeKeysMariadb runs the composite_keys recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeCompositeKeysMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, compositeKeysRecipe, "mariadb")
+}
+
 // TestRecipeCompositeKeysPostgres runs the composite_keys recipe on postgres, each case on a case database (FCV-3).
 // Requirements: DSL-82, INT-87, PRT-12, PRT-40.
 func TestRecipeCompositeKeysPostgres(t *testing.T) {

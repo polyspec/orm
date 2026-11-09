@@ -18,6 +18,13 @@ func TestRecipeDbspecSetDecimalMysql(t *testing.T) {
 	recipe.Run(t, dbspecSetDecimalRecipe, "mysql")
 }
 
+// TestRecipeDbspecSetDecimalMariadb runs the dbspec_set_decimal recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeDbspecSetDecimalMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecSetDecimalRecipe, "mariadb")
+}
+
 // TestRecipeDbspecSetDecimalPostgres installs the decimal document set and round-trips its amounts on postgres.
 // Requirements: DBS-108, SCH-7.
 func TestRecipeDbspecSetDecimalPostgres(t *testing.T) {

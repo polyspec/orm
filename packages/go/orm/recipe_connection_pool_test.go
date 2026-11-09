@@ -18,6 +18,13 @@ func TestRecipeConnectionPoolMysql(t *testing.T) {
 	recipe.Run(t, connectionPoolRecipe, "mysql")
 }
 
+// TestRecipeConnectionPoolMariadb runs the connection_pool recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeConnectionPoolMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, connectionPoolRecipe, "mariadb")
+}
+
 // TestRecipeConnectionPoolPostgres runs the connection_pool recipe on postgres, each case on a case database (FCV-3).
 // Requirements: CFG-4, CFG-5, PRT-77.
 func TestRecipeConnectionPoolPostgres(t *testing.T) {

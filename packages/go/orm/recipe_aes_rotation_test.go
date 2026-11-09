@@ -19,6 +19,13 @@ func TestRecipeAesRotationMysql(t *testing.T) {
 	recipe.Run(t, aesRotationRecipe, "mysql")
 }
 
+// TestRecipeAesRotationMariadb runs the aes_rotation recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeAesRotationMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, aesRotationRecipe, "mariadb")
+}
+
 // TestRecipeAesRotationPostgres runs the aes_rotation recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: COD-7, COD-8, PLN-44, INT-60, INT-75, INT-131, COD-44, COD-47, COD-49 to COD-54, COD-57 to COD-60.
 func TestRecipeAesRotationPostgres(t *testing.T) {

@@ -18,6 +18,13 @@ func TestRecipeDbspecRenderPhysicalMysql(t *testing.T) {
 	recipe.Run(t, dbspecRenderPhysicalRecipe, "mysql")
 }
 
+// TestRecipeDbspecRenderPhysicalMariadb runs the dbspec_render_physical recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeDbspecRenderPhysicalMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecRenderPhysicalRecipe, "mariadb")
+}
+
 // TestRecipeDbspecRenderPhysicalPostgres runs the rendered statements of tests/dbspec/ddl.json and their behavior steps on postgres.
 // Requirements: DIA-113.
 func TestRecipeDbspecRenderPhysicalPostgres(t *testing.T) {

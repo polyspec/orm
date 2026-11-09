@@ -275,7 +275,7 @@ type databaseContext struct {
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
-	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" {
+	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" && database != "mariadb" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
 	f := readRecipe[databaseFile](t, path)
@@ -443,12 +443,13 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 	case "case-server":
 		return caseServerDSN(database, caseDSN)
 	case "case-socket":
-		if database != "mysql" {
-			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
+		if database != "mysql" && database != "mariadb" {
+			return "", fmt.Errorf("dsn case-socket needs mysql or mariadb, not %s", database)
 		}
-		socket := os.Getenv("ORM_TEST_MYSQL_SOCKET")
+		variable := "ORM_TEST_" + strings.ToUpper(database) + "_SOCKET"
+		socket := os.Getenv(variable)
 		if socket == "" {
-			return "", errors.New("dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers")
+			return "", fmt.Errorf("dsn case-socket: %s is unset; run make orm-test-servers or make orm-test-mariadb", variable)
 		}
 		return caseSocketDSN(caseDSN, socket)
 	}
@@ -659,9 +660,19 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 }
 
 // onDatabase reports whether a case or step with the list only runs on database. A corpus speaks SQLite's dialect, so
-// what names sqlite names it too.
+// what names sqlite names it too; MariaDB is a server of the MySQL dialect (DIA-200), so what names mysql names it too.
 func onDatabase(only []string, database string) bool {
-	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite"))
+	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite")) ||
+		(database == "mariadb" && slices.Contains(only, "mysql"))
+}
+
+// serverVariable is the variable that an env: DSN of a step names on database: on MariaDB, a variable of the MySQL servers
+// names the same server of the MariaDB servers, ORM_TEST_MYSQL_ becoming ORM_TEST_MARIADB_ (FCV-3).
+func serverVariable(name, database string) string {
+	if rest, ok := strings.CutPrefix(name, "ORM_TEST_MYSQL_"); ok && database == "mariadb" {
+		return "ORM_TEST_MARIADB_" + rest
+	}
+	return name
 }
 
 // runStepWith runs a step through op and compares the fields that its expect names.
@@ -1440,6 +1451,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 		}
 		if name, isEnv := strings.CutPrefix(dsn, "env:"); isEnv {
+			name = serverVariable(name, c.database)
 			dsn = os.Getenv(name)
 			if dsn == "" {
 				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
@@ -1642,6 +1654,15 @@ func endSession(table string, c *databaseContext) error {
 		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
 		return err
 	}
+	if c.database == "mariadb" {
+		// MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one, whose
+		// InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
+		if err := raw.QueryRow(mariadbLockHolder).Scan(&id); err != nil {
+			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+		}
+		_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
+		return err
+	}
 	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
 		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
 	}
@@ -1649,11 +1670,15 @@ func endSession(table string, c *databaseContext) error {
 	return err
 }
 
+// mariadbLockHolder is the session of the case database that holds a lock, the session that session.end ends on MariaDB.
+const mariadbLockHolder = `SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1`
+
 // awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
 // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits
 // after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on
 // the database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
-// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+// of the wait: the replica applies the writes of every client that runs in parallel, one after another. MariaDB names the two
+// SHOW BINLOG STATUS and MASTER_POS_WAIT, and its status has four columns.
 func awaitReplica(c *databaseContext) error {
 	source := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, source)
@@ -1682,17 +1707,22 @@ func awaitReplica(c *databaseContext) error {
 	var file string
 	var position int64
 	var ignored [3]any
-	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
+	status, wait, columns := "SHOW BINARY LOG STATUS", "SELECT SOURCE_POS_WAIT(?, ?, 60)", []any{&file, &position, &ignored[0], &ignored[1], &ignored[2]}
+	if c.database == "mariadb" {
+		status, wait, columns = "SHOW BINLOG STATUS", "SELECT MASTER_POS_WAIT(?, ?, 60)", columns[:4]
+	}
+	if err := source.QueryRow(status).Scan(columns...); err != nil {
 		return err
 	}
-	replica := os.Getenv("ORM_TEST_MYSQL_REPLICA_DSN")
+	variable := serverVariable("ORM_TEST_MYSQL_REPLICA_DSN", c.database)
+	replica := os.Getenv(variable)
 	if replica == "" {
-		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it")
+		return fmt.Errorf("replica.await: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	target := testdb.Open(c.t, c.database, replica)
 	defer testcase.Close(c.t, target)
 	var waited *int64
-	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
+	if err := target.QueryRow(wait, file, position).Scan(&waited); err != nil {
 		return err
 	}
 	if waited == nil || *waited < 0 {
@@ -1896,21 +1926,27 @@ func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) 
 	return text, present, nil
 }
 
-// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185).
+// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
 func (c *databaseContext) dialect() string {
-	if c.database == "markdown" {
-		return "sqlite"
-	}
-	return c.database
+	return dialectOf(c.database)
 }
 
-// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so
-// it reads the SQLite entry unless the value states its own.
+// dialectOf is the SQL dialect of database.
+func dialectOf(database string) string {
+	switch database {
+	case "markdown":
+		return "sqlite"
+	case "mariadb":
+		return "mysql"
+	}
+	return database
+}
+
+// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185) and
+// MariaDB in MySQL's (DIA-200), so each reads the entry of its dialect unless the value states its own (FCV-3).
 func dialectKey[V any](database string, entries map[string]V) string {
-	if database == "markdown" {
-		if _, own := entries[database]; !own {
-			return "sqlite"
-		}
+	if _, own := entries[database]; !own {
+		return dialectOf(database)
 	}
 	return database
 }

@@ -17,6 +17,13 @@ func TestRecipeRawTextMysql(t *testing.T) {
 	recipe.Run(t, rawTextRecipe, "mysql")
 }
 
+// TestRecipeRawTextMariadb runs the raw_text recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeRawTextMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, rawTextRecipe, "mariadb")
+}
+
 // TestRecipeRawTextPostgres runs the raw_text recipe on PostgreSQL, each case on a case database (FCV-3).
 func TestRecipeRawTextPostgres(t *testing.T) {
 	testcase.Group(t)

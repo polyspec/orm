@@ -19,6 +19,13 @@ func TestRecipeModelWritesMysql(t *testing.T) {
 	recipe.Run(t, modelWritesRecipe, "mysql")
 }
 
+// TestRecipeModelWritesMariadb runs the model_writes recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeModelWritesMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, modelWritesRecipe, "mariadb")
+}
+
 // TestRecipeModelWritesPostgres runs the model_writes recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.
 func TestRecipeModelWritesPostgres(t *testing.T) {

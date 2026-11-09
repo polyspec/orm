@@ -19,6 +19,13 @@ func TestRecipeParameterChunkingMysql(t *testing.T) {
 	recipe.Run(t, parameterChunkingRecipe, "mysql")
 }
 
+// TestRecipeParameterChunkingMariadb runs the parameter_chunking recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeParameterChunkingMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, parameterChunkingRecipe, "mariadb")
+}
+
 // TestRecipeParameterChunkingPostgres runs the parameter_chunking recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingPostgres(t *testing.T) {

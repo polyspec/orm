@@ -676,6 +676,9 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "mariadb": {
+              "$ref": "#/$defs/value"
+            },
             "markdown": {
               "$ref": "#/$defs/value"
             },
@@ -740,6 +743,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "mariadb": {
+              "type": "string",
+              "minLength": 1
+            },
             "markdown": {
               "type": "string",
               "minLength": 1
@@ -872,6 +879,9 @@
           "minProperties": 1,
           "additionalProperties": false,
           "properties": {
+            "mariadb": {
+              "$ref": "#/$defs/outcome"
+            },
             "markdown": {
               "$ref": "#/$defs/outcome"
             },
@@ -1672,6 +1682,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "mariadb": {
+                    "type": "string"
+                  },
                   "markdown": {
                     "type": "string"
                   },
@@ -1724,6 +1737,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "mariadb": {
+                    "type": "string"
+                  },
                   "markdown": {
                     "type": "string"
                   },
@@ -1944,6 +1960,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "mariadb": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
               "markdown": {
                 "$ref": "#/$defs/outcomes/deadlock"
               },
@@ -2973,6 +2992,9 @@
                         ],
                         "additionalProperties": false,
                         "properties": {
+                          "mariadb": {
+                            "type": "array"
+                          },
                           "markdown": {
                             "type": "array"
                           },
@@ -5797,6 +5819,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "mariadb": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
               "markdown": {
                 "$ref": "#/$defs/outcomes/serverTransactions"
               },
@@ -5987,6 +6012,7 @@
             "type": "object",
             "propertyNames": {
               "enum": [
+                "mariadb",
                 "markdown",
                 "mysql",
                 "postgres",
@@ -6244,6 +6270,13 @@
                     ],
                     "additionalProperties": false,
                     "properties": {
+                      "mariadb": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "markdown": {
                         "type": "array",
                         "minItems": 1,
@@ -9728,6 +9761,7 @@
                         "minProperties": 1,
                         "propertyNames": {
                           "enum": [
+                            "mariadb",
                             "markdown",
                             "mysql",
                             "postgres",
@@ -9735,6 +9769,7 @@
                           ]
                         },
                         "properties": {
+                          "mariadb": true,
                           "markdown": true,
                           "mysql": true,
                           "postgres": true,

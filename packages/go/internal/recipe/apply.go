@@ -73,9 +73,11 @@ func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
 	if c.dialect() == "sqlite" {
 		return dsn, nil
 	}
-	server := os.Getenv(applyServerEnv[c.dialect()])
+	// On MariaDB the variable of the MySQL dialect names the MariaDB server (FCV-3).
+	variable := serverVariable(applyServerEnv[c.dialect()], c.database)
+	server := os.Getenv(variable)
 	if server == "" {
-		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", applyServerEnv[c.dialect()])
+		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	return testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, dsn)), nil
 }

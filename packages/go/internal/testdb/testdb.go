@@ -34,7 +34,7 @@ func Name() string {
 	return fmt.Sprintf("orm_case_%d_%d", os.Getpid(), counter.Add(1))
 }
 
-// New creates a case database for the driver ("sqlite", "mysql", "postgres") and
+// New creates a case database for the driver ("sqlite", "mysql", "mariadb", "postgres") and
 // returns its DSN. For MySQL and PostgreSQL it creates the database orm_case_<pid>_<number> on the server of ORM_TEST_<DRIVER>_DSN
 // and changes only the path of the DSN to that name (the query stays as it is). SQLite uses the new file
 // orm-case-<pid>-<number>.sqlite in the OS temp directory. Creating and deleting it is reported as a STEP line
@@ -121,7 +121,8 @@ func DatabaseOf(t testing.TB, dsn string) string {
 func Open(t testing.TB, driver, dsn string) *sql.DB {
 	t.Helper()
 	sqlDriver, native := "pgx", dsn
-	if driver == "mysql" {
+	// MariaDB is a server of the MySQL dialect (DIA-200), reached with the MySQL driver.
+	if driver == "mysql" || driver == "mariadb" {
 		cfg, err := testcase.MySQLConfig(dsn)
 		if err != nil {
 			t.Fatalf("parse DSN: %v", err)
