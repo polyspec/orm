@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b7cd6a1025e54511e99811535e3a7697822a8d2f7054b938d622980dc1df4873 -->
+<!-- source-sha256: 76d9cdb9ee31cba382d30290f609d23450275e54e73dede5f7421defea22d81b -->
 # 변경 이력
 
 ## Unreleased
@@ -8,6 +8,7 @@
 - PHP extension: `utils()->schema()`가 database를 읽는 catalog query가 `PDOException`으로 실패하면, 그 연결의 `driverError`가 대응시킨 `OrmException`으로 statement event에 발행된다. extension이 이 method를 static으로 불렀기 때문에 모든 database에서 `Error: Invalid callback Polyspec\Orm\Db::driverError, non-static method`가 났다.
 - Breaking: mysql 연결의 server error 번호는 그 server의 표로 읽으며 모든 runtime에서 같다(DIA-201). 각 클라이언트는 연결할 때 한 번 `SELECT VERSION()`으로 server를 읽고, `-MariaDB`를 담은 version은 MariaDB다. MySQL에서 4025는 더 이상 `CONSTRAINT`가 아니라 `DRIVER`다. MySQL은 그 번호를 범위 밖의 `AUTOEXTEND_SIZE`에 주기 때문이다. MySQL의 CHECK 위반 3819는 그대로 `CONSTRAINT`다. MariaDB에서 CHECK 위반인 4025는 `CONSTRAINT`, statement timeout인 1969는 `CANCELED`이며, 4031은 MySQL에서만 `CONNECTION_LOST`다. Statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`가 모든 database에서 돈다.
 - Breaking: 모든 runtime의 모든 mysql 연결은 catalog 연결을 포함해 연결할 때 `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin`을 실행한다. 그래서 text literal은 MySQL과 MariaDB에서 똑같이 renderer의 column처럼 code point로 비교한다(DIA-202). 전에는 연결의 collation을 driver와 server가 저마다 골랐다. Go, PHP, PHP extension은 `utf8mb4_general_ci`, TypeScript는 `utf8mb4_unicode_ci`, Python과 Rust는 utf8mb4의 server 기본값(MySQL에서 `utf8mb4_0900_ai_ci`)이었으므로 `'a' = 'A'`는 참이었고 어디서도 같게 읽히지 않았다. 이제 모든 runtime에서 그것은 거짓이고 `'a' = 'a '`, `'a' = 'á'`도 거짓이며 `'B' < 'a'`는 참이다. go-sql-driver/mysql은 한 byte handshake 표의 collation만 받으므로 Go는 이 문을 connector에서 실행한다. Statement runner case `a_text_literal_compares_by_code_point_on_every_connection`가 모든 database에서 돈다.
+- dbspec의 MySQL introspection은 모든 runtime에서 functional index key part를 `STATISTICS.EXPRESSION`이 아니라 `COLUMN_NAME IS NULL`로 읽는다(DIA-70). MySQL은 functional key part에 column을 주지 않으므로 MySQL의 결과는 같고, functional key part도 `EXPRESSION` column도 없는 MariaDB는 1054로 실패하지 않고 같은 query로 읽힌다.
 
 ## 0.0.27
 

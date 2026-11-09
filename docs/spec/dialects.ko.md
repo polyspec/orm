@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 0f346254fae17fa8c464f23e6d682e537edd110d0f95637741f993ebe1a0375a -->
+<!-- source-sha256: 1365e98dfe7455f835651e37b0d753ee8c031b4d7151ee24c777f7c931d286da -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -161,7 +161,7 @@ import (
 - **DIA-67** Key 순서 — MySQL 8.4: `DESC`를 저장한다(`COLLATION` `D`); PostgreSQL 17: `DESC`를 저장한다(`pg_get_indexdef`); SQLite: `DESC`를 저장한다(`pragma_index_xinfo.desc`); Probe: `mysql.index.descending`, `postgres.index.descending_partial_expression`, `sqlite.index.descending`; 결정과 중립 rendering: **Decision:** 컬럼별 오름차순·내림차순을 지원한다. NULLS FIRST/LAST 선택지는 없다; Introspection: 표에 적은 대로
 - **DIA-68** Prefix key — MySQL 8.4: `v(10)`을 `SUB_PART`로 기록한다; PostgreSQL 17: 해당 문법이 없다(42883); SQLite: 해당 문법이 없다; Probe: `mysql.index.prefix`, `postgres.index.prefix_rejected`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: MySQL `SUB_PART`는 미지원으로 보고한다
 - **DIA-69** Partial index — MySQL 8.4: 없다(1064); PostgreSQL 17: `WHERE` 조건(`pg_index.indpred`); SQLite: `WHERE` 조건(`pragma_index_list.partial`, 텍스트는 `sqlite_master.sql`); Probe: `mysql.index.partial_rejected`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: 미지원으로 보고한다
-- **DIA-70** 식 index — MySQL 8.4: Functional key part: `COLUMN_NAME` NULL, 정규화한 `EXPRESSION`; PostgreSQL 17: 식 key(`pg_index.indkey` 0); SQLite: 식 key(`pragma_index_info.cid` -2, 이름 NULL); Probe: `mysql.index.functional`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 생성 컬럼과 같은 이유로 지원하지 않는다; Introspection: 미지원으로 보고한다
+- **DIA-70** 식 index — MySQL 8.4: Functional key part: `COLUMN_NAME` NULL, 정규화한 `EXPRESSION`; MariaDB 11.8: functional key part가 없으므로(1064) `COLUMN_NAME`은 NULL이 아니고, `STATISTICS`에는 `EXPRESSION` column이 없다(1054); PostgreSQL 17: 식 key(`pg_index.indkey` 0); SQLite: 식 key(`pragma_index_info.cid` -2, 이름 NULL); Probe: `mysql.index.functional`, `mariadb.index.functional`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 생성 컬럼과 같은 이유로 지원하지 않는다; Introspection: 미지원으로 보고한다. key part는 `COLUMN_NAME`이 NULL일 때 functional이며, 이는 MySQL과 MariaDB가 같은 결과로 읽는 한 형식이다(DIA-200, 규칙 1)
 - **DIA-71** Full-text index — MySQL 8.4: `FULLTEXT` index; PostgreSQL 17: 해당 index가 없고 `to_tsvector` 식에 대한 GIN을 쓴다; SQLite: FTS5 virtual table만 있다; Probe: (manual); 결정과 중립 rendering: **Decision:** 지원하지 않는다. SQLite에는 table의 full-text index가 없고 PostgreSQL 형식은 식 index다; Introspection: 미지원으로 보고한다
 - **DIA-72** Key 길이 — MySQL 8.4: Index key는 3072바이트 이하다. utf8mb4 `varchar(768)`은 받고 `varchar(769)`는 거부한다(1071); PostgreSQL 17: 2704바이트를 넘는 B-tree 항목은 insert에서 실패한다(54000). 4바이트 문자 640개는 들어간다; SQLite: 한도가 없다; Probe: `mysql.index.max_key_bytes`, `postgres.index.btree_entry_limit`, `postgres.index.varchar_640_four_byte_fits`; 결정과 중립 rendering: **Decision:** 한 index의 `varchar` 컬럼 선언 길이 합은 640자 이하다. utf8mb4로 2560바이트이며 두 한도 안에 있다. `postgres.index.varchar_640_four_byte_fits`는 아직 실행하지 않았다; Introspection: 해당 없음
 - **DIA-73** Index와 unique 이름 — MySQL 8.4: Index 이름은 table 범위이고 64자 이하다(1059). `PRIMARY`는 예약어다(1280); PostgreSQL 17: Index와 unique 제약 이름은 schema 이름공간을 공유한다(42P07); SQLite: Index 이름은 database에서 고유하다; Probe: `mysql.index.name_table_scope`, `mysql.index.name_max_length`, `mysql.index.primary_name_reserved`, `postgres.index.name_schema_scope`, `postgres.unique.name_schema_scope`, `sqlite.index.name_database_scope`; 결정과 중립 rendering: **Decision:** 이름은 아래 식별자 규칙을 따르고 index와 unique key 전체에서 schema 안에 고유하다. `primary`는 유효한 이름이 아니다; Introspection: MySQL `STATISTICS.INDEX_NAME`, PostgreSQL index의 `pg_class`, SQLite `pragma_index_list.name`
@@ -467,7 +467,7 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.ident.max_length` | table 이름은 최대 64문자이다(1103) |
 | `mariadb.ident.table_case_server_setting` | MySQL의 fact가 성립한다 |
 | `mariadb.index.descending` | MySQL의 fact가 성립한다 |
-| `mariadb.index.functional` | MariaDB에는 functional index key가 없다(1064) |
+| `mariadb.index.functional` | MariaDB에는 functional index key가 없고(1064), STATISTICS에는 EXPRESSION column이 없다(1054) |
 | `mariadb.index.max_key_bytes` | 3072 byte를 넘는 utf8mb4 VARCHAR(769)의 index를 받는다 |
 | `mariadb.index.name_max_length` | MySQL의 fact가 성립한다 |
 | `mariadb.index.name_table_scope` | MySQL의 fact가 성립한다 |

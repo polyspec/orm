@@ -122,8 +122,11 @@ func mariadbFacts() []Probe {
 			e.Fails("INSERT INTO t (a, b) VALUES (1, 2)", "1906")
 		}),
 		// Indexes.
-		p("index.functional", "MariaDB has no functional index key (1064)", func(e *Env) {
+		p("index.functional", "MariaDB has no functional index key (1064), and STATISTICS has no EXPRESSION column (1054)", func(e *Env) {
 			e.Fails("CREATE TABLE t (a int, KEY ix ((a+1)))", "1064")
+			e.Fails("SELECT EXPRESSION FROM information_schema.STATISTICS", "1054")
+			e.Exec("CREATE TABLE u (a int, KEY ix (a))")
+			e.Want("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'u' AND COLUMN_NAME IS NULL", "0")
 		}),
 		// Faults and constraint names.
 		p("fault.check_before_unique", "a row that breaks a CHECK and a unique key is refused with the CHECK fault, 4025 of SQLSTATE 23000", func(e *Env) {
