@@ -109,9 +109,7 @@
         },
         {
           "op": "catalog.read_only_query",
-          "sql": {
-            "sqlite": "SELECT d, dt, ts FROM kcat_query_temporal"
-          },
+          "sql": "SELECT d, dt, ts FROM kcat_query_temporal",
           "expect": {
             "sqlite": {
               "rows": [
