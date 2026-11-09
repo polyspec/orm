@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 85771f11dd55c7cb59540cb7087bd01b4db59f5aff95160ed69e4c702688bf82 -->
+<!-- source-sha256: 2912b22d16758aa33f1636a597a6cb524d319759c27a9aca3509c9abb3c731f0 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.27
 
 - Breaking: Python은 `yaml` 단계를 orm의 YAML reader `packages/python/src/polyspec/orm/_yaml_reader.py`로 읽으며, 이 reader는 YAML 1.2.2의 production을 COD-74부터 COD-80이 적은 대로 읽는다. 전에는 rapidyaml로 읽고 collection key 앞에서는 ruamel.yaml의 event stream으로 읽었다. package는 더 이상 rapidyaml에 의존하지 않으며 ruamel.yaml은 쓰기만 한다 (XV33). 읽기는 위의 첫 항목이 적은 대로 바뀐다. 문법을 벗어나는 stream은 `yaml: the stream does not parse`이고 line과 column(Unicode 문자 단위, 1부터)을 적는 `YamlReaderError`를 cause로 가지며, 전에는 rapidyaml이나 ruamel.yaml의 실패가 cause였다. collection key가 있는 `%YAML 1.3` stream도 reader의 오류를 가진 그 규칙이고, 더 이상 `AssertionError`가 아니다. reader는 node를 자기 list에 두므로 어느 깊이에서나 같은 Python frame을 쓰며, yaml decode는 330 대신 65 frame의 예산으로 호출자의 stack에서 돈다. Tests: `test_codec_yaml_reader_cause.py`가 cause의 line과 column을 확인하며 `test_codec_library_failures.py`를 대신한다.
 - Python: YAML reader는 문법이 key를 요구하는 곳에서 미리 읽기가 `:` 없이 끝나는 plain scalar에 값의 규칙을, stream이 문법을 벗어나는 곳의 `yaml-parse`보다 먼저 적용한다. 그래서 `a: 1\n.inf\n`은 `yaml: the stream does not parse`가 아니라 `yaml: number is not finite`이며, `a: 1\n[.inf]\n`은 이미 그랬다 (COD-80, XV33).
