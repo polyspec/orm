@@ -189,7 +189,6 @@ fn main() {
         polyspec_orm_testcase::Group::new("dbspec_model", polyspec_orm_schema_cases::dbspec_model::trials),
         polyspec_orm_testcase::Group::new("dbspec_runtime", polyspec_orm_schema_cases::dbspec_runtime::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_working_directory", polyspec_orm_schema_cases::dbspec_set_working_directory::trials),
-        polyspec_orm_testcase::Group::new("decimal_model", polyspec_orm_cases::decimal_model::trials),
         polyspec_orm_testcase::Group::new("form", polyspec_orm_testcase_cases::form::trials),
         polyspec_orm_testcase::Group::new("generate", polyspec_orm_build_cases::generate::trials),
         polyspec_orm_testcase::Group::new("identity_load", polyspec_orm_cases::identity_load::trials).in_order(),

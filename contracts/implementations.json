@@ -577,7 +577,6 @@
         "packages/php-ext/tests/CollectionFixtureModel.php",
         "packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
         "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
-        "packages/php-ext/tests/CoverageNativeDecimalModel.php",
         "packages/php-ext/tests/DslFixture.php",
         "packages/php-ext/tests/ModelAssemblyFixture.php",
         "packages/php-ext/tests/ModelAssemblyTestSupport.php",

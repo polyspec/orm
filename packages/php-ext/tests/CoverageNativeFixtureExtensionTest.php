@@ -25,12 +25,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     }
 
     /** @return iterable<string, array{string}> */
-    public static function decimalModelVectors(): iterable
-    {
-        return self::nativeFixtureIds(\Polyspec\Orm\Tests\DecimalModelTest::cases());
-    }
-
-    /** @return iterable<string, array{string}> */
     public static function identityLoadVectors(): iterable
     {
         return self::nativeFixtureIds(\Polyspec\Orm\Tests\IdentityLoadTest::cases());
@@ -59,44 +53,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     private function assertAggregateNumericCase(\Polyspec\Orm\Tests\AggregateNumericTest $owner, array $case): void
     {
         $owner->testAggregateNumeric($case);
-    }
-
-    #[DataProvider('decimalModelVectors')]
-    public function testDecimalModelVector(string $id): void
-    {
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'writeColumn'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'readColumn'))->isInternal());
-        [$case, $column] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
-            \Polyspec\Orm\Tests\DecimalModelTest::cases(),
-            $id,
-            'native'
-        );
-        $owner = new \Polyspec\Orm\Tests\DecimalModelTest('testDecimalModel');
-        $this->assertDecimalModelCase($owner, $case, $column);
-    }
-
-    /** @param array<string, mixed> $case @param array<string, mixed> $column */
-    private function assertDecimalModelCase(
-        \Polyspec\Orm\Tests\DecimalModelTest $owner,
-        array $case,
-        array $column
-    ): void {
-        $owner->testDecimalModel($case, $column);
-        CoverageNativeDecimalModel::$precision = $column['precision'];
-        CoverageNativeDecimalModel::$scale = $column['scale'];
-        $model = new CoverageNativeDecimalModel();
-        if (isset($case['expected']['error'])) {
-            try {
-                $model->setAmount($case['input']);
-                self::fail("{$case['id']}: native model accepted an invalid decimal");
-            } catch (\Polyspec\Orm\OrmException $error) {
-                Assert::assertSame($case['expected']['error'], $error->code_, "{$case['id']}: native setter error");
-            }
-            return;
-        }
-        $model->setAmount($case['input']);
-        Assert::assertSame($case['expected']['value'], $model->getAmount(), "{$case['id']}: native model value");
     }
 
     // Requirements: INT-76.

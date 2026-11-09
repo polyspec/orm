@@ -848,7 +848,6 @@
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/tests/all/decimal_physical.rs",
-        "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/go/orm/group_rows_test.go",
@@ -862,14 +861,12 @@
         "packages/go/orm/shape_internal_test.go",
         "packages/go/orm/styled_state_test.go",
         "packages/go/orm/styled_state_physical_test.go",
-        "packages/go/orm/decimal_model_test.go",
         "contracts/fixtures/styled_column_states.json",
         "packages/go/model/decimal_field_test.go",
         "packages/go/model/styled_state_test.go",
         "packages/go/decimalmodel/schema_set_test.go",
         "contracts/fixtures/decimal_schema.dbs",
         "packages/php/tests/RuntimeDbTest.php",
-        "packages/rust/orm/tests/cases/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
@@ -878,7 +875,6 @@
         "packages/python/tests/test_model_json_text.py",
         "packages/python/tests/test_styled_column_states.py",
         "packages/python/tests/test_styled_sql_null.py",
-        "packages/python/tests/test_decimal_model.py",
         "packages/python/tests/decimal_model_db.py",
         "packages/python/tests/test_model_fields.py",
         "packages/python/tests/test_values.py",
@@ -1215,14 +1211,6 @@
           ]
         },
         {
-          "id": "decimal-typescript-unit",
-          "command": "node packages/ts/tests/decimal_model.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/decimal_model.mjs"
-          ]
-        },
-        {
           "id": "decimal-typescript-types",
           "command": "node tests/run-long.mts typescript-types -- npm exec --workspace packages/ts -- tsc -p tsconfig.json --noEmit",
           "shard": "other",
@@ -1259,7 +1247,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1270,7 +1258,6 @@
             "packages/go/orm/shape_internal_test.go",
             "packages/go/orm/styled_state_test.go",
             "packages/go/orm/styled_state_physical_test.go",
-            "packages/go/orm/decimal_model_test.go",
             "contracts/fixtures/styled_column_states.json"
           ]
         },
@@ -1301,16 +1288,6 @@
           ]
         },
         {
-          "id": "decimal-model-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts decimal-model-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_model::",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/cases/decimal_model.rs",
-            "contracts/fixtures/dbspec-set.json",
-            "packages/rust/tests/dbspec-set.json"
-          ]
-        },
-        {
           "id": "values-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- value_types::",
           "shard": "rust",
@@ -1333,16 +1310,6 @@
             "packages/python/src/polyspec/orm/core.py",
             "contracts/fixtures/aggregate_numeric.json",
             "contracts/fixtures/styled_column_states.json"
-          ]
-        },
-        {
-          "id": "decimal-python-unit",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_decimal_model.py",
-            "packages/python/src/polyspec/orm/decimal.py",
-            "contracts/fixtures/decimal_model.json"
           ]
         },
         {
@@ -1406,7 +1373,6 @@
             "packages/php/tests/IdentityLoadTest.php",
             "packages/php/tests/case_database.php",
             "contracts/fixtures/aggregate_numeric.json",
-            "contracts/fixtures/decimal_model.json",
             "contracts/fixtures/identity_load.json",
             "contracts/fixtures/identity_load.dbs",
             "packages/php/tests/NativeFixtureVectors.php"
@@ -1658,7 +1624,6 @@
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
-        "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
@@ -1701,11 +1666,9 @@
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/tests/all/decimal_physical.rs",
-        "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/ts/tests/clock.mjs",
-        "packages/go/orm/decimal_model_test.go",
         "packages/go/orm/write_set_test.go",
         "packages/go/model/decimal_field_test.go",
         "packages/go/orm/styled_state_test.go",
@@ -1713,7 +1676,6 @@
         "packages/go/model/styled_state_test.go",
         "packages/go/orm/exec_decode_test.go",
         "packages/php/tests/StyledValueTest.php",
-        "packages/rust/orm/tests/cases/decimal_model.rs",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
@@ -1837,8 +1799,7 @@
           "command": ". \"$DECIMAL_ENV\" && vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/DecimalModelTest.php",
-            "contracts/fixtures/decimal_model.json"
+            "packages/php/tests/DecimalModelTest.php"
           ]
         },
         {
@@ -1873,15 +1834,6 @@
             "packages/rust/tests/tests/all/decimal_physical.rs",
             "contracts/fixtures/dbspec-set.json",
             "packages/rust/tests/dbspec-set.json"
-          ]
-        },
-        {
-          "id": "decimal-typescript-unit",
-          "command": "node packages/ts/tests/decimal_model.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/decimal_model.mjs",
-            "contracts/fixtures/decimal_model.json"
           ]
         },
         {

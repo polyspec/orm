@@ -83484,6 +83484,212 @@
    ]
   },
   {
+   "id": "decimal_values_padded_or_refused",
+   "requirements": [
+    "DIA-25",
+    "COD-2"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "48.045"
+      },
+      "large": {
+       "text": "1"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DecimalValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "amount",
+      "large"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "amount": "48.0450",
+        "large": "1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "amount": "48.0450",
+        "large": "1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "amount": "48.0450",
+        "large": "1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "999999999.9999"
+      },
+      "large": {
+       "text": "9999999999999999"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DecimalValue",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "amount",
+      "large"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "amount": "999999999.9999",
+        "large": "9999999999999999"
+       }
+      },
+      "postgres": {
+       "json": {
+        "amount": "999999999.9999",
+        "large": "9999999999999999"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "amount": "999999999.9999",
+        "large": "9999999999999999"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "1.00001"
+      },
+      "large": {
+       "text": "0"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "1000000000.0000"
+      },
+      "large": {
+       "text": "0"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "NaN"
+      },
+      "large": {
+       "text": "0"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: invalid text"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: invalid text"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: decimal: invalid text"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "model": "DecimalValue",
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "core_styled_states",
    "requirements": [
     "COD-20"

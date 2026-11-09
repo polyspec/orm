@@ -137,7 +137,6 @@ require_once __DIR__ . '/CollectionFakePdo.php';
 require_once __DIR__ . '/CollectionFixtureModel.php';
 require_once __DIR__ . '/ConnectionTimeoutCleanupPdo.php';
 require_once __DIR__ . '/ConnectionTimeoutCleanupStatement.php';
-require_once __DIR__ . '/CoverageNativeDecimalModel.php';
 require_once __DIR__ . '/NativeModelFixture.php';
 require_once __DIR__ . '/ModelReadShapeFixture.php';
 require_once __DIR__ . '/ModelReadWarningStream.php';

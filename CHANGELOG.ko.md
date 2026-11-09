@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ac7deb9041440f9690c9fb04b7207437e66b2f9431944f5a54d89457c1fabb2f -->
+<!-- source-sha256: 81e8d67d1d2558389ed51fd25515c0a48515343f6837fb202312740a735529f4 -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성 모델의 decimal 값은 모든 runtime이 모든 데이터베이스에서 실행하는 recipe conformance_verification의 case decimal_values_padded_or_refused다(T400-1, DIA-25, COD-2): scale까지 채운 값, decimal(13,4)의 가장 큰 값, 그리고 fraction exceeds scale, value exceeds precision, invalid text 거부. contracts/fixtures/decimal_model.json과 그것으로 각 runtime의 비공개 정규화를 부르던 시험을 지운다: Go TestDecimalModelFixture, PHP testDecimalModel, CoverageNativeDecimalModel과 함께 PHP extension testDecimalModelVector, Python test_decimal_model.py, TypeScript decimal_model.mjs, Rust decimal_model trial. Go recipe runner는 decimal column을 생성된 setter처럼 NormalizeDecimal로 설정하므로, column이 담을 수 없는 값은 먼저 decode되지 않고 다른 runtime처럼 setter에서 COD-2 문구로 거부된다.
 - 여섯 runtime의 markdown conformance runner는 tests/markdown/cases.json의 선언된 case runner다(T400-1, FCV-15, FCV-2): scripts/features/recipe-runners.mts가 CASE_RUNNERS에 그것을 적고 source가 아니거나 case 파일을 적지 않은 runner를 보고하며, make repo-check는 모든 runtime에서 파일의 모든 case를 실행하는 그 시험을 native 시험으로 읽지 않는다.
 - scripts/features/coverage.mts --case는 선택한 case를 그것을 적은 entry가 있는 데이터베이스에서 실행하고, MySQL과 PostgreSQL의 case의 SQLite 자리처럼 case가 실행되지 않는 데이터베이스의 자리는 보고하지 않는다. 어떤 entry도 선택한 case를 적지 않은 부분은 실패한다(T400-1, FCV-6).
 - catalog의 commit된 insert는 모든 runtime에서 서버 연결 하나에서 쓰고, 거부된 insert 뒤에도 다음 insert는 commit된다: MySQL과 PostgreSQL에서 recipe catalog_connection의 case committed_mutations_share_one_connection이다(T400-1, INT-106c, INT-157). 이를 지키던 Go, Python, Rust, TypeScript의 native 시험은 지운다.

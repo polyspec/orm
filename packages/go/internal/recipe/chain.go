@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -1518,6 +1519,17 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			core.SetTimeText(member.key, text)
 			continue
 		}
+		if text, ok := value.(string); ok {
+			if field := columnField(core, member.key, c); field != nil && field.Type == "decimal" {
+				// A generated setter of a decimal column takes its text through NormalizeDecimal and returns its refusal
+				// (COD-2), before the model changes.
+				normalized, err := orm.NormalizeDecimal(text, field.Precision, field.Scale)
+				if err != nil {
+					return err
+				}
+				value = normalized
+			}
+		}
 		core.Set(member.key, value)
 	}
 	return nil
@@ -1526,19 +1538,24 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 // temporalColumn reports whether column of the model of core is a date, a time or a datetime, whose generated setter takes
 // its text and records a text the column does not hold.
 func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
+	field := columnField(core, column, c)
+	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
+}
+
+// columnField is the field of column in the runtime model of the fixture, or nil for a name that is no field.
+func columnField(core *orm.Core, column string, c *databaseContext) *runtimemodel.Field {
 	if c.schema == nil {
-		return false
+		return nil
 	}
 	model, err := c.schema.Model()
 	if err != nil {
-		return false
+		return nil
 	}
 	entity := model.Entities[core.Entity().Name]
 	if entity == nil {
-		return false
+		return nil
 	}
-	field := entity.Field(column)
-	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
+	return entity.Field(column)
 }
 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its
