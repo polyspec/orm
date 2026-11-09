@@ -174,7 +174,7 @@ class CatalogMutationHelperTest(unittest.TestCase):
 
     # Requirements: INT-172
     # INT-172 (FCV-2): no database sends a value that its driver cannot decode, so the failure is injected at the decoding
-    # of each dialect; the failure is the cause of the refusal.
+    # of each dialect; the refusal names no column, and the failure is its cause.
     def test_a_value_the_driver_cannot_decode_keeps_its_failure(self):
         def converter(data):
             raise ValueError("no value")
@@ -185,35 +185,31 @@ class CatalogMutationHelperTest(unittest.TestCase):
             (
                 "a MySQL text that is not UTF-8",
                 lambda: result.converters[0][1](b"\xff"),
-                1,
                 UnicodeDecodeError,
             ),
             (
                 "a MySQL converter that fails",
                 lambda: result.converters[1][1](b"1"),
-                2,
                 ValueError,
             ),
             (
                 "a PostgreSQL text that is not UTF-8",
                 lambda: _grid_cell(b"\xff", "postgres", 25, False, 2, "text"),
-                2,
                 UnicodeDecodeError,
             ),
             (
                 "a PostgreSQL bytea of no bytea form",
                 lambda: _grid_cell(b"\\x0", "postgres", 17, False, 5, "binary"),
-                5,
                 ValueError,
             ),
         ]
-        for name, call, position, failure in cases:
+        for name, call, failure in cases:
             with self.subTest(case=name):
                 with self.assertRaises(OrmError) as raised:
                     call()
                 self.assertEqual(
                     str(raised.exception),
-                    f"CATALOG_VALUE: column {position}: the driver could not decode the value",
+                    "CATALOG_VALUE: the driver could not decode the value",
                 )
                 self.assertIsInstance(raised.exception.__cause__, failure)
                 self.assertIs(raised.exception.cause, raised.exception.__cause__)

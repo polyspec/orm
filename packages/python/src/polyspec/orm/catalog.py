@@ -875,9 +875,10 @@ def _driver_value(position: int) -> OrmError:
     return _value_error(codes.CATALOG_VALUE, position, _DRIVER_VALUE_TEXT)
 
 
-def _decode_failure(position: int, failure: BaseException) -> OrmError:
-    """INT-172: a value that the driver or a library fails to decode; the failure is the cause (__cause__ and cause)."""
-    return _error(codes.CATALOG_VALUE, f"column {position}: {_DECODE_TEXT}", failure)
+def _decode_failure(failure: BaseException) -> OrmError:
+    """INT-172: a value that the driver or a library fails to decode, which names no column; the failure is the cause
+    (__cause__ and cause)."""
+    return _error(codes.CATALOG_VALUE, _DECODE_TEXT, failure)
 
 
 def _temporal_error(position: int, text: str) -> OrmError:
@@ -989,8 +990,9 @@ def _pg_timestamp(text: str, position: int) -> str:
 # The cell class of a PostgreSQL type OID (INT-185): a type of its own cell kind, a text type whose output no session
 # setting changes (oid among them), timestamptz and timetz (INT-168), or "native", a type that has no cell (INT-170). An
 # OID that is not here is read from pg_type: a base type that INT-185 does not name, such as citext, is "native", an enum
-# is text, a domain takes the class of its base type, and an array, a range, a multirange or a composite is text when
-# every element or field is of an integer, decimal, boolean or text class.
+# is text, a domain takes the class of its base type, and an array, a range or a composite is text when every element or
+# field is of an integer, decimal, boolean or text class. A multirange, and a type that holds one, is "multirange":
+# INT-185 refuses its column by its type, before any value is read, a NULL included.
 _PG_CLASSES = {
     16: "boolean",
     17: "binary",
@@ -1028,8 +1030,7 @@ _PG_CLASSES = {
 _PG_ELEMENT_CLASSES = ("integer", "decimal", "boolean", "text")
 _PG_TYPE_SQL = (
     "SELECT t.typtype::text,t.typcategory::text,t.typelem::int8,t.typbasetype::int8,t.typrelid::int8,"
-    "COALESCE(r.rngsubtype,0)::int8,COALESCE(m.rngtypid,0)::int8 FROM pg_type t "
-    "LEFT JOIN pg_range r ON r.rngtypid=t.oid LEFT JOIN pg_range m ON m.rngmultitypid=t.oid WHERE t.oid=$1::int8::oid"
+    "COALESCE(r.rngsubtype,0)::int8 FROM pg_type t LEFT JOIN pg_range r ON r.rngtypid=t.oid WHERE t.oid=$1::int8::oid"
 )
 _PG_FIELDS_SQL = "SELECT atttypid::int8 FROM pg_attribute WHERE attrelid=$1::int8::oid AND attnum>0 AND NOT attisdropped ORDER BY attnum"
 _PG_INTEGER_TEXT = re.compile(r"-?[0-9]+")
@@ -1205,7 +1206,7 @@ def _grid_cell(
     except OrmError:
         raise
     except Exception as failure:
-        raise _decode_failure(position, failure) from failure
+        raise _decode_failure(failure) from failure
 
 
 # The declared precision p of a described MySQL or PostgreSQL time or datetime column, from its native type, with the
@@ -1307,7 +1308,7 @@ def _described_value(
     except OrmError:
         raise
     except Exception as failure:
-        raise _decode_failure(position, failure) from failure
+        raise _decode_failure(failure) from failure
     cell = _grid_cell(value, dialect, code, False, position, cls)
     if cell.kind in ("float32", "float64"):
         return cell
@@ -1365,23 +1366,22 @@ def _pg_loaded_oids() -> tuple:
 
 
 def _mysql_decoders(result) -> None:
-    """Makes each decoder of a pymysql result a decoder of one column, so that a value that pymysql or a converter fails to
-    decode is the failure of that column, with the failure as its cause (INT-172)."""
+    """Wraps each decoder of a pymysql result, so that a value that pymysql or a converter fails to decode is INT-172, with
+    the failure as its cause."""
 
-    def column(position: int, encoding, converter):
+    def column(encoding, converter):
         def decode(data):
             try:
                 if encoding is not None:
                     data = data.decode(encoding)
                 return data if converter is None else converter(data)
             except Exception as failure:
-                raise _decode_failure(position, failure) from failure
+                raise _decode_failure(failure) from failure
 
         return decode
 
     result.converters = [
-        (None, column(position, encoding, converter))
-        for position, (encoding, converter) in enumerate(result.converters, start=1)
+        (None, column(encoding, converter)) for encoding, converter in result.converters
     ]
 
 
@@ -1457,8 +1457,8 @@ class _Session:
             catalog = grid or described is not None
             if catalog and self.dialect == "postgres":
                 # A grid or described read takes the bytes of the text that PostgreSQL writes for each value, and the
-                # conversion reads each by the cell class of its column (INT-185), so that a decoding failure is the
-                # failure of one column (INT-172). psycopg is imported only by such a PostgreSQL read.
+                # conversion reads each by the cell class of its column (INT-185), so that a decoding failure is INT-172.
+                # psycopg is imported only by such a PostgreSQL read.
                 for oid in _pg_loaded_oids():
                     cursor.adapters.register_loader(oid, _pg_raw_loader())
             elif query and self.dialect == "postgres":
@@ -1492,9 +1492,15 @@ class _Session:
                     _mysql_decoders(cursor._result)
                 else:
                     unsigned = [False] * len(names)
-                if catalog and self.dialect == "postgres":
+                if (catalog or query) and self.dialect == "postgres":
                     memo: dict = {}
                     classes = [self._pg_class(oid, memo, 0) for oid in type_codes]
+                    # A multirange is refused by its type, at its first column, before any row is read (INT-185).
+                    for index, cls in enumerate(classes):
+                        if cls == "multirange":
+                            raise _value_error(
+                                codes.CATALOG_VALUE, index + 1, _NATIVE_TEXT
+                            )
                 for row in _stream_rows(cursor, cursor_name):
                     if keep is not None and len(rows) == keep:
                         past = True
@@ -1587,10 +1593,12 @@ class _Session:
         rows = self.run(_PG_TYPE_SQL, [oid]).rows
         cls = "native"
         if len(rows) == 1:
-            typtype, category, element, base, relation, subtype, range_type = rows[0]
+            typtype, category, element, base, relation, subtype = rows[0]
 
             def elements(oids) -> str:
                 each = [self._pg_class(item, memo, depth + 1) for item in oids]
+                if "multirange" in each:
+                    return "multirange"
                 return (
                     "text"
                     if each and all(item in _PG_ELEMENT_CLASSES for item in each)
@@ -1606,7 +1614,7 @@ class _Session:
             elif typtype == "r":
                 cls = elements([subtype])
             elif typtype == "m":
-                cls = elements([range_type])
+                cls = "multirange"
             elif typtype == "c":
                 cls = elements(
                     [row[0] for row in self.run(_PG_FIELDS_SQL, [relation]).rows]
