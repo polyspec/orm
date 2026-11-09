@@ -228,16 +228,18 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
     }))
 }
 
-/// Whether `text` has the dbspec form of `kind` (date, time or datetime): `YYYY-MM-DD`, `HH:MM:SS` with no fraction or one to
-/// six fraction digits, and the two joined by a space. The form says nothing of the range of the digits.
-fn has_form(kind: &str, text: &str) -> bool {
+/// Whether `text` has the form of a `kind` (date, time or datetime): `YYYY-MM-DD`, `HH:MM:SS` with no fraction or one to
+/// `fraction_digits` fraction digits, and the two joined by a space. The form says nothing of the range of the digits; the
+/// dbspec form has at most six fraction digits.
+pub fn has_temporal_form(kind: &str, text: &str, fraction_digits: usize) -> bool {
     fn digits(text: &str, pattern: &str) -> bool {
         text.len() == pattern.len() && text.bytes().zip(pattern.bytes()).all(|(byte, mark)| if mark == b'9' { byte.is_ascii_digit() } else { byte == mark })
     }
-    fn time(text: &str) -> bool {
+    let time = |text: &str| {
         let (whole, fraction) = text.split_once('.').map_or((text, None), |(whole, fraction)| (whole, Some(fraction)));
-        digits(whole, "99:99:99") && fraction.is_none_or(|fraction| (1..=6).contains(&fraction.len()) && fraction.bytes().all(|byte| byte.is_ascii_digit()))
-    }
+        digits(whole, "99:99:99")
+            && fraction.is_none_or(|fraction| (1..=fraction_digits).contains(&fraction.len()) && fraction.bytes().all(|byte| byte.is_ascii_digit()))
+    };
     match kind {
         "date" => digits(text, "9999-99-99"),
         "time" => time(text),
@@ -273,7 +275,7 @@ fn temporal_digits(kind: &str, text: &str) -> Result<(), value::Rule> {
 
 /// The rule that the stored text of a SQLite dbspec `kind` column breaks, form first (INT-176 to INT-178), then its digits.
 pub(crate) fn sqlite_temporal(kind: &str, text: &str) -> Result<(), value::Rule> {
-    if !has_form(kind, text) {
+    if !has_temporal_form(kind, text, 6) {
         return Err(match kind {
             "date" => value::SQLITE_DATE_FORM,
             "time" => value::SQLITE_TIME_FORM,

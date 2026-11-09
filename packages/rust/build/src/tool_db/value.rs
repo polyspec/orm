@@ -96,8 +96,13 @@ impl std::fmt::Display for ValueRefusal {
 
 impl std::error::Error for ValueRefusal {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
+        cause(&self.source)
     }
+}
+
+/// The cause that an error keeps in its `source` field, as `std::error::Error::source` answers it.
+pub(crate) fn cause<'a>(source: &'a Option<Box<dyn std::error::Error + Send + Sync + 'static>>) -> Option<&'a (dyn std::error::Error + 'static)> {
+    source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
 }
 
 /// A driver value whose format or length is not that of its type: a failure of the driver's value, which INT-172 keeps as the
@@ -114,7 +119,7 @@ impl std::fmt::Display for Malformed {
 }
 impl std::error::Error for Malformed {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
+        cause(&self.source)
     }
 }
 

@@ -826,6 +826,13 @@ func (n node) String() string {
 	return n.kind + "(" + n.text + ")"
 }
 
+// rawPairs reads body as a list of pairs of JSON values, the form of the object and map_entries wrappers of a recipe value.
+func rawPairs(body json.RawMessage) ([][2]json.RawMessage, error) {
+	var pairs [][2]json.RawMessage
+	err := json.Unmarshal(body, &pairs)
+	return pairs, err
+}
+
 // sequenceNodes returns the int nodes of a {"sequence": {"from": N, "count": M}} wrapper (FCV-4), and whether raw is one.
 func sequenceNodes(raw json.RawMessage) ([]node, bool, error) {
 	var w map[string]json.RawMessage
@@ -888,8 +895,8 @@ func wrapper(raw json.RawMessage) (node, error) {
 			}
 			return node{kind: "array", items: nodes}, nil
 		case "object":
-			var pairs [][2]json.RawMessage
-			if err := json.Unmarshal(body, &pairs); err != nil {
+			pairs, err := rawPairs(body)
+			if err != nil {
 				return node{}, err
 			}
 			n := node{kind: kind}
@@ -906,8 +913,8 @@ func wrapper(raw json.RawMessage) (node, error) {
 			}
 			return n, nil
 		case "map_entries":
-			var pairs [][2]json.RawMessage
-			if err := json.Unmarshal(body, &pairs); err != nil {
+			pairs, err := rawPairs(body)
+			if err != nil {
 				return node{}, err
 			}
 			n := node{kind: kind}

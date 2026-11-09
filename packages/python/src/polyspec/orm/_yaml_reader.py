@@ -251,14 +251,20 @@ class _Reader:
         q = self.white(self.p)
         if self.at(q) == "#" and (q > self.p or self.line_start(q)):
             q = self.line_end(q)
-        ch = self.at(q)
-        if ch == "\n":
-            self.p = q + 1
-        elif ch == "" and q >= self.n:
-            self.p = q
-        else:
+        if not self.take_break(q):
             raise _Leave(q)
         self.skip_blank()
+
+    def take_break(self, q: int) -> bool:
+        # The line break at q, or the end of the stream there; the reader then stands after it. Returns whether q holds
+        # either.
+        if self.at(q) == "\n":
+            self.p = q + 1
+            return True
+        if self.at(q) == "" and q >= self.n:
+            self.p = q
+            return True
+        return False
 
     def skip_blank(self) -> None:
         # l-comment [78] lines: white space only, or white space and a comment (6.6).
@@ -266,12 +272,7 @@ class _Reader:
             q = self.white(self.p)
             if self.at(q) == "#":
                 q = self.line_end(q)
-            ch = self.at(q)
-            if ch == "\n":
-                self.p = q + 1
-            elif ch == "" and q >= self.n:
-                self.p = q
-            else:
+            if not self.take_break(q):
                 return
 
     def sep(self, n: int) -> bool:

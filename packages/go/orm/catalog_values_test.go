@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"os"
 	"testing"
@@ -53,26 +52,11 @@ func TestCatalogValueUnsupportedDriverValue(t *testing.T) {
 // Requirements: INT-172.
 func TestCatalogValueDriverDecodeFailure(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	useFailingDriver(t, "sqlite")
-	pool, err := sql.Open("orm-failing-sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { testcase.Close(t, pool) })
-	ctx := context.Background()
-	conn, err := pool.Conn(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil && !errors.Is(err, sql.ErrConnDone) {
-			t.Errorf("close *sql.Conn: %v", err)
-		}
-	})
+	ctx, conn := failingSQLiteConn(t)
 	cause := errors.New("invalid length for int8: 3")
 	inject(t, injectedFailure{rows: func(string) error { return cause }})
 	session := &catalogSession{ctx: ctx, conn: conn, dialect: "postgres"}
-	_, err = session.queryRaw("SELECT 1, 2", nil, 10, 1<<20)
+	_, err := session.queryRaw("SELECT 1, 2", nil, 10, 1<<20)
 	if ErrorCode(err) != CodeCatalogValue || err.Error() != "CATALOG_VALUE: the driver could not decode the value" {
 		t.Fatalf("queryRaw = %v; want CATALOG_VALUE: the driver could not decode the value", err)
 	}

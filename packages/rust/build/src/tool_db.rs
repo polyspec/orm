@@ -16,8 +16,8 @@ mod pg_output;
 pub(crate) mod pg_text;
 mod result;
 pub mod value;
+pub use grid::{has_temporal_form, GridCell, GridQueryResult};
 pub(crate) use grid::{is_temporal, sqlite_temporal};
-pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub(crate) use params::decimal_valid;
 pub use params::{ParamType, P};
@@ -357,6 +357,23 @@ macro_rules! fetch_result {
     }};
 }
 
+/// Reads the rows of a PostgreSQL `stream` into `rows`, the output settings of each row checked against the baseline of a
+/// catalog session before the row is converted (INT-186); evaluates to the number of rows read.
+macro_rules! push_pg_rows {
+    ($stream:expr, $baseline:expr, $width:expr, $budget:expr, $rows:ident, $cell:ident) => {{
+        let mut stream = $stream;
+        let mut read = 0usize;
+        while let Some(row) = stream.try_next().await? {
+            if let Some(baseline) = $baseline {
+                pg_output::check_row(&row, $width, baseline)?;
+            }
+            push_row!(row, $budget, $rows, $cell, $width);
+            read += 1;
+        }
+        read
+    }};
+}
+
 /// The result of a statement on a PostgreSQL session. In a catalog session the statement runs in the CTE that carries the output
 /// settings of each row, which are checked before the row is converted and are no columns of the result, and the settings are
 /// checked once more after the rows (INT-186).
@@ -374,15 +391,7 @@ macro_rules! fetch_pg_result {
         let columns = result::columns(statement_length, statement.columns()[..width].iter().map(|column| (column.name(), column.type_info().name())))?;
         let q = binds::postgres(statement.query(), $params)?;
         let mut rows = Vec::new();
-        {
-            let mut stream = q.fetch(&mut **connection);
-            while let Some(row) = stream.try_next().await? {
-                if let Some(baseline) = &baseline {
-                    pg_output::check_row(&row, width, baseline)?;
-                }
-                push_row!(row, $budget, rows, $cell, width);
-            }
-        }
+        push_pg_rows!(q.fetch(&mut **connection), &baseline, width, $budget, rows, $cell);
         if let Some(baseline) = &baseline {
             pg_output::check_after(&mut **connection, baseline).await?;
         }
@@ -473,15 +482,8 @@ macro_rules! fetch_cursor_result {
         sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
         let mut rows = Vec::new();
         loop {
-            let mut fetched = 0usize;
-            let mut stream = sqlx::query(AssertSqlSafe(format!("FETCH FORWARD {PG_CURSOR_CHUNK} FROM {cursor}"))).fetch(&mut **connection);
-            while let Some(row) = stream.try_next().await? {
-                if let Some(baseline) = &baseline {
-                    pg_output::check_row(&row, width, baseline)?;
-                }
-                push_row!(row, $budget, rows, $cell, width);
-                fetched += 1;
-            }
+            let chunk = sqlx::query(AssertSqlSafe(format!("FETCH FORWARD {PG_CURSOR_CHUNK} FROM {cursor}"))).fetch(&mut **connection);
+            let fetched = push_pg_rows!(chunk, &baseline, width, $budget, rows, $cell);
             if fetched < PG_CURSOR_CHUNK {
                 break;
             }

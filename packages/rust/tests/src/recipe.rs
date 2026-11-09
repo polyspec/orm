@@ -2826,7 +2826,7 @@ mod database {
     use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
-    use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, Val, P};
+    use polyspec_orm_build::tool_db::{has_temporal_form, GridCell, GridQueryResult, ParamType, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
     use serde_json::{json, Map, Value};
 
@@ -4789,26 +4789,10 @@ mod database {
     fn plain_cell(cell: &GridCell, native_type: Option<&str>) -> Result<Value, String> {
         match cell {
             GridCell::Text(text) => {
-                let kind = temporal_kind(native_type).filter(|kind| *kind == "decimal" || has_temporal_form(kind, text));
+                let kind = temporal_kind(native_type).filter(|kind| *kind == "decimal" || has_temporal_form(kind, text, usize::MAX));
                 Ok(json!({ kind.unwrap_or("text"): text }))
             }
             other => grid_cell(other),
-        }
-    }
-
-    /// Whether a text has the digits and separators of a date, a time or a datetime of `kind`.
-    fn has_temporal_form(kind: &str, text: &str) -> bool {
-        fn digits(text: &str, pattern: &str) -> bool {
-            text.len() == pattern.len() && text.bytes().zip(pattern.bytes()).all(|(byte, mark)| if mark == b'9' { byte.is_ascii_digit() } else { byte == mark })
-        }
-        fn time(text: &str) -> bool {
-            let (whole, fraction) = text.split_once('.').map_or((text, None), |(whole, fraction)| (whole, Some(fraction)));
-            digits(whole, "99:99:99") && fraction.is_none_or(|fraction| !fraction.is_empty() && fraction.bytes().all(|byte| byte.is_ascii_digit()))
-        }
-        match kind {
-            "date" => digits(text, "9999-99-99"),
-            "time" => time(text),
-            _ => text.split_once(' ').is_some_and(|(date, rest)| digits(date, "9999-99-99") && time(rest)),
         }
     }
 

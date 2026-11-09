@@ -348,35 +348,39 @@ final class Codec
     }
 
     /**
+     * The place after the string literal of a JSON text whose opening quote stands at $i: after its closing quote, a
+     * backslash escaping the byte after it, or the end of the text.
+     */
+    private static function jsonStringEnd(string $text, int $i): int
+    {
+        $length = strlen($text);
+        for ($i++; $i < $length; $i++) {
+            if ($text[$i] === '\\') {
+                $i++;
+            } elseif ($text[$i] === '"') {
+                return $i + 1;
+            }
+        }
+        return $length;
+    }
+
+    /**
      * The stored text of a JSON text: the insignificant whitespace outside the string literals is removed, and every
      * other byte, the member order and the repeated member names included, stays in place (DIA-26).
      */
     private static function compactJsonText(string $text): string
     {
         $out = '';
-        $inString = false;
-        $escaped = false;
         $length = strlen($text);
         for ($i = 0; $i < $length; $i++) {
             $c = $text[$i];
-            if ($inString) {
-                $out .= $c;
-                if ($escaped) {
-                    $escaped = false;
-                } elseif ($c === '\\') {
-                    $escaped = true;
-                } elseif ($c === '"') {
-                    $inString = false;
-                }
-                continue;
-            }
-            if ($c === ' ' || $c === "\t" || $c === "\n" || $c === "\r") {
-                continue;
-            }
             if ($c === '"') {
-                $inString = true;
+                $after = self::jsonStringEnd($text, $i);
+                $out .= substr($text, $i, $after - $i);
+                $i = $after - 1;
+            } elseif ($c !== ' ' && $c !== "\t" && $c !== "\n" && $c !== "\r") {
+                $out .= $c;
             }
-            $out .= $c;
         }
         return $out;
     }
@@ -386,21 +390,11 @@ final class Codec
     {
         $depth = 0;
         $deepest = 0;
-        $inString = false;
-        $escaped = false;
         $length = strlen($text);
         for ($i = 0; $i < $length; $i++) {
             $c = $text[$i];
-            if ($inString) {
-                if ($escaped) {
-                    $escaped = false;
-                } elseif ($c === '\\') {
-                    $escaped = true;
-                } elseif ($c === '"') {
-                    $inString = false;
-                }
-            } elseif ($c === '"') {
-                $inString = true;
+            if ($c === '"') {
+                $i = self::jsonStringEnd($text, $i) - 1;
             } elseif ($c === '[' || $c === '{') {
                 $deepest = max($deepest, ++$depth);
             } elseif ($c === ']' || $c === '}') {
@@ -659,7 +653,22 @@ final class Codec
         $s = $r->s;
         $end = $r->end;
         $p = $r->p;
-        $white = $p === 0 || $s[$p - 1] === "\n";
+        $p = self::yamlLineComment($r, $p, $p === 0 || $s[$p - 1] === "\n");
+        if ($p < $end && $s[$p] !== "\n") {
+            self::yamlParseError($r, $p);
+        }
+        $r->p = $p < $end ? $p + 1 : $p;
+    }
+
+    /**
+     * The white space from $p and a comment after it (s-separate-in-line [66], c-nb-comment-text [75]); $white is
+     * whether white space or the start of a line stands before $p, and a comment after no white space is yaml-parse.
+     * Returns the place after them.
+     */
+    private static function yamlLineComment(\stdClass $r, int $p, bool $white): int
+    {
+        $s = $r->s;
+        $end = $r->end;
         while ($p < $end && ($s[$p] === ' ' || $s[$p] === "\t")) {
             $p++;
             $white = true;
@@ -670,10 +679,7 @@ final class Codec
             }
             $p = self::yamlLineStop($r, $p);
         }
-        if ($p < $end && $s[$p] !== "\n") {
-            self::yamlParseError($r, $p);
-        }
-        $r->p = $p < $end ? $p + 1 : $p;
+        return $p;
     }
 
     /**
@@ -686,18 +692,8 @@ final class Codec
         $s = $r->s;
         $end = $r->end;
         $p = $r->p;
-        $white = false;
         while (true) {
-            while ($p < $end && ($s[$p] === ' ' || $s[$p] === "\t")) {
-                $p++;
-                $white = true;
-            }
-            if ($p < $end && $s[$p] === '#') {
-                if (!$white) {
-                    self::yamlParseError($r, $p);
-                }
-                $p = self::yamlLineStop($r, $p);
-            }
+            $p = self::yamlLineComment($r, $p, false);
             if ($p >= $end || $s[$p] !== "\n") {
                 break;
             }
@@ -739,11 +735,12 @@ final class Codec
     }
 
     /**
-     * The lines after a line break inside a quoted scalar (b-l-folded [74], l-empty [70]): the empty lines, which it
-     * counts, then the white space before the next text, whose line is indented by at least $need spaces and is no
-     * marker. Returns the place of that text, or the place where the scalar leaves the grammar as -1 - $place.
+     * The lines after a line break inside a scalar that folds, a quoted or a plain one (b-l-folded [74], l-empty
+     * [70]): the empty lines, which it counts, then the white space before the next text, whose line is indented by
+     * at least $need spaces and is no marker. Returns the place of that text, or the place where the scalar leaves
+     * the grammar as -1 - $place.
      */
-    private static function yamlQuotedLines(\stdClass $r, int $p, int $need, int &$breaks): int
+    private static function yamlFoldedLines(\stdClass $r, int $p, int $need, int &$breaks): int
     {
         $s = $r->s;
         $end = $r->end;
@@ -776,11 +773,40 @@ final class Codec
     }
 
     /**
-     * A double-quoted scalar from its quote at $p ([107] to [116]), with the escapes of 5.7 and the folding of 6.5;
-     * an implicit key is one line. Returns -1 with $p after the closing quote, or the place where the scalar leaves
-     * the grammar.
+     * The white space and the line break at $q of a quoted scalar, which fold (6.5): white space before more text is
+     * content, and a line break is a space or the empty lines after it; an implicit key is one line. Returns the place
+     * after them, or the place where the scalar leaves the grammar as -1 - $place.
      */
-    private static function yamlDoubleQuoted(\stdClass $r, int &$p, bool $multi, int $need, string &$text): int
+    private static function yamlQuotedWhite(\stdClass $r, int $q, bool $multi, int $need, string &$text): int
+    {
+        $s = $r->s;
+        $end = $r->end;
+        $w = $q;
+        while ($w < $end && ($s[$w] === ' ' || $s[$w] === "\t")) {
+            $w++;
+        }
+        if ($w >= $end || $s[$w] !== "\n") {
+            $text .= substr($s, $q, $w - $q);
+            return $w;
+        }
+        if (!$multi) {
+            return -1 - $w;
+        }
+        $breaks = 0;
+        $next = self::yamlFoldedLines($r, $w + 1, $need, $breaks);
+        if ($next < 0) {
+            return $next;
+        }
+        $text .= $breaks === 0 ? ' ' : str_repeat("\n", $breaks);
+        return $next;
+    }
+
+    /**
+     * The escape at the backslash at $q of a double-quoted scalar (5.7): a character of its own, a code point of
+     * \x, \u or \U, or an escaped line break, which joins the lines; an implicit key is one line. Returns the place
+     * after it, or the place where the scalar leaves the grammar as -1 - $place.
+     */
+    private static function yamlDoubleEscape(\stdClass $r, int $q, bool $multi, int $need, string &$text): int
     {
         static $escapes = [
             '0' => "\0", 'a' => "\x07", 'b' => "\x08", 't' => "\t", "\t" => "\t", 'n' => "\n", 'v' => "\x0B",
@@ -789,88 +815,50 @@ final class Codec
         ];
         $s = $r->s;
         $end = $r->end;
-        $q = $p + 1;
-        $text = '';
-        while (true) {
-            if ($q >= $end) {
-                return $q;
-            }
-            $c = $s[$q];
-            if ($c === '"') {
-                $p = $q + 1;
-                return -1;
-            }
-            if ($c === '\\') {
-                $e = self::yamlAt($r, $q + 1);
-                if (isset($escapes[$e])) {
-                    $text .= $escapes[$e];
-                    $q += 2;
-                    continue;
-                }
-                if ($e === 'x' || $e === 'u' || $e === 'U') {
-                    $digits = $e === 'x' ? 2 : ($e === 'u' ? 4 : 8);
-                    for ($i = $q + 2; $i < $q + 2 + $digits; $i++) {
-                        if ($i >= $end || !self::yamlHexDigit($s[$i])) {
-                            return $i;
-                        }
-                    }
-                    $code = hexdec(substr($s, $q + 2, $digits));
-                    // A surrogate and a number above U+10FFFF are no Unicode scalar value (COD-78).
-                    if (($code >= 0xD800 && $code <= 0xDFFF) || $code > 0x10FFFF) {
-                        return $q;
-                    }
-                    $text .= mb_chr((int) $code, 'UTF-8');
-                    $q += 2 + $digits;
-                    continue;
-                }
-                if ($e === "\n" && $multi) {
-                    // An escaped line break joins the lines and keeps the white space before it (s-double-escaped).
-                    $breaks = 0;
-                    $q = self::yamlQuotedLines($r, $q + 2, $need, $breaks);
-                    if ($q < 0) {
-                        return -1 - $q;
-                    }
-                    $text .= str_repeat("\n", $breaks);
-                    continue;
-                }
-                return $q + 1;
-            }
-            if ($c === ' ' || $c === "\t" || $c === "\n") {
-                $w = $q;
-                while ($w < $end && ($s[$w] === ' ' || $s[$w] === "\t")) {
-                    $w++;
-                }
-                if ($w >= $end || $s[$w] !== "\n") {
-                    $text .= substr($s, $q, $w - $q);
-                    $q = $w;
-                    continue;
-                }
-                if (!$multi) {
-                    return $w;
-                }
-                $breaks = 0;
-                $q = self::yamlQuotedLines($r, $w + 1, $need, $breaks);
-                if ($q < 0) {
-                    return -1 - $q;
-                }
-                $text .= $breaks === 0 ? ' ' : str_repeat("\n", $breaks);
-                continue;
-            }
-            $run = strcspn($s, "\"\\ \t\n", $q, $end - $q);
-            $text .= substr($s, $q, $run);
-            $q += $run;
+        $e = self::yamlAt($r, $q + 1);
+        if (isset($escapes[$e])) {
+            $text .= $escapes[$e];
+            return $q + 2;
         }
+        if ($e === 'x' || $e === 'u' || $e === 'U') {
+            $digits = $e === 'x' ? 2 : ($e === 'u' ? 4 : 8);
+            for ($i = $q + 2; $i < $q + 2 + $digits; $i++) {
+                if ($i >= $end || !self::yamlHexDigit($s[$i])) {
+                    return -1 - $i;
+                }
+            }
+            $code = hexdec(substr($s, $q + 2, $digits));
+            // A surrogate and a number above U+10FFFF are no Unicode scalar value (COD-78).
+            if (($code >= 0xD800 && $code <= 0xDFFF) || $code > 0x10FFFF) {
+                return -1 - $q;
+            }
+            $text .= mb_chr((int) $code, 'UTF-8');
+            return $q + 2 + $digits;
+        }
+        if ($e === "\n" && $multi) {
+            // An escaped line break joins the lines and keeps the white space before it (s-double-escaped).
+            $breaks = 0;
+            $next = self::yamlFoldedLines($r, $q + 2, $need, $breaks);
+            if ($next < 0) {
+                return $next;
+            }
+            $text .= str_repeat("\n", $breaks);
+            return $next;
+        }
+        return -1 - ($q + 1);
     }
 
     /**
-     * A single-quoted scalar from its quote at $p ([117] to [125]), whose one escape is '' and whose lines fold as 6.5
-     * states; an implicit key is one line. Returns -1 with $p after the closing quote, or the place where the scalar
-     * leaves the grammar.
+     * A quoted scalar from its quote at $p, with the folding of 6.5: a double-quoted one ([107] to [116]) with the
+     * escapes of 5.7, or a single-quoted one ([117] to [125]), whose one escape is ''; an implicit key is one line.
+     * Returns -1 with $p after the closing quote, or the place where the scalar leaves the grammar.
      */
-    private static function yamlSingleQuoted(\stdClass $r, int &$p, bool $multi, int $need, string &$text): int
+    private static function yamlQuoted(\stdClass $r, int &$p, bool $multi, int $need, string &$text): int
     {
         $s = $r->s;
         $end = $r->end;
+        $quote = $s[$p];
+        $stops = $quote === '"' ? "\"\\ \t\n" : "' \t\n";
         $q = $p + 1;
         $text = '';
         while (true) {
@@ -878,8 +866,8 @@ final class Codec
                 return $q;
             }
             $c = $s[$q];
-            if ($c === "'") {
-                if (self::yamlAt($r, $q + 1) === "'") {
+            if ($c === $quote) {
+                if ($quote === "'" && self::yamlAt($r, $q + 1) === "'") {
                     $text .= "'";
                     $q += 2;
                     continue;
@@ -887,30 +875,19 @@ final class Codec
                 $p = $q + 1;
                 return -1;
             }
-            if ($c === ' ' || $c === "\t" || $c === "\n") {
-                $w = $q;
-                while ($w < $end && ($s[$w] === ' ' || $s[$w] === "\t")) {
-                    $w++;
-                }
-                if ($w >= $end || $s[$w] !== "\n") {
-                    $text .= substr($s, $q, $w - $q);
-                    $q = $w;
-                    continue;
-                }
-                if (!$multi) {
-                    return $w;
-                }
-                $breaks = 0;
-                $q = self::yamlQuotedLines($r, $w + 1, $need, $breaks);
-                if ($q < 0) {
-                    return -1 - $q;
-                }
-                $text .= $breaks === 0 ? ' ' : str_repeat("\n", $breaks);
+            if ($c === '\\' && $quote === '"') {
+                $q = self::yamlDoubleEscape($r, $q, $multi, $need, $text);
+            } elseif ($c === ' ' || $c === "\t" || $c === "\n") {
+                $q = self::yamlQuotedWhite($r, $q, $multi, $need, $text);
+            } else {
+                $run = strcspn($s, $stops, $q, $end - $q);
+                $text .= substr($s, $q, $run);
+                $q += $run;
                 continue;
             }
-            $run = strcspn($s, "' \t\n", $q, $end - $q);
-            $text .= substr($s, $q, $run);
-            $q += $run;
+            if ($q < 0) {
+                return -1 - $q;
+            }
         }
     }
 
@@ -987,34 +964,14 @@ final class Codec
                 break;
             }
             $breaks = 0;
-            $line = $w + 1;
             $next = -1;
-            while ($line < $end && self::yamlMarker($r, $line) === '') {
-                $a = $line;
-                while ($a < $end && $s[$a] === ' ') {
-                    $a++;
-                }
-                $b = $a;
-                while ($b < $end && ($s[$b] === ' ' || $s[$b] === "\t")) {
-                    $b++;
-                }
-                if ($b < $end && $s[$b] === "\n") {
-                    if ($b > $a && $a - $line < $need) {
-                        break;
-                    }
-                    $breaks++;
-                    $line = $b + 1;
-                    continue;
-                }
-                if ($b >= $end || $a - $line < $need) {
-                    break;
-                }
+            $b = self::yamlFoldedLines($r, $w + 1, $need, $breaks);
+            if ($b >= 0) {
                 $d = $s[$b];
                 $colon = $d === ':' && !self::yamlSafe(self::yamlAt($r, $b + 1), $in);
                 if ($d !== '#' && !$colon && !($in && self::yamlFlowIndicator($d))) {
                     $next = $b;
                 }
-                break;
             }
             if ($next < 0) {
                 break;
@@ -1053,14 +1010,7 @@ final class Codec
                 $p++;
             }
         }
-        $white = false;
-        while ($p < $end && ($s[$p] === ' ' || $s[$p] === "\t")) {
-            $p++;
-            $white = true;
-        }
-        if ($p < $end && $s[$p] === '#' && $white) {
-            $p = self::yamlLineStop($r, $p);
-        }
+        $p = self::yamlLineComment($r, $p, false);
         if ($p < $end && $s[$p] !== "\n") {
             self::yamlParseError($r, $p);
         }
@@ -1429,6 +1379,22 @@ final class Codec
     }
 
     /**
+     * A node of the read ahead is read: the node itself, or the key or the value of the open entry of the top frame
+     * $frame, [closing bracket, state, whether its key is a JSON node].
+     *
+     * @param array{string, int, bool} $frame
+     */
+    private static function yamlAheadRead(array &$frame, bool $json): void
+    {
+        if ($frame[1] === 4) {
+            $frame[1] = 5;
+        } else {
+            $frame[1] = 3;
+            $frame[2] = $json;
+        }
+    }
+
+    /**
      * The end of the properties and the node at $p that the read ahead reads (COD-80), on one line before $r->end, as
      * the grammar holds it ([96] to [104], [137] to [161]); $json is whether the node is a quoted scalar or a flow
      * collection. Returns -1, or the place where the node leaves the grammar.
@@ -1516,9 +1482,7 @@ final class Codec
                     $p++;
                     continue;
                 } elseif ($c === '"' || $c === "'") {
-                    $fail = $c === '"'
-                        ? self::yamlDoubleQuoted($r, $p, false, 0, $text)
-                        : self::yamlSingleQuoted($r, $p, false, 0, $text);
+                    $fail = self::yamlQuoted($r, $p, false, 0, $text);
                     if ($fail >= 0) {
                         return $fail;
                     }
@@ -1537,13 +1501,7 @@ final class Codec
                     $json = $nodeJson;
                     return -1;
                 }
-                $top = count($stack) - 1;
-                if ($stack[$top][1] === 4) {
-                    $stack[$top][1] = 5;
-                } else {
-                    $stack[$top][1] = 3;
-                    $stack[$top][2] = $nodeJson;
-                }
+                self::yamlAheadRead($stack[count($stack) - 1], $nodeJson);
             }
             $white = false;
             while ($p < $end && ($s[$p] === ' ' || $s[$p] === "\t")) {
@@ -1556,6 +1514,14 @@ final class Codec
             $top = count($stack) - 1;
             [$close, $state, $keyJson] = $stack[$top];
             $c = $s[$p];
+            // A `:` that no plain scalar holds, at the start of an entry or after `?`, follows an empty key; it is no
+            // closing bracket, `,` or `?`, so no rule of those states below meets it first.
+            if ($state <= 2 && $c === ':' && !self::yamlSafe(self::yamlAt($r, $p + 1), true)) {
+                $stack[$top][1] = 4;
+                $stack[$top][2] = false;
+                $p++;
+                continue;
+            }
             if ($state === 0 || $state === 1) {
                 if ($c === $close) {
                     array_pop($stack);
@@ -1565,13 +1531,7 @@ final class Codec
                         $json = true;
                         return -1;
                     }
-                    $top--;
-                    if ($stack[$top][1] === 4) {
-                        $stack[$top][1] = 5;
-                    } else {
-                        $stack[$top][1] = 3;
-                        $stack[$top][2] = true;
-                    }
+                    self::yamlAheadRead($stack[$top - 1], true);
                     continue;
                 }
                 if ($c === ',') {
@@ -1582,22 +1542,10 @@ final class Codec
                     $p++;
                     continue;
                 }
-                if ($c === ':' && !self::yamlSafe(self::yamlAt($r, $p + 1), true)) {
-                    $stack[$top][1] = 4;
-                    $stack[$top][2] = false;
-                    $p++;
-                    continue;
-                }
                 $node = true;
                 continue;
             }
             if ($state === 2) {
-                if ($c === ':' && !self::yamlSafe(self::yamlAt($r, $p + 1), true)) {
-                    $stack[$top][1] = 4;
-                    $stack[$top][2] = false;
-                    $p++;
-                    continue;
-                }
                 if ($c === ',' || $c === $close) {
                     $stack[$top][1] = 5;
                     continue;
@@ -1676,6 +1624,19 @@ final class Codec
         return false;
     }
 
+    /** The `:` after the key of an implicit entry, met on the line of the key; the reader then stands after it. */
+    private static function yamlColon(\stdClass $r): void
+    {
+        $p = $r->p;
+        while ($p < $r->end && ($r->s[$p] === ' ' || $r->s[$p] === "\t")) {
+            $p++;
+        }
+        if (self::yamlAt($r, $p) !== ':') {
+            self::yamlParseError($r, $p);
+        }
+        $r->p = $p + 1;
+    }
+
     /**
      * The node of a document, read by the frames of the open collections in an explicit stack, so that no depth of the
      * stream and no depth of the caller decides the read (COD-70). $where is where the node starts: on the next lines,
@@ -1719,14 +1680,7 @@ final class Codec
                     case self::Y_BLOCK_MAPPING:
                         if ($f->st === 1) {
                             self::yamlKey($f, $value, $json);
-                            $p = $r->p;
-                            while ($p < $r->end && ($r->s[$p] === ' ' || $r->s[$p] === "\t")) {
-                                $p++;
-                            }
-                            if (self::yamlAt($r, $p) !== ':') {
-                                self::yamlParseError($r, $p);
-                            }
-                            $r->p = $p + 1;
+                            self::yamlColon($r);
                             $request = [true, $f->m, true, self::Y_AT_COLON, false];
                             $f->st = 4;
                         } elseif ($f->st === 2) {
@@ -1764,14 +1718,7 @@ final class Codec
                         $f->k = $value;
                         $f->j = $json;
                         if ($f->st === 1) {
-                            $p = $r->p;
-                            while ($p < $r->end && ($r->s[$p] === ' ' || $r->s[$p] === "\t")) {
-                                $p++;
-                            }
-                            if (self::yamlAt($r, $p) !== ':') {
-                                self::yamlParseError($r, $p);
-                            }
-                            $r->p = $p + 1;
+                            self::yamlColon($r);
                             $f->st = 4;
                         } else {
                             $f->st = 5;
@@ -2005,9 +1952,7 @@ final class Codec
         }
         $text = '';
         if ($c === '"' || $c === "'") {
-            $fail = $c === '"'
-                ? self::yamlDoubleQuoted($r, $p, !$single, $need, $text)
-                : self::yamlSingleQuoted($r, $p, !$single, $need, $text);
+            $fail = self::yamlQuoted($r, $p, !$single, $need, $text);
             $json = true;
             $value = $text;
         } elseif (self::yamlPlainFirst($r, $p, $in)) {
@@ -2084,6 +2029,37 @@ final class Codec
     }
 
     /**
+     * The `,` or the closing bracket $close after an entry of a flow collection ($after), or its first entry; a `,`
+     * with no entry before it is yaml-parse. Returns whether the closing bracket ends the collection, the reader then
+     * past it.
+     */
+    private static function yamlFlowEntry(\stdClass $r, int $need, bool $after, string $close): bool
+    {
+        self::yamlFlowSpace($r, $need);
+        $c = self::yamlAt($r, $r->p);
+        if ($after) {
+            if ($c !== ',' && $c !== $close) {
+                self::yamlParseError($r, $r->p);
+            }
+            if ($c === ',') {
+                $r->p++;
+                self::yamlFlowSpace($r, $need);
+                $c = self::yamlAt($r, $r->p);
+            }
+        } elseif ($c === ',') {
+            self::yamlParseError($r, $r->p);
+        }
+        if ($c === $close) {
+            $r->p++;
+            return true;
+        }
+        if ($c === ',') {
+            self::yamlParseError($r, $r->p);
+        }
+        return false;
+    }
+
+    /**
      * A step of an open flow sequence ([137] to [139]); an entry that is an implicit key, an explicit `?` or an empty
      * key is a pair, a map of one entry that opens its own frame (ns-flow-pair [150]). Returns whether it ends.
      *
@@ -2092,26 +2068,8 @@ final class Codec
     private static function yamlFlowSequenceStep(\stdClass $r, array &$stack, \stdClass $f, ?array &$request): bool
     {
         if ($f->st === 0 || $f->st === 3) {
-            self::yamlFlowSpace($r, $f->m);
-            $c = self::yamlAt($r, $r->p);
-            if ($f->st === 3) {
-                if ($c !== ',' && $c !== ']') {
-                    self::yamlParseError($r, $r->p);
-                }
-                if ($c === ',') {
-                    $r->p++;
-                    self::yamlFlowSpace($r, $f->m);
-                    $c = self::yamlAt($r, $r->p);
-                }
-            } elseif ($c === ',') {
-                self::yamlParseError($r, $r->p);
-            }
-            if ($c === ']') {
-                $r->p++;
+            if (self::yamlFlowEntry($r, $f->m, $f->st === 3, ']')) {
                 return true;
-            }
-            if ($c === ',') {
-                self::yamlParseError($r, $r->p);
             }
             $f->st = 1;
         }
@@ -2164,28 +2122,8 @@ final class Codec
             $f->v[$f->k] = null;
             $f->st = 4;
         }
-        if ($f->st === 0 || $f->st === 4) {
-            self::yamlFlowSpace($r, $f->m);
-            $c = self::yamlAt($r, $r->p);
-            if ($f->st === 4) {
-                if ($c !== ',' && $c !== '}') {
-                    self::yamlParseError($r, $r->p);
-                }
-                if ($c === ',') {
-                    $r->p++;
-                    self::yamlFlowSpace($r, $f->m);
-                    $c = self::yamlAt($r, $r->p);
-                }
-            } elseif ($c === ',') {
-                self::yamlParseError($r, $r->p);
-            }
-            if ($c === '}') {
-                $r->p++;
-                return true;
-            }
-            if ($c === ',') {
-                self::yamlParseError($r, $r->p);
-            }
+        if (($f->st === 0 || $f->st === 4) && self::yamlFlowEntry($r, $f->m, $f->st === 4, '}')) {
+            return true;
         }
         $p = $r->p;
         $c = self::yamlAt($r, $p);

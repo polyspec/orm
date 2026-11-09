@@ -1127,24 +1127,26 @@ static bool cat_int(zval *v, zend_long *out)
 
 static void cat_abort(zval *db, zval *pdo);
 
-/* Opens the read-only transaction of a session on the Db's PDO handle (Catalog::begin). SQLite sets query_only itself. */
-static bool cat_begin_read(zval *db, const char *dialect, zval *pdo)
+/* Opens the transaction of a session on the Db's PDO handle (Catalog::begin): read-only, or writable for the writes of
+ * SCH-6a. SQLite sets query_only itself, and a writable SQLite transaction takes the write lock at once. */
+static bool cat_begin(zval *db, const char *dialect, zval *pdo, bool writable)
 {
     cat_pg_settings_clear();
     if (!pdo_call(db, "pdo", pdo, 0, NULL, NULL)) {
         return false;
     }
-    if (strcmp(dialect, "sqlite") == 0 && !cat_try_exec(pdo, "PRAGMA query_only = ON")) {
+    if (strcmp(dialect, "sqlite") == 0 && !cat_try_exec(pdo, writable ? "PRAGMA query_only = OFF" : "PRAGMA query_only = ON")) {
         cat_driver_error(db);
         return false;
     }
     /* At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121). */
-    if (strcmp(dialect, "mysql") == 0 && !cat_try_exec(pdo, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")) {
+    if (!writable && strcmp(dialect, "mysql") == 0 && !cat_try_exec(pdo, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")) {
         cat_driver_error(db);
         return false;
     }
-    const char *begin = strcmp(dialect, "mysql") == 0 ? "START TRANSACTION READ ONLY"
-        : strcmp(dialect, "postgres") == 0 ? "BEGIN READ ONLY" : "BEGIN";
+    const char *begin = writable
+        ? (strcmp(dialect, "mysql") == 0 ? "START TRANSACTION" : strcmp(dialect, "postgres") == 0 ? "BEGIN" : "BEGIN IMMEDIATE")
+        : (strcmp(dialect, "mysql") == 0 ? "START TRANSACTION READ ONLY" : strcmp(dialect, "postgres") == 0 ? "BEGIN READ ONLY" : "BEGIN");
     if (!cat_try_exec(pdo, begin)) {
         cat_driver_error(db);
         return false;
@@ -2226,17 +2228,30 @@ static bool cat_calendar_date(const char *year, size_t yn, int month, int day, z
     return true;
 }
 
+/* Reads the YYYY-MM-DD head of a date or a datetime that the server writes, of four or more year digits, into yn, the
+ * count of its year digits; the text holds at least min_tail characters after the year. The infinities are INT-173 and
+ * a text without that head INT-171; both leave the rule pending and return false. */
+static bool cat_server_date_head(const char *s, size_t n, size_t min_tail, size_t *yn)
+{
+    if ((n == 8 && memcmp(s, "infinity", 8) == 0) || (n == 9 && memcmp(s, "-infinity", 9) == 0)) {
+        return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    }
+    *yn = cat_digits(s, n);
+    if (*yn < 4 || *yn + min_tail > n || s[*yn] != '-' || cat_digits(s + *yn + 1, 2) != 2 || s[*yn + 3] != '-'
+        || cat_digits(s + *yn + 4, 2) != 2) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    return true;
+}
+
 /* The dbspec date of a date that the server writes (Catalog::serverDate): YYYY-MM-DD, a PostgreSQL year past 9999 with more
  * digits, a date before the year 1 with BC, and the infinities as words. A year outside 1 to 9999 is INT-173, checked before
  * the calendar of INT-174, and any other text INT-171. */
 static bool cat_server_date(const char *s, size_t n, zval *out)
 {
-    if ((n == 8 && memcmp(s, "infinity", 8) == 0) || (n == 9 && memcmp(s, "-infinity", 9) == 0)) {
-        return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
-    }
-    size_t yn = cat_digits(s, n);
-    if (yn < 4 || yn + 6 > n || s[yn] != '-' || cat_digits(s + yn + 1, 2) != 2 || s[yn + 3] != '-'
-        || cat_digits(s + yn + 4, 2) != 2 || (yn + 6 != n && !(yn + 9 == n && memcmp(s + yn + 6, " BC", 3) == 0))) {
+    size_t yn;
+    if (!cat_server_date_head(s, n, 6, &yn)) return false;
+    if (yn + 6 != n && !(yn + 9 == n && memcmp(s + yn + 6, " BC", 3) == 0)) {
         return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     }
     if (yn + 6 != n) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
@@ -2275,14 +2290,9 @@ static bool cat_server_time(const char *s, size_t n, zval *out)
 /* The dbspec datetime of a datetime that the server writes (Catalog::serverDateTime); its date comes first. */
 static bool cat_server_datetime(const char *s, size_t n, zval *out)
 {
-    if ((n == 8 && memcmp(s, "infinity", 8) == 0) || (n == 9 && memcmp(s, "-infinity", 9) == 0)) {
-        return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
-    }
-    size_t yn = cat_digits(s, n);
-    if (yn < 4 || yn + 7 > n || s[yn] != '-' || cat_digits(s + yn + 1, 2) != 2 || s[yn + 3] != '-'
-        || cat_digits(s + yn + 4, 2) != 2 || s[yn + 6] != ' ') {
-        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
-    }
+    size_t yn;
+    if (!cat_server_date_head(s, n, 7, &yn)) return false;
+    if (s[yn + 6] != ' ') return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     const char *clock = s + yn + 7;
     size_t cn = n - yn - 7;
     bool bc = cn > 3 && memcmp(clock + cn - 3, " BC", 3) == 0;
@@ -3406,6 +3416,31 @@ static bool cat_grid_cells_budget(zval *cells, zend_long max_bytes, zend_long *b
     return true;
 }
 
+/* Fetches the next row of a grid statement as a list (PDO::FETCH_NUM) into row, which is false past the last row. A failed
+ * fetch leaves the mapped driver error pending and returns false. */
+static bool cat_grid_fetch(zval *db, zval *st, zval *row)
+{
+    zval mode;
+    ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+    if (pdo_call(st, "fetch", row, 1, &mode, NULL)) return true;
+    cat_driver_error(db);
+    return false;
+}
+
+/* Ends one fetched grid row: frees the row, then adds its cells to rows while the byte budget holds. A row whose cells
+ * failed (ok false) or that passes the budget frees its cells and returns false, with the cause pending. */
+static bool cat_grid_row_end(zval *rows, zval *row, zval *cells, bool ok, zend_long max_bytes, zend_long *budget)
+{
+    zval_ptr_dtor(row);
+    if (!ok) {
+        zval_ptr_dtor(cells);
+        return false;
+    }
+    if (!cat_grid_cells_budget(cells, max_bytes, budget)) return false;
+    add_next_index_zval(rows, cells);
+    return true;
+}
+
 /* The grid cells of one PostgreSQL row, by the class of each column, which the cursor read puts in types (cat_pg_classes). */
 static bool cat_grid_postgres_row(zval *row, zval *types, const char *dialect, zval *cells)
 {
@@ -3516,10 +3551,7 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
             if (kept == NULL) break;
             ZVAL_COPY(&row, kept);
         } else {
-            zval mode;
-            ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-            if (!pdo_call(&st, "fetch", &row, 1, &mode, NULL)) {
-                cat_driver_error(db);
+            if (!cat_grid_fetch(db, &st, &row)) {
                 ok = false;
                 break;
             }
@@ -3550,16 +3582,7 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
             if (ok) add_next_index_zval(&cells, &cell);
             else cat_rule_at((zend_long)i + 1);
         }
-        zval_ptr_dtor(&row);
-        if (!ok) {
-            zval_ptr_dtor(&cells);
-            break;
-        }
-        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) {
-            ok = false;
-            break;
-        }
-        add_next_index_zval(rows, &cells);
+        ok = cat_grid_row_end(rows, &row, &cells, ok, max_bytes, &budget);
     }
     zval_ptr_dtor(&types);
     zval_ptr_dtor(&oids);
@@ -3796,10 +3819,8 @@ static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long
     }
     zend_long budget = 0;
     while (ok) {
-        zval mode, row;
-        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-        if (!pdo_call(&st, "fetch", &row, 1, &mode, NULL)) {
-            cat_driver_error(db);
+        zval row;
+        if (!cat_grid_fetch(db, &st, &row)) {
             ok = false;
             break;
         }
@@ -3817,16 +3838,7 @@ static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long
             if (ok) add_next_index_zval(&cells, &cell);
             else cat_rule_at((zend_long)i + 1);
         }
-        zval_ptr_dtor(&row);
-        if (!ok) {
-            zval_ptr_dtor(&cells);
-            break;
-        }
-        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) {
-            ok = false;
-            break;
-        }
-        add_next_index_zval(rows, &cells);
+        ok = cat_grid_row_end(rows, &row, &cells, ok, max_bytes, &budget);
     }
     if (columns != NULL) efree(columns);
     if (opened) {
@@ -3944,30 +3956,6 @@ static bool cat_read_only_inputs(zval *self, zend_string *sql, zval *params, zen
     if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return
 
 /* ---- writes (SCH-6a) -------------------------------------------------------------------------------------------------------- */
-
-/* Opens a writable transaction (Catalog::begin, writable): SQLite takes the write lock at once. */
-static bool cat_begin_write(zval *db, const char *dialect, zval *pdo)
-{
-    cat_pg_settings_clear();
-    if (!pdo_call(db, "pdo", pdo, 0, NULL, NULL)) {
-        return false;
-    }
-    if (strcmp(dialect, "sqlite") == 0 && !cat_try_exec(pdo, "PRAGMA query_only = OFF")) {
-        cat_driver_error(db);
-        return false;
-    }
-    const char *begin = strcmp(dialect, "mysql") == 0 ? "START TRANSACTION"
-        : strcmp(dialect, "postgres") == 0 ? "BEGIN" : "BEGIN IMMEDIATE";
-    if (!cat_try_exec(pdo, begin)) {
-        cat_driver_error(db);
-        return false;
-    }
-    if (strcmp(dialect, "postgres") == 0 && !cat_pg_settings_begin(db, pdo)) {
-        cat_abort(db, pdo);
-        return false;
-    }
-    return true;
-}
 
 /* Throws the cause (owned) after a ROLLBACK. A failed ROLLBACK throws OrmException::rollback(cause, rollback error) (Catalog::rollback). */
 static void cat_rollback_throw(zval *db, zval *pdo, zval *cause)
@@ -4093,7 +4081,7 @@ static bool cat_write_transaction(zval *db, const char *dialect, cat_write_opera
 {
     zval pdo;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_write(db, dialect, &pdo)) return false;
+    if (!cat_begin(db, dialect, &pdo, true)) return false;
     bool ok = (strcmp(dialect, "mysql") != 0 || cat_mysql_partial_revokes_off(db, &pdo))
         && operation(db, dialect, &pdo, context, result);
     if (ok) {
@@ -5570,7 +5558,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, currentNamespace)
     const char *query = strcmp(ZSTR_VAL(dialect), "postgres") == 0 ? "SELECT current_schema()" : "SELECT DATABASE()";
     zval pdo, empty, names, types, rows;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
+    if (!cat_begin(db, ZSTR_VAL(dialect), &pdo, false)) {
         return;
     }
     array_init(&empty);
@@ -5622,7 +5610,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, describeTable)
     zend_string *dialect = cat_dialect(ZEND_THIS);
     zval pdo, meta;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
+    if (!cat_begin(db, ZSTR_VAL(dialect), &pdo, false)) {
         return;
     }
     bool ok = cat_describe(db, ZSTR_VAL(dialect), &pdo, ns, name, &meta);
@@ -5662,7 +5650,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, tablePage)
     zend_string *dialect = cat_dialect(ZEND_THIS);
     zval pdo, page;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
+    if (!cat_begin(db, ZSTR_VAL(dialect), &pdo, false)) {
         return;
     }
     bool ok = cat_table_page(db, ZSTR_VAL(dialect), &pdo, ns, name, limit, offset, &page);
@@ -5767,7 +5755,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
     CAT_PARSE_READ_ONLY_INPUTS();
     zval pdo;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
+    if (!cat_begin(db, ZSTR_VAL(dialect), &pdo, false)) {
         zval_ptr_dtor(&args);
         return;
     }
@@ -5844,7 +5832,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
     bool ok;
     zval pdo;
     ZVAL_UNDEF(&pdo);
-    if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
+    if (!cat_begin(db, ZSTR_VAL(dialect), &pdo, false)) {
         zval_ptr_dtor(&args);
         zval_ptr_dtor(&sql_zv);
         return;

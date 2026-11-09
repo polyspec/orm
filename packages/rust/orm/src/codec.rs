@@ -522,6 +522,16 @@ mod yaml_reader {
         Done,
     }
 
+    /// What a character of a quoted scalar is to its style (`Reader::quoted`).
+    enum Quoted {
+        /// A character of the content.
+        Content,
+        /// A doubled quote or an escape, read up to this index.
+        Next(usize),
+        /// The closing quote.
+        Close,
+    }
+
     #[derive(Clone, Copy, PartialEq, Eq)]
     enum MapPhase {
         ImplicitKey,
@@ -1132,35 +1142,37 @@ mod yaml_reader {
             }
         }
 
-        /// After an entry: the next entry at the column of the mapping, or the end of the mapping.
-        fn map_next(&mut self, col: usize) -> Step<Next> {
+        /// After the comment lines that follow a node of a block collection at column `col`: the indentation of the next
+        /// line when it is at that column, `None` when the collection ends there (the end of the text, a document marker
+        /// or a line indented less), and a refusal when the line is indented more.
+        fn next_at_column(&mut self, col: usize) -> Step<Option<usize>> {
             self.skip_comment_lines();
             if self.end() || self.any_marker(self.pos) {
-                return self.close();
+                return Ok(None);
             }
             let m = self.spaces(self.pos);
             if m < col {
-                return self.close();
+                return Ok(None);
             }
             if m > col {
                 return Err(Refusal::Parse(self.pos + m));
             }
+            Ok(Some(m))
+        }
+
+        /// After an entry: the next entry at the column of the mapping, or the end of the mapping.
+        fn map_next(&mut self, col: usize) -> Step<Next> {
+            let Some(m) = self.next_at_column(col)? else {
+                return self.close();
+            };
             self.pos += m;
             self.map_entry(col)
         }
 
         fn seq_resume(&mut self, col: usize) -> Step<Next> {
-            self.skip_comment_lines();
-            if self.end() || self.any_marker(self.pos) {
+            let Some(m) = self.next_at_column(col)? else {
                 return self.close();
-            }
-            let m = self.spaces(self.pos);
-            if m < col {
-                return self.close();
-            }
-            if m > col {
-                return Err(Refusal::Parse(self.pos + m));
-            }
+            };
             let dash = self.pos + m;
             if self.at(dash) == '-' && white_or_eol(self.at(dash + 1)) {
                 self.pos = dash + 1;
@@ -1650,43 +1662,18 @@ mod yaml_reader {
                 if self.at(j) != '\n' {
                     return (end, text);
                 }
-                let mut k = j + 1;
-                let mut empties = 0;
-                let next = loop {
-                    let line = k;
-                    let s = self.spaces(line);
-                    if (s as isize) < n {
-                        if self.at(line + s) == '\n' {
-                            empties += 1;
-                            k = line + s + 1;
-                            continue;
-                        }
-                        break None;
-                    }
-                    let t = self.skip_white(line + s);
-                    match self.at(t) {
-                        '\n' => {
-                            empties += 1;
-                            k = t + 1;
-                            continue;
-                        }
-                        END => break None,
-                        _ => {}
-                    }
-                    if s == 0 && self.any_marker(line) {
-                        break None;
-                    }
-                    let c = self.at(t);
-                    let plain = match c {
-                        '#' => false,
-                        ':' => plain_safe(self.at(t + 1), flow),
-                        _ => !(flow && flow_indicator(c)),
-                    };
-                    break plain.then_some(t);
-                };
-                let Some(t) = next else {
+                let Ok((empties, t)) = self.after_break(j + 1, n) else {
                     return (end, text);
                 };
+                let c = self.at(t);
+                let plain = match c {
+                    '#' => false,
+                    ':' => plain_safe(self.at(t + 1), flow),
+                    _ => !(flow && flow_indicator(c)),
+                };
+                if !plain {
+                    return (end, text);
+                }
                 if empties == 0 {
                     text.push(' ');
                 }
@@ -1699,7 +1686,19 @@ mod yaml_reader {
         /// the break is one space unless it is escaped or empty lines follow it. The next line is indented by at least
         /// `n` spaces. Returns the index of the next character of the scalar.
         fn quoted_break(&self, i: usize, n: isize, text: &mut String, escaped: bool) -> Step<usize> {
-            let mut k = i + 1;
+            let (empties, t) = self.after_break(i + 1, n).map_err(Refusal::Parse)?;
+            if empties == 0 && !escaped {
+                text.push(' ');
+            }
+            text.extend(std::iter::repeat_n('\n', empties));
+            Ok(t)
+        }
+
+        /// The lines after a line break, from the start of the line at `k`: the number of empty lines (white space only)
+        /// and the index of the first character of the next line that is indented by at least `n` spaces. It is the index
+        /// that ends the scalar when the next line that is not empty is indented less, when the text ends, or when that
+        /// line starts with a document marker.
+        fn after_break(&self, mut k: usize, n: isize) -> std::result::Result<(usize, usize), usize> {
             let mut empties = 0;
             loop {
                 let line = k;
@@ -1710,7 +1709,7 @@ mod yaml_reader {
                         k = line + s + 1;
                         continue;
                     }
-                    return Err(Refusal::Parse(line + s));
+                    return Err(line + s);
                 }
                 let t = self.skip_white(line + s);
                 match self.at(t) {
@@ -1719,63 +1718,98 @@ mod yaml_reader {
                         k = t + 1;
                         continue;
                     }
-                    END => return Err(Refusal::Parse(t)),
+                    END => return Err(t),
                     _ => {}
                 }
                 if s == 0 && self.any_marker(line) {
-                    return Err(Refusal::Parse(line));
+                    return Err(line);
                 }
-                if empties == 0 && !escaped {
-                    text.push(' ');
-                }
-                text.extend(std::iter::repeat_n('\n', empties));
-                return Ok(t);
+                return Ok((empties, t));
             }
         }
 
         /// A single-quoted scalar at `i` ([117] to [125]); returns the index after its closing quote and its string.
         fn single(&self, i: usize, n: isize, multi_line: bool) -> Step<(usize, String)> {
-            let mut text = String::new();
-            let mut white_run = String::new();
-            let mut k = i + 1;
-            loop {
-                let c = self.at(k);
-                match c {
-                    END => return Err(Refusal::Parse(k)),
-                    '\'' => {
-                        text.push_str(&white_run);
-                        white_run.clear();
-                        if self.at(k + 1) == '\'' {
-                            text.push('\'');
-                            k += 2;
-                        } else {
-                            return Ok((k + 1, text));
-                        }
+            self.quoted(i, n, multi_line, |c, k, text| {
+                Ok(match c {
+                    '\'' if self.at(k + 1) == '\'' => {
+                        text.push('\'');
+                        Quoted::Next(k + 2)
                     }
-                    '\n' => {
-                        if !multi_line {
-                            return Err(Refusal::Parse(k));
-                        }
-                        white_run.clear();
-                        k = self.quoted_break(k, n, &mut text, false)?;
-                    }
-                    ' ' | '\t' => {
-                        white_run.push(c);
-                        k += 1;
-                    }
-                    _ => {
-                        text.push_str(&white_run);
-                        white_run.clear();
-                        text.push(c);
-                        k += 1;
-                    }
-                }
-            }
+                    '\'' => Quoted::Close,
+                    _ => Quoted::Content,
+                })
+            })
         }
 
         /// A double-quoted scalar at `i` ([107] to [116]) with the escapes of 5.7; returns the index after its closing
         /// quote and its string.
         fn double(&self, i: usize, n: isize, multi_line: bool) -> Step<(usize, String)> {
+            self.quoted(i, n, multi_line, |c, k, text| {
+                Ok(match c {
+                    '"' => Quoted::Close,
+                    // The white space before a `\` is content (s-double-escaped [112]).
+                    '\\' => Quoted::Next(self.double_escape(k, n, multi_line, text)?),
+                    _ => Quoted::Content,
+                })
+            })
+        }
+
+        /// The escape at `k` of a double-quoted scalar (5.7), written to `text`; returns the index after it.
+        fn double_escape(&self, k: usize, n: isize, multi_line: bool, text: &mut String) -> Step<usize> {
+            let e = self.at(k + 1);
+            let simple = match e {
+                '0' => Some('\0'),
+                'a' => Some('\u{7}'),
+                'b' => Some('\u{8}'),
+                't' | '\t' => Some('\t'),
+                'n' => Some('\n'),
+                'v' => Some('\u{b}'),
+                'f' => Some('\u{c}'),
+                'r' => Some('\r'),
+                'e' => Some('\u{1b}'),
+                ' ' => Some(' '),
+                '"' => Some('"'),
+                '/' => Some('/'),
+                '\\' => Some('\\'),
+                'N' => Some('\u{85}'),
+                '_' => Some('\u{a0}'),
+                'L' => Some('\u{2028}'),
+                'P' => Some('\u{2029}'),
+                _ => None,
+            };
+            if let Some(escaped) = simple {
+                text.push(escaped);
+                return Ok(k + 2);
+            }
+            let digits = match e {
+                'x' => 2,
+                'u' => 4,
+                'U' => 8,
+                '\n' if multi_line => return self.quoted_break(k + 1, n, text, true),
+                _ => return Err(Refusal::Parse(k + 1)),
+            };
+            let mut code: u32 = 0;
+            for d in 0..digits {
+                let Some(value) = self.at(k + 2 + d).to_digit(16) else {
+                    return Err(Refusal::Parse(k + 2 + d));
+                };
+                code = code * 16 + value;
+            }
+            // A surrogate or a number above U+10FFFF is no Unicode scalar value (COD-78).
+            let Some(escaped) = char::from_u32(code) else {
+                return Err(Refusal::Parse(k));
+            };
+            text.push(escaped);
+            Ok(k + 2 + digits)
+        }
+
+        /// The loop that a single-quoted and a double-quoted scalar at `i` share: a line break folds (or is refused when
+        /// the scalar is on one line), white space before a line break is dropped, and any other character is content
+        /// after the white space before it. `own` reads a character at `k` that the style gives a meaning, after that
+        /// white space is in `text`: its closing quote, a doubled quote or an escape. Returns the index after the closing
+        /// quote and the string.
+        fn quoted(&self, i: usize, n: isize, multi_line: bool, own: impl Fn(char, usize, &mut String) -> Step<Quoted>) -> Step<(usize, String)> {
             let mut text = String::new();
             let mut white_run = String::new();
             let mut k = i + 1;
@@ -1783,64 +1817,6 @@ mod yaml_reader {
                 let c = self.at(k);
                 match c {
                     END => return Err(Refusal::Parse(k)),
-                    '"' => {
-                        text.push_str(&white_run);
-                        return Ok((k + 1, text));
-                    }
-                    '\\' => {
-                        // The white space before a `\` is content (s-double-escaped [112]).
-                        text.push_str(&white_run);
-                        white_run.clear();
-                        let e = self.at(k + 1);
-                        let simple = match e {
-                            '0' => Some('\0'),
-                            'a' => Some('\u{7}'),
-                            'b' => Some('\u{8}'),
-                            't' | '\t' => Some('\t'),
-                            'n' => Some('\n'),
-                            'v' => Some('\u{b}'),
-                            'f' => Some('\u{c}'),
-                            'r' => Some('\r'),
-                            'e' => Some('\u{1b}'),
-                            ' ' => Some(' '),
-                            '"' => Some('"'),
-                            '/' => Some('/'),
-                            '\\' => Some('\\'),
-                            'N' => Some('\u{85}'),
-                            '_' => Some('\u{a0}'),
-                            'L' => Some('\u{2028}'),
-                            'P' => Some('\u{2029}'),
-                            _ => None,
-                        };
-                        if let Some(escaped) = simple {
-                            text.push(escaped);
-                            k += 2;
-                            continue;
-                        }
-                        let digits = match e {
-                            'x' => 2,
-                            'u' => 4,
-                            'U' => 8,
-                            '\n' if multi_line => {
-                                k = self.quoted_break(k + 1, n, &mut text, true)?;
-                                continue;
-                            }
-                            _ => return Err(Refusal::Parse(k + 1)),
-                        };
-                        let mut code: u32 = 0;
-                        for d in 0..digits {
-                            let Some(value) = self.at(k + 2 + d).to_digit(16) else {
-                                return Err(Refusal::Parse(k + 2 + d));
-                            };
-                            code = code * 16 + value;
-                        }
-                        // A surrogate or a number above U+10FFFF is no Unicode scalar value (COD-78).
-                        let Some(escaped) = char::from_u32(code) else {
-                            return Err(Refusal::Parse(k));
-                        };
-                        text.push(escaped);
-                        k += 2 + digits;
-                    }
                     '\n' => {
                         if !multi_line {
                             return Err(Refusal::Parse(k));
@@ -1855,8 +1831,14 @@ mod yaml_reader {
                     _ => {
                         text.push_str(&white_run);
                         white_run.clear();
-                        text.push(c);
-                        k += 1;
+                        match own(c, k, &mut text)? {
+                            Quoted::Content => {
+                                text.push(c);
+                                k += 1;
+                            }
+                            Quoted::Next(next) => k = next,
+                            Quoted::Close => return Ok((k + 1, text)),
+                        }
                     }
                 }
             }

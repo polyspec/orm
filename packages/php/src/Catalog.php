@@ -859,11 +859,7 @@ final class Catalog
                 if ($this->dialect === 'postgres') {
                     if (!self::pgBuiltins($metas)) {
                         // A lookup of a type runs a statement, which ends this one, so its rows are read first.
-                        $buffered = $st->fetchAll(\PDO::FETCH_NUM);
-                        $next = 0;
-                        $fetch = static function () use (&$buffered, &$next): array|false {
-                            return $buffered[$next++] ?? false;
-                        };
+                        $fetch = self::bufferedFetch($st);
                     }
                     $classes = $this->pgClasses($pdo, $metas);
                     self::refuseMultirange($classes);
@@ -895,10 +891,7 @@ final class Catalog
                     },
                     $settings
                 );
-                return [
-                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
-                    'rows' => $rows,
-                ];
+                return ['names' => self::metaNames($metas), 'rows' => $rows];
             });
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
@@ -970,6 +963,17 @@ final class Catalog
         }
         $pdo->exec(self::beginSql('mysql', true));
         return $types;
+    }
+
+    /**
+     * The name of each column, from its metadata; a column without one has the empty name.
+     *
+     * @param list<array<string, mixed>> $metas
+     * @return list<string>
+     */
+    private static function metaNames(array $metas): array
+    {
+        return array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas);
     }
 
     /**
@@ -1807,11 +1811,7 @@ final class Catalog
                 $fetch = static fn (): array|false => $st->fetch(\PDO::FETCH_NUM);
                 if ($this->dialect === 'postgres' && !self::pgBuiltins($metas)) {
                     // A lookup of a type runs a statement, which ends this one, so its rows are read first.
-                    $buffered = $st->fetchAll(\PDO::FETCH_NUM);
-                    $next = 0;
-                    $fetch = static function () use (&$buffered, &$next): array|false {
-                        return $buffered[$next++] ?? false;
-                    };
+                    $fetch = self::bufferedFetch($st);
                     self::refuseMultirange($this->pgClasses($pdo, $metas));
                 }
                 $rows = $this->boundedRows(
@@ -1823,7 +1823,7 @@ final class Catalog
                     $settings
                 );
                 return [
-                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
+                    'names' => self::metaNames($metas),
                     'types' => $types,
                     'oids' => array_map(self::oidOf(...), $metas),
                     'rows' => $rows,
@@ -1894,7 +1894,7 @@ final class Catalog
             $maxBytes,
             function (\PDOStatement $first) use ($pdo, &$names, &$classes, $settings): void {
                 $metas = self::withoutSettings(self::columnMetas($first), $settings);
-                $names = array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas);
+                $names = self::metaNames($metas);
                 $classes = $this->pgClasses($pdo, $metas);
                 self::refuseMultirange($classes);
             },
@@ -2458,6 +2458,21 @@ final class Catalog
         if ($at !== false) {
             throw self::atColumn(self::rule(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE), $at + 1);
         }
+    }
+
+    /**
+     * Reads every row of a statement now, as lists, and returns a fetch that gives them one at a time and false past
+     * the last, so that another statement can run before the rows are read.
+     *
+     * @return \Closure(): (list<mixed>|false)
+     */
+    private static function bufferedFetch(\PDOStatement $st): \Closure
+    {
+        $buffered = $st->fetchAll(\PDO::FETCH_NUM);
+        $next = 0;
+        return static function () use ($buffered, &$next): array|false {
+            return $buffered[$next++] ?? false;
+        };
     }
 
     /** Whether each column of a PostgreSQL result has a built-in type, whose class needs no lookup. */

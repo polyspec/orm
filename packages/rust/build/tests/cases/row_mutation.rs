@@ -51,29 +51,14 @@ async fn check() {
         let updated = RowSnapshot::from_page(&catalog.table_page(&table, 1, 0).await.unwrap(), 0).unwrap();
         assert_current_row(&mut catalog, &table, &updated).await;
         cancelled.store(true, Ordering::SeqCst);
-        assert!(catalog
-            .update_row(&updated, &[("n".into(), P::I(12))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err()
-            .message()
-            .starts_with("JOB_CANCELLED"));
+        assert_update_cancelled(&catalog, &updated, cancelled.clone(), publish.clone()).await;
         cancelled.store(false, Ordering::SeqCst);
         let stop = cancel_at_phase(&cancelled, MutationPhase::Locked);
-        assert!(catalog
-            .update_row(&updated, &[("n".into(), P::I(12))], cancelled, stop, std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err()
-            .message()
-            .starts_with("JOB_CANCELLED"));
+        assert_update_cancelled(&catalog, &updated, cancelled, stop).await;
         assert_current_row(&mut catalog, &table, &updated).await;
         let cancelled_after_write = Arc::new(AtomicBool::new(false));
         let stop = cancel_after_apply(&cancelled_after_write);
-        assert!(catalog
-            .update_row(&updated, &[("n".into(), P::I(12))], cancelled_after_write, stop, std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err()
-            .message()
-            .starts_with("JOB_CANCELLED"));
+        assert_update_cancelled(&catalog, &updated, cancelled_after_write, stop).await;
         assert_current_row(&mut catalog, &table, &updated).await;
         let late = Arc::new(AtomicBool::new(false));
         let flag = late.clone();
@@ -254,6 +239,21 @@ async fn check() {
     }
     std::fs::remove_file(path).unwrap();
     assert!(!commit_rejection_misclassified, "explicit PostgreSQL constraint rejection must not be indeterminate");
+}
+
+/// Asserts that the update of `n` to 12 in the row of `snapshot`, run with `cancelled` and `publish`, fails as cancelled.
+async fn assert_update_cancelled(
+    catalog: &CatalogConnection,
+    snapshot: &RowSnapshot,
+    cancelled: Arc<AtomicBool>,
+    publish: Arc<dyn Fn(MutationPhase) + Send + Sync>,
+) {
+    assert!(catalog
+        .update_row(snapshot, &[("n".into(), P::I(12))], cancelled, publish, std::sync::Arc::new(|| Ok(())))
+        .await
+        .unwrap_err()
+        .message()
+        .starts_with("JOB_CANCELLED"));
 }
 
 async fn assert_current_row(catalog: &mut CatalogConnection, table: &TableRef, snapshot: &RowSnapshot) {

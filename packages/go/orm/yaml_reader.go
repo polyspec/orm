@@ -306,17 +306,24 @@ func (r *yamlReader) skipCommentLines() {
 	}
 }
 
-// lineEnd reads s-l-comments [79] after a node: white space, a comment after white space, and the line break or the end of
-// the stream, then the comment lines that follow.
-func (r *yamlReader) lineEnd() bool {
-	r.skipWhite()
-	if r.cur() == '#' && (r.lineStart(r.p) || yamlWhite(r.s[r.p-1])) {
+// commentAndBreak reads, with comment, the comment that starts at the reader to the end of its line, then the line break
+// there. It returns whether it read a line break; at the end of the stream or before another character it reads none.
+func (r *yamlReader) commentAndBreak(comment bool) bool {
+	if comment {
 		for !r.eof() && !yamlBreakChar(r.cur()) {
 			r.p++
 		}
 	}
-	if bl := r.breakLen(r.p); bl > 0 {
-		r.p += bl
+	bl := r.breakLen(r.p)
+	r.p += bl
+	return bl > 0
+}
+
+// lineEnd reads s-l-comments [79] after a node: white space, a comment after white space, and the line break or the end of
+// the stream, then the comment lines that follow.
+func (r *yamlReader) lineEnd() bool {
+	r.skipWhite()
+	if r.commentAndBreak(r.cur() == '#' && (r.lineStart(r.p) || yamlWhite(r.s[r.p-1]))) {
 		r.skipCommentLines()
 		return true
 	}
@@ -732,14 +739,7 @@ func (r *yamlReader) blockScalar(n int) bool {
 		r.p++
 	}
 	white := r.skipWhite()
-	if r.cur() == '#' && white {
-		for !r.eof() && !yamlBreakChar(r.cur()) {
-			r.p++
-		}
-	}
-	if bl := r.breakLen(r.p); bl > 0 {
-		r.p += bl
-	} else if !r.eof() {
+	if !r.commentAndBreak(r.cur() == '#' && white) && !r.eof() {
 		return r.fail("a block scalar header ends its line")
 	}
 	indent := -1

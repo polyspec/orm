@@ -35,7 +35,7 @@ impl std::fmt::Display for CatalogError {
 
 impl std::error::Error for CatalogError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
+        crate::tool_db::value::cause(&self.source)
     }
 }
 

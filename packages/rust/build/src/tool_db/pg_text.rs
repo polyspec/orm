@@ -532,10 +532,15 @@ fn array_element(text: &str) -> String {
     if !quote {
         return text.to_owned();
     }
+    in_quotes(text, Some('\\'))
+}
+
+/// `text` in double quotes with each of its quotes and backslashes after `escape`, or doubled when `escape` is `None`.
+fn in_quotes(text: &str, escape: Option<char>) -> String {
     let mut out = String::from("\"");
     for ch in text.chars() {
         if ch == '"' || ch == '\\' {
-            out.push('\\');
+            out.push(escape.unwrap_or(ch));
         }
         out.push(ch);
     }
@@ -602,15 +607,7 @@ fn doubled_quotes(text: &str, brackets: bool) -> String {
     if !quote {
         return text.to_owned();
     }
-    let mut out = String::from("\"");
-    for ch in text.chars() {
-        if ch == '"' || ch == '\\' {
-            out.push(ch);
-        }
-        out.push(ch);
-    }
-    out.push('"');
-    out
+    in_quotes(text, None)
 }
 
 fn range(inner: &Form, bytes: &[u8]) -> Result<String, sqlx::Error> {

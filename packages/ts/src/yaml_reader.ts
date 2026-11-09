@@ -454,32 +454,30 @@ class Reader {
 
   /** The end of URI characters from `i`, each `%` followed by two hex digits; with `first`, at most one tag character. */
   private uriChars(i: number, first = false): number {
-    for (;;) {
-      const ch = this.at(i);
-      if (ch === '%') {
-        if (!isHex(this.at(i + 1)) || !isHex(this.at(i + 2))) throw this.leave(i);
-        i += 3;
-      } else if (first ? isTagChar(ch) : isUriChar(ch)) {
-        i++;
-      } else {
-        return i;
-      }
-      if (first) return i;
-    }
+    return this.escapedChars(i, first ? isTagChar : isUriChar, first);
   }
 
   /** The end of tag characters from `i` (`ns-tag-char` [40] and its escapes). */
   private tagChars(i: number): number {
+    return this.escapedChars(i, isTagChar, false);
+  }
+
+  /**
+   * The end of the characters from `i` that `accept` takes, each `%` followed by two hex digits (`ns-uri-char` [39]); with
+   * `once`, at most one such character.
+   */
+  private escapedChars(i: number, accept: (ch: string) => boolean, once: boolean): number {
     for (;;) {
       const ch = this.at(i);
       if (ch === '%') {
         if (!isHex(this.at(i + 1)) || !isHex(this.at(i + 2))) throw this.leave(i);
         i += 3;
-      } else if (isTagChar(ch)) {
+      } else if (accept(ch)) {
         i++;
       } else {
         return i;
       }
+      if (once) return i;
     }
   }
 
@@ -906,84 +904,77 @@ class Reader {
 
   /** `c-single-quoted(n,c)` [120] at its `'`: the escape `''`, and lines folded as a plain scalar's (COD-78). */
   private singleQuoted(n: number, ctx: Context): string {
-    let i = this.p + 1;
-    let out = '';
-    // The length of out without the white space at the end of its line, which a line break removes.
-    let keep = 0;
-    for (;;) {
-      const ch = this.at(i);
-      if (ch === '') throw this.leave(i);
-      if (ch === "'") {
-        if (this.at(i + 1) !== "'") break;
-        out += "'";
-        keep = out.length;
-        i += 2;
-      } else if (ch === '\n') {
-        if (isKeyContext(ctx)) throw this.leave(i);
-        const fold = this.flowBreak(i, n);
-        out = out.slice(0, keep) + (fold.empty === 0 ? ' ' : '\n'.repeat(fold.empty));
-        keep = out.length;
-        i = fold.at;
-      } else {
-        out += ch;
-        if (!isWhite(ch)) keep = out.length;
-        i++;
-      }
-    }
-    this.p = i + 1;
-    return out;
+    return this.quoted(n, ctx, false);
   }
 
   /** `c-double-quoted(n,c)` [109] at its `"`: the escapes of 5.7 and lines folded or joined by an escaped break (COD-78). */
   private doubleQuoted(n: number, ctx: Context): string {
+    return this.quoted(n, ctx, true);
+  }
+
+  /**
+   * A single-quoted or, with `double`, a double-quoted scalar at its quote: its characters, its escapes, and its lines
+   * folded as a plain scalar's (COD-78). The reader then stands after the closing quote.
+   */
+  private quoted(n: number, ctx: Context, double: boolean): string {
     let i = this.p + 1;
-    let out = '';
-    let keep = 0;
+    // out is the text read; keep is its length without the white space at the end of its line, which a line break removes.
+    const text = { out: '', keep: 0 };
     for (;;) {
       const ch = this.at(i);
       if (ch === '') throw this.leave(i);
-      if (ch === '"') break;
-      if (ch === '\\') {
-        const e = this.at(i + 1);
-        if (e === '\n') {
-          // An escaped line break (`s-double-escaped` [112]) keeps the white space before it and adds no space.
-          if (isKeyContext(ctx)) throw this.leave(i + 1);
-          const fold = this.flowBreak(i + 1, n);
-          out += '\n'.repeat(fold.empty);
-          i = fold.at;
-        } else if (ESCAPES.has(e)) {
-          out += ESCAPES.get(e) ?? '';
-          i += 2;
-        } else {
-          const digits = HEX_ESCAPES.get(e);
-          if (digits === undefined) throw this.leave(i + 1);
-          let hex = '';
-          for (let d = 0; d < digits; d++) {
-            const h = this.at(i + 2 + d);
-            if (!isHex(h)) throw this.leave(i + 2 + d);
-            hex += h;
-          }
-          const point = Number.parseInt(hex, 16);
-          // A surrogate or a number above U+10FFFF is no Unicode scalar value (COD-78).
-          if ((point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff) throw this.leave(i);
-          out += String.fromCodePoint(point);
-          i += 2 + digits;
-        }
-        keep = out.length;
+      if (double && ch === '"') break;
+      if (!double && ch === "'") {
+        if (this.at(i + 1) !== "'") break;
+        text.out += "'";
+        text.keep = text.out.length;
+        i += 2;
+      } else if (double && ch === '\\') {
+        i = this.doubleEscape(i, n, ctx, text);
+        text.keep = text.out.length;
       } else if (ch === '\n') {
         if (isKeyContext(ctx)) throw this.leave(i);
         const fold = this.flowBreak(i, n);
-        out = out.slice(0, keep) + (fold.empty === 0 ? ' ' : '\n'.repeat(fold.empty));
-        keep = out.length;
+        text.out = text.out.slice(0, text.keep) + (fold.empty === 0 ? ' ' : '\n'.repeat(fold.empty));
+        text.keep = text.out.length;
         i = fold.at;
       } else {
-        out += ch;
-        if (!isWhite(ch)) keep = out.length;
+        text.out += ch;
+        if (!isWhite(ch)) text.keep = text.out.length;
         i++;
       }
     }
     this.p = i + 1;
-    return out;
+    return text.out;
+  }
+
+  /** The escape of a double-quoted scalar at its `\\` at `i` (5.7), added to `text.out`; it returns the index after it. */
+  private doubleEscape(i: number, n: number, ctx: Context, text: { out: string }): number {
+    const e = this.at(i + 1);
+    if (e === '\n') {
+      // An escaped line break (`s-double-escaped` [112]) keeps the white space before it and adds no space.
+      if (isKeyContext(ctx)) throw this.leave(i + 1);
+      const fold = this.flowBreak(i + 1, n);
+      text.out += '\n'.repeat(fold.empty);
+      return fold.at;
+    }
+    if (ESCAPES.has(e)) {
+      text.out += ESCAPES.get(e) ?? '';
+      return i + 2;
+    }
+    const digits = HEX_ESCAPES.get(e);
+    if (digits === undefined) throw this.leave(i + 1);
+    let hex = '';
+    for (let d = 0; d < digits; d++) {
+      const h = this.at(i + 2 + d);
+      if (!isHex(h)) throw this.leave(i + 2 + d);
+      hex += h;
+    }
+    const point = Number.parseInt(hex, 16);
+    // A surrogate or a number above U+10FFFF is no Unicode scalar value (COD-78).
+    if ((point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff) throw this.leave(i);
+    text.out += String.fromCodePoint(point);
+    return i + 2 + digits;
   }
 
   /**
