@@ -90,10 +90,23 @@ export interface CatalogTableMetadata {
 }
 
 /**
- * One value of a plain read. An integer inside the JavaScript safe range is a number; a larger one is a bigint, so no integer
- * is rounded. Binary values are Uint8Array copies, decimals are their plain text, and temporal values are their dbspec text.
+ * A floating-point value of a read (INT-183): its number, and whether it is a 4-byte float (MySQL FLOAT, PostgreSQL real), whose number
+ * holds a single-precision value. A float is never a plain number, so a REAL that SQLite stores as 2.0 stays a float and is not read as
+ * the integer 2 (INT-152).
  */
-export type CatalogValue = null | boolean | number | bigint | string | Uint8Array;
+export class CatalogFloat {
+  public constructor(
+    public readonly value: number,
+    public readonly single: boolean,
+  ) {}
+}
+
+/**
+ * One value of a plain read. An integer inside the JavaScript safe range is a number; a larger one is a bigint, so no integer
+ * is rounded. A float is a CatalogFloat, NaN and the infinities included. Binary values are Uint8Array copies, decimals are their plain
+ * text, and temporal values are their dbspec text.
+ */
+export type CatalogValue = null | boolean | number | bigint | string | Uint8Array | CatalogFloat;
 
 /**
  * One cell of a grid read, typed by the native type of its column (the Rust GridCell). Integer is a signed value and unsigned a MySQL
@@ -197,77 +210,318 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** The native type name without the UNSIGNED suffix, which a MySQL integer carries when it is unsigned. */
-function baseType(type: string): string {
-  return type.replace(/ UNSIGNED$/, '').toUpperCase();
+/**
+ * The catalog value rules (docs/spec/interfaces.md "Catalog value rules", INT-165 to INT-185): each rule has one code and one text.
+ * The text names no value, no column label and no type that a driver reports; the read that converts a value names its column by its
+ * 1-based position (atColumn).
+ */
+const RULES = {
+  year: [CODE_VALUE, 'MySQL YEAR has no grid cell'],
+  timestamp: [CODE_VALUE, 'MySQL TIMESTAMP follows a time zone'],
+  zoned: [CODE_VALUE, 'PostgreSQL timestamptz and timetz are unsupported'],
+  numeric: [CODE_VALUE, 'PostgreSQL numeric is not finite'],
+  native: [CODE_VALUE, 'unsupported native type'],
+  driverValue: [CODE_VALUE, 'unsupported driver value'],
+  decode: [CODE_VALUE, 'the driver could not decode the value'],
+  dateRange: [CODE_TEMPORAL_VALUE, 'date outside 0001-01-01 to 9999-12-31'],
+  calendar: [CODE_TEMPORAL_VALUE, 'date is not a calendar date'],
+  timeRange: [CODE_TEMPORAL_VALUE, 'time outside 00:00:00 to 23:59:59.999999'],
+  storedDate: [CODE_TEMPORAL_VALUE, 'the stored value is not a dbspec date'],
+  storedTime: [CODE_TEMPORAL_VALUE, 'the stored value is not a dbspec time'],
+  storedDatetime: [CODE_TEMPORAL_VALUE, 'the stored value is not a dbspec datetime'],
+  checkDigits: [CODE_TEMPORAL_PRECISION, 'the fraction digits are not the count that its dbspec CHECK fixes'],
+  precision: [CODE_TEMPORAL_PRECISION, 'temporal value has more fraction digits than its precision'],
+  nativePrecision: [CODE_TEMPORAL_PRECISION, 'native type declares more than 6 fraction digits'],
+  boolean: [CODE_VALUE, 'a boolean column holds a value that is not a boolean'],
+} as const;
+
+type ValueRule = keyof typeof RULES;
+
+/** The refusal of a catalog value rule, thrown by a conversion before the read names its column (atColumn). */
+class ValueRefusal extends Error {
+  public constructor(public readonly rule: ValueRule, public override readonly cause?: unknown) {
+    super(RULES[rule][1]);
+  }
 }
 
-const INTEGER_TYPES = new Set(['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT', 'INT2', 'INT4', 'INT8']);
-const FLOAT32_TYPES = new Set(['FLOAT', 'FLOAT4']);
-const FLOAT64_TYPES = new Set(['DOUBLE', 'FLOAT8']);
-const DECIMAL_TYPES = new Set(['DECIMAL', 'NUMERIC']);
-const TEXT_TYPES = new Set(['CHAR', 'VARCHAR', 'TEXT', 'BPCHAR', 'NAME', 'ENUM', 'SET']);
-const BINARY_TYPES = new Set(['BLOB', 'BINARY', 'VARBINARY', 'BYTEA']);
+function refuse(rule: ValueRule, cause?: unknown): ValueRefusal {
+  return new ValueRefusal(rule, cause);
+}
 
-/** A value of a native integer type as a bigint: a number, a decimal string, or a bigint. */
-function integerOf(value: unknown, type: string): bigint {
+/**
+ * The error of a conversion of the value in the column at index (0-based): a refusal becomes `<CODE>: column <n>: <text>` with the
+ * 1-based n, keeping the failure that caused it (INT-165, INT-172); any other error is unchanged.
+ */
+function atColumn(index: number, error: unknown): unknown {
+  if (!(error instanceof ValueRefusal)) return error;
+  const [code, text] = RULES[error.rule];
+  return err(code, `column ${index + 1}: ${text}`, error.cause);
+}
+
+/**
+ * The cell kind of a native type of a MySQL or PostgreSQL result column, as its driver names it (driver.ts mysqlColumn and pgColumn):
+ * the kinds of INT-185, the refused types of INT-166 to INT-168, `none` for a type with no cell (INT-170), and `resolve` for a
+ * PostgreSQL type that only the server's catalog describes (an array, a range, a multirange, an enum, a composite, a pseudo-type).
+ */
+type CellClass = 'integer' | 'unsigned' | 'float32' | 'float64' | 'decimal' | 'text' | 'boolean' | 'binary' | 'date' | 'time' | 'datetime' | 'year' | 'timestamp' | 'zoned' | 'none' | 'resolve';
+
+const MYSQL_CLASSES: Record<string, CellClass> = {
+  TINYINT: 'integer', SMALLINT: 'integer', MEDIUMINT: 'integer', INT: 'integer', BIGINT: 'integer',
+  FLOAT: 'float32', DOUBLE: 'float64', DECIMAL: 'decimal',
+  DATE: 'date', TIME: 'time', DATETIME: 'datetime', TIMESTAMP: 'timestamp', YEAR: 'year',
+  // The server writes a JSON value in its normalized utf8mb4 form, and an ENUM or a SET as the text of its members (INT-185).
+  CHAR: 'text', VARCHAR: 'text', TEXT: 'text', ENUM: 'text', SET: 'text', JSON: 'text',
+  // A bit value is a binary string, and a geometry 4 bytes of its SRID followed by its WKB (INT-185).
+  BLOB: 'binary', BINARY: 'binary', VARBINARY: 'binary', BIT: 'binary', GEOMETRY: 'binary',
+};
+
+/**
+ * The cell kinds of the PostgreSQL base types of pg_catalog by their names (INT-185): a type whose output no session setting changes
+ * is a text cell; interval (IntervalStyle), money (lc_monetary), the geometric types (extra_float_digits) and the OID alias types that
+ * a schema qualifies (search_path) have none.
+ */
+const POSTGRES_CLASSES: Record<string, CellClass> = {
+  INT2: 'integer', INT4: 'integer', INT8: 'integer', FLOAT4: 'float32', FLOAT8: 'float64', NUMERIC: 'decimal', BOOL: 'boolean', BYTEA: 'binary',
+  DATE: 'date', TIME: 'time', TIMESTAMP: 'datetime', TIMESTAMPTZ: 'zoned', TIMETZ: 'zoned',
+  CHAR: 'text', NAME: 'text', TEXT: 'text', BPCHAR: 'text', VARCHAR: 'text', OID: 'text', UUID: 'text', JSON: 'text', JSONB: 'text', XML: 'text',
+  BIT: 'text', VARBIT: 'text', INET: 'text', CIDR: 'text', MACADDR: 'text', MACADDR8: 'text', TSVECTOR: 'text', TSQUERY: 'text', PG_LSN: 'text',
+  INTERVAL: 'none', MONEY: 'none', POINT: 'none', LINE: 'none', LSEG: 'none', BOX: 'none', PATH: 'none', POLYGON: 'none', CIRCLE: 'none',
+  REGCLASS: 'none', REGTYPE: 'none', REGPROC: 'none', REGPROCEDURE: 'none', REGOPER: 'none', REGOPERATOR: 'none', REGCONFIG: 'none',
+  REGDICTIONARY: 'none', REGCOLLATION: 'none',
+};
+
+/** The cell kind of the native type of a MySQL or PostgreSQL result column. */
+function cellClass(dialect: DriverName, type: string): CellClass {
+  if (dialect === 'mysql') {
+    const unsigned = type.endsWith(' UNSIGNED');
+    const found = MYSQL_CLASSES[unsigned ? type.slice(0, -' UNSIGNED'.length) : type];
+    if (found === 'integer' && unsigned) return 'unsigned';
+    return found ?? 'none';
+  }
+  if (type.startsWith('OID:')) return 'resolve';
+  return POSTGRES_CLASSES[type] ?? 'none';
+}
+
+/** The PostgreSQL type OID of a result column whose type only the server's catalog describes, or undefined. */
+function unresolvedOid(dialect: DriverName, column: DriverColumn): number | undefined {
+  if (dialect !== 'postgres' || !column.type.startsWith('OID:')) return undefined;
+  return Number(column.type.slice('OID:'.length));
+}
+
+/** The result column that stands for a resolved PostgreSQL type: a text cell, or a type with no cell. */
+function resolvedColumn(column: DriverColumn, text: boolean): DriverColumn {
+  return { name: column.name, type: text ? 'TEXT' : 'UNSUPPORTED' };
+}
+
+/**
+ * Reads the server's catalog for the PostgreSQL types of oids and the types that they are made of: the element of an array, the base of
+ * a domain, the subtype of a range, the range of a multirange and the fields of a composite. Each row is oid, schema, name, typtype,
+ * typcategory, element, base, range subtype, multirange range and the field types of a composite as a comma-separated text.
+ */
+const POSTGRES_TYPES_SQL = `WITH RECURSIVE t(oid) AS (
+  SELECT unnest($1::oid[])
+  UNION
+  SELECT n.next FROM t JOIN pg_type p ON p.oid = t.oid CROSS JOIN LATERAL (
+    SELECT p.typelem WHERE p.typcategory = 'A' AND p.typelem <> 0
+    UNION ALL SELECT p.typbasetype WHERE p.typtype = 'd'
+    UNION ALL SELECT r.rngsubtype FROM pg_range r WHERE r.rngtypid = p.oid
+    UNION ALL SELECT r.rngtypid FROM pg_range r WHERE r.rngmultitypid = p.oid
+    UNION ALL SELECT a.atttypid FROM pg_attribute a WHERE p.typtype = 'c' AND a.attrelid = p.typrelid AND a.attnum > 0 AND NOT a.attisdropped
+  ) n(next)
+)
+SELECT p.oid::text, ns.nspname::text, p.typname::text, p.typtype::text, p.typcategory::text, p.typelem::text, p.typbasetype::text,
+  (SELECT r.rngsubtype::text FROM pg_range r WHERE r.rngtypid = p.oid),
+  (SELECT r.rngtypid::text FROM pg_range r WHERE r.rngmultitypid = p.oid),
+  (SELECT string_agg(a.atttypid::text, ',' ORDER BY a.attnum) FROM pg_attribute a WHERE p.typtype = 'c' AND a.attrelid = p.typrelid AND a.attnum > 0 AND NOT a.attisdropped)
+FROM t JOIN pg_type p ON p.oid = t.oid JOIN pg_namespace ns ON ns.oid = p.typnamespace`;
+
+/** Whether a built-in PostgreSQL type has a text cell, by its oid, as postgresText found it; a built-in type does not change. */
+const POSTGRES_BUILTIN_TEXT = new Map<number, boolean>();
+
+/** One row of POSTGRES_TYPES_SQL. */
+interface PostgresType {
+  schema: string;
+  name: string;
+  typtype: string;
+  category: string;
+  element: number;
+  base: number;
+  subtype: number | undefined;
+  range: number | undefined;
+  fields: number[] | undefined;
+}
+
+/** The element kinds whose text no session setting changes, so that an array, a range or a composite of them is a text cell (INT-185). */
+const SETTING_FREE: ReadonlySet<CellClass> = new Set(['integer', 'decimal', 'boolean', 'text']);
+
+/**
+ * Whether the PostgreSQL type oid has a text cell by INT-185: an enum does; a domain takes its base type; an array, a range, a multirange
+ * or a composite does when the text of each element or field is setting-free; a base type of pg_catalog takes its POSTGRES_CLASSES kind;
+ * any other type, a pseudo-type and a base type of an extension included, has none.
+ */
+function postgresText(oid: number, types: ReadonlyMap<number, PostgresType>, seen: ReadonlySet<number> = new Set()): boolean {
+  const type = types.get(oid);
+  if (type === undefined || seen.has(oid)) return false;
+  const inner = new Set([...seen, oid]);
+  const component = (part: number | undefined): boolean => part !== undefined && part !== 0 && settingFree(part, types, inner);
+  if (type.typtype === 'e') return true;
+  if (type.typtype === 'd') return postgresText(type.base, types, inner);
+  if (type.typtype === 'r') return component(type.subtype);
+  if (type.typtype === 'm') return component(type.range);
+  if (type.typtype === 'c') return type.fields !== undefined && type.fields.every(field => component(field));
+  if (type.typtype === 'b' && type.category === 'A' && type.element !== 0) return component(type.element);
+  if (type.typtype === 'b' && type.schema === 'pg_catalog') return POSTGRES_CLASSES[type.name.toUpperCase()] === 'text';
+  return false;
+}
+
+/** Whether the text of the PostgreSQL type oid, as an element or a field, follows no session setting. */
+function settingFree(oid: number, types: ReadonlyMap<number, PostgresType>, seen: ReadonlySet<number>): boolean {
+  const type = types.get(oid);
+  if (type === undefined) return false;
+  if (type.typtype === 'b' && type.schema === 'pg_catalog' && type.category !== 'A') {
+    const found = POSTGRES_CLASSES[type.name.toUpperCase()];
+    return found !== undefined && SETTING_FREE.has(found);
+  }
+  if (type.typtype === 'd') return settingFree(type.base, types, seen);
+  return postgresText(oid, types, seen);
+}
+
+/** The rows of POSTGRES_TYPES_SQL by oid. */
+function postgresTypes(rows: readonly unknown[][]): Map<number, PostgresType> {
+  const number = (value: unknown): number | undefined => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : undefined);
+  const text = (value: unknown, what: string): string => {
+    if (typeof value !== 'string') throw err(CODE_METADATA, `expected text for the ${what} of a PostgreSQL type`);
+    return value;
+  };
+  const types = new Map<number, PostgresType>();
+  for (const row of rows) {
+    const oid = number(row[0]);
+    if (oid === undefined) throw err(CODE_METADATA, 'expected the oid of a PostgreSQL type');
+    types.set(oid, {
+      schema: text(row[1], 'schema'),
+      name: text(row[2], 'name'),
+      typtype: text(row[3], 'typtype'),
+      category: text(row[4], 'category'),
+      element: number(row[5]) ?? 0,
+      base: number(row[6]) ?? 0,
+      subtype: number(row[7]),
+      range: number(row[8]),
+      fields: typeof row[9] === 'string' ? row[9].split(',').map(field => number(field) ?? 0) : undefined,
+    });
+  }
+  return types;
+}
+
+/** A value of an integer column as a bigint: a number, a bigint or the decimal digits that a driver sends (INT-171 otherwise). */
+function hostInteger(value: unknown): bigint {
   if (typeof value === 'bigint') return value;
   if (typeof value === 'number' && Number.isInteger(value)) return BigInt(value);
   if (typeof value === 'string' && /^-?\d+$/.test(value)) return BigInt(value);
-  throw err(CODE_VALUE, `integer of native type "${type}" is not an integer`);
+  throw refuse('driverValue');
 }
 
 /** An integer for a plain read: a number inside the safe range, otherwise the exact bigint. */
-function integerValue(value: bigint): CatalogValue {
+function integerValue(value: bigint): number | bigint {
   return value >= MIN_SAFE && value <= MAX_SAFE ? Number(value) : value;
 }
 
-/** Decodes the bytes of a text value of a native type as UTF-8; invalid bytes fail. */
-function utf8Of(value: Uint8Array, type: string): string {
+/** A signed 64-bit integer of a signed column, or an unsigned 64-bit one of an unsigned column; INT-171 otherwise. */
+function checkedInteger(value: unknown, unsigned: boolean): bigint {
+  const number = hostInteger(value);
+  if (unsigned ? number < 0n || number > U64_MAX : number < I64_MIN || number > I64_MAX) throw refuse('driverValue');
+  return number;
+}
+
+/** The float of a double column: a number, or the text of a PostgreSQL float8, NaN and the infinities included (INT-171 otherwise). */
+function hostFloat64(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && /^(-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?|NaN|-?Infinity)$/.test(value)) return Number(value);
+  throw refuse('driverValue');
+}
+
+/** The single-precision bits of a 4-byte float, which arrives as its exact text (driver.ts, exact); INT-171 otherwise. */
+function hostFloat32(value: unknown): number {
+  if (typeof value !== 'string') throw refuse('driverValue');
+  return float32BitsOfText(value);
+}
+
+/** The text of a decimal column; a PostgreSQL NaN or infinity is INT-169 where it has no cell, and any other text INT-171. */
+function hostDecimal(value: unknown, finite: boolean): string {
+  if (typeof value !== 'string') throw refuse('driverValue');
+  if (/^-?\d+(\.\d+)?$/.test(value)) return value;
+  if (value === 'NaN' || value === 'Infinity' || value === '-Infinity') {
+    if (finite) throw refuse('numeric');
+    return value;
+  }
+  throw refuse('driverValue');
+}
+
+/** A boolean: a boolean, or the `t` and `f` of a PostgreSQL bool (INT-171 otherwise). */
+function hostBoolean(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (value === 't' || value === 'f') return value === 't';
+  throw refuse('driverValue');
+}
+
+/**
+ * The bytes of the text that PostgreSQL sends for a bytea in the form of bytea_output: hex (`\x` and two hex digits a byte) or escape
+ * (a printable ASCII character, `\\` or `\` and three octal digits a byte). A text in neither form fails, so that no byte is lost.
+ */
+function byteaBytes(text: string): Uint8Array {
+  if (text.startsWith('\\x')) {
+    const hex = text.slice(2);
+    if (!/^(?:[0-9a-fA-F]{2})*$/.test(hex)) throw new TypeError('the hex form of the bytea text is not pairs of hex digits');
+    return new Uint8Array(Buffer.from(hex, 'hex'));
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code === 0x5c) {
+      if (text.charAt(i + 1) === '\\') {
+        bytes.push(0x5c);
+        i += 1;
+        continue;
+      }
+      const octal = text.slice(i + 1, i + 4);
+      if (!/^[0-3][0-7]{2}$/.test(octal)) throw new TypeError('the bytea text has a backslash that starts no escape');
+      bytes.push(parseInt(octal, 8));
+      i += 3;
+    } else if (code >= 0x20 && code < 0x7f) {
+      bytes.push(code);
+    } else {
+      throw new TypeError('the bytea text has a character that its escape form writes as an octal escape');
+    }
+  }
+  return Uint8Array.from(bytes);
+}
+
+/** The bytes of a binary column: driver bytes, or the text of a PostgreSQL bytea (INT-172 with the failure when it does not decode). */
+function hostBytes(value: unknown): Uint8Array {
+  if (value instanceof Uint8Array) return new Uint8Array(value);
+  if (typeof value !== 'string') throw refuse('driverValue');
+  try {
+    return byteaBytes(value);
+  } catch (error) {
+    throw refuse('decode', error);
+  }
+}
+
+/** A text: a string, or driver bytes, which are the text when they are valid UTF-8 and stay bytes when not (INT-153). */
+function hostText(value: unknown): string | Uint8Array {
+  if (typeof value === 'string') return value;
+  if (!(value instanceof Uint8Array)) throw refuse('driverValue');
+  if (!isUtf8(value)) return new Uint8Array(value);
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(value);
   } catch (error) {
-    throw err(CODE_VALUE, `text of native type "${type}" is not valid UTF-8`, error);
+    throw refuse('decode', error);
   }
 }
 
-/** The Go catalog conversion of a binary driver value by its native type (catalogBytesValue): the MySQL and PostgreSQL text types arrive as bytes. */
-function bytesValue(value: Uint8Array, type: string): CatalogValue {
-  // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
-  if (!isUtf8(value)) return new Uint8Array(value);
-  const upper = type.toUpperCase();
-  // A SQLite expression has no declared type, and its driver reads a BLOB value as bytes (INT-153).
-  if (upper === '' || /BLOB|BINARY|BYTEA/.test(upper)) return new Uint8Array(value);
-  if (/DECIMAL|NUMERIC|MONEY/.test(upper)) return utf8Of(value, type);
-  if (upper.includes('INT')) return integerValue(integerOf(utf8Of(value, type), type));
-  if (/FLOAT|DOUBLE|REAL/.test(upper)) {
-    const text = utf8Of(value, type);
-    const number = Number(text);
-    if (Number.isNaN(number) && text !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number`);
-    return number;
-  }
-  if (/CHAR|TEXT|JSON|ENUM|^SET|UUID|XML|NAME/.test(upper)) return utf8Of(value, type);
-  throw err(CODE_VALUE, `unsupported native type "${type}"`);
-}
-
-/** A driver value of a plain read: the Go catalog conversion, with the native type of its column. */
-function plainValue(value: unknown, column: DriverColumn): CatalogValue {
-  if (value === null || typeof value === 'boolean') return value;
-  if (value instanceof Uint8Array) return bytesValue(value, column.type);
-  if (INTEGER_TYPES.has(baseType(column.type)) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint')) {
-    return integerValue(integerOf(value, column.type));
-  }
-  if (typeof value === 'bigint') return integerValue(value);
-  if (typeof value === 'number' && FLOAT32_TYPES.has(baseType(column.type))) {
-    throw err(CODE_VALUE, `single-precision ${column.type} arrived as a number; it must arrive as its exact text`);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw err(CODE_VALUE, 'a non-finite number is not a catalog value');
-    return value;
-  }
-  if (typeof value === 'string' && FLOAT32_TYPES.has(baseType(column.type))) return float32FromBits(float32BitsOfText(value));
-  if (typeof value === 'string') return value;
-  throw err(CODE_VALUE, 'unsupported driver value');
+/** The temporal text that a driver sends for a column of a temporal kind (INT-171 when it is not a string). */
+function hostTemporal(value: unknown): string {
+  if (typeof value !== 'string') throw refuse('driverValue');
+  return value;
 }
 
 /** The float bits of a number as an IEEE-754 double. */
@@ -306,7 +560,7 @@ function float32BitsOfText(text: string): number {
   const special = specials[text];
   if (special !== undefined) return Number(special);
   const match = /^([+-])?(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(text);
-  if (match === null) throw err(CODE_VALUE, 'float text is not a decimal number');
+  if (match === null) throw refuse('driverValue');
   const sign = match[1] === '-' ? 1n << 31n : 0n;
   const fraction = match[3] ?? '';
   const exponent10 = Number(match[4] ?? '0') - fraction.length;
@@ -343,180 +597,229 @@ function float32FromBits(bits: number): number {
   return view.getFloat32(0);
 }
 
-/** The number of fraction digits of a temporal text. */
-function fractionDigits(text: string): number {
-  const dot = text.indexOf('.');
-  return dot < 0 ? 0 : text.length - dot - 1;
-}
-
-const DATE_TEXT = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_TEXT = /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/;
-
-/** A dbspec date `YYYY-MM-DD` from 0001-01-01 to 9999-12-31; any other text fails with GRID_TEMPORAL_VALUE. */
-function dateText(text: string): string {
-  const match = DATE_TEXT.exec(text);
-  if (match === null) throw err(CODE_TEMPORAL_VALUE, 'date is not in the form YYYY-MM-DD');
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
+/** The calendar check of a date: a year from 1 to 9999 (INT-173), then a month and a day of the calendar (INT-174). */
+function checkDate(year: number, month: number, day: number): void {
+  if (year < 1 || year > 9999) throw refuse('dateRange');
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);
-  if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    throw err(CODE_TEMPORAL_VALUE, 'date is outside 0001-01-01 to 9999-12-31 or is not a calendar date');
-  }
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw refuse('calendar');
+}
+
+/** The time check of a time of day: 00:00:00 to 23:59:59.999999 (INT-175). */
+function checkTime(hours: number, minutes: number, seconds: number): void {
+  if (hours > 23 || minutes > 59 || seconds > 59) throw refuse('timeRange');
+}
+
+const DRIVER_DATE = /^(\d{4,})-(\d{2})-(\d{2})$/;
+const DRIVER_TIME = /^(-)?(\d{2,3}):(\d{2}):(\d{2})(?:\.(\d+))?$/;
+const DRIVER_DATETIME = /^(\d{4,}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/;
+
+/**
+ * A date that MySQL or PostgreSQL sends, as the dbspec text `YYYY-MM-DD`: a PostgreSQL infinity, BC date or year past 9999 and the MySQL
+ * zero date are outside the range (INT-173), and any other text is no driver date (INT-171).
+ */
+function driverDate(text: string): string {
+  if (text === 'infinity' || text === '-infinity' || text.endsWith(' BC')) throw refuse('dateRange');
+  const match = DRIVER_DATE.exec(text);
+  if (match === null) throw refuse('driverValue');
+  checkDate(Number(match[1]), Number(match[2]), Number(match[3]));
   return text;
 }
 
-/** A dbspec time `HH:MM:SS.ffffff` with six fraction digits, within 00:00:00 to 23:59:59.999999. */
-function timeText(text: string): string {
-  const match = TIME_TEXT.exec(text);
-  if (match === null) throw err(CODE_TEMPORAL_VALUE, 'time is not in the form HH:MM:SS');
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const seconds = Number(match[3]);
-  if (hours > 23 || minutes > 59 || seconds > 59) throw err(CODE_TEMPORAL_VALUE, 'time is outside 00:00:00 to 23:59:59.999999');
-  return `${match[1]}:${match[2]}:${match[3]}.${(match[4] ?? '').padEnd(6, '0')}`;
+/**
+ * A time that MySQL or PostgreSQL sends, as the dbspec text `HH:MM:SS.ffffff` with six fraction digits: a MySQL time past a day or
+ * negative and a PostgreSQL 24:00:00 are outside the day (INT-175), and a digit past six fraction digits is no driver time (INT-171).
+ */
+function driverTime(text: string): string {
+  const match = DRIVER_TIME.exec(text);
+  if (match === null) throw refuse('driverValue');
+  const [, negative, hours = '', minutes = '', seconds = '', fraction = ''] = match;
+  if (negative !== undefined || hours.length > 2) throw refuse('timeRange');
+  checkTime(Number(hours), Number(minutes), Number(seconds));
+  if (fraction.length > 6) throw refuse('driverValue');
+  return `${hours}:${minutes}:${seconds}.${fraction.padEnd(6, '0')}`;
 }
 
-/** A dbspec datetime `YYYY-MM-DD HH:MM:SS.ffffff` in UTC. */
-function datetimeText(text: string): string {
-  const [date = '', time = ''] = text.split(' ');
-  if (text.split(' ').length !== 2) throw err(CODE_TEMPORAL_VALUE, 'datetime is not in the form YYYY-MM-DD HH:MM:SS');
-  return `${dateText(date)} ${timeText(time)}`;
+/** A datetime that MySQL or PostgreSQL sends, as the dbspec text `YYYY-MM-DD HH:MM:SS.ffffff` in UTC. */
+function driverDatetime(text: string): string {
+  if (text === 'infinity' || text === '-infinity' || text.endsWith(' BC')) throw refuse('dateRange');
+  const match = DRIVER_DATETIME.exec(text);
+  if (match === null) throw refuse('driverValue');
+  return `${driverDate(match[1] ?? '')} ${driverTime(match[2] ?? '')}`;
 }
 
-/** The temporal kind of a native type of a dialect: date, time or datetime; undefined for every other type, and for SQLite, which keeps its text. */
-function temporalKind(dialect: DriverName, type: string): 'date' | 'time' | 'datetime' | undefined {
-  const head = baseType(type).split(/[( ]/)[0] ?? '';
-  if (dialect === 'mysql') {
-    if (head === 'DATE') return 'date';
-    if (head === 'TIME') return 'time';
-    if (head === 'DATETIME') return 'datetime';
-    return undefined;
-  }
-  if (dialect === 'postgres') {
-    if (head === 'DATE') return 'date';
-    if (head === 'TIME') return 'time';
-    if (head === 'TIMESTAMP') return 'datetime';
-  }
-  return undefined;
+/** The dbspec text of a MySQL or PostgreSQL temporal value of a kind, with six fraction digits. */
+function driverTemporal(value: unknown, kind: 'date' | 'time' | 'datetime'): string {
+  const text = hostTemporal(value);
+  if (kind === 'date') return driverDate(text);
+  return kind === 'time' ? driverTime(text) : driverDatetime(text);
 }
 
 /**
- * The fraction digits of a described temporal column: the digits of its native type (MySQL time(3), PostgreSQL timestamp(3)
- * without time zone), or 0 for MySQL and 6 for PostgreSQL when the type names none.
+ * The fraction digits of a described temporal column: the digits of its native type (MySQL time(3), PostgreSQL timestamp(3) without
+ * time zone), or 0 for MySQL and 6 for PostgreSQL when the type names none. A precision above 6 or that is not a number is INT-181.
  */
 function declaredPrecision(dialect: DriverName, type: string): number {
-  const match = /\((\d+)\)/.exec(type);
-  if (match !== null) return Number(match[1]);
-  return dialect === 'postgres' ? 6 : 0;
+  const match = /\(([^)]*)\)/.exec(type);
+  if (match === null) return dialect === 'postgres' ? 6 : 0;
+  const digits = match[1] ?? '';
+  if (!/^\d+$/.test(digits) || Number(digits) > 6) throw refuse('nativePrecision');
+  return Number(digits);
 }
 
 /**
- * A temporal value of a described column in its declared precision p (docs/spec/interfaces.md "Rust native grid query
- * specification"): exactly p fraction digits, GRID_TEMPORAL_PRECISION for a non-zero digit beyond p.
+ * A temporal value of a described column in its declared precision p (INT-103): exactly p fraction digits, and INT-180 for a non-zero
+ * digit beyond p.
  */
-function describedTemporal(value: string, kind: 'date' | 'time' | 'datetime', precision: number): string {
-  if (kind === 'date') return dateText(value);
-  const text = kind === 'time' ? timeText(value) : datetimeText(value);
+function describedTemporal(value: unknown, kind: 'date' | 'time' | 'datetime', type: string, dialect: DriverName): string {
+  const text = driverTemporal(value, kind);
+  if (kind === 'date') return text;
+  const precision = declaredPrecision(dialect, type);
   const dot = text.lastIndexOf('.');
   const head = text.slice(0, dot);
   const digits = text.slice(dot + 1);
-  if (digits.slice(precision) !== '0'.repeat(Math.max(0, digits.length - precision))) {
-    throw err(CODE_TEMPORAL_PRECISION, `temporal value has more fraction digits than its precision ${precision}`);
-  }
+  if (!/^0*$/.test(digits.slice(precision))) throw refuse('precision');
   return precision === 0 ? head : `${head}.${digits.slice(0, precision)}`;
 }
 
-/** A grid cell of a SQLite result: SQLite has no declared temporal type in a grid read, so text keeps its stored form. */
+/** A value of a SQLite result by its storage class (INT-152, INT-184): an integer, a REAL, a text or a blob. */
+function sqliteValue(value: unknown): CatalogValue {
+  if (value === null) return null;
+  if (typeof value === 'bigint') return integerValue(value);
+  if (typeof value === 'number') return new CatalogFloat(value, false);
+  if (typeof value === 'string') return value;
+  if (value instanceof Uint8Array) return new Uint8Array(value);
+  throw refuse('driverValue');
+}
+
+/** A grid cell of a SQLite result: the storage class of its value, a REAL a Float64 cell (INT-152, INT-183). */
 function sqliteGridCell(value: unknown): CatalogGridCell {
   if (value === null) return { kind: 'null' };
   if (typeof value === 'bigint') {
-    if (value < I64_MIN || value > I64_MAX) throw err(CODE_VALUE, 'integer is outside the signed 64-bit range');
+    if (value < I64_MIN || value > I64_MAX) throw refuse('driverValue');
     return { kind: 'integer', value };
   }
   if (typeof value === 'number') return { kind: 'float64', bits: float64Bits(value) };
   if (typeof value === 'string') return { kind: 'text', value };
   if (value instanceof Uint8Array) return { kind: 'binary', value: new Uint8Array(value) };
-  throw err(CODE_VALUE, 'unsupported driver value');
+  throw refuse('driverValue');
 }
 
-/** A grid cell of a MySQL or PostgreSQL column, by its native type (the Rust grid rules, decode and temporal forms). */
+/** A grid cell of a result column by the cell kind of its native type (INT-165 to INT-185). */
 function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): CatalogGridCell {
   if (value === null) return { kind: 'null' };
   if (dialect === 'sqlite') return sqliteGridCell(value);
-  const type = column.type;
-  const base = baseType(type);
-  const unsupported = (): OrmError => err(CODE_VALUE, `grid cell of native type "${type}" is not supported`);
-  const integer = (number: bigint): CatalogGridCell => {
-    if (type.endsWith(' UNSIGNED')) {
-      if (number < 0n || number > U64_MAX) throw err(CODE_VALUE, 'unsigned integer is outside the 64-bit range');
-      return { kind: 'unsigned', value: number };
+  const kind = cellClass(dialect, column.type);
+  switch (kind) {
+    case 'integer':
+    case 'unsigned':
+      return { kind, value: checkedInteger(value, kind === 'unsigned') };
+    case 'float32':
+      return { kind: 'float32', bits: hostFloat32(value) };
+    case 'float64':
+      return { kind: 'float64', bits: float64Bits(hostFloat64(value)) };
+    case 'decimal':
+      return { kind: 'decimal', value: hostDecimal(value, true) };
+    case 'boolean':
+      return { kind: 'boolean', value: hostBoolean(value) };
+    case 'binary':
+      return { kind: 'binary', value: hostBytes(value) };
+    case 'text': {
+      const text = hostText(value);
+      return typeof text === 'string' ? { kind: 'text', value: text } : { kind: 'binary', value: text };
     }
-    if (number < I64_MIN || number > I64_MAX) throw err(CODE_VALUE, 'integer is outside the signed 64-bit range');
-    return { kind: 'integer', value: number };
-  };
-  if (value instanceof Uint8Array) {
-    if (BINARY_TYPES.has(base)) return { kind: 'binary', value: new Uint8Array(value) };
-    throw unsupported();
+    case 'date':
+    case 'time':
+    case 'datetime':
+      return { kind, value: driverTemporal(value, kind) };
+    case 'year':
+    case 'timestamp':
+    case 'zoned':
+      throw refuse(kind);
+    case 'none':
+    case 'resolve':
+      throw refuse('native');
   }
-  if (typeof value === 'boolean') {
-    if (base === 'BOOL') return { kind: 'boolean', value };
-    throw unsupported();
-  }
-  if (typeof value === 'number') {
-    if (FLOAT32_TYPES.has(base)) throw err(CODE_VALUE, `single-precision ${type} arrived as a number; it must arrive as its exact text`);
-    if (FLOAT64_TYPES.has(base)) return { kind: 'float64', bits: float64Bits(value) };
-    if (INTEGER_TYPES.has(base) && Number.isInteger(value)) return integer(BigInt(value));
-    throw unsupported();
-  }
-  if (typeof value === 'bigint') {
-    if (INTEGER_TYPES.has(base)) return integer(value);
-    throw unsupported();
-  }
-  if (typeof value !== 'string') throw unsupported();
-  if (INTEGER_TYPES.has(base)) return integer(integerOf(value, type));
-  if (FLOAT32_TYPES.has(base)) return { kind: 'float32', bits: float32BitsOfText(value) };
-  if (FLOAT64_TYPES.has(base)) {
-    const number = Number(value);
-    if (Number.isNaN(number) && value !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number`);
-    return { kind: 'float64', bits: float64Bits(number) };
-  }
-  if (DECIMAL_TYPES.has(base)) {
-    // A nonfinite PostgreSQL numeric stays unsupported (docs/spec/interfaces.md).
-    if (!/^-?\d+(\.\d+)?$/.test(value)) throw unsupported();
-    return { kind: 'decimal', value };
-  }
-  if (TEXT_TYPES.has(base)) return { kind: 'text', value };
-  if (dialect === 'mysql' && base === 'DATE') return { kind: 'date', value: dateText(value) };
-  if (dialect === 'mysql' && base === 'TIME') return { kind: 'time', value: timeText(value) };
-  if (dialect === 'mysql' && base === 'DATETIME') return { kind: 'datetime', value: datetimeText(value) };
-  if (dialect === 'postgres' && base === 'DATE') return { kind: 'date', value: dateText(value) };
-  if (dialect === 'postgres' && base === 'TIME') return { kind: 'time', value: timeText(value) };
-  if (dialect === 'postgres' && base === 'TIMESTAMP') return { kind: 'datetime', value: datetimeText(value) };
-  throw unsupported();
-}
-
-/** A driver value of a described table: the plain conversion, then the temporal rules of its column (dbspec text for SQLite, the declared precision otherwise). */
-function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
-  const plain = plainValue(value, column);
-  if (described === undefined) return plain;
-  if (plain !== null && zonedType(dialect, described.nativeType)) {
-    throw err(CODE_VALUE, `${described.name} of type ${described.nativeType} follows a time zone, which dbspec does not declare`);
-  }
-  const boolean = describedBoolean(plain, described, dialect);
-  if (boolean !== undefined) return boolean;
-  if (dialect === 'sqlite') return sqliteTemporal(plain, described);
-  if (typeof plain !== 'string') return plain;
-  const kind = temporalKind(dialect, described.nativeType);
-  if (kind === undefined) return plain;
-  return describedTemporal(plain, kind, declaredPrecision(dialect, described.nativeType));
 }
 
 /**
- * A boolean column read as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite BOOLEAN arrive as the
- * integer 0 or 1, a PostgreSQL boolean already as a bool. Any other value of such a column fails; any other column
- * returns undefined.
+ * A value of a plain read by the cell kind of its native type: an integer, a float of the runtime, a non-finite one included (INT-183),
+ * a decimal as its text, a temporal value as the text of its grid cell (INT-153), and bytes for a binary value and for a text that is not
+ * valid UTF-8. A type with no cell is INT-170; MySQL YEAR is its integer, and a MySQL TIMESTAMP and a PostgreSQL timestamptz or timetz
+ * are the text that the server sends in the session's UTC.
+ */
+function plainValue(value: unknown, column: DriverColumn, dialect: DriverName): CatalogValue {
+  if (value === null) return null;
+  if (dialect === 'sqlite') return sqliteValue(value);
+  const kind = cellClass(dialect, column.type);
+  switch (kind) {
+    case 'integer':
+    case 'unsigned':
+    case 'year':
+      return integerValue(checkedInteger(value, kind === 'unsigned'));
+    case 'float32':
+      return new CatalogFloat(float32FromBits(hostFloat32(value)), true);
+    case 'float64':
+      return new CatalogFloat(hostFloat64(value), false);
+    case 'decimal':
+      return hostDecimal(value, false);
+    case 'boolean':
+      return hostBoolean(value);
+    case 'binary':
+      return hostBytes(value);
+    case 'text':
+      return hostText(value);
+    case 'date':
+    case 'time':
+    case 'datetime':
+      return driverTemporal(value, kind);
+    case 'timestamp':
+    case 'zoned':
+      return hostTemporal(value);
+    case 'none':
+    case 'resolve':
+      throw refuse('native');
+  }
+}
+
+/**
+ * A value of a described table (INT-165): the refused types of INT-166 to INT-170, a non-finite PostgreSQL numeric (INT-169), a boolean
+ * column (INT-182), the declared precision of a MySQL or PostgreSQL temporal column (INT-103) and the dbspec text of a SQLite one.
+ */
+function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
+  if (described === undefined) return plainValue(value, column, dialect);
+  if (dialect === 'sqlite') {
+    const stored = sqliteValue(value);
+    const boolean = describedBoolean(stored, described, dialect);
+    if (boolean !== undefined) return boolean;
+    return sqliteTemporal(stored, described);
+  }
+  if (value === null) return null;
+  const kind = cellClass(dialect, column.type);
+  switch (kind) {
+    case 'year':
+    case 'timestamp':
+    case 'zoned':
+      throw refuse(kind);
+    case 'none':
+    case 'resolve':
+      throw refuse('native');
+    case 'decimal':
+      return hostDecimal(value, true);
+    case 'date':
+    case 'time':
+    case 'datetime':
+      return describedTemporal(value, kind, described.nativeType, dialect);
+    default: {
+      const plain = plainValue(value, column, dialect);
+      return describedBoolean(plain, described, dialect) ?? plain;
+    }
+  }
+}
+
+/**
+ * A boolean column read as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite BOOLEAN arrive as the integer 0 or 1, a
+ * PostgreSQL boolean already as a bool. Any other value of such a column is INT-182; any other column returns undefined.
  */
 function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect: DriverName): boolean | undefined | null {
   const native = described.nativeType.trim().toLowerCase();
@@ -525,14 +828,7 @@ function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect
   if (plain === null) return null;
   if (typeof plain === 'boolean') return plain;
   if (plain === 0 || plain === 1) return plain === 1;
-  throw err(CODE_VALUE, `${described.name} holds a value that is not a boolean`);
-}
-
-/** A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column, which follows a time zone that dbspec declares for no column (INT-103). */
-function zonedType(dialect: DriverName, nativeType: string): boolean {
-  const native = nativeType.trim().toLowerCase();
-  if (dialect === 'mysql') return /^timestamp(\([0-6]\))?$/.test(native);
-  return dialect === 'postgres' && /^(timestamp|time)(\([0-6]\))? with time zone$/.test(native);
+  throw refuse('boolean');
 }
 
 /** A cell of a described table with its size in the read budget. */
@@ -541,48 +837,41 @@ function describedCell(value: unknown, column: DriverColumn, described: CatalogC
   return { cell, size: sizeOf(cell) };
 }
 
-/**
- * A SQLite temporal column of a described table (Rust temporal.rs, sqlite_kind): the stored text must be in the dbspec form, and its
- * fraction must have the digits that the table's dbspec CHECK fixes. A value that is no dbspec text is GRID_TEMPORAL_VALUE.
- */
-function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogValue {
-  const declared = described.nativeType.toUpperCase();
-  if (declared !== 'DATE' && declared !== 'TIME' && declared !== 'DATETIME') return plain;
-  if (plain === null) return null;
-  const kind = declared === 'DATE' ? 'date' : declared === 'TIME' ? 'time' : 'datetime';
-  if (typeof plain !== 'string' || !dbspecTemporal(kind, plain)) {
-    throw err(CODE_TEMPORAL_VALUE, `${described.name} holds a value that is not a dbspec ${kind}`);
-  }
-  if (kind === 'date') return plain;
-  // INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
-  const fixed = described.checkPrecision ?? 0;
-  const digits = fractionDigits(plain);
-  if (digits !== fixed) {
-    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds a fraction whose digits are not the ${fixed} that its dbspec CHECK fixes`);
-  }
-  return plain;
-}
+const STORED_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const STORED_TIME = /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/;
+const STORED_DATETIME = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/;
 
-/** Whether text is in the dbspec form of its kind: the rules of Rust's is_temporal, without any normalization. */
-function dbspecTemporal(kind: 'date' | 'time' | 'datetime', text: string): boolean {
-  const valid = (check: () => string): boolean => {
-    try {
-      check();
-      return true;
-    } catch (error) {
-      if (error instanceof OrmError && error.code === CODE_TEMPORAL_VALUE) return false;
-      throw error;
-    }
-  };
-  if (kind === 'date') return text.length === 10 && valid(() => dateText(text));
-  if (kind === 'time') {
-    const [whole = '', digits] = text.split('.');
-    if (whole.length !== 8 || (digits !== undefined && !/^[0-9]{1,6}$/.test(digits))) return false;
-    return valid(() => timeText(whole));
+/**
+ * A SQLite temporal column of a described table: the stored value must be a text of the dbspec form of its declared DATE, TIME or
+ * DATETIME (INT-176 to INT-178), then within the range of a date and a time (INT-173 to INT-175), and its fraction must have the digits
+ * that the table's dbspec CHECK fixes (INT-179). Any other declared type keeps its stored value unchecked (INT-184).
+ */
+function sqliteTemporal(stored: CatalogValue, described: CatalogColumn): CatalogValue {
+  const declared = described.nativeType.toUpperCase();
+  if (stored === null || (declared !== 'DATE' && declared !== 'TIME' && declared !== 'DATETIME')) return stored;
+  const text = typeof stored === 'string' ? stored : '';
+  if (declared === 'DATE') {
+    const match = STORED_DATE.exec(text);
+    if (match === null) throw refuse('storedDate');
+    checkDate(Number(match[1]), Number(match[2]), Number(match[3]));
+    return text;
   }
-  const parts = text.split(' ');
-  if (parts.length !== 2) return false;
-  return dbspecTemporal('date', parts[0] ?? '') && dbspecTemporal('time', parts[1] ?? '');
+  let fraction: string;
+  if (declared === 'TIME') {
+    const match = STORED_TIME.exec(text);
+    if (match === null) throw refuse('storedTime');
+    checkTime(Number(match[1]), Number(match[2]), Number(match[3]));
+    fraction = match[4] ?? '';
+  } else {
+    const match = STORED_DATETIME.exec(text);
+    if (match === null) throw refuse('storedDatetime');
+    checkDate(Number(match[1]), Number(match[2]), Number(match[3]));
+    checkTime(Number(match[4]), Number(match[5]), Number(match[6]));
+    fraction = match[7] ?? '';
+  }
+  // INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
+  if (fraction.length !== (described.checkPrecision ?? 0)) throw refuse('checkDigits');
+  return text;
 }
 
 /**
@@ -652,6 +941,8 @@ function cellKey(cell: unknown): string {
     return `d${Object.is(cell, -0) ? '-0' : String(cell)}`;
   }
   if (typeof cell === 'bigint') return `i${cell.toString()}`;
+  // A float is its kind and its IEEE-754 bits, so signed zero and NaN are values (INT-107).
+  if (cell instanceof CatalogFloat) return `f${cell.single ? 32 : 64}:${float64Bits(cell.value).toString()}`;
   if (typeof cell === 'string') return `s${Buffer.byteLength(cell, 'utf8')}:${cell}`;
   if (cell instanceof Uint8Array) return `x${Buffer.from(cell).toString('hex')}`;
   throw err(CODE_SNAPSHOT, 'unsupported cell type');
@@ -659,6 +950,17 @@ function cellKey(cell: unknown): string {
 
 function sameCell(a: unknown, b: unknown): boolean {
   return cellKey(a) === cellKey(b);
+}
+
+/**
+ * Whether a stored cell holds the value that a write gave: a float holds a number when its number is that number, and any other cell
+ * when it is the same cell, an integer whatever its host form.
+ */
+function sameWritten(stored: unknown, written: unknown): boolean {
+  // A bound integer is a bigint (checkParams), and a read returns a safe integer as a number.
+  const value = typeof written === 'bigint' ? integerValue(written) : written;
+  if (stored instanceof CatalogFloat && typeof value === 'number') return Object.is(stored.value, value);
+  return sameCell(stored, value);
 }
 
 function sameRow(a: readonly unknown[], b: readonly unknown[]): boolean {
@@ -719,7 +1021,11 @@ function checkParams(params: readonly unknown[], code: string): DriverValue[] {
     if (param === null || typeof param === 'boolean' || typeof param === 'string' || typeof param === 'bigint' || param instanceof Uint8Array) {
       return param;
     }
+    // A safe integer number is an integer value, as a read returns one (CatalogValue), so it binds as an integer and SQLite stores no
+    // REAL for it; any other finite number and a CatalogFloat bind as a double.
+    if (typeof param === 'number' && Number.isSafeInteger(param)) return BigInt(param);
     if (typeof param === 'number' && Number.isFinite(param)) return param;
+    if (param instanceof CatalogFloat && Number.isFinite(param.value)) return param.value;
     throw err(code, `parameter ${index + 1} has unsupported type ${typeof param} or is not finite`);
   });
 }
@@ -966,6 +1272,9 @@ class Session {
     let overflow: string | undefined;
     let failure: unknown;
     let lossy = false;
+    // The values of a PostgreSQL type that only the server's catalog describes, in the order of the stream: each is read as a text cell
+    // first, and its type is resolved after the stream, before the read answers.
+    const unresolved: Array<{ oid: number; at: number }> = [];
     const deliver = (values: readonly unknown[]): boolean => {
         if (keep !== undefined && out.rows.length >= keep) {
           out.past = true;
@@ -975,23 +1284,30 @@ class Session {
           overflow = `result has more than ${maxRows} rows`;
           return false;
         }
-        try {
-          const cells: T[] = [];
-          values.forEach((value, index) => {
-            const converted = convert(value, columnAt(out.columns, index), index);
+        const cells: T[] = [];
+        for (const [index, value] of values.entries()) {
+          try {
+            let column = columnAt(out.columns, index);
+            const oid = value === null ? undefined : unresolvedOid(this.dialect, column);
+            if (oid !== undefined) {
+              const known = POSTGRES_BUILTIN_TEXT.get(oid);
+              if (known === undefined) unresolved.push({ oid, at: index });
+              column = resolvedColumn(column, known ?? true);
+            }
+            const converted = convert(value, column, index);
             bytes += converted.size;
             cells.push(converted.cell);
-          });
-          if (bytes > maxBytes) {
-            overflow = `result has more than ${maxBytes} bytes of values`;
+          } catch (error) {
+            failure = atColumn(index, error);
             return false;
           }
-          out.rows.push(cells);
-          return true;
-        } catch (error) {
-          failure = error;
+        }
+        if (bytes > maxBytes) {
+          overflow = `result has more than ${maxBytes} bytes of values`;
           return false;
         }
+        out.rows.push(cells);
+        return true;
     };
     await this.session.scan(sql, bound, {
       columns: columns => { out.columns = columns; },
@@ -1016,6 +1332,16 @@ class Session {
         row: values => deliver(sqliteStoredCells(values)),
       }, noop);
     }
+    if (unresolved.length > 0) {
+      // Every value read before a failure or a stop precedes it in the stream, so the first one of a type with no cell (INT-170) is the
+      // failure of the read.
+      const text = await this.postgresText([...new Set(unresolved.map(item => item.oid))]);
+      const refused = unresolved.find(item => text.get(item.oid) !== true);
+      if (refused !== undefined) {
+        failure = atColumn(refused.at, refuse('native'));
+        overflow = undefined;
+      }
+    }
     if (failure !== undefined) {
       this.stopped = true;
       throw failure;
@@ -1025,6 +1351,23 @@ class Session {
       throw err(CODE_LIMIT, overflow);
     }
     return out;
+  }
+
+  /**
+   * Whether each PostgreSQL type of oids has a text cell (INT-185), from the server's catalog in this session (POSTGRES_TYPES_SQL). A
+   * built-in type, whose oid is below 16384 (FirstNormalObjectId), is kept for later reads; another type can change between reads.
+   */
+  private async postgresText(oids: readonly number[]): Promise<Map<number, boolean>> {
+    const rows: unknown[][] = [];
+    await this.session.scan(POSTGRES_TYPES_SQL, [`{${oids.join(',')}}`], { columns: () => undefined, row: values => { rows.push([...values]); return true; } }, noop);
+    const types = postgresTypes(rows);
+    const text = new Map<number, boolean>();
+    for (const oid of oids) {
+      const found = postgresText(oid, types);
+      text.set(oid, found);
+      if (oid < 16384) POSTGRES_BUILTIN_TEXT.set(oid, found);
+    }
+    return text;
   }
 
   /** Reads the rows of a statement with each value as it is, counted by its size. */
@@ -1066,19 +1409,10 @@ class Session {
     this.session.release(discard);
   }
 
-  /** Reads the rows of a plain query: each value by the native type of its column. */
+  /** Reads the rows of a plain query: each value by the native type of its column, a temporal value as the text of its grid cell (INT-153). */
   public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
     return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
-      const cell = plainValue(value, column);
-      return { cell, size: sizeOf(cell) };
-    });
-  }
-
-  /** The rows of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell (INT-153). */
-  public async queryRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
-    return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
-      const grid = value !== null && temporalKind(this.dialect, column.type) !== undefined ? gridCell(value, column, this.dialect) : undefined;
-      const cell = grid !== undefined && (grid.kind === 'date' || grid.kind === 'time' || grid.kind === 'datetime') ? grid.value : plainValue(value, column);
+      const cell = plainValue(value, column, this.dialect);
       return { cell, size: sizeOf(cell) };
     });
   }
@@ -1456,7 +1790,7 @@ export class CatalogConnection {
   public async readOnlyQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogQueryResult> {
     const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
     return this.read(async session => {
-      const { columns, rows } = await session.queryRows(query, params, maxRows, maxBytes);
+      const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
       return { columns: columns.map(column => column.name), rows };
     }).catch(refusedWrite);
   }
@@ -1610,7 +1944,11 @@ export class CatalogConnection {
           } else if (column.automaticKey) {
             if (result.insertId === null) throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
             predicates.push(`${quoted}=${placeholder(bound.length + 1, this.dialect)}`);
-            bound.push(plainValue(result.insertId, { name: column.name, type: column.nativeType }));
+            try {
+              bound.push(integerValue(hostInteger(result.insertId)));
+            } catch (error) {
+              throw atColumn(index, error);
+            }
           } else if (column.defaultExpression !== null && !column.expressionDefault) {
             predicates.push(`${quoted}=DEFAULT(${quoted})`);
           } else {
@@ -1634,7 +1972,7 @@ export class CatalogConnection {
       const [stored] = after;
       if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one inserted row');
       for (const change of changes) {
-        if (!sameCell(stored[change.index], change.value)) {
+        if (!sameWritten(stored[change.index], change.value)) {
           throw err(CODE_WRITE, `stored inserted values of "${descriptor.columns[change.index]?.name ?? ''}" differ`);
         }
       }
@@ -1659,7 +1997,7 @@ export class CatalogConnection {
     return this.write(async session => {
       const descriptor = await this.lockOriginal(session, original, keys);
       const sets = changes.map((change, index) => `${quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect)}=${placeholder(index + 1, this.dialect)}`);
-      const args: DriverValue[] = [...changes.map(change => change.value), ...keys.map(key => key ?? null)];
+      const args: DriverValue[] = checkParams([...changes.map(change => change.value), ...keys.map(key => key ?? null)], CODE_PARAM);
       const predicate = descriptor.primaryKey
         .map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(changes.length + index + 1, this.dialect)}`)
         .join(' AND ');
@@ -1675,7 +2013,7 @@ export class CatalogConnection {
       if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one updated row');
       descriptor.columns.forEach((column, index) => {
         if (column.generated) return; // A generated column may be recomputed by the database.
-        if (!sameCell(stored[index], updated[index])) throw err(CODE_WRITE, `stored ordinary values of "${column.name}" differ`);
+        if (!sameWritten(stored[index], updated[index])) throw err(CODE_WRITE, `stored ordinary values of "${column.name}" differ`);
       });
       return { columns: descriptor.columns.map(column => column.name), rows: after };
     });
