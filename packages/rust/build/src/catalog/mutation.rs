@@ -1,4 +1,5 @@
 //! Native optimistic updates. No durable operation identity or wire authority.
+use super::CatalogError;
 use super::{metadata, page::quote, CatalogConnection, RowSnapshot, TableMetadata};
 use crate::tool_db::{self, Conn, GridCell, GridQueryResult, QueryLimits, P};
 use std::sync::{
@@ -22,7 +23,7 @@ pub enum MutationPhase {
 }
 pub(super) type Publisher = Arc<dyn Fn(MutationPhase) + Send + Sync>;
 pub(super) type CommitPermit = Arc<dyn Fn() -> Result<(), String> + Send + Sync>;
-pub(super) fn cancelled(flag: &AtomicBool) -> Result<(), String> {
+pub(super) fn cancelled(flag: &AtomicBool) -> Result<(), CatalogError> {
     if flag.load(Ordering::SeqCst) {
         Err("JOB_CANCELLED: mutation cancelled before commit".into())
     } else {
@@ -37,7 +38,7 @@ pub(super) fn write_transaction_statement(dialect: &str) -> &'static str {
     }
 }
 
-pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &AtomicBool) -> Result<Conn, String> {
+pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &AtomicBool) -> Result<Conn, CatalogError> {
     cancelled(cancellation)?;
     let mut connection = catalog.open_connection().await?;
     connection.discard_on_drop();
@@ -49,13 +50,13 @@ pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &A
     Ok(connection)
 }
 
-pub(super) fn validated_keys(original: &RowSnapshot, dialect: &str) -> Result<Vec<P>, String> {
+pub(super) fn validated_keys(original: &RowSnapshot, dialect: &str) -> Result<Vec<P>, CatalogError> {
     let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
     tool_db::validate_params(&keys, dialect).map_err(|e| e.to_string())?;
     Ok(keys)
 }
 
-pub(super) fn prepare_mutation(original: &RowSnapshot, dialect: &str, cancellation: &AtomicBool, publish: &Publisher) -> Result<Vec<P>, String> {
+pub(super) fn prepare_mutation(original: &RowSnapshot, dialect: &str, cancellation: &AtomicBool, publish: &Publisher) -> Result<Vec<P>, CatalogError> {
     cancelled(cancellation)?;
     let keys = validated_keys(original, dialect)?;
     publish(MutationPhase::Validated);
@@ -69,7 +70,7 @@ pub(super) async fn lock_original(
     keys: &[P],
     cancellation: &AtomicBool,
     publish: &Publisher,
-) -> Result<TableMetadata, String> {
+) -> Result<TableMetadata, CatalogError> {
     cancelled(cancellation)?;
     let current = lookup(connection, original.metadata(), dialect, keys, true).await?;
     let descriptor = metadata::describe(connection, dialect, &original.metadata().table).await?;
@@ -98,7 +99,7 @@ pub(super) fn cell(value: &P) -> GridCell {
         P::Null(_) => GridCell::Null,
     }
 }
-pub(super) fn bind(value: &GridCell) -> Result<P, String> {
+pub(super) fn bind(value: &GridCell) -> Result<P, CatalogError> {
     Ok(match value {
         GridCell::Text(v) => P::S(v.clone()),
         GridCell::Integer(v) => P::I(*v),
@@ -132,19 +133,19 @@ pub(super) fn assigned_slot(index: usize, value: &P, native_type: &str, dialect:
         placeholder(index, dialect)
     }
 }
-pub(super) fn qualified(metadata: &TableMetadata, dialect: &str) -> Result<String, String> {
+pub(super) fn qualified(metadata: &TableMetadata, dialect: &str) -> Result<String, CatalogError> {
     Ok(format!("{}.{}", quote(&metadata.table.namespace, dialect)?, quote(&metadata.table.name, dialect)?))
 }
-pub(super) fn predicate(metadata: &TableMetadata, dialect: &str, start: usize) -> Result<String, String> {
+pub(super) fn predicate(metadata: &TableMetadata, dialect: &str, start: usize) -> Result<String, CatalogError> {
     metadata
         .primary_key
         .iter()
         .enumerate()
         .map(|(index, name)| Ok(format!("{}={}", quote(name, dialect)?, placeholder(start + index, dialect))))
-        .collect::<Result<Vec<_>, String>>()
+        .collect::<Result<Vec<_>, CatalogError>>()
         .map(|parts| parts.join(" AND "))
 }
-pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dialect: &str, keys: &[P], lock: bool) -> Result<GridQueryResult, String> {
+pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dialect: &str, keys: &[P], lock: bool) -> Result<GridQueryResult, CatalogError> {
     let columns = metadata.columns.iter().map(|column| quote(&column.name, dialect)).collect::<Result<Vec<_>, _>>()?.join(",");
     let suffix = if lock && dialect != "sqlite" { " FOR UPDATE" } else { "" };
     let sql = format!("SELECT {columns} FROM {} WHERE {} LIMIT 2{suffix}", qualified(metadata, dialect)?, predicate(metadata, dialect, 1)?);
@@ -152,14 +153,14 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
 }
 /// Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a
 /// trigger from the account (INT-119).
-pub(super) async fn mysql_partial_revokes_off(connection: &mut Conn) -> Result<(), String> {
+pub(super) async fn mysql_partial_revokes_off(connection: &mut Conn) -> Result<(), CatalogError> {
     let revokes = connection
         .grid_query_bounded("SELECT @@GLOBAL.partial_revokes", &[], QueryLimits { max_rows: 1, max_bytes: 65536 })
         .await
         .map_err(|e| e.to_string())?;
     require_partial_revokes_disabled(&revokes)
 }
-pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), String> {
+pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), CatalogError> {
     let account =
         connection.grid_query_bounded("SELECT CURRENT_USER()", &[], QueryLimits { max_rows: 1, max_bytes: 65536 }).await.map_err(|e| e.to_string())?;
     let grantee = match account.rows.as_slice() {
@@ -200,14 +201,14 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
     }
     Ok(())
 }
-fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), String> {
+fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), CatalogError> {
     if matches!(result.rows.as_slice(), [row] if matches!(row.as_slice(), [GridCell::Integer(0)] | [GridCell::Unsigned(0)] | [GridCell::Boolean(false)])) {
         Ok(())
     } else {
         Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into())
     }
 }
-fn require_trigger_privilege(result: &GridQueryResult) -> Result<(), String> {
+fn require_trigger_privilege(result: &GridQueryResult) -> Result<(), CatalogError> {
     if result.rows.iter().any(|row| matches!(row.as_slice(),[GridCell::Text(value)] if value=="TRIGGER")) {
         Ok(())
     } else {
@@ -223,7 +224,7 @@ impl CatalogConnection {
         cancellation: Arc<AtomicBool>,
         publish: Publisher,
         permit: CommitPermit,
-    ) -> Result<GridQueryResult, String> {
+    ) -> Result<GridQueryResult, CatalogError> {
         cancelled(&cancellation)?;
         if changes.is_empty() || changes.len() > original.metadata().columns.len() {
             return Err("ROW_UPDATE_INVALID: invalid column assignments".into());
@@ -236,7 +237,7 @@ impl CatalogConnection {
         let keys = prepare_mutation(original, &self.dialect, &cancellation, &publish)?;
         let _closes = super::ClosesOnDrop(self);
         let mut connection = begin_mutation(self, &cancellation).await?;
-        let result = async {
+        let result: Result<_, CatalogError> = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             super::temporal::check_write_precision(&mut connection, &descriptor, changes, &self.dialect).await?;
             let sets = changes
@@ -247,7 +248,7 @@ impl CatalogConnection {
                         descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_UPDATE_INVALID: unknown column".to_owned())?;
                     Ok(format!("{}={}", quote(name, &self.dialect)?, assigned_slot(index + 1, value, &column.native_type, &self.dialect)))
                 })
-                .collect::<Result<Vec<_>, String>>()?
+                .collect::<Result<Vec<_>, CatalogError>>()?
                 .join(",");
             let sql =
                 format!("UPDATE {} SET {sets} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, changes.len() + 1)?);
@@ -263,7 +264,7 @@ impl CatalogConnection {
             let new_keys = original
                 .key()
                 .map(|(name, value)| changes.iter().find(|(column, _)| column == name).map(|(_, value)| Ok(value.clone())).unwrap_or_else(|| bind(value)))
-                .collect::<Result<Vec<_>, String>>()?;
+                .collect::<Result<Vec<_>, CatalogError>>()?;
             let after = lookup(&mut connection, &descriptor, &self.dialect, &new_keys, false).await?;
             let after_descriptor = metadata::describe(&mut connection, &self.dialect, &descriptor.table).await?;
             original.check_updated(&after_descriptor, &after, &assignments)?;

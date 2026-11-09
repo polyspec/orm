@@ -11,8 +11,11 @@ mod binds;
 mod grid;
 mod limits;
 mod params;
+pub(crate) mod pg_describe;
+pub(crate) mod pg_text;
 mod result;
-pub(crate) use grid::is_temporal;
+pub mod value;
+pub(crate) use grid::{is_temporal, sqlite_temporal};
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub(crate) use params::decimal_valid;
@@ -33,7 +36,8 @@ pub enum Val {
     Int(i64),
     /// A MySQL unsigned value beyond the signed 64-bit range (INT-102)
     Unsigned(u64),
-    /// A PostgreSQL real, held as the float32 value that the server stores, widened to a double.
+    /// A float of a plain read (INT-183): a PostgreSQL real or a MySQL FLOAT widened from the float32 value that the server
+    /// stores, and a double, a MySQL DOUBLE or a SQLite REAL, its non-finite values included.
     Float(f64),
     Text(String),
     Bool(bool),
@@ -102,12 +106,6 @@ fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
     Ok(value.map_or(Val::Null, |bytes| String::from_utf8(bytes).map_or_else(|error| Val::Binary(error.into_bytes()), Val::Text)))
 }
 
-/// A value of a type that a catalog cell cannot hold; the catalog reports it as CATALOG_VALUE (docs/spec/interfaces.md,
-/// Catalog grid query cells). The detail names the native type, never the value.
-pub(crate) fn unsupported_value(detail: impl std::fmt::Display) -> sqlx::Error {
-    sqlx::Error::Decode(format!("TOOL_QUERY_VALUE: {detail}").into())
-}
-
 fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
     Ok(value.map_or(Val::Null, |value| i64::try_from(value).map_or(Val::Unsigned(value), Val::Int)))
 }
@@ -155,8 +153,11 @@ macro_rules! cell_extra {
             Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<u8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
+        } else if let Ok(v) = row.try_get::<Option<f64>, _>(i) {
+            Ok(v.map_or(Val::Null, Val::Float))
         } else {
-            Err($crate::tool_db::unsupported_value(format_args!("unsupported catalog cell type {}", row.columns()[i].type_info().name())))
+            // A native type that has no grid cell (INT-170, INT-185).
+            Err($crate::tool_db::value::refuse($crate::tool_db::value::UNSUPPORTED_NATIVE_TYPE))
         }
     }};
 }
@@ -166,10 +167,13 @@ macro_rules! cell_pg_extra {
         let (row, i) = ($row, $i);
         if let Ok(v) = row.try_get::<Option<f32>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Float(f64::from(n))))
+        } else if let Ok(v) = row.try_get::<Option<f64>, _>(i) {
+            Ok(v.map_or(Val::Null, Val::Float))
         } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string())))
         } else {
-            Err($crate::tool_db::unsupported_value(format_args!("unsupported catalog cell type {}", row.columns()[i].type_info().name())))
+            // A native type that has no grid cell (INT-170, INT-185).
+            Err($crate::tool_db::value::refuse($crate::tool_db::value::UNSUPPORTED_NATIVE_TYPE))
         }
     }};
 }
@@ -199,36 +203,57 @@ macro_rules! grid_cell {
 macro_rules! grid_mysql {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if row.columns()[i].type_info().name() == "YEAR" {
-            // A YEAR() result is a MySQL YEAR field, which has no grid cell (docs/spec/dbspec.md, the unsupported types).
-            Err(unsupported_value("MySQL YEAR has no grid cell"))
-        } else if matches!(row.columns()[i].type_info().name(), "DECIMAL" | "DECIMAL UNSIGNED") {
-            row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(GridCell::Null, |value| GridCell::Decimal(value.to_plain_string())))
-        } else if matches!(
-            row.columns()[i].type_info().name(),
-            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED"
-        ) {
-            row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
-        } else if let Some(cell) = grid::mysql_temporal(row, i)? {
-            Ok(cell)
-        } else if <String as sqlx::Type<MySql>>::compatible(row.columns()[i].type_info()) {
-            // A string column of `_bin` collation gets the VARBINARY name because of the BINARY flag,
-            // but since its collation is not binary, it is text.
-            row.try_get::<Option<String>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Text))
-        } else {
-            grid_cell!(row, i, cell, "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB")
+        match row.columns()[i].type_info().name() {
+            // A YEAR() result is a MySQL YEAR field, which has no grid cell (INT-166), and a TIMESTAMP follows the time zone of
+            // the session (INT-167); a NULL of either is a null cell.
+            "YEAR" => grid::mysql_value(row, i).and_then(|value| value.map_or(Ok(GridCell::Null), |_| Err(value::refuse(value::MYSQL_YEAR)))),
+            "TIMESTAMP" => grid::mysql_value(row, i).and_then(|value| value.map_or(Ok(GridCell::Null), |_| Err(value::refuse(value::MYSQL_TIMESTAMP)))),
+            "DECIMAL" => row
+                .try_get::<Option<bigdecimal::BigDecimal>, _>(i)
+                .map(|value| value.map_or(GridCell::Null, |value| GridCell::Decimal(value.to_plain_string()))),
+            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
+                row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
+            }
+            _ => {
+                if let Some(cell) = grid::mysql_temporal(row, i)? {
+                    Ok(cell)
+                } else if let Some(cell) = mysql_native(row, i)? {
+                    Ok(GridCell::from(cell))
+                } else if <String as sqlx::Type<MySql>>::compatible(row.columns()[i].type_info()) {
+                    // A string column of `_bin` collation gets the VARBINARY name because of the BINARY flag,
+                    // but since its collation is not binary, it is text.
+                    row.try_get::<Option<String>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Text))
+                } else {
+                    grid_cell!(row, i, cell, "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB")
+                }
+            }
         }
     }};
 }
 macro_rules! grid_pg {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if row.columns()[i].type_info().name() == "NUMERIC" {
-            grid::postgres_decimal(row, i)
-        } else if let Some(cell) = grid::postgres_temporal(row, i)? {
-            Ok(cell)
-        } else {
-            grid_cell!(row, i, cell_pg, "BYTEA")
+        match row.columns()[i].type_info().name() {
+            "NUMERIC" => grid::postgres_decimal(row, i),
+            // A timestamptz and a timetz follow the TimeZone of the session (INT-168); a NULL of either is a null cell.
+            "TIMESTAMPTZ" | "TIMETZ" => {
+                if row.try_get_raw(i)?.is_null() {
+                    Ok(GridCell::Null)
+                } else {
+                    Err(value::refuse(value::POSTGRES_ZONED))
+                }
+            }
+            _ => {
+                if let Some(cell) = grid::postgres_temporal(row, i)? {
+                    Ok(cell)
+                } else if let Some(text) = grid::postgres_text(row, i)? {
+                    Ok(text.map_or(GridCell::Null, GridCell::Text))
+                } else if grid::postgres_unnamed_null(row, i)? {
+                    Ok(GridCell::Null)
+                } else {
+                    grid_cell!(row, i, cell_pg, "BYTEA")
+                }
+            }
         }
     }};
 }
@@ -243,28 +268,58 @@ pub(crate) fn temporal_val(cell: GridCell) -> Result<Val, sqlx::Error> {
     match cell {
         GridCell::Null => Ok(Val::Null),
         GridCell::Date(text) | GridCell::Time(text) | GridCell::DateTime(text) => Ok(Val::Text(text)),
-        _ => Err(unsupported_value(format_args!("the cell is not a temporal cell"))),
+        // A conversion of a value of another kind is no temporal value of the driver (INT-171).
+        _ => Err(value::unsupported_driver_value()),
     }
 }
 
-/// A plain value of a MySQL read query: a date, time or datetime is the text of its grid cell (INT-153).
+/// The MySQL types whose cell is the text or the bytes that the server writes (INT-185): `JSON`, in its normalized `utf8mb4`
+/// form, and `BIT` and the spatial types, which the server returns as a binary string.
+fn mysql_native(row: &sqlx::mysql::MySqlRow, i: usize) -> Result<Option<Val>, sqlx::Error> {
+    let name = row.columns()[i].type_info().name();
+    if !matches!(name, "JSON" | "BIT" | "GEOMETRY") {
+        return Ok(None);
+    }
+    let Some(bytes) = grid::mysql_value(row, i)? else { return Ok(Some(Val::Null)) };
+    Ok(Some(if name == "JSON" {
+        Val::Text(String::from_utf8(bytes.to_vec()).map_err(|error| sqlx::Error::Decode(Box::new(error)))?)
+    } else {
+        Val::Binary(bytes.to_vec())
+    }))
+}
+
+/// A plain value of a MySQL read query: a date, time or datetime is the text of its grid cell (INT-153), and a decimal its
+/// plain digits.
 macro_rules! query_cell {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        match grid::mysql_temporal(row, i)? {
-            Some(temporal) => $crate::tool_db::temporal_val(temporal),
-            None => cell!(row, i),
+        if let Some(temporal) = grid::mysql_temporal(row, i)? {
+            $crate::tool_db::temporal_val(temporal)
+        } else if let Some(value) = mysql_native(row, i)? {
+            Ok(value)
+        } else if row.columns()[i].type_info().name() == "DECIMAL" {
+            row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(Val::Null, |value| Val::Text(value.to_plain_string())))
+        } else {
+            cell!(row, i)
         }
     }};
 }
 
-/// A plain value of a PostgreSQL read query: a date, time or timestamp is the text of its grid cell (INT-153).
+/// A plain value of a PostgreSQL read query: a date, time or timestamp is the text of its grid cell (INT-153), a numeric its
+/// text, and a type of a text output that no setting changes that text (INT-185).
 macro_rules! query_cell_pg {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        match grid::postgres_temporal(row, i)? {
-            Some(temporal) => $crate::tool_db::temporal_val(temporal),
-            None => cell_pg!(row, i),
+        if let Some(temporal) = grid::postgres_temporal(row, i)? {
+            $crate::tool_db::temporal_val(temporal)
+        } else if row.columns()[i].type_info().name() == "NUMERIC" {
+            grid::postgres_numeric_text(row, i)
+        } else if let Some(text) = grid::postgres_text(row, i)? {
+            Ok(text.map_or(Val::Null, Val::Text))
+        } else if grid::postgres_unnamed_null(row, i)? {
+            Ok(Val::Null)
+        } else {
+            cell_pg!(row, i)
         }
     }};
 }
@@ -273,7 +328,10 @@ macro_rules! query_cell_pg {
 macro_rules! push_row {
     ($row:ident, $budget:expr, $rows:ident, $cell:ident) => {
         $budget.check_row_count($rows.len())?;
-        let values = (0..$row.columns().len()).map(|i| $cell!(&$row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
+        // A conversion that fails names the position of its column, and a failure of the driver is kept as its cause (INT-165,
+        // INT-172).
+        let convert = |i: usize| -> Result<_, sqlx::Error> { $cell!(&$row, i) };
+        let values = (0..$row.columns().len()).map(|i| convert(i).map_err(|error| value::at_column(error, i))).collect::<Result<Vec<_>, sqlx::Error>>()?;
         $budget.add_row(&values, $rows.len())?;
         $rows.push(values);
     };
@@ -305,7 +363,11 @@ macro_rules! markdown_result {
         let head = $conn
             .statement_rows(&text, &wire, |row| {
                 $budget.check_row_count(rows.len())?;
-                let values = row.into_iter().map($cell).collect::<Result<Vec<_>, sqlx::Error>>()?;
+                let values = row
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, cell)| $cell(cell).map_err(|error| value::at_column(error, i)))
+                    .collect::<Result<Vec<_>, sqlx::Error>>()?;
                 $budget.add_row(&values, rows.len())?;
                 rows.push(values);
                 Ok(())
@@ -332,7 +394,7 @@ fn markdown_cell(cell: MarkdownCell) -> Result<Val, sqlx::Error> {
         MarkdownCell::Integer(n) => Ok(Val::Int(n)),
         MarkdownCell::Text(text) => Ok(Val::Text(text)),
         MarkdownCell::TextBytes(bytes) | MarkdownCell::Blob(bytes) => decode_bytes(Some(bytes)),
-        MarkdownCell::Real(_) => Err(unsupported_value("unsupported catalog cell type REAL")),
+        MarkdownCell::Real(value) => Ok(Val::Float(value)),
     }
 }
 
@@ -357,7 +419,10 @@ macro_rules! fetch_cursor_result {
     ($conn:expr, $sql:expr, $budget:expr, $cell:ident, $result:ident) => {{
         let (connection, text) = ($conn, $sql.0);
         let statement_length = text.len();
-        let statement = (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await?;
+        let statement = match (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await {
+            Ok(statement) => statement,
+            Err(error) => return Err(pg_describe::refusal(&mut **connection, &text, &[], error).await),
+        };
         let columns = result::columns(statement_length, statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
         let cursor = format!("orm_read_{}", CURSOR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
@@ -407,7 +472,11 @@ macro_rules! grid_result_of {
 macro_rules! prepare_query {
     ($conn:expr,$sql:expr,$params:expr,postgres) => {{
         let types = binds::postgres_types($params)?;
-        (&mut **$conn).prepare_with($sql.into_sql_str(), &types).await?
+        let text = $sql.0.clone();
+        match (&mut **$conn).prepare_with($sql.into_sql_str(), &types).await {
+            Ok(statement) => statement,
+            Err(error) => return Err(pg_describe::refusal(&mut **$conn, &text, &types, error).await),
+        }
     }};
     ($conn:expr,$sql:expr,$params:expr,mysql) => {
         (&mut **$conn).prepare($sql.into_sql_str()).await?

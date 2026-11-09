@@ -1,8 +1,9 @@
 //! Bounded typed INSERT RETURNING identities on PostgreSQL/SQLite.
+use super::CatalogError;
 use super::{page::quote, row_snapshot, temporal, TableMetadata};
 use crate::tool_db::{Conn, QueryLimits, P};
 
-pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql: &str, params: &[P], dialect: &str) -> Result<Vec<P>, String> {
+pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql: &str, params: &[P], dialect: &str) -> Result<Vec<P>, CatalogError> {
     let returning = metadata.columns.iter().map(|column| quote(&column.name, dialect)).collect::<Result<Vec<_>, _>>()?.join(",");
     // The read of temporal::read, with the write's error text: a duplicate key keeps its DUPLICATE_KEY code.
     let limits = QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 };

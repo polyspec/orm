@@ -1,34 +1,40 @@
 //! Reads described tables: time and datetime cells are written with as many fractional digits as the column's declared precision p
 //! digits (docs/spec/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
 //! For SQLite, the dbspec text of a declared temporal column is turned into the same temporal cell.
+use super::CatalogError;
 use super::{TableColumnMetadata, TableMetadata};
-use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};
+use crate::tool_db::{value, Conn, GridCell, GridQueryResult, QueryLimits, P};
+
+/// The refusal of the value of the column at the 0-based `index` of the described columns, by `rule`.
+fn refused(rule: value::Rule, index: usize) -> CatalogError {
+    value::ValueRefusal::new(rule, index + 1).to_string().into()
+}
 
 /// The `(p)` of the native type. If absent, the dialect default: MySQL `time` and `datetime` are 0, PostgreSQL
-/// `time` and `timestamp` are 6.
-fn precision(native_type: &str, dialect: &str) -> Result<usize, String> {
+/// `time` and `timestamp` are 6. A precision above 6 or one that is not a number is INT-181.
+fn precision(native_type: &str, dialect: &str) -> Result<usize, value::Rule> {
     let declared = native_type.split_once('(').and_then(|(_, rest)| rest.split_once(')')).map(|(digits, _)| digits);
     let p = match (declared, dialect) {
-        (Some(digits), _) => {
-            digits.parse::<usize>().map_err(|error| format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision: {error}"))?
-        }
+        (Some(digits), _) => digits.parse::<usize>().map_err(|_not_a_number| value::NATIVE_PRECISION)?,
         (None, "mysql") => 0,
         (None, "postgres") => 6,
-        (None, _) => return Err(format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision")),
+        (None, _) => return Err(value::NATIVE_PRECISION),
     };
     if p > 6 {
-        return Err(format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} declares more than 6 fraction digits"));
+        return Err(value::NATIVE_PRECISION);
     }
     Ok(p)
 }
 
-/// Reduces the six-digit fractional text to p digits. If the discarded digits are not 0, it is an error.
-fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
-    let Some((whole, digits)) = text.split_once('.') else {
-        return Err(format!("GRID_TEMPORAL_PRECISION: {column} has no fraction digits"));
-    };
-    if digits.len() != 6 || !digits[p..].bytes().all(|digit| digit == b'0') {
-        return Err(format!("GRID_TEMPORAL_PRECISION: {column} has more fraction digits than its precision {p}"));
+/// Reduces the six-digit fractional text of a grid cell to p digits. A discarded digit that is not 0 is INT-180; a text
+/// without the six digits of the grid cell is no value that the conversion takes (INT-171).
+fn fraction(text: &str, p: usize) -> Result<String, value::Rule> {
+    let Some((whole, digits)) = text.split_once('.') else { return Err(value::UNSUPPORTED_DRIVER_VALUE) };
+    if digits.len() != 6 {
+        return Err(value::UNSUPPORTED_DRIVER_VALUE);
+    }
+    if !digits[p..].bytes().all(|digit| digit == b'0') {
+        return Err(value::FRACTION_PAST_PRECISION);
     }
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
 }
@@ -44,7 +50,7 @@ fn is_boolean(native_type: &str, dialect: &str) -> bool {
 
 /// The dbspec kind of SQLite's declared `DATE`, `TIME`, `DATETIME` columns. SQLite has no temporal storage
 /// class, and the renderer CHECK enforces the text form and p-digit fractions. A declared `TIME(3)` is no dbspec declaration
-/// of SQLite: it is the same kind, and no CHECK fixes its digits, so the second value is false.
+/// of SQLite: it is the same kind, but its stored value is returned unchecked (INT-184), so the second value is false.
 fn sqlite_kind(native_type: &str) -> Option<(&'static str, bool)> {
     let upper = native_type.to_ascii_uppercase();
     let (name, dbspec) = match upper.split_once('(') {
@@ -62,51 +68,71 @@ fn sqlite_kind(native_type: &str) -> Option<(&'static str, bool)> {
     }
 }
 
+/// The temporal cell of `kind` that holds `text`.
+fn temporal_cell(kind: &str, text: String) -> GridCell {
+    match kind {
+        "date" => GridCell::Date(text),
+        "time" => GridCell::Time(text),
+        _ => GridCell::DateTime(text),
+    }
+}
+
+/// The cell of the stored value of a SQLite dbspec `kind` column (INT-176 to INT-179): a text of the dbspec form whose digits
+/// are a date and a time of day, with exactly the fraction digits of the CHECK that fixes them, 0 when none does.
+fn sqlite_dbspec_cell(kind: &str, cell: &mut GridCell, check: Option<usize>) -> Result<GridCell, value::Rule> {
+    let form = match kind {
+        "date" => value::SQLITE_DATE_FORM,
+        "time" => value::SQLITE_TIME_FORM,
+        _ => value::SQLITE_DATETIME_FORM,
+    };
+    match cell {
+        GridCell::Null => Ok(GridCell::Null),
+        GridCell::Text(text) => {
+            crate::tool_db::sqlite_temporal(kind, text)?;
+            if kind != "date" {
+                let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
+                if digits != check.unwrap_or(0) {
+                    return Err(value::SQLITE_FRACTION);
+                }
+            }
+            Ok(temporal_cell(kind, std::mem::take(text)))
+        }
+        _ => Err(form),
+    }
+}
+
 /// Uses the time and datetime cells of the result as the precision of the metadata column. For SQLite's declared
-/// temporal columns, turns the stored dbspec text into the same temporal cells as MySQL and PostgreSQL.
-pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks: &[Option<usize>], result: &mut GridQueryResult) -> Result<(), String> {
+/// temporal columns, turns the stored dbspec text into the same temporal cells as MySQL and PostgreSQL. A refusal names the
+/// position of its column among the described columns (INT-165).
+pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks: &[Option<usize>], result: &mut GridQueryResult) -> Result<(), CatalogError> {
     for row in &mut result.rows {
         for (index, (cell, column)) in row.iter_mut().zip(&metadata.columns).enumerate() {
             if is_boolean(&column.native_type, dialect) {
                 // A boolean column is read as a bool by its column type: the integer 0 or 1 of a MySQL tinyint(1) or a
-                // SQLite BOOLEAN becomes a bool; any other value fails.
+                // SQLite BOOLEAN becomes a bool; any other value fails (INT-182).
                 let value = match *cell {
                     GridCell::Null => GridCell::Null,
                     GridCell::Boolean(flag) => GridCell::Boolean(flag),
                     GridCell::Integer(n) if n == 0 || n == 1 => GridCell::Boolean(n == 1),
-                    _ => return Err(format!("CATALOG_VALUE: {} holds a value that is not a boolean", column.name)),
+                    _ => return Err(refused(value::BOOLEAN, index)),
                 };
                 *cell = value;
                 continue;
             }
             if dialect == "sqlite" {
                 let Some((kind, dbspec)) = sqlite_kind(&column.native_type) else { continue };
-                *cell = match cell {
-                    GridCell::Null => GridCell::Null,
-                    GridCell::Text(text) if is_temporal(kind, text) => {
-                        // A SQLite fraction is kept at the digits of the CHECK that fixes it (SQLite has no temporal storage class).
-                        let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
-                        // A CHECK that fixes p requires exactly p fraction digits. A SQLite DATETIME or
-                        // TIME with no CHECK has precision 0.
-                        let expected = if kind == "date" || !dbspec { None } else { Some(checks.get(index).copied().flatten().unwrap_or(0)) };
-                        if let Some(precision) = expected {
-                            if precision != digits {
-                                return Err(format!(
-                                    "GRID_TEMPORAL_PRECISION: column {:?} holds a fraction whose digits are not the {precision} that its dbspec CHECK fixes",
-                                    column.name
-                                ));
-                            }
-                        }
-                        match kind {
-                            "date" => GridCell::Date(std::mem::take(text)),
-                            "time" => GridCell::Time(std::mem::take(text)),
-                            _ => GridCell::DateTime(std::mem::take(text)),
-                        }
+                if dbspec {
+                    *cell = sqlite_dbspec_cell(kind, cell, checks.get(index).copied().flatten()).map_err(|rule| refused(rule, index))?;
+                } else if let GridCell::Text(text) = cell {
+                    // SQLite refuses no value for the type that its column declares (INT-184): a text of the dbspec form is the
+                    // temporal cell of its kind, and any other value keeps its storage class.
+                    if crate::tool_db::is_temporal(kind, text) {
+                        *cell = temporal_cell(kind, std::mem::take(text));
                     }
-                    _ => return Err(format!("GRID_TEMPORAL_VALUE: {} holds a value that is not a dbspec {kind}", column.name)),
-                };
+                }
             } else if let GridCell::Time(text) | GridCell::DateTime(text) = cell {
-                *text = fraction(text, precision(&column.native_type, dialect)?, &column.name)?;
+                let p = precision(&column.native_type, dialect).map_err(|rule| refused(rule, index))?;
+                *text = fraction(text, p).map_err(|rule| refused(rule, index))?;
             }
         }
     }
@@ -217,7 +243,7 @@ fn check_clauses(table_sql: &str) -> Vec<&str> {
 }
 
 /// The CHECK precision of each SQLite TIME and DATETIME column of the table, read from the definition in sqlite_master.
-pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &TableMetadata, dialect: &str) -> Result<Vec<Option<usize>>, String> {
+pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &TableMetadata, dialect: &str) -> Result<Vec<Option<usize>>, CatalogError> {
     let mut checks = vec![None; metadata.columns.len()];
     if dialect != "sqlite" || !metadata.columns.iter().any(|column| matches!(column.native_type.to_ascii_uppercase().as_str(), "TIME" | "DATETIME")) {
         return Ok(checks);
@@ -233,9 +259,9 @@ pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &Ta
     let table_sql = match rows.as_slice() {
         [row] if row.len() == 1 => match &row[0] {
             crate::tool_db::Val::Text(text) => text.clone(),
-            _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name)),
+            _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name).into()),
         },
-        _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name)),
+        _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name).into()),
     };
     for (check, column) in checks.iter_mut().zip(&metadata.columns) {
         if matches!(column.native_type.to_ascii_uppercase().as_str(), "TIME" | "DATETIME") {
@@ -247,7 +273,7 @@ pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &Ta
 
 /// Refuses a temporal value that names more fraction digits than the precision of its column, before any write (CODEC_ENCODE).
 /// A SQLite column whose precision no CHECK fixes has nothing to refuse.
-pub(super) async fn check_write_precision(connection: &mut Conn, metadata: &TableMetadata, values: &[(String, P)], dialect: &str) -> Result<(), String> {
+pub(super) async fn check_write_precision(connection: &mut Conn, metadata: &TableMetadata, values: &[(String, P)], dialect: &str) -> Result<(), CatalogError> {
     if !values.iter().any(|(_, value)| matches!(value, P::Time(_) | P::DateTime(_))) {
         return Ok(());
     }
@@ -261,7 +287,7 @@ pub(super) async fn check_write_precision(connection: &mut Conn, metadata: &Tabl
         let Some((_, precision, declared)) = temporal_kind(&metadata.columns[index], dialect, checks[index]) else { continue };
         let Some((_, fraction)) = text.split_once('.') else { continue };
         if declared && fraction.get(precision..).is_some_and(|rest| rest.bytes().any(|digit| digit != b'0')) {
-            return Err(format!("CODEC_ENCODE: temporal value \"{text}\" has more fraction digits than its precision {precision}"));
+            return Err(format!("CODEC_ENCODE: temporal value \"{text}\" has more fraction digits than its precision {precision}").into());
         }
     }
     Ok(())
@@ -275,7 +301,7 @@ pub(super) async fn read(
     sql: &str,
     params: &[P],
     limits: QueryLimits,
-) -> Result<GridQueryResult, String> {
+) -> Result<GridQueryResult, CatalogError> {
     let mut result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(super::catalog_query_error)?;
     let checks = sqlite_check_precisions(connection, metadata, dialect).await?;
     declared_precision(metadata, dialect, &checks, &mut result)?;
@@ -291,7 +317,7 @@ pub(super) async fn read_page(
     sql: &str,
     limits: QueryLimits,
     keep: usize,
-) -> Result<(GridQueryResult, bool), String> {
+) -> Result<(GridQueryResult, bool), CatalogError> {
     let mut result = connection.grid_query_values_bounded(sql, &[], limits).await.map_err(super::catalog_query_error)?;
     let has_more = result.rows.len() > keep;
     result.rows.truncate(keep);
@@ -302,7 +328,7 @@ pub(super) async fn read_page(
 
 #[cfg(test)]
 mod tests {
-    use super::{fraction, precision};
+    use super::{fraction, precision, refused, sqlite_dbspec_cell, value, GridCell};
 
     #[test]
     fn precision_follows_the_native_type_and_dialect_default() {
@@ -311,16 +337,9 @@ mod tests {
         assert_eq!(precision("datetime", "mysql"), Ok(0));
         assert_eq!(precision("time(3) without time zone", "postgres"), Ok(3));
         assert_eq!(precision("timestamp without time zone", "postgres"), Ok(6));
-        assert!(precision("DATETIME", "sqlite").is_err());
-        assert!(precision("datetime(7)", "mysql").is_err());
-    }
-
-    #[test]
-    fn malformed_precision_preserves_parse_cause_message() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let error = precision("datetime(x)", "mysql").expect_err("malformed precision must fail");
-        assert!(error.starts_with("GRID_TEMPORAL_PRECISION: native type \"datetime(x)\" has no precision: "), "{error}");
-        assert!(error.contains("invalid digit found in string"), "{error}");
+        assert_eq!(precision("DATETIME", "sqlite"), Err(value::NATIVE_PRECISION));
+        assert_eq!(precision("datetime(7)", "mysql"), Err(value::NATIVE_PRECISION));
+        assert_eq!(precision("datetime(x)", "mysql"), Err(value::NATIVE_PRECISION));
     }
 
     #[test]
@@ -347,12 +366,57 @@ mod tests {
     }
 
     #[test]
+    fn a_sqlite_text_is_checked_for_its_form_before_its_digits() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        use crate::tool_db::sqlite_temporal;
+        for (kind, text, rule) in [
+            ("date", "2026-1-02", value::SQLITE_DATE_FORM),
+            ("date", "0000-01-01", value::DATE_RANGE),
+            ("date", "2026-02-30", value::CALENDAR_DATE),
+            ("date", "2026-13-01", value::CALENDAR_DATE),
+            ("time", "03:04:05.1234567", value::SQLITE_TIME_FORM),
+            ("time", "24:00:00", value::TIME_OF_DAY),
+            ("time", "23:60:00", value::TIME_OF_DAY),
+            ("datetime", "2026-01-02T03:04:05Z", value::SQLITE_DATETIME_FORM),
+            ("datetime", "0000-02-30 24:00:00", value::DATE_RANGE),
+            ("datetime", "2026-02-30 03:04:05", value::CALENDAR_DATE),
+            ("datetime", "2026-01-02 24:00:00", value::TIME_OF_DAY),
+        ] {
+            assert_eq!(sqlite_temporal(kind, text), Err(rule), "{kind} {text}");
+        }
+        assert_eq!(sqlite_temporal("datetime", "2026-01-02 03:04:05.000001"), Ok(()));
+    }
+
+    #[test]
+    fn a_sqlite_dbspec_column_takes_the_fraction_digits_of_its_check() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let cell = |text: &str| GridCell::Text(text.to_owned());
+        assert_eq!(sqlite_dbspec_cell("datetime", &mut cell("2026-01-02 03:04:05"), None), Ok(GridCell::DateTime("2026-01-02 03:04:05".into())));
+        assert_eq!(sqlite_dbspec_cell("datetime", &mut cell("2026-01-02 03:04:05.000"), None), Err(value::SQLITE_FRACTION));
+        assert_eq!(sqlite_dbspec_cell("time", &mut cell("03:04:05.120"), Some(3)), Ok(GridCell::Time("03:04:05.120".into())));
+        assert_eq!(sqlite_dbspec_cell("time", &mut cell("03:04:05"), Some(3)), Err(value::SQLITE_FRACTION));
+        assert_eq!(sqlite_dbspec_cell("date", &mut GridCell::Integer(20260102), None), Err(value::SQLITE_DATE_FORM));
+        assert_eq!(sqlite_dbspec_cell("time", &mut GridCell::Float64(1.5f64.to_bits()), None), Err(value::SQLITE_TIME_FORM));
+        assert_eq!(sqlite_dbspec_cell("datetime", &mut GridCell::Null, None), Ok(GridCell::Null));
+    }
+
+    #[test]
     fn fraction_keeps_exactly_p_digits_and_rejects_dropped_digits() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(fraction("2026-01-02 03:04:05.120000", 3, "c"), Ok("2026-01-02 03:04:05.120".into()));
-        assert_eq!(fraction("03:04:05.000000", 0, "c"), Ok("03:04:05".into()));
-        assert_eq!(fraction("03:04:05.123456", 6, "c"), Ok("03:04:05.123456".into()));
-        assert!(fraction("03:04:05.123456", 3, "c").is_err_and(|e| e.contains("more fraction digits than its precision 3")));
-        assert!(fraction("03:04:05", 0, "c").is_err());
+        assert_eq!(fraction("2026-01-02 03:04:05.120000", 3), Ok("2026-01-02 03:04:05.120".into()));
+        assert_eq!(fraction("03:04:05.000000", 0), Ok("03:04:05".into()));
+        assert_eq!(fraction("03:04:05.123456", 6), Ok("03:04:05.123456".into()));
+        assert_eq!(fraction("03:04:05.123456", 3), Err(value::FRACTION_PAST_PRECISION));
+        assert_eq!(fraction("03:04:05", 0), Err(value::UNSUPPORTED_DRIVER_VALUE));
+    }
+
+    #[test]
+    fn a_described_refusal_names_the_position_of_its_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(refused(value::BOOLEAN, 1).message(), "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean");
+        assert_eq!(
+            refused(value::FRACTION_PAST_PRECISION, 0).message(),
+            "GRID_TEMPORAL_PRECISION: column 1: temporal value has more fraction digits than its precision"
+        );
     }
 }

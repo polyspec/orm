@@ -1,5 +1,5 @@
 use polyspec_orm_build::{
-    catalog::{CatalogConnection, MutationPhase, TableRef},
+    catalog::{CatalogConnection, CatalogError, MutationPhase, TableRef},
     tool_db::{self, GridCell, P},
 };
 use std::path::Path;
@@ -91,7 +91,7 @@ async fn check() {
                 }
             }
             Ok(_) => failures.push(format!("{dialect}: generated row or commit phase mismatch")),
-            Err(error) => failures.push(format!("{dialect}: {}", error.split(':').next().unwrap_or("unknown"))),
+            Err(error) => failures.push(format!("{dialect}: {}", error.message().split(':').next().unwrap_or("unknown"))),
         }
         if let Err(error) = lifecycle(&mut catalog, &table).await {
             failures.push(format!("{dialect}: {error}"));
@@ -105,7 +105,7 @@ async fn check() {
     assert!(failures.is_empty(), "generated identity failures: {failures:?}");
 }
 
-async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<(), String> {
+async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<(), CatalogError> {
     let descriptor = catalog.describe_table(table).await?;
     let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(|_| {});
     let left = [("n".into(), P::I(20))];
@@ -135,7 +135,7 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
         }
     });
     let error = catalog.insert_row(&descriptor, &[("n".into(), P::I(40))], cancelled, cancel, std::sync::Arc::new(|| Ok(()))).await.unwrap_err();
-    if !error.starts_with("JOB_CANCELLED") || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
+    if !error.message().starts_with("JOB_CANCELLED") || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
         return Err("generated insert cancellation did not confirm rollback".into());
     }
     let after = catalog.table_page(table, 10, 0).await?;
@@ -159,7 +159,7 @@ async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec
     });
     let values = [("n".into(), P::I(99))];
     let result = catalog.insert_row(metadata, &values, cancel, observe, std::sync::Arc::new(|| Ok(()))).await;
-    assert!(matches!(result, Err(ref error) if error.starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
+    assert!(matches!(result, Err(ref error) if error.message().starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
     let held = held.lock().unwrap().unwrap_or(false);
     held
 }

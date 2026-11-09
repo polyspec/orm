@@ -1,9 +1,9 @@
-use crate::catalog::{CatalogConnection, MutationPhase, TableRef};
+use crate::catalog::{CatalogConnection, CatalogError, MutationPhase, TableRef};
 use crate::tool_db::{Conn, P};
 use std::sync::{atomic::AtomicBool, Arc};
 
 /// Inserts the row `id` with no hook that stops it.
-async fn insert(catalog: &CatalogConnection, declared: &crate::catalog::TableMetadata, id: i64) -> Result<(), String> {
+async fn insert(catalog: &CatalogConnection, declared: &crate::catalog::TableMetadata, id: i64) -> Result<(), CatalogError> {
     catalog
         .insert_row(declared, &[("id".to_owned(), P::I(id))], Arc::new(AtomicBool::new(false)), Arc::new(|_: MutationPhase| {}), Arc::new(|| Ok(())))
         .await
@@ -26,7 +26,7 @@ async fn writers(dsn: &str, create: &str, table: &str) -> Vec<Vec<crate::tool_db
     }
     // A refused insert rolls back and discards its connection, and the next one still writes in a transaction of its own.
     let refused = insert(&catalog, &declared, 1).await.unwrap_err();
-    assert!(refused.contains("ROW_CONFLICT"), "{refused}");
+    assert!(refused.message().contains("ROW_CONFLICT"), "{refused}");
     insert(&catalog, &declared, 7).await.unwrap();
     let mut read = Conn::acquire(&pool).await.unwrap();
     let committed = read.query(&format!("SELECT id FROM {table}"), &[]).await.unwrap();
