@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- catalog의 거부된 PostgreSQL multirange 읽기는 모든 runtime에서 session에 prepared statement를 남기지 않고 session은 계속 읽는다: recipe catalog_connection의 case catalog_value_multirange가 거부 뒤에 pg_prepared_statements와 일반 행을 읽는다(T400-1, INT-185). Rust 시험 a_refused_multirange_read_leaves_no_prepared_statement_on_its_session은 지운다.
 - 나뉜 root IN 읽기의 statement는 모든 runtime이 모든 database에서 실행하는 recipe parameter_chunking의 case root_in_split_statements다(T400-1, PLN-44, PRT-76, CPX-4): 서로 다른 값 601개는 bind 1024개로 채워지고, SQLite는 512개와 128개의 statement 둘로, MySQL과 PostgreSQL은 statement 하나로 읽으며, 각 row는 한 번 읽힌다. PRT-76은 bind limit을 넘는 채운 목록의 분할을 적는다. PHP 확장 시험 test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages는 지운다.
 - 정수이거나 YYYY-MM-DD가 아닌 텍스트인 SQLite의 저장 date는 모든 runtime이 실행하는 recipe conformance_verification의 case invalid_stored_dates_sqlite다(T400-1, COD-1, COD-61): 각각의 row 읽기와 그룹 값은 CODEC_DECODE day_cell.day: date cell is not a date로 실패한다. 이를 홀로 지키던 PHP 확장 시험 InvalidDateReadNativeTest.php는 지운다.
 - collection, 빈 collection과 관계 행의 JSON 출력은 모든 runtime이 모든 database에서 실행하는 recipe model_writes_chain의 case model_json_output_writes_collections_and_related_rows다(T400-1, COD-26, COD-68): 모든 recipe runner의 model.query가 json_output을 받아 행의 JSON text를 돌려준다. recipe가 담는 test_model_json_text.py의 Python 시험은 지우고, recipe 값으로 쓸 수 없는 Python 값의 시험은 FCV-2 줄과 함께 남는다.

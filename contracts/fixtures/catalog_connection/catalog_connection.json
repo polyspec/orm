@@ -15391,6 +15391,45 @@
               "message": "CATALOG_VALUE: column 3: unsupported native type"
             }
           }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT count(*) FROM pg_prepared_statements WHERE statement LIKE '%int4' || 'multirange%'",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, 'after'",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "after"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     },
