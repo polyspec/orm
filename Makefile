@@ -7,7 +7,7 @@
 .PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 .PHONY: php-ext-memory-check
 .PHONY: request-hook-php-extension-check
-.PHONY: t182-php-extension-model-check t182-php-extension-schema-check
+.PHONY: t182-php-extension-schema-check
 .PHONY: rust-causes-check rust-closed-executor-check
 .PHONY: php-go-text-check
 .PHONY: go-catalog-session-error-check
@@ -1256,16 +1256,6 @@ model-query-write-php-extension-unit-check: php-vendor-check php-model-check
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesWritesNativeTest.php --filter '$(MODEL_QUERY_WRITE_TEST_FILTER)'
 
-# Runs the extension-mode model fixtures required by T182-6, using the same fixture cases as the PHP owner tests.
-T182_MODEL_TEST_FILTER ?=
-t182-php-extension-model-check: php-vendor-check php-model-check
-	@set -eu; \
-	run_dir="$(abspath .runtime/run)/t182-php-extension-model-check-$$PPID"; \
-	trap 'rm -rf "$$run_dir"' EXIT; \
-	mkdir -p "$$run_dir/php-extension"; \
-	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php $(if $(T182_MODEL_TEST_FILTER),--filter '$(T182_MODEL_TEST_FILTER)',)
-
 # Runs the changed-database installation fixture through the native extension on each configured database.
 t182-php-extension-schema-check: php-vendor-check php-model-check
 	@set -eu; \
@@ -1953,7 +1943,7 @@ suite-test-unit-check:
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
-PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
 PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 PHP_EXT_MEMORY_CATALOG = ^(Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionSqliteOnlyRecipeTestExtensionTest::)

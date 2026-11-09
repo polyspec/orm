@@ -3173,8 +3173,7 @@ def scalar(ex: Executor, request: dict, params):
         parts = _root_in_parts(request, slots, db.sql_driver, params)
         if len(parts) == 1:
             step = db.plan(parts[0])["plan"]["steps"][0]
-            result = db._send_step(ex, step["sql"], step, params)
-            return result["rows"][0][0] if result["rows"] else None
+            return cells(db._send_step(ex, step["sql"], step, params))
         if len(parts) > 1:
             if request["kind"] != "count":
                 raise OrmError(
@@ -3188,7 +3187,12 @@ def scalar(ex: Executor, request: dict, params):
                 total += int((result["rows"][0] or [0])[0] if result["rows"] else 0)
             return total
         step = cached["plan"]["steps"][0]
-        result = db._send_step(ex, step["sql"], step, params)
+        return cells(db._send_step(ex, step["sql"], step, params))
+
+    def cells(result):
+        # An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
+        if request["kind"] == "avg":
+            return tuple(result["rows"][0])
         return result["rows"][0][0] if result["rows"] else None
 
     return _guarded(ex, work)

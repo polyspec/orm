@@ -1197,14 +1197,22 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	var v cell
+	// An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
+	var v, n cell
+	dest := []any{&v}
+	if r.ir.Kind == "avg" {
+		dest = append(dest, &n)
+	}
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
-	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &v), ctx)
+	err = stmt.QueryRowContext(ctx, args...).Scan(dest...)
+	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, dest...), ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
+	}
+	if r.ir.Kind == "avg" {
+		return avgCells{sum: v.v, count: n.v}, nil
 	}
 	return v.v, nil
 }

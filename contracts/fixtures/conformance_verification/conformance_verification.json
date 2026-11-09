@@ -2,6 +2,9 @@
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
   "INT-164",
+  "DIA-200",
+  "DSL-161",
+  "DSL-66",
   "PRT-69",
   "COD-1",
   "COD-61",
@@ -16807,7 +16810,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+             "text": "SELECT SUM(`a`.`like_count`), COUNT(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
             }
            ],
            [
@@ -17059,7 +17062,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1"
+             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1"
             }
            ],
            [
@@ -17311,7 +17314,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
             }
            ],
            [
@@ -20542,7 +20545,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`seq` = ?"
+             "text": "SELECT SUM(`a`.`like_count`), COUNT(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`seq` = ?"
             }
            ],
            [
@@ -20678,7 +20681,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(`a`.`price`) FROM `author` AS `a` WHERE `a`.`price` IS NULL"
+             "text": "SELECT SUM(`a`.`price`), COUNT(`a`.`price`) FROM `author` AS `a` WHERE `a`.`price` IS NULL"
             }
            ],
            [
@@ -21118,7 +21121,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1"
+             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1"
             }
            ],
            [
@@ -21254,7 +21257,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
+             "text": "SELECT SUM(\"a\".\"price\"), COUNT(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
             }
            ],
            [
@@ -21694,7 +21697,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
             }
            ],
            [
@@ -21830,7 +21833,7 @@
            [
             "sql",
             {
-             "text": "SELECT AVG(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
+             "text": "SELECT SUM(\"a\".\"price\"), COUNT(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
             }
            ],
            [
@@ -88239,6 +88242,908 @@
          }
         ]
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_of_an_exact_column_is_exact_before_its_conversion",
+   "requirements": [
+    "DSL-66",
+    "DSL-161"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "48.0450"
+      },
+      "large": {
+       "text": "0"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "0.0001"
+      },
+      "large": {
+       "text": "9999999999999999"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "0.0001"
+      },
+      "large": {
+       "text": "9999999999999998"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "0.0002"
+      },
+      "large": {
+       "text": "1"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "-0.0001"
+      },
+      "large": {
+       "text": "-5"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "-0.0002"
+      },
+      "large": {
+       "text": "-2"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": 48.045
+      },
+      "postgres": {
+       "json": 48.045
+      },
+      "sqlite": {
+       "json": 48.045
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": 48.045
+      },
+      "postgres": {
+       "json": 48.045
+      },
+      "sqlite": {
+       "json": 48.045
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": 0.00013333333333333334
+      },
+      "postgres": {
+       "json": 0.00013333333333333334
+      },
+      "sqlite": {
+       "json": 0.00013333333333333334
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": 0.0004
+      },
+      "postgres": {
+       "json": 0.0004
+      },
+      "sqlite": {
+       "json": 0.0004
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "large"
+     },
+     "expect": {
+      "mysql": {
+       "json": 6666666666666666
+      },
+      "postgres": {
+       "json": 6666666666666666
+      },
+      "sqlite": {
+       "json": 6666666666666666
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "large"
+     },
+     "expect": {
+      "mysql": {
+       "json": 20000000000000000
+      },
+      "postgres": {
+       "json": 20000000000000000
+      },
+      "sqlite": {
+       "json": 20000000000000000
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "5"
+         },
+         {
+          "int": "6"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": -0.00015
+      },
+      "postgres": {
+       "json": -0.00015
+      },
+      "sqlite": {
+       "json": -0.00015
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "5"
+         },
+         {
+          "int": "6"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "large"
+     },
+     "expect": {
+      "mysql": {
+       "json": -7
+      },
+      "postgres": {
+       "json": -7
+      },
+      "sqlite": {
+       "json": -7
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "7"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": null
+      },
+      "postgres": {
+       "json": null
+      },
+      "sqlite": {
+       "json": null
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "DecimalValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "7"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "amount"
+     },
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_numbers_are_the_nearest_binary64",
+   "requirements": [
+    "DSL-66",
+    "DSL-161",
+    "DIA-200",
+    "COD-1"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "4503599627370496"
+      },
+      "ratio": {
+       "float": "1.7976931348623157e308"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "4503599627370497"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 9007199254740992
+      },
+      "postgres": {
+       "json": 9007199254740992
+      },
+      "sqlite": {
+       "json": 9007199254740992
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "ratio"
+     },
+     "expect": {
+      "mysql": {
+       "json": 1.7976931348623157e+308
+      },
+      "postgres": {
+       "json": 1.7976931348623157e+308
+      },
+      "sqlite": {
+       "json": 1.7976931348623157e+308
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "2"
+      },
+      "wide": {
+       "int": "4503599627370497"
+      },
+      "ratio": {
+       "float": "1.7976931348623157e308"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "small"
+     },
+     "expect": {
+      "mysql": {
+       "json": 1.3333333333333333
+      },
+      "postgres": {
+       "json": 1.3333333333333333
+      },
+      "sqlite": {
+       "json": 1.3333333333333333
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 4503599627370497
+      },
+      "postgres": {
+       "json": 4503599627370497
+      },
+      "sqlite": {
+       "json": 4503599627370497
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 9007199254740994
+      },
+      "postgres": {
+       "json": 9007199254740994
+      },
+      "sqlite": {
+       "json": 9007199254740994
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "3"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "ratio"
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_of_a_stored_nan_or_infinity_is_codec_decode",
+   "requirements": [
+    "DSL-66",
+    "DIA-200",
+    "COD-1"
+   ],
+   "only": [
+    "postgres"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = 'NaN' WHERE \"seq\" = 1"
+       }
+      },
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = 'Infinity' WHERE \"seq\" = 2"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "ratio"
+     },
+     "expect": {
+      "postgres": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "ratio"
+     },
+     "expect": {
+      "postgres": {
+       "error": "CODEC_DECODE"
       }
      }
     }

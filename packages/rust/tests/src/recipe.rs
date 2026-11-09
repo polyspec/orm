@@ -4967,7 +4967,9 @@ mod database {
             }
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
             // JSON holds one number type: a sum read as 17540.0 is the 17540 of the recipe.
-            Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9e15) => json!(n.as_f64().map_or(0, |f| f as i64)),
+            Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9_223_372_036_854_775_808.0) => {
+                json!(n.as_f64().map_or(0, |f| f as i64))
+            }
             other => other.clone(),
         }
     }

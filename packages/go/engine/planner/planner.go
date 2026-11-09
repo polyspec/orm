@@ -302,9 +302,10 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			sb.WriteString("COUNT(*)")
 		}
 	case "sum":
-		sb.WriteString("COALESCE(SUM(" + p.qcol(root, agg) + "), 0)")
+		sb.WriteString("COALESCE(" + p.aggregateSum(root, agg) + ", 0)")
 	case "avg":
-		sb.WriteString("AVG(" + p.qcol(root, agg) + ")")
+		// The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
+		sb.WriteString(p.aggregateSum(root, agg) + ", COUNT(" + p.qcol(root, agg) + ")")
 	case "group_count":
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
@@ -1681,6 +1682,17 @@ func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func
 		return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: f.Name + " is not available on " + p.D.Name()}
 	}
 	return out, nil
+}
+
+// aggregateSum renders the SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text
+// protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite
+// (DIA-200).
+func (p *Planner) aggregateSum(root *scope, column string) string {
+	sum := "SUM(" + p.qcol(root, column) + ")"
+	if f := root.ent.Field(column); f != nil && f.Type == "f64" && p.D.Name() == "mysql" {
+		sum += " + 0"
+	}
+	return sum
 }
 
 // subSelect renders a subquery for an IN list or a scalar column. The

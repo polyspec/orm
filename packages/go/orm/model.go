@@ -862,39 +862,53 @@ func (c *Core) GetCount() (int64, error) {
 // (no row, or every value null) is 0.
 func (c *Core) GetSum() (float64, error) {
 	c.ensureStatement()
-	v, err := c.aggregate("sum")
+	v, field, err := c.aggregate("sum")
 	if err != nil || v == nil {
 		return 0, err
 	}
-	return AsFloat64(v)
+	return sumValue(field, v)
 }
 
 // GetAvg returns the average of the column selected with avg<Col>(). A null
 // scalar (no row, or every value null) is a nil result.
 func (c *Core) GetAvg() (*float64, error) {
 	c.ensureStatement()
-	v, err := c.aggregate("avg")
-	if err != nil || v == nil {
-		return nil, err
-	}
-	f, err := AsFloat64(v)
+	v, field, err := c.aggregate("avg")
 	if err != nil {
 		return nil, err
 	}
-	return &f, nil
+	cells, ok := v.(avgCells)
+	if !ok {
+		return nil, codecErr(CodeInternal, "an average statement read %T, not its sum and count", v)
+	}
+	return avgValue(field, cells)
 }
 
-func (c *Core) aggregate(fn string) (any, error) {
+// aggregate runs the sum or average statement of fn and returns its cells with the field of its column.
+func (c *Core) aggregate(fn string) (any, *runtimemodel.Field, error) {
 	if c.aggFn != fn {
-		return nil, configErr("get%s requires %s<Col>()", titled(fn), fn)
+		return nil, nil, configErr("get%s requires %s<Col>()", titled(fn), fn)
 	}
 	ex, err := c.terminal()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	r := c.build(fn)
 	r.ir.Agg = c.agg
-	return scalar(ex, r)
+	v, err := scalar(ex, r)
+	if err != nil {
+		return nil, nil, aggregateRangeErr(err)
+	}
+	// The planner has checked the column, so the field of the manifest is there.
+	ent, err := c.entityModel(ex.base())
+	if err != nil {
+		return nil, nil, err
+	}
+	field := ent.Field(c.agg)
+	if field == nil {
+		return nil, nil, codecErr(CodeInternal, "%s.%s is missing from a planned aggregate", c.ent.Name, c.agg)
+	}
+	return v, field, nil
 }
 
 func titled(s string) string { return string(s[0]-'a'+'A') + s[1:] }

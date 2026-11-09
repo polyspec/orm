@@ -482,6 +482,16 @@ impl<'m> Planner<'m> {
         format!("{}.{}", self.d.quote(&s.alias), self.d.quote(col))
     }
 
+    /// The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
+    /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200).
+    fn aggregate_sum(&self, root: &Scope<'_>, column: &str) -> String {
+        let sum = format!("SUM({})", self.qcol(root, column));
+        if self.d.name() == "mysql" && root.ent.field(column).is_some_and(|f| f.ty == Type::F64) {
+            return format!("{sum} + 0");
+        }
+        sum
+    }
+
     fn qualified(&self, s: &Scope<'_>, cols: &[String]) -> Vec<String> {
         cols.iter().map(|c| self.qcol(s, c)).collect()
     }
@@ -520,8 +530,9 @@ impl<'m> Planner<'m> {
         let group_count = kind == "count" && grouped;
         match kind {
             "count" => sb.push_str(if group_count { "1" } else { "COUNT(*)" }),
-            "sum" => sb.push_str(&format!("COALESCE(SUM({}), 0)", self.qcol(root, agg))),
-            "avg" => sb.push_str(&format!("AVG({})", self.qcol(root, agg))),
+            "sum" => sb.push_str(&format!("COALESCE({}, 0)", self.aggregate_sum(root, agg))),
+            // The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
+            "avg" => sb.push_str(&format!("{}, COUNT({})", self.aggregate_sum(root, agg), self.qcol(root, agg))),
             "group_count" => {
                 self.select_group_count_list(root, &mut sb, &mut asm, &mut out_names)?;
                 asm.key = asm.key_refs(&q.group_by)?;

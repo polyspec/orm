@@ -961,7 +961,16 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     })
 }
 
-async fn scalar(c: &Core, kind: &str) -> Result<Val> {
+/// The cells of a scalar statement: one cell, or for an average the sum and the count of its values (DSL-161).
+fn scalar_cells(rows: &[crate::row::DriverRow], kind: &str, zone: crate::db::Zone) -> Result<Vec<Val>> {
+    if kind != "avg" {
+        return Ok(vec![first_cell(rows, zone)?]);
+    }
+    let row = rows.first().ok_or_else(|| Error::internal("an average statement read no row"))?;
+    Ok(vec![crate::row::read_cell(row, 0, zone)?, crate::row::read_cell(row, 1, zone)?])
+}
+
+async fn scalar(c: &Core, kind: &str) -> Result<Vec<Val>> {
     let ex = terminal(c)?;
     let mut req = build(c, kind);
     if kind == "sum" || kind == "avg" {
@@ -975,7 +984,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     if let [part] = parts.as_mut_slice() {
         let pp = db.plan_split_part(part, req.params.len()).await?;
         let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
-        return first_cell(&rows, ex.db().inner.zone);
+        return scalar_cells(&rows, kind, ex.db().inner.zone);
     }
     if !parts.is_empty() {
         if kind != "count" {
@@ -987,15 +996,15 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
             let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
             total = total.checked_add(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).ok_or_else(|| Error::internal("row count exceeds i64 range"))?;
         }
-        return Ok(Val::I64(total));
+        return Ok(vec![Val::I64(total)]);
     }
     let rows = ex.query(st, &req.params, Vec::new()).await?;
-    first_cell(&rows, ex.db().inner.zone)
+    scalar_cells(&rows, kind, ex.db().inner.zone)
 }
 
 /// The number of matching rows.
 pub async fn get_count(c: &Core) -> Result<i64> {
-    let count = scalar(c, "count").await?.as_i64()?;
+    let count = scalar(c, "count").await?.first().ok_or_else(|| Error::internal("a count statement read no cell"))?.as_i64()?;
     if count < 0 {
         return Err(Error::internal("negative row count"));
     }
@@ -1008,10 +1017,19 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
     if c.agg_fn != "sum" {
         return Err(config("get_sum requires sum_<col>()"));
     }
-    match scalar(c, "sum").await? {
-        Val::Null => Ok(0.0),
-        v => v.as_aggregate_f64(),
+    let value = scalar(c, "sum").await.map_err(crate::aggregate::range_error)?;
+    let field = aggregate_field(c)?;
+    match value.first() {
+        None => Err(Error::internal("a sum statement read no cell")),
+        Some(Val::Null) => Ok(0.0),
+        Some(v) => crate::aggregate::sum_value(&field.ty, v),
     }
+}
+
+/// The field of the column of a sum or an average, which the planner has checked.
+fn aggregate_field(c: &Core) -> Result<polyspec_orm_schema::dbspec::Field> {
+    let entity = c.ent.entity_schema()?;
+    entity.field(&c.agg).cloned().ok_or_else(|| Error::internal(format!("{}.{} is missing from a planned aggregate", c.ent.name, c.agg)))
 }
 
 /// The average of the column selected with avg_<col>(); None when SQL gives
@@ -1020,9 +1038,11 @@ pub async fn get_avg(c: &Core) -> Result<Option<f64>> {
     if c.agg_fn != "avg" {
         return Err(config("get_avg requires avg_<col>()"));
     }
-    match scalar(c, "avg").await? {
-        Val::Null => Ok(None),
-        v => v.as_aggregate_f64().map(Some),
+    let value = scalar(c, "avg").await.map_err(crate::aggregate::range_error)?;
+    let field = aggregate_field(c)?;
+    match value.as_slice() {
+        [sum, count] => crate::aggregate::avg_value(&field.ty, sum, count),
+        _ => Err(Error::internal("an average statement read no sum and count")),
     }
 }
 

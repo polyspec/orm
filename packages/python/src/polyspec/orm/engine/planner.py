@@ -411,6 +411,15 @@ class Planner:
     def _qcol(self, s: _Scope, col: str) -> str:
         return f"{self.d.quote(s.alias)}.{self.d.quote(col)}"
 
+    def _aggregate_sum(self, root: _Scope, column: str) -> str:
+        """The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on
+        MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200)."""
+        total = f"SUM({self._qcol(root, column)})"
+        field = field_of(root.ent, column)
+        if self.d.name == "mysql" and field is not None and field.type == "f64":
+            total += " + 0"
+        return total
+
     def _qualified(self, s: _Scope, columns) -> list:
         return [self._qcol(s, c) for c in columns]
 
@@ -451,9 +460,11 @@ class Planner:
         if kind == "count":
             sql += "1" if group_count else "COUNT(*)"
         elif kind == "sum":
-            sql += f"COALESCE(SUM({self._qcol(root, agg)}), 0)"
+            sql += f"COALESCE({self._aggregate_sum(root, agg)}, 0)"
         elif kind == "avg":
-            sql += f"AVG({self._qcol(root, agg)})"
+            # The executor divides the sum by the count of values, so the average is exact before its one conversion
+            # (DSL-161).
+            sql += f"{self._aggregate_sum(root, agg)}, COUNT({self._qcol(root, agg)})"
         elif kind == "group_count":
             sql += self._select_group_count_list(b, root, asm, idx, out_names)
             asm["key"] = _key_refs(asm, list(q.get("group_by") or []))

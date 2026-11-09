@@ -1,92 +1,13 @@
 package orm_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"math"
-	"os"
-	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-func TestAggregateNumericFixture(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "aggregate_numeric.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var fixture struct {
-		Feature string `json:"feature"`
-		// Requirements are the spec ids the cases test.
-		Requirements []string `json:"requirements"`
-		Cases        []struct {
-			ID        string  `json:"id"`
-			Operation string  `json:"operation"`
-			InputType string  `json:"input_type"`
-			Input     *string `json:"input"`
-			Expected  struct {
-				Bits  string `json:"bits"`
-				Error string `json:"error"`
-			} `json:"expected"`
-		} `json:"cases"`
-	}
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&fixture); err != nil {
-		t.Fatal(err)
-	}
-	if fixture.Feature != "model_queries" || len(fixture.Cases) == 0 {
-		t.Fatalf("invalid aggregate fixture: %q, %d cases", fixture.Feature, len(fixture.Cases))
-	}
-	seen := map[string]bool{}
-	for _, tc := range fixture.Cases {
-		if tc.ID == "" || seen[tc.ID] {
-			t.Fatalf("empty or duplicate case ID %q", tc.ID)
-		}
-		seen[tc.ID] = true
-		t.Run(tc.ID, func(t *testing.T) {
-			if tc.Operation != "aggregate_numeric" {
-				t.Fatalf("unexpected operation %q", tc.Operation)
-			}
-			var input any
-			switch tc.InputType {
-			case "decimal_text", "integer_text":
-				if tc.Input == nil {
-					t.Fatal("text input is null")
-				}
-				input = *tc.Input
-			case "null":
-				if tc.Input != nil {
-					t.Fatal("null input has text")
-				}
-			default:
-				t.Fatalf("unknown input type %q", tc.InputType)
-			}
-			got, err := orm.AsFloat64(input)
-			if tc.Expected.Error != "" {
-				if code := orm.ErrorCode(err); code != tc.Expected.Error {
-					t.Fatalf("error code %q, want %q", code, tc.Expected.Error)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			want, err := strconv.ParseUint(tc.Expected.Bits, 16, 64)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if bits := math.Float64bits(got); bits != want {
-				t.Fatalf("bits %016x, want %016x", bits, want)
-			}
-		})
-	}
-}
 
 func mustInt64(v any) int64 {
 	n, err := orm.AsInt64(v)

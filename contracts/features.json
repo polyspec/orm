@@ -832,7 +832,6 @@
         "packages/php/tests/GroupRowsTest.php",
         "packages/php-ext/tests/ModelAssemblyTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/AggregateNumericTest.php",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/group_rows.mjs",
         "packages/ts/tests/group_rows.types.ts",
@@ -884,7 +883,6 @@
         "packages/python/tests/test_collection_identity.py",
         "packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/row.rs",
-        "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
         "packages/go/model/chain_types_test.go",
         "packages/php/tests/NativeCellReadTest.php",
         "packages/ts/tests/chain-types.mjs",
@@ -969,15 +967,6 @@
             "Makefile",
             "packages/php-ext/tests/ModelNativeTest.php",
             "packages/php/tests/NativeFixtureVectors.php"
-          ]
-        },
-        {
-          "id": "aggregate-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestAggregateNumericFixture$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/conversion_error_test.go",
-            "contracts/fixtures/aggregate_numeric.json"
           ]
         },
         {
@@ -1077,15 +1066,6 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/ModelAssemblyTest.php"
-          ]
-        },
-        {
-          "id": "aggregate-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AggregateNumericTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/AggregateNumericTest.php",
-            "contracts/fixtures/aggregate_numeric.json"
           ]
         },
         {
@@ -1336,20 +1316,6 @@
           "inputs": [
             "packages/ts/tests/collection_identity.mjs",
             "tests/collection/keys.json"
-          ]
-        },
-        {
-          "id": "t182-6-php-extension-model-fixtures",
-          "command": "make t182-php-extension-model-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-            "packages/php/tests/AggregateNumericTest.php",
-            "packages/php/tests/DecimalModelTest.php",
-            "packages/php/tests/case_database.php",
-            "contracts/fixtures/aggregate_numeric.json",
-            "packages/php/tests/NativeFixtureVectors.php"
           ]
         }
       ],

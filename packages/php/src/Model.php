@@ -2012,9 +2012,30 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         [$db, $frame] = $this->executor();
         $r = $this->build($fn, $db);
         $r->ir['agg'] = $this->agg;
-        $value = $db->scalarOf($frame, $r);
-        return $value === null ? null : self::aggregateNumber($value);
+        try {
+            $value = $db->scalarOf($frame, $r);
+        } catch (OrmException $error) {
+            throw self::aggregateRangeError($error);
+        }
+        // The planner has checked the column, so the column of the model is there.
+        $col = static::meta()['columns'][$this->agg]
+            ?? throw new OrmException(Code::INTERNAL, "{$this->agg} is missing from a planned aggregate");
+        // SQLite and markdown hold a decimal as the integer value × 10^scale, and so its sum (DIA-25).
+        $scaled = $db->dialect() === 'sqlite';
+        if ($fn === 'sum') {
+            return $value === null ? null : self::sumValue($col, $value, $scaled);
+        }
+        if (!is_array($value)) {
+            throw new OrmException(Code::INTERNAL, 'an average statement read no sum and count');
+        }
+        return self::avgValue($col, $value[0] ?? null, $value[1] ?? null, $scaled);
     }
+
+    /** The text of every refused sum or average scalar in every client (DSL-66). */
+    private const AGGREGATE_REFUSED = 'aggregate scalar is not a finite number';
+
+    /** The decimal places that the average of an exact column keeps beyond the scale of the column (DSL-161). */
+    private const AVG_SCALE_EXTRA = 16;
 
     private static function aggregateNumber(mixed $value): float
     {
@@ -2023,13 +2044,159 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?'
                 . '(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)
         ) {
-            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is not a finite number');
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
         }
         $number = (float) $value;
         if (!is_finite($number)) {
-            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
         }
         return $number;
+    }
+
+    /** Whether the sum and the average of the column are exact (DSL-161): an integer or a decimal column. */
+    private static function exactAggregate(array $col): bool
+    {
+        return in_array($col['type'], ['i16', 'i32', 'i64', 'decimal'], true);
+    }
+
+    /**
+     * The sum cell of an exact column as its sign and the digits of the sum × 10^scale: on SQLite and markdown
+     * (scaled) the cell is that integer (DIA-25), on MySQL and PostgreSQL a decimal of at most scale fraction digits.
+     *
+     * @return array{0: bool, 1: string}
+     */
+    private static function exactSum(mixed $value, int $scale, bool $scaled): array
+    {
+        if (is_int($value)) {
+            $value = (string) $value;
+        }
+        if (!is_string($value) || preg_match('/^(-?)([0-9]+)(?:\.([0-9]+))?$/D', $value, $m) !== 1) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        $fraction = $m[3] ?? '';
+        if ($scaled) {
+            if ($fraction !== '') {
+                throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+            }
+            $scale = 0;
+        }
+        if (strlen($fraction) > $scale) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        $digits = ltrim($m[2] . str_pad($fraction, $scale, '0'), '0');
+        return [$m[1] === '-' && $digits !== '', $digits === '' ? '0' : $digits];
+    }
+
+    /** The nearest binary64 value of the digits × 10^-scale, ties to even; beyond the finite range CODEC_DECODE (DSL-66). */
+    private static function nearestBinary64(bool $negative, string $digits, int $scale): float
+    {
+        $number = (float) (($negative ? '-' : '') . $digits . 'e-' . $scale);
+        if (!is_finite($number)) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        return $number;
+    }
+
+    /** The result of getSum for the sum cell of the column (DSL-66, DSL-161). */
+    private static function sumValue(array $col, mixed $value, bool $scaled): float
+    {
+        if (!self::exactAggregate($col)) {
+            return self::aggregateNumber($value);
+        }
+        [$negative, $digits] = self::exactSum($value, $col['scale'] ?? 0, $scaled);
+        return self::nearestBinary64($negative, $digits, $col['scale'] ?? 0);
+    }
+
+    /**
+     * The result of getAvg for the sum and the count of the values of the column: null for no value; for an exact
+     * column the exact sum divided by the count, rounded half away from zero to AVG_SCALE_EXTRA places beyond the scale
+     * of the column and then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count,
+     * which is the AVG of every database.
+     */
+    private static function avgValue(array $col, mixed $sum, mixed $count, bool $scaled): ?float
+    {
+        if (is_string($count) && preg_match('/^[0-9]+$/D', $count) === 1 && (string) (int) $count === $count) {
+            $count = (int) $count;
+        }
+        if (!is_int($count) || $count < 0) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        if ($count === 0) {
+            return null;
+        }
+        if ($sum === null) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        if (!self::exactAggregate($col)) {
+            return self::aggregateNumber($sum) / $count;
+        }
+        $scale = $col['scale'] ?? 0;
+        [$negative, $digits] = self::exactSum($sum, $scale, $scaled);
+        // The quotient with one place more than the stated scale: its last digit decides the rounding half away from
+        // zero.
+        $longer = self::quotient($digits . str_repeat('0', self::AVG_SCALE_EXTRA + 1), $count);
+        $rounded = substr($longer, 0, -1);
+        if ((int) substr($longer, -1) >= 5) {
+            $rounded = self::increment($rounded);
+        }
+        $rounded = ltrim($rounded, '0');
+        return self::nearestBinary64(
+            $negative && $rounded !== '',
+            $rounded === '' ? '0' : $rounded,
+            $scale + self::AVG_SCALE_EXTRA,
+        );
+    }
+
+    /**
+     * The digits of the integer quotient of the decimal digits by divisor, by long division whose remainder stays below
+     * the divisor: ten additions of the remainder modulo the divisor never leave the integer range.
+     */
+    private static function quotient(string $digits, int $divisor): string
+    {
+        $out = '';
+        $rest = 0;
+        for ($i = 0, $n = strlen($digits); $i < $n; $i++) {
+            $digit = ord($digits[$i]) - 48;
+            $acc = $digit % $divisor;
+            $q = intdiv($digit, $divisor);
+            for ($k = 0; $k < 10; $k++) {
+                if ($acc >= $divisor - $rest) {
+                    $acc -= $divisor - $rest;
+                    $q++;
+                } else {
+                    $acc += $rest;
+                }
+            }
+            $rest = $acc;
+            $out .= (string) $q;
+        }
+        return $out;
+    }
+
+    /** The decimal digits plus one. */
+    private static function increment(string $digits): string
+    {
+        for ($i = strlen($digits) - 1; $i >= 0; $i--) {
+            if ($digits[$i] !== '9') {
+                return substr($digits, 0, $i) . chr(ord($digits[$i]) + 1) . str_repeat('0', strlen($digits) - $i - 1);
+            }
+        }
+        return '1' . str_repeat('0', strlen($digits));
+    }
+
+    /**
+     * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE
+     * 22003, and MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other
+     * databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-200).
+     */
+    private static function aggregateRangeError(OrmException $error): OrmException
+    {
+        $cause = $error->getPrevious();
+        $outOfRange = $cause instanceof \PDOException && ($cause->errorInfo[0] ?? null) === '22003';
+        if ($error->code_ === Code::DRIVER && $outOfRange) {
+            return new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED, $error);
+        }
+        return $error;
     }
 
     /**

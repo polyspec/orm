@@ -1461,11 +1461,13 @@ function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T)
 
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
   const { request, params } = hooked(ex, given, givenParams);
+  // An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
+  const cells = (rows: unknown[][]): unknown => request.kind === 'avg' ? present(rows[0], 'the row of an average') : rows[0]?.[0] ?? null;
   return guarded(ex, async () => {
     const { db, cached, parts } = await readParts(ex, request, params);
     if (parts.length === 1) {
       const step = mainStep((await db.plan(present(parts[0], 'the one part of a split request'))).plan);
-      return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
+      return cells((await db.runStep(ex, step.sql, step, params)).rows);
     }
     if (parts.length > 1) {
       if (request.kind !== 'count') throw new OrmError(codes.IR_INVALID, 'a split IN list can be merged only for a count');
@@ -1477,7 +1479,7 @@ export async function scalar(ex: Executor, given: Request, givenParams: readonly
       return total;
     }
     const step = mainStep(cached.plan);
-    return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
+    return cells((await db.runStep(ex, step.sql, step, params)).rows);
   });
 }
 

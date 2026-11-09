@@ -284,13 +284,13 @@ impl Val {
             Val::F64(value) if value.is_finite() => Ok(*value),
             Val::I64(value) => Ok(*value as f64),
             Val::Str(text) => {
-                let value = text.parse::<f64>().map_err(|error| decode_value_by("aggregate cell is not a finite number", error))?;
+                let value = text.parse::<f64>().map_err(|error| decode_value_by(crate::aggregate::REFUSED, error))?;
                 if !value.is_finite() {
-                    return Err(decode_value("aggregate cell is not a finite number"));
+                    return Err(decode_value(crate::aggregate::REFUSED));
                 }
                 Ok(value)
             }
-            _ => Err(decode_value("aggregate cell is not a finite number")),
+            _ => Err(decode_value(crate::aggregate::REFUSED)),
         }
     }
 

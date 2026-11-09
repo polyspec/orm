@@ -104,6 +104,17 @@ final class Planner
         return $this->d->quote($s->alias) . '.' . $this->d->quote($col);
     }
 
+    /**
+     * The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on
+     * MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200).
+     */
+    private function aggregateSum(PlanScope $root, string $column): string
+    {
+        $sum = 'SUM(' . $this->qcol($root, $column) . ')';
+        $type = RuntimeModel::column($root->ent, $column)['type'] ?? '';
+        return $this->d->name === 'mysql' && $type === 'f64' ? "$sum + 0" : $sum;
+    }
+
     /** @param list<string> $cols @return list<string> */
     private function qualified(PlanScope $s, array $cols): array
     {
@@ -138,10 +149,12 @@ final class Planner
                 $sql .= $groupCount ? '1' : 'COUNT(*)';
                 break;
             case 'sum':
-                $sql .= 'COALESCE(SUM(' . $this->qcol($root, $agg) . '), 0)';
+                $sql .= 'COALESCE(' . $this->aggregateSum($root, $agg) . ', 0)';
                 break;
             case 'avg':
-                $sql .= 'AVG(' . $this->qcol($root, $agg) . ')';
+                // The executor divides the sum by the count of values, so the average is exact before its one
+                // conversion (DSL-161).
+                $sql .= $this->aggregateSum($root, $agg) . ', COUNT(' . $this->qcol($root, $agg) . ')';
                 break;
             case 'group_count':
                 $sql .= $this->groupCountList($root, $asm, $idx, $outNames);

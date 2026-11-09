@@ -635,18 +635,100 @@ async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promi
 
 async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number | null> {
   if (c.aggFn !== fn) throw configError(`get${upperFirst(fn)} requires ${fn}<Col>()`);
-  const value = await scalarOf(c, fn, c.agg);
-  return value === null || value === undefined ? null : aggregateNumber(value);
+  let value: unknown;
+  try {
+    value = await scalarOf(c, fn, c.agg);
+  } catch (error) {
+    throw aggregateRangeError(error);
+  }
+  // The planner has checked the column, so the field of the model is there.
+  const field = present(fieldOf(c.ent.entity, c.agg), `the aggregate column ${c.ent.entity.name}.${c.agg}`);
+  if (fn === 'sum') return value === null || value === undefined ? null : sumValue(field, value);
+  if (!Array.isArray(value)) throw new OrmError(codes.INTERNAL, 'an average statement read no sum and count');
+  return avgValue(field, value[0], value[1]);
 }
 
+/** The text of every refused sum or average scalar in every client (DSL-66). */
+const aggregateRefused = 'aggregate scalar is not a finite number';
+
+/** The decimal places that the average of an exact column keeps beyond the scale of the column (DSL-161). */
+const avgScaleExtra = 16;
+
+/** The binary64 value of a sum or an average scalar, rounded to the nearest, ties to even (DSL-66). */
 export function aggregateNumber(value: unknown): number {
   if (typeof value !== 'number' && typeof value !== 'bigint'
       && !(typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(value))) {
-    throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is not a finite number');
+    throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
   }
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
+  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
   return number;
+}
+
+/** Whether the sum and the average of the column are exact (DSL-161): an integer or a decimal column. */
+function exactAggregate(field: Field): boolean {
+  return field.type === 'i16' || field.type === 'i32' || field.type === 'i64' || field.type === 'decimal';
+}
+
+/**
+ * The sum cell of an exact column as the integer sum × 10^scale: an integer cell is that integer (SQLite and markdown store
+ * a decimal so, DIA-25), a text cell is a decimal of at most scale fraction digits.
+ */
+function exactSum(value: unknown, scale: number): bigint {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return BigInt(value);
+  const match = typeof value === 'string' ? /^(-?)([0-9]+)(?:\.([0-9]+))?$/.exec(value) : null;
+  if (match === null || (match[3] ?? '').length > scale) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  const fraction = (match[3] ?? '').padEnd(scale, '0');
+  const digits = BigInt(`${match[2] ?? ''}${fraction}`);
+  return match[1] === '-' ? -digits : digits;
+}
+
+/** The nearest binary64 value of n × 10^-scale, ties to even; a value beyond the finite range is CODEC_DECODE (DSL-66). */
+function nearestBinary64(n: bigint, scale: number): number {
+  const number = Number(`${n}e-${scale}`);
+  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  return number;
+}
+
+/** The result of getSum for the sum cell of the column field (DSL-66, DSL-161). */
+function sumValue(field: Field, value: unknown): number {
+  return exactAggregate(field) ? nearestBinary64(exactSum(value, field.scale), field.scale) : aggregateNumber(value);
+}
+
+/**
+ * The result of getAvg for the sum and the count of the values of the column field: null for no value; for an exact column
+ * the exact sum divided by the count, rounded half away from zero to avgScaleExtra places beyond the scale of the column and
+ * then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count, which is the AVG of every
+ * database.
+ */
+function avgValue(field: Field, sum: unknown, countCell: unknown): number | null {
+  const count = typeof countCell === 'bigint' ? countCell
+    : typeof countCell === 'number' && Number.isSafeInteger(countCell) ? BigInt(countCell)
+    : typeof countCell === 'string' && /^[0-9]+$/.test(countCell) ? BigInt(countCell) : -1n;
+  if (count < 0n) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  if (count === 0n) return null;
+  if (sum === null || sum === undefined) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  if (!exactAggregate(field)) return aggregateNumber(sum) / Number(count);
+  const n = exactSum(sum, field.scale);
+  const magnitude = n < 0n ? -n : n;
+  // The quotient with one place more than the stated scale: its last digit decides the rounding half away from zero.
+  const longer = magnitude * 10n ** BigInt(avgScaleExtra + 1) / count;
+  const rounded = longer / 10n + (longer % 10n >= 5n ? 1n : 0n);
+  return nearestBinary64(n < 0n ? -rounded : rounded, field.scale + avgScaleExtra);
+}
+
+/**
+ * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003, and
+ * MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver
+ * error as its cause (DIA-200).
+ */
+function aggregateRangeError(error: unknown): unknown {
+  if (!(error instanceof OrmError) || error.code !== codes.DRIVER) return error;
+  const cause: unknown = error.cause;
+  // PostgreSQL names the SQLSTATE in code and MySQL in sqlState.
+  const state = cause instanceof Error ? ('sqlState' in cause ? cause.sqlState : 'code' in cause ? cause.code : undefined) : undefined;
+  return state === '22003' ? new OrmError(codes.CODEC_DECODE, aggregateRefused, error) : error;
 }
 
 /** The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps. */
