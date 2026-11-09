@@ -8384,6 +8384,7 @@
         "packages/rust/build/src/tool_db.rs",
         "packages/go/orm/catalog_mutation_test.go",
         "packages/go/orm/catalog_mutation_connection_test.go",
+        "packages/go/orm/catalog_values_test.go",
         "packages/ts/tests/catalog-mutation-connection.test.mjs",
         "packages/python/tests/test_catalog_mutation_connection.py",
         "packages/go/orm/catalog_temporal_test.go",
@@ -8429,6 +8430,15 @@
             "packages/rust/build/tests/cases/row_snapshot.rs",
             "packages/rust/build/tests/cases/typed_binds.rs",
             "packages/rust/build/tests/cases/generate.rs"
+          ]
+        },
+        {
+          "id": "catalog-values-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure|TestCatalogPostgresQueryModeKeepsBinaryTemporals)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/catalog_values_test.go",
+            "packages/go/orm/catalog_session_error_test.go"
           ]
         },
         {
