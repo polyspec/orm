@@ -17,7 +17,7 @@ import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { nativeTestErrors } from './native-tests.mts';
-import { readTree as readRecipeTree } from '../features/recipe-runners.mts';
+import { caseRunnerTests, readTree as readRecipeTree } from '../features/recipe-runners.mts';
 import { implementationFiles, implementationTestInventory } from '../features/languages.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -221,6 +221,7 @@ failures.push(...nativeTestErrors({
     ...(features.helpers ?? []).map(helper => ({ id: `helper ${helper.id}`, files: helper.tests })),
   ],
   recipeTests: new Set(readRecipeTree().bindings.map(binding => binding.test)),
+  caseRunnerTests: caseRunnerTests(),
   spec: text('docs/spec/feature-coverage.md'),
   files: trackedAll,
   read: text,

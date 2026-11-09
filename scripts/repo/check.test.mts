@@ -2458,6 +2458,7 @@ const nativeInputs = (lines: string[], files: Record<string, string> = nativeFil
     { id: 'go-alone', files: ['packages/go/orm/only_test.go'] },
   ],
   recipeTests: new Set(['packages/go/orm/recipe_a_test.go']),
+  caseRunnerTests: new Set<string>(),
   spec: ['- **FCV-1** Each feature declares its coverage.', '- **FCV-2** One spec holds every orm test.', ...lines,
     '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
   files: Object.keys(files),
@@ -2500,6 +2501,16 @@ caseTest('a native test that a line of FCV-2 names with its reason passes, and s
     .map(line => line.tests), [[{ file: 'packages/go/orm/a_test.go', name: 'TestShared' }]]);
   // A line may name the test of one runtime, which needs no line, as long as the test is there.
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
+});
+// A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
+// file still are (T400-1).
+// Requirements: FCV-2, FCV-15.
+caseTest('a case runner test is no native test, and the other tests of its file are', COMPUTE, () => {
+  const inputs = nativeInputs(statedAll.slice(1));
+  assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }), [unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  // A line that names the case runner test names no native test of that file.
+  assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }),
+    ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
 });
 caseTest('a line of FCV-2 that names no native test is a finding', COMPUTE, () => {
   const spec = 'docs/spec/feature-coverage.md FCV-2';

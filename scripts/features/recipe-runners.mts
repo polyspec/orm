@@ -39,6 +39,31 @@ export const RUNNERS: { [implementation: string]: Runner } = {
  */
 export const VECTOR_RUNNERS: Record<string, string[]> = RUNNER_SOURCES;
 
+/** A test of one runtime that runs every case of a case file: its file, and the names of its tests that run the cases. */
+export type CaseRunner = { file: string; tests: string[] };
+
+/**
+ * CASE_RUNNERS are the tests that run every case of a case file whose bodies each runtime writes, in every runtime (FCV-15): each
+ * reads the ids and the expected results of the file, runs the body of each id and fails, before any case runs, when the file holds
+ * an id that it has no body for or it has a body that the file does not name. So those bodies are cases that every runtime runs and
+ * not native tests. `tests` are the names that the FCV-2 rule reads in the file and that run the cases; a TypeScript or Python test
+ * named by the id of its case is no such name.
+ */
+export const CASE_RUNNERS: Record<string, Record<string, CaseRunner>> = {
+  'tests/markdown/cases.json': {
+    go: { file: 'packages/go/markdownmodel/conformance_test.go', tests: ['TestMarkdownConformance'] },
+    php: { file: 'packages/php/tests/MarkdownConformanceTest.php', tests: ['testMarkdownConformance'] },
+    'php-extension': { file: 'packages/php-ext/tests/MarkdownConformanceNativeTest.php', tests: ['testMarkdownConformance'] },
+    typescript: { file: 'packages/ts/tests/markdown_conformance.mjs', tests: [] },
+    python: { file: 'packages/python/tests/markdown_conformance.py', tests: [] },
+    rust: { file: 'packages/rust/tests/tests/all/markdown_conformance.rs', tests: ['trials'] },
+  },
+};
+
+/** The tests of CASE_RUNNERS, each as its file and its name joined by NUL, which the FCV-2 rule reads as no native test. */
+export const caseRunnerTests = (): Set<string> =>
+  new Set(Object.values(CASE_RUNNERS).flatMap(runners => Object.values(runners).flatMap(({ file, tests }) => tests.map(test => `${file}\0${test}`))));
+
 /**
  * READERS are the test files that read the data of a recipe without running its steps, each with its reason; the other test files
  * whose code names a recipe run it, through the runner of their runtime. A reader that names no recipe is a finding.
@@ -120,6 +145,21 @@ export function findings(tree: Tree): string[] {
   for (const [implementation, files] of Object.entries(VECTOR_RUNNERS)) {
     if (!(implementation in RUNNERS)) out.push(`${implementation}: a vector runner of no runtime`);
     for (const file of files) if (!tree.sources.has(file)) out.push(`${implementation}: the vector runner ${file} does not exist`);
+  }
+  for (const [cases, runners] of Object.entries(CASE_RUNNERS)) {
+    for (const implementation of Object.keys(RUNNERS)) if (!(implementation in runners)) out.push(`${cases}: no case runner of ${implementation}`);
+    for (const [implementation, { file }] of Object.entries(runners)) {
+      if (!(implementation in RUNNERS)) out.push(`${cases}: a case runner of no runtime, ${implementation}`);
+      const text = tree.sources.get(file);
+      if (text === undefined) {
+        out.push(`${implementation}: the case runner ${file} does not exist`);
+        continue;
+      }
+      // The PHP extension runs the PHP runner, as a test class that extends the class of that runner.
+      const phpClass = /([A-Za-z0-9_]+)\.php$/.exec(runners.php?.file ?? '')?.[1];
+      const extendsPhp = implementation === 'php-extension' && phpClass !== undefined && new RegExp(`\\bextends \\S*\\b${phpClass}\\b`).test(text);
+      if (!extendsPhp && !text.includes(cases.slice(cases.lastIndexOf('/') + 1))) out.push(`${implementation}: the case runner ${file} names no ${cases}`);
+    }
   }
   for (const op of tree.ops) {
     if (!tree.steps.has(op)) out.push(`the schema op ${op} is the op of no step of a recipe`);

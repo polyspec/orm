@@ -12,6 +12,9 @@ export type NativeTestInputs = {
   features: ListedFeature[];
   // recipeTests are the test files that hand a recipe to the runner of their runtime (scripts/features/recipe-runners.mts).
   recipeTests: ReadonlySet<string>;
+  // caseRunnerTests are the tests, as `<file>\0<name>`, that run every case of a case file in every runtime (CASE_RUNNERS of
+  // scripts/features/recipe-runners.mts), so they are no native tests.
+  caseRunnerTests: ReadonlySet<string>;
   spec: string;
   // files are the tracked files, among them the support files of PHP that declare the traits a test class uses.
   files: readonly string[];
@@ -83,7 +86,7 @@ const fileTests = (implementation: string, file: string, read: (path: string) =>
 };
 
 /** nativeTests is the native tests of each listed file, and the shared features that list each file of a shared behaviour. */
-export const nativeTests = ({ tests, features, recipeTests, files: tracked, read }: Omit<NativeTestInputs, 'spec'>): { native: Map<string, Set<string>>; sharedBy: Map<string, string[]> } => {
+export const nativeTests = ({ tests, features, recipeTests, caseRunnerTests, files: tracked, read }: Omit<NativeTestInputs, 'spec'>): { native: Map<string, Set<string>>; sharedBy: Map<string, string[]> } => {
   const implementationOf = new Map(Object.entries(tests).flatMap(([implementation, files]) => files.map((file): [string, string] => [file, implementation])));
   // The shared features that list each test file.
   const sharedBy = new Map<string, string[]>();
@@ -100,7 +103,7 @@ export const nativeTests = ({ tests, features, recipeTests, files: tracked, read
   for (const file of new Set(features.flatMap(feature => feature.files))) {
     const implementation = implementationOf.get(file);
     if (implementation === undefined || recipeTests.has(file)) continue;
-    native.set(file, new Set(fileTests(implementation, file, read, traits)));
+    native.set(file, new Set(fileTests(implementation, file, read, traits).filter(name => !caseRunnerTests.has(`${file}\0${name}`))));
   }
   return { native, sharedBy };
 };

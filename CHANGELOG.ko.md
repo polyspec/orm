@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1203bdea224b2b62fbd0800af281c6785e717a3ba39f282b5e72bcb189399a81 -->
+<!-- source-sha256: ac7deb9041440f9690c9fb04b7207437e66b2f9431944f5a54d89457c1fabb2f -->
 # 변경 이력
 
 ## Unreleased
 
+- 여섯 runtime의 markdown conformance runner는 tests/markdown/cases.json의 선언된 case runner다(T400-1, FCV-15, FCV-2): scripts/features/recipe-runners.mts가 CASE_RUNNERS에 그것을 적고 source가 아니거나 case 파일을 적지 않은 runner를 보고하며, make repo-check는 모든 runtime에서 파일의 모든 case를 실행하는 그 시험을 native 시험으로 읽지 않는다.
 - scripts/features/coverage.mts --case는 선택한 case를 그것을 적은 entry가 있는 데이터베이스에서 실행하고, MySQL과 PostgreSQL의 case의 SQLite 자리처럼 case가 실행되지 않는 데이터베이스의 자리는 보고하지 않는다. 어떤 entry도 선택한 case를 적지 않은 부분은 실패한다(T400-1, FCV-6).
 - catalog의 commit된 insert는 모든 runtime에서 서버 연결 하나에서 쓰고, 거부된 insert 뒤에도 다음 insert는 commit된다: MySQL과 PostgreSQL에서 recipe catalog_connection의 case committed_mutations_share_one_connection이다(T400-1, INT-106c, INT-157). 이를 지키던 Go, Python, Rust, TypeScript의 native 시험은 지운다.
 - catalog의 거부된 PostgreSQL multirange 읽기 뒤에도 모든 runtime에서 catalog는 계속 읽는다: recipe catalog_connection의 case catalog_value_multirange가 거부 뒤에 일반 행을 읽는다(T400-1, INT-185). 모든 catalog session이 DEALLOCATE ALL로 시작하므로(CFG-28) 다음 session의 어떤 읽기도 거부된 읽기의 statement를 볼 수 없어 pg_prepared_statements는 읽지 않는다. 한 tool_db connection에서 그것을 읽는 Rust 시험 a_refused_multirange_read_leaves_no_prepared_statement_on_its_session는 FCV-2 줄과 함께 native로 남는다.
