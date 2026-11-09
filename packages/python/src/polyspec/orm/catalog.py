@@ -381,9 +381,10 @@ def _same_row(a, b) -> bool:
     return all(_cell_key(x) == _cell_key(y) for x, y in zip(a, b))
 
 
-def _words(query: str, dialect: str):
+def _words(query: str, dialect: str, semicolons: list | None = None):
     """The upper-cased words of a query and its semicolons; string literals, quoted identifiers and comments are skipped.
-    Returns (None, False) for an unterminated literal or comment and for a MySQL executable comment."""
+    Returns (None, False) for an unterminated literal or comment and for a MySQL executable comment. semicolons, when
+    given, receives the index of each semicolon."""
     words = []
     i = 0
     n = len(query)
@@ -427,6 +428,8 @@ def _words(query: str, dialect: str):
             i = j
         elif c == ";":
             words.append(";")
+            if semicolons is not None:
+                semicolons.append(i)
             i += 1
         else:
             i += 1
@@ -1393,6 +1396,50 @@ def _sqlite_text(value: bytes):
         return value
 
 
+# The PostgreSQL settings that the output of a cell depends on by INT-185 (INT-186), as the columns that a read of cells adds
+# to each row and that the session reads when its transaction begins and before it ends.
+_PG_SETTING_COLUMNS = (
+    "current_setting('DateStyle'), current_setting('IntervalStyle'), current_setting('TimeZone'), "
+    "current_setting('extra_float_digits'), current_setting('bytea_output'), current_setting('lc_monetary'), "
+    "current_setting('search_path')"
+)
+_PG_SETTING_COUNT = 7
+# The output settings that the transaction of a session fixes, under which the output of every cell kind is its exact text
+# (INT-186); ISO leaves the order of date input as it was.
+_PG_FIXED_SETTINGS = (
+    "SELECT set_config('DateStyle', 'ISO', true), set_config('extra_float_digits', '1', true), "
+    "set_config('bytea_output', 'hex', true)"
+)
+_SETTING_CHANGED_TEXT = (
+    "the query changed a setting that the output of its values depends on"
+)
+
+
+def _settings_read(sql: str) -> str:
+    """The statement of a PostgreSQL read of cells, run so that each row carries the output settings under which the server
+    writes it (INT-186): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs right before the
+    server sends that row and runs its output functions. The one trailing semicolon that a read query may hold cannot stand
+    inside the CTE, and the statement ends a line, so a trailing line comment ends before the CTE closes."""
+    semicolons: list = []
+    _words(sql, "postgres", semicolons)
+    if semicolons:
+        sql = sql[: semicolons[-1]] + sql[semicolons[-1] + 1 :]
+    return (
+        f"WITH catalog_read AS MATERIALIZED (\n{sql}\n) SELECT catalog_read.*, "
+        f"{_PG_SETTING_COLUMNS} FROM catalog_read"
+    )
+
+
+def _setting_text(value) -> str:
+    """The text of a setting column, which a catalog read takes as the bytes of the server text."""
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as failure:
+            raise _decode_failure(failure) from failure
+    return value
+
+
 class _Session:
     """One driver connection inside one transaction. The connection ends with the session, unless a commit keeps it (INT-106e)."""
 
@@ -1403,6 +1450,25 @@ class _Session:
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
+        # The PostgreSQL output settings when the transaction began (INT-186); None on the other dialects.
+        self.settings: tuple | None = None
+
+    def output_settings(self) -> tuple:
+        """The values of the PostgreSQL output settings in the transaction of the session (INT-186)."""
+        rows = self.run("SELECT " + _PG_SETTING_COLUMNS, [], 2, METADATA_BYTES).rows
+        if len(rows) != 1:
+            raise _error(
+                codes.TABLE_METADATA_INVALID,
+                f"current_setting returned {len(rows)} rows",
+            )
+        return tuple(rows[0])
+
+    def settings_unchanged(self) -> None:
+        """Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ
+        from their values when it began (INT-186): a change that no row carries, as in a result of no rows. A local setting
+        reverts when the transaction ends, so the check runs inside it."""
+        if self.settings is not None and self.output_settings() != self.settings:
+            raise _error(codes.CATALOG_VALUE, _SETTING_CHANGED_TEXT)
 
     def run(
         self,
@@ -1432,6 +1498,14 @@ class _Session:
             text, args = for_mysql(sql, list(params))
         else:
             text, args = for_postgres(sql, list(params))
+        # A PostgreSQL read of cells carries the output settings of each row (INT-186).
+        settings = (
+            self.settings
+            if self.dialect == "postgres" and (grid or query or described is not None)
+            else None
+        )
+        if settings is not None:
+            text = _settings_read(text)
         # A budgeted read streams its rows. A MySQL result is unbuffered, and a PostgreSQL read with no parameter is a cursor,
         # so a stop ends the statement on the server; a buffered read has to finish the whole statement first.
         streamed = max_rows is not None
@@ -1478,6 +1552,15 @@ class _Session:
             if cursor.description:
                 names = [column[0] for column in cursor.description]
                 type_codes = [column[1] for column in cursor.description]
+                if settings is not None:
+                    # The setting columns are no columns of the result.
+                    if len(names) < _PG_SETTING_COUNT:
+                        raise _error(
+                            codes.TABLE_METADATA_INVALID,
+                            f"the read returned {len(names)} columns",
+                        )
+                    names = names[:-_PG_SETTING_COUNT]
+                    type_codes = type_codes[:-_PG_SETTING_COUNT]
                 if described is not None:
                     _same_names(names, described.columns)
                 classes = [None] * len(names)
@@ -1502,6 +1585,15 @@ class _Session:
                                 codes.CATALOG_VALUE, index + 1, _NATIVE_TEXT
                             )
                 for row in _stream_rows(cursor, cursor_name):
+                    if settings is not None:
+                        # A row written under other output settings refuses the read before any of its values is
+                        # converted; its setting columns count against no budget.
+                        written = tuple(
+                            _setting_text(value) for value in row[-_PG_SETTING_COUNT:]
+                        )
+                        if written != settings:
+                            raise _error(codes.CATALOG_VALUE, _SETTING_CHANGED_TEXT)
+                        row = row[:-_PG_SETTING_COUNT]
                     if keep is not None and len(rows) == keep:
                         past = True
                         continue
@@ -1941,6 +2033,10 @@ class CatalogConnection:
                 # "cached plan must not change result type". The transaction holds that server connection for the whole
                 # session (CFG-28).
                 session.run("DEALLOCATE ALL")
+                # The transaction fixes the output settings under which every cell kind is its exact text, and keeps their
+                # values, which each row of a read of cells and the end of the transaction are compared with (INT-186).
+                session.run(_PG_FIXED_SETTINGS)
+                session.settings = session.output_settings()
         except BaseException:
             self._close(session)
             raise
@@ -1980,6 +2076,7 @@ class CatalogConnection:
         session = self._begin(read_only=True)
         try:
             value = work(session)
+            session.settings_unchanged()
         except Exception as error:
             self._end(session, error)
             raise  # _end raises the error after it closes the session; this line is never reached
@@ -1992,6 +2089,7 @@ class CatalogConnection:
             if self._dialect == "mysql":
                 session.mysql_partial_revokes_off()
             value = work(session)
+            session.settings_unchanged()
         except Exception as error:
             self._end(session, error)
             raise  # _end raises the error after it closes the session; this line is never reached
