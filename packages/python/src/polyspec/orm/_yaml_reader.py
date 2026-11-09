@@ -748,7 +748,7 @@ class _Reader:
     def flow_node(self, n: int, depth: int, flow: bool, multi: bool, key):
         # A flow node at p with n the indentation of its lines, inside a flow collection when flow, over several lines
         # when multi. key is True for a key, which returns its string, False for a value and None for a node that is no
-        # key where the grammar reads one. In check mode it returns whether the node is a JSON node.
+        # key where the grammar reads one, whose rules are those of a value. In check mode it returns whether the node is a JSON node.
         p = self.p
         ch = self.at(p)
         if ch in ("&", "!", "*"):
@@ -774,8 +774,8 @@ class _Reader:
         text = self.plain(n, flow, multi)
         if self.check:
             return False
-        if key is None:
-            return None
+        # A node that is no key where the grammar reads one meets the rules of a value before the place where the
+        # stream leaves the grammar (COD-80), so `a: 1\n.inf\n` is yaml-non-finite.
         return self.key_of(text) if key else self.value_of(text)
 
     def properties(self, n: int, flow: bool, multi: bool):
