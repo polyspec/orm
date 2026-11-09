@@ -20,10 +20,9 @@ from polyspec.ordered_json import (
     stringify as ordered_json_stringify,
 )
 
-from polyspec.orm import codes
+from polyspec.orm import _yaml_reader, codes
 from polyspec.orm.styled_value import StyledValue
 import ruamel.yaml
-import ryml
 
 __all__ = [
     "CodecError",
@@ -43,14 +42,15 @@ _AES_PREFIX = b"ORM-AES2\x00"
 
 # The Python frames that a value stage takes at most for a value or a cell of 256 levels and for the refusal at the level
 # 257 (COD-70), as (decode, encode), measured with a margin of 50 frames: the yaml writer of ruamel.yaml takes about
-# three frames a level, the serialize walks two, and the ordered-json parser none. A call whose caller leaves fewer frames
-# under the recursion limit runs on a thread started for it (_on_own_stack), so that what a value stage returns or
-# refuses never depends on the depth of its caller (COD-71), and a RecursionError never escapes it.
+# three frames a level, the serialize walks two, and the ordered-json parser and the YAML reader none, since the reader
+# keeps its nodes on a list of its own (_yaml_reader._run) and takes 13 frames at any depth. A call whose caller leaves
+# fewer frames under the recursion limit runs on a thread started for it (_on_own_stack), so that what a value stage
+# returns or refuses never depends on the depth of its caller (COD-71), and a RecursionError never escapes it.
 # test_codec_stack_depth.py holds each at the boundary.
 _STAGE_FRAMES = {
     "ordered_json": (100, 570),
     "serialize": (570, 570),
-    "yaml": (330, 830),
+    "yaml": (65, 830),
 }
 
 
@@ -639,105 +639,7 @@ def _ordered_json_value(value) -> OrderedJson:
         ) from error
 
 
-# --- yaml stage: reads and writes with YAML 1.2 core schema semantics. ---
-# rapidyaml reads U+0085 as content per YAML 1.2 (5.4) (PyYAML and ruamel.yaml read it as a line break
-# ), and since the tree keeps the scalar's style and tag, plain scalars are resolved with the core schema.
-# ruamel.yaml writes it.
-
-
-_YAML_INT = re.compile(r"(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\Z")
-_YAML_FLOAT = re.compile(
-    r"(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?"
-    r"|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\Z"
-)
-
-
-def _yaml_core(text: str):
-    # Plain scalars are resolved to core tags of YAML 1.2.2 10.3.2; a sign is allowed only on decimal numbers. An integer
-    # outside i64 is yaml-int-range, and a float that is not finite, .inf, .nan and one beyond the f64 range, is
-    # yaml-non-finite (COD-70).
-    if text in ("", "~", "null", "Null", "NULL"):
-        return None
-    if text in ("true", "True", "TRUE"):
-        return True
-    if text in ("false", "False", "FALSE"):
-        return False
-    if _YAML_INT.fullmatch(text) is not None:
-        if text.startswith("0x"):
-            number = int(text[2:], 16)
-        elif text.startswith("0o"):
-            number = int(text[2:], 8)
-        else:
-            # More than 20 digits are outside i64, and int() refuses more than 4300 (sys.get_int_max_str_digits).
-            number = int(text, 10) if len(text.lstrip("+-")) <= 20 else _I64_MAX + 1
-        if not _I64_MIN <= number <= _I64_MAX:
-            raise CodecError(
-                codes.CODEC_DECODE, "yaml: integer is outside the i64 range"
-            )
-        return number
-    if _YAML_FLOAT.fullmatch(text) is not None:
-        # The core notations .inf and .nan, and a text that float() reads beyond the f64 range as infinity.
-        if "." in text and text.lstrip("+-")[1:].lower() in ("inf", "nan"):
-            raise CodecError(codes.CODEC_DECODE, "yaml: number is not finite")
-        number = float(text)
-        if not math.isfinite(number):
-            raise CodecError(codes.CODEC_DECODE, "yaml: number is not finite")
-        return number
-    return text
-
-
-def _yaml_text(memory) -> str:
-    return "" if memory is None else bytes(memory).decode("utf-8")
-
-
-def _yaml_scalar(text: str, plain: bool):
-    return _yaml_core(text) if plain else text
-
-
-def _yaml_refuse_marks(tree, node, key: bool):
-    # docs/spec/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused (yaml-anchor and
-    # yaml-tag of COD-70, whose texts name no tag).
-    anchor = tree.has_key_anchor(node) if key else tree.has_val_anchor(node)
-    if anchor:
-        raise CodecError(codes.CODEC_DECODE, "yaml: anchors are not supported")
-    tag = tree.has_key_tag(node) if key else tree.has_val_tag(node)
-    if tag:
-        raise CodecError(codes.CODEC_DECODE, "yaml: explicit tags are not supported")
-
-
-def _yaml_node(tree, node, level: int):
-    # level is the number of maps and sequences that hold the node: one at the level 257 is refused after its anchor and
-    # tag and before its children (yaml-depth of COD-70).
-    _yaml_refuse_marks(tree, node, False)
-    if (tree.is_map(node) or tree.is_seq(node)) and level >= _MAX_NESTING:
-        raise CodecError(codes.CODEC_DECODE, "yaml: value nesting exceeds 256 levels")
-    if tree.is_map(node):
-        mapping = {}
-        for child in ryml.children(tree, node):
-            if tree.is_key_ref(child):
-                raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not supported")
-            _yaml_refuse_marks(tree, child, True)
-            key = _yaml_scalar(
-                _yaml_text(tree.key(child)), not tree.is_key_quoted(child)
-            )
-            if type(key) is int:
-                key = str(key)
-            if not isinstance(key, str):
-                raise CodecError(
-                    codes.CODEC_DECODE, "yaml: map keys must be strings or integers"
-                )
-            if key in mapping:
-                raise CodecError(codes.CODEC_DECODE, "yaml: duplicate map key")
-            mapping[key] = _yaml_node(tree, child, level + 1)
-        return mapping
-    if tree.is_seq(node):
-        return [
-            _yaml_node(tree, child, level + 1) for child in ryml.children(tree, node)
-        ]
-    # Every other node of a rapidyaml tree holds a value: a scalar, or an alias (COD-72 enumerates the node kinds).
-    if tree.is_val_ref(node):
-        raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not supported")
-    return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node))
+# --- yaml stage: reads with the YAML reader of orm (_yaml_reader, COD-74) and writes with ruamel.yaml. ---
 
 
 # A character outside c-printable (YAML 1.2.2, 5.1), or a byte order mark, which is the encoding mark at the start of the
@@ -747,96 +649,14 @@ _YAML_NOT_PRINTABLE = re.compile(
 )
 
 
-# The message of rapidyaml for a sequence or a map as a key, which its tree cannot hold: the rule yaml-key-collection of
-# COD-70, which keeps the failure as its cause.
-_RYML_CONTAINER_KEY = "ryml trees cannot handle containers as keys"
-
-
-class _ContainerKey(Exception):
-    """The walk of _yaml_rules_before_container_key reached a collection in the position of a key."""
-
-
-def _yaml_event_node(event, events, level: int, key: bool):
-    # One node of the event stream and the events of its children, checked by the rules of _yaml_node in the same order:
-    # an alias, then the anchor and the tag, then a collection key (yaml-key-collection), the nesting and the children.
-    # Returns the resolved value of a scalar, which the key rules read.
-    if isinstance(event, ruamel.yaml.events.AliasEvent):
-        raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not supported")
-    if event.anchor is not None:
-        raise CodecError(codes.CODEC_DECODE, "yaml: anchors are not supported")
-    if event.tag is not None:
-        raise CodecError(codes.CODEC_DECODE, "yaml: explicit tags are not supported")
-    if isinstance(event, ruamel.yaml.events.ScalarEvent):
-        return _yaml_scalar(event.value, event.style is None)
-    if key:
-        raise _ContainerKey()
-    if level >= _MAX_NESTING:
-        raise CodecError(codes.CODEC_DECODE, "yaml: value nesting exceeds 256 levels")
-    if isinstance(event, ruamel.yaml.events.SequenceStartEvent):
-        for child in events:
-            if isinstance(child, ruamel.yaml.events.SequenceEndEvent):
-                return None
-            _yaml_event_node(child, events, level + 1, False)
-        return None
-    seen = set()
-    for child in events:
-        if isinstance(child, ruamel.yaml.events.MappingEndEvent):
-            return None
-        name = _yaml_event_node(child, events, level + 1, True)
-        if type(name) is int:
-            name = str(name)
-        if not isinstance(name, str):
-            raise CodecError(
-                codes.CODEC_DECODE, "yaml: map keys must be strings or integers"
-            )
-        if name in seen:
-            raise CodecError(codes.CODEC_DECODE, "yaml: duplicate map key")
-        seen.add(name)
-        _yaml_event_node(next(events), events, level + 1, False)
-    return None
-
-
-def _yaml_rules_before_container_key(text: str) -> None:
-    # rapidyaml refuses a collection as a key while it parses, so its tree never holds the nodes met before that key,
-    # whose rules come first (COD-70: a node is met where it starts). This walk meets them in the event stream of
-    # ruamel.yaml, the library that writes the yaml stage, and raises the first rule that applies; it returns at the
-    # collection key, and when ruamel.yaml refuses the stream before it, so that rapidyaml's verdict stands. It runs only
-    # on a stream that rapidyaml has read up to that key. ruamel.yaml takes U+0085, U+2028 and U+2029 as line breaks
-    # (YAML 1.1) where rapidyaml reads content (YAML 1.2, 5.4), so each is first replaced by a private-use character
-    # that the text does not hold, which both read as content: the replacement is one to one, so the equality of keys
-    # and the core resolution of a plain scalar, which no such character matches, are those of the original text.
-    for mark in _YAML_1_1_BREAKS:
-        if mark in text:
-            free = next(
-                chr(code) for code in range(0xE000, 0xF900) if chr(code) not in text
-            )
-            text = text.replace(mark, free)
-    events = iter(ruamel.yaml.YAML(typ="safe", pure=True).parse(text))
-    try:
-        for event in events:
-            if isinstance(event, ruamel.yaml.events.DocumentStartEvent):
-                _yaml_event_node(next(events), events, 0, False)
-                # The end of the first document, then the start of a second one, which is met before its nodes.
-                next(events)
-                if isinstance(next(events), ruamel.yaml.events.DocumentStartEvent):
-                    raise CodecError(
-                        codes.CODEC_DECODE, "yaml: multiple documents are not supported"
-                    )
-                return
-    except _ContainerKey, ruamel.yaml.YAMLError, StopIteration:
-        return
-    except (CodecError, *_RESOURCE_FAILURES):
-        raise
-    except Exception as error:
-        # ruamel.yaml fails with an exception that is no YAMLError, such as the AssertionError of a %YAML directive
-        # whose minor version is not 1 or 2: the rule yaml-parse, with that exception as its cause (COD-71).
-        raise CodecError(
-            codes.CODEC_DECODE, "yaml: the stream does not parse"
-        ) from error
+def _yaml_rule(text: str) -> CodecError:
+    return CodecError(codes.CODEC_DECODE, text)
 
 
 def _decode_yaml(data: bytes):
-    # The stream rules come before the parse (COD-70): yaml-utf8, then yaml-printable.
+    # The stream rules come before the parse (COD-70): yaml-utf8, then yaml-printable. A stream that the grammar of the
+    # reader does not hold is yaml-parse, with the error of the reader, which names the line and the column, as its
+    # cause (COD-71, COD-80).
     try:
         text = data.decode("utf-8").removeprefix("\ufeff")
     except UnicodeDecodeError as error:
@@ -847,40 +667,8 @@ def _decode_yaml(data: bytes):
             "yaml: the stream holds a character that is not printable",
         )
     try:
-        tree = ryml.parse_in_arena(data)
-        root = tree.root_id()
-        if tree.is_stream(root):
-            # The first document is met before the second, so its rules come first (COD-70).
-            documents = list(ryml.children(tree, root))
-            value = _yaml_node(tree, documents[0], 0) if documents else None
-            if len(documents) != 1:
-                raise CodecError(
-                    codes.CODEC_DECODE, "yaml: multiple documents are not supported"
-                )
-            return value
-        if not (tree.has_val(root) or tree.is_map(root) or tree.is_seq(root)):
-            # A stream without a document (empty, or comments only) is not a YAML value.
-            raise CodecError(codes.CODEC_DECODE, "yaml: no document")
-        return _yaml_node(tree, root, 0)
-    except ryml.ExceptionBasic as error:
-        # str() of a rapidyaml exception is empty; its message is the attribute msg.
-        if error.msg == _RYML_CONTAINER_KEY:
-            try:
-                _yaml_rules_before_container_key(text)
-            except CodecError as rule:
-                # A rule met before the key: a rule of a node, which the tree path raises with no cause, or yaml-parse
-                # with the failure of ruamel.yaml as its cause; neither takes the failure of rapidyaml as its context.
-                raise rule from rule.__cause__
-            raise CodecError(
-                codes.CODEC_DECODE, "yaml: map keys must be scalar strings"
-            ) from error
-        raise CodecError(
-            codes.CODEC_DECODE, "yaml: the stream does not parse"
-        ) from error
-    except (CodecError, *_RESOURCE_FAILURES):
-        raise
-    except Exception as error:
-        # Any other failure of rapidyaml is the rule yaml-parse (COD-71).
+        return _yaml_reader.read(text, _yaml_rule)
+    except _yaml_reader.YamlReaderError as error:
         raise CodecError(
             codes.CODEC_DECODE, "yaml: the stream does not parse"
         ) from error

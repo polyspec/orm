@@ -1,6 +1,7 @@
 # codec stack depth: a value stage returns the same value and refuses with the same rule whatever the depth of its caller
-# (COD-70, COD-71). A Python value stage recurses on the Python stack, so codec.py runs a call whose caller leaves fewer
-# frames than the stage takes on a thread of its own; each stage is called here at 256 levels and at 257 from a caller
+# (COD-70, COD-71). A Python value stage but the yaml decode recurses on the Python stack, and the YAML reader takes a
+# fixed number of frames, so codec.py runs a call whose caller leaves fewer frames than the stage takes on a thread of its
+# own; each stage is called here at 256 levels and at 257 from a caller
 # about 900 frames deep, which reaches that thread, and from a caller that leaves the stage just its budget, which runs on
 # the caller's stack and so holds the budget of _STAGE_FRAMES. The JSON output of a model (model._json_text), which is no
 # codec stage, recurses the same way and is held the same way at its budget, _JSON_OUTPUT_FRAMES. The recursion limit is a property of the Python runtime, so
@@ -147,12 +148,14 @@ CASES = [
         "CODEC_DECODE: yaml: value nesting exceeds 256 levels",
     ),
     (
-        "yaml decode before a collection key",
+        # A key at the level 256 that is a sequence is yaml-key-collection; at the level 257 its nesting rule comes
+        # before the rules of the node itself (COD-80).
+        "yaml decode of a collection key",
         "yaml",
         0,
-        lambda: codec.decode(["yaml"], "[" * 255 + "{[x]: 1}" + "]" * 255 + "\n"),
+        lambda: codec.decode(["yaml"], "[" * 254 + "{[x]: 1}" + "]" * 254 + "\n"),
         "CODEC_DECODE: yaml: map keys must be scalar strings",
-        lambda: codec.decode(["yaml"], "{a: " * 256 + "{[x]: 1}" + "}" * 256 + "\n"),
+        lambda: codec.decode(["yaml"], "[" * 255 + "{[x]: 1}" + "]" * 255 + "\n"),
         "CODEC_DECODE: yaml: value nesting exceeds 256 levels",
     ),
 ]
