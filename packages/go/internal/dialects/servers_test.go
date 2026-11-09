@@ -46,6 +46,11 @@ func OpenServers(ctx context.Context, mysqlDSN, postgresDSN, dir, run string) (*
 	if err := s.mysqlAdmin.PingContext(ctx); err != nil {
 		s.mysqlErr = fmt.Errorf("mysql: %w", err)
 	}
+	// The MariaDB probes run on a server set without PostgreSQL (make orm-test-mariadb): an empty DSN opens none.
+	if postgresDSN == "" {
+		s.postgresErr = errors.New("postgres: no server in this run")
+		return s, nil
+	}
 	if s.postgres, err = sql.Open("pgx", postgresDSN); err != nil {
 		return nil, err
 	}
@@ -58,7 +63,7 @@ func OpenServers(ctx context.Context, mysqlDSN, postgresDSN, dir, run string) (*
 // Unreachable returns the connection error of a database, or nil.
 func (s *Servers) Unreachable(db string) error {
 	switch db {
-	case "mysql":
+	case "mysql", "mariadb":
 		return s.mysqlErr
 	case "postgres":
 		return s.postgresErr
@@ -68,6 +73,9 @@ func (s *Servers) Unreachable(db string) error {
 
 // Close closes the administrative connections.
 func (s *Servers) Close() error {
+	if s.postgres == nil {
+		return s.mysqlAdmin.Close()
+	}
 	return errors.Join(s.mysqlAdmin.Close(), s.postgres.Close())
 }
 
@@ -85,7 +93,8 @@ func (s *Servers) Run(ctx, cleanup context.Context, p Probe, index int) ([]strin
 	var drop func() error
 	var err error
 	switch p.DB {
-	case "mysql":
+	// A MariaDB probe runs on a MariaDB server through the MySQL driver, as the clients reach it (DIA-200).
+	case "mysql", "mariadb":
 		drop, err = s.openMySQL(ctx, cleanup, e)
 	case "postgres":
 		drop, err = s.openPostgres(ctx, cleanup, e)

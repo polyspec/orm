@@ -11,8 +11,9 @@ Executors still see the same plan shape: steps, bind slots, assemble.
      of MySQL alone fails on MariaDB and a form exists that both accept with the same result, such as a collation that
      both have with the same comparison, the dialect renders that form on both servers.
   2. Only where no common form exists does the client read the identity and the version of the server once, when it
-     connects (`VERSION()` or the handshake), and render the form of that server. Each such point is a numbered rule of
-     this document that names the probe that proves it; it is not a dialect of its own and not a copied recipe.
+     connects, by `VERSION()` and never by the handshake, and render the form of that server. Each such point is a
+     numbered rule of this document that names the probe that proves it; it is not a dialect of its own and not a copied
+     recipe.
   3. A behaviour that MariaDB cannot hold at all is refused on MariaDB with a stated error code of
      [errors](errors.yaml), the same in every runtime, before any statement that would give another result; it is never a
      silent difference.
@@ -20,23 +21,23 @@ Executors still see the same plan shape: steps, bind slots, assemble.
      introspected type, is the result of the case on that server, which its recipe states as the `mariadb` expect of the
      case (FCV-3).
 
-- **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
-- **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
-- **DIA-3** LIMIT — MySQL 8.0.2+ / MariaDB 10.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
-- **DIA-4** `Lk` — MySQL 8.0.2+ / MariaDB 10.2+: `F(col) LIKE F(?)`, F being 26 nested `REPLACE` of `A`–`Z` with its lower case: the column's `utf8mb4_0900_bin` compares code points, and `LOWER` or a `_ci` collation would fold beyond ASCII (probes `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`); PostgreSQL 12+: `ILIKE` under `COLLATE "C"` (probe `postgres.ilike.c_collation_ascii_only`); SQLite 3.46+: `LIKE … ESCAPE '\'` (ASCII case-insensitive, probe `sqlite.like.ascii_only`)
-- **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 10.2+: `LIKE` (binary collation `utf8mb4_0900_bin`, which compares code points; `LIKE BINARY` is deprecated since MySQL 8.0.27; probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
-- **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+ / MariaDB 10.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, the value bound as it is, with no transform, since both functions skip the whitespace around the terms; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)
-- **DIA-7** `forceIndex<Name>` — MySQL 8.0.2+ / MariaDB 10.2+: `FORCE INDEX (name)`; PostgreSQL 12+: ignored (no hints); SQLite 3.46+: `INDEXED BY "name"`
-- **DIA-8** insert id — MySQL 8.0.2+ / MariaDB 10.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`; a multi-row insert (`rows`, PRT-5) reports no insert id, so it has no `RETURNING`
-- **DIA-9** `duplication(model)` — MySQL 8.0.2+ / MariaDB 10.2+: `ON DUPLICATE KEY UPDATE` (meets only the one conflict key the validator allows; MySQL meets a row on any unique key (`mysql.upsert.any_unique_key`), the NOT NULL unique key first (`mysql.upsert.not_null_unique_first`)); PostgreSQL 12+: `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the one conflict key the validator allows (an upsert has exactly one key that can meet the inserted row; a row that meets another unique key is a unique violation, `postgres.upsert.other_key_conflicts`); SQLite 3.46+: same as PostgreSQL (`sqlite.upsert.other_key_conflicts`); the conformance vector `upsert_one_key` gives one result on the three databases
-- **DIA-10** `groupLimit(n)` — MySQL 8.0.2+ / MariaDB 10.2+: `ROW_NUMBER() OVER (…)`; PostgreSQL 12+: same; SQLite 3.46+: same
-- **DIA-11** `tuple<ColA>With<ColB>` — MySQL 8.0.2+ / MariaDB 10.2+: `(a, b) IN ((?, ?), …)`; PostgreSQL 12+: same; SQLite 3.46+: `(a, b) IN (VALUES (?, ?), …)`
-- **DIA-12** `orderByRandom()` — MySQL 8.0.2+ / MariaDB 10.2+: `RAND()`; PostgreSQL 12+: `random()`; SQLite 3.46+: `random()`
-- **DIA-13** `orderBy<Col>Asc()` / `Desc()` on a nullable column — MySQL 8.0.2+ / MariaDB 10.2+: native: NULL first ascending, last descending (`mysql.order.null_first_asc`); PostgreSQL 12+: `ASC NULLS FIRST` / `DESC NULLS LAST`: NULL is last ascending without it (`postgres.order.null_last_asc`); SQLite 3.46+: native: NULL first ascending, last descending (`sqlite.order.null_first_asc`)
-- **DIA-14** ORM functions — MySQL 8.0.2+ / MariaDB 10.2+: see [DSL](dsl.md#_10-orm-functions)
-- **DIA-15** `aes`/`hex` styles — MySQL 8.0.2+ / MariaDB 10.2+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database; PostgreSQL 12+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database; SQLite 3.46+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database
-- **DIA-16** `ip` style — MySQL 8.0.2+ / MariaDB 10.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: client-side (16-byte packed, `bytea`); SQLite 3.46+: client-side (16-byte packed). SQL wraps only the last stages of the write order, those after every client-side stage, so a stage runs in SQL only when every later stage of its column runs in SQL too: a column of `ip hex` packs and unpacks its address on the client on MySQL as well (16-byte packed, then hex text), and its placeholder takes the stored hex text (planner cases `planner_ip_hex_insert` and `planner_ip_hex_select`)
-- **DIA-18** clock written by the update time and soft deletion — MySQL 8.0.2+ / MariaDB 10.2+: `CURRENT_TIMESTAMP(p)` for a `datetime(p)` column with `p > 0`, otherwise `CURRENT_TIMESTAMP`; PostgreSQL 12+: executor-bound text truncated to p (`now` bind slot); SQLite 3.46+: executor-bound text truncated to p (`now` bind slot)
+- **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
+- **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
+- **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
+- **DIA-4** `Lk` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `F(col) LIKE F(?)`, F being 26 nested `REPLACE` of `A`–`Z` with its lower case: the column's `utf8mb4_0900_bin` compares code points, and `LOWER` or a `_ci` collation would fold beyond ASCII (probes `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`); PostgreSQL 12+: `ILIKE` under `COLLATE "C"` (probe `postgres.ilike.c_collation_ascii_only`); SQLite 3.46+: `LIKE … ESCAPE '\'` (ASCII case-insensitive, probe `sqlite.like.ascii_only`)
+- **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.binary_collation_code_point`): `LIKE` (binary collation `utf8mb4_0900_bin`, which compares code points; `LIKE BINARY` is deprecated since MySQL 8.0.27; probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
+- **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, the value bound as it is, with no transform, since both functions skip the whitespace around the terms; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)
+- **DIA-7** `forceIndex<Name>` — MySQL 8.0.2+: `FORCE INDEX (name)`; PostgreSQL 12+: ignored (no hints); SQLite 3.46+: `INDEXED BY "name"`
+- **DIA-8** insert id — MySQL 8.0.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`; a multi-row insert (`rows`, PRT-5) reports no insert id, so it has no `RETURNING`
+- **DIA-9** `duplication(model)` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.upsert.any_unique_key`): `ON DUPLICATE KEY UPDATE` (meets only the one conflict key the validator allows; MySQL meets a row on any unique key (`mysql.upsert.any_unique_key`), the NOT NULL unique key first (`mysql.upsert.not_null_unique_first`)); PostgreSQL 12+: `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the one conflict key the validator allows (an upsert has exactly one key that can meet the inserted row; a row that meets another unique key is a unique violation, `postgres.upsert.other_key_conflicts`); SQLite 3.46+: same as PostgreSQL (`sqlite.upsert.other_key_conflicts`); the conformance vector `upsert_one_key` gives one result on the three databases
+- **DIA-10** `groupLimit(n)` — MySQL 8.0.2+: `ROW_NUMBER() OVER (…)`; PostgreSQL 12+: same; SQLite 3.46+: same
+- **DIA-11** `tuple<ColA>With<ColB>` — MySQL 8.0.2+: `(a, b) IN ((?, ?), …)`; PostgreSQL 12+: same; SQLite 3.46+: `(a, b) IN (VALUES (?, ?), …)`
+- **DIA-12** `orderByRandom()` — MySQL 8.0.2+: `RAND()`; PostgreSQL 12+: `random()`; SQLite 3.46+: `random()`
+- **DIA-13** `orderBy<Col>Asc()` / `Desc()` on a nullable column — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.order.null_first_asc`): native: NULL first ascending, last descending (`mysql.order.null_first_asc`); PostgreSQL 12+: `ASC NULLS FIRST` / `DESC NULLS LAST`: NULL is last ascending without it (`postgres.order.null_last_asc`); SQLite 3.46+: native: NULL first ascending, last descending (`sqlite.order.null_first_asc`)
+- **DIA-14** ORM functions — MySQL 8.0.2+: see [DSL](dsl.md#_10-orm-functions)
+- **DIA-15** `aes`/`hex` styles — MySQL 8.0.2+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database; PostgreSQL 12+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database; SQLite 3.46+: client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present; an invalid hex text is `CODEC_DECODE` on every database
+- **DIA-16** `ip` style — MySQL 8.0.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: client-side (16-byte packed, `bytea`); SQLite 3.46+: client-side (16-byte packed). SQL wraps only the last stages of the write order, those after every client-side stage, so a stage runs in SQL only when every later stage of its column runs in SQL too: a column of `ip hex` packs and unpacks its address on the client on MySQL as well (16-byte packed, then hex text), and its placeholder takes the stored hex text (planner cases `planner_ip_hex_insert` and `planner_ip_hex_select`)
+- **DIA-18** clock written by the update time and soft deletion — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.now.precision_truncates`): `CURRENT_TIMESTAMP(p)` for a `datetime(p)` column with `p > 0`, otherwise `CURRENT_TIMESTAMP`; PostgreSQL 12+: executor-bound text truncated to p (`now` bind slot); SQLite 3.46+: executor-bound text truncated to p (`now` bind slot)
 
 - **DIA-19** Executor consequences: a `$n` renumbering step when expanding relation IN lists on
   PostgreSQL, host-side AES/inet codecs where the table says "client-side", one DSN/driver per database
@@ -381,6 +382,136 @@ Sources: [MySQL implicit commit](https://dev.mysql.com/doc/refman/8.4/en/implici
 - **DIA-198** The number of catalog queries for introspection is fixed per dialect and does not depend on the number of tables.
 - **DIA-133a** PHP and the PHP extension: a failing catalog query is the error of the call in every error mode of the PDO connection, the silent mode too.
 - **DIA-133b** PHP-extension package `polyspec/orm-php-ext` implements `Dbspec::introspect` natively, and its method takes the place of the method of the library.
+
+## MariaDB 11.8 probes
+
+Each fact probe of MySQL has a probe of the same topic and fact on MariaDB, `mariadb.<topic>.<fact>`, that
+`TestDialectFactsMariadb` runs on the MariaDB 11.8.6 of `make orm-test-mariadb` (`make dialect-facts-mariadb-check`, DIA-200).
+Where the MySQL fact holds, the probe is its twin and proves it on MariaDB 11.8; where MariaDB answers otherwise, the probe of that
+ID states the MariaDB fact (`packages/go/internal/dialects/probes_mariadb.go`), which the table writes. Each MariaDB probe passes
+on MariaDB 11.8.6. A rule of this document names MariaDB 11.8 only where a MariaDB probe proves its form, and names that
+probe; a rule that names MySQL alone has no proof on MariaDB yet.
+
+| Probe | On MariaDB 11.8.6 |
+|---|---|
+| `mariadb.auto_increment.explicit_value_advances` | the MySQL fact holds |
+| `mariadb.auto_increment.requires_key` | the MySQL fact holds |
+| `mariadb.auto_increment.rollback_leaves_gap` | the MySQL fact holds |
+| `mariadb.binary.zero_padded` | the MySQL fact holds |
+| `mariadb.bool.alias_tinyint` | the MySQL fact holds |
+| `mariadb.char.trailing_spaces_removed` | the MySQL fact holds |
+| `mariadb.check.alter_rewrites_introducers` | MariaDB has no REGEXP_LIKE (1305 outside a CHECK, 1901 in one), and ALTER TABLE leaves CHECK_CLAUSE as it was |
+| `mariadb.check.alter_writes_time_precision` | ALTER TABLE leaves a time literal that meets a time(p) column as it was written |
+| `mariadb.check.between_kept` | CHECK_CLAUSE keeps BETWEEN and writes a negative literal as -n |
+| `mariadb.check.bool_column_rejected` | a bool column alone is a CHECK expression, which refuses 0 (4025) |
+| `mariadb.check.catalog_text` | CHECK_CLAUSE is the expression without outer parentheses and without a character set introducer |
+| `mariadb.check.enforced_null_passes` | CHECK is enforced (4025, SQLSTATE 23000) and NULL passes |
+| `mariadb.check.fk_action_column_rejected` | a column of a foreign key with a referential action cannot appear in a CHECK (1901) |
+| `mariadb.check.name_schema_scope` | CHECK names are scoped to their table: two tables may each have a CHECK ck |
+| `mariadb.check.nondeterministic_rejected` | a CHECK cannot call NOW() (1901) |
+| `mariadb.check.not_enforced_option` | MariaDB has no NOT ENFORCED CHECK (1064), and TABLE_CONSTRAINTS has no ENFORCED column (1054) |
+| `mariadb.check.not_pushed_down` | CHECK_CLAUSE pushes NOT into comparisons and IS NULL and writes no inner parentheses |
+| `mariadb.check.string_escaped_twice` | CHECK_CLAUSE escapes a string literal once, as MariaDB text |
+| `mariadb.collation.default_accent_case_insensitive` | the default utf8mb4 collation utf8mb4_uca1400_ai_ci makes a = A = á in a unique key (1062) |
+| `mariadb.collation.utf8mb4_0900_bin_codepoint` | the MySQL fact holds |
+| `mariadb.collation.utf8mb4_bin_pads` | the MySQL fact holds |
+| `mariadb.comment.column_limit` | the MySQL fact holds |
+| `mariadb.comment.table_limit` | the MySQL fact holds |
+| `mariadb.context.user_variable_session_scope` | the MySQL fact holds |
+| `mariadb.current_timestamp.session_time_zone` | the MySQL fact holds |
+| `mariadb.date.zero_rejected` | the default sql_mode of MariaDB accepts 0000-00-00, and NO_ZERO_DATE with strict mode rejects it (1292) |
+| `mariadb.datetime.default_precision_must_match` | DATETIME(6) DEFAULT CURRENT_TIMESTAMP without (6) is accepted as CURRENT_TIMESTAMP(6), which COLUMN_DEFAULT reports |
+| `mariadb.datetime.fraction_rounds` | DATETIME(0) truncates .5 seconds |
+| `mariadb.datetime.max_precision` | the MySQL fact holds |
+| `mariadb.datetime.no_conversion` | the MySQL fact holds |
+| `mariadb.datetime.offset_literal_converted` | DATETIME rejects a literal with an offset (1292) |
+| `mariadb.datetime.range` | the MySQL fact holds |
+| `mariadb.ddl.atomic_statement` | a DROP TABLE of two tables, one missing, drops the one that exists and fails (1051) |
+| `mariadb.ddl.implicit_commit` | the MySQL fact holds |
+| `mariadb.decimal.overflow_rejected` | the MySQL fact holds |
+| `mariadb.decimal.precision_limits` | DECIMAL precision is at most 65 (1426) and scale at most 38 (1425), so DECIMAL(65,31) is accepted |
+| `mariadb.decimal.scale_rounds` | the MySQL fact holds |
+| `mariadb.default.catalog_text` | COLUMN_DEFAULT quotes a literal, writes an expression default as its text, and EXTRA has no DEFAULT_GENERATED |
+| `mariadb.enum.not_null_first_value_default` | the MySQL fact holds |
+| `mariadb.enum.rejects_unknown` | the MySQL fact holds |
+| `mariadb.enum.sorts_by_position` | the MySQL fact holds |
+| `mariadb.env.server` | the server is MariaDB 11.8 in strict mode with lower_case_table_names=1 |
+| `mariadb.fault.check_before_unique` | a row that breaks a CHECK and a unique key is refused with the CHECK fault, 4025 of SQLSTATE 23000 |
+| `mariadb.fault.fk_statement_end` | the MySQL fact holds |
+| `mariadb.fk.cascade_skips_triggers` | the MySQL fact holds |
+| `mariadb.fk.child_index_created` | the MySQL fact holds |
+| `mariadb.fk.deferrable_rejected` | the MySQL fact holds |
+| `mariadb.fk.match_full_not_enforced` | MATCH FULL is recorded as MATCH_OPTION NONE, omitted by SHOW CREATE TABLE, and a partly NULL key is accepted |
+| `mariadb.fk.name_schema_scope` | foreign key names are unique in the database: a second fk is refused with 1005 (errno 121) |
+| `mariadb.fk.restrict_row_order` | the MySQL fact holds |
+| `mariadb.fk.rule_catalog` | REFERENTIAL_CONSTRAINTS reports an omitted action as RESTRICT and a written RESTRICT as RESTRICT |
+| `mariadb.fk.set_default_acts_as_restrict` | InnoDB accepts ON DELETE SET DEFAULT, records it as RESTRICT and rejects the parent delete (1451) |
+| `mariadb.fk.type_mismatch_rejected` | an INT column cannot reference a BIGINT key: 1005 (errno 150) |
+| `mariadb.float.no_infinity` | the MySQL fact holds |
+| `mariadb.float.single_precision` | the MySQL fact holds |
+| `mariadb.generated.catalog_expression` | VIRTUAL and STORED generated columns are reported with their expression without outer parentheses |
+| `mariadb.generated.explicit_value_rejected` | an explicit value for a generated column is rejected in strict mode (1906) |
+| `mariadb.ident.column_case_insensitive` | the MySQL fact holds |
+| `mariadb.ident.max_length` | a table name is at most 64 characters (1103) |
+| `mariadb.ident.table_case_server_setting` | the MySQL fact holds |
+| `mariadb.index.descending` | the MySQL fact holds |
+| `mariadb.index.functional` | MariaDB has no functional index key (1064) |
+| `mariadb.index.max_key_bytes` | an index on a utf8mb4 VARCHAR(769), beyond 3072 bytes, is accepted |
+| `mariadb.index.name_max_length` | the MySQL fact holds |
+| `mariadb.index.name_table_scope` | the MySQL fact holds |
+| `mariadb.index.partial_rejected` | the MySQL fact holds |
+| `mariadb.index.prefix` | the MySQL fact holds |
+| `mariadb.index.primary_name_reserved` | the MySQL fact holds |
+| `mariadb.int.bigint_unsigned_exceeds_signed` | the MySQL fact holds |
+| `mariadb.int.display_width_dropped` | COLUMN_TYPE keeps the integer display width: int(11), tinyint(1), bigint(20) |
+| `mariadb.int.tinyint_range` | the MySQL fact holds |
+| `mariadb.int.unsigned_rejects_negative` | the MySQL fact holds |
+| `mariadb.json.normalizes` | JSON is LONGTEXT with a JSON_VALID CHECK: the text is kept as written, duplicate keys and member order included |
+| `mariadb.like.ascii_fold_replace` | the MySQL fact holds |
+| `mariadb.like.binary_collation_case_sensitive` | the MySQL fact holds |
+| `mariadb.like.binary_collation_code_point` | the MySQL fact holds |
+| `mariadb.not_null.missing_value_rejected` | the MySQL fact holds |
+| `mariadb.now.compare_six_digits` | the MySQL fact holds |
+| `mariadb.now.precision_truncates` | the MySQL fact holds |
+| `mariadb.on_update.explicit_value_kept` | the MySQL fact holds |
+| `mariadb.on_update.fires_on_change` | the MySQL fact holds |
+| `mariadb.on_update.skipped_when_unchanged` | the MySQL fact holds |
+| `mariadb.order.null_first_asc` | the MySQL fact holds |
+| `mariadb.pk.name_is_primary` | the MySQL fact holds |
+| `mariadb.relative.month_end_kept` | the MySQL fact holds |
+| `mariadb.relative.out_of_range_null` | the MySQL fact holds |
+| `mariadb.render.bool_check` | TINYINT(1) with CHECK (b IN (0,1)) rejects 2 (4025) |
+| `mariadb.render.datetime_utc_session` | the MySQL fact holds |
+| `mariadb.render.time_of_day_check` | TIME(6) with CHECK (v >= '00:00:00' AND v < '24:00:00') accepts only a time of day (4025) |
+| `mariadb.render.timestamp_conversion` | the MySQL fact holds |
+| `mariadb.render.uuid_check` | CHAR(36) ascii_bin with a REGEXP CHECK accepts only lower-case canonical UUID text (4025); REGEXP_LIKE is refused (1901) |
+| `mariadb.sequence.unsupported` | MariaDB has CREATE SEQUENCE, a table of its own kind |
+| `mariadb.session.sql_mode_set` | the MySQL fact holds |
+| `mariadb.text.index_needs_prefix` | an index on TEXT without a prefix length is accepted with the prefix of 768 characters, which STATISTICS reports as SUB_PART |
+| `mariadb.text.literal_default_needs_expression` | TEXT accepts DEFAULT 'x' and DEFAULT ('x'), and COLUMN_DEFAULT reports both as the quoted literal |
+| `mariadb.text.max_bytes` | the MySQL fact holds |
+| `mariadb.text.nul_preserved` | the MySQL fact holds |
+| `mariadb.time.interval_range` | the MySQL fact holds |
+| `mariadb.timestamp.range_2038` | TIMESTAMP accepts 1970-01-01 00:00:01..2106-02-07 06:28:15 UTC and rejects 1970-01-01 00:00:00 and 2106-02-07 06:28:16 (1292) |
+| `mariadb.timestamp.session_time_zone` | the MySQL fact holds |
+| `mariadb.trigger.binlog_privilege_1419` | the MySQL fact holds |
+| `mariadb.trigger.body_catalog_verbatim` | the MySQL fact holds |
+| `mariadb.trigger.name_schema_scope` | the MySQL fact holds |
+| `mariadb.trigger.new_assignable` | the MySQL fact holds |
+| `mariadb.trigger.no_statement_level` | the MySQL fact holds |
+| `mariadb.trigger.no_truncate_event` | the MySQL fact holds |
+| `mariadb.trigger.truncate_skips_delete_trigger` | the MySQL fact holds |
+| `mariadb.trigger.update_fires_when_unchanged` | the MySQL fact holds |
+| `mariadb.trigger.zero_rows_not_fired` | the MySQL fact holds |
+| `mariadb.unique.nulls_distinct` | the MySQL fact holds |
+| `mariadb.upsert.any_unique_key` | the MySQL fact holds |
+| `mariadb.upsert.not_null_unique_first` | the MySQL fact holds |
+| `mariadb.uuid.no_type` | MariaDB has a UUID type, reported as DATA_TYPE uuid |
+| `mariadb.varbinary.length_enforced` | the MySQL fact holds |
+| `mariadb.varchar.length_in_characters` | the MySQL fact holds |
+| `mariadb.varchar.max_length` | the MySQL fact holds |
+| `mariadb.varchar.trailing_spaces_truncated` | the MySQL fact holds |
+| `mariadb.view.definition_rewritten` | VIEW_DEFINITION is rewritten with qualified names and aliases, without parentheses around the condition |
 
 ## Markdown corpus
 

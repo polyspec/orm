@@ -1,6 +1,6 @@
 // Package dialects holds the schema dialect fact probes of docs/spec/dialects.md.
 //
-// Each probe states one observable fact about MySQL, PostgreSQL or SQLite,
+// Each probe states one observable fact about MySQL, MariaDB, PostgreSQL or SQLite,
 // runs DDL, DML and catalog queries in its own disposable database, schema or
 // file, and fails when the database does not behave as stated. The physical
 // test in facts_physical_test.go runs every probe with its own deadline.
@@ -38,12 +38,13 @@ const (
 )
 
 // probeID is <database>.<topic>.<fact>.
-var probeID = regexp.MustCompile(`^(mysql|postgres|sqlite)\.[a-z0-9_]+\.[a-z0-9_]+$`)
+var probeID = regexp.MustCompile(`^(mysql|mariadb|postgres|sqlite)\.[a-z0-9_]+\.[a-z0-9_]+$`)
 
 // All returns every probe ordered by database and ID.
 func All() []Probe {
 	var all []Probe
 	all = append(all, mysqlProbes()...)
+	all = append(all, mariadbProbes()...)
 	all = append(all, postgresProbes()...)
 	all = append(all, sqliteProbes()...)
 	sort.SliceStable(all, func(i, j int) bool {
@@ -59,10 +60,12 @@ func dbOrder(db string) int {
 	switch db {
 	case "mysql":
 		return 0
-	case "postgres":
+	case "mariadb":
 		return 1
+	case "postgres":
+		return 2
 	}
-	return 2
+	return 3
 }
 
 // Validate reports duplicate or malformed probe IDs and a database prefix

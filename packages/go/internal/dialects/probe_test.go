@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -37,22 +38,23 @@ func TestProbeIDs(t *testing.T) {
 // TestMySQLPrivilegeProbeFixture keeps server routing independent of the probe ID format.
 func TestMySQLPrivilegeProbeFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	const wantID = "mysql.trigger.binlog_privilege_1419"
-	var selected []Probe
+	// The MySQL probe and its MariaDB twin, which runs on the MariaDB privilege probe server.
+	want := []string{"mysql.trigger.binlog_privilege_1419", "mariadb.trigger.binlog_privilege_1419"}
+	var selected []string
 	for _, probe := range All() {
 		if probe.Fixture == ProbeFixtureMySQLPrivilege {
-			selected = append(selected, probe)
+			selected = append(selected, probe.ID)
 		} else if probe.Fixture != ProbeFixtureDefault {
 			t.Errorf("probe %s names unknown fixture %q", probe.ID, probe.Fixture)
 		}
 	}
-	if len(selected) != 1 || selected[0].ID != wantID {
-		t.Fatalf("privilege fixture probes = %v; want only %s", selected, wantID)
+	if !slices.Equal(selected, want) {
+		t.Fatalf("privilege fixture probes = %v; want only %v", selected, want)
 	}
 }
 
 // citedProbe is a probe ID written as inline code in a dialects page.
-var citedProbe = regexp.MustCompile("`((?:mysql|postgres|sqlite)\\.[a-z0-9_]+\\.[a-z0-9_]+)`")
+var citedProbe = regexp.MustCompile("`((?:mysql|mariadb|postgres|sqlite)\\.[a-z0-9_]+\\.[a-z0-9_]+)`")
 
 // TestProbeCitations verifies that docs/spec/dialects.md and its Korean twin cite
 // every fact probe and cite no probe ID that neither a fact probe nor a DDL

@@ -5329,6 +5329,13 @@
         "scripts/json/schema/implementations.schema.json"
       ]
     },
+    "dialect-facts-mariadb-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "mariadb-server"
+      ]
+    },
     "mariadb-recipes-check/go": {
       "scope": "suite",
       "needs": [
