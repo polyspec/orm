@@ -3,7 +3,7 @@
 
 ## Unreleased
 
-- `make repo-check` checks the FCV-2 rule again, over the inventory of contracts/implementations.json, which replaced config/parity.json (T400-1): a test of the inventory that a feature or a helper of contracts/features.json lists and that runs no recipe is a native test, and one of a feature that lists the tests of more than one implementation is a finding unless a line of FCV-2 names its file and test as In `<file>`, `<test>` with its reason after a colon; a line of FCV-2 that names no native test, or a test that its file does not hold, is a finding too (scripts/repo/native-tests.mts).
+- `make repo-check` checks the FCV-2 rule again, over the inventory of contracts/implementations.json, which replaced config/parity.json (T400-1): a test of the inventory that a feature or a helper of contracts/features.json lists and that runs no recipe is a native test, and one of a feature that lists the tests of more than one implementation is a finding unless a line of FCV-2 names its file and test as In `<file>`, `<test>` with its reason after a colon; a line of FCV-2 that names no native test, or a test that its file does not hold, is a finding too (scripts/repo/native-tests.mts). The lines of FCV-2 that kept the units of config/parity.json, or named a test without its file, name their tests by file, 356 tests in 68 lines, and FCV-2 names the path of the Rust recipe key tests, which moved to packages/rust/tests/tests/all/recipe_keys.rs.
 
 ## 0.0.27
 

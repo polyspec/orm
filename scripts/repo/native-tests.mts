@@ -30,6 +30,8 @@ const NAMES = /((?:`[^`\n]+`(?:,? and |, ))*`[^`\n]+`)/.source;
 // `in <file>, <names>` names tests of one file: the form `In `file`, `a` and `b` stay as native tests: reason`, and the same words
 // inside a longer line that states its reason.
 const NAMED_TESTS = new RegExp(`\\b[Ii]n \`([^\`\\n]+)\`, ${NAMES}`, 'g');
+// A path of a source file, which is no test name.
+const FILE_NAME = /^[\w./-]+\.(?:go|php|[cm]?[jt]s|py|rs|json|md)$/;
 // A line that states that something stays native or is a native test.
 const STATES_NATIVE = /\bstays? native\b|\bstays? as (?:a )?native tests?\b|\bheld by a native test\b|\bnative tests? stays?\b/;
 
@@ -40,8 +42,11 @@ export type NativeLine = { line: string; tests: { file: string; name: string }[]
 export const nativeLines = (spec: string): NativeLine[] =>
   fcv2(spec).split('\n').filter(line => /^\s+- /.test(line) && STATES_NATIVE.test(line)).map(line => ({
     line: line.trim(),
-    tests: [...line.matchAll(NAMED_TESTS)].flatMap(([, file = '', names = '']) =>
-      [...names.matchAll(/`([^`\n]+)`/g)].map(([, name = '']) => ({ file, name }))),
+    tests: [...line.matchAll(NAMED_TESTS)].flatMap(([, file = '', names = '']) => {
+      const named = [...names.matchAll(/`([^`\n]+)`/g)].map(([, name = '']) => name);
+      // A list of paths, such as `in `a.go`, `b.php` and `c.mjs``, names files and no test.
+      return named.some(name => FILE_NAME.test(name)) ? [] : named.map(name => ({ file, name }));
+    }),
     reason: /:\s+\S/.test(line.replace(/`[^`\n]*`/g, '')),
   }));
 
@@ -75,14 +80,8 @@ const fileTests = (implementation: string, file: string, read: (path: string) =>
     })];
 };
 
-/**
- * nativeTestErrors names each native test of a shared behaviour that no line of FCV-2 names, and each line of FCV-2 that names no
- * such test. A native test is a test of a file of the inventory that a feature lists and that hands no recipe to the runner of its
- * runtime; its behaviour is shared when the feature lists the test files of more than one implementation, and a feature that only
- * one implementation lists is the behaviour of that runtime. An internal test with its reason and a support file are not in the
- * inventory. A line of FCV-2 names a test by `in `file`, `test``, and states its reason after a colon.
- */
-export const nativeTestErrors = ({ tests, features, recipeTests, spec, files: tracked, read }: NativeTestInputs): string[] => {
+/** nativeTests is the native tests of each listed file, and the shared features that list each file of a shared behaviour. */
+export const nativeTests = ({ tests, features, recipeTests, files: tracked, read }: Omit<NativeTestInputs, 'spec'>): { native: Map<string, Set<string>>; sharedBy: Map<string, string[]> } => {
   const implementationOf = new Map(Object.entries(tests).flatMap(([implementation, files]) => files.map((file): [string, string] => [file, implementation])));
   // The shared features that list each test file.
   const sharedBy = new Map<string, string[]>();
@@ -101,7 +100,19 @@ export const nativeTestErrors = ({ tests, features, recipeTests, spec, files: tr
     if (implementation === undefined || recipeTests.has(file)) continue;
     native.set(file, new Set(fileTests(implementation, file, read, traits)));
   }
-  const lines = nativeLines(spec);
+  return { native, sharedBy };
+};
+
+/**
+ * nativeTestErrors names each native test of a shared behaviour that no line of FCV-2 names, and each line of FCV-2 that names no
+ * such test. A native test is a test of a file of the inventory that a feature lists and that hands no recipe to the runner of its
+ * runtime; its behaviour is shared when the feature lists the test files of more than one implementation, and a feature that only
+ * one implementation lists is the behaviour of that runtime. An internal test with its reason and a support file are not in the
+ * inventory. A line of FCV-2 names a test by `in `file`, `test``, and states its reason after a colon.
+ */
+export const nativeTestErrors = (inputs: NativeTestInputs): string[] => {
+  const { native, sharedBy } = nativeTests(inputs);
+  const lines = nativeLines(inputs.spec);
   const stated = new Set(lines.flatMap(line => line.tests.map(({ file, name }) => `${file}\0${name}`)));
   const errors: string[] = [];
   for (const [file, names] of native) {

@@ -2482,6 +2482,9 @@ caseTest('a native test that a line of FCV-2 names with its reason passes, and s
   // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
   assert.deepEqual(nativeLines(nativeInputs(statedAll).spec).map(line => line.tests.length), [2, 4]);
+  // A list of paths after `in` names files and no test.
+  assert.deepEqual(nativeLines(nativeInputs(['  - `a-unit` stays native: its measurement stays in `packages/go/orm/a_test.go`, `packages/php/tests/ATest.php` and `b.mjs`. In `packages/go/orm/a_test.go`, `TestShared` is one.']).spec)
+    .map(line => line.tests), [[{ file: 'packages/go/orm/a_test.go', name: 'TestShared' }]]);
   // A line may name the test of one runtime, which needs no line, as long as the test is there.
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
 });
