@@ -6,12 +6,9 @@ use std::io::{Read, Write};
 use std::sync::LazyLock;
 
 use base64::Engine as _;
-use granit_parser::{
-    ErrorKind as YamlErrorKind, Event as YamlEvent, Parser as YamlParser, ScalarStyle, Span as YamlSpan, TryLoadError, TrySpannedEventReceiver,
-};
 use ordered_json as strict_json;
 use regex::Regex;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
 use crate::value::{Param, StyledValue, Val};
@@ -270,140 +267,12 @@ fn write_check(value: &Value, style: &str, numbers: bool) -> Result<()> {
     Ok(())
 }
 
-// ---- yaml: YAML 1.2 with the core schema: read through granit-parser, written by serde-saphyr ----
-
-/// A collection the reader is building: a sequence, or a mapping with the key of the
-/// value that comes next.
-enum YamlFrame {
-    Sequence(Vec<Value>),
-    Mapping { map: Map<String, Value>, key: Option<String> },
-}
-
-/// Builds the common value of one YAML document from the parser events, and refuses
-/// in the same pass every form that docs/spec/codec.md (yaml) refuses. The first refusal stops the parse.
-#[derive(Default)]
-struct YamlReader {
-    documents: usize,
-    frames: Vec<YamlFrame>,
-    value: Option<Value>,
-}
+// ---- yaml: read by the YAML reader of orm (COD-74 to COD-80), written by serde-saphyr ----
 
 /// The refusal of the rule `message`, which names no position (COD-70), with the failure that found it, if any.
 fn yaml_refusal(message: &str, source: Option<YamlCause>) -> Error {
     Error::Engine { code: CODEC_DECODE.into(), msg: format!("yaml: {message}"), source }
 }
-
-fn yaml_fail(message: &str) -> Result<()> {
-    Err(yaml_refusal(message, None))
-}
-
-impl YamlReader {
-    /// Whether the next node is a mapping key.
-    fn at_key(&self) -> bool {
-        matches!(self.frames.last(), Some(YamlFrame::Mapping { key: None, .. }))
-    }
-
-    /// Places a finished node: a mapping key, a mapping value, a sequence item, or the document.
-    fn place(&mut self, value: Value) -> Result<()> {
-        match self.frames.last_mut() {
-            Some(YamlFrame::Sequence(items)) => items.push(value),
-            Some(YamlFrame::Mapping { map, key }) => match key.take() {
-                Some(name) => {
-                    map.insert(name, value);
-                }
-                None => {
-                    // A plain integer key becomes its decimal string; a quoted key is a string.
-                    let name = match value {
-                        Value::String(name) => name,
-                        Value::Number(number) if number.is_i64() => number.to_string(),
-                        _ => return yaml_fail("map keys must be strings or integers"),
-                    };
-                    if map.contains_key(&name) {
-                        return yaml_fail("duplicate map key");
-                    }
-                    *key = Some(name);
-                }
-            },
-            None => self.value = Some(value),
-        }
-        Ok(())
-    }
-
-    /// Opens a sequence or a mapping: its anchor and its tag first, then the nesting rule of its level, then the rule of
-    /// a map key (COD-70).
-    fn start_collection(&mut self, anchor: usize, tag: bool, frame: YamlFrame) -> Result<()> {
-        if anchor != 0 {
-            yaml_fail("anchors are not supported")
-        } else if tag {
-            yaml_fail("explicit tags are not supported")
-        } else if self.frames.len() == NESTING_LEVELS {
-            yaml_fail("value nesting exceeds 256 levels")
-        } else if self.at_key() {
-            yaml_fail("map keys must be scalar strings")
-        } else {
-            self.frames.push(frame);
-            Ok(())
-        }
-    }
-}
-
-impl<'input> TrySpannedEventReceiver<'input> for YamlReader {
-    type Error = Error;
-
-    fn on_event(&mut self, event: YamlEvent<'input>, _span: YamlSpan) -> Result<()> {
-        match event {
-            YamlEvent::DocumentStart(..) => {
-                self.documents += 1;
-                if self.documents > 1 {
-                    return yaml_fail("multiple documents are not supported");
-                }
-                Ok(())
-            }
-            YamlEvent::Alias(_) => yaml_fail("aliases are not supported"),
-            YamlEvent::Scalar(text, style, anchor, tag) => {
-                if anchor != 0 {
-                    yaml_fail("anchors are not supported")
-                } else if tag.is_some() {
-                    yaml_fail("explicit tags are not supported")
-                } else if style != ScalarStyle::Plain {
-                    self.place(Value::String(text.into_owned()))
-                } else {
-                    match yaml_core_scalar(text.into_owned()) {
-                        Ok(value) => self.place(value),
-                        Err((message, source)) => Err(yaml_refusal(message, source)),
-                    }
-                }
-            }
-            YamlEvent::SequenceStart(_, anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Sequence(Vec::new())),
-            YamlEvent::MappingStart(_, anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Mapping { map: Map::new(), key: None }),
-            YamlEvent::SequenceEnd | YamlEvent::MappingEnd => match self.frames.pop() {
-                Some(YamlFrame::Sequence(items)) => self.place(Value::Array(items)),
-                Some(YamlFrame::Mapping { map, .. }) => self.place(Value::Object(map)),
-                // granit-parser balances every end with its start, so no stream reaches this guard; it states yaml-parse,
-                // with what it found as the cause (COD-72).
-                None => Err(yaml_refusal("the stream does not parse", Some(Box::new(YamlReaderFault("a collection end without a start"))))),
-            },
-            // A comment is presentation, not a node; yaml_decode turns off its events, which the comments feature that
-            // serde-saphyr enables would emit.
-            YamlEvent::Comment(..) | YamlEvent::StreamStart | YamlEvent::StreamEnd | YamlEvent::DocumentEnd => Ok(()),
-            // The event list of granit-parser is open to new kinds; a kind the reader does not know states yaml-parse,
-            // with the event as the cause, rather than passing unread (COD-72).
-            _ => Err(yaml_refusal("the stream does not parse", Some(Box::new(YamlReaderFault("an event the reader does not know"))))),
-        }
-    }
-}
-
-/// What a guard of the reader found that the parser should have refused; it is the cause of the yaml-parse error.
-#[derive(Debug)]
-struct YamlReaderFault(&'static str);
-
-impl std::fmt::Display for YamlReaderFault {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
-impl std::error::Error for YamlReaderFault {}
 
 /// The failure that found a refused plain scalar.
 type YamlCause = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -414,29 +283,33 @@ static YAML_CORE_INT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A(?:[-+]?
 static YAML_CORE_FLOAT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\A(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z").unwrap());
 
-/// Resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2, 10.3.2):
-/// null, bool, int and float by their regular expressions, and str otherwise. granit-parser
-/// reports a plain scalar as its text and resolves no tag, so the core schema is applied here. An integer
-/// outside i64 and a float that is not finite are outside the common value model.
+/// The integer of a plain scalar that the core schema reads as an integer: decimal, `0o` octal or `0x` hexadecimal.
+fn yaml_core_int(text: &str) -> std::result::Result<i64, std::num::ParseIntError> {
+    match (text.strip_prefix("0o"), text.strip_prefix("0x")) {
+        (Some(digits), _) => i64::from_str_radix(digits, 8),
+        (_, Some(digits)) => i64::from_str_radix(digits, 16),
+        _ => text.parse::<i64>(),
+    }
+}
+
+/// Resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2, 10.3.2, COD-79): null, bool, int and
+/// float by their regular expressions, with the case as written, and str otherwise. An integer outside i64 and a float
+/// that is not finite are outside the common value model.
 fn yaml_core_scalar(text: String) -> std::result::Result<Value, YamlScalarRefusal> {
     Ok(match text.as_str() {
         "" | "~" | "null" | "Null" | "NULL" => Value::Null,
         "true" | "True" | "TRUE" => Value::Bool(true),
         "false" | "False" | "FALSE" => Value::Bool(false),
         _ if YAML_CORE_INT.is_match(&text) => {
-            let parsed = match (text.strip_prefix("0o"), text.strip_prefix("0x")) {
-                (Some(digits), _) => i64::from_str_radix(digits, 8),
-                (_, Some(digits)) => i64::from_str_radix(digits, 16),
-                _ => text.parse::<i64>(),
-            };
-            Value::from(parsed.map_err(|error| ("integer is outside the i64 range", Some(Box::new(error) as YamlCause)))?)
+            Value::from(yaml_core_int(&text).map_err(|error| ("integer is outside the i64 range", Some(Box::new(error) as YamlCause)))?)
         }
         _ if YAML_CORE_FLOAT.is_match(&text) => {
             // .inf and .nan are YAML floats that are not finite; Rust reads them without the dot.
             let float = match text.trim_start_matches(['+', '-']).strip_prefix('.') {
                 Some(word) if word.eq_ignore_ascii_case("inf") || word.eq_ignore_ascii_case("nan") => return Err(("number is not finite", None)),
-                // YAML_CORE_FLOAT admits only forms that Rust reads as f64, so no scalar reaches this guard; it states
-                // yaml-parse, with the failure of the read as the cause (COD-72).
+                // YAML_CORE_FLOAT admits only forms that Rust reads as f64, the nearest binary64 with a tie to the even
+                // one, so no scalar reaches this guard; it states yaml-parse, with the failure of the read as the cause
+                // (COD-72).
                 _ => text.parse::<f64>().map_err(|error| ("the stream does not parse", Some(Box::new(error) as YamlCause)))?,
             };
             match serde_json::Number::from_f64(float) {
@@ -448,44 +321,42 @@ fn yaml_core_scalar(text: String) -> std::result::Result<Value, YamlScalarRefusa
     })
 }
 
+/// The string of a plain map key (COD-79): an integer is its decimal text, and a null, a bool or a float, finite or
+/// not, is `yaml-key-scalar`.
+fn yaml_core_key(text: String) -> std::result::Result<String, YamlScalarRefusal> {
+    const KEY_SCALAR: &str = "map keys must be strings or integers";
+    Ok(match text.as_str() {
+        "" | "~" | "null" | "Null" | "NULL" | "true" | "True" | "TRUE" | "false" | "False" | "FALSE" => return Err((KEY_SCALAR, None)),
+        _ if YAML_CORE_INT.is_match(&text) => {
+            yaml_core_int(&text).map_err(|error| ("integer is outside the i64 range", Some(Box::new(error) as YamlCause)))?.to_string()
+        }
+        _ if YAML_CORE_FLOAT.is_match(&text) => return Err((KEY_SCALAR, None)),
+        _ => text,
+    })
+}
+
 /// Whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable). A byte order
 /// mark is the encoding mark at the start of the stream (5.2) and never content.
 fn yaml_printable(c: char) -> bool {
     matches!(c, '\t' | '\n' | '\r' | ' '..='~' | '\u{85}' | '\u{a0}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..) && c != '\u{feff}'
 }
 
-/// Reads one YAML document into the common value model in one pass of the granit-parser events.
-/// A stream without a document (empty, or comments only) is refused: an empty text is not a
-/// YAML value. An explicit empty document (`---`) is null. Before parsing, the reader
-/// removes a leading byte order mark and refuses a character outside c-printable.
+/// Reads one YAML document into the common value model with the YAML reader of orm (COD-74). The stream rules
+/// `yaml-utf8` and `yaml-printable` hold over the whole stream before the reader reads the characters after the one
+/// byte order mark that may start it (COD-75).
 fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     let source = std::str::from_utf8(bytes).map_err(|error| err_cause(CODEC_DECODE, "yaml: the stream is not UTF-8", error))?;
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
     if source.chars().any(|c| !yaml_printable(c)) {
         return Err(err(CODEC_DECODE, "yaml: the stream holds a character that is not printable"));
     }
-    let mut reader = YamlReader::default();
-    // The nesting limits of the library are lifted: the reader refuses a list or a map at level 257 by yaml-depth, as the
-    // node starts, so no limit of the library decides a stream (COD-70).
-    let options = granit_parser::options! { emit_comments: false, flow_nesting_limit: usize::MAX, block_nesting_limit: usize::MAX };
-    match YamlParser::new_from_str_with_options(source, options).try_load(&mut reader, true) {
-        // The reader meets the nodes of the document in their order and stops the parse at its first refusal, so a rule
-        // that a node before the failure of the parse breaks is the error (COD-70).
-        Err(TryLoadError::Receiver(error)) => Err(error),
-        // granit-parser refuses an alias whose anchor is not in the stream before it reports the alias as an event.
-        Err(TryLoadError::Scan(error)) if matches!(error.kind(), YamlErrorKind::UnknownAnchor) => {
-            Err(err_cause(CODEC_DECODE, "yaml: aliases are not supported", error))
-        }
-        Err(TryLoadError::Scan(error)) => Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", error)),
-        Ok(()) if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
-        Ok(()) => Ok(reader.value.unwrap_or(Value::Null)),
-    }
+    yaml_reader::read(source)
 }
 
 /// Writes a common value as one YAML document with serde-saphyr, which quotes every string the
 /// core schema would read as another value and escapes every character outside c-printable. A
-/// number outside the common value model returns CODEC_ENCODE. The written text is read back, and
-/// a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
+/// number outside the common value model returns CODEC_ENCODE. The written text is read back by the
+/// reader, and a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
 fn yaml_encode(value: &Value) -> Result<String> {
     write_check(value, "yaml", true)?;
     let text = serde_saphyr::to_string(value).map_err(|error| err_cause(CODEC_ENCODE, "yaml: the value has no YAML text", error))?;
@@ -495,6 +366,1676 @@ fn yaml_encode(value: &Value) -> Result<String> {
         // The text and the value are data, so the refusal names neither (INT-163); a failed read is its cause (COD-71).
         Ok(_) => Err(err(CODEC_ENCODE, READ_BACK)),
         Err(error) => Err(err_cause(CODEC_ENCODE, READ_BACK, error)),
+    }
+}
+
+/// The YAML reader of orm (docs/spec/codec.md COD-74 to COD-80): it accepts a stream exactly when the productions of
+/// YAML 1.2.2 hold it and the stream holds one document, and builds the value of that document in the same pass, in the
+/// order of the stream, so the first rule that the stream breaks is the error (COD-80). It keeps its state in explicit
+/// stacks and never recurses, so no depth of the caller's stack decides a stream; the builder refuses a list or a map
+/// at level 257 by `yaml-depth`.
+mod yaml_reader {
+    use serde_json::{Map, Value};
+
+    use super::{err_cause, yaml_core_key, yaml_core_scalar, yaml_refusal, YamlCause};
+    use crate::codes::CODEC_DECODE;
+    use crate::Result;
+
+    /// The characters of an implicit key, from its first character to its `:` (COD-76, COD-77).
+    const KEY_LIMIT: usize = 1024;
+    /// What the reader sees past the last character. U+0000 is not printable, so no stream holds it (COD-66).
+    const END: char = '\0';
+    const DOCUMENTS: &str = "multiple documents are not supported";
+
+    /// Where the stream leaves the grammar of the reader, each counted from 1, the column in Unicode characters and the
+    /// byte order mark not counted (COD-80). It is the cause of `yaml-parse` (COD-71).
+    #[derive(Debug)]
+    pub(super) struct YamlSyntaxError {
+        pub(super) line: usize,
+        pub(super) column: usize,
+    }
+
+    impl std::fmt::Display for YamlSyntaxError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "the stream leaves the YAML grammar at line {}, column {}", self.line, self.column)
+        }
+    }
+
+    impl std::error::Error for YamlSyntaxError {}
+
+    /// Why the reader stops: the stream leaves the grammar at a character, or a rule of COD-70 refuses a node.
+    enum Refusal {
+        Parse(usize),
+        Rule(&'static str, Option<YamlCause>),
+    }
+
+    type Step<T> = std::result::Result<T, Refusal>;
+
+    fn rule<T>(message: &'static str) -> Step<T> {
+        Err(Refusal::Rule(message, None))
+    }
+
+    fn white(c: char) -> bool {
+        c == ' ' || c == '\t'
+    }
+
+    fn eol(c: char) -> bool {
+        c == '\n' || c == END
+    }
+
+    fn white_or_eol(c: char) -> bool {
+        white(c) || eol(c)
+    }
+
+    /// `ns-char` [34]: a printable character that is not white space or a line break.
+    fn ns_char(c: char) -> bool {
+        !white_or_eol(c)
+    }
+
+    /// `c-flow-indicator` [23].
+    fn flow_indicator(c: char) -> bool {
+        matches!(c, ',' | '[' | ']' | '{' | '}')
+    }
+
+    /// `c-indicator` [22].
+    fn indicator(c: char) -> bool {
+        matches!(c, '-' | '?' | ':' | ',' | '[' | ']' | '{' | '}' | '#' | '&' | '*' | '!' | '|' | '>' | '\'' | '"' | '%' | '@' | '`')
+    }
+
+    /// `ns-plain-safe(c)` [129]: in a flow collection a flow indicator is not safe.
+    fn plain_safe(c: char, flow: bool) -> bool {
+        ns_char(c) && !(flow && flow_indicator(c))
+    }
+
+    /// A node that starts with a flow collection or a quoted scalar: its value may be adjacent to the `:` ([148]).
+    fn json_start(c: char) -> bool {
+        matches!(c, '[' | '{' | '\'' | '"')
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum BlockCtx {
+        /// `block-in`: the entries of a sequence.
+        In,
+        /// `block-out`: the keys and values of a mapping, whose sequence may stand at the indentation of its key.
+        Out,
+    }
+
+    /// Where a block node starts relative to the indicator before it.
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum Inline {
+        /// At the start of a line: the node starts on this line or a later one.
+        LineStart,
+        /// After `-`, `?` or an explicit `:`, where a compact collection may start on the line ([185]).
+        Indicator,
+        /// After the `:` of an implicit key, where no block collection starts on the line.
+        ImplicitValue,
+        /// After `---`, where no block collection starts on the line ([200]).
+        DocStart,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum FlowCtx {
+        /// `flow-out`: a flow node in a block collection.
+        Out,
+        /// `flow-in`: a node inside a flow collection.
+        In,
+        /// `flow-key`: a node inside a flow collection that is an implicit key, on one line.
+        Key,
+        /// `block-key`: an implicit key of a block mapping, on one line.
+        BlockKey,
+    }
+
+    impl FlowCtx {
+        /// Whether a flow indicator ends a plain scalar.
+        fn flow(self) -> bool {
+            matches!(self, FlowCtx::In | FlowCtx::Key)
+        }
+
+        /// Whether a scalar or a flow collection may span lines.
+        fn multi_line(self) -> bool {
+            matches!(self, FlowCtx::Out | FlowCtx::In)
+        }
+
+        /// The context of the nodes inside a flow collection (`in-flow(c)` [136]).
+        fn inner(self) -> FlowCtx {
+            match self {
+                FlowCtx::Key | FlowCtx::BlockKey => FlowCtx::Key,
+                FlowCtx::Out | FlowCtx::In => FlowCtx::In,
+            }
+        }
+    }
+
+    enum Next {
+        /// A block node whose parent is at indentation `n`.
+        Block {
+            n: isize,
+            ctx: BlockCtx,
+            inline: Inline,
+        },
+        /// A flow node whose lines after the first are indented by at least `n` spaces.
+        Flow {
+            n: isize,
+            ctx: FlowCtx,
+        },
+        /// The node of the top frame finished; the frame continues.
+        Resume,
+        Done,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum MapPhase {
+        ImplicitKey,
+        ExplicitKey,
+        Value,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum FlowPhase {
+        /// After `[`, `{` or `,`.
+        Open,
+        /// After an entry of a flow sequence.
+        Entry,
+        /// After the `?` of a pair of a flow sequence.
+        Explicit,
+        /// After a key; a key that is a flow collection or a quoted scalar may have an adjacent value.
+        Key {
+            json: bool,
+        },
+        Value,
+    }
+
+    #[derive(Clone, Copy)]
+    enum Frame {
+        Root,
+        BlockSeq {
+            col: usize,
+        },
+        BlockMap {
+            col: usize,
+            phase: MapPhase,
+        },
+        /// A flow node of a block collection, which only white space and a comment follow on its last line.
+        FlowInBlock,
+        /// A node at the place of a key of a block mapping that is no implicit key (COD-80): its nodes are met in their
+        /// order, and then the stream leaves the grammar after it.
+        Detached,
+        FlowSeq {
+            n: isize,
+            ctx: FlowCtx,
+            phase: FlowPhase,
+        },
+        FlowMap {
+            n: isize,
+            ctx: FlowCtx,
+            phase: FlowPhase,
+        },
+        /// A single pair of a flow sequence, a map of one level (COD-77).
+        FlowPair {
+            n: isize,
+            ctx: FlowCtx,
+            phase: FlowPhase,
+        },
+    }
+
+    enum Slot {
+        Seq(Vec<Value>),
+        Map(Map<String, Value>, Option<String>),
+        Detached,
+    }
+
+    /// Builds the value of the document and meets the rules of each node where it starts (COD-70, COD-79).
+    #[derive(Default)]
+    struct Builder {
+        slots: Vec<Slot>,
+        levels: usize,
+        root: Option<Value>,
+    }
+
+    impl Builder {
+        fn at_key(&self) -> bool {
+            matches!(self.slots.last(), Some(Slot::Map(_, None)))
+        }
+
+        /// Opens a sequence or a map: the nesting rule of its level, then the rule of a map key (COD-70).
+        fn open(&mut self, map: bool) -> Step<()> {
+            if self.levels == super::NESTING_LEVELS {
+                return rule("value nesting exceeds 256 levels");
+            }
+            if self.at_key() {
+                return rule("map keys must be scalar strings");
+            }
+            self.slots.push(if map { Slot::Map(Map::new(), None) } else { Slot::Seq(Vec::new()) });
+            self.levels += 1;
+            Ok(())
+        }
+
+        fn close(&mut self) {
+            let value = match self.slots.pop() {
+                Some(Slot::Seq(items)) => Value::Array(items),
+                Some(Slot::Map(map, _)) => Value::Object(map),
+                Some(Slot::Detached) | None => return,
+            };
+            self.levels -= 1;
+            self.place(value);
+        }
+
+        fn place(&mut self, value: Value) {
+            match self.slots.last_mut() {
+                Some(Slot::Seq(items)) => items.push(value),
+                Some(Slot::Map(map, key)) => {
+                    if let Some(name) = key.take() {
+                        map.insert(name, value);
+                    }
+                }
+                Some(Slot::Detached) => {}
+                None => self.root = Some(value),
+            }
+        }
+
+        /// A scalar: a plain one resolves by the core schema, and a quoted or block one is its string (COD-79). A key is
+        /// met before its value, and a repeated key at the key that repeats (COD-70).
+        fn scalar(&mut self, text: String, plain: bool) -> Step<()> {
+            if self.at_key() {
+                let name = if plain { yaml_core_key(text).map_err(|(message, cause)| Refusal::Rule(message, cause))? } else { text };
+                if let Some(Slot::Map(map, key)) = self.slots.last_mut() {
+                    if map.contains_key(&name) {
+                        return rule("duplicate map key");
+                    }
+                    *key = Some(name);
+                }
+                return Ok(());
+            }
+            let value = if plain { yaml_core_scalar(text).map_err(|(message, cause)| Refusal::Rule(message, cause))? } else { Value::String(text) };
+            self.place(value);
+            Ok(())
+        }
+
+        fn null(&mut self) -> Step<()> {
+            self.scalar(String::new(), true)
+        }
+    }
+
+    /// Reads the stream `source`, whose byte order mark is removed and whose characters are printable (COD-75).
+    pub(super) fn read(source: &str) -> Result<Value> {
+        let mut reader = Reader::new(source);
+        match reader.stream() {
+            Ok(()) => Ok(reader.b.root.take().unwrap_or(Value::Null)),
+            Err(Refusal::Rule(message, cause)) => Err(yaml_refusal(message, cause)),
+            Err(Refusal::Parse(at)) => {
+                let (line, column) = reader.position(at);
+                Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", YamlSyntaxError { line, column }))
+            }
+        }
+    }
+
+    struct Reader {
+        /// The characters of the stream, each line break one LF (COD-75).
+        s: Vec<char>,
+        /// The index of the first character of each line.
+        lines: Vec<usize>,
+        pos: usize,
+        b: Builder,
+        frames: Vec<Frame>,
+    }
+
+    impl Reader {
+        fn new(source: &str) -> Reader {
+            let mut s = Vec::with_capacity(source.len());
+            let mut chars = source.chars().peekable();
+            while let Some(c) = chars.next() {
+                if c == '\r' {
+                    // CR LF and CR are each one line break (b-break [28]).
+                    if chars.peek() == Some(&'\n') {
+                        chars.next();
+                    }
+                    s.push('\n');
+                } else {
+                    s.push(c);
+                }
+            }
+            let mut lines = vec![0];
+            lines.extend(s.iter().enumerate().filter(|(_, c)| **c == '\n').map(|(i, _)| i + 1));
+            Reader { s, lines, pos: 0, b: Builder::default(), frames: Vec::new() }
+        }
+
+        fn at(&self, i: usize) -> char {
+            self.s.get(i).copied().unwrap_or(END)
+        }
+
+        fn end(&self) -> bool {
+            self.pos >= self.s.len()
+        }
+
+        fn line_start(&self, i: usize) -> usize {
+            self.lines[self.lines.partition_point(|&start| start <= i) - 1]
+        }
+
+        fn col(&self, i: usize) -> usize {
+            i - self.line_start(i)
+        }
+
+        fn position(&self, i: usize) -> (usize, usize) {
+            let line = self.lines.partition_point(|&start| start <= i);
+            (line, i - self.lines[line - 1] + 1)
+        }
+
+        /// Whether the line that starts at `i` starts with the marker `---` or `...` (`c-forbidden` [206]).
+        fn marker(&self, i: usize, c: char) -> bool {
+            (0..3).all(|k| self.at(i + k) == c) && white_or_eol(self.at(i + 3))
+        }
+
+        fn any_marker(&self, i: usize) -> bool {
+            self.marker(i, '-') || self.marker(i, '.')
+        }
+
+        fn spaces(&self, i: usize) -> usize {
+            let mut k = i;
+            while self.at(k) == ' ' {
+                k += 1;
+            }
+            k - i
+        }
+
+        fn skip_white(&self, mut i: usize) -> usize {
+            while white(self.at(i)) {
+                i += 1;
+            }
+            i
+        }
+
+        fn line_end(&self, mut i: usize) -> usize {
+            while !eol(self.at(i)) {
+                i += 1;
+            }
+            i
+        }
+
+        /// Skips comment lines and lines of white space from the start of a line (6.6); the reader stops at the start of
+        /// the next line that holds anything else, or at the end of the stream.
+        fn skip_comment_lines(&mut self) {
+            loop {
+                let i = self.skip_white(self.pos);
+                match self.at(i) {
+                    '\n' => self.pos = i + 1,
+                    '#' => {
+                        let e = self.line_end(i);
+                        self.pos = if self.at(e) == '\n' { e + 1 } else { e };
+                    }
+                    END => {
+                        self.pos = i;
+                        return;
+                    }
+                    _ => return,
+                }
+            }
+        }
+
+        /// White space, an optional comment and the line break after a node or a marker (`s-l-comments` [79]).
+        fn comment_to_eol(&mut self) -> Step<()> {
+            let start = self.pos;
+            self.pos = self.skip_white(self.pos);
+            if self.at(self.pos) == '#' {
+                if self.pos == start && start > 0 && ns_char(self.at(start - 1)) {
+                    return Err(Refusal::Parse(self.pos));
+                }
+                self.pos = self.line_end(self.pos);
+            }
+            match self.at(self.pos) {
+                '\n' => {
+                    self.pos += 1;
+                    Ok(())
+                }
+                END => Ok(()),
+                _ => Err(Refusal::Parse(self.pos)),
+            }
+        }
+
+        // ---- the stream ----
+
+        /// `l-yaml-stream` [211]: document prefixes and end markers, the one document, and what may follow it (COD-75).
+        fn stream(&mut self) -> Step<()> {
+            loop {
+                self.skip_comment_lines();
+                if self.end() {
+                    return rule("no document");
+                }
+                if !self.marker(self.pos, '.') {
+                    break;
+                }
+                self.pos += 3;
+                self.comment_to_eol()?;
+            }
+            if self.at(self.pos) == '%' {
+                self.directives()?;
+                if !self.marker(self.pos, '-') {
+                    return Err(Refusal::Parse(self.pos));
+                }
+            }
+            self.frames.push(Frame::Root);
+            let next = if self.marker(self.pos, '-') {
+                self.pos += 3;
+                Next::Block { n: -1, ctx: BlockCtx::In, inline: Inline::DocStart }
+            } else {
+                Next::Block { n: -1, ctx: BlockCtx::In, inline: Inline::LineStart }
+            };
+            self.run(next)
+        }
+
+        /// The directives of the document (6.8), each at the start of a line, then the comment lines before `---`.
+        fn directives(&mut self) -> Step<()> {
+            let mut yaml = false;
+            let mut handles: Vec<String> = Vec::new();
+            while self.at(self.pos) == '%' {
+                let start = self.pos;
+                let mut i = start + 1;
+                while ns_char(self.at(i)) {
+                    i += 1;
+                }
+                let name: String = self.s[start + 1..i].iter().collect();
+                match name.as_str() {
+                    "YAML" => {
+                        if yaml || !white(self.at(i)) {
+                            return Err(Refusal::Parse(if yaml { start } else { i }));
+                        }
+                        let version = self.skip_white(i);
+                        let mut e = version;
+                        while ns_char(self.at(e)) {
+                            e += 1;
+                        }
+                        // A version other than 1.2 is refused (COD-75).
+                        if self.s[version..e].iter().collect::<String>() != "1.2" {
+                            return Err(Refusal::Parse(version));
+                        }
+                        yaml = true;
+                        self.pos = e;
+                    }
+                    "TAG" => {
+                        if !white(self.at(i)) {
+                            return Err(Refusal::Parse(i));
+                        }
+                        let handle_start = self.skip_white(i);
+                        let handle_end = self.tag_handle(handle_start)?;
+                        let handle: String = self.s[handle_start..handle_end].iter().collect();
+                        if handles.contains(&handle) {
+                            return Err(Refusal::Parse(handle_start));
+                        }
+                        handles.push(handle);
+                        if !white(self.at(handle_end)) {
+                            return Err(Refusal::Parse(handle_end));
+                        }
+                        self.pos = self.tag_prefix(self.skip_white(handle_end))?;
+                    }
+                    // A reserved directive (ns-reserved-directive [83]) is refused (COD-75).
+                    _ => return Err(Refusal::Parse(start)),
+                }
+                self.comment_to_eol()?;
+                self.skip_comment_lines();
+            }
+            Ok(())
+        }
+
+        /// `c-tag-handle` [89]: `!`, `!!` or `!` word characters `!`; returns its end.
+        fn tag_handle(&self, i: usize) -> Step<usize> {
+            if self.at(i) != '!' {
+                return Err(Refusal::Parse(i));
+            }
+            let mut k = i + 1;
+            while self.at(k).is_ascii_alphanumeric() || self.at(k) == '-' {
+                k += 1;
+            }
+            if self.at(k) == '!' {
+                Ok(k + 1)
+            } else if k == i + 1 {
+                Ok(k)
+            } else {
+                Err(Refusal::Parse(k))
+            }
+        }
+
+        /// `ns-tag-prefix` [93]: a local prefix `!` or a global one that starts with a tag character, then URI
+        /// characters; returns its end.
+        fn tag_prefix(&self, i: usize) -> Step<usize> {
+            let mut k = match self.at(i) {
+                '!' => i + 1,
+                first if flow_indicator(first) => return Err(Refusal::Parse(i)),
+                _ => self.uri_char(i).ok_or(Refusal::Parse(i))?,
+            };
+            while let Some(next) = self.uri_char(k) {
+                k = next;
+            }
+            Ok(k)
+        }
+
+        /// `ns-uri-char` [39] at `i`: returns the index after it.
+        fn uri_char(&self, i: usize) -> Option<usize> {
+            let c = self.at(i);
+            if c == '%' {
+                return (self.at(i + 1).is_ascii_hexdigit() && self.at(i + 2).is_ascii_hexdigit()).then_some(i + 3);
+            }
+            (c.is_ascii_alphanumeric() || "-#;/?:@&=+$,_.!~*'()[]".contains(c)).then_some(i + 1)
+        }
+
+        // ---- the main loop ----
+
+        fn run(&mut self, mut next: Next) -> Step<()> {
+            loop {
+                next = match next {
+                    Next::Block { n, ctx, inline } => self.block_node(n, ctx, inline)?,
+                    Next::Flow { n, ctx } => self.flow_node(n, ctx)?,
+                    Next::Resume => self.resume()?,
+                    Next::Done => return Ok(()),
+                };
+            }
+        }
+
+        fn set(&mut self, frame: Frame) {
+            if let Some(top) = self.frames.last_mut() {
+                *top = frame;
+            }
+        }
+
+        fn close(&mut self) -> Step<Next> {
+            self.frames.pop();
+            self.b.close();
+            Ok(Next::Resume)
+        }
+
+        fn resume(&mut self) -> Step<Next> {
+            match self.frames.last().copied() {
+                Some(Frame::Root) | None => self.root_resume(),
+                Some(Frame::BlockSeq { col }) => self.seq_resume(col),
+                Some(Frame::BlockMap { col, phase }) => self.map_resume(col, phase),
+                Some(Frame::FlowInBlock) => {
+                    self.comment_to_eol()?;
+                    self.frames.pop();
+                    Ok(Next::Resume)
+                }
+                Some(Frame::Detached) => Err(Refusal::Parse(self.pos)),
+                Some(Frame::FlowSeq { n, ctx, phase }) => self.flow_seq_resume(n, ctx, phase),
+                Some(Frame::FlowMap { n, ctx, phase }) => self.flow_map_resume(n, ctx, phase),
+                Some(Frame::FlowPair { n, ctx, phase }) => self.flow_pair_resume(n, ctx, phase),
+            }
+        }
+
+        /// After the node of the document: the end of the stream, a document end marker, or a second document, which is
+        /// met where it starts and of which nothing is read (COD-75).
+        fn root_resume(&mut self) -> Step<Next> {
+            self.skip_comment_lines();
+            if self.end() {
+                return Ok(Next::Done);
+            }
+            if self.marker(self.pos, '-') {
+                return rule(DOCUMENTS);
+            }
+            if !self.marker(self.pos, '.') {
+                return Err(Refusal::Parse(self.pos + self.spaces(self.pos)));
+            }
+            loop {
+                self.pos += 3;
+                self.comment_to_eol()?;
+                self.skip_comment_lines();
+                if self.end() {
+                    return Ok(Next::Done);
+                }
+                if !self.marker(self.pos, '.') {
+                    return rule(DOCUMENTS);
+                }
+            }
+        }
+
+        // ---- block nodes ----
+
+        /// `s-l+block-node(n,c)` [196] and `s-l+block-indented(n,c)` [185]: a node on the line of its indicator, on the
+        /// next lines, or the empty node.
+        fn block_node(&mut self, n: isize, ctx: BlockCtx, inline: Inline) -> Step<Next> {
+            if inline != Inline::LineStart {
+                let mut tab = false;
+                while white(self.at(self.pos)) {
+                    tab |= self.at(self.pos) == '\t';
+                    self.pos += 1;
+                }
+                if self.at(self.pos) == '#' {
+                    self.pos = self.line_end(self.pos);
+                }
+                if !eol(self.at(self.pos)) {
+                    return self.node_here(n, inline, tab);
+                }
+                if self.at(self.pos) == '\n' {
+                    self.pos += 1;
+                }
+            }
+            self.skip_comment_lines();
+            if self.end() || self.any_marker(self.pos) {
+                self.b.null()?;
+                return Ok(Next::Resume);
+            }
+            let m = self.spaces(self.pos);
+            let c = self.at(self.pos + m);
+            if c == '\t' {
+                // A tab ends the indentation: only a flow node or a block scalar starts after it (COD-76).
+                if m as isize > n {
+                    self.pos = self.skip_white(self.pos + m);
+                    return self.node_here(n, Inline::LineStart, true);
+                }
+            } else if m as isize > n {
+                self.pos += m;
+                return self.node_here(n, Inline::LineStart, false);
+            } else if m as isize == n && ctx == BlockCtx::Out && c == '-' && white_or_eol(self.at(self.pos + m + 1)) {
+                // A sequence that is the value of a key may stand at the indentation of the key (seq-space [201]).
+                self.pos += m;
+                return self.open_block_seq();
+            }
+            self.b.null()?;
+            Ok(Next::Resume)
+        }
+
+        /// A block node that starts at the reader: properties, a block scalar, a block collection or a flow node.
+        fn node_here(&mut self, n: isize, inline: Inline, tab: bool) -> Step<Next> {
+            let c = self.at(self.pos);
+            match c {
+                '&' => return rule("anchors are not supported"),
+                '!' => return rule("explicit tags are not supported"),
+                '*' => return rule("aliases are not supported"),
+                '|' | '>' => {
+                    self.block_scalar(n)?;
+                    return Ok(Next::Resume);
+                }
+                _ => {}
+            }
+            // A block collection starts a line, after spaces only, or is compact on the line of an indicator (COD-76).
+            let collection = !tab && matches!(inline, Inline::LineStart | Inline::Indicator);
+            let next = self.at(self.pos + 1);
+            if c == '-' && white_or_eol(next) {
+                return if collection { self.open_block_seq() } else { Err(Refusal::Parse(self.pos)) };
+            }
+            if c == '?' && white_or_eol(next) {
+                if !collection {
+                    return Err(Refusal::Parse(self.pos));
+                }
+                return self.open_block_map();
+            }
+            if collection && self.key_ahead(self.pos, false) {
+                return self.open_block_map();
+            }
+            self.frames.push(Frame::FlowInBlock);
+            Ok(Next::Flow { n: n + 1, ctx: FlowCtx::Out })
+        }
+
+        fn open_block_seq(&mut self) -> Step<Next> {
+            let col = self.col(self.pos);
+            self.b.open(false)?;
+            self.frames.push(Frame::BlockSeq { col });
+            self.pos += 1;
+            Ok(Next::Block { n: col as isize, ctx: BlockCtx::In, inline: Inline::Indicator })
+        }
+
+        fn open_block_map(&mut self) -> Step<Next> {
+            let col = self.col(self.pos);
+            self.b.open(true)?;
+            self.frames.push(Frame::BlockMap { col, phase: MapPhase::Value });
+            self.map_entry(col)
+        }
+
+        /// An entry of a block mapping at the reader, which is at the column of the mapping: `?`, `:` or an implicit
+        /// key ([188]).
+        fn map_entry(&mut self, col: usize) -> Step<Next> {
+            let c = self.at(self.pos);
+            let next = self.at(self.pos + 1);
+            if c == '?' && white_or_eol(next) {
+                self.pos += 1;
+                self.set(Frame::BlockMap { col, phase: MapPhase::ExplicitKey });
+                return Ok(Next::Block { n: col as isize, ctx: BlockCtx::Out, inline: Inline::Indicator });
+            }
+            if c == ':' && white_or_eol(next) {
+                // An empty key is the empty plain scalar, a null (COD-76).
+                self.b.null()?;
+                self.pos += 1;
+                self.set(Frame::BlockMap { col, phase: MapPhase::Value });
+                return Ok(Next::Block { n: col as isize, ctx: BlockCtx::Out, inline: Inline::ImplicitValue });
+            }
+            if self.key_ahead(self.pos, false) {
+                self.set(Frame::BlockMap { col, phase: MapPhase::ImplicitKey });
+            } else {
+                self.b.slots.push(Slot::Detached);
+                self.frames.push(Frame::Detached);
+            }
+            Ok(Next::Flow { n: col as isize + 1, ctx: FlowCtx::BlockKey })
+        }
+
+        fn map_resume(&mut self, col: usize, phase: MapPhase) -> Step<Next> {
+            match phase {
+                MapPhase::ImplicitKey => {
+                    self.pos = self.skip_white(self.pos);
+                    if self.at(self.pos) != ':' || !white_or_eol(self.at(self.pos + 1)) {
+                        return Err(Refusal::Parse(self.pos));
+                    }
+                    self.pos += 1;
+                    self.set(Frame::BlockMap { col, phase: MapPhase::Value });
+                    Ok(Next::Block { n: col as isize, ctx: BlockCtx::Out, inline: Inline::ImplicitValue })
+                }
+                MapPhase::ExplicitKey => {
+                    self.set(Frame::BlockMap { col, phase: MapPhase::Value });
+                    self.skip_comment_lines();
+                    if !self.end() && !self.any_marker(self.pos) {
+                        let m = self.spaces(self.pos);
+                        let value = self.pos + m;
+                        if m == col && self.at(value) == ':' && white_or_eol(self.at(value + 1)) {
+                            self.pos = value + 1;
+                            return Ok(Next::Block { n: col as isize, ctx: BlockCtx::Out, inline: Inline::Indicator });
+                        }
+                    }
+                    // An entry with no `:` line has a null value (COD-76).
+                    self.b.null()?;
+                    self.map_next(col)
+                }
+                MapPhase::Value => self.map_next(col),
+            }
+        }
+
+        /// After an entry: the next entry at the column of the mapping, or the end of the mapping.
+        fn map_next(&mut self, col: usize) -> Step<Next> {
+            self.skip_comment_lines();
+            if self.end() || self.any_marker(self.pos) {
+                return self.close();
+            }
+            let m = self.spaces(self.pos);
+            if m < col {
+                return self.close();
+            }
+            if m > col {
+                return Err(Refusal::Parse(self.pos + m));
+            }
+            self.pos += m;
+            self.map_entry(col)
+        }
+
+        fn seq_resume(&mut self, col: usize) -> Step<Next> {
+            self.skip_comment_lines();
+            if self.end() || self.any_marker(self.pos) {
+                return self.close();
+            }
+            let m = self.spaces(self.pos);
+            if m < col {
+                return self.close();
+            }
+            if m > col {
+                return Err(Refusal::Parse(self.pos + m));
+            }
+            let dash = self.pos + m;
+            if self.at(dash) == '-' && white_or_eol(self.at(dash + 1)) {
+                self.pos = dash + 1;
+                return Ok(Next::Block { n: col as isize, ctx: BlockCtx::In, inline: Inline::Indicator });
+            }
+            self.close()
+        }
+
+        // ---- block scalars ----
+
+        /// A literal or folded block scalar ([162] to [182]) whose parent is at indentation `n` (COD-78); the reader ends
+        /// at the start of the line after its content.
+        fn block_scalar(&mut self, n: isize) -> Step<()> {
+            let folded = self.at(self.pos) == '>';
+            let mut i = self.pos + 1;
+            let mut indent: Option<usize> = None;
+            let mut chomp: Option<char> = None;
+            for _ in 0..2 {
+                let c = self.at(i);
+                if indent.is_none() && ('1'..='9').contains(&c) {
+                    indent = Some(c as usize - '0' as usize);
+                } else if chomp.is_none() && (c == '-' || c == '+') {
+                    chomp = Some(c);
+                } else {
+                    break;
+                }
+                i += 1;
+            }
+            // The header ends with white space and a comment or nothing before its line break (s-b-comment [77]).
+            self.pos = i;
+            let header = self.skip_white(i);
+            if self.at(header) == '#' {
+                if header == i {
+                    return Err(Refusal::Parse(header));
+                }
+                self.pos = self.line_end(header);
+            } else {
+                self.pos = header;
+            }
+            match self.at(self.pos) {
+                '\n' => self.pos += 1,
+                END => {}
+                _ => return Err(Refusal::Parse(self.pos)),
+            }
+            let content_indent = match indent {
+                Some(d) => (n + d as isize).max(0) as usize,
+                None => match self.detect_indent(n)? {
+                    Some(m) => m,
+                    // No line of content: every line up to the end of the scalar is empty.
+                    None => usize::MAX,
+                },
+            };
+            // Each line of the scalar: its text after the content indentation, whether it is empty, and whether a line
+            // break ends it.
+            let mut lines: Vec<(String, bool, bool)> = Vec::new();
+            loop {
+                let start = self.pos;
+                if start >= self.s.len() {
+                    break;
+                }
+                let s = self.spaces(start);
+                let e = self.line_end(start);
+                if s >= content_indent {
+                    if content_indent == 0 && self.any_marker(start) {
+                        break;
+                    }
+                    let text: String = self.s[start + content_indent..e].iter().collect();
+                    let empty = text.is_empty();
+                    lines.push((text, empty, self.at(e) == '\n'));
+                } else if start + s == e {
+                    if self.at(e) == END {
+                        // Spaces at the end of the stream with no line break: no line of the scalar.
+                        self.pos = e;
+                        break;
+                    }
+                    lines.push((String::new(), true, true));
+                } else {
+                    break;
+                }
+                self.pos = if self.at(e) == '\n' { e + 1 } else { e };
+            }
+            let last = lines.iter().rposition(|(_, empty, _)| !empty);
+            let mut text = String::new();
+            let mut final_break = false;
+            let trailing = match last {
+                None => &lines[..],
+                Some(k) => {
+                    let body = &lines[..=k];
+                    if folded {
+                        Self::fold(body, &mut text);
+                    } else {
+                        for (index, (line, _, _)) in body.iter().enumerate() {
+                            if index > 0 {
+                                text.push('\n');
+                            }
+                            text.push_str(line);
+                        }
+                    }
+                    final_break = body[k].2;
+                    &lines[k + 1..]
+                }
+            };
+            match chomp {
+                Some('-') => {}
+                Some(_) => {
+                    if final_break {
+                        text.push('\n');
+                    }
+                    text.extend(trailing.iter().filter(|(_, _, broken)| *broken).map(|_| '\n'));
+                }
+                None => {
+                    if final_break {
+                        text.push('\n');
+                    }
+                }
+            }
+            self.b.scalar(text, false)
+        }
+
+        /// The content indentation of a block scalar without an indentation indicator: the spaces of its first line that
+        /// is not empty, which is more than the indentation of its parent, or None when no such line follows (8.1.1.1).
+        /// A leading empty line with more spaces than that line is `yaml-parse` (Example 8.3).
+        fn detect_indent(&self, n: isize) -> Step<Option<usize>> {
+            let mut i = self.pos;
+            let mut widest: Option<(usize, usize)> = None;
+            while i < self.s.len() {
+                let s = self.spaces(i);
+                let e = self.line_end(i);
+                if i + s != e {
+                    if (s as isize) <= n || (s == 0 && self.any_marker(i)) {
+                        return Ok(None);
+                    }
+                    if let Some((_, at)) = widest.filter(|(spaces, _)| *spaces > s) {
+                        return Err(Refusal::Parse(at + s));
+                    }
+                    return Ok(Some(s));
+                }
+                if widest.is_none_or(|(spaces, _)| s > spaces) {
+                    widest = Some((s, i));
+                }
+                if self.at(e) != '\n' {
+                    break;
+                }
+                i = e + 1;
+            }
+            Ok(None)
+        }
+
+        /// Folds the lines of a folded scalar (6.5, [175] to [181]): between two lines whose text starts with no white
+        /// space a line break is one space, or k line feeds before k empty lines; around a more-indented line each line
+        /// break is kept.
+        fn fold(body: &[(String, bool, bool)], text: &mut String) {
+            let mut lines = body.iter().peekable();
+            while let Some((_, true, _)) = lines.peek() {
+                text.push('\n');
+                lines.next();
+            }
+            let more = |line: &str| line.starts_with([' ', '\t']);
+            let mut previous: Option<bool> = None;
+            let mut empties = 0;
+            for (line, empty, _) in lines {
+                if *empty {
+                    empties += 1;
+                    continue;
+                }
+                let indented = more(line);
+                if let Some(previous_indented) = previous {
+                    if !previous_indented && !indented {
+                        if empties == 0 {
+                            text.push(' ');
+                        }
+                        text.extend(std::iter::repeat_n('\n', empties));
+                    } else {
+                        text.extend(std::iter::repeat_n('\n', empties + 1));
+                    }
+                }
+                text.push_str(line);
+                previous = Some(indented);
+                empties = 0;
+            }
+        }
+
+        // ---- flow nodes ----
+
+        /// A flow node at the reader ([156] to [161]): properties, a flow collection, a quoted scalar or a plain one.
+        fn flow_node(&mut self, n: isize, ctx: FlowCtx) -> Step<Next> {
+            let c = self.at(self.pos);
+            match c {
+                '&' => rule("anchors are not supported"),
+                '!' => rule("explicit tags are not supported"),
+                '*' => rule("aliases are not supported"),
+                '[' | '{' => {
+                    self.b.open(c == '{')?;
+                    self.pos += 1;
+                    let inner = ctx.inner();
+                    self.frames.push(if c == '[' {
+                        Frame::FlowSeq { n, ctx: inner, phase: FlowPhase::Open }
+                    } else {
+                        Frame::FlowMap { n, ctx: inner, phase: FlowPhase::Open }
+                    });
+                    Ok(Next::Resume)
+                }
+                '\'' | '"' => {
+                    let (end, text) = if c == '\'' { self.single(self.pos, n, ctx.multi_line())? } else { self.double(self.pos, n, ctx.multi_line())? };
+                    self.pos = end;
+                    self.b.scalar(text, false)?;
+                    Ok(Next::Resume)
+                }
+                _ => {
+                    if !self.plain_first(self.pos, ctx.flow()) {
+                        return Err(Refusal::Parse(self.pos));
+                    }
+                    let (end, text) = self.plain(self.pos, n, ctx.flow(), ctx.multi_line(), usize::MAX);
+                    self.pos = end;
+                    self.b.scalar(text, true)?;
+                    Ok(Next::Resume)
+                }
+            }
+        }
+
+        /// Separation inside a flow collection (`s-separate(n,c)` [80]): white space, comments and, unless the
+        /// collection is a key on one line, line breaks with lines indented by at least `n` spaces.
+        fn flow_sep(&mut self, n: isize, ctx: FlowCtx) -> Step<()> {
+            loop {
+                let start = self.pos;
+                self.pos = self.skip_white(self.pos);
+                if self.at(self.pos) == '#' {
+                    if self.pos == start && start > 0 && ns_char(self.at(start - 1)) {
+                        // A `#` that follows another character starts no comment; the caller refuses it.
+                        return Ok(());
+                    }
+                    self.pos = self.line_end(self.pos);
+                }
+                if self.at(self.pos) != '\n' || !ctx.multi_line() {
+                    return Ok(());
+                }
+                self.pos += 1;
+                loop {
+                    let line = self.pos;
+                    let m = self.spaces(line);
+                    let j = self.skip_white(line + m);
+                    match self.at(j) {
+                        '\n' => self.pos = j + 1,
+                        '#' => {
+                            self.pos = self.line_end(j);
+                            if self.at(self.pos) == '\n' {
+                                self.pos += 1;
+                            }
+                        }
+                        END => {
+                            self.pos = j;
+                            return Ok(());
+                        }
+                        _ => {
+                            if m == 0 && self.any_marker(line) {
+                                return Err(Refusal::Parse(line));
+                            }
+                            if (m as isize) < n {
+                                return Err(Refusal::Parse(line + m));
+                            }
+                            self.pos = j;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        fn flow_seq_resume(&mut self, n: isize, ctx: FlowCtx, phase: FlowPhase) -> Step<Next> {
+            self.flow_sep(n, ctx)?;
+            let c = self.at(self.pos);
+            if phase != FlowPhase::Open {
+                return match c {
+                    ',' => {
+                        self.pos += 1;
+                        self.set(Frame::FlowSeq { n, ctx, phase: FlowPhase::Open });
+                        Ok(Next::Resume)
+                    }
+                    ']' => {
+                        self.pos += 1;
+                        self.close()
+                    }
+                    _ => Err(Refusal::Parse(self.pos)),
+                };
+            }
+            match c {
+                ']' => {
+                    self.pos += 1;
+                    return self.close();
+                }
+                // A `,` with no entry before it (COD-77).
+                ',' => return Err(Refusal::Parse(self.pos)),
+                _ => {}
+            }
+            self.set(Frame::FlowSeq { n, ctx, phase: FlowPhase::Entry });
+            if c == '?' && white_or_eol(self.at(self.pos + 1)) {
+                self.b.open(true)?;
+                self.pos += 1;
+                self.frames.push(Frame::FlowPair { n, ctx, phase: FlowPhase::Explicit });
+                return Ok(Next::Resume);
+            }
+            if self.key_ahead(self.pos, true) {
+                // An entry `k: v` is a map of that one pair (ns-flow-pair [150]).
+                self.b.open(true)?;
+                self.frames.push(Frame::FlowPair { n, ctx, phase: FlowPhase::Key { json: json_start(c) } });
+                if self.empty_key(self.pos) {
+                    self.b.null()?;
+                    return Ok(Next::Resume);
+                }
+                return Ok(Next::Flow { n, ctx: FlowCtx::Key });
+            }
+            Ok(Next::Flow { n, ctx })
+        }
+
+        /// A `:` with no key before it: the empty key, a null ([144]).
+        fn empty_key(&self, i: usize) -> bool {
+            self.at(i) == ':' && !plain_safe(self.at(i + 1), true)
+        }
+
+        fn flow_pair_resume(&mut self, n: isize, ctx: FlowCtx, phase: FlowPhase) -> Step<Next> {
+            match phase {
+                FlowPhase::Explicit => {
+                    self.flow_sep(n, ctx)?;
+                    let c = self.at(self.pos);
+                    if c == ']' || c == ',' {
+                        // `?` with neither key nor value (e-node e-node).
+                        self.b.null()?;
+                        self.b.null()?;
+                        self.frames.pop();
+                        self.b.close();
+                        return Ok(Next::Resume);
+                    }
+                    self.set(Frame::FlowPair { n, ctx, phase: FlowPhase::Key { json: json_start(c) } });
+                    if self.empty_key(self.pos) {
+                        self.b.null()?;
+                        return Ok(Next::Resume);
+                    }
+                    Ok(Next::Flow { n, ctx })
+                }
+                FlowPhase::Key { json } => {
+                    self.flow_sep(n, ctx)?;
+                    let c = self.at(self.pos);
+                    if c == ':' && (json || !plain_safe(self.at(self.pos + 1), true)) {
+                        self.pos += 1;
+                        self.set(Frame::FlowPair { n, ctx, phase: FlowPhase::Value });
+                        return self.flow_value(n, ctx, json);
+                    }
+                    if c == ',' || c == ']' {
+                        self.b.null()?;
+                        self.frames.pop();
+                        self.b.close();
+                        return Ok(Next::Resume);
+                    }
+                    Err(Refusal::Parse(self.pos))
+                }
+                _ => {
+                    self.frames.pop();
+                    self.b.close();
+                    Ok(Next::Resume)
+                }
+            }
+        }
+
+        fn flow_map_resume(&mut self, n: isize, ctx: FlowCtx, phase: FlowPhase) -> Step<Next> {
+            self.flow_sep(n, ctx)?;
+            let c = self.at(self.pos);
+            match phase {
+                FlowPhase::Key { json } => {
+                    if c == ':' && (json || !plain_safe(self.at(self.pos + 1), true)) {
+                        self.pos += 1;
+                        self.set(Frame::FlowMap { n, ctx, phase: FlowPhase::Value });
+                        return self.flow_value(n, ctx, json);
+                    }
+                    if c == ',' || c == '}' {
+                        // A key alone, whose value is a null (COD-77).
+                        self.b.null()?;
+                        self.set(Frame::FlowMap { n, ctx, phase: FlowPhase::Value });
+                        return Ok(Next::Resume);
+                    }
+                    Err(Refusal::Parse(self.pos))
+                }
+                FlowPhase::Value | FlowPhase::Entry | FlowPhase::Explicit => match c {
+                    ',' => {
+                        self.pos += 1;
+                        self.set(Frame::FlowMap { n, ctx, phase: FlowPhase::Open });
+                        Ok(Next::Resume)
+                    }
+                    '}' => {
+                        self.pos += 1;
+                        self.close()
+                    }
+                    _ => Err(Refusal::Parse(self.pos)),
+                },
+                FlowPhase::Open => {
+                    match c {
+                        '}' => {
+                            self.pos += 1;
+                            return self.close();
+                        }
+                        ',' => return Err(Refusal::Parse(self.pos)),
+                        _ => {}
+                    }
+                    let mut c = c;
+                    if c == '?' && white_or_eol(self.at(self.pos + 1)) {
+                        self.pos += 1;
+                        self.flow_sep(n, ctx)?;
+                        c = self.at(self.pos);
+                        if c == '}' || c == ',' {
+                            // `?` with neither key nor value (e-node e-node).
+                            self.b.null()?;
+                            self.b.null()?;
+                            self.set(Frame::FlowMap { n, ctx, phase: FlowPhase::Value });
+                            return Ok(Next::Resume);
+                        }
+                    }
+                    self.set(Frame::FlowMap { n, ctx, phase: FlowPhase::Key { json: json_start(c) } });
+                    if self.empty_key(self.pos) {
+                        self.b.null()?;
+                        return Ok(Next::Resume);
+                    }
+                    // Every node that starts an entry of a flow mapping is its key (COD-80).
+                    Ok(Next::Flow { n, ctx })
+                }
+            }
+        }
+
+        /// The value after the `:` of a flow entry: after a key that is a flow collection or a quoted scalar it may be
+        /// adjacent ([148]); after another key it is separated by white space or a line break, or it is the empty node
+        /// ([147]).
+        fn flow_value(&mut self, n: isize, ctx: FlowCtx, json: bool) -> Step<Next> {
+            if !json && !white_or_eol(self.at(self.pos)) {
+                self.b.null()?;
+                return Ok(Next::Resume);
+            }
+            self.flow_sep(n, ctx)?;
+            if matches!(self.at(self.pos), ',' | ']' | '}') {
+                self.b.null()?;
+                return Ok(Next::Resume);
+            }
+            Ok(Next::Flow { n, ctx })
+        }
+
+        // ---- scalars ----
+
+        /// `ns-plain-first(c)` [126].
+        fn plain_first(&self, i: usize, flow: bool) -> bool {
+            let c = self.at(i);
+            ns_char(c) && (!indicator(c) || (matches!(c, '-' | '?' | ':') && plain_safe(self.at(i + 1), flow)))
+        }
+
+        /// The rest of a line of a plain scalar whose character at `i` is a plain character (`nb-ns-plain-in-line`
+        /// [133]); returns the index after its last character that is not white space, or a value past `limit`.
+        fn plain_line(&self, i: usize, flow: bool, text: &mut String, limit: usize) -> usize {
+            text.push(self.at(i));
+            let mut end = i + 1;
+            loop {
+                if end > limit {
+                    return end;
+                }
+                let j = self.skip_white(end);
+                let c = self.at(j);
+                let plain = match c {
+                    _ if eol(c) => false,
+                    // A `#` that follows white space starts a comment.
+                    '#' => j == end,
+                    ':' => plain_safe(self.at(j + 1), flow),
+                    _ => !(flow && flow_indicator(c)),
+                };
+                if !plain {
+                    return end;
+                }
+                text.extend(&self.s[end..=j]);
+                end = j + 1;
+            }
+        }
+
+        /// A plain scalar at `i` ([131] to [135]); on several lines unless it is a key, each line indented by at least
+        /// `n` spaces, folded (6.5). Returns the index after its last character that is not white space.
+        fn plain(&self, i: usize, n: isize, flow: bool, multi_line: bool, limit: usize) -> (usize, String) {
+            let mut text = String::new();
+            let mut end = self.plain_line(i, flow, &mut text, limit);
+            if !multi_line {
+                return (end, text);
+            }
+            loop {
+                let j = self.skip_white(end);
+                if self.at(j) != '\n' {
+                    return (end, text);
+                }
+                let mut k = j + 1;
+                let mut empties = 0;
+                let next = loop {
+                    let line = k;
+                    let s = self.spaces(line);
+                    if (s as isize) < n {
+                        if self.at(line + s) == '\n' {
+                            empties += 1;
+                            k = line + s + 1;
+                            continue;
+                        }
+                        break None;
+                    }
+                    let t = self.skip_white(line + s);
+                    match self.at(t) {
+                        '\n' => {
+                            empties += 1;
+                            k = t + 1;
+                            continue;
+                        }
+                        END => break None,
+                        _ => {}
+                    }
+                    if s == 0 && self.any_marker(line) {
+                        break None;
+                    }
+                    let c = self.at(t);
+                    let plain = match c {
+                        '#' => false,
+                        ':' => plain_safe(self.at(t + 1), flow),
+                        _ => !(flow && flow_indicator(c)),
+                    };
+                    break plain.then_some(t);
+                };
+                let Some(t) = next else {
+                    return (end, text);
+                };
+                if empties == 0 {
+                    text.push(' ');
+                }
+                text.extend(std::iter::repeat_n('\n', empties));
+                end = self.plain_line(t, flow, &mut text, limit);
+            }
+        }
+
+        /// A line break inside a quoted scalar at `i` ([73], [113], [124]): the empty lines after it are line feeds, and
+        /// the break is one space unless it is escaped or empty lines follow it. The next line is indented by at least
+        /// `n` spaces. Returns the index of the next character of the scalar.
+        fn quoted_break(&self, i: usize, n: isize, text: &mut String, escaped: bool) -> Step<usize> {
+            let mut k = i + 1;
+            let mut empties = 0;
+            loop {
+                let line = k;
+                let s = self.spaces(line);
+                if (s as isize) < n {
+                    if self.at(line + s) == '\n' {
+                        empties += 1;
+                        k = line + s + 1;
+                        continue;
+                    }
+                    return Err(Refusal::Parse(line + s));
+                }
+                let t = self.skip_white(line + s);
+                match self.at(t) {
+                    '\n' => {
+                        empties += 1;
+                        k = t + 1;
+                        continue;
+                    }
+                    END => return Err(Refusal::Parse(t)),
+                    _ => {}
+                }
+                if s == 0 && self.any_marker(line) {
+                    return Err(Refusal::Parse(line));
+                }
+                if empties == 0 && !escaped {
+                    text.push(' ');
+                }
+                text.extend(std::iter::repeat_n('\n', empties));
+                return Ok(t);
+            }
+        }
+
+        /// A single-quoted scalar at `i` ([117] to [125]); returns the index after its closing quote and its string.
+        fn single(&self, i: usize, n: isize, multi_line: bool) -> Step<(usize, String)> {
+            let mut text = String::new();
+            let mut white_run = String::new();
+            let mut k = i + 1;
+            loop {
+                let c = self.at(k);
+                match c {
+                    END => return Err(Refusal::Parse(k)),
+                    '\'' => {
+                        text.push_str(&white_run);
+                        white_run.clear();
+                        if self.at(k + 1) == '\'' {
+                            text.push('\'');
+                            k += 2;
+                        } else {
+                            return Ok((k + 1, text));
+                        }
+                    }
+                    '\n' => {
+                        if !multi_line {
+                            return Err(Refusal::Parse(k));
+                        }
+                        white_run.clear();
+                        k = self.quoted_break(k, n, &mut text, false)?;
+                    }
+                    ' ' | '\t' => {
+                        white_run.push(c);
+                        k += 1;
+                    }
+                    _ => {
+                        text.push_str(&white_run);
+                        white_run.clear();
+                        text.push(c);
+                        k += 1;
+                    }
+                }
+            }
+        }
+
+        /// A double-quoted scalar at `i` ([107] to [116]) with the escapes of 5.7; returns the index after its closing
+        /// quote and its string.
+        fn double(&self, i: usize, n: isize, multi_line: bool) -> Step<(usize, String)> {
+            let mut text = String::new();
+            let mut white_run = String::new();
+            let mut k = i + 1;
+            loop {
+                let c = self.at(k);
+                match c {
+                    END => return Err(Refusal::Parse(k)),
+                    '"' => {
+                        text.push_str(&white_run);
+                        return Ok((k + 1, text));
+                    }
+                    '\\' => {
+                        // The white space before a `\` is content (s-double-escaped [112]).
+                        text.push_str(&white_run);
+                        white_run.clear();
+                        let e = self.at(k + 1);
+                        let simple = match e {
+                            '0' => Some('\0'),
+                            'a' => Some('\u{7}'),
+                            'b' => Some('\u{8}'),
+                            't' | '\t' => Some('\t'),
+                            'n' => Some('\n'),
+                            'v' => Some('\u{b}'),
+                            'f' => Some('\u{c}'),
+                            'r' => Some('\r'),
+                            'e' => Some('\u{1b}'),
+                            ' ' => Some(' '),
+                            '"' => Some('"'),
+                            '/' => Some('/'),
+                            '\\' => Some('\\'),
+                            'N' => Some('\u{85}'),
+                            '_' => Some('\u{a0}'),
+                            'L' => Some('\u{2028}'),
+                            'P' => Some('\u{2029}'),
+                            _ => None,
+                        };
+                        if let Some(escaped) = simple {
+                            text.push(escaped);
+                            k += 2;
+                            continue;
+                        }
+                        let digits = match e {
+                            'x' => 2,
+                            'u' => 4,
+                            'U' => 8,
+                            '\n' if multi_line => {
+                                k = self.quoted_break(k + 1, n, &mut text, true)?;
+                                continue;
+                            }
+                            _ => return Err(Refusal::Parse(k + 1)),
+                        };
+                        let mut code: u32 = 0;
+                        for d in 0..digits {
+                            let Some(value) = self.at(k + 2 + d).to_digit(16) else {
+                                return Err(Refusal::Parse(k + 2 + d));
+                            };
+                            code = code * 16 + value;
+                        }
+                        // A surrogate or a number above U+10FFFF is no Unicode scalar value (COD-78).
+                        let Some(escaped) = char::from_u32(code) else {
+                            return Err(Refusal::Parse(k));
+                        };
+                        text.push(escaped);
+                        k += 2 + digits;
+                    }
+                    '\n' => {
+                        if !multi_line {
+                            return Err(Refusal::Parse(k));
+                        }
+                        white_run.clear();
+                        k = self.quoted_break(k, n, &mut text, false)?;
+                    }
+                    ' ' | '\t' => {
+                        white_run.push(c);
+                        k += 1;
+                    }
+                    _ => {
+                        text.push_str(&white_run);
+                        white_run.clear();
+                        text.push(c);
+                        k += 1;
+                    }
+                }
+            }
+        }
+
+        // ---- implicit keys ----
+
+        /// Whether the node at `i` is an implicit key (COD-80): the reader reads ahead over the node on its line, and it
+        /// is a key when a `:` follows it within 1024 characters of its start, then white space or the end of the line
+        /// in a block mapping (`flow` false), or a character that a plain scalar of a flow collection does not hold in a
+        /// flow sequence. A node over which the read ahead leaves the grammar is no key.
+        fn key_ahead(&self, i: usize, flow: bool) -> bool {
+            let follows = |c: char| if flow { !plain_safe(c, true) } else { white_or_eol(c) };
+            if self.at(i) == ':' && follows(self.at(i + 1)) {
+                return true;
+            }
+            let limit = i + KEY_LIMIT;
+            let Some((end, json)) = self.skim(i, flow, limit) else {
+                return false;
+            };
+            let colon = self.skip_white(end);
+            colon <= limit && self.at(colon) == ':' && ((flow && json) || follows(self.at(colon + 1)))
+        }
+
+        /// Reads over the node at `i` on its line without building it (`flow-key` or `block-key`); returns its end and
+        /// whether it is a flow collection or a quoted scalar, or None where the node leaves the grammar or the line or
+        /// passes `limit`. It keeps the open flow collections on its own stack.
+        fn skim(&self, i: usize, flow: bool, limit: usize) -> Option<(usize, bool)> {
+            #[derive(Clone, Copy, PartialEq, Eq)]
+            enum Ph {
+                Open,
+                Node,
+                Value,
+            }
+            let mut stack: Vec<(char, Ph)> = Vec::new();
+            let mut k = i;
+            let mut json = false;
+            let mut want_node = true;
+            loop {
+                if k > limit {
+                    return None;
+                }
+                if want_node {
+                    want_node = false;
+                    let in_flow = flow || !stack.is_empty();
+                    // Properties, which the reader refuses where it meets them, are read over here.
+                    let mut properties = false;
+                    let mut alias = false;
+                    loop {
+                        match self.at(k) {
+                            '&' | '*' => {
+                                alias = self.at(k) == '*';
+                                let name = k + 1;
+                                k = name;
+                                while plain_safe(self.at(k), true) && k <= limit {
+                                    k += 1;
+                                }
+                                if k == name {
+                                    return None;
+                                }
+                            }
+                            '!' => {
+                                k += 1;
+                                if self.at(k) == '<' {
+                                    while self.at(k) != '>' {
+                                        if eol(self.at(k)) || k > limit {
+                                            return None;
+                                        }
+                                        k += 1;
+                                    }
+                                    k += 1;
+                                } else {
+                                    while plain_safe(self.at(k), true) && k <= limit {
+                                        k += 1;
+                                    }
+                                }
+                            }
+                            _ => break,
+                        }
+                        properties = true;
+                        if alias {
+                            break;
+                        }
+                        if !white(self.at(k)) {
+                            break;
+                        }
+                        k = self.skip_white(k);
+                    }
+                    let c = self.at(k);
+                    json = false;
+                    if alias {
+                        // An alias is the whole node.
+                    } else if c == '[' || c == '{' {
+                        stack.push((if c == '[' { ']' } else { '}' }, Ph::Open));
+                        k += 1;
+                        continue;
+                    } else if c == '\'' || c == '"' {
+                        let scanned = if c == '\'' { self.single(k, 0, false) } else { self.double(k, 0, false) };
+                        let Ok((end, _)) = scanned else {
+                            return None;
+                        };
+                        k = end;
+                        json = true;
+                    } else if self.plain_first(k, in_flow) {
+                        let mut text = String::new();
+                        k = self.plain_line(k, in_flow, &mut text, limit);
+                    } else if !properties {
+                        return None;
+                    }
+                    if stack.is_empty() {
+                        return Some((k, json));
+                    }
+                    continue;
+                }
+                let Some(&(close, phase)) = stack.last() else {
+                    return Some((k, json));
+                };
+                k = self.skip_white(k);
+                let c = self.at(k);
+                let top = stack.len() - 1;
+                match phase {
+                    Ph::Open => {
+                        if c == close {
+                            k += 1;
+                            stack.pop();
+                            json = true;
+                            if stack.is_empty() {
+                                return Some((k, true));
+                            }
+                            continue;
+                        }
+                        if c == ',' || !ns_char(c) || c == '#' {
+                            return None;
+                        }
+                        if c == '?' && white_or_eol(self.at(k + 1)) {
+                            k = self.skip_white(k + 1);
+                            if matches!(self.at(k), ']' | '}' | ',') {
+                                stack[top].1 = Ph::Value;
+                                continue;
+                            }
+                        }
+                        stack[top].1 = Ph::Node;
+                        if self.empty_key(k) {
+                            json = false;
+                        } else {
+                            want_node = true;
+                        }
+                    }
+                    Ph::Node => {
+                        stack[top].1 = Ph::Value;
+                        if c == ':' && (json || !plain_safe(self.at(k + 1), true)) {
+                            k += 1;
+                            if !json && !white(self.at(k)) {
+                                continue;
+                            }
+                            k = self.skip_white(k);
+                            if !matches!(self.at(k), ',' | ']' | '}') {
+                                want_node = true;
+                            }
+                        }
+                    }
+                    Ph::Value => {
+                        if c == ',' {
+                            k += 1;
+                            stack[top].1 = Ph::Open;
+                        } else if c == close {
+                            k += 1;
+                            stack.pop();
+                            json = true;
+                            if stack.is_empty() {
+                                return Some((k, true));
+                            }
+                        } else {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

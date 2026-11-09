@@ -43,10 +43,9 @@ base64 = "0.22"
 aes-gcm = { version = "0.10", features = ["std"] }
 sha2 = "0.10"
 hmac = "0.12"
-# The YAML reader. Its nesting limits are options, which the yaml stage lifts so that its own rule yaml-depth refuses
-# level 257 (docs/spec/codec.md COD-70). serde-saphyr, which writes YAML, depends on this release.
-granit-parser = "2.0.0"
-serde-saphyr = "2.0.0"
+# The YAML writer. The yaml stage reads with the YAML reader of orm and no library (docs/spec/codec.md COD-74), so only
+# the feature that writes is built.
+serde-saphyr = { version = "2.0.0", default-features = false, features = ["serialize"] }
 
 [dev-dependencies]
 # The fault entry point exists only with the feature test-faults. The integration tests of this crate
