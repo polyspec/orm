@@ -202,7 +202,6 @@ fn main() {
         polyspec_orm_testcase::Group::new("row_snapshot", polyspec_orm_build_cases::row_snapshot::trials),
         polyspec_orm_testcase::Group::new("sqlite_concurrency", polyspec_orm_cases::sqlite_concurrency::trials),
         polyspec_orm_testcase::Group::new("statement_fault", polyspec_orm_cases::statement_fault::trials).in_order(),
-        polyspec_orm_testcase::Group::new("styled_column_states", polyspec_orm_cases::styled_column_states::trials),
         polyspec_orm_testcase::Group::new("tool_cells", polyspec_orm_build_cases::tool_cells::trials),
         polyspec_orm_testcase::Group::new("tool_columns", polyspec_orm_build_cases::tool_columns::trials),
         polyspec_orm_testcase::Group::new("tool_limits", polyspec_orm_build_cases::tool_limits::trials),

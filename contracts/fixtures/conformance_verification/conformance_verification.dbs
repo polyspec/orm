@@ -297,3 +297,16 @@ table byte_cell {
   body bytes null
   primary key (seq)
 }
+
+table styled_cell {
+  seq i64 identity
+  required_json text
+  json_value text null
+  serialize_value text null
+  primary key (seq)
+  settings {
+    codec required_json ordered_json
+    codec json_value ordered_json
+    codec serialize_value serialize
+  }
+}

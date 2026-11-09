@@ -4014,6 +4014,11 @@ def _table_model_get_by(step: dict, context: dict) -> dict:
         return {"json": document.compact()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
+    if "get" in step and row is not None:
+        # The generated getter (DBS-112) reads Core.column, which is COLUMN_UNSELECTED for a column neither selected nor
+        # assigned.
+        row.core.column(step["get"])
+        return {"json": _row_json(row, [step["get"]])[step["get"]]}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row

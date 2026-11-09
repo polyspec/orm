@@ -2163,6 +2163,11 @@ const TABLE_OPS = {
       return { json: stringifyJson(tagged.value) };
     }
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
+    if (s.get !== undefined && row !== null) {
+      // The generated getter (DBS-112) reads Core.column, which is COLUMN_UNSELECTED for a column neither selected nor assigned.
+      row[CORE].column(s.get);
+      return { json: rowJson(row, [s.get])[s.get] };
+    }
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),

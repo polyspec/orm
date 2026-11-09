@@ -4839,6 +4839,12 @@ final class Recipe
                 return self::chainWrite($s, $context, static fn (Model $m): Model => $m->restore());
             case 'model.creates':
                 $db = self::connectionOf($s, $context);
+                if (isset($s['get']) && $row !== null) {
+                    // The generated getter (DBS-112), which is COLUMN_UNSELECTED for a column neither selected nor
+                    // assigned.
+                    $row->{'get' . self::pascal($s['get'])}();
+                    return ['json' => self::chainRow($row, [$s['get']])[$s['get']]];
+                }
                 $models = [];
                 if (isset($s['rows_sequence'])) {
                     $sequence = $s['rows_sequence'];

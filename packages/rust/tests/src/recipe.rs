@@ -3126,21 +3126,94 @@ mod database {
             .collect()
     }
 
-    /// The recipe as serde values, and the same text as ordered JSON, whose objects keep the order of the document.
-    fn read_recipe(path: &Path, text: &str) -> (Value, polyspec_orm::ordered_json::Value) {
-        let value = match serde_json::from_str(text) {
+    /// The order of the members of each object of a recipe document, which serde_json sorts. It reads every level of the
+    /// document, as parse_recipe does: a recipe value may nest deeper than the 256 levels of an ordered-json value (COD-70).
+    enum Written {
+        Object(Vec<(String, Written)>),
+        Array(Vec<Written>),
+        Scalar,
+    }
+
+    impl Written {
+        fn members(&self) -> Option<&[(String, Written)]> {
+            match self {
+                Written::Object(members) => Some(members),
+                _ => None,
+            }
+        }
+
+        fn items(&self) -> Option<&[Written]> {
+            match self {
+                Written::Array(items) => Some(items),
+                _ => None,
+            }
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for Written {
+        fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            struct Visitor;
+            impl<'de> serde::de::Visitor<'de> for Visitor {
+                type Value = Written;
+                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    f.write_str("a JSON value")
+                }
+                fn visit_bool<E>(self, _: bool) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_i64<E>(self, _: i64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_u64<E>(self, _: u64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_f64<E>(self, _: f64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_str<E>(self, _: &str) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_unit<E>(self) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Written, A::Error> {
+                    let mut items = Vec::new();
+                    while let Some(item) = seq.next_element()? {
+                        items.push(item);
+                    }
+                    Ok(Written::Array(items))
+                }
+                fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Written, A::Error> {
+                    let mut members = Vec::new();
+                    while let Some((key, value)) = map.next_entry::<String, Written>()? {
+                        members.push((key, value));
+                    }
+                    Ok(Written::Object(members))
+                }
+            }
+            deserializer.deserialize_any(Visitor)
+        }
+    }
+
+    /// The recipe as serde values, and the order of its objects as the document writes them.
+    fn read_recipe(path: &Path, text: &str) -> (Value, Written) {
+        use serde::Deserialize as _;
+        // A recipe may nest deeper than the 128 levels that serde_json reads by default (COD-70 json-depth).
+        let value = match crate::recipe_keys::parse_recipe(text) {
             Ok(value) => value,
             Err(error) => panic!("{}: {error}", path.display()),
         };
-        match polyspec_orm::ordered_json::parse(text) {
-            Ok(ordered) => (value, ordered),
+        let mut reader = serde_json::Deserializer::from_str(text);
+        reader.disable_recursion_limit();
+        match Written::deserialize(&mut reader).and_then(|written| reader.end().map(|()| written)) {
+            Ok(written) => (value, written),
             Err(error) => panic!("{}: {error}", path.display()),
         }
     }
 
     /// Records the written order of each object of a step that serde_json would sort: a step and its expect are read by
     /// name, so they stay as they are.
-    fn mark_written_order(value: &mut Value, ordered: &polyspec_orm::ordered_json::Value) {
+    fn mark_written_order(value: &mut Value, ordered: &Written) {
         if let Some(items) = ordered.items() {
             for (item, written) in value.as_array_mut().into_iter().flatten().zip(items) {
                 mark_written_order(item, written);
@@ -3149,34 +3222,28 @@ mod database {
         }
         let (Some(map), Some(written)) = (value.as_object_mut(), ordered.members()) else { return };
         let mut names = Vec::new();
-        for (key, child) in written.iter() {
-            let name = String::from_utf8(key.string_value().expect("a member name is a JSON string")).expect("a member name is UTF-8");
+        for (name, child) in written {
             if name != "expect" {
-                if let Some(item) = map.get_mut(&name) {
+                if let Some(item) = map.get_mut(name) {
                     mark_written_order(item, child);
                 }
             }
-            names.push(name);
+            names.push(name.clone());
         }
         if !map.contains_key("op") && !names.is_sorted() {
             map.insert(super::WRITTEN_ORDER.to_owned(), json!(names));
         }
     }
 
-    /// The member of an ordered JSON object whose key is `name`.
-    fn member<'a>(object: &'a polyspec_orm::ordered_json::Value, name: &str) -> Option<&'a polyspec_orm::ordered_json::Value> {
-        object.members()?.iter().find(|(key, _)| key.string_value().is_ok_and(|bytes| bytes == name.as_bytes())).map(|(_, value)| value)
+    /// The member of an object of the document whose key is `name`.
+    fn member<'a>(object: &'a Written, name: &str) -> Option<&'a Written> {
+        object.members()?.iter().find(|(key, _)| key == name).map(|(_, value)| value)
     }
 
     /// The table names of the `rows` of a seed object, in the order the document writes them.
-    fn seed_order(seed: Option<&polyspec_orm::ordered_json::Value>) -> Vec<String> {
-        let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(|rows| rows.members()) else { return Vec::new() };
-        rows.iter()
-            .map(|(key, _)| {
-                let bytes = key.string_value().expect("a seed table name is a JSON string");
-                String::from_utf8(bytes).expect("a seed table name is UTF-8")
-            })
-            .collect()
+    fn seed_order(seed: Option<&Written>) -> Vec<String> {
+        let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(Written::members) else { return Vec::new() };
+        rows.iter().map(|(key, _)| key.clone()).collect()
     }
 
     /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
@@ -5600,6 +5667,7 @@ mod tables {
     thread_local! {
         /// The schema of the table recipe of the case on this thread. A database case runs on a thread of its own, and many
         /// table recipes run in one test program.
+    use polyspec_orm::ordered_json;
         static CURRENT: std::cell::Cell<Option<&'static Schema>> = const { std::cell::Cell::new(None) };
     }
 
@@ -6268,7 +6336,18 @@ mod tables {
         // The setter of a column with codec stages encodes the value by them and fails at the call (COD-73).
         let check = |value: &Value| if styles.is_empty() { Ok(()) } else { polyspec_orm::codec::check_setter(&styles, value).map_err(orm) };
         if let Some(inner) = raw.get("styled") {
-            let value = bind_json(&param(inner)?);
+            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
+                // The generated setter of an ordered_json column takes an ordered-json value, which the runner builds
+                // from the recipe value by the builders of the library, as a caller of the setter does (COD-73).
+                let ordered = ordered_of(inner)?;
+                polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
+                row.core.set_ordered(column, ordered.clone());
+                row.values.insert(column.to_owned(), Val::Ordered(ordered));
+                row.core.mark_field_ready(column);
+                return Ok(());
+            }
+            // An array is a value of the common value model (COD-16), which a table parameter does not hold.
+            let value = if inner.get("array").is_some() { super::to_value(inner)? } else { bind_json(&param(inner)?) };
             check(&value)?;
             row.core.set_json(column, value.clone());
             row.values.insert(column.to_owned(), Val::Json(value));
@@ -6283,6 +6362,34 @@ mod tables {
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
+    /// The ordered-json value of a recipe value, built level by level by the builders of the library (Value::array,
+    /// Value::object and the scalar constructors), not by parsing a text: a builder that refuses a value returns its error.
+    fn ordered_of(inner: &Value) -> Result<ordered_json::Value, String> {
+        let built = |result: Result<ordered_json::Value, ordered_json::Error>| {
+            result.map_err(|error| format!("ordered_json: the value cannot be built: {error} (kind {})", error.kind()))
+        };
+        let (kind, body) = super::kind(inner)?;
+        match kind {
+            "null" | "nil" => Ok(ordered_json::Value::null()),
+            "bool" => Ok(ordered_json::Value::boolean(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?)),
+            "int" | "float" => built(ordered_json::Value::number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?)),
+            "text" => Ok(ordered_json::Value::string(body.as_str().ok_or_else(|| format!("{inner} has no text"))?)),
+            "array" => {
+                let items = body.as_array().into_iter().flatten().map(ordered_of).collect::<Result<Vec<_>, _>>()?;
+                built(ordered_json::Value::array(&items))
+            }
+            "object" => {
+                let mut members = ordered_json::OrderedMap::new();
+                for pair in body.as_array().into_iter().flatten() {
+                    let key = pair[0].as_str().ok_or_else(|| format!("{pair} has no member name"))?;
+                    built(members.insert(ordered_json::Value::string(key), ordered_of(&pair[1])?).map(|_| ordered_json::Value::null()))?;
+                }
+                built(ordered_json::Value::object(&members))
+            }
+            other => Err(format!("a {other} wrapper is not an ordered-json value")),
+        }
+    }
+
                 let value = object_of(raw)?;
                 check(&value)?;
                 row.core.set_json(column, value.clone());
@@ -6315,6 +6422,15 @@ mod tables {
         }
         let read = match &value {
             Param::Null => Val::Null,
+        if raw.get("null").is_some() && field.is_some_and(|field| field.styled_value() && !field.nullable) {
+            // The generated setter of a non-null styled column refuses StyledValue::SqlNull with the name of the column
+            // (COD-20, COD-73), before it changes the model.
+            return Err(orm(polyspec_orm::Error::Engine {
+                code: polyspec_orm::codes::CODEC_ENCODE.into(),
+                msg: format!("{column} does not accept SQL NULL"),
+                source: None,
+            }));
+        }
             Param::Bool(b) => Val::Bool(*b),
             Param::I64(n) => Val::I64(*n),
             Param::F64(n) => Val::F64(*n),
@@ -7025,6 +7141,12 @@ mod tables {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
             "int" => Param::I64(body.as_str().ok_or_else(|| format!("{wrapper} has no digits"))?.parse().map_err(|e| format!("int {body}: {e}"))?),
             "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
+                    if let Some(column) = crate::recipe_reads::read(step, "get")["get"].as_str() {
+                        // The generated getter (DBS-112) checks require_field, which is COLUMN_UNSELECTED for a column
+                        // neither loaded nor assigned.
+                        row.core.require_field(column).map_err(orm)?;
+                        return Ok(json!({ "json": row_json(&row, &json!([column]))?[column].clone() }));
+                    }
             // Rust parses NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
             "float" | "f64" => Param::F64(body.as_str().ok_or_else(|| format!("{wrapper} has no number"))?.parse().map_err(|e| format!("float {body}: {e}"))?),
             "bytes_hex" => Param::Bytes(super::hex_bytes(body.as_str().ok_or_else(|| format!("{wrapper} has no hex"))?)?),

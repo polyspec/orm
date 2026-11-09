@@ -115,18 +115,3 @@ func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
 type customJSONValue struct{ body []byte }
 
 func (v customJSONValue) MarshalJSON() ([]byte, error) { return v.body, nil }
-
-// codecStages maps the stage names that the shared fixture contracts/fixtures/styled_column_states.json uses
-// to dbspec codec stage names. The fixture still uses json and jsons, and in dbspec both are ordered_json.
-func codecStages(styles []string) []string {
-	out := make([]string, len(styles))
-	for i, style := range styles {
-		switch style {
-		case "json", "jsons":
-			out[i] = "ordered_json"
-		default:
-			out[i] = style
-		}
-	}
-	return out
-}

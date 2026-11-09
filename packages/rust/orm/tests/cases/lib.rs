@@ -36,7 +36,6 @@ pub mod service_model;
 pub mod sqlite_case;
 pub mod sqlite_concurrency;
 pub mod statement_fault;
-pub mod styled_column_states;
 pub mod transaction_flow;
 pub mod value_types;
 pub mod was_inserted;

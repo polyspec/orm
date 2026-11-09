@@ -132,6 +132,7 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
 	OrderedText     string                     `json:"ordered_text"`
+	Get             string                     `json:"get"`
 	ArrayText       string                     `json:"array_text"`
 	BytesHexOf      string                     `json:"bytes_hex_of"`
 	JSONOutput      bool                       `json:"json_output"`
@@ -1070,6 +1071,22 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 			}
 			return jsonOutcome(text), nil
 		}
+		if column := s.k("get").Get; column != "" && row != nil {
+			// The generated getter of a column (DBS-112) fails with COLUMN_UNSELECTED when the row neither selected nor
+			// assigned it, as GetJsonSetting of the generated Author does.
+			if !row.m.Selected(column) {
+				return outcome{}, orm.ColumnUnselected(column)
+			}
+			value, err := chainRow(row, []string{column})
+			if err != nil {
+				return outcome{}, err
+			}
+			fields, ok := value.(map[string]any)
+			if !ok {
+				return outcome{}, fmt.Errorf("get: the row of %s is a %T", column, value)
+			}
+			return jsonOutcome(fields[column]), nil
+		}
 		value, err := chainRow(row, s.k("pick").Pick)
 		if err != nil {
 			return outcome{}, err
@@ -1510,6 +1527,22 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 		if err != nil {
 			return err
 		}
+		if field := columnField(core, member.key, c); field != nil && styledField(field) {
+			// A generated setter of a styled column takes a StyledValue, SQL NULL as SqlNull, through NormalizeStyled and
+			// returns its refusal (COD-73), before the model changes.
+			styled, ok := value.(orm.StyledValue)
+			if value == orm.Null {
+				styled, ok = orm.SqlNull(), true
+			}
+			if ok {
+				normalized, err := orm.NormalizeStyled(member.key, valueStages(field), field.Null, styled)
+				if err != nil {
+					return err
+				}
+				core.Set(member.key, normalized)
+				continue
+			}
+		}
 		if value == orm.Null {
 			core.SetNull(member.key)
 			continue
@@ -1540,6 +1573,28 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
 	field := columnField(core, column, c)
 	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
+}
+
+// valueStages are the codec stages of field that the setter of its styled value runs, without the host stages, as the
+// generator passes them to NormalizeStyled.
+func valueStages(field *runtimemodel.Field) []string {
+	var stages []string
+	for _, stage := range field.Codec {
+		if stage != "aes" && stage != "hex" && stage != "ip" {
+			stages = append(stages, stage)
+		}
+	}
+	return stages
+}
+
+// styledField reports whether field holds a styled value, whose generated setter takes a StyledValue.
+func styledField(field *runtimemodel.Field) bool {
+	for _, stage := range field.Codec {
+		if styledCodecs[stage] {
+			return true
+		}
+	}
+	return false
 }
 
 // columnField is the field of column in the runtime model of the fixture, or nil for a name that is no field.

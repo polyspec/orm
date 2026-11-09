@@ -39,20 +39,6 @@ func openNative(t *testing.T, driver, dsn string) *sql.DB {
 	return testdb.Open(t, driver, dsn)
 }
 
-// openRaw opens the database of dsn through database/sql: SQLite by its file,
-// MySQL and PostgreSQL through the native driver.
-func openRaw(t *testing.T, driver, dsn string) *sql.DB {
-	t.Helper()
-	if driver != "sqlite" {
-		return openNative(t, driver, dsn)
-	}
-	raw, err := sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
 // newDatabase returns the DSN of a case database of its own for driver
 // (internal/testdb): a new MySQL or PostgreSQL database on the server of
 // ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN, or a new SQLite file, dropped

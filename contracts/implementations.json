@@ -200,10 +200,6 @@
           "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/styled_state_physical_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/procevent/procevent_test.go",
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
