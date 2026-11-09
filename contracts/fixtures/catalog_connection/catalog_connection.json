@@ -19662,8 +19662,8 @@
     {
       "id": "catalog_temporal_values_under_a_query_datestyle",
       "requirements": [
-        "INT-153",
         "INT-165",
+        "INT-186",
         "CFG-28"
       ],
       "only": [
@@ -19675,19 +19675,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "SQL, DMY"
-                  },
-                  {
-                    "text": "2026-01-02"
-                  },
-                  {
-                    "text": "2026-01-02 03:04:05.500000"
-                  }
-                ]
-              ]
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -19696,19 +19685,48 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "SQL, DMY"
-                  },
-                  {
-                    "date": "2026-01-02"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.500000"
-                  }
-                ]
-              ]
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -19721,19 +19739,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "SQL, DMY"
-                  },
-                  {
-                    "text": "2026-01-02"
-                  },
-                  {
-                    "text": "2026-01-02 03:04:05.500000"
-                  }
-                ]
-              ]
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -19742,19 +19749,48 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "SQL, DMY"
-                  },
-                  {
-                    "date": "2026-01-02"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.500000"
-                  }
-                ]
-              ]
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
             }
           }
         },
