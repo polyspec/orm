@@ -3314,21 +3314,27 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
 
 
 def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
-    """dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a
-    file of it."""
+    """dsn.sqlite_file (FCV-4, CFG-11, CFG-26): the names in a new directory, other than the journals of a file of it,
+    after a connection to a file of it with the query, if any."""
     name = step["name"]
+    query = "" if step.get("query") is None else f"?{step['query']}"
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
         try:
-            _connect_driver(
-                f"sqlite://{directory}/{name}?{step['query']}", step.get("config")
-            )
+            _connect_driver(f"sqlite://{directory}/{name}{query}", step.get("config"))
         except OrmError:
             left = os.listdir(directory)
             if left:
                 raise AssertionError(f"a refused DSN left the files {left}") from None
             raise
-        journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
-        names = sorted(set(os.listdir(directory)) - journals)
+        listed = set(os.listdir(directory))
+        names = sorted(
+            entry
+            for entry in listed
+            if not any(
+                entry.endswith(suffix) and entry[: -len(suffix)] in listed
+                for suffix in ("-journal", "-shm", "-wal")
+            )
+        )
     return {"value": {"text": ",".join(names)}}
 
 

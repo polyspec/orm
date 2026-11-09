@@ -4,9 +4,6 @@
 #[path = "common/audit_rows.rs"]
 pub mod audit_rows;
 #[macro_use]
-#[path = "common/json_trials.rs"]
-pub mod json_trials;
-#[macro_use]
 #[path = "common/map_rows.rs"]
 pub mod map_rows;
 #[macro_use]
@@ -40,7 +37,6 @@ pub mod service_model;
 #[path = "common/sqlite_case.rs"]
 pub mod sqlite_case;
 pub mod sqlite_concurrency;
-pub mod sqlite_file_name;
 pub mod statement_fault;
 pub mod styled_column_states;
 pub mod transaction_flow;

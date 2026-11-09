@@ -271,11 +271,17 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
     }
 }
 
-/// The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4, CFG-26).
-async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<String, String> {
-    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
-    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
+/// The names in a new directory, other than the journals of a file of it, after a connection to a file of it with the query, if
+/// any (dsn.sqlite_file, FCV-4, CFG-11, CFG-26). The directory is named by the process and a count, so its path needs no escape.
+async fn sqlite_file_names(name: &str, query: Option<&str>, config: &Value) -> Result<String, String> {
+    static DIRECTORIES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let count = DIRECTORIES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{count}", std::process::id()));
+    std::fs::create_dir(&directory).map_err(|error| error.to_string())?;
+    let dsn = match query {
+        Some(query) => format!("sqlite://{}/{name}?{query}", directory.display()),
+        None => format!("sqlite://{}/{name}", directory.display()),
+    };
     let connected = connect_driver(&dsn, config).await.map_err(|(_, message)| message);
     let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
         let mut names = Vec::new();
@@ -291,8 +297,9 @@ async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<St
             left => Err(format!("a refused DSN left the files {left:?}")),
         };
     }
-    let journals = [format!("{name}-journal"), format!("{name}-shm"), format!("{name}-wal")];
-    let mut names: Vec<String> = listed?.into_iter().filter(|file| !journals.contains(file)).collect();
+    let listed = listed?;
+    let journal_of = |file: &str| ["-journal", "-shm", "-wal"].iter().find_map(|suffix| file.strip_suffix(suffix)).map(str::to_owned);
+    let mut names: Vec<String> = listed.iter().filter(|file| journal_of(file).is_none_or(|stem| !listed.contains(&stem))).cloned().collect();
     names.sort();
     Ok(names.join(","))
 }
@@ -4455,7 +4462,7 @@ mod database {
             }
             "dsn.sqlite_file" => {
                 let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
-                let query = crate::recipe_reads::read(step, "query")["query"].as_str().unwrap_or_default();
+                let query = crate::recipe_reads::read(step, "query")["query"].as_str();
                 let names = crate::recipe::sqlite_file_names(name, query, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": { "text": names } }))
             }

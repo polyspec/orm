@@ -769,19 +769,21 @@ const OPS = {
     const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
     return { value: { text: await connectDriver(dsn, s.config) } };
   },
-  // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
+  // dsn.sqlite_file (FCV-4, CFG-11, CFG-26): the names in a new directory, other than the journals of a file of it, after a connection
+  // to a file of it with the query, if any.
   async 'dsn.sqlite_file'(s) {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
       try {
-        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`, s.config);
+        await connectDriver(`sqlite://${directory}/${s.name}${s.query === undefined ? '' : `?${s.query}`}`, s.config);
       } catch (refused) {
         const left = readdirSync(directory);
         if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`, { cause: refused });
         throw refused;
       }
-      const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
-      return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
+      const listed = readdirSync(directory);
+      const journalOf = name => /^(.*)-(?:journal|shm|wal)$/s.exec(name)?.[1];
+      return { value: { text: listed.filter(name => !listed.includes(journalOf(name))).join(',') } };
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

@@ -13,16 +13,16 @@ const root = resolve(new URL('../..', import.meta.url).pathname);
 caseTest('a TypeScript build is exclusive and a reader of packages/ts is shared', COMPUTE, () => {
   assert.equal(typescriptLease({ command: 'npm run typescript:build' }), 'exclusive');
   assert.equal(typescriptLease({ command: 'make dbspec-ts-check' }), 'exclusive');
-  assert.equal(typescriptLease({ command: 'node packages/ts/tests/dsn.mjs' }), 'shared');
+  assert.equal(typescriptLease({ command: 'node packages/ts/tests/dsn_connection-sqlite.test.mjs' }), 'shared');
   assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['packages/ts/src/index.ts'] }), 'shared');
   assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['packages/go/go.mod'] }), undefined);
 });
 
 // The manifest case reads every verify command of contracts/features.json and checks that the one that reads packages/ts holds the shared lease.
-caseTest('the dsn TypeScript command of the manifest holds the shared lease', COMPUTE, () => {
+caseTest('the markdown session TypeScript command of the manifest holds the shared lease', COMPUTE, () => {
   const manifest = readFeatures(root);
-  const check = (manifest.features ?? []).flatMap(feature => feature.verification ?? []).find(item => item.id === 'dsn-typescript');
-  assert.ok(check, 'the manifest declares dsn-typescript');
+  const check = (manifest.features ?? []).flatMap(feature => feature.verification ?? []).find(item => item.id === 'markdown-session-typescript');
+  assert.ok(check, 'the manifest declares markdown-session-typescript');
   assert.equal(typescriptLease(check), 'shared');
 });
 
@@ -39,7 +39,7 @@ async function readerSeesBuild(): Promise<number> {
     const directory = join(dir, 'leases');
     mkdirSync(directory);
     const buildCheck = { command: 'npm run typescript:build' };
-    const readCheck = { command: 'node packages/ts/tests/dsn.mjs' };
+    const readCheck = { command: 'node packages/ts/tests/dsn_connection-sqlite.test.mjs' };
     const under = (check: { command: string }) => {
       const mode = typescriptLease(check);
       return old || mode === undefined ? undefined : { program, directory, mode };

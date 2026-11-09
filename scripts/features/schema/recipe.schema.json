@@ -1992,7 +1992,6 @@
         "required": [
           "op",
           "name",
-          "query",
           "expect"
         ],
         "additionalProperties": false,
@@ -2006,7 +2005,7 @@
           },
           "query": {
             "type": "string",
-            "description": "The query of the SQLite DSN."
+            "description": "The query of the SQLite DSN; without it the DSN has no query."
           },
           "config": {
             "type": "object",

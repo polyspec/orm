@@ -837,10 +837,10 @@ final class Recipe
     }
 
     /**
-     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file,
-     * FCV-4, CFG-26).
+     * The names in a new directory, other than the journals of a file of it, after a connection to a file of it with
+     * the query, if any (dsn.sqlite_file, FCV-4, CFG-11, CFG-26).
      */
-    private static function sqliteFileNames(string $name, string $query, array $config = []): string
+    private static function sqliteFileNames(string $name, ?string $query, array $config = []): string
     {
         $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
         if (!mkdir($directory, 0o700)) {
@@ -848,14 +848,16 @@ final class Recipe
         }
         try {
             try {
-                self::connectDriver("sqlite://$directory/$name?$query", $config);
+                self::connectDriver("sqlite://$directory/$name" . ($query === null ? '' : "?$query"), $config);
             } catch (OrmException $refused) {
                 Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
                 throw $refused;
             }
-            $names = array_diff(
-                scandir($directory),
-                ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
+            $listed = array_values(array_diff(scandir($directory), ['.', '..']));
+            $names = array_filter(
+                $listed,
+                static fn(string $entry): bool => preg_match('/^(.*)-(?:journal|shm|wal)$/s', $entry, $m) !== 1
+                    || !in_array($m[1], $listed, true),
             );
             return implode(',', $names);
         } finally {
@@ -3689,7 +3691,9 @@ final class Recipe
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
             case 'dsn.sqlite_file':
-                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'], $s['config'] ?? [])]];
+                return [
+                    'value' => ['text' => self::sqliteFileNames($s['name'], $s['query'] ?? null, $s['config'] ?? [])],
+                ];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);

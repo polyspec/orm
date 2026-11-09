@@ -3113,7 +3113,6 @@
         "tests/codec/*.json",
         "tests/conformance/*.json",
         "tests/dbspec/*.json",
-        "tests/dsn/sqlite-paths.json",
         "tests/ir/*.json",
         "tests/markdown/*.json",
         "tests/conformance/schema/**",

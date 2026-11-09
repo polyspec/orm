@@ -71,20 +71,16 @@
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-        "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/cases/zone.rs",
-        "packages/rust/orm/tests/cases/sqlite_file_name.rs",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/tests/tests/all/integration_program/mod.rs",
-        "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/all/example_dsn.rs",
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/cases/mysql_tls.rs",
-        "tests/dsn/sqlite-paths.json",
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
         "packages/php-ext/src/markdown_native.h",
@@ -95,7 +91,6 @@
         "packages/rust/orm/tests/unit/bind_vectors.rs",
         "packages/python/tests/test_markdown.py",
         "tests/bind/vectors.json",
-        "packages/python/tests/test_sqlite_paths.py",
         "packages/python/tests/test_sqlite_version.py",
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
@@ -267,28 +262,16 @@
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/DsnTest.php",
-            "tests/dsn/sqlite-paths.json"
-          ]
-        },
-        {
-          "id": "dsn-typescript",
-          "command": "node packages/ts/tests/dsn.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/dsn.mjs",
-            "tests/dsn/sqlite-paths.json"
+            "packages/php/tests/DsnTest.php"
           ]
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone:: sqlite_file_name::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/cases/zone.rs",
-            "packages/rust/orm/tests/cases/sqlite_file_name.rs",
-            "contracts/fixtures/zone.dbs",
-            "tests/dsn/sqlite-paths.json"
+            "contracts/fixtures/zone.dbs"
           ]
         },
         {
@@ -324,15 +307,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/cases/mysql_tls.rs"
-          ]
-        },
-        {
-          "id": "sqlite-path-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestSQLitePathCases)$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/sqlite_path_test.go",
-            "tests/dsn/sqlite-paths.json"
           ]
         },
         {
@@ -381,14 +355,12 @@
         },
         {
           "id": "dsn-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_paths && packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_version && packages/python/.venv/bin/python -m packages.python.tests.test_placeholders && packages/python/.venv/bin/python -m packages.python.tests.test_driver_cells",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_version && packages/python/.venv/bin/python -m packages.python.tests.test_placeholders && packages/python/.venv/bin/python -m packages.python.tests.test_driver_cells",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_sqlite_paths.py",
             "packages/python/tests/test_sqlite_version.py",
             "packages/python/tests/test_placeholders.py",
             "packages/python/tests/test_driver_cells.py",
-            "tests/dsn/sqlite-paths.json",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/placeholders.py"
           ]
