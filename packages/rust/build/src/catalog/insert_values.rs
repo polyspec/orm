@@ -1,9 +1,10 @@
 //! Bounded typed insert assignment and generated-identity validation.
+use super::CatalogError;
 use super::{assignment_budget, mutation::cell, row_snapshot, row_update::exceeds_declared_capacity, TableMetadata};
 use crate::tool_db::{self, P};
 use std::collections::HashSet;
 
-pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect: &str) -> Result<Option<Vec<P>>, String> {
+pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect: &str) -> Result<Option<Vec<P>>, CatalogError> {
     row_snapshot::descriptor(metadata)?;
     if values.len() > metadata.columns.len() {
         return Err("ROW_INSERT_INVALID: invalid assignments".into());
@@ -17,7 +18,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
             return Err("ROW_INSERT_INVALID: invalid column assignment".into());
         }
         if exceeds_declared_capacity(&column.native_type, &cell(value)).map_err(|error| format!("ROW_INSERT_INVALID: invalid declared capacity: {error}"))? {
-            return Err(format!("ROW_INSERT_INVALID: value exceeds the declared capacity of column \"{name}\""));
+            return Err(format!("ROW_INSERT_INVALID: value exceeds the declared capacity of column \"{name}\"").into());
         }
         let size = match value {
             P::S(v) | P::Decimal(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => v.len(),

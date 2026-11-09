@@ -57,13 +57,21 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
   const stored = autoKey ? [11, 'generated'] : expressionDefault ? ['expression-key-001', 1, null] : [2, 'generated', 50];
   let inserted = false;
   let locatorReads = 0;
-  const fieldsFor = names => names.map(name => ({ name, type: columns.find(column => column.name === name)?.nativeType ?? 'varchar' }));
+  // Each field has the native type name that mysql2 reports for it (driver.ts mysqlColumn): a column by its declared type, and a
+  // metadata column by the type of its information_schema expression.
+  const driverTypes = { bigint: 'BIGINT', text: 'TEXT', ORDINAL_POSITION: 'BIGINT', IS_NULLABLE: 'BIGINT', GENERATED: 'BIGINT', AUTO_KEY: 'BIGINT', EXPRESSION_DEFAULT: 'BIGINT', partial_revokes: 'BIGINT' };
+  const driverType = name => {
+    const declared = columns.find(column => column.name === name)?.nativeType;
+    if (declared === undefined) return driverTypes[name] ?? 'VARCHAR';
+    return driverTypes[declared] ?? (declared.startsWith('varchar') ? 'VARCHAR' : declared.toUpperCase());
+  };
+  const fieldsFor = names => names.map(name => ({ name, type: driverType(name) }));
   const rowsFor = (sql) => {
     if (sql.startsWith('SELECT TABLE_TYPE')) return { names: ['TABLE_TYPE'], rows: [['BASE TABLE']] };
     if (sql.startsWith('SELECT c.COLUMN_NAME')) return {
       names: ['COLUMN_NAME', 'COLUMN_TYPE', 'IS_NULLABLE', 'GENERATED', 'ORDINAL_POSITION', 'AUTO_KEY', 'COLUMN_DEFAULT', 'EXPRESSION_DEFAULT'],
-      rows: columns.map(column => [column.name, column.nativeType, column.nullable, column.generated,
-        keyOrdinals.get(column.name) ?? 0, column.automaticKey, column.defaultExpression, column.expressionDefault]),
+      rows: columns.map(column => [column.name, column.nativeType, Number(column.nullable), Number(column.generated),
+        keyOrdinals.get(column.name) ?? 0, Number(column.automaticKey), column.defaultExpression, Number(column.expressionDefault)]),
     };
     if (sql === 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)') return { names: ['partial_revokes'], rows: [[0]] };
     if (sql === 'SELECT CURRENT_USER()') return { names: ['CURRENT_USER()'], rows: [['orm@localhost']] };

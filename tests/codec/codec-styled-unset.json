@@ -1,0 +1,119 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "styled_value_unset",
+      "requirements": [
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: styled value is unset"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "unknown"
+          ],
+          "value": {
+            "styled_unset": true
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: style unknown"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

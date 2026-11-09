@@ -1,4 +1,5 @@
 //! Pure update checks; the executor owns locking, rollback and commit.
+use super::CatalogError;
 use super::{assignment_budget, row_snapshot, RowSnapshot, TableMetadata};
 use crate::tool_db::{GridCell, GridQueryResult};
 use std::collections::HashSet;
@@ -7,12 +8,12 @@ use std::collections::HashSet;
 #[path = "../../tests/unit/row_update_budget.rs"]
 mod tests;
 
-fn invalid() -> String {
+fn invalid() -> CatalogError {
     "ROW_UPDATE_INVALID: invalid column assignments".into()
 }
 
-fn invalid_with(error: impl std::fmt::Display) -> String {
-    format!("ROW_UPDATE_INVALID: invalid column assignments: {error}")
+fn invalid_with(error: impl std::fmt::Display) -> CatalogError {
+    format!("ROW_UPDATE_INVALID: invalid column assignments: {error}").into()
 }
 
 fn declared_capacity(native_type: &str, names: &[&str]) -> Result<Option<usize>, std::num::ParseIntError> {
@@ -56,7 +57,7 @@ pub(super) fn exceeds_declared_capacity(native_type: &str, cell: &GridCell) -> R
 }
 
 impl RowSnapshot {
-    fn updated_cells(&self, changes: &[(String, GridCell)]) -> Result<Vec<GridCell>, String> {
+    fn updated_cells(&self, changes: &[(String, GridCell)]) -> Result<Vec<GridCell>, CatalogError> {
         if changes.is_empty() || changes.len() > self.metadata().columns.len() {
             return Err(invalid());
         }
@@ -68,7 +69,7 @@ impl RowSnapshot {
                 return Err(invalid());
             }
             if exceeds_declared_capacity(&column.native_type, cell).map_err(invalid_with)? {
-                return Err(format!("ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"{name}\""));
+                return Err(format!("ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"{name}\"").into());
             }
             let size = match cell {
                 GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => value.len(),
@@ -87,12 +88,12 @@ impl RowSnapshot {
         Ok(cells)
     }
     /// Validate before any SQL is executed. This does not authorize a write.
-    pub fn validate_update(&self, changes: &[(String, GridCell)]) -> Result<(), String> {
+    pub fn validate_update(&self, changes: &[(String, GridCell)]) -> Result<(), CatalogError> {
         self.updated_cells(changes).map(|_| ())
     }
     /// Fetch by the resulting keys inside the same writable transaction.
     /// A failed check requires rollback; generated values may be recomputed.
-    pub fn check_updated(&self, metadata: &TableMetadata, result: &GridQueryResult, changes: &[(String, GridCell)]) -> Result<(), String> {
+    pub fn check_updated(&self, metadata: &TableMetadata, result: &GridQueryResult, changes: &[(String, GridCell)]) -> Result<(), CatalogError> {
         let expected = self.updated_cells(changes)?;
         if metadata != self.metadata() {
             return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());

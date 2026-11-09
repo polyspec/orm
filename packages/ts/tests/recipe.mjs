@@ -14,7 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CatalogFloat, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
@@ -57,6 +57,9 @@ function registerRecipeCase(recipeCase, database, deadline, body) {
   });
 }
 
+// The ops that read the ordered-json value of the recipe (runRecipe).
+const LITERAL_OPS = new Set(['ir.validate', 'markdown.send', 'model.assign']);
+
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
@@ -64,9 +67,12 @@ export function runRecipe(path, database) {
   const text = readFileSync(resolve(root, path), 'utf8');
   checkKeys(path, text);
   const recipe = JSON.parse(text);
-  const literal = parseJson(text);
-  // The recipe as wrappers, so that an expect's integers are compared by their digits (not by a JavaScript number).
-  const wrapped = fromJson(literal);
+  // The recipe as its ordered-json value, so that a request keeps its number literals and an expect's integers are
+  // compared by their digits (not by a JavaScript number), read only for the ops that read them: an ordered-json value
+  // holds 256 levels, and a recipe value of COD-70 json-depth is nested deeper than that.
+  const literal = recipe.cases.some(recipeCase => recipeCase.steps.some(step => LITERAL_OPS.has(step.op))) ? parseJson(text) : undefined;
+  // The recipe as wrappers.
+  const wrapped = literal === undefined ? undefined : fromJson(literal);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
@@ -285,6 +291,8 @@ function run(step, bound, database) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'} (${result.error ?? result.value}), want ${expect.error}`);
     // message is the whole text of the error, its code included (INT-163).
     if (expect.message !== undefined && result.error.message !== expect.message) throw new Error(`error message ${JSON.stringify(result.error.message)}, want ${JSON.stringify(expect.message)}`);
+    // library_cause: the error keeps the failure of the library that its rule meets as its cause (COD-71).
+    if (expect.library_cause === true && !(result.error.cause instanceof Error)) throw new Error(`the error ${JSON.stringify(result.error.message)} keeps no library cause`);
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
@@ -417,8 +425,12 @@ function reference(name, bound) {
   return result.value;
 }
 
-// holdsBytes is whether the recipe value is bytes or a list or a map that holds bytes at any depth.
-const holdsBytes = raw => 'bytes_hex' in raw || (raw.array ?? []).some(holdsBytes) || (raw.object ?? []).some(([, item]) => holdsBytes(item));
+// holdsHostValue is whether the recipe value is, or holds at any depth, a value that has no JSON text: bytes, a non-finite
+// float, a string with a lone surrogate or an undefined member (FCV-4).
+const HOST_VALUES = ['bytes_hex', 'f64', 'text_code_points', 'undefined'];
+const holdsHostValue = raw => HOST_VALUES.some(kind => kind in raw) || (raw.array ?? []).some(holdsHostValue) || (raw.object ?? []).some(([, item]) => holdsHostValue(item));
+// nesting is the number of levels of lists and maps of a recipe value; an ordered-json value holds 256 (COD-70 json-depth).
+const nesting = raw => ('array' in raw || 'object' in raw ? 1 + Math.max(0, ...(raw.array ?? []).map(nesting), ...(raw.object ?? []).map(([, item]) => nesting(item))) : 0);
 
 // styledArgument is the styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage,
 // so that its member order and number text are those of the recipe, and the common value model otherwise.
@@ -430,8 +442,9 @@ function styledArgument(raw, styles, bound) {
   if ('null' in raw) return StyledValue.sqlNull();
   // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
   if ('ordered_json' in raw) return StyledValue.value(parseJson(jsonText(raw.ordered_json)));
-  // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
-  if (styles.includes('ordered_json') && !holdsBytes(raw)) return StyledValue.value(parseJson(jsonText(raw)));
+  // A value with no JSON text, or nested deeper than an ordered-json value holds, reaches an ordered_json stage as the
+  // value it is (COD-63, COD-70).
+  if (styles.includes('ordered_json') && !holdsHostValue(raw) && nesting(raw) <= 256) return StyledValue.value(parseJson(jsonText(raw)));
   return StyledValue.value(toValue(raw));
 }
 
@@ -456,6 +469,9 @@ function toValue(w) {
   // Number reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
   if ('f64' in w) return Number(w.f64);
   if ('text' in w) return w.text;
+  // A string of those code points, a lone surrogate among them (FCV-4).
+  if ('text_code_points' in w) return String.fromCodePoint(...w.text_code_points);
+  if ('undefined' in w) return undefined;
   if ('bytes_hex' in w) return Buffer.from(w.bytes_hex, 'hex');
   if ('array' in w) return w.array.map(toValue);
   if ('object' in w) return Object.fromEntries(w.object.map(([key, value]) => [key, toValue(value)]));
@@ -713,6 +729,8 @@ function eventObject(record) {
 /** The recipe wrapper of a bind value (the values of the statement_events fixture: text, int and null). */
 function bindWrapper(value) {
   if (value === null) return { null: true };
+  // A float of a read is a CatalogFloat; the f64 wrapper names a non-finite one, as JSON cannot.
+  if (value instanceof CatalogFloat) return Number.isFinite(value.value) ? { float: String(value.value) } : { f64: String(value.value) };
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'string') return { text: value };
   if (typeof value === 'boolean') return { bool: value };
@@ -860,7 +878,7 @@ const OPS = {
       return at;
     });
     const types = page.result.columns.map(c => c.nativeType);
-    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => plain(row[at], types[at]))) };
+    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => described(row[at], types[at]))) };
   },
   async 'catalog.read_only_query'(s, context) {
     const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(stepArgument(bind, context), context))), limits(s));
@@ -904,7 +922,7 @@ const OPS = {
   async 'catalog.row_cells'(s, context) {
     const snapshot = stepArgument(s.snapshot, context);
     const types = snapshot.metadata.columns.map(c => c.nativeType);
-    return { cells: snapshot.originalCells().map((cell, at) => plain(cell, types[at])) };
+    return { cells: snapshot.originalCells().map((cell, at) => described(cell, types[at])) };
   },
   async 'catalog.insert_row'(s, context) {
     const metadata = stepArgument(s.metadata, context);
@@ -1255,6 +1273,8 @@ function sequenceValues({ from, count }) {
 /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
 function plain(value, nativeType) {
   if (value === null) return { null: true };
+  // A float of a read is a CatalogFloat; the f64 wrapper names a non-finite one, as JSON cannot.
+  if (value instanceof CatalogFloat) return Number.isFinite(value.value) ? { float: String(value.value) } : { f64: String(value.value) };
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'boolean') return { bool: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
@@ -1264,6 +1284,30 @@ function plain(value, nativeType) {
   if (typeof value === 'number') return { float: String(value) };
   throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
 }
+
+/**
+ * The recipe wrapper of a value of a described table. A float is a bits cell (INT-183): a CatalogFloat of a 4-byte float holds a
+ * single-precision value. A text takes the temporal or decimal kind of its column only in the form of that kind: a SQLite column
+ * declared TIME(3) keeps a text such as abc (INT-184).
+ */
+function described(value, nativeType) {
+  if (value instanceof CatalogFloat) {
+    if (value.single) return { f32_bits: new Uint32Array(new Float32Array([value.value]).buffer)[0] };
+    return { f64_bits: String(new BigUint64Array(new Float64Array([value.value]).buffer)[0]) };
+  }
+  if (typeof value === 'string') {
+    const kind = temporalKind(nativeType);
+    if (kind !== null && !KIND_FORMS[kind].test(value)) return { text: value };
+  }
+  return plain(value, nativeType);
+}
+
+const KIND_FORMS = {
+  date: /^\d{4}-\d{2}-\d{2}$/,
+  time: /^\d{2}:\d{2}:\d{2}(\.\d+)?$/,
+  datetime: /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/,
+  decimal: /^-?\d+(\.\d+)?$/,
+};
 
 function temporalKind(nativeType) {
   const type = (nativeType ?? '').toLowerCase();
@@ -1292,7 +1336,7 @@ function grid(cell) {
 /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
 function mutation(metadata, result) {
   const types = result.columns.map(column => metadata.columns.find(c => c.name === column)?.nativeType ?? null);
-  return { rows: result.rows.map(row => row.map((cell, at) => plain(cell, types[at]))) };
+  return { rows: result.rows.map(row => row.map((cell, at) => described(cell, types[at]))) };
 }
 
 /** NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none. */
@@ -1300,6 +1344,11 @@ function normalized(value) {
   if (Array.isArray(value)) return value.map(normalized);
   if (value === null || typeof value !== 'object') return value;
   if (Object.keys(value).length === 1 && 'null' in value) return { null: true };
+  // An f64 wrapper is compared by its binary64 value, so it equals the float wrapper of that value whatever its text (2 or 2.0).
+  if (Object.keys(value).length === 1 && typeof (value.f64 ?? value.float) === 'string') {
+    const number = Number(value.f64 ?? value.float);
+    return { f64: Object.is(number, -0) ? '-0' : String(number) };
+  }
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)]));
 }
 

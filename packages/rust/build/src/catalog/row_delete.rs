@@ -1,4 +1,5 @@
 //! Delete an exact checked original row under an owning transaction.
+use super::CatalogError;
 use super::{
     metadata,
     mutation::{begin_mutation, cancelled, lock_original, lookup, predicate, prepare_mutation, qualified, CommitPermit, Publisher},
@@ -7,16 +8,22 @@ use super::{
 use std::sync::{atomic::AtomicBool, Arc};
 
 impl CatalogConnection {
-    pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher, permit: CommitPermit) -> Result<u64, String> {
+    pub async fn delete_row(
+        &self,
+        original: &RowSnapshot,
+        cancellation: Arc<AtomicBool>,
+        publish: Publisher,
+        permit: CommitPermit,
+    ) -> Result<u64, CatalogError> {
         let keys = prepare_mutation(original, &self.dialect, &cancellation, &publish)?;
         let _closes = super::ClosesOnDrop(self);
         let mut connection = begin_mutation(self, &cancellation).await?;
-        let result = async {
+        let result: Result<_, CatalogError> = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
             let affected = connection.exec(&sql, &keys).await.map_err(super::catalog_write_error)?;
             if affected != 1 {
-                return Err(format!("ROW_WRITE_MISMATCH: expected exactly one deleted row, got {affected}"));
+                return Err(format!("ROW_WRITE_MISMATCH: expected exactly one deleted row, got {affected}").into());
             }
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;

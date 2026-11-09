@@ -97,11 +97,11 @@ class CatalogDescribedTemporalTest(unittest.TestCase):
                 self.assertEqual(_same_row([stored], [requested]), want)
 
     def test_described_temporal_text(self):
-        from polyspec.orm.catalog import _described_temporal
-
         stamp = datetime(2026, 1, 2, 3, 4, 5, 123000)
         whole = datetime(2026, 1, 2, 3, 4, 5)
         aware = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        # A MySQL value carries the field type of its column, a PostgreSQL text the cell class of its type OID.
+        mysql_codes = {"date": 10, "time": 11, "datetime": 12, "timestamp": 7}
         cases = [
             (
                 "MySQL datetime of default precision",
@@ -148,22 +148,22 @@ class CatalogDescribedTemporalTest(unittest.TestCase):
             ),
             (
                 "PostgreSQL timestamp(3) text",
-                "2026-01-02 03:04:05.123",
+                b"2026-01-02 03:04:05.123",
                 "timestamp(3) without time zone",
                 "postgres",
                 "2026-01-02 03:04:05.123",
             ),
-            ("PostgreSQL date text", "2024-02-29", "date", "postgres", "2024-02-29"),
+            ("PostgreSQL date text", b"2024-02-29", "date", "postgres", "2024-02-29"),
             (
                 "PostgreSQL time(3) without trailing zeros",
-                "12:34:56.5",
+                b"12:34:56.5",
                 "time(3) without time zone",
                 "postgres",
                 "12:34:56.500",
             ),
             (
                 "PostgreSQL time of default precision",
-                "12:34:56",
+                b"12:34:56",
                 "time without time zone",
                 "postgres",
                 "12:34:56.000000",
@@ -184,138 +184,177 @@ class CatalogDescribedTemporalTest(unittest.TestCase):
                 "sqlite",
                 "12:34:56.5",
             ),
+            (
+                "SQLite TIME(3) holds a text that is no time",
+                "abc",
+                "TIME(3)",
+                "sqlite",
+                "abc",
+            ),
         ]
         for name, value, native, dialect, want in cases:
             with self.subTest(case=name):
-                column = CatalogColumn(
-                    "c",
-                    native,
-                    True,
-                    False,
-                    check_precision=3 if native == "TIME" else None,
-                )
-                self.assertEqual(_described_temporal(value, column, dialect), want)
+                self.assertEqual(_described(native, dialect, value, mysql_codes), want)
         refused = [
             (
                 "a zoned PostgreSQL value",
-                aware,
+                b"2026-01-02 03:04:05+00",
                 "timestamp with time zone",
                 "postgres",
-                codes.CATALOG_VALUE,
+                "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported",
             ),
             (
                 "a MySQL TIMESTAMP",
                 whole,
                 "timestamp",
                 "mysql",
-                codes.CATALOG_VALUE,
+                "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone",
             ),
             (
                 "digit past the declared precision",
                 stamp,
                 "datetime(2)",
                 "mysql",
-                codes.GRID_TEMPORAL_PRECISION,
-            ),
-            (
-                "time digit past the declared precision",
-                "12:34:56.5",
-                "time",
-                "mysql",
-                codes.GRID_TEMPORAL_PRECISION,
+                "GRID_TEMPORAL_PRECISION: column 2: temporal value has more fraction digits than its precision",
             ),
             (
                 "PostgreSQL digit past the declared precision",
-                "12:34:56.1234",
+                b"12:34:56.1234",
                 "time(3) without time zone",
                 "postgres",
-                codes.GRID_TEMPORAL_PRECISION,
+                "GRID_TEMPORAL_PRECISION: column 2: temporal value has more fraction digits than its precision",
             ),
             (
-                "time outside a day",
-                "25:00:00",
-                "time",
+                "a native type of more than 6 fraction digits",
+                stamp,
+                "datetime(7)",
                 "mysql",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_PRECISION: column 2: native type declares more than 6 fraction digits",
             ),
             (
                 "MySQL time outside a day",
                 timedelta(hours=25),
                 "time",
                 "mysql",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999",
             ),
             (
                 "MySQL negative time",
                 timedelta(seconds=-1),
                 "time",
                 "mysql",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999",
             ),
             (
                 "MySQL zero date",
                 "0000-00-00",
                 "date",
                 "mysql",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31",
+            ),
+            (
+                "MySQL invalid calendar date",
+                "2024-02-30",
+                "date",
+                "mysql",
+                "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date",
             ),
             (
                 "PostgreSQL 24:00:00",
-                "24:00:00",
+                b"24:00:00",
                 "time without time zone",
                 "postgres",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999",
             ),
             (
                 "PostgreSQL infinity",
-                "infinity",
+                b"infinity",
                 "timestamp without time zone",
                 "postgres",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31",
             ),
             (
                 "PostgreSQL BC date",
-                "0044-03-15 BC",
+                b"0044-03-15 BC",
                 "date",
                 "postgres",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31",
             ),
-            ("aware datetime", aware, "datetime", "mysql", codes.GRID_TEMPORAL_VALUE),
+            (
+                "aware datetime",
+                aware,
+                "datetime",
+                "mysql",
+                "CATALOG_VALUE: column 2: unsupported driver value",
+            ),
             (
                 "SQLite text of other digits than its CHECK",
                 "12:34:56.5",
                 "TIME",
                 "sqlite",
-                codes.GRID_TEMPORAL_PRECISION,
+                "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes",
             ),
             (
                 "SQLite time text in a DATETIME column",
                 "12:34:56",
                 "DATETIME",
                 "sqlite",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime",
             ),
-            ("SQLite integer", 20240229, "DATE", "sqlite", codes.GRID_TEMPORAL_VALUE),
+            (
+                "SQLite integer",
+                20240229,
+                "DATE",
+                "sqlite",
+                "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date",
+            ),
             (
                 "SQLite date with a time",
                 "2024-02-29 00:00:00",
                 "DATE",
                 "sqlite",
-                codes.GRID_TEMPORAL_VALUE,
+                "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date",
+            ),
+            (
+                "SQLite time of the year 0",
+                "0000-01-01",
+                "DATE",
+                "sqlite",
+                "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31",
+            ),
+            (
+                "SQLite time outside a day",
+                "24:00:00.500",
+                "TIME",
+                "sqlite",
+                "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999",
             ),
         ]
-        for name, value, native, dialect, code in refused:
+        for name, value, native, dialect, message in refused:
             with self.subTest(case=name):
-                column = CatalogColumn(
-                    "c",
-                    native,
-                    True,
-                    False,
-                    check_precision=3 if native == "TIME" else None,
-                )
                 with self.assertRaises(OrmError) as raised:
-                    _described_temporal(value, column, dialect)
-                self.assertEqual(raised.exception.code, code)
+                    _described(native, dialect, value, mysql_codes)
+                self.assertEqual(str(raised.exception), message)
+
+
+def _described(native: str, dialect: str, value, mysql_codes: dict):
+    """The described value of one value of a column of the native type at position 2 of its table."""
+    from polyspec.orm.catalog import _PG_CLASSES, _described_value
+
+    column = CatalogColumn(
+        "c", native, True, False, check_precision=3 if native == "TIME" else None
+    )
+    base = native.split("(")[0].split(" ")[0]
+    code = mysql_codes.get(base) if dialect == "mysql" else None
+    cls = None
+    if dialect == "postgres":
+        zoned = "with time zone" in native
+        cls = (
+            "zoned"
+            if zoned
+            else _PG_CLASSES[{"date": 1082, "time": 1083, "timestamp": 1114}[base]]
+        )
+    return _described_value(value, column, dialect, code, 2, cls)
 
 
 if __name__ == "__main__":

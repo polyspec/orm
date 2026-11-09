@@ -43,8 +43,9 @@ base64 = "0.22"
 aes-gcm = { version = "0.10", features = ["std"] }
 sha2 = "0.10"
 hmac = "0.12"
-saphyr-parser = "0.2.1"
-serde-saphyr = "2.0.0"
+# The YAML writer. The yaml stage reads with the YAML reader of orm and no library (docs/spec/codec.md COD-74), so only
+# the feature that writes is built.
+serde-saphyr = { version = "2.0.0", default-features = false, features = ["serialize"] }
 
 [dev-dependencies]
 # The fault entry point exists only with the feature test-faults. The integration tests of this crate

@@ -1,4 +1,6 @@
+use super::value::{self, malformed, malformed_by, refuse, unsupported_driver_value};
 use super::{QueryColumn, Val};
+use polyspec_orm::chrono::{NaiveDate, NaiveTime, TimeDelta};
 
 /// Typed native query values; binary is never interpreted as UTF-8 text.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -39,42 +41,124 @@ pub struct GridQueryResult {
     pub rows: Vec<Vec<GridCell>>,
 }
 
+/// A PostgreSQL numeric of a grid cell: its plain digits at the scale of the value, or INT-169 for NaN and the infinities.
 pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Result<GridCell, sqlx::Error> {
-    use sqlx::Row;
-    let invalid = || super::unsupported_value("unsupported or invalid finite grid decimal");
-    let invalid_with = |error: &dyn std::fmt::Display| super::unsupported_value(format_args!("unsupported or invalid finite grid decimal: {error}"));
-    let Some(decimal) = row.try_get::<Option<bigdecimal::BigDecimal>, _>(index).map_err(|error| invalid_with(&error))? else { return Ok(GridCell::Null) };
+    use sqlx::{Row, ValueRef};
     let raw = row.try_get_raw(index)?;
-    let decimal = if raw.format() == sqlx::postgres::PgValueFormat::Binary {
-        let bytes = raw.as_bytes().map_err(|error| invalid_with(&error))?;
-        if bytes.len() < 8 {
-            return Err(invalid());
-        }
-        let scale = u16::from_be_bytes([bytes[6], bytes[7]]);
-        let scaled = decimal.with_scale(i64::from(scale));
-        if scaled != decimal {
-            return Err(invalid());
-        }
-        scaled
-    } else {
-        decimal
-    };
-    Ok(GridCell::Decimal(decimal.to_plain_string()))
-}
-
-use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
-
-fn temporal_error(message: &str) -> sqlx::Error {
-    sqlx::Error::Decode(format!("TOOL_QUERY_TEMPORAL: {message}").into())
-}
-
-/// `YYYY-MM-DD` within the dbspec date range 0001-01-01 to 9999-12-31.
-fn date_text(date: NaiveDate) -> Result<String, sqlx::Error> {
-    use polyspec_orm::chrono::Datelike;
-    if !(1..=9999).contains(&date.year()) {
-        return Err(temporal_error("date outside 0001-01-01 to 9999-12-31"));
+    if raw.is_null() {
+        return Ok(GridCell::Null);
     }
-    Ok(date.format("%Y-%m-%d").to_string())
+    if raw.format() != sqlx::postgres::PgValueFormat::Binary {
+        return Err(unsupported_driver_value());
+    }
+    let text = super::pg_text::numeric(raw.as_bytes().map_err(sqlx::Error::Decode)?)?;
+    if matches!(text.as_str(), "NaN" | "Infinity" | "-Infinity") {
+        return Err(refuse(value::POSTGRES_NUMERIC_NOT_FINITE));
+    }
+    Ok(GridCell::Decimal(text))
+}
+
+/// A PostgreSQL numeric of a plain read: the text of its value, NaN and the infinities included.
+pub(super) fn postgres_numeric_text(row: &sqlx::postgres::PgRow, index: usize) -> Result<Val, sqlx::Error> {
+    use sqlx::{Row, ValueRef};
+    let raw = row.try_get_raw(index)?;
+    if raw.is_null() {
+        return Ok(Val::Null);
+    }
+    if raw.format() != sqlx::postgres::PgValueFormat::Binary {
+        return Err(unsupported_driver_value());
+    }
+    super::pg_text::numeric(raw.as_bytes().map_err(sqlx::Error::Decode)?).map(Val::Text)
+}
+
+/// The text cell of a PostgreSQL value whose type has a text output that no setting changes (INT-185), or None for a type of
+/// another kind.
+pub(super) fn postgres_text(row: &sqlx::postgres::PgRow, index: usize) -> Result<Option<Option<String>>, sqlx::Error> {
+    use sqlx::{Column, Row, ValueRef};
+    let Some(form) = super::pg_text::form(row.columns()[index].type_info()) else { return Ok(None) };
+    let raw = row.try_get_raw(index)?;
+    if raw.is_null() {
+        return Ok(Some(None));
+    }
+    if raw.format() != sqlx::postgres::PgValueFormat::Binary {
+        return Err(unsupported_driver_value());
+    }
+    super::pg_text::render(&form, raw.as_bytes().map_err(sqlx::Error::Decode)?).map(|text| Some(Some(text)))
+}
+
+/// Whether a PostgreSQL value of a type that has neither a text form here nor a cell kind of its own is NULL: its value is
+/// refused by INT-170 and its NULL is a null cell (INT-185). False for a type of a cell kind of its own.
+pub(super) fn postgres_unnamed_null(row: &sqlx::postgres::PgRow, index: usize) -> Result<bool, sqlx::Error> {
+    use sqlx::{Column, Row, ValueRef};
+    if super::pg_text::own_kind(row.columns()[index].type_info()) {
+        return Ok(false);
+    }
+    if row.try_get_raw(index)?.is_null() {
+        Ok(true)
+    } else {
+        Err(super::value::refuse(super::value::UNSUPPORTED_NATIVE_TYPE))
+    }
+}
+
+/// Whether the value of a MySQL column is NULL. A zero DATE, DATETIME or TIMESTAMP is a value: sqlx-mysql's is_null treats
+/// it as NULL (sqlx-mysql src/value.rs), but its bytes are the length prefix 0 of the binary protocol, while a NULL has none.
+pub(super) fn mysql_value(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<Option<&[u8]>, sqlx::Error> {
+    use sqlx::{Row, ValueRef};
+    match row.try_get_unchecked::<&[u8], _>(index) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(_) if row.try_get_raw(index)?.is_null() => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// The date of the binary protocol of MySQL after its length prefix: INT-173 for a year outside 1 to 9999 (the zero date
+/// included), and INT-174 for a month or day of no calendar date, which `ALLOW_INVALID_DATES` stores.
+fn mysql_date(bytes: &[u8]) -> Result<NaiveDate, sqlx::Error> {
+    let [low, high, month, day, ..] = *bytes else { return Err(refuse(value::DATE_RANGE)) };
+    let year = u16::from_le_bytes([low, high]);
+    if !(1..=9999).contains(&year) {
+        return Err(refuse(value::DATE_RANGE));
+    }
+    NaiveDate::from_ymd_opt(i32::from(year), u32::from(month), u32::from(day)).ok_or_else(|| refuse(value::CALENDAR_DATE))
+}
+
+/// The value of a MySQL `DATE` or `DATETIME`: a length prefix of 0, 4, 7 or 11 bytes, the date, the time of day and the
+/// microseconds (the binary protocol of MySQL).
+fn mysql_datetime(bytes: &[u8], date_only: bool) -> Result<GridCell, sqlx::Error> {
+    let (length, body) = bytes.split_first().ok_or_else(|| malformed("a MySQL temporal length"))?;
+    if usize::from(*length) != body.len() || !matches!(length, 0 | 4 | 7 | 11) {
+        return Err(malformed("a MySQL temporal length"));
+    }
+    if *length == 0 {
+        return Err(refuse(value::DATE_RANGE));
+    }
+    let date = mysql_date(body)?;
+    if date_only {
+        if *length != 4 {
+            // A driver date with a time of day (INT-171).
+            return Err(unsupported_driver_value());
+        }
+        return Ok(GridCell::Date(date_text(date)));
+    }
+    let (hour, minute, second) = if *length >= 7 { (body[4], body[5], body[6]) } else { (0, 0, 0) };
+    let micros = if *length == 11 { u32::from_le_bytes([body[7], body[8], body[9], body[10]]) } else { 0 };
+    let time = NaiveTime::from_hms_micro_opt(u32::from(hour), u32::from(minute), u32::from(second), micros).ok_or_else(|| refuse(value::TIME_OF_DAY))?;
+    Ok(GridCell::DateTime(format!("{} {}", date_text(date), time_text(time))))
+}
+
+/// `YYYY-MM-DD` of a date that is within the dbspec date range 0001-01-01 to 9999-12-31.
+fn date_text(date: NaiveDate) -> String {
+    date.format("%Y-%m-%d").to_string()
+}
+
+/// A date within the dbspec date range 0001-01-01 to 9999-12-31, or INT-173.
+fn in_range(date: NaiveDate) -> Result<NaiveDate, sqlx::Error> {
+    use polyspec_orm::chrono::Datelike;
+    if (1..=9999).contains(&date.year()) {
+        Ok(date)
+    } else {
+        Err(refuse(value::DATE_RANGE))
+    }
 }
 
 /// `HH:MM:SS.ffffff` with six fractional digits. A read of a described table is reduced to the column precision.
@@ -82,42 +166,26 @@ fn time_text(time: NaiveTime) -> String {
     time.format("%H:%M:%S%.6f").to_string()
 }
 
-fn datetime_text(value: NaiveDateTime) -> Result<String, sqlx::Error> {
-    Ok(format!("{} {}", date_text(value.date())?, time_text(value.time())))
-}
-
 /// MySQL `DATE`, `TIME`, `DATETIME`. `TIMESTAMP`, which follows a time zone, does not come here.
-/// `TIME` accepts only a time of day; an interval that is negative or 24 hours or more is rejected.
+/// `TIME` accepts only a time of day; an interval that is negative or 24 hours or more is INT-175.
 pub(super) fn mysql_temporal(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<Option<GridCell>, sqlx::Error> {
     use sqlx::{Column, Row, TypeInfo};
     let name = row.columns()[index].type_info().name();
-    if matches!(name, "DATE" | "DATETIME") {
-        // sqlx-mysql's is_null treats a zero DATE or DATETIME as NULL (sqlx-mysql src/value.rs), so the typed decode below
-        // would return a NULL cell for 0000-00-00. The raw value keeps its bytes: a zero date is the length prefix 0 of the
-        // binary protocol, and it is refused as INT-103 states. A true NULL has no bytes and is read by the typed decode.
-        if row.try_get_unchecked::<Vec<u8>, _>(index).is_ok_and(|bytes| bytes.first() == Some(&0)) {
-            return Err(temporal_error("zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31"));
-        }
+    if !matches!(name, "DATE" | "DATETIME" | "TIME") {
+        return Ok(None);
     }
+    let Some(bytes) = mysql_value(row, index)? else { return Ok(Some(GridCell::Null)) };
     Ok(Some(match name {
-        "DATE" => match row.try_get::<Option<NaiveDate>, _>(index)? {
-            Some(date) => GridCell::Date(date_text(date)?),
-            None => GridCell::Null,
-        },
-        "TIME" => match row.try_get::<Option<sqlx::mysql::types::MySqlTime>, _>(index)? {
-            Some(time) if time.is_valid_time_of_day() => {
+        "DATE" => mysql_datetime(bytes, true)?,
+        "DATETIME" => mysql_datetime(bytes, false)?,
+        _ => match row.try_get::<sqlx::mysql::types::MySqlTime, _>(index)? {
+            time if time.is_valid_time_of_day() => {
                 let value = NaiveTime::from_hms_micro_opt(time.hours(), u32::from(time.minutes()), u32::from(time.seconds()), time.microseconds())
-                    .ok_or_else(|| temporal_error("time of day"))?;
+                    .ok_or_else(unsupported_driver_value)?;
                 GridCell::Time(time_text(value))
             }
-            Some(_) => return Err(temporal_error("time outside 00:00:00 to 23:59:59.999999")),
-            None => GridCell::Null,
+            _ => return Err(refuse(value::TIME_OF_DAY)),
         },
-        "DATETIME" => match row.try_get::<Option<NaiveDateTime>, _>(index)? {
-            Some(value) => GridCell::DateTime(datetime_text(value)?),
-            None => GridCell::Null,
-        },
-        _ => return Ok(None),
     }))
 }
 
@@ -134,55 +202,91 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
         return Ok(Some(GridCell::Null));
     }
     if raw.format() != sqlx::postgres::PgValueFormat::Binary {
-        return Err(temporal_error("text format"));
+        return Err(unsupported_driver_value());
     }
-    let bytes = raw.as_bytes().map_err(|error| temporal_error(&format!("value bytes: {error}")))?;
+    let bytes = raw.as_bytes().map_err(sqlx::Error::Decode)?;
     let epoch = NaiveDate::from_ymd_opt(2000, 1, 1).expect("2000-01-01 is a date");
     Ok(Some(match name {
         "DATE" => {
-            let days = i32::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("date length: {error}")))?);
-            let date = epoch.checked_add_signed(TimeDelta::days(i64::from(days))).ok_or_else(|| temporal_error("infinite or out of range date"))?;
-            GridCell::Date(date_text(date)?)
+            let days = i32::from_be_bytes(bytes.try_into().map_err(|error| malformed_by("a date length", error))?);
+            // infinity and -infinity are the largest and the smallest day, which are past the range too.
+            let date = epoch.checked_add_signed(TimeDelta::days(i64::from(days))).ok_or_else(|| refuse(value::DATE_RANGE))?;
+            GridCell::Date(date_text(in_range(date)?))
         }
         "TIME" => {
-            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("time length: {error}")))?);
+            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| malformed_by("a time length", error))?);
             if !(0..86_400_000_000).contains(&micros) {
-                return Err(temporal_error("time outside 00:00:00 to 23:59:59.999999"));
+                return Err(refuse(value::TIME_OF_DAY));
             }
             GridCell::Time(time_text(NaiveTime::MIN + TimeDelta::microseconds(micros)))
         }
         _ => {
-            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("timestamp length: {error}")))?);
-            let value = epoch
-                .and_time(NaiveTime::MIN)
-                .checked_add_signed(TimeDelta::microseconds(micros))
-                .ok_or_else(|| temporal_error("infinite or out of range timestamp"))?;
-            GridCell::DateTime(datetime_text(value)?)
+            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| malformed_by("a timestamp length", error))?);
+            let value = epoch.and_time(NaiveTime::MIN).checked_add_signed(TimeDelta::microseconds(micros)).ok_or_else(|| refuse(value::DATE_RANGE))?;
+            GridCell::DateTime(format!("{} {}", date_text(in_range(value.date())?), time_text(value.time())))
         }
     }))
 }
 
-/// dbspec date `YYYY-MM-DD`: a calendar date from 0001-01-01 to 9999-12-31.
-pub(crate) fn is_date(text: &str) -> bool {
-    use polyspec_orm::chrono::{Datelike, NaiveDate};
-    text.len() == 10
-        && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
-}
-
-/// dbspec time `HH:MM:SS` with 0 to 6 fractional digits: a time of day.
-pub(crate) fn is_time(text: &str) -> bool {
-    use polyspec_orm::chrono::NaiveTime;
-    let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
-    whole.len() == 8
-        && NaiveTime::parse_from_str(whole, "%H:%M:%S").is_ok_and(|time| time.format("%H:%M:%S").to_string() == whole)
-        && digits.is_none_or(|digits| (1..=6).contains(&digits.len()) && digits.bytes().all(|digit| digit.is_ascii_digit()))
-}
-
-/// A date, time, or datetime value in dbspec text form. `kind` is one of date, time, datetime.
-pub(crate) fn is_temporal(kind: &str, text: &str) -> bool {
-    match kind {
-        "date" => is_date(text),
-        "time" => is_time(text),
-        _ => text.split_once(' ').is_some_and(|(date, time)| is_date(date) && is_time(time)),
+/// Whether `text` has the form of a `kind` (date, time or datetime): `YYYY-MM-DD`, `HH:MM:SS` with no fraction or one to
+/// `fraction_digits` fraction digits, and the two joined by a space. The form says nothing of the range of the digits; the
+/// dbspec form has at most six fraction digits.
+pub fn has_temporal_form(kind: &str, text: &str, fraction_digits: usize) -> bool {
+    fn digits(text: &str, pattern: &str) -> bool {
+        text.len() == pattern.len() && text.bytes().zip(pattern.bytes()).all(|(byte, mark)| if mark == b'9' { byte.is_ascii_digit() } else { byte == mark })
     }
+    let time = |text: &str| {
+        let (whole, fraction) = text.split_once('.').map_or((text, None), |(whole, fraction)| (whole, Some(fraction)));
+        digits(whole, "99:99:99")
+            && fraction.is_none_or(|fraction| (1..=fraction_digits).contains(&fraction.len()) && fraction.bytes().all(|byte| byte.is_ascii_digit()))
+    };
+    match kind {
+        "date" => digits(text, "9999-99-99"),
+        "time" => time(text),
+        _ => text.split_once(' ').is_some_and(|(date, rest)| digits(date, "9999-99-99") && time(rest)),
+    }
+}
+
+/// The rule that a SQLite text of the dbspec form of `kind` breaks, in the order of INT-165: the date range (INT-173), the
+/// calendar (INT-174) and the time of day (INT-175).
+fn temporal_digits(kind: &str, text: &str) -> Result<(), value::Rule> {
+    let date = |text: &str| -> Result<(), value::Rule> {
+        let year: i32 = text[..4].parse().map_err(|_not_digits| value::UNSUPPORTED_DRIVER_VALUE)?;
+        if !(1..=9999).contains(&year) {
+            return Err(value::DATE_RANGE);
+        }
+        let month: u32 = text[5..7].parse().map_err(|_not_digits| value::UNSUPPORTED_DRIVER_VALUE)?;
+        let day: u32 = text[8..10].parse().map_err(|_not_digits| value::UNSUPPORTED_DRIVER_VALUE)?;
+        NaiveDate::from_ymd_opt(year, month, day).map(|_| ()).ok_or(value::CALENDAR_DATE)
+    };
+    let time = |text: &str| -> Result<(), value::Rule> {
+        let part = |at: usize| text[at..at + 2].parse::<u32>().map_err(|_not_digits| value::UNSUPPORTED_DRIVER_VALUE);
+        NaiveTime::from_hms_opt(part(0)?, part(3)?, part(6)?).map(|_| ()).ok_or(value::TIME_OF_DAY)
+    };
+    match kind {
+        "date" => date(text),
+        "time" => time(text),
+        _ => {
+            date(&text[..10])?;
+            time(&text[11..])
+        }
+    }
+}
+
+/// The rule that the stored text of a SQLite dbspec `kind` column breaks, form first (INT-176 to INT-178), then its digits.
+pub(crate) fn sqlite_temporal(kind: &str, text: &str) -> Result<(), value::Rule> {
+    if !has_temporal_form(kind, text, 6) {
+        return Err(match kind {
+            "date" => value::SQLITE_DATE_FORM,
+            "time" => value::SQLITE_TIME_FORM,
+            _ => value::SQLITE_DATETIME_FORM,
+        });
+    }
+    temporal_digits(kind, text)
+}
+
+/// A date, time, or datetime value in dbspec text form, of a calendar date from 0001-01-01 to 9999-12-31 and a time of day.
+/// `kind` is one of date, time, datetime.
+pub(crate) fn is_temporal(kind: &str, text: &str) -> bool {
+    sqlite_temporal(kind, text).is_ok()
 }

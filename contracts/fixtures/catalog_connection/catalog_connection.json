@@ -33,7 +33,28 @@
     "CFG-41",
     "INT-119",
     "INT-121",
-    "DIA-154"
+    "DIA-154",
+    "INT-165",
+    "INT-166",
+    "INT-167",
+    "INT-168",
+    "INT-169",
+    "INT-170",
+    "INT-171",
+    "INT-172",
+    "INT-173",
+    "INT-174",
+    "INT-175",
+    "INT-176",
+    "INT-177",
+    "INT-178",
+    "INT-179",
+    "INT-180",
+    "INT-181",
+    "INT-182",
+    "INT-183",
+    "INT-184",
+    "INT-185"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -1389,7 +1410,9 @@
     {
       "id": "described_temporal_text",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-178",
+        "INT-179"
       ],
       "steps": [
         {
@@ -1457,7 +1480,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -1474,7 +1498,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION"
+              "error": "GRID_TEMPORAL_PRECISION",
+              "message": "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         },
@@ -1515,7 +1540,10 @@
     {
       "id": "undeclared_temporal_reads",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-167",
+        "INT-168",
+        "INT-179"
       ],
       "steps": [
         {
@@ -1547,7 +1575,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone"
             }
           }
         },
@@ -1611,7 +1640,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -1628,7 +1658,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -1733,7 +1764,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION"
+              "error": "GRID_TEMPORAL_PRECISION",
+              "message": "GRID_TEMPORAL_PRECISION: column 3: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         }
@@ -1743,7 +1775,9 @@
       "id": "grid_declared_columns",
       "requirements": [
         "INT-103",
-        "SCH-6a"
+        "SCH-6a",
+        "INT-167",
+        "INT-168"
       ],
       "steps": [
         {
@@ -1943,10 +1977,12 @@
           "sql": "SELECT ts FROM grid_probe WHERE seq = 1",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
             },
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
             },
             "sqlite": {
               "rows": [
@@ -1968,10 +2004,12 @@
           },
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
             },
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
             },
             "sqlite": {
               "rows": [
@@ -3017,7 +3055,8 @@
     {
       "id": "grid_zero_date",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-173"
       ],
       "steps": [
         {
@@ -3044,7 +3083,8 @@
           "sql": "SELECT d FROM grid_zero_date WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -3056,7 +3096,8 @@
           "sql": "SELECT dt FROM grid_zero_date WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         }
@@ -5146,7 +5187,11 @@
       "requirements": [
         "INT-97",
         "INT-103",
-        "INT-102"
+        "INT-102",
+        "INT-166",
+        "INT-168",
+        "INT-173",
+        "INT-175"
       ],
       "steps": [
         {
@@ -5514,7 +5559,8 @@
           "sql": "SELECT YEAR('2020-01-02')",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
             }
           }
         },
@@ -5526,7 +5572,8 @@
           "sql": "SELECT CAST('-01:00:00' AS TIME)",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -5613,7 +5660,8 @@
           "sql": "SELECT '2020-01-02 03:04:05+00'::timestamptz",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -5625,7 +5673,8 @@
           "sql": "SELECT '24:00:00'::time",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -5637,7 +5686,8 @@
           "sql": "SELECT 'infinity'::timestamp",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -11616,7 +11666,11 @@
     {
       "id": "described_temporal_matrix",
       "requirements": [
-        "INT-101"
+        "INT-101",
+        "INT-167",
+        "INT-168",
+        "INT-173",
+        "INT-175"
       ],
       "steps": [
         {
@@ -11717,7 +11771,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone"
             }
           },
           "only": [
@@ -11750,7 +11805,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999"
             }
           },
           "only": [
@@ -11783,7 +11839,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
             }
           },
           "only": [
@@ -11808,7 +11865,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 3: date outside 0001-01-01 to 9999-12-31"
             }
           },
           "only": [
@@ -11908,7 +11966,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           },
           "only": [
@@ -11941,7 +12000,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           },
           "only": [
@@ -14355,7 +14415,8 @@
     {
       "id": "grid_decimal_values",
       "requirements": [
-        "INT-97"
+        "INT-97",
+        "INT-169"
       ],
       "steps": [
         {
@@ -14499,7 +14560,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: PostgreSQL numeric is not finite"
             }
           }
         }
@@ -14620,6 +14682,1648 @@
                   }
                 ]
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_year",
+      "requirements": [
+        "INT-165",
+        "INT-166"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "MySQL YEAR is no dbspec type, so only the native driver creates it",
+          "sql": "CREATE TABLE value_rule_year (id BIGINT NOT NULL PRIMARY KEY, y YEAR NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a year and a NULL",
+          "sql": "INSERT INTO value_rule_year VALUES (1, 2020), (2, NULL)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT y FROM value_rule_year WHERE id = 1",
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT y FROM value_rule_year WHERE id = 2",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_year",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "y"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: MySQL YEAR has no grid cell"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_year",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "y"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "y"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_calendar_date",
+      "requirements": [
+        "INT-165",
+        "INT-174"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "dates that are no calendar dates, which only a lax sql_mode stores and only the native driver sends",
+          "sql": "CREATE TABLE value_rule_calendar (id BIGINT NOT NULL PRIMARY KEY, d DATE NULL, dt DATETIME NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month",
+          "sql": "INSERT /*+ SET_VAR(sql_mode = 'ALLOW_INVALID_DATES') */ INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT d FROM value_rule_calendar WHERE id = 1",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date is not a calendar date"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT dt FROM value_rule_calendar WHERE id = 2",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date is not a calendar date"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_calendar",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_calendar",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 3: date is not a calendar date"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_time_of_day",
+      "requirements": [
+        "INT-165",
+        "INT-175"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT CAST('838:59:59' AS TIME)",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT CAST('25:00:00' AS TIME) AS value",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_boolean",
+      "requirements": [
+        "INT-165",
+        "INT-182"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a TINYINT(1) column is a described boolean, and only the native driver stores 2 in it",
+          "sql": "CREATE TABLE value_rule_boolean (id BIGINT NOT NULL PRIMARY KEY, b TINYINT(1) NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a value that is neither 0 nor 1",
+          "sql": "INSERT INTO value_rule_boolean VALUES (1, 2)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_boolean",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "b"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a BOOLEAN column is a described boolean, and SQLite stores 2 in it",
+          "sql": "CREATE TABLE value_rule_boolean (id INTEGER PRIMARY KEY, b BOOLEAN NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a value that is neither 0 nor 1",
+          "sql": "INSERT INTO value_rule_boolean VALUES (1, 2)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_boolean",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "b"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_date_range",
+      "requirements": [
+        "INT-165",
+        "INT-173"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT '0044-03-15 BC'::date",
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT '10000-01-01'::date",
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "an infinite date, which a described read refuses as a grid query does",
+          "sql": "CREATE TABLE value_rule_date (id BIGINT NOT NULL PRIMARY KEY, d DATE NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_date VALUES (1, 'infinity')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_date",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a DATE column with no CHECK takes the year 0, which only the native driver stores",
+          "sql": "CREATE TABLE value_rule_date (id INTEGER PRIMARY KEY, d DATE NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_date VALUES (1, '0000-01-01')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_date",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_native_type",
+      "requirements": [
+        "INT-165",
+        "INT-170",
+        "INT-185"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT '1 day'::interval",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT NULL::interval",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1.5::money",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT '(1,2)'::point",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 'pg_class'::regclass",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT ARRAY['2020-01-02'::date]",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT ARRAY[1.5::double precision]",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT ARRAY['\\x00'::bytea]",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "an interval is no dbspec type, so only the native driver creates it",
+          "sql": "CREATE TABLE value_rule_interval (id BIGINT NOT NULL PRIMARY KEY, i INTERVAL NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "an interval and a NULL",
+          "sql": "INSERT INTO value_rule_interval VALUES (1, '1 day'), (2, NULL)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_interval",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "i"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_interval",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "i"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "i"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_multirange",
+      "requirements": [
+        "INT-165",
+        "INT-170",
+        "INT-185"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a multirange is no dbspec type, so only the native driver creates it",
+          "sql": "CREATE TABLE value_rule_multirange (id BIGINT NOT NULL PRIMARY KEY, label TEXT NULL, m INT4MULTIRANGE NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a multirange and a NULL",
+          "sql": "INSERT INTO value_rule_multirange VALUES (1, 'a', '{[1,3),[5,7)}'), (2, 'b', NULL)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, NULL::int4multirange",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, NULL::int4multirange",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_multirange",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "label",
+            "m"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_multirange",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "label",
+            "m"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_text_types",
+      "requirements": [
+        "INT-165",
+        "INT-185"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11'::uuid, '{\"b\": 1,  \"a\": 2}'::json, '{\"b\": 1,  \"a\": 2}'::jsonb, '<a>x</a>'::xml, B'101'::bit(3), B'1101'::varbit, '192.168.0.1/24'::inet, '10.1.0.0/16'::cidr, '08:00:2B:01:02:03'::macaddr, '08:00:2b:01:02:03:04:05'::macaddr8, 'b a'::tsvector, 'a & b'::tsquery, '0/16B3748'::pg_lsn, ARRAY[1, 2], ARRAY['a', 'b c'], '[1,3)'::int4range",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+                  },
+                  {
+                    "text": "{\"b\": 1,  \"a\": 2}"
+                  },
+                  {
+                    "text": "{\"a\": 2, \"b\": 1}"
+                  },
+                  {
+                    "text": "<a>x</a>"
+                  },
+                  {
+                    "text": "101"
+                  },
+                  {
+                    "text": "1101"
+                  },
+                  {
+                    "text": "192.168.0.1/24"
+                  },
+                  {
+                    "text": "10.1.0.0/16"
+                  },
+                  {
+                    "text": "08:00:2b:01:02:03"
+                  },
+                  {
+                    "text": "08:00:2b:01:02:03:04:05"
+                  },
+                  {
+                    "text": "'a' 'b'"
+                  },
+                  {
+                    "text": "'a' & 'b'"
+                  },
+                  {
+                    "text": "0/16B3748"
+                  },
+                  {
+                    "text": "{1,2}"
+                  },
+                  {
+                    "text": "{a,\"b c\"}"
+                  },
+                  {
+                    "text": "[1,3)"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "an enum is no dbspec type, so only the native driver creates it",
+          "sql": "CREATE TYPE value_rule_mood AS ENUM ('ok', 'sad')"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "columns of types whose output no setting changes",
+          "sql": "CREATE TABLE value_rule_text (id BIGINT NOT NULL PRIMARY KEY, m value_rule_mood NULL, u UUID NULL, j JSONB NULL, n INET NULL, a INTEGER[] NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_text VALUES (1, 'sad', 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', '{\"b\": 1, \"a\": 2}', '10.0.0.1', ARRAY[3, 4])"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT m FROM value_rule_text",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "sad"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_text",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "m",
+            "u",
+            "j",
+            "n",
+            "a"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "m",
+                "u",
+                "j",
+                "n",
+                "a"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "sad"
+                  },
+                  {
+                    "text": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+                  },
+                  {
+                    "text": "{\"a\": 2, \"b\": 1}"
+                  },
+                  {
+                    "text": "10.0.0.1"
+                  },
+                  {
+                    "text": "{3,4}"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "columns of the MySQL types that are no dbspec type and whose output no setting changes",
+          "sql": "CREATE TABLE value_rule_text (id BIGINT NOT NULL PRIMARY KEY, e ENUM('x', 'y') NULL, s SET('a', 'b') NULL, j JSON NULL, bt BIT(3) NULL, g GEOMETRY NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_text VALUES (1, 'y', 'a,b', '{\"b\": 1, \"a\": 2}', b'101', ST_GeomFromText('POINT(1 2)'))"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT e, s, j, bt, g FROM value_rule_text",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "a,b"
+                  },
+                  {
+                    "text": "{\"a\": 2, \"b\": 1}"
+                  },
+                  {
+                    "bytes_hex": "05"
+                  },
+                  {
+                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_text",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "e",
+            "s",
+            "j",
+            "bt",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "e",
+                "s",
+                "j",
+                "bt",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "a,b"
+                  },
+                  {
+                    "text": "{\"a\": 2, \"b\": 1}"
+                  },
+                  {
+                    "bytes_hex": "05"
+                  },
+                  {
+                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_numeric_described",
+      "requirements": [
+        "INT-165",
+        "INT-169"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a numeric NaN, which a described read refuses as a grid query does",
+          "sql": "CREATE TABLE value_rule_numeric (id BIGINT NOT NULL PRIMARY KEY, n NUMERIC NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_numeric VALUES (1, 'NaN')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_numeric",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: PostgreSQL numeric is not finite"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_non_finite_float",
+      "requirements": [
+        "INT-102",
+        "INT-165",
+        "INT-183"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "the non-finite values and the negative zero of the floating-point types",
+          "sql": "CREATE TABLE value_rule_float (id BIGINT NOT NULL PRIMARY KEY, f8 DOUBLE PRECISION NULL, f4 REAL NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "NaN, the infinities and the negative zero",
+          "sql": "INSERT INTO value_rule_float VALUES (1, 'NaN', 'NaN'), (2, 'Infinity', '-Infinity'), (3, '-0', '-0')"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT f8, f4 FROM value_rule_float ORDER BY id",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9221120237041090560"
+                  },
+                  {
+                    "f32_bits": 2143289344
+                  }
+                ],
+                [
+                  {
+                    "f64_bits": "9218868437227405312"
+                  },
+                  {
+                    "f32_bits": 4286578688
+                  }
+                ],
+                [
+                  {
+                    "f64_bits": "9223372036854775808"
+                  },
+                  {
+                    "f32_bits": 2147483648
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "f8",
+            "f4"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "f8",
+                "f4"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9221120237041090560"
+                  },
+                  {
+                    "f32_bits": 2143289344
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "f8",
+            "f4"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "f8",
+                "f4"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9218868437227405312"
+                  },
+                  {
+                    "f32_bits": 4286578688
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "f8",
+            "f4"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "f8",
+                "f4"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9223372036854775808"
+                  },
+                  {
+                    "f32_bits": 2147483648
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT f8, f4 FROM value_rule_float WHERE id < 3 ORDER BY id",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "f64": "NaN"
+                  },
+                  {
+                    "f64": "NaN"
+                  }
+                ],
+                [
+                  {
+                    "f64": "Infinity"
+                  },
+                  {
+                    "f64": "-Infinity"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a described MySQL float, which holds no non-finite value",
+          "sql": "CREATE TABLE value_rule_float (id BIGINT NOT NULL PRIMARY KEY, f8 DOUBLE NULL, f4 FLOAT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO value_rule_float VALUES (1, 1.5, 1.5)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "f8",
+            "f4"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "f8",
+                "f4"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  },
+                  {
+                    "f32_bits": 1069547520
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "SQLite stores an infinity as a REAL",
+          "sql": "CREATE TABLE value_rule_float (id INTEGER PRIMARY KEY, r REAL NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "the infinities and a finite REAL",
+          "sql": "INSERT INTO value_rule_float VALUES (1, 1e308 * 10), (2, -1e308 * 10), (3, 1.5)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT r FROM value_rule_float ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9218868437227405312"
+                  }
+                ],
+                [
+                  {
+                    "f64_bits": "18442240474082181120"
+                  }
+                ],
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "r"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "r"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "9218868437227405312"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "r"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "r"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "18442240474082181120"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_float",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "r"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "r"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT r FROM value_rule_float WHERE id < 3 ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64": "Infinity"
+                  }
+                ],
+                [
+                  {
+                    "f64": "-Infinity"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_sqlite_declared_types",
+      "requirements": [
+        "INT-165",
+        "INT-184"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "SQLite keeps the storage class of a value whatever its column declares, and a TIME(3) is no dbspec declaration",
+          "sql": "CREATE TABLE value_rule_declared (id INTEGER PRIMARY KEY, i INT NULL, f FLOAT NULL, t3 TIME(3) NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a text in an INT column, a real in a FLOAT column and a text that is no time in a TIME(3) column",
+          "sql": "INSERT INTO value_rule_declared VALUES (1, 'abc', 1.5, 'abc')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_declared",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "i",
+            "f",
+            "t3"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "i",
+                "f",
+                "t3"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "f64_bits": "4609434218613702656"
+                  },
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_sqlite_untyped_real",
+      "requirements": [
+        "INT-152",
+        "INT-165",
+        "INT-183",
+        "INT-184"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a column with no declared type keeps the storage class of each value, an integral REAL included",
+          "sql": "CREATE TABLE value_rule_untyped (id INTEGER PRIMARY KEY, v)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "the REAL 2.0 and the integer 3",
+          "sql": "INSERT INTO value_rule_untyped VALUES (1, 2.0), (2, 3)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_untyped",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "v"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "v"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4611686018427387904"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT v FROM value_rule_untyped ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4611686018427387904"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT v FROM value_rule_untyped ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64": "2"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_sqlite_fraction",
+      "requirements": [
+        "INT-165",
+        "INT-179"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a DATETIME column with no CHECK has precision 0",
+          "sql": "CREATE TABLE value_rule_fraction (id INTEGER PRIMARY KEY, dt DATETIME NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a fraction of zeros, which has digits past precision 0",
+          "sql": "INSERT INTO value_rule_fraction VALUES (1, '2026-01-02 03:04:05.000')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_fraction",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_PRECISION",
+              "message": "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         }
@@ -16691,7 +18395,14 @@
     {
       "id": "temporal_write_and_limits",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-165",
+        "INT-167",
+        "INT-168",
+        "INT-173",
+        "INT-174",
+        "INT-175",
+        "INT-178"
       ],
       "steps": [
         {
@@ -17352,7 +19063,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -17377,7 +19089,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -17402,7 +19115,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date"
             }
           }
         },
@@ -17427,7 +19141,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -17452,7 +19167,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -17464,7 +19180,8 @@
           "sql": "SELECT CAST('25:00:00' AS TIME)",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -17476,7 +19193,8 @@
           "sql": "SELECT CAST('24:00:00' AS time)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -17488,7 +19206,8 @@
           "sql": "SELECT CAST('infinity' AS timestamp)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -17500,7 +19219,8 @@
           "sql": "SELECT CAST('-infinity' AS date)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -17512,7 +19232,8 @@
           "sql": "SELECT CAST('2026-01-02 03:04:05+00' AS timestamptz)",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -17540,7 +19261,8 @@
           "sql": "SELECT ts FROM temporal_zone",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE"
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
             }
           }
         }
@@ -17931,6 +19653,146 @@
         },
         {
           "op": "sql.release_connection"
+        },
+        {
+          "op": "catalog.close"
+        }
+      ]
+    },
+    {
+      "id": "catalog_temporal_values_under_a_query_datestyle",
+      "requirements": [
+        "INT-165",
+        "INT-186",
+        "CFG-28"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.reconnect",
+          "dsn": "case-pooler"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+            }
+          }
         },
         {
           "op": "catalog.close"

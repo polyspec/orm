@@ -322,6 +322,10 @@ const PG_TYPE_NAMES: Record<number, string> = {
   16: 'BOOL', 17: 'BYTEA', 18: 'CHAR', 19: 'NAME', 20: 'INT8', 21: 'INT2', 23: 'INT4', 25: 'TEXT', 26: 'OID', 114: 'JSON', 142: 'XML',
   700: 'FLOAT4', 701: 'FLOAT8', 790: 'MONEY', 1042: 'BPCHAR', 1043: 'VARCHAR', 1082: 'DATE', 1083: 'TIME', 1114: 'TIMESTAMP',
   1184: 'TIMESTAMPTZ', 1186: 'INTERVAL', 1266: 'TIMETZ', 1560: 'BIT', 1562: 'VARBIT', 1700: 'NUMERIC', 2950: 'UUID', 3802: 'JSONB',
+  650: 'CIDR', 774: 'MACADDR8', 829: 'MACADDR', 869: 'INET', 3220: 'PG_LSN', 3614: 'TSVECTOR', 3615: 'TSQUERY',
+  600: 'POINT', 601: 'LSEG', 602: 'PATH', 603: 'BOX', 604: 'POLYGON', 628: 'LINE', 718: 'CIRCLE',
+  24: 'REGPROC', 2202: 'REGPROCEDURE', 2203: 'REGOPER', 2204: 'REGOPERATOR', 2205: 'REGCLASS', 2206: 'REGTYPE', 3734: 'REGCONFIG',
+  3769: 'REGDICTIONARY', 4191: 'REGCOLLATION',
 };
 
 /**
@@ -1082,8 +1086,11 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         decimalNumbers: false,
         jsonStrings: true,
         supportBigNumbers: exact,
-        // The catalog reads a FLOAT as its exact text, so that the single-precision bits are rounded from the text and not from a double.
-        ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : next()) } : {}),
+        // The connection fixes its character set, so that no server or account default chooses the encoding of a text (INT-185).
+        charset: 'UTF8MB4_UNICODE_CI',
+        // The catalog reads a FLOAT as its exact text, so that the single-precision bits are rounded from the text and not from a double,
+        // and a geometry as the bytes that the server sends (INT-185).
+        ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null; buffer(): Buffer | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : field.type === 'GEOMETRY' ? field.buffer() : next()) } : {}),
         maxPreparedStatements: statementCacheSize,
       });
       const setup: SessionSetup = {};
@@ -1101,10 +1108,12 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
-      // The catalog reads int8 and float4 as their exact text: int8 is not rounded and float4 bits are rounded from the text, not from a double.
-      const parse: (oid: number, format?: 'text' | 'binary') => (value: string) => unknown = pg.types.getTypeParser;
-      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 || oid === 700 ? (value: string): string => value : parse(oid, format)) };
-      config.options = '-c TimeZone=UTC';
+      // The catalog reads every value as the text that the server sends and converts it by its type itself (catalog.ts): int8 is not
+      // rounded, float4 bits are rounded from the text and not from a double, an array or a range is the server's text, and a value that
+      // fails to decode is a catalog refusal, not a failure of the statement (INT-172).
+      if (exact) config.types = { getTypeParser: () => (value: string): string => value };
+      // The connection fixes its encoding, so that no server or database default chooses the encoding of a text (INT-185).
+      config.options = '-c TimeZone=UTC -c client_encoding=UTF8';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
     }

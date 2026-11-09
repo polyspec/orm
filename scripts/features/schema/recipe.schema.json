@@ -342,6 +342,63 @@
         {
           "type": "object",
           "required": [
+            "text_code_points"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text_code_points": {
+              "description": "A host string of these Unicode code points, a lone surrogate allowed (FCV-4); only the runtimes whose host string holds a lone surrogate, TypeScript and Python, run it.",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1114111
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "map_entries"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "map_entries": {
+              "description": "A host map of these key and value pairs, whose keys need not be strings (FCV-4); only the runtimes whose codec value holds such a map, Go and Python, run it.",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/value"
+                  },
+                  {
+                    "$ref": "#/$defs/value"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "undefined"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "undefined": {
+              "description": "The undefined value of TypeScript, as a member value (FCV-4); only TypeScript runs it.",
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
             "bool"
           ],
           "additionalProperties": false,
@@ -437,12 +494,20 @@
           "additionalProperties": false,
           "properties": {
             "f64": {
-              "enum": [
-                "NaN",
-                "Infinity",
-                "-Infinity"
+              "anyOf": [
+                {
+                  "enum": [
+                    "NaN",
+                    "Infinity",
+                    "-Infinity"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$"
+                }
               ],
-              "description": "A non-finite binary64 number (the bind vectors of tests/bind/vectors.json); a finite one is a float wrapper."
+              "description": "A binary64 number that a runner compares by its value, not by its text: a non-finite one (the bind vectors of tests/bind/vectors.json), or a finite one such as the integral float of a plain read, whose text differs by runtime (2 or 2.0)."
             }
           }
         },
@@ -628,7 +693,7 @@
       ]
     },
     "encodeArgument": {
-      "description": "The value of codec.encode: an argument, or an ordered_json wrapper, the ordered-json value of its value whatever the stages (FCV-4).",
+      "description": "The value of codec.encode: an argument, an ordered_json wrapper, the ordered-json value of its value whatever the stages, or a styled_unset wrapper, the styled value that is neither SQL NULL nor a value (FCV-4).",
       "oneOf": [
         {
           "$ref": "#/$defs/argument"
@@ -642,6 +707,19 @@
           "properties": {
             "ordered_json": {
               "$ref": "#/$defs/value"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "styled_unset"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "styled_unset": {
+              "description": "A styled value that is neither SQL NULL nor a value (FCV-4); only the runtimes whose styled value has that state, Go and Python, run it.",
+              "const": true
             }
           }
         }
@@ -753,6 +831,10 @@
             },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
+              "const": true
+            },
+            "library_cause": {
+              "description": "The codec error keeps the failure of the library that its rule meets as its cause (COD-71; Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
             }
           }
@@ -9259,6 +9341,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
@@ -9369,6 +9456,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
@@ -9423,6 +9515,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
               },
               "message_suffix": {
                 "description": "The text that the message of the error ends with.",

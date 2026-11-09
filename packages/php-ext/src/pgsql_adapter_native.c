@@ -430,6 +430,9 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, connectDsn)
     smart_str_0(&value);
     ZVAL_STR(&option, value.s);
     zend_hash_str_update(Z_ARRVAL(options), "options", sizeof("options") - 1, &option);
+    /* The connection fixes its encoding, so that no server or environment default changes the text that a read returns
+     * (INT-185): libpq sends client_encoding at startup, which a pooler keeps for the client. */
+    add_assoc_string(&options, "client_encoding", "UTF8");
     object_init_ex(return_value, pgsql_adapter_ce);
     zval args[4], ignored;
     ZVAL_STR_COPY(&args[0], dsn); ZVAL_COPY(&args[1], username); ZVAL_COPY(&args[2], password); ZVAL_COPY(&args[3], &options);

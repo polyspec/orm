@@ -700,6 +700,7 @@
       ],
       "inputs": [
         "packages/ts/src/codec.ts",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/tests/codec-errors.test.mjs"
       ]
     },
@@ -974,7 +975,13 @@
         "packages/rust/Cargo.lock",
         "packages/rust/build/Cargo.toml",
         "packages/rust/build/src/catalog/mod.rs",
+        "packages/rust/build/src/catalog/error.rs",
         "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/src/tool_db/grid.rs",
+        "packages/rust/build/src/tool_db/pg_describe.rs",
+        "packages/rust/build/src/tool_db/pg_output.rs",
+        "packages/rust/build/src/tool_db/pg_text.rs",
+        "packages/rust/build/src/tool_db/value.rs",
         "packages/rust/build/tests/unit/catalog_value.rs"
       ]
     },
@@ -1316,6 +1323,7 @@
         "packages/php/tests/RecipeCases.php",
         "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
         "packages/ts/tests/codec-none.test.mjs",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/tests/recipe.mjs",
         "packages/python/tests/test_codec_none.py",
         "packages/python/tests/recipe.py",
@@ -1323,14 +1331,29 @@
         "packages/rust/tests/src/recipe.rs",
         "packages/go/orm/codec_test.go",
         "packages/php/tests/CodecBytesValueRecipeTest.php",
-        "packages/php/tests/CodecOrderedJsonTextTest.php",
         "packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
-        "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
         "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
         "packages/ts/tests/codec-bytes-value-none.test.mjs",
         "packages/python/tests/test_codec_integer_beyond_i64_none.py",
         "packages/python/tests/test_codec_bytes_value_none.py",
-        "packages/python/tests/test_codec_ordered_json_text.py",
+        "packages/php/tests/CodecNonFiniteValueRecipeTest.php",
+        "packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php",
+        "packages/ts/tests/codec-non-finite-value-none.test.mjs",
+        "packages/python/tests/test_codec_non_finite_value_none.py",
+        "packages/php/tests/CodecJsonDepthRecipeTest.php",
+        "packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php",
+        "packages/ts/tests/codec-json-depth-none.test.mjs",
+        "packages/python/tests/test_codec_json_depth_none.py",
+        "packages/python/tests/test_codec_stack_depth.py",
+        "packages/python/tests/test_codec_yaml_reader_cause.py",
+        "packages/rust/tests/tests/all/codec_json_depth_none.rs",
+        "packages/ts/tests/codec-lone-surrogate-none.test.mjs",
+        "packages/python/tests/test_codec_lone_surrogate_none.py",
+        "packages/python/tests/test_codec_map_keys_none.py",
+        "packages/python/tests/test_codec_styled_unset_none.py",
+        "packages/ts/tests/codec-undefined-member-none.test.mjs",
+        "packages/php/tests/CodecRawTextRecipeTest.php",
+        "packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php",
         "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
         "packages/rust/orm/src/codec.rs"
       ]
@@ -1938,7 +1961,6 @@
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/codec-yaml-probe.php",
         "packages/php/tests/fixtures/CodecProbeDumper.php",
-        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php-ext/tests/CodecCauseTest.php",
         "packages/php-ext/src/codec.c"
       ]
@@ -3390,6 +3412,7 @@
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/ts/src/styled_value.ts",
         "packages/ts/src/codec.ts",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/src/model.ts",
         "packages/ts/tests/styled-value.mjs",
         "packages/ts/tests/styled-value-features.mjs",
@@ -3463,6 +3486,19 @@
         "packages/go/orm/failing_driver_test.go"
       ]
     },
+    "catalog-value-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/catalog.go",
+        "packages/go/orm/catalog_values.go",
+        "packages/go/orm/catalog_values_test.go",
+        "packages/go/orm/failing_driver_test.go"
+      ]
+    },
     "catalog-described-temporal-go-check": {
       "scope": "owner",
       "needs": [
@@ -3478,7 +3514,8 @@
         "packages/go/orm/catalog_page.go",
         "packages/go/orm/catalog_query.go",
         "packages/go/orm/catalog_temporal.go",
-        "packages/go/orm/catalog_temporal_test.go"
+        "packages/go/orm/catalog_temporal_test.go",
+        "packages/go/orm/catalog_values.go"
       ]
     },
     "catalog-php-extension-surface-check": {
@@ -3503,7 +3540,8 @@
         "packages/php-ext/tests/CatalogPageMutationPdo.php",
         "packages/php-ext/tests/CatalogPageMutationStatement.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
-        "packages/php/tests/CatalogPostgresTemporalPdo.php"
+        "packages/php/tests/CatalogPostgresTemporalPdo.php",
+        "packages/php/tests/CatalogUnreadableStream.php"
       ]
     },
     "native-arginfo-php-extension-check": {

@@ -90,7 +90,7 @@ fn report_case(id: &str, database: &str) {
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
     assert_eq!(database, NONE, "recipe {path}: database {database} has no case database in this helper");
     let (root, text) = recipe_text(path);
-    let recipe: Value = match serde_json::from_str(&text) {
+    let recipe: Value = match crate::recipe_keys::parse_recipe(&text) {
         Ok(recipe) => recipe,
         Err(error) => panic!("recipe {path}: {error}"),
     };
@@ -1020,21 +1020,19 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         .unwrap_or_default();
     let key = crate::recipe_reads::read(step, "key")["key"].as_str().unwrap_or_default();
     let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
-    let failed = |error: polyspec_orm::Error| (error.code().to_owned(), error.to_string());
-    let outcome: Outcome = match op {
-        "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read).map_err(failed),
-        "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written).map_err(failed),
-        "codec.host_encode" => {
-            codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed)
+    let result: polyspec_orm::Result<Produced> = match op {
+        "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read),
+        "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written),
+        "codec.host_encode" => codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written),
+        "codec.host_decode" => codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read),
+        "codec.blind_index" => {
+            codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key).map(|text| Produced::Written(Param::Str(text)))
         }
-        "codec.host_decode" => {
-            codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed)
-        }
-        "codec.blind_index" => codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key)
-            .map(|text| Produced::Written(Param::Str(text)))
-            .map_err(failed),
         other => return Err(format!("OP_UNKNOWN {other}")),
     };
+    // Whether the error keeps a failure of the library as its source (COD-71).
+    let has_cause = result.as_ref().err().is_some_and(|error| std::error::Error::source(error).is_some());
+    let outcome: Outcome = result.map_err(|error| (error.code().to_owned(), error.to_string()));
     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
         bound.insert(name.to_owned(), outcome.clone());
     }
@@ -1044,13 +1042,26 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
             Ok(_) => Ok(()),
         };
     };
+    // A key of the outcome that this op does not read is a finding, as in the other runners (FCV-4).
+    if let Some(unread) = expect.as_object().and_then(|fields| {
+        fields.keys().find(|key| !["error", "message", "library_cause", "bytes_prefix_hex", "bytes_length", "value"].contains(&key.as_str()))
+    }) {
+        return Err(format!("the helper did not read expect.{unread} of {op}"));
+    }
     if let Some(code) = expect["error"].as_str() {
         // message is the whole text of the error, its code included (INT-163).
         let whole = expect["message"].as_str();
+        // library_cause: true states that the error keeps the failure of the library as its source (COD-71).
+        let library_cause = match &expect["library_cause"] {
+            Value::Null => false,
+            Value::Bool(stated) => *stated,
+            other => return Err(format!("expect.library_cause is {other}, want true")),
+        };
         return match outcome {
             Err((got, message)) if got == code && whole.is_some_and(|want| want != message) => {
                 Err(format!("error message {message:?}, want {:?}", whole.unwrap_or_default()))
             }
+            Err((got, message)) if got == code && library_cause && !has_cause => Err(format!("error {message:?} keeps no library cause, want one")),
             Err((got, _)) if got == code => Ok(()),
             Err((got, message)) => Err(format!("error {got} ({message}), want {code}")),
             Ok(_) => Err(format!("error none, want {code}")),
@@ -2564,6 +2575,8 @@ fn cell(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Val, String> {
         ("null", _) => Ok(Val::Null),
         ("text", body) => Ok(Val::Str(body.as_str().unwrap_or_default().to_owned())),
         ("bytes_hex", body) => Ok(Val::Bytes(hex_bytes(body.as_str().unwrap_or_default())?)),
+        // A cell that a driver read as an integer, which no stage reads (COD-70 `cell-kind`).
+        ("int", body) => body.as_str().unwrap_or_default().parse().map(Val::I64).map_err(|error| format!("int wrapper: {error}")),
         (other, _) => Err(format!("a {other} wrapper is not a cell")),
     }
 }
@@ -2611,11 +2624,22 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
         let value = ordered_json::parse(&json_text(inner)?).map_err(|e| e.to_string())?;
         return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
     }
-    if styles.iter().any(|s| s == "ordered_json") {
+    // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
+    // one Rust value that holds it (COD-70 `json-depth`).
+    if styles.iter().any(|s| s == "ordered_json") && depth(raw) <= ordered_json::MAX_DEPTH {
         let value = ordered_json::parse(&json_text(raw)?).map_err(|e| e.to_string())?;
         return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
+}
+
+/// The nesting of a wrapper: the levels of its arrays and objects.
+fn depth(w: &Value) -> usize {
+    match kind(w) {
+        Ok(("array", body)) => 1 + body.as_array().into_iter().flatten().map(depth).max().unwrap_or(0),
+        Ok(("object", body)) => 1 + body.as_array().into_iter().flatten().map(|pair| depth(&pair[1])).max().unwrap_or(0),
+        _ => 0,
+    }
 }
 
 fn kind(w: &Value) -> Result<(&str, &Value), String> {
@@ -2802,7 +2826,7 @@ mod database {
     use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
-    use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, Val, P};
+    use polyspec_orm_build::tool_db::{has_temporal_form, GridCell, GridQueryResult, ParamType, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
     use serde_json::{json, Map, Value};
 
@@ -2882,6 +2906,13 @@ mod database {
     enum Failure {
         Call(String),
         Step(String),
+    }
+
+    impl Failure {
+        /// The failure of a catalog call, by its message.
+        fn call(error: impl std::fmt::Display) -> Self {
+            Self::Call(error.to_string())
+        }
     }
 
     /// The fields of a step result that its expect compares, and the value that `as` binds instead of `value`.
@@ -3327,10 +3358,12 @@ mod database {
                 let Some(values) = rows.get(table) else { continue };
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
                 let reference = TableRef { namespace: context.namespace.clone(), name: table.to_owned() };
-                let metadata = open.describe_table(&reference).await.map_err(seed)?;
+                let metadata = open.describe_table(&reference).await.map_err(|e| seed(e.to_string()))?;
                 for row in values.as_array().into_iter().flatten() {
                     let (cancellation, publish, permit) = mutation_hooks();
-                    open.insert_row(&metadata, &assignments(row, context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
+                    open.insert_row(&metadata, &assignments(row, context).map_err(seed)?, cancellation, publish, permit)
+                        .await
+                        .map_err(|e| seed(e.to_string()))?;
                 }
             }
         }
@@ -3692,7 +3725,7 @@ mod database {
     /// connect does not create it.
     async fn connect_check(dsn: &Value, file_created: bool) -> Result<(), Failure> {
         if let Some(url) = dsn["url"].as_str() {
-            let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
+            let connection = CatalogConnection::connect(url).await.map_err(Failure::call)?;
             connection.close().await;
             return Ok(());
         }
@@ -3711,7 +3744,7 @@ mod database {
                 connection.close().await;
                 Err(Failure::Step("the connect to an absent SQLite file succeeded".into()))
             }
-            Err(message) => Err(Failure::Call(message)),
+            Err(message) => Err(Failure::call(message)),
         }
     }
 
@@ -4075,26 +4108,28 @@ mod database {
                     return match CatalogConnection::connect(&dsn).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
                         Err(error)
-                            if error.to_lowercase().contains(text)
-                                && error.starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) =>
+                            if error.message().to_lowercase().contains(text)
+                                && error
+                                    .message()
+                                    .starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) =>
                         {
                             Ok(Output::fields(json!({})))
                         }
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
                     };
                 }
-                let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::Call)?;
-                context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
+                let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::call)?;
+                context.namespace = fresh.current_namespace().await.map_err(Failure::call)?;
                 *catalog = Some(fresh);
                 Output::fields(json!({}))
             }
             "catalog.current_namespace" => {
-                let namespace = live(catalog)?.current_namespace().await.map_err(Failure::Call)?;
+                let namespace = live(catalog)?.current_namespace().await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": { "text": namespace } }))
             }
             "catalog.describe_table" => {
                 let reference = table(step, context).map_err(fault)?;
-                let metadata = live(catalog)?.describe_table(&reference).await.map_err(Failure::Call)?;
+                let metadata = live(catalog)?.describe_table(&reference).await.map_err(Failure::call)?;
                 let columns = &metadata.columns;
                 let fields = json!({
                     "kind": kind_name(metadata.kind),
@@ -4115,7 +4150,7 @@ mod database {
                 let limit = crate::recipe_reads::read(step, "limit")["limit"].as_u64().ok_or_else(|| fault("limit is not a count".into()))?;
                 let offset = crate::recipe_reads::read(step, "offset")["offset"].as_u64().ok_or_else(|| fault("offset is not a count".into()))?;
                 let limit = usize::try_from(limit).map_err(|e| fault(e.to_string()))?;
-                let page = live(catalog)?.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::Call)?;
+                let page = live(catalog)?.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::call)?;
                 let mut indexes = Vec::new();
                 for column in crate::recipe_reads::read(step, "columns")["columns"].as_array().into_iter().flatten() {
                     let name = column.as_str().unwrap_or_default();
@@ -4136,7 +4171,7 @@ mod database {
                 let sql = sql_field(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)?;
                 let binds = binds(step, context).map_err(fault)?;
                 let (max_rows, max_bytes) = limits(step)?;
-                let result = live(catalog)?.read_only_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.read_only_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::call)?;
                 let columns: Vec<&str> = result.columns.iter().map(|c| c.name.as_str()).collect();
                 let rows: Vec<Vec<Value>> = result.rows.iter().map(|row| row.iter().map(plain_val).collect()).collect();
                 Output::fields(json!({ "columns": columns, "rows": rows, "row_count": result.rows.len() }))
@@ -4145,7 +4180,7 @@ mod database {
                 let sql = sql_field(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)?;
                 let binds = binds(step, context).map_err(fault)?;
                 let (max_rows, max_bytes) = limits(step)?;
-                let result = live(catalog)?.read_only_grid_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.read_only_grid_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::call)?;
                 let columns: Vec<&str> = result.columns.iter().map(|c| c.name.as_str()).collect();
                 let rows: Result<Vec<Vec<Value>>, String> = result.rows.iter().map(|row| row.iter().map(grid_cell).collect()).collect();
                 Output::fields(json!({ "columns": columns, "rows": rows.map_err(fault)? }))
@@ -4191,7 +4226,7 @@ mod database {
                         _ => return Err(fault("page is not a bound page".into())),
                     },
                 };
-                let snapshot = RowSnapshot::from_page(page, index).map_err(Failure::Call)?;
+                let snapshot = RowSnapshot::from_page(page, index).map_err(Failure::call)?;
                 let keys: Vec<Value> = snapshot.key().map(|(_, cell)| grid_cell(cell)).collect::<Result<_, String>>().map_err(fault)?;
                 let key_indexes = snapshot.key_indexes().to_vec();
                 Output { fields: json!({ "keys": keys, "key_indexes": key_indexes }), bind: Some(Bound::Snapshot(snapshot)) }
@@ -4213,7 +4248,7 @@ mod database {
             }
             "model.read_bind_cell" => {
                 let seq = crate::recipe_reads::read(step, "seq")["seq"].as_i64().ok_or_else(|| fault("seq is not an integer".into()))?;
-                let value = read_bind_cell(&context.dsn, seq).await.map_err(Failure::Call)?;
+                let value = read_bind_cell(&context.dsn, seq).await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": value }))
             }
             "catalog.insert_row" => {
@@ -4222,20 +4257,20 @@ mod database {
                 };
                 let values = assignments(&crate::recipe_reads::read(step, "values")["values"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let result = live(catalog)?.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::call)?;
                 Output::fields(json!({ "rows": mutation(metadata, &result).map_err(fault)? }))
             }
             "catalog.update_row" => {
                 let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
                 let set = assignments(&crate::recipe_reads::read(step, "set")["set"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let result = live(catalog)?.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::call)?;
                 Output::fields(json!({ "rows": mutation(snapshot.metadata(), &result).map_err(fault)? }))
             }
             "catalog.delete_row" => {
                 let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": { "int": deleted.to_string() } }))
             }
             // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
@@ -4392,7 +4427,7 @@ mod database {
                             }
                         }
                     } else {
-                        done.map_err(Failure::Call)?;
+                        done.map_err(Failure::call)?;
                     }
                 }
                 Output::fields(json!({}))
@@ -4421,7 +4456,7 @@ mod database {
             "dsn.sqlite_file" => {
                 let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
                 let query = crate::recipe_reads::read(step, "query")["query"].as_str().unwrap_or_default();
-                let names = crate::recipe::sqlite_file_names(name, query, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(Failure::Call)?;
+                let names = crate::recipe::sqlite_file_names(name, query, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": { "text": names } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
@@ -4451,7 +4486,7 @@ mod database {
             .map_err(Failure::Step)?;
             if let Some(ms) = crate::recipe_reads::read(step, "statement_timeout_ms")["statement_timeout_ms"].as_u64() {
                 let ms = u32::try_from(ms).map_err(|error| Failure::Step(format!("statement_timeout_ms {ms} is out of range: {error}")))?;
-                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
+                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::call)?;
                 return Ok(Output::fields(json!({})));
             }
             let idle = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64();
@@ -4465,12 +4500,12 @@ mod database {
                 return Ok(Output::fields(json!({})));
             }
             match (crate::recipe_reads::read(step, "aes_keyring").get("aes_keyring"), crate::recipe_reads::read(step, "audit_source").get("audit_source")) {
-                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
+                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::call)?,
                 (None, Some(source)) => {
                     let resolved = resolve_audit_source(source, context).map_err(Failure::Step)?;
-                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::Call)?
+                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::call)?
                 }
-                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
+                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::call)?,
             };
             return Ok(Output::fields(json!({})));
         }
@@ -4510,7 +4545,7 @@ mod database {
         crate::recipe_reads::copy_of(&resolved, step);
         let fields = context.models.call(op, connection, &resolved).await;
         crate::recipe_reads::forget_copy(&resolved);
-        Ok(Output::fields(fields.map_err(Failure::Call)?))
+        Ok(Output::fields(fields.map_err(Failure::call)?))
     }
 
     /// The audit_source of a model.connect with its values resolved.
@@ -4738,6 +4773,9 @@ mod database {
             Val::Null => json!({ "null": true }),
             Val::Int(n) => json!({ "int": n.to_string() }),
             Val::Unsigned(n) => json!({ "int": n.to_string() }),
+            // A non-finite float is the f64 wrapper of its name, and a finite one the float wrapper (INT-183).
+            Val::Float(f) if f.is_nan() => json!({ "f64": "NaN" }),
+            Val::Float(f) if f.is_infinite() => json!({ "f64": if *f > 0.0 { "Infinity" } else { "-Infinity" } }),
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
@@ -4746,10 +4784,14 @@ mod database {
     }
 
     /// The recipe wrapper of a page or mutation cell: a text cell takes the wrapper of the native type of its column when
-    /// that type is temporal or decimal, and every other cell maps by its kind.
+    /// that type is decimal, or temporal and the text has the form of its kind, as the stored text of a SQLite `TIMESTAMP`
+    /// column does; a SQLite column keeps any other text as a text (INT-184), and every other cell maps by its kind.
     fn plain_cell(cell: &GridCell, native_type: Option<&str>) -> Result<Value, String> {
         match cell {
-            GridCell::Text(text) => Ok(json!({ temporal_kind(native_type).unwrap_or("text"): text })),
+            GridCell::Text(text) => {
+                let kind = temporal_kind(native_type).filter(|kind| *kind == "decimal" || has_temporal_form(kind, text, usize::MAX));
+                Ok(json!({ kind.unwrap_or("text"): text }))
+            }
             other => grid_cell(other),
         }
     }
@@ -4795,10 +4837,27 @@ mod database {
     }
 
     /// NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none.
+    /// The binary64 value of the body of a float or f64 wrapper: its text, or a JSON number; any other body is an error.
+    fn binary64(body: &Value) -> Result<f64, String> {
+        match body {
+            Value::String(text) => text.parse::<f64>().map_err(|error| format!("{text:?} is no binary64 number: {error}")),
+            Value::Number(number) => number.as_f64().ok_or_else(|| format!("{number} is no binary64 number")),
+            other => Err(format!("{other} is no binary64 number")),
+        }
+    }
+
     fn normalized(value: &Value) -> Value {
         match value {
             Value::Array(items) => Value::Array(items.iter().map(normalized).collect()),
             Value::Object(map) if map.len() == 1 && map.contains_key("null") => json!({ "null": true }),
+            // A float or f64 wrapper compares by its binary64 value, not by its text, so 2, 2.0 and "2" are one value; a body
+            // that is no number stays as it is, and the comparison fails on it.
+            Value::Object(map) if map.len() == 1 && (map.contains_key("float") || map.contains_key("f64")) => {
+                match map.get("float").or_else(|| map.get("f64")).map(binary64) {
+                    Some(Ok(number)) => json!({ "f64": number.to_string() }),
+                    _ => value.clone(),
+                }
+            }
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
             // JSON holds one number type: a sum read as 17540.0 is the 17540 of the recipe.
             Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9e15) => json!(n.as_f64().map_or(0, |f| f as i64)),
@@ -6198,8 +6257,12 @@ mod tables {
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         let field = entity.field(column);
+        let styles: Vec<&str> = field.map(|field| field.codec.iter().map(String::as_str).collect()).unwrap_or_default();
+        // The setter of a column with codec stages encodes the value by them and fails at the call (COD-73).
+        let check = |value: &Value| if styles.is_empty() { Ok(()) } else { polyspec_orm::codec::check_setter(&styles, value).map_err(orm) };
         if let Some(inner) = raw.get("styled") {
             let value = bind_json(&param(inner)?);
+            check(&value)?;
             row.core.set_json(column, value.clone());
             row.values.insert(column.to_owned(), Val::Json(value));
             row.core.mark_field_ready(column);
@@ -6209,10 +6272,12 @@ mod tables {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
                 let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
+                polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
                 let value = object_of(raw)?;
+                check(&value)?;
                 row.core.set_json(column, value.clone());
                 row.values.insert(column.to_owned(), Val::Json(value));
             }

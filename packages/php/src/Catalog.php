@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+use Polyspec\Orm\Internal\CatalogRule;
+
 /**
  * The catalog connection (SCH-6a, docs/spec/interfaces.md "Qualified native Rust table metadata" to "Qualified Rust
  * table pages"). It reads table metadata and bounded table pages, runs validated read-only queries and changes rows
@@ -24,6 +26,52 @@ final class Catalog
     /** How long after a close of this catalog a connect that max_user_connections refuses is tried again (CFG-35). */
     private const REOPEN_SECONDS = 2.0;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
+
+    /** The text of each catalog value rule (docs/spec/interfaces.md "Catalog value rules", INT-166 to INT-182). */
+    private const RULE_MYSQL_YEAR = 'MySQL YEAR has no grid cell';
+    private const RULE_MYSQL_TIMESTAMP = 'MySQL TIMESTAMP follows a time zone';
+    private const RULE_POSTGRES_ZONED = 'PostgreSQL timestamptz and timetz are unsupported';
+    private const RULE_POSTGRES_NUMERIC = 'PostgreSQL numeric is not finite';
+    private const RULE_NATIVE_TYPE = 'unsupported native type';
+    private const RULE_DRIVER_VALUE = 'unsupported driver value';
+    private const RULE_DRIVER_DECODE = 'the driver could not decode the value';
+    private const RULE_DATE_RANGE = 'date outside 0001-01-01 to 9999-12-31';
+    private const RULE_CALENDAR_DATE = 'date is not a calendar date';
+    private const RULE_TIME_RANGE = 'time outside 00:00:00 to 23:59:59.999999';
+    private const RULE_SQLITE_FORM = [
+        'date' => 'the stored value is not a dbspec date',
+        'time' => 'the stored value is not a dbspec time',
+        'datetime' => 'the stored value is not a dbspec datetime',
+    ];
+    private const RULE_SQLITE_FRACTION = 'the fraction digits are not the count that its dbspec CHECK fixes';
+    private const RULE_FRACTION_PAST_PRECISION = 'temporal value has more fraction digits than its precision';
+    private const RULE_NATIVE_PRECISION = 'native type declares more than 6 fraction digits';
+    private const RULE_BOOLEAN = 'a boolean column holds a value that is not a boolean';
+    private const RULE_SETTING_CHANGED = 'the query changed a setting that the output of its values depends on';
+
+    /** The PostgreSQL settings that the output of a cell depends on by INT-185, as columns of a read (INT-186). */
+    private const PG_SETTING_COLUMNS = "current_setting('DateStyle'), current_setting('IntervalStyle'), "
+        . "current_setting('TimeZone'), current_setting('extra_float_digits'), current_setting('bytea_output'), "
+        . "current_setting('lc_monetary'), current_setting('search_path')";
+
+    /**
+     * The output settings that a PostgreSQL session sets for its transaction, under which the output of every cell kind
+     * is its exact text (INT-186): ISO leaves the order of date input as it was.
+     */
+    private const PG_FIXED_SETTINGS = "SELECT set_config('DateStyle', 'ISO', true), "
+        . "set_config('extra_float_digits', '1', true), set_config('bytea_output', 'hex', true)";
+
+    /**
+     * The class of each built-in PostgreSQL type by its OID (INT-185): a type of its own cell kind, a zoned type of
+     * INT-168, and text for each type whose output no setting changes. Every other built-in type is refused (INT-170).
+     */
+    private const PG_TYPE_CLASSES = [
+        16 => 'bool', 17 => 'bytea', 18 => 'text', 19 => 'text', 20 => 'int', 21 => 'int', 23 => 'int', 25 => 'text',
+        26 => 'text', 114 => 'text', 142 => 'text', 650 => 'text', 700 => 'float4', 701 => 'float8', 774 => 'text',
+        829 => 'text', 869 => 'text', 1042 => 'text', 1043 => 'text', 1082 => 'date', 1083 => 'time',
+        1114 => 'timestamp', 1184 => 'zoned', 1266 => 'zoned', 1560 => 'text', 1562 => 'text', 1700 => 'numeric',
+        2950 => 'text', 3220 => 'text', 3614 => 'text', 3615 => 'text', 3802 => 'text',
+    ];
 
     /** Selects the native kind of a relation by its namespace and name. */
     private const KIND_SQL = [
@@ -74,6 +122,12 @@ final class Catalog
     ];
 
     private bool $closed = false;
+
+    /** @var array<int, string> the classes of the PostgreSQL types that the session looked up, by OID (pgClass) */
+    private array $pgTypeClasses = [];
+
+    /** @var list<mixed>|null the PostgreSQL output settings when the transaction of the session began (INT-186) */
+    private ?array $pgSettings = null;
 
     /** @var int The server's net_write_timeout, read once at connect, in seconds. */
     private int $netWriteTimeout = 0;
@@ -245,7 +299,7 @@ final class Catalog
             // One extra row is the sentinel that reports hasMore.
             $sql .= ' LIMIT ' . ($limit + 1) . ' OFFSET ' . $offset;
             try {
-                $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
+                $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES, cells: true);
             } catch (OrmException $failure) {
                 // A column that went away during the read fails the statement: the descriptor tells that from any other
                 // failure.
@@ -274,7 +328,7 @@ final class Catalog
             if ($hasMore) {
                 $raw['rows'] = array_slice($raw['rows'], 0, $limit);
             }
-            $rows = self::describedRows($raw, $metadata, $this->dialect);
+            $rows = $this->describedRows($pdo, $raw, $metadata);
             return new CatalogTablePage(
                 $metadata,
                 new CatalogResult(self::columnNames($metadata), $rows),
@@ -390,7 +444,8 @@ final class Catalog
                 $args,
                 $maxRows,
                 $maxBytes,
-                fn (mixed $value, string $native): mixed => $this->queryValue($value, $native)
+                fn (mixed $value, string $native, int $column): mixed => $this->queryValue($value, $native, $column),
+                true
             );
             return new CatalogResult($raw['names'], $raw['rows']);
         });
@@ -526,12 +581,13 @@ final class Catalog
                         $sql . ' RETURNING ' . self::quoteList(self::columnNames($descriptor), $this->dialect),
                         $args,
                         2,
-                        self::PAGE_BYTES
+                        self::PAGE_BYTES,
+                        cells: true
                     );
                     if (count($returned['rows']) !== 1) {
                         throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
                     }
-                    $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
+                    $returnedRows = $this->rowsForDescriptor($pdo, $returned, $descriptor);
                     $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
                 } else {
                     $affected = $this->exec($pdo, $sql, $args);
@@ -543,8 +599,15 @@ final class Catalog
                     }
                     if ($hasGeneratedKeys) {
                         if ($mysqlLocatorSql !== null) {
-                            $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
-                            $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
+                            $returned = $this->query(
+                                $pdo,
+                                $mysqlLocatorSql,
+                                $mysqlLocatorArgs,
+                                2,
+                                self::PAGE_BYTES,
+                                cells: true
+                            );
+                            $returnedRows = $this->rowsForDescriptor($pdo, $returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -603,9 +666,10 @@ final class Catalog
                                     . ' WHERE ' . implode(' AND ', $predicates) . ' LIMIT 2 FOR UPDATE',
                                 $keyArgs,
                                 2,
-                                self::PAGE_BYTES
+                                self::PAGE_BYTES,
+                                cells: true
                             );
-                            $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
+                            $returnedRows = $this->rowsForDescriptor($pdo, $returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -761,16 +825,6 @@ final class Catalog
         return $descriptor;
     }
 
-    /** A text cell: its value must be valid UTF-8. */
-    private static function utf8Text(mixed $value): string
-    {
-        $text = self::gridText($value);
-        if (!self::isUtf8($text)) {
-            throw self::refused('text is not valid UTF-8');
-        }
-        return $text;
-    }
-
     /**
      * Runs a bounded query and types each cell by the native type of its column (gridCell). SQLite types each value, so
      * its cells take the type of their own value.
@@ -781,8 +835,9 @@ final class Catalog
     private function gridQuery(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
+            [$settings, $sql] = $this->cellsRead($sql, true);
             if ($this->dialect === 'postgres' && $args === []) {
-                return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes);
+                return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes, $settings);
             }
             // MySQL streams the rows, so that a budget stops a read before the rest of its result; PDO reports neither
             // the UNSIGNED flag nor the binary charset, so the column definitions are read first, with no result open.
@@ -791,39 +846,52 @@ final class Catalog
             $connectionId = $streamed ? $this->mysqlConnectionId($pdo) : null;
             $st = $this->prepareQuery($pdo, $sql, $args, $streamed);
             return $this->readStatement($st, $connectionId, function () use (
+                $pdo,
                 $st,
                 $columns,
                 $maxRows,
-                $maxBytes
+                $maxBytes,
+                $settings
             ): array {
-                $metas = self::columnMetas($st);
-                $columns ??= array_map(
-                    static fn (array $meta): array => [strtoupper((string) ($meta['native_type'] ?? '')), false, false],
-                    $metas
-                );
+                $metas = self::withoutSettings(self::columnMetas($st), $settings);
+                $fetch = static fn (): array|false => $st->fetch(\PDO::FETCH_NUM);
+                $classes = [];
+                if ($this->dialect === 'postgres') {
+                    if (!self::pgBuiltins($metas)) {
+                        // A lookup of a type runs a statement, which ends this one, so its rows are read first.
+                        $fetch = self::bufferedFetch($st);
+                    }
+                    $classes = $this->pgClasses($pdo, $metas);
+                    self::refuseMultirange($classes);
+                }
                 $rows = $this->boundedRows(
-                    static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                    $fetch,
                     $maxRows,
                     $maxBytes,
-                    function (array $row) use ($st, $columns): array {
+                    function (array $row) use ($st, $columns, $classes): array {
                         $cells = [];
                         foreach ($row as $i => $value) {
-                            [$native, $unsigned, $binary] = $columns[$i];
-                            if ($this->dialect === 'sqlite') {
-                                // SQLite reports each value's type and whether it is a blob.
-                                $cellMeta = $st->getColumnMeta($i) ?: [];
-                                $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
-                                $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+                            try {
+                                if ($columns !== null) {
+                                    [$native, $unsigned, $binary, $bits] = $columns[$i];
+                                    $cells[] = self::mysqlGridCell($value, $native, $unsigned, $binary, $bits);
+                                } elseif ($this->dialect === 'postgres') {
+                                    $cells[] = self::postgresGridCell($value, $classes[$i]);
+                                } else {
+                                    // SQLite reports whether each value is a blob.
+                                    $cellMeta = $st->getColumnMeta($i) ?: [];
+                                    $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+                                    $cells[] = self::sqliteGridCell($value, $binary);
+                                }
+                            } catch (CatalogRule $rule) {
+                                throw self::atColumn($rule, $i + 1);
                             }
-                            $cells[] = self::gridCell($value, $this->dialect, $native, $unsigned, $binary);
                         }
                         return $cells;
-                    }
+                    },
+                    $settings
                 );
-                return [
-                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
-                    'rows' => $rows,
-                ];
+                return ['names' => self::metaNames($metas), 'rows' => $rows];
             });
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
@@ -836,7 +904,7 @@ final class Catalog
      * so both come from the server, through the column types of a temporary table of the same query (INT-157).
      *
      * @param list<mixed> $args
-     * @return list<array{string, bool, bool}>
+     * @return list<array{string, bool, bool, int}>
      */
     private function mysqlGridColumns(\PDO $pdo, string $sql, array $args): array
     {
@@ -856,6 +924,8 @@ final class Catalog
                 strtoupper((string) ($meta['native_type'] ?? '')),
                 str_contains($type, 'unsigned'),
                 preg_match('/^(binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/', $type) === 1,
+                // PDO reports the width of a BIT column as its length.
+                (int) ($meta['len'] ?? 0),
             ];
         }
         return $columns;
@@ -893,6 +963,17 @@ final class Catalog
         }
         $pdo->exec(self::beginSql('mysql', true));
         return $types;
+    }
+
+    /**
+     * The name of each column, from its metadata; a column without one has the empty name.
+     *
+     * @param list<array<string, mixed>> $metas
+     * @return list<string>
+     */
+    private static function metaNames(array $metas): array
+    {
+        return array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas);
     }
 
     /**
@@ -980,127 +1061,178 @@ final class Catalog
     }
 
     /**
-     * The grid cell of one driver value. native is the upper-cased type name that PDO reports for the column (MySQL
-     * field type names, PostgreSQL type names); unsigned is a MySQL UNSIGNED column and binary a binary string.
+     * The grid cell of one MySQL driver value (INT-165 to INT-185). native is the upper-cased field type name that PDO
+     * reports for the column; unsigned is an UNSIGNED column, binary a binary string and bits the width of a BIT.
      */
-    private static function gridCell(
+    private static function mysqlGridCell(
         mixed $value,
-        string $dialect,
         string $native,
         bool $unsigned,
-        bool $binary
+        bool $binary,
+        int $bits
     ): CatalogGridCell {
         if ($value === null) {
             return new CatalogGridCell('null');
         }
-        if ($dialect === 'mysql') {
-            switch ($native) {
-                case 'FLOAT':
-                    return self::float32Cell($value);
-                case 'DOUBLE':
-                    return self::float64Cell($value);
-                case 'TIMESTAMP':
-                    throw self::refused('MySQL TIMESTAMP follows a time zone');
-                case 'DATE':
-                    return new CatalogGridCell('date', self::dateText(self::gridText($value)));
-                case 'DATETIME':
-                    return new CatalogGridCell('datetime', self::dateTimeText(self::gridText($value)));
-                case 'TIME':
-                    return new CatalogGridCell('time', self::timeText(self::gridText($value)));
-                case 'DECIMAL':
-                case 'NEWDECIMAL':
-                    return new CatalogGridCell('decimal', self::gridText($value));
-                case 'LONG':
-                case 'LONGLONG':
-                case 'SHORT':
-                case 'TINY':
-                case 'INT24':
-                    return self::integerCell($value, $unsigned);
-                case 'YEAR':
-                    // A MySQL YEAR is an integer-valued type with no temporal meaning that orm declares (INT-103).
-                    throw self::refused('MySQL YEAR has no grid cell');
-            }
-        }
-        if ($dialect === 'postgres') {
-            switch ($native) {
-                case 'FLOAT4':
-                    return self::float32Cell($value);
-                case 'FLOAT8':
-                    return self::float64Cell($value);
-                case 'NUMERIC':
-                    // PostgreSQL writes NaN and the infinities of numeric as text.
-                    $text = self::gridText($value);
-                    if ($text === 'NaN' || str_contains($text, 'Infinity')) {
-                        throw self::refused('PostgreSQL numeric is not finite');
-                    }
-                    return new CatalogGridCell('decimal', $text);
-                case 'TIMESTAMPTZ':
-                case 'TIMETZ':
-                    throw self::refused("PostgreSQL $native is unsupported");
-                case 'DATE':
-                    return new CatalogGridCell('date', self::dateText(self::gridText($value)));
-                case 'TIME':
-                    return new CatalogGridCell('time', self::timeText(self::gridText($value)));
-                case 'TIMESTAMP':
-                    return new CatalogGridCell('datetime', self::dateTimeText(self::gridText($value)));
-                case 'INT2':
-                case 'INT4':
-                case 'INT8':
-                    return self::integerCell($value, false);
-                case 'BYTEA':
-                    return new CatalogGridCell('binary', self::bytes($value));
-            }
-        }
-        if (is_bool($value)) {
-            return new CatalogGridCell('boolean', $value);
-        }
-        if (is_int($value)) {
-            return self::integerCell($value, $unsigned);
-        }
-        if (is_float($value)) {
-            return self::float64Cell($value);
-        }
-        if (is_resource($value) || ($binary && is_string($value))) {
-            return new CatalogGridCell('binary', self::bytes($value));
-        }
-        if (is_string($value)) {
-            if (!self::isUtf8($value)) {
-                // A value that is not valid UTF-8 is its bytes (INT-153, INT-157).
-                return new CatalogGridCell('binary', $value);
-            }
-            return new CatalogGridCell('text', $value);
-        }
-        throw self::refused("the driver value has no cell of column type \"$native\"");
+        return match ($native) {
+            'FLOAT' => self::float32Cell($value),
+            'DOUBLE' => self::float64Cell($value),
+            'TIMESTAMP' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
+            'YEAR' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
+            'DATE', 'NEWDATE' => new CatalogGridCell('date', self::serverDate(self::driverText($value))),
+            'DATETIME' => new CatalogGridCell('datetime', self::serverDateTime(self::driverText($value))),
+            'TIME' => new CatalogGridCell('time', self::serverTime(self::driverText($value))),
+            'DECIMAL', 'NEWDECIMAL' => new CatalogGridCell('decimal', self::decimalText($value)),
+            'LONG', 'LONGLONG', 'SHORT', 'TINY', 'INT24' => self::integerCell($value, $unsigned),
+            // The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185).
+            'BIT' => new CatalogGridCell('binary', self::bitBytes($value, $bits)),
+            'GEOMETRY' => new CatalogGridCell('binary', self::driverBytes($value)),
+            'JSON' => self::textCell($value),
+            // ENUM and SET columns arrive as STRING; a TEXT column arrives as BLOB, so the charset tells the two.
+            'STRING', 'VAR_STRING', 'VARCHAR', 'BLOB', 'TINY_BLOB', 'MEDIUM_BLOB', 'LONG_BLOB' => $binary
+                ? new CatalogGridCell('binary', self::driverBytes($value))
+                : self::textCell($value),
+            default => throw self::rule(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
+        };
     }
 
-    /** The bytes of a binary value. PDO reads a PostgreSQL bytea as a stream, which is read to its end here. */
-    private static function bytes(mixed $value): string
+    /** The grid cell of one PostgreSQL driver value, by the class of its column type (pgClass). */
+    private static function postgresGridCell(mixed $value, string $class): CatalogGridCell
+    {
+        if ($value === null) {
+            return new CatalogGridCell('null');
+        }
+        return match ($class) {
+            'int' => self::integerCell($value, false),
+            'float4' => self::float32Cell($value),
+            'float8' => self::float64Cell($value),
+            'numeric' => new CatalogGridCell('decimal', self::postgresNumeric($value)),
+            'bool' => is_bool($value)
+                ? new CatalogGridCell('boolean', $value)
+                : throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE),
+            'date' => new CatalogGridCell('date', self::serverDate(self::driverText($value))),
+            'time' => new CatalogGridCell('time', self::serverTime(self::driverText($value))),
+            'timestamp' => new CatalogGridCell('datetime', self::serverDateTime(self::driverText($value))),
+            'zoned' => throw self::rule(Code::CATALOG_VALUE, self::RULE_POSTGRES_ZONED),
+            'bytea' => new CatalogGridCell('binary', self::driverBytes($value)),
+            'text' => self::textCell($value),
+            default => throw self::rule(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
+        };
+    }
+
+    /**
+     * The grid cell of one SQLite value, by its storage class: SQLite gives each value a class that is a cell kind
+     * (INT-170), and a REAL is a Float64 cell (INT-183). binary is a blob.
+     */
+    private static function sqliteGridCell(mixed $value, bool $binary): CatalogGridCell
+    {
+        return match (true) {
+            $value === null => new CatalogGridCell('null'),
+            is_int($value) => new CatalogGridCell('integer', $value),
+            is_float($value) => self::float64Cell($value),
+            $binary => new CatalogGridCell('binary', self::driverBytes($value)),
+            default => self::textCell($value),
+        };
+    }
+
+    /** A text cell; a value that is not valid UTF-8 is its bytes (INT-153, INT-157). */
+    private static function textCell(mixed $value): CatalogGridCell
+    {
+        $text = self::driverText($value);
+        return self::isUtf8($text) ? new CatalogGridCell('text', $text) : new CatalogGridCell('binary', $text);
+    }
+
+    /** A rule that a value breaks, which the caller names by its column (INT-165). */
+    private static function rule(string $code, string $text, ?\Throwable $cause = null): CatalogRule
+    {
+        return new CatalogRule($code, $text, $cause);
+    }
+
+    /** The error of a rule at the 1-based column n: `CODE: column n: text`, with the failure it keeps (INT-172). */
+    private static function atColumn(CatalogRule $rule, int $column): OrmException
+    {
+        // A driver of one runtime does not tell which column it failed to decode, so INT-172 names none (INT-165).
+        $text = $rule->getMessage() === self::RULE_DRIVER_DECODE ? $rule->getMessage()
+            : "column $column: " . $rule->getMessage();
+        return new OrmException($rule->ruleCode, $text, $rule->getPrevious());
+    }
+
+    /** The text of a driver value that the driver delivers as text (INT-171). */
+    private static function driverText(mixed $value): string
+    {
+        if (!is_string($value)) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+        }
+        return $value;
+    }
+
+    /**
+     * The bytes of a binary driver value. PDO reads a PostgreSQL bytea as a stream, which is read to its end here; a
+     * stream that cannot be read is INT-172 and keeps the failure of the read as its cause. PHP reports a failed read
+     * as a notice and an empty result, and a user stream as an exception, so either one is the failure.
+     */
+    private static function driverBytes(mixed $value): string
     {
         if (is_string($value)) {
             return $value;
         }
         if (!is_resource($value)) {
-            throw self::refused('expected binary data');
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
-        $data = stream_get_contents($value);
-        fclose($value);
-        if ($data === false) {
-            throw self::refused('binary stream could not be read');
+        // The failure is what the read throws, and otherwise the last error that it reports, as the extension reads it.
+        $failure = null;
+        set_error_handler(static function (int $severity, string $message) use (&$failure): bool {
+            $failure = new \ErrorException($message, 0, $severity);
+            return true;
+        });
+        try {
+            $data = stream_get_contents($value);
+        } catch (\Throwable $thrown) {
+            $failure = $thrown;
+            $data = false;
+        } finally {
+            restore_error_handler();
+            fclose($value);
+        }
+        if ($failure !== null || $data === false) {
+            throw self::rule(
+                Code::CATALOG_VALUE,
+                self::RULE_DRIVER_DECODE,
+                $failure ?? new \UnexpectedValueException('stream_get_contents failed')
+            );
         }
         return $data;
     }
 
-    private static function refused(string $message): OrmException
+    /** The bytes of a MySQL BIT(bits) value, which PDO delivers as an integer: ceil(bits / 8) bytes, big-endian. */
+    private static function bitBytes(mixed $value, int $bits): string
     {
-        return new OrmException(Code::CATALOG_VALUE, "unsupported grid value: $message");
+        if (is_string($value)) {
+            return $value;
+        }
+        if (!is_int($value) || $bits < 1 || $bits > 64) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+        }
+        return substr(pack('J', $value), 8 - intdiv($bits + 7, 8));
     }
 
-    private static function gridText(mixed $value): string
+    /** The text of a decimal: plain digits with an optional sign and fraction (INT-171). */
+    private static function decimalText(mixed $value): string
     {
-        if (!is_string($value)) {
-            throw self::refused('expected text');
+        $text = self::driverText($value);
+        if (preg_match('/^-?\d+(\.\d+)?$/D', $text) !== 1) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
-        return $value;
+        return $text;
+    }
+
+    /** The text of a PostgreSQL numeric, which writes NaN and the infinities as words (INT-169). */
+    private static function postgresNumeric(mixed $value): string
+    {
+        if (in_array($value, ['NaN', 'Infinity', '-Infinity'], true)) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_POSTGRES_NUMERIC);
+        }
+        return self::decimalText($value);
     }
 
     /** A float32 cell: the bits of the single-precision value, as eight lowercase hexadecimal digits. */
@@ -1126,12 +1258,12 @@ final class Catalog
         if (is_string($value) && is_numeric($value)) {
             return (float) $value;
         }
-        throw self::refused('expected a number');
+        throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
     }
 
     /**
      * An integer cell; an UNSIGNED column holds its value as exact decimal digits, which PHP ints cannot hold past
-     * PHP_INT_MAX.
+     * PHP_INT_MAX. Text that is not the digits of a 64-bit integer is INT-171.
      */
     private static function integerCell(mixed $value, bool $unsigned): CatalogGridCell
     {
@@ -1142,78 +1274,86 @@ final class Catalog
             ) : new CatalogGridCell('integer', $value);
         }
         if (!is_string($value)) {
-            throw self::refused('expected an integer');
-        }
-        if ($unsigned) {
-            if (preg_match('/^\d+$/', $value) !== 1) {
-                throw self::refused('unsigned integer text is not digits');
-            }
-            return new CatalogGridCell('unsigned', $value);
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
         $n = filter_var($value, FILTER_VALIDATE_INT);
-        if ($n === false) {
-            // Digits beyond the signed range are an unsigned value, whatever the column reports.
-            if (preg_match('/^\d+$/', $value) === 1) {
-                return new CatalogGridCell('unsigned', $value);
-            }
-            throw self::refused('integer text is outside the signed 64-bit range');
+        if ($n !== false && !$unsigned) {
+            return new CatalogGridCell('integer', $n);
         }
-        return new CatalogGridCell('integer', $n);
+        // Digits beyond the signed range are an unsigned value, whatever the column reports (INT-157).
+        if (self::isUnsignedDigits($value)) {
+            return new CatalogGridCell('unsigned', $value);
+        }
+        throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
     }
 
-    /** A dbspec date, YYYY-MM-DD: a calendar date from 0001-01-01 to 9999-12-31. */
-    private static function dateText(string $text): string
+    /** Whether a text is the decimal digits of an unsigned 64-bit integer, with no sign and no leading zero. */
+    private static function isUnsignedDigits(string $text): bool
+    {
+        return preg_match('/^(0|[1-9]\d{0,19})$/D', $text) === 1
+            && (strlen($text) < 20 || strcmp($text, '18446744073709551615') <= 0);
+    }
+
+    /**
+     * The dbspec date YYYY-MM-DD of a date that the server writes: MySQL and PostgreSQL write YYYY-MM-DD, PostgreSQL a
+     * year past 9999 with more digits, a date before the year 1 with BC and its infinities as words. A year outside
+     * 1 to 9999 is INT-173, checked before the calendar of INT-174, and any other text INT-171.
+     */
+    private static function serverDate(string $text): string
+    {
+        if ($text === 'infinity' || $text === '-infinity') {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_DATE_RANGE);
+        }
+        if (preg_match('/^(\d{4,})-(\d{2})-(\d{2})( BC)?$/D', $text, $m) !== 1) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+        }
+        if (($m[4] ?? '') !== '') {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_DATE_RANGE);
+        }
+        return self::calendarDate($m[1], $m[2], $m[3]);
+    }
+
+    /** A date of the year 1 to 9999 (INT-173) that is a date of the calendar (INT-174), as YYYY-MM-DD. */
+    private static function calendarDate(string $year, string $month, string $day): string
+    {
+        if (strlen(ltrim($year, '0')) > 4 || (int) $year < 1) {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_DATE_RANGE);
+        }
+        if (!checkdate((int) $month, (int) $day, (int) $year)) {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_CALENDAR_DATE);
+        }
+        return sprintf('%04d-%s-%s', (int) $year, $month, $day);
+    }
+
+    /**
+     * The dbspec time HH:MM:SS.ffffff of a time that the server writes. A MySQL TIME past a day, of three hour digits
+     * or negative, and PostgreSQL 24:00:00 are INT-175; a text that is no time, or has a digit past six fraction
+     * digits, is INT-171.
+     */
+    private static function serverTime(string $text): string
     {
         if (
-            preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $m) !== 1 || (int) $m[1] < 1
-            || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])
+            preg_match('/^(-?)(\d{2,}):(\d{2}):(\d{2})(?:\.(\d+))?$/D', $text, $m) !== 1
+            || strlen($m[5] ?? '') > 6 || (int) $m[3] > 59 || (int) $m[4] > 59
         ) {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: date is outside 0001-01-01 to 9999-12-31 or is not a date'
-            );
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
-        return $text;
+        if ($m[1] === '-' || (int) $m[2] > 23) {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_TIME_RANGE);
+        }
+        return sprintf('%02d:%s:%s.%s', (int) $m[2], $m[3], $m[4], str_pad($m[5] ?? '', 6, '0'));
     }
 
-    /** A dbspec time, HH:MM:SS.ffffff: a time of day from 00:00:00 to 23:59:59.999999. */
-    private static function timeText(string $text): string
+    /** The dbspec datetime YYYY-MM-DD HH:MM:SS.ffffff of a datetime that the server writes; its date comes first. */
+    private static function serverDateTime(string $text): string
     {
-        // A negative time, such as the MySQL CAST of -01:00:00, is outside the day, not a malformed value.
-        if (preg_match('/^-\d/', $text) === 1) {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: time outside 00:00:00 to 23:59:59.999999'
-            );
+        if ($text === 'infinity' || $text === '-infinity') {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_DATE_RANGE);
         }
-        if (preg_match('/^(\d{2,3}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/', $text, $m) !== 1) {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: time is not a time of day'
-            );
+        if (preg_match('/^(\d{4,}-\d{2}-\d{2}) (\S+?)( BC)?$/D', $text, $m) !== 1) {
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
-        if ((int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
-            // A time outside its day is a temporal value the grid refuses (docs/spec/errors.yaml), not a refused type.
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: time outside 00:00:00 to 23:59:59.999999'
-            );
-        }
-        return sprintf('%02d:%02d:%02d.%s', (int) $m[1], (int) $m[2], (int) $m[3], str_pad($m[4] ?? '', 6, '0'));
-    }
-
-    /** A dbspec datetime, YYYY-MM-DD HH:MM:SS.ffffff, in UTC. */
-    private static function dateTimeText(string $text): string
-    {
-        $space = strpos($text, ' ');
-        if ($space === false) {
-            // PostgreSQL infinity has no date and time: the grid refuses it as a temporal value.
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: datetime has no date and time'
-            );
-        }
-        return self::dateText(substr($text, 0, $space)) . ' ' . self::timeText(substr($text, $space + 1));
+        return self::serverDate($m[1] . ($m[3] ?? '')) . ' ' . self::serverTime($m[2]);
     }
 
     /**
@@ -1233,6 +1373,9 @@ final class Catalog
             $this->db = $this->openConnection();
             $this->streamLeft = false;
         }
+        // A type of a past session may be gone, and its OID taken by another type.
+        $this->pgTypeClasses = [];
+        $this->pgSettings = null;
         $pdo = $this->db->pdo();
         try {
             if ($this->dialect === 'sqlite') {
@@ -1248,10 +1391,19 @@ final class Catalog
             throw $this->db->driverError($e);
         }
         try {
+            if ($this->dialect === 'postgres') {
+                try {
+                    $pdo->exec(self::PG_FIXED_SETTINGS);
+                } catch (\PDOException $e) {
+                    throw $this->db->driverError($e);
+                }
+                $this->pgSettings = $this->pgOutputSettings($pdo);
+            }
             if (!$readOnly && $this->dialect === 'mysql') {
                 $this->mysqlPartialRevokesOff($pdo);
             }
             $value = $fn($pdo);
+            $this->pgSettingsUnchanged($pdo);
         } catch (\Throwable $cause) {
             if ($this->streamLeft) {
                 throw $cause;
@@ -1280,6 +1432,79 @@ final class Catalog
     /**
      * Rolls the transaction back and rethrows cause; a failed rollback is reported with cause as its previous error.
      */
+    /** @return list<mixed> The values of the PostgreSQL output settings in the transaction of the session. */
+    private function pgOutputSettings(\PDO $pdo): array
+    {
+        try {
+            $st = $pdo->prepare('SELECT ' . self::PG_SETTING_COLUMNS);
+            $st->execute();
+            $rows = $st->fetchAll(\PDO::FETCH_NUM);
+        } catch (\PDOException $e) {
+            throw $this->db->driverError($e);
+        }
+        if (count($rows) !== 1) {
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'current_setting returned ' . count($rows) . ' rows');
+        }
+        return $rows[0];
+    }
+
+    /**
+     * Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ
+     * from their values when the transaction began (INT-186): a change that no row carries, as in a result of no rows.
+     * A local setting reverts when the transaction ends, so the check runs inside it.
+     */
+    private function pgSettingsUnchanged(\PDO $pdo): void
+    {
+        if ($this->pgSettings !== null && $this->pgOutputSettings($pdo) !== $this->pgSettings) {
+            throw new OrmException(Code::CATALOG_VALUE, self::RULE_SETTING_CHANGED);
+        }
+    }
+
+    /**
+     * The statement of a PostgreSQL read of cells, run so that each row carries the output settings under which the
+     * server writes it (INT-186): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs
+     * right before the server sends that row and runs its output functions. A read query may end with one semicolon
+     * (validateReadOnly), which cannot stand inside the CTE.
+     */
+    private static function settingsRead(string $sql): string
+    {
+        $semicolon = null;
+        self::words($sql, 'postgres', $semicolon);
+        if ($semicolon !== null) {
+            $sql = substr($sql, 0, $semicolon);
+        }
+        return "WITH catalog_read AS MATERIALIZED (\n" . $sql . "\n) SELECT catalog_read.*, " . self::PG_SETTING_COLUMNS
+            . ' FROM catalog_read';
+    }
+
+    /**
+     * The count of setting columns that a read of cells carries after its own columns (INT-186), and the read of the
+     * statement: 0 and the statement itself off PostgreSQL or for a read that is not of cells.
+     *
+     * @return array{int, string}
+     */
+    private function cellsRead(string $sql, bool $cells): array
+    {
+        if (!$cells || $this->pgSettings === null) {
+            return [0, $sql];
+        }
+        return [count($this->pgSettings), self::settingsRead($sql)];
+    }
+
+    /**
+     * The metadata of the columns of a result without its setting columns (INT-186).
+     *
+     * @param list<array<string, mixed>> $metas
+     * @return list<array<string, mixed>>
+     */
+    private static function withoutSettings(array $metas, int $settings): array
+    {
+        if (count($metas) < $settings) {
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'the read returned ' . count($metas) . ' columns');
+        }
+        return array_slice($metas, 0, count($metas) - $settings);
+    }
+
     private function rollback(\PDO $pdo, \Throwable $cause): never
     {
         try {
@@ -1367,19 +1592,29 @@ final class Catalog
      * @param int $maxRows
      * @param int $maxBytes
      * @param (\Closure(list<mixed>): list<mixed>)|null $transform
+     * @param int $settings the count of setting columns after the columns of each row, checked before the row (INT-186)
      * @return list<list<mixed>>
      */
     private function boundedRows(
         \Closure $fetch,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $transform = null
+        ?\Closure $transform = null,
+        int $settings = 0
     ): array {
         $rows = [];
         $budget = 0;
         while (($row = $fetch()) !== false) {
             if (count($rows) === $maxRows) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
+            }
+            if ($settings > 0) {
+                // The settings of a row are checked before any of its values (INT-186); they are no values of it.
+                $width = count($row) - $settings;
+                if (array_slice($row, $width) !== $this->pgSettings) {
+                    throw new OrmException(Code::CATALOG_VALUE, self::RULE_SETTING_CHANGED);
+                }
+                $row = array_slice($row, 0, $width);
             }
             $cells = $transform === null ? $row : $transform($row);
             foreach ($cells as $cell) {
@@ -1527,20 +1762,20 @@ final class Catalog
      * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $result
      * @return list<list<mixed>>
      */
-    private static function rowsForDescriptor(array $result, CatalogTableMetadata $descriptor, string $dialect): array
+    private function rowsForDescriptor(\PDO $pdo, array $result, CatalogTableMetadata $descriptor): array
     {
         self::sameNames($result['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
-        return self::describedRows($result, $descriptor, $dialect);
+        return $this->describedRows($pdo, $result, $descriptor);
     }
 
     /**
      * Runs a bounded query. It fails when the result has more than maxRows rows or more than maxBytes of values.
-     * With $convert, each value becomes $convert(value, native type) as it is read, and the budget counts the
-     * converted value.
+     * With $convert, each value becomes $convert(value, native type, 0-based column) as it is read, and the budget
+     * counts the converted value. oids holds the PostgreSQL type OID of each column, null on the other databases.
      *
      * @param list<mixed> $args
-     * @param ?\Closure(mixed, string): mixed $convert
-     * @return array{names: list<string>, types: list<string>, rows: list<list<mixed>>}
+     * @param ?\Closure(mixed, string, int): mixed $convert
+     * @return array{names: list<string>, types: list<string>, oids: list<?int>, rows: list<list<mixed>>}
      */
     private function query(
         \PDO $pdo,
@@ -1548,35 +1783,49 @@ final class Catalog
         array $args,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $convert = null
+        ?\Closure $convert = null,
+        bool $cells = false
     ): array {
         try {
             // A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123).
-            if ($this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ')) {
-                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
+            $cursor = $this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ');
+            [$settings, $sql] = $this->cellsRead($sql, $cells);
+            if ($cursor) {
+                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert, $settings);
             }
             $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;
             $st = $this->prepareQuery($pdo, $sql, $args, true);
             return $this->readStatement($st, $connectionId, function () use (
+                $pdo,
                 $st,
                 $maxRows,
                 $maxBytes,
-                $convert
+                $convert,
+                $settings
             ): array {
-                $metas = self::columnMetas($st);
+                $metas = self::withoutSettings(self::columnMetas($st), $settings);
                 $types = array_map(
                     static fn (array $meta): string => strtoupper((string) ($meta['native_type'] ?? '')),
                     $metas
                 );
+                $fetch = static fn (): array|false => $st->fetch(\PDO::FETCH_NUM);
+                if ($this->dialect === 'postgres' && !self::pgBuiltins($metas)) {
+                    // A lookup of a type runs a statement, which ends this one, so its rows are read first.
+                    $fetch = self::bufferedFetch($st);
+                    self::refuseMultirange($this->pgClasses($pdo, $metas));
+                }
                 $rows = $this->boundedRows(
-                    static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                    $fetch,
                     $maxRows,
                     $maxBytes,
-                    $convert === null ? null : static fn (array $row): array => array_map($convert, $row, $types)
+                    $convert === null ? null
+                        : static fn (array $row): array => array_map($convert, $row, $types, array_keys($row)),
+                    $settings
                 );
                 return [
-                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
+                    'names' => self::metaNames($metas),
                     'types' => $types,
+                    'oids' => array_map(self::oidOf(...), $metas),
                     'rows' => $rows,
                 ];
             });
@@ -1590,63 +1839,85 @@ final class Catalog
      * would buffer the whole result before a budget can stop it; a stopped read leaves the rest of the cursor unread,
      * and the cursor ends with the transaction.
      *
-     * @return array{names: list<string>, types: list<string>, rows: list<list<mixed>>}
+     * @return array{names: list<string>, types: list<string>, oids: list<?int>, rows: list<list<mixed>>}
      */
-    private function cursorQuery(\PDO $pdo, string $sql, int $maxRows, int $maxBytes, ?\Closure $convert = null): array
-    {
+    private function cursorQuery(
+        \PDO $pdo,
+        string $sql,
+        int $maxRows,
+        int $maxBytes,
+        ?\Closure $convert = null,
+        int $settings = 0
+    ): array {
         $names = [];
         $types = [];
+        $oids = [];
         $rows = $this->cursorRead(
             $pdo,
             $sql,
             $maxRows,
             $maxBytes,
-            static function (\PDOStatement $first) use (&$names, &$types): void {
-                for ($i = 0, $n = $first->columnCount(); $i < $n; $i++) {
-                    $meta = $first->getColumnMeta($i);
+            function (\PDOStatement $first) use ($pdo, &$names, &$types, &$oids, $settings): void {
+                $metas = self::withoutSettings(self::columnMetas($first), $settings);
+                foreach ($metas as $meta) {
                     $names[] = (string) ($meta['name'] ?? '');
                     $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
+                    $oids[] = self::oidOf($meta);
+                }
+                if (!self::pgBuiltins($metas)) {
+                    self::refuseMultirange($this->pgClasses($pdo, $metas));
                 }
             },
             $convert === null ? null : static function (\PDOStatement $st, array $row) use (&$types, $convert): array {
-                return array_map($convert, $row, $types);
-            }
+                return array_map($convert, $row, $types, array_keys($row));
+            },
+            $settings
         );
-        return ['names' => $names, 'types' => $types, 'rows' => $rows];
+        return ['names' => $names, 'types' => $types, 'oids' => $oids, 'rows' => $rows];
+    }
+
+    /** The PostgreSQL type OID of a column's metadata, which only a PostgreSQL statement reports. */
+    private static function oidOf(array $meta): ?int
+    {
+        return isset($meta['pgsql:oid']) ? (int) $meta['pgsql:oid'] : null;
     }
 
     /** The PostgreSQL grid query without parameters, read through a cursor. */
-    private function cursorGrid(\PDO $pdo, string $sql, int $maxRows, int $maxBytes): array
+    private function cursorGrid(\PDO $pdo, string $sql, int $maxRows, int $maxBytes, int $settings): array
     {
         $names = [];
-        $natives = [];
+        $classes = [];
         $rows = $this->cursorRead(
             $pdo,
             $sql,
             $maxRows,
             $maxBytes,
-            static function (\PDOStatement $first) use (&$names, &$natives): void {
-                for ($i = 0, $n = $first->columnCount(); $i < $n; $i++) {
-                    $meta = $first->getColumnMeta($i) ?: [];
-                    $names[] = (string) ($meta['name'] ?? '');
-                    $natives[] = strtoupper((string) ($meta['native_type'] ?? ''));
-                }
+            function (\PDOStatement $first) use ($pdo, &$names, &$classes, $settings): void {
+                $metas = self::withoutSettings(self::columnMetas($first), $settings);
+                $names = self::metaNames($metas);
+                $classes = $this->pgClasses($pdo, $metas);
+                self::refuseMultirange($classes);
             },
-            static function (\PDOStatement $st, array $row) use (&$natives): array {
+            static function (\PDOStatement $st, array $row) use (&$classes): array {
                 $cells = [];
                 foreach ($row as $i => $value) {
-                    $cells[] = self::gridCell($value, 'postgres', $natives[$i], false, false);
+                    try {
+                        $cells[] = self::postgresGridCell($value, $classes[$i]);
+                    } catch (CatalogRule $rule) {
+                        throw self::atColumn($rule, $i + 1);
+                    }
                 }
                 return $cells;
-            }
+            },
+            $settings
         );
         return ['names' => $names, 'rows' => $rows];
     }
 
     /**
      * Reads the rows of one statement through a cursor in chunks of 256 rows. $begin gets the first chunk's statement
-     * once, for the column metadata; $cells, when given, maps each row with the statement of its chunk. A budget stop
-     * ends the read after its chunk, and the transaction ends the cursor.
+     * once, after its rows are read, for the column metadata; $cells, when given, maps each row with the statement of
+     * its chunk. A budget stop ends the read after its chunk, and the transaction ends the cursor.
      *
      * @param \Closure(\PDOStatement): void $begin
      * @param (\Closure(\PDOStatement, list<mixed>): list<mixed>)|null $cells
@@ -1659,6 +1930,7 @@ final class Catalog
         int $maxBytes,
         \Closure $begin,
         ?\Closure $cells,
+        int $settings = 0,
     ): array {
         $cursor = 'orm_read_' . bin2hex(random_bytes(6));
         $pdo->exec("DECLARE $cursor NO SCROLL CURSOR FOR $sql");
@@ -1675,11 +1947,12 @@ final class Catalog
                         }
                         $current = $pdo->prepare("FETCH FORWARD 256 FROM $cursor");
                         $current->execute();
+                        $chunk = $current->fetchAll(\PDO::FETCH_NUM);
+                        // The chunk is read first: begin may run a statement of its own, which ends this one.
                         if (!$described) {
                             $begin($current);
                             $described = true;
                         }
-                        $chunk = $current->fetchAll(\PDO::FETCH_NUM);
                         if (count($chunk) < 256) {
                             $ended = true;
                         }
@@ -1693,7 +1966,8 @@ final class Catalog
                 $maxBytes,
                 $cells === null ? null : function (array $row) use ($cells, &$current): array {
                     return $cells($current, $row);
-                }
+                },
+                $settings
             );
         } catch (\Throwable $primary) {
             // After a stop or a failed transaction the cursor may already be gone; the transaction ends it either way.
@@ -2005,27 +2279,56 @@ final class Catalog
     }
 
     /**
-     * Converts the values of a raw result with the native type of each column. Text is a string, binary the bytes,
-     * integers int, floats float, and decimals their plain text. A value that its type does not fit fails explicitly,
-     * except a SQLite text in an integer column, which SQLite keeps as stored (dynamic typing).
+     * The catalog value of one value of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its
+     * grid cell (INT-153), and any other value its plain conversion. A broken rule names its 1-based column.
+     */
+    private function queryValue(mixed $value, string $native, int $column): mixed
+    {
+        try {
+            if ($value === null) {
+                return null;
+            }
+            return match (self::temporalKind($this->dialect, $native)) {
+                'date' => self::serverDate(self::driverText($value)),
+                'time' => self::serverTime(self::driverText($value)),
+                'datetime' => self::serverDateTime(self::driverText($value)),
+                default => self::value($value, $native, $this->dialect),
+            };
+        } catch (CatalogRule $rule) {
+            throw self::atColumn($rule, $column + 1);
+        }
+    }
+
+    /**
+     * Converts the rows of a read of a described table: tablePage, the lookup by key and the rows of a write. Each
+     * value takes the conversion of its column (describedReader), row by row and in column order within a row, so a
+     * broken rule names the first value that breaks one, by the position of its column among the described columns
+     * (INT-165).
      *
-     * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $raw
-     * @param list<string> $types
+     * @param array{names: list<string>, types: list<string>, oids: list<?int>, rows: list<list<mixed>>} $raw
      * @return list<list<mixed>>
      */
-    private static function convertRows(array $raw, array $types, string $dialect): array
+    private function describedRows(\PDO $pdo, array $raw, CatalogTableMetadata $metadata): array
     {
-        if (count($types) !== count($raw['names'])) {
+        if (count($metadata->columns) !== count($raw['names'])) {
             throw new OrmException(
                 Code::TABLE_METADATA_INVALID,
-                count($types) . ' native types for ' . count($raw['names']) . ' columns'
+                count($metadata->columns) . ' native types for ' . count($raw['names']) . ' columns'
             );
+        }
+        $readers = [];
+        foreach ($metadata->columns as $i => $column) {
+            $readers[] = $this->describedReader($pdo, $column, $raw['oids'][$i] ?? null);
         }
         $out = [];
         foreach ($raw['rows'] as $row) {
             $converted = [];
             foreach ($row as $i => $value) {
-                $converted[] = self::value($value, $types[$i], $dialect);
+                try {
+                    $converted[] = $value === null ? null : $readers[$i]($value);
+                } catch (CatalogRule $rule) {
+                    throw self::atColumn($rule, $i + 1);
+                }
             }
             $out[] = $converted;
         }
@@ -2033,110 +2336,320 @@ final class Catalog
     }
 
     /**
-     * The catalog value of one value of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its
-     * grid cell (INT-153), and any other value its plain conversion.
-     */
-    private function queryValue(mixed $value, string $native): mixed
-    {
-        if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
-            return self::gridCell($value, $this->dialect, $native, false, false)->value;
-        }
-        return self::value($value, $native, $this->dialect);
-    }
-
-    /**
-     * Converts the rows of a read of a described table: tablePage, the lookup by key and the rows of a write. Each cell
-     * takes the plain conversion of convertRows, and a MySQL or PostgreSQL date, time or timestamp cell is then its
-     * dbspec text with exactly the fraction digits of its column (docs/spec/interfaces.md INT-103 and INT-117).
+     * The conversion of the values of one described column, which is not NULL: the rule of its native type (INT-166 to
+     * INT-170, INT-185), a temporal value in its declared precision, a boolean (INT-182), and the plain conversion of
+     * value() otherwise. On PostgreSQL a type that no type text names takes the class of its result OID (pgClass).
      *
-     * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $raw
-     * @return list<list<mixed>>
+     * @return \Closure(mixed): mixed
      */
-    private static function describedRows(array $raw, CatalogTableMetadata $metadata, string $dialect): array
+    private function describedReader(\PDO $pdo, CatalogColumn $column, ?int $oid): \Closure
     {
-        $rows = self::convertRows($raw, self::nativeTypes($metadata), $dialect);
-        foreach ($metadata->columns as $i => $column) {
-            if (self::isZonedColumn($dialect, $column->nativeType)) {
-                foreach ($rows as $row) {
-                    if ($row[$i] !== null) {
-                        throw self::refused("column \"$column->name\" of type $column->nativeType follows a time zone");
-                    }
-                }
-                continue;
-            }
-            if (self::isBooleanColumn($dialect, $column->nativeType)) {
-                // A boolean column is read as a bool by its column type (DIA-29).
-                foreach ($rows as $r => $row) {
-                    $rows[$r][$i] = self::describedBoolean($row[$i], $column->name);
-                }
-                continue;
-            }
-            if (
-                $dialect === 'sqlite'
-                && in_array(strtoupper($column->nativeType), ['DATE', 'TIME', 'DATETIME'], true)
-            ) {
-                $kind = strtolower($column->nativeType);
-                foreach ($rows as $r => $row) {
-                    if ($row[$i] === null) {
-                        continue;
-                    }
-                    // SQLite keeps a number in a temporal column, and a number is not in the dbspec form (INT-103).
-                    if (!is_string($row[$i])) {
-                        throw new OrmException(
-                            Code::GRID_TEMPORAL_VALUE,
-                            'unsupported grid value: stored value of column "' . $column->name . '" is not a dbspec '
-                            . $kind
-                        );
-                    }
-                    // A CHECK fixes the precision of the value; without one the column has precision 0 (Go's rule), so
-                    // a non-zero fraction digit is refused as GRID_TEMPORAL_PRECISION.
-                    $precision = $column->checkPrecision ?? 0;
-                    $rows[$r][$i] = self::describedTemporal($row[$i], $kind, $precision);
-                }
-                continue;
-            }
-            $kind = self::temporalKind($dialect, $column->nativeType);
-            if ($kind === null) {
-                continue;
-            }
-            $precision = self::declaredPrecision($dialect, $column->nativeType);
-            foreach ($rows as $r => $row) {
-                if (is_string($row[$i])) {
-                    $rows[$r][$i] = self::describedTemporal($row[$i], $kind, $precision);
-                }
-            }
+        $native = $column->nativeType;
+        $dialect = $this->dialect;
+        $plain = static fn (mixed $value): mixed => self::value($value, $native, $dialect);
+        $refuse = static fn (string $code, string $text): \Closure
+            => static fn (mixed $value): never => throw self::rule($code, $text);
+        if ($dialect === 'sqlite') {
+            // SQLite refuses no value for the type that its column declares (INT-184): only a dbspec temporal or
+            // boolean column has a rule of its own.
+            $kind = match (strtoupper(trim($native))) {
+                'DATE' => 'date',
+                'TIME' => 'time',
+                'DATETIME' => 'datetime',
+                default => null,
+            };
+            $precision = $column->checkPrecision ?? 0;
+            return match (true) {
+                $kind !== null => static fn (mixed $value): string => self::sqliteTemporal($value, $kind, $precision),
+                strtolower(trim($native)) === 'boolean' => self::describedBoolean(...),
+                default => $plain,
+            };
         }
-        return $rows;
-    }
-
-    /** A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column, which follows a time zone that dbspec declares for no column (INT-103). */
-    private static function isZonedColumn(string $dialect, string $nativeType): bool
-    {
-        $native = strtolower(trim($nativeType));
-        return match ($dialect) {
-            'mysql' => preg_match('/^timestamp(\([0-6]\))?$/', $native) === 1,
-            'postgres' => preg_match('/^(timestamp|time)(\([0-6]\))? with time zone$/', $native) === 1,
-            default => false,
+        $class = $dialect === 'mysql' ? self::mysqlColumnClass($native) : (self::pgColumnClass($native)
+            ?? ($oid === null ? 'refused' : $this->pgClass($pdo, $oid)));
+        return match ($class) {
+            'year' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
+            'mysql_timestamp' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
+            'zoned' => $refuse(Code::CATALOG_VALUE, self::RULE_POSTGRES_ZONED),
+            'refused', 'multirange' => $refuse(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
+            'bool' => self::describedBoolean(...),
+            'bit' => static fn (mixed $value): string => self::bitBytes($value, self::declaredWidth($native)),
+            'spatial' => self::driverBytes(...),
+            // An enum, an array, a range or a composite of a text cell is the text that the server writes.
+            'text' => self::driverText(...),
+            'numeric' => static fn (mixed $value): string => self::postgresNumeric($value),
+            'date', 'time', 'datetime', 'timestamp' => static fn (mixed $value): string
+                => self::describedServerTemporal(
+                    self::driverText($value),
+                    $class === 'timestamp' ? 'datetime' : $class,
+                    self::declaredTemporalPrecision($dialect, $native)
+                ),
+            default => $plain,
         };
     }
 
-    /** A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29). */
-    private static function isBooleanColumn(string $dialect, string $nativeType): bool
+    /**
+     * The class of a MySQL column type, as information_schema writes it: a type of its own rule, a temporal kind, a
+     * boolean, BIT or spatial bytes (INT-185), plain for every other type of a cell, and refused for a type that has
+     * none (INT-170).
+     */
+    private static function mysqlColumnClass(string $nativeType): string
     {
-        $native = strtolower(trim($nativeType));
-        return $dialect === 'mysql' ? $native === 'tinyint(1)' : $native === 'boolean';
+        $type = strtolower(trim($nativeType));
+        if ($type === 'tinyint(1)') {
+            return 'bool';
+        }
+        return match (preg_split('/[( ]/', $type)[0]) {
+            'year' => 'year',
+            'timestamp' => 'mysql_timestamp',
+            'date' => 'date',
+            'time' => 'time',
+            'datetime' => 'datetime',
+            'bit' => 'bit',
+            'geometry', 'point', 'linestring', 'polygon', 'multipoint', 'multilinestring', 'multipolygon',
+            'geometrycollection', 'geomcollection' => 'spatial',
+            'tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'float', 'double', 'decimal', 'char',
+            'varchar', 'binary', 'varbinary', 'tinytext', 'text', 'mediumtext', 'longtext', 'tinyblob', 'blob',
+            'mediumblob', 'longblob', 'enum', 'set', 'json' => 'plain',
+            default => 'refused',
+        };
     }
 
-    /** A value of a boolean column as a bool: an integer 0 or 1 becomes false or true; any other value fails. */
-    private static function describedBoolean(mixed $value, string $column): mixed
+    /**
+     * The class of a PostgreSQL column type that format_type writes for a built-in type, or null for a type that it
+     * writes by its own name (an array, an enum, a domain, a range, a composite or any type of no built-in name).
+     */
+    private static function pgColumnClass(string $nativeType): ?string
     {
-        if ($value === null || is_bool($value)) {
+        $type = preg_replace('/\(\d+(,\d+)?\)/', '', strtolower(trim($nativeType)));
+        return match ($type) {
+            'smallint', 'integer', 'bigint', 'real', 'double precision', 'bytea' => 'plain',
+            'numeric' => 'numeric',
+            'boolean' => 'bool',
+            'date' => 'date',
+            'time without time zone' => 'time',
+            'timestamp without time zone' => 'datetime',
+            'time with time zone', 'timestamp with time zone' => 'zoned',
+            'text', 'character varying', 'character', '"char"', 'name', 'uuid', 'json', 'jsonb', 'xml', 'bit',
+            'bit varying', 'inet', 'cidr', 'macaddr', 'macaddr8', 'tsvector', 'tsquery', 'pg_lsn', 'oid' => 'plain',
+            default => null,
+        };
+    }
+
+    /** The classes of the columns of a PostgreSQL result, by the type OID of each (pgClass). */
+    private function pgClasses(\PDO $pdo, array $metas): array
+    {
+        return array_map(
+            fn (array $meta): string => isset($meta['pgsql:oid']) ? $this->pgClass($pdo, (int) $meta['pgsql:oid'])
+                : 'refused',
+            $metas
+        );
+    }
+
+    /**
+     * Refuses a PostgreSQL result with a column of a multirange type, or of a type that holds one, by its type and
+     * before any value, NULL or not (INT-185): the first such column is INT-170.
+     *
+     * @param list<string> $classes
+     */
+    private static function refuseMultirange(array $classes): void
+    {
+        $at = array_search('multirange', $classes, true);
+        if ($at !== false) {
+            throw self::atColumn(self::rule(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE), $at + 1);
+        }
+    }
+
+    /**
+     * Reads every row of a statement now, as lists, and returns a fetch that gives them one at a time and false past
+     * the last, so that another statement can run before the rows are read.
+     *
+     * @return \Closure(): (list<mixed>|false)
+     */
+    private static function bufferedFetch(\PDOStatement $st): \Closure
+    {
+        $buffered = $st->fetchAll(\PDO::FETCH_NUM);
+        $next = 0;
+        return static function () use ($buffered, &$next): array|false {
+            return $buffered[$next++] ?? false;
+        };
+    }
+
+    /** Whether each column of a PostgreSQL result has a built-in type, whose class needs no lookup. */
+    private static function pgBuiltins(array $metas): bool
+    {
+        foreach ($metas as $meta) {
+            if (!isset($meta['pgsql:oid'], self::PG_TYPE_CLASSES[(int) $meta['pgsql:oid']])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The class of a PostgreSQL type by its OID (INT-185): the class of a built-in type, the class of the base type of
+     * a domain, text for an enum, and for an array, a range, a multirange or a composite text when every element or
+     * field type writes a text that no setting changes, refused otherwise (pgContainer). Any other type is refused
+     * (INT-170). A type that is not built in is looked up in pg_type; the lookup runs a statement, so a caller reads
+     * the rows of its own statement before.
+     */
+    private function pgClass(\PDO $pdo, int $oid): string
+    {
+        if (isset(self::PG_TYPE_CLASSES[$oid])) {
+            return self::PG_TYPE_CLASSES[$oid];
+        }
+        if (isset($this->pgTypeClasses[$oid])) {
+            return $this->pgTypeClasses[$oid];
+        }
+        // A type that contains itself is refused.
+        $this->pgTypeClasses[$oid] = 'refused';
+        $type = $this->pgRows(
+            $pdo,
+            'SELECT t.typtype::text, t.typcategory::text, t.typelem::int8, t.typbasetype::int8, t.typrelid::int8, '
+                . '(SELECT r.rngsubtype::int8 FROM pg_range r WHERE r.rngtypid = t.oid OR r.rngmultitypid = t.oid) '
+                . 'FROM pg_type t WHERE t.oid = ?',
+            [$oid]
+        )[0] ?? null;
+        $class = match (true) {
+            $type === null => 'refused',
+            $type[0] === 'e' => 'text',
+            $type[0] === 'd' => $this->pgClass($pdo, (int) $type[3]),
+            $type[0] === 'b' && $type[1] === 'A' && (int) $type[2] !== 0
+                => self::pgContainer([$this->pgClass($pdo, (int) $type[2])]),
+            // A multirange is refused by its type (INT-185).
+            $type[0] === 'm' => 'multirange',
+            $type[0] === 'r' && $type[5] !== null => self::pgContainer([$this->pgClass($pdo, (int) $type[5])]),
+            $type[0] === 'c' => self::pgContainer(array_map(
+                fn (array $field): string => $this->pgClass($pdo, (int) $field[0]),
+                $this->pgRows(
+                    $pdo,
+                    'SELECT atttypid::int8 FROM pg_attribute WHERE attrelid = ? AND attnum > 0 AND NOT attisdropped',
+                    [(int) $type[4]]
+                )
+            )),
+            default => 'refused',
+        };
+        return $this->pgTypeClasses[$oid] = $class;
+    }
+
+    /**
+     * The class of an array, a range or a composite of the given element or field classes: a text cell when the text
+     * output of each is that of a type that no setting changes (an integer, a numeric, a boolean or a text), refused
+     * otherwise: a float follows extra_float_digits, a date or a time DateStyle, and bytea bytea_output (INT-185).
+     *
+     * @param list<string> $classes
+     */
+    private static function pgContainer(array $classes): string
+    {
+        if (in_array('multirange', $classes, true)) {
+            return 'multirange';
+        }
+        foreach ($classes as $class) {
+            if (!in_array($class, ['int', 'numeric', 'bool', 'text'], true)) {
+                return 'refused';
+            }
+        }
+        return 'text';
+    }
+
+    /**
+     * The rows of a catalog statement of PostgreSQL types.
+     *
+     * @param list<mixed> $args
+     * @return list<list<mixed>>
+     */
+    private function pgRows(\PDO $pdo, string $sql, array $args): array
+    {
+        try {
+            $st = $pdo->prepare($sql);
+            $st->execute($args);
+            $rows = $st->fetchAll(\PDO::FETCH_NUM);
+            $st->closeCursor();
+            return $rows;
+        } catch (\PDOException $e) {
+            throw $this->db->driverError($e);
+        }
+    }
+
+    /** A value of a boolean column as a bool: an integer 0 or 1 becomes false or true; any other value is INT-182. */
+    private static function describedBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
             return $value;
         }
         if ($value === 0 || $value === 1) {
             return $value === 1;
         }
-        throw new OrmException(Code::CATALOG_VALUE, "column \"$column\" holds a value that is not a boolean");
+        throw self::rule(Code::CATALOG_VALUE, self::RULE_BOOLEAN);
+    }
+
+    /** The width n of a MySQL BIT(n), as information_schema writes it. */
+    private static function declaredWidth(string $nativeType): int
+    {
+        return preg_match('/^bit\((\d+)\)$/D', strtolower(trim($nativeType)), $m) === 1 ? (int) $m[1] : 0;
+    }
+
+    /**
+     * The fraction digits p of a described MySQL or PostgreSQL time or datetime column: the digits that its native type
+     * names, as in time(3) or timestamp(3) without time zone, and otherwise the default of the database, 0 on MySQL and
+     * 6 on PostgreSQL. A precision above 6, or one that is not a number, is INT-181.
+     */
+    private static function declaredTemporalPrecision(string $dialect, string $nativeType): int
+    {
+        if (preg_match('/\(([^)]*)\)/', $nativeType, $m) !== 1) {
+            return $dialect === 'postgres' ? 6 : 0;
+        }
+        if (preg_match('/^\d+$/D', $m[1]) !== 1 || (int) $m[1] > 6) {
+            throw self::rule(Code::GRID_TEMPORAL_PRECISION, self::RULE_NATIVE_PRECISION);
+        }
+        return (int) $m[1];
+    }
+
+    /**
+     * A MySQL or PostgreSQL temporal value of a described column, with exactly the p fraction digits of its column,
+     * which drops the fraction when p is 0. A non-zero digit past p is INT-180.
+     */
+    private static function describedServerTemporal(string $text, string $kind, int $precision): string
+    {
+        if ($kind === 'date') {
+            return self::serverDate($text);
+        }
+        $value = $kind === 'time' ? self::serverTime($text) : self::serverDateTime($text);
+        $dot = strrpos($value, '.');
+        if (trim(substr($value, $dot + 1 + $precision), '0') !== '') {
+            throw self::rule(Code::GRID_TEMPORAL_PRECISION, self::RULE_FRACTION_PAST_PRECISION);
+        }
+        return $precision === 0 ? substr($value, 0, $dot) : substr($value, 0, $dot + 1 + $precision);
+    }
+
+    /**
+     * The stored value of a described SQLite DATE, TIME or DATETIME column, which is returned as it is stored: its form
+     * (INT-176 to INT-178) comes before its range (INT-173 to INT-175), and a time or a datetime has exactly the p
+     * fraction digits that its dbspec CHECK fixes, 0 when it has none (INT-179).
+     */
+    private static function sqliteTemporal(mixed $value, string $kind, int $precision): string
+    {
+        $forms = [
+            'date' => '/^(\d{4})-(\d{2})-(\d{2})$/D',
+            'time' => '/^()()()(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D',
+            'datetime' => '/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D',
+        ];
+        if (!is_string($value) || preg_match($forms[$kind], $value, $m) !== 1) {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_SQLITE_FORM[$kind]);
+        }
+        if ($kind !== 'time') {
+            self::calendarDate($m[1], $m[2], $m[3]);
+        }
+        if ($kind === 'date') {
+            return $value;
+        }
+        if ((int) $m[4] > 23 || (int) $m[5] > 59 || (int) $m[6] > 59) {
+            throw self::rule(Code::GRID_TEMPORAL_VALUE, self::RULE_TIME_RANGE);
+        }
+        if (strlen($m[7] ?? '') !== $precision) {
+            throw self::rule(Code::GRID_TEMPORAL_PRECISION, self::RULE_SQLITE_FRACTION);
+        }
+        return $value;
     }
 
     /**
@@ -2267,66 +2780,47 @@ final class Catalog
     }
 
     /**
-     * A temporal value of a described column in its declared precision p: exactly p fraction digits, which drops the
-     * fraction when p is 0. A non-zero digit beyond p fails with GRID_TEMPORAL_PRECISION.
+     * A single-precision MySQL or PostgreSQL column holds float32: its value is the float32 nearest to the driver's
+     * decimal. A SQLite REAL is a double, whatever its column declares (INT-183, INT-184).
      */
-    private static function describedTemporal(string $value, string $kind, int $precision): string
+    private static function storedFloat(float $value, string $nativeType, string $dialect): float
     {
-        if ($kind === 'date') {
-            return self::dateText($value);
-        }
-        $text = $kind === 'time' ? self::timeText($value) : self::dateTimeText($value);
-        $dot = strrpos($text, '.');
-        $digits = substr($text, $dot + 1);
-        if (trim(substr($digits, $precision), '0') !== '') {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_PRECISION,
-                "temporal value has more fraction digits than its precision $precision"
-            );
-        }
-        return $precision === 0 ? substr($text, 0, $dot) : substr($text, 0, $dot + 1 + $precision);
-    }
-
-    /** A single-precision column holds float32: its value is the float32 nearest to the driver's decimal. */
-    private static function storedFloat(float $value, string $nativeType): float
-    {
-        return in_array(strtoupper($nativeType), ['REAL', 'FLOAT', 'FLOAT4'], true)
+        return $dialect !== 'sqlite' && in_array(strtoupper($nativeType), ['REAL', 'FLOAT', 'FLOAT4'], true)
             ? unpack('g', pack('g', $value))[1]
             : $value;
     }
 
+    /**
+     * The plain conversion of a driver value: a host value that the conversion does not take for its column, or text
+     * that is not an integer or a float of its integer or float column, is INT-171; SQLite keeps the storage class of a
+     * value whatever its column declares (INT-184).
+     */
     private static function value(mixed $value, string $nativeType, string $dialect): mixed
     {
         if (is_float($value)) {
-            return self::storedFloat($value, $nativeType);
+            return self::storedFloat($value, $nativeType, $dialect);
         }
         if ($value === null || is_bool($value) || is_int($value)) {
             return $value;
         }
         if (is_resource($value)) {
             // PDO reads a PostgreSQL bytea as a stream (INT-107).
-            return self::bytes($value);
+            return self::driverBytes($value);
         }
         if (!is_string($value)) {
-            throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value');
+            throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
         // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
         if (!self::isUtf8($value)) {
             return $value;
         }
         return match (self::typeClass($nativeType)) {
-            'binary', 'decimal' => $value,
-            'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
-                ? (int) $value
-                // SQLite keeps a text in an INTEGER column; a BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits.
-                : ($dialect === 'sqlite' || (is_string($value) && ctype_digit($value))
-                    ? $value
-                    : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\"")),
-            'float' => is_numeric($value)
-                ? self::storedFloat((float) $value, $nativeType)
-                : ($dialect === 'sqlite'
-                    ? $value
-                    : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\"")),
+            // A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column.
+            'int' => filter_var($value, FILTER_VALIDATE_INT) !== false ? (int) $value
+                : ($dialect === 'sqlite' || self::isUnsignedDigits($value) ? $value
+                    : throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE)),
+            'float' => is_numeric($value) ? self::storedFloat((float) $value, $nativeType, $dialect)
+                : ($dialect === 'sqlite' ? $value : throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE)),
             default => $value,
         };
     }
@@ -2623,9 +3117,9 @@ final class Catalog
         $sql = 'SELECT ' . self::quoteList(self::columnNames($metadata), $this->dialect)
             . ' FROM ' . self::qualified($metadata->table, $this->dialect)
             . ' WHERE ' . $this->keyPredicate($metadata) . ' LIMIT 2' . $suffix;
-        $raw = $this->query($pdo, $sql, $keys, 2, self::PAGE_BYTES);
+        $raw = $this->query($pdo, $sql, $keys, 2, self::PAGE_BYTES, cells: true);
         self::sameNames($raw['names'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
-        return self::describedRows($raw, $metadata, $this->dialect);
+        return $this->describedRows($pdo, $raw, $metadata);
     }
 
     /**
@@ -2748,7 +3242,7 @@ final class Catalog
      *
      * @return list<string>|null
      */
-    private static function words(string $query, string $dialect): ?array
+    private static function words(string $query, string $dialect, ?int &$semicolon = null): ?array
     {
         $words = [];
         $n = strlen($query);
@@ -2803,6 +3297,7 @@ final class Catalog
             } else {
                 if ($c === ';') {
                     $words[] = ';';
+                    $semicolon = $i;
                 }
                 $i++;
             }

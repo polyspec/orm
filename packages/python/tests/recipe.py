@@ -47,6 +47,7 @@ from polyspec.orm import (
     codes,
     transaction_conflict,
 )
+from polyspec.orm.catalog import GridCell
 from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
 from polyspec.orm.testing import fail_next_rollback, last_affected
@@ -2294,6 +2295,11 @@ def _run(step: dict, bound: dict, database: str) -> None:
             raise AssertionError(
                 f"error message {str(result.error)!r}, want {expect['message']!r}"
             )
+        # library_cause: the error keeps the failure of the library that its rule meets as its cause (COD-71).
+        if expect.get("library_cause") is True and result.error.__cause__ is None:
+            raise AssertionError(
+                f"error {str(result.error)!r} keeps no cause of the library"
+            )
         return
     if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
@@ -2353,13 +2359,21 @@ def _argument(raw: dict, bound: dict) -> Any:
     return _to_value(raw)
 
 
-def _holds_bytes(raw: dict) -> bool:
-    """Whether the recipe value is bytes or a list or a map that holds bytes at any depth."""
-    return (
-        "bytes_hex" in raw
-        or any(_holds_bytes(item) for item in raw.get("array", []))
-        or any(_holds_bytes(item) for _, item in raw.get("object", []))
-    )
+# The wrappers that have a JSON text, and the levels of nesting that the ordered-json parser reads (COD-70 json-depth).
+_JSON_WRAPPERS = ("nil", "bool", "int", "float", "text", "array", "object")
+_JSON_DEPTH = 256
+
+
+def _has_json_text(raw: dict, depth: int = 0) -> bool:
+    """Whether the recipe value has an ordered-json value: every node a wrapper with a JSON text, within the nesting that
+    the ordered-json parser reads."""
+    if list(raw) == [] or next(iter(raw)) not in _JSON_WRAPPERS:
+        return False
+    if ("array" in raw or "object" in raw) and depth >= _JSON_DEPTH:
+        return False
+    return all(
+        _has_json_text(item, depth + 1) for item in raw.get("array", [])
+    ) and all(_has_json_text(item, depth + 1) for _, item in raw.get("object", []))
 
 
 def _styled_argument(raw: dict, styles: list, bound: dict) -> StyledValue:
@@ -2370,11 +2384,15 @@ def _styled_argument(raw: dict, styles: list, bound: dict) -> StyledValue:
         return value if isinstance(value, StyledValue) else StyledValue.value(value)
     if "null" in raw:
         return StyledValue.sql_null()
+    # The styled value that is neither SQL NULL nor a value: one that no constructor of StyledValue made (FCV-4).
+    if list(raw) == ["styled_unset"]:
+        return StyledValue.__new__(StyledValue)
     # An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
     if "ordered_json" in raw:
         return StyledValue.value(ordered_json_parse(_json_text(raw["ordered_json"])))
-    # Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
-    if "ordered_json" in styles and not _holds_bytes(raw):
+    # A value without a JSON text, bytes, a non-finite float, a text with a lone surrogate, a map with keys that are not
+    # strings or a nesting deeper than the parser reads, reaches an ordered_json stage as the value it is (COD-70).
+    if "ordered_json" in styles and _has_json_text(raw):
         return StyledValue.value(ordered_json_parse(_json_text(raw)))
     return StyledValue.value(_to_value(raw))
 
@@ -2422,10 +2440,21 @@ def _to_value(w: dict) -> Any:
         return w["text"]
     if "bytes_hex" in w:
         return bytes.fromhex(w["bytes_hex"])
+    if "text_code_points" in w:
+        # The str of those code points, a lone surrogate kept; a high and a low surrogate in a row are the one code
+        # point they pair to, as they are in the TypeScript string of the same wrapper (FCV-4).
+        return (
+            "".join(map(chr, w["text_code_points"]))
+            .encode("utf-16-le", "surrogatepass")
+            .decode("utf-16-le", "surrogatepass")
+        )
     if "array" in w:
         return [_to_value(item) for item in w["array"]]
     if "object" in w:
         return {k: _to_value(v) for k, v in w["object"]}
+    if "map_entries" in w:
+        # A dict whose keys are the values of their wrappers, which need not be strings (FCV-4).
+        return {_to_value(k): _to_value(v) for k, v in w["map_entries"]}
     raise AssertionError(f"a {next(iter(w))} wrapper is not a codec value")
 
 
@@ -2754,7 +2783,8 @@ def _op_table_page(step: dict, context: dict) -> dict:
         "order_by": list(page.order_by),
         "has_more": page.has_more,
         "rows": [
-            [_plain(row[at], types[at]) for at in indexes] for row in page.result.rows
+            [_plain(row[at], types[at], _dialect_of(context)) for at in indexes]
+            for row in page.result.rows
         ],
     }
 
@@ -2891,7 +2921,10 @@ def _op_row_cells(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     types = [column.native_type for column in snapshot.metadata.columns]
     return {
-        "cells": [_plain(cell, types[at]) for at, cell in enumerate(snapshot.cells)]
+        "cells": [
+            _plain(cell, types[at], _dialect_of(context))
+            for at, cell in enumerate(snapshot.cells)
+        ]
     }
 
 
@@ -2982,13 +3015,13 @@ def _op_insert_row(step: dict, context: dict) -> dict:
     result = context["catalog"].insert_row(
         metadata, _assignments(step["values"], context)
     )
-    return _mutation(metadata, result)
+    return _mutation(metadata, result, _dialect_of(context))
 
 
 def _op_update_row(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     result = context["catalog"].update_row(snapshot, _assignments(step["set"], context))
-    return _mutation(snapshot.metadata, result)
+    return _mutation(snapshot.metadata, result, _dialect_of(context))
 
 
 def _op_delete_row(step: dict, context: dict) -> dict:
@@ -4867,9 +4900,23 @@ def _temporal_kind(native_type: str | None) -> str | None:
     return None
 
 
-def _plain(value, native_type: str | None) -> dict:
+# The forms of a date, a time and a datetime text, with any fraction digits.
+_TEMPORAL_FORMS = {
+    "date": re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}"),
+    "time": re.compile(r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"),
+    "datetime": re.compile(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"
+    ),
+}
+
+
+def _plain(value, native_type: str | None, dialect: str | None = None) -> dict:
     """The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known,
-    and a date, time or datetime cell is the dbspec text that the library returns."""
+    and a date, time or datetime cell is the dbspec text that the library returns. A float of a described read is its bits
+    cell (INT-183). A SQLite column keeps the stored text of a type that no dbspec column declares, so its text takes a
+    temporal wrapper only in the form of that kind, and is a text otherwise (INT-184)."""
+    if isinstance(value, GridCell):
+        return _grid(value)
     if value is None:
         return {"null": True}
     if isinstance(value, bool):
@@ -4879,7 +4926,14 @@ def _plain(value, native_type: str | None) -> dict:
     if isinstance(value, (bytes, bytearray)):
         return {"bytes_hex": bytes(value).hex()}
     if isinstance(value, str):
-        return {_temporal_kind(native_type) or "text": value}
+        kind = _temporal_kind(native_type)
+        if (
+            dialect == "sqlite"
+            and kind in _TEMPORAL_FORMS
+            and _TEMPORAL_FORMS[kind].fullmatch(value) is None
+        ):
+            kind = None
+        return {kind or "text": value}
     if isinstance(value, Decimal):
         return {"decimal": format(value, "f")}
     if isinstance(value, float) and not math.isfinite(value):
@@ -4915,7 +4969,7 @@ def _grid(cell) -> dict:
     raise AssertionError(f"no recipe wrapper for the grid cell {cell.kind}")
 
 
-def _mutation(metadata, result) -> dict:
+def _mutation(metadata, result, dialect: str) -> dict:
     """The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata."""
     types = [
         next((c.native_type for c in metadata.columns if c.name == name), None)
@@ -4923,7 +4977,7 @@ def _mutation(metadata, result) -> dict:
     ]
     return {
         "rows": [
-            [_plain(cell, types[at]) for at, cell in enumerate(row)]
+            [_plain(cell, types[at], dialect) for at, cell in enumerate(row)]
             for row in result.rows
         ]
     }
@@ -4937,6 +4991,14 @@ def _normalized(value) -> Any:
         return value
     if set(value) == {"null"}:
         return {"null": True}
+    if len(value) == 1 and isinstance(value.get("f64", value.get("float")), str):
+        # A float or f64 wrapper compares by its binary64 value, so 2, 2.0 and 2e0 are one value; -0 stays apart from 0.
+        number = float(value.get("f64", value.get("float")))
+        return {
+            "f64": "-0"
+            if number == 0 and math.copysign(1, number) < 0
+            else repr(number)
+        }
     return {key: _normalized(item) for key, item in value.items()}
 
 

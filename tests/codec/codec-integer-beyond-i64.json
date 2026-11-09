@@ -1,13 +1,15 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "COD-62"
+    "COD-62",
+    "COD-70"
   ],
   "cases": [
     {
       "id": "integer_beyond_i64",
       "requirements": [
-        "COD-62"
+        "COD-62",
+        "COD-70"
       ],
       "steps": [
         {
@@ -20,7 +22,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -34,7 +37,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -55,7 +59,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -76,7 +81,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -90,7 +96,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
             }
           }
         }

@@ -1,56 +1,56 @@
-// The failures that a recipe cannot inject: a native decipher that throws at each phase keeps its error.
+// The failures that a recipe cannot inject: a native cipher or decipher that throws at each phase is the error of its rule,
+// which keeps the failure of node:crypto as its cause and names nothing of it (COD-70 aes-encrypt and aes-auth, COD-71).
 import assert from 'node:assert/strict';
-import { Decipheriv } from 'node:crypto';
+import { Cipheriv, Decipheriv } from 'node:crypto';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { CodecError, hostDecode, hostEncode } from '../dist/index.js';
 
 const key = 'codec-aes-errors-key';
-const authMessage = 'Unsupported state or unable to authenticate data';
 
 function envelope(plaintext = 'authenticated plaintext') {
   return Buffer.from(hostEncode(plaintext, ['aes'], key));
 }
 
-function expectAuthenticationFailure(value, decodeKey = key) {
-  assert.throws(() => hostDecode(value, ['aes'], decodeKey), error =>
-    error instanceof CodecError && error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: aes: authentication failed');
+// expectRule asserts the code and the whole text of the rule, and the cause: the given failure, or any error.
+function expectRule(operation, code, message, cause) {
+  assert.throws(operation, error =>
+    error instanceof CodecError && error.code === code && error.message === `${code}: ${message}`
+      && (cause === undefined ? error.cause instanceof Error : error.cause === cause));
 }
 
-function withMethod(method, implementation, body) {
-  const descriptor = Object.getOwnPropertyDescriptor(Decipheriv.prototype, method);
-  Object.defineProperty(Decipheriv.prototype, method, { ...descriptor, value: implementation });
-  try { body(); } finally { Object.defineProperty(Decipheriv.prototype, method, descriptor); }
+function withMethod(prototype, method, implementation, body) {
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, method);
+  Object.defineProperty(prototype, method, { ...descriptor, value: implementation });
+  try { body(); } finally { Object.defineProperty(prototype, method, descriptor); }
 }
 
 const source = envelope();
-const phases = ['setAAD', 'setAuthTag', 'update'];
-for (const phase of phases) {
-  caseTest(`${phase} preserves error identity`, COMPUTE, () => {
-    const sentinel = new Error(authMessage);
-    withMethod(phase, () => { throw sentinel; }, () => {
-      assert.throws(() => hostDecode(source, ['aes'], key), error => error === sentinel);
+for (const phase of ['setAAD', 'setAuthTag', 'update', 'final']) {
+  caseTest(`a decipher failure at ${phase} is aes: authentication failed with its cause`, COMPUTE, () => {
+    const failure = Object.assign(new Error('native failure'), { code: 'ERR_CRYPTO_INVALID_STATE' });
+    withMethod(Decipheriv.prototype, phase, () => { throw failure; }, () => {
+      expectRule(() => hostDecode(source, ['aes'], key), 'CODEC_DECODE', 'aes: authentication failed', failure);
     });
   });
 }
 
-caseTest('final maps only the exact code-free native authentication error', COMPUTE, () => {
-  withMethod('final', () => { throw new Error(authMessage); }, () => expectAuthenticationFailure(source));
+caseTest('a cell that the key does not authenticate keeps the failure of the decipher as its cause', COMPUTE, () => {
+  expectRule(() => hostDecode(source, ['aes'], 'another key'), 'CODEC_DECODE', 'aes: authentication failed');
 });
-
-for (const [name, error] of [
-  ['structured authentication message', Object.assign(new Error(authMessage), { code: 'ERR_INTERNAL' })],
-  ['other final error', Object.assign(new Error('Unsupported state'), { code: 'ERR_CRYPTO_INVALID_STATE' })],
-]) {
-  caseTest(`${name} preserves error identity`, COMPUTE, () => {
-    withMethod('final', () => { throw error; }, () => {
-      assert.throws(() => hostDecode(source, ['aes'], key), caught => caught === error);
-    });
-  });
-}
 
 caseTest('plaintext from update is not returned when final fails', COMPUTE, () => {
   const partial = Buffer.from('must remain private until authentication');
-  withMethod('update', () => partial, () => withMethod('final', () => { throw new Error(authMessage); }, () => {
-    expectAuthenticationFailure(source);
+  const failure = new Error('Unsupported state or unable to authenticate data');
+  withMethod(Decipheriv.prototype, 'update', () => partial, () => withMethod(Decipheriv.prototype, 'final', () => { throw failure; }, () => {
+    expectRule(() => hostDecode(source, ['aes'], key), 'CODEC_DECODE', 'aes: authentication failed', failure);
   }));
 });
+
+for (const phase of ['setAAD', 'update', 'final', 'getAuthTag']) {
+  caseTest(`a cipher failure at ${phase} is aes: the encryption failed with its cause`, COMPUTE, () => {
+    const failure = new Error('native failure');
+    withMethod(Cipheriv.prototype, phase, () => { throw failure; }, () => {
+      expectRule(() => hostEncode('plaintext', ['aes'], key), 'CODEC_ENCODE', 'aes: the encryption failed', failure);
+    });
+  });
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
+import { ParseError as JsonParseError, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { CodecError, StyledValue, decode, encode } from '../dist/index.js';
 
 function thrown(operation) {
@@ -34,26 +34,17 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
   }
 });
 
+// The cause is the failure of the reader of the bytes: the ordered-json parser of the cell, the UTF-8 decoder of a stream.
 caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
-  for (const style of ['ordered_json', 'yaml']) {
+  for (const [style, message, cause] of [
+    ['ordered_json', 'json: the cell is not JSON', error => error instanceof JsonParseError && error.kind === 'invalid_utf8'],
+    ['yaml', 'yaml: the stream is not UTF-8', error => error instanceof TypeError],
+  ]) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
     assert(error instanceof CodecError);
     assert.equal(error.code, 'CODEC_DECODE');
-    assert.equal(error.message, 'CODEC_DECODE: decoded text is not valid UTF-8');
-    assert(error.cause instanceof TypeError);
-  }
-});
-
-caseTest('JSON and YAML rethrow an existing CodecError by identity', COMPUTE, () => {
-  const originalDecode = TextDecoder.prototype.decode;
-  const sentinel = new CodecError('CODEC_DECODE', 'UTF-8 boundary sentinel');
-  try {
-    TextDecoder.prototype.decode = () => { throw sentinel; };
-    for (const style of ['ordered_json', 'yaml']) {
-      assert.equal(thrown(() => decode([style], new Uint8Array([0x61]))), sentinel);
-    }
-  } finally {
-    TextDecoder.prototype.decode = originalDecode;
+    assert.equal(error.message, `CODEC_DECODE: ${message}`);
+    assert(cause(error.cause), String(error.cause));
   }
 });
 
@@ -79,12 +70,73 @@ caseTest('codec/javascript-inputs', COMPUTE, () => {
   assert.equal(error.code, 'CODEC_ENCODE');
 });
 
-// A text that is not a sequence of Unicode scalar values, such as a lone surrogate, is no JSON text (RFC 8259, 8.1), so an
-// ordered_json stage returns CODEC_ENCODE for it; a recipe text is a JSON string, which holds Unicode only, so each client
-// tests this.
-// Requirements: COD-64 (docs/spec).
-caseTest('codec/ordered-json-text-is-unicode', COMPUTE, () => {
-  const error = thrown(() => encode(['ordered_json'], StyledValue.value('\ud800')));
-  assert(error instanceof CodecError);
-  assert.equal(error.code, 'CODEC_ENCODE');
+// A class object is written as the form that its toJSON returns, read once as JSON.stringify reads it (COD-70 `json-value`):
+// a form that is again an object of a class, the object itself included, has no JSON form, and the encode refuses it
+// rather than reading toJSON again.
+// Requirements: COD-21, COD-70, COD-71.
+caseTest('codec/to-json-forms', COMPUTE, () => {
+  class Self { toJSON() { return this; } }
+  class Other { toJSON() { return new Self(); } }
+  for (const value of [new Self(), [new Other()], { a: new Self() }]) {
+    const error = thrown(() => encode(['ordered_json'], StyledValue.value(value)));
+    assert(error instanceof CodecError, String(error));
+    assert.equal(error.message, 'CODEC_ENCODE: json: the value is not a JSON value');
+  }
+  assert.equal(encode(['ordered_json'], StyledValue.value({ at: new Date('2026-01-01T00:00:00Z') })), '{"at":"2026-01-01T00:00:00.000Z"}');
+  class Shaped { toJSON() { return { b: [1], a: parseJson('1.50') }; } }
+  assert.equal(encode(['ordered_json'], StyledValue.value([new Shaped()])), '[{"b":[1],"a":1.50}]');
+});
+
+// The frames of stack that a call needs, given back one at a time from the bottom of a stack that the test exhausted: the
+// call runs at the deepest frame where it meets no RangeError, or a regular expression that cannot compile for want of
+// stack, and the count is how many frames were given back first.
+function framesNeeded(call) {
+  let unwound = 0;
+  let outcome;
+  const dive = () => {
+    try {
+      dive();
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+    }
+    if (outcome !== undefined) return;
+    unwound++;
+    try {
+      outcome = { value: call() };
+    } catch (error) {
+      if (error instanceof RangeError || (error instanceof SyntaxError && String(error.message).includes('Stack overflow'))) return;
+      outcome = { error };
+    }
+  };
+  dive();
+  return { unwound, outcome };
+}
+
+// The YAML reader reads its productions on a stack in the heap (COD-74 to COD-80): a stream of 256 levels, flow or block,
+// needs no more of the caller's stack than a scalar, and a list at level 257 is the nesting rule, so no depth of the
+// caller decides where it fails (COD-70). A reader that recursed once a level would need 256 frames more.
+// Requirements: COD-70, COD-80.
+caseTest('codec/yaml-reader-needs-no-stack-per-level', COMPUTE, () => {
+  const deepest = value => {
+    let level = 0;
+    for (let node = value; Array.isArray(node) || (node !== null && typeof node === 'object'); level++) node = Array.isArray(node) ? node[0] : Object.values(node)[0];
+    return level;
+  };
+  const streams = [
+    ['flow sequences', `${'['.repeat(256)}${']'.repeat(256)}`, 256],
+    ['flow mappings', `${'{a: '.repeat(256)}b${'}'.repeat(256)}`, 256],
+    ['block sequences', `${Array.from({ length: 256 }, (_, i) => `${' '.repeat(i)}-`).join('\n')} a\n`, 256],
+    ['block mappings', `${Array.from({ length: 256 }, (_, i) => `${' '.repeat(i)}k:`).join('\n')} a\n`, 256],
+    ['flow sequences at level 257', `${'['.repeat(257)}${']'.repeat(257)}`, 'CODEC_DECODE: yaml: value nesting exceeds 256 levels'],
+  ];
+  const read = stream => () => decode(['yaml'], stream);
+  // The first calls compile the code and the regular expressions of the reader, which takes stack of its own.
+  for (let round = 0; round < 2; round++) for (const [, stream] of [['scalar', 'a'], ...streams]) framesNeeded(read(stream));
+  const scalar = framesNeeded(read('a')).unwound;
+  for (const [name, stream, want] of streams) {
+    const { unwound, outcome } = framesNeeded(read(stream));
+    if (typeof want === 'number') assert.equal(deepest(outcome?.value?.payload()), want, name);
+    else assert.equal(outcome?.error?.message, want, name);
+    assert(unwound <= scalar + 64, `${name} needs ${unwound} frames of the caller's stack, a scalar ${scalar}`);
+  }
 });

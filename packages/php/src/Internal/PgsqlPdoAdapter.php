@@ -88,8 +88,11 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         ?string $password,
         int $statementTimeoutMs
     ): self {
+        // The connection fixes its encoding, so that no server or environment default changes the text that a read
+        // returns (INT-185): libpq sends client_encoding at startup, which a pooler keeps for the client.
         $options = ['options' => '-c TimeZone=UTC'
-            . ($statementTimeoutMs > 0 ? ' -c statement_timeout=' . $statementTimeoutMs : '')];
+            . ($statementTimeoutMs > 0 ? ' -c statement_timeout=' . $statementTimeoutMs : ''),
+            'client_encoding' => 'UTF8'];
         return new self($pdoDsn, $username, $password, $options);
     }
 

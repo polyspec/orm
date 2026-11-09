@@ -12,6 +12,7 @@
 .PHONY: php-go-text-check
 .PHONY: go-catalog-session-error-check
 .PHONY: catalog-described-temporal-go-check
+.PHONY: catalog-value-go-check
 .PHONY: go-sqlite-version-check
 .PHONY: catalog-php-extension-surface-check
 .PHONY: transaction-failure-php-extension-check
@@ -917,7 +918,7 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 dbspec-compare-check/unit:
 	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed editable,
-# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
+# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
 # take this interpreter as ORM_PYTHON and import the package through that install.
 PYTHON_VENV = $(abspath packages/python/.venv)
@@ -1190,9 +1191,9 @@ test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
 # its own timeout (K436); the test bootstrap fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
 PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist
-PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
-PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
-PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlUnexpectedThrowableIdentity
+PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
+PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
+PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlEveryLibraryThrowableIsItsRule
 .PHONY: php-codec-causes-check
 php-codec-causes-check: php-models build-php-ext
 	@set -eu; \
@@ -2025,8 +2026,8 @@ styled-column-states-unit-check: typescript-current php-vendor-check php-model-c
 	run_dir="$(abspath .runtime/run)/styled-column-states-unit-check-$$PPID"; extension="$$run_dir/php-extension/polyspec_orm.so"; \
 	trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	run_case php-extension-build $(call php_ext_build,"$$extension",release); \
-	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$extension" $(RUN_TESTS) phpunit --php-extension "$$extension" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull; fi; \
-	run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null)$$' packages/ts/tests/styled-value.mjs; \
+	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$extension" $(RUN_TESTS) phpunit --php-extension "$$extension" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter 'testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull|testStyledColumnStateVector'; fi; \
+	run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null|setter_json_nesting_beyond_256_levels|setter_serialize_nesting_beyond_256_levels|setter_yaml_nesting_beyond_256_levels|setter_json_nesting_of_256_levels)$$' packages/ts/tests/styled-value.mjs; \
 	run_case python $(PYTHON_VENV)/bin/python -m packages.python.tests.test_styled_column_states; \
 	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-tests --test all -- 'styled_column_states::styled_column_state_fixture::' --test-threads=1; \
 	exit "$$status"
@@ -2654,22 +2655,32 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_integer_beyond_i64_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_bytes_value_none
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_ordered_json_text
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_non_finite_value_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_json_depth_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_stack_depth
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_yaml_reader_cause
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_lone_surrogate_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_map_keys_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_styled_unset_none
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestRecipeCodecMapKeysNone|TestRecipeCodecStyledUnsetNone)$$' -count=1
 codec-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none::
+	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none:: codec_json_depth_none::
 codec-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs packages/ts/tests/codec-lone-surrogate-none.test.mjs packages/ts/tests/codec-undefined-member-none.test.mjs
 codec-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecOrderedJsonTextTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecNonFiniteValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecJsonDepthRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRawTextRecipeTest.php
 codec-check/php-extension: php-vendor-check build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRecipeTestExtensionTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php
 
 # ir-validate-check runs the request validation recipe, tests/ir/validate.json, in each runtime (FCV-3): each part runs the entry of its
 # runtime that calls the recipe helper, without a database; the ir.validate steps check every request with the validator (FCV-4).
@@ -3582,6 +3593,15 @@ catalog-described-temporal-go-check:
 
 CHECK_TARGETS += catalog-described-temporal-go-check
 CI_TARGETS_static += catalog-described-temporal-go-check
+
+# catalog-value-go-check runs the native injection tests of the Go catalog value rules (docs/spec/feature-coverage.md FCV-2),
+# which no recipe case reaches: a driver value that is not the host form of its column type fails with INT-171, and a value
+# that the driver could not decode with INT-172, which keeps the failure as its cause.
+catalog-value-go-check:
+	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure)$$' -count=1
+
+CHECK_TARGETS += catalog-value-go-check
+CI_TARGETS_static += catalog-value-go-check
 
 CHECK_TARGETS += rust-temporal-args-check
 CI_TARGETS_static += rust-temporal-args-check

@@ -311,15 +311,6 @@ func catalogSameNames(names []string, columns []CatalogColumn) error {
 	return nil
 }
 
-// catalogNativeTypes lists the native type of each column of a descriptor.
-func catalogNativeTypes(metadata CatalogTableMetadata) []string {
-	types := make([]string, len(metadata.Columns))
-	for i, column := range metadata.Columns {
-		types[i] = column.NativeType
-	}
-	return types
-}
-
 // sameDescriptor reports whether two descriptors are equal.
 func sameDescriptor(a, b CatalogTableMetadata) bool { return reflect.DeepEqual(a, b) }
 

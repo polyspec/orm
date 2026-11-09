@@ -1,5 +1,6 @@
 //! Explicit transactional input locator for unreturned expression-default keys.
 //! No key/default evaluation, schema changes or automatic retry.
+use super::CatalogError;
 use super::{
     mutation::{cell, qualified},
     page::quote,
@@ -12,7 +13,7 @@ pub(super) struct Locator {
     params: Vec<P>,
 }
 impl Locator {
-    pub(super) fn new(metadata: &TableMetadata, values: &[(String, P)]) -> Result<Self, String> {
+    pub(super) fn new(metadata: &TableMetadata, values: &[(String, P)]) -> Result<Self, CatalogError> {
         let mut predicates = Vec::new();
         let mut params = Vec::new();
         for (name, value) in values {
@@ -28,16 +29,19 @@ impl Locator {
         let predicate = if predicates.is_empty() { "1=1".into() } else { predicates.join(" AND ") };
         Ok(Self { sql: format!("SELECT {columns} FROM {} WHERE {predicate} LIMIT 2 FOR UPDATE", qualified(metadata, "mysql")?), params })
     }
-    async fn read(&self, connection: &mut Conn) -> Result<GridQueryResult, String> {
-        connection.grid_query_bounded(&self.sql, &self.params, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await.map_err(|error| error.to_string())
+    async fn read(&self, connection: &mut Conn) -> Result<GridQueryResult, CatalogError> {
+        connection
+            .grid_query_bounded(&self.sql, &self.params, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 })
+            .await
+            .map_err(|error| CatalogError::caused(error.to_string(), error))
     }
-    pub(super) async fn require_absent(&self, connection: &mut Conn) -> Result<(), String> {
+    pub(super) async fn require_absent(&self, connection: &mut Conn) -> Result<(), CatalogError> {
         if !self.read(connection).await?.rows.is_empty() {
             return Err("ROW_IDENTITY_AMBIGUOUS: generated identity locator already matches rows".into());
         }
         Ok(())
     }
-    pub(super) async fn returned_keys(&self, connection: &mut Conn, metadata: &TableMetadata, values: &[(String, P)]) -> Result<Vec<P>, String> {
+    pub(super) async fn returned_keys(&self, connection: &mut Conn, metadata: &TableMetadata, values: &[(String, P)]) -> Result<Vec<P>, CatalogError> {
         let mut result = self.read(connection).await?;
         super::temporal::declared_precision(metadata, "mysql", &[], &mut result)?;
         row_snapshot::projection(metadata, &result)?;

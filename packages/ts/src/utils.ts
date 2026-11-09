@@ -443,12 +443,8 @@ export class AesUtils {
     const where = [...spec.keys.map((k, i) => `${q(k)} = ${ph(spec.columns.length + 2 + i)}`), `${q(spec.version)} = ${ph(spec.columns.length + 2 + spec.keys.length)}`];
     const updateSql = `UPDATE ${q(spec.table)} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
     const codec = {
-      decode: (value: unknown, styles: readonly string[], key: string) => {
-        if (value !== null && typeof value !== 'string' && !(value instanceof Uint8Array)) {
-          throw new OrmError(codes.CODEC_DECODE, `aes rotation read a ${typeof value} value of ${key}`);
-        }
-        return hostDecode(value, styles, key);
-      },
+      // A cell that is neither text nor bytes is the CODEC_DECODE of the stage, which names no value (COD-47, COD-70).
+      decode: (value: unknown, styles: readonly string[], key: string) => hostDecode(value, styles, key),
       encode: (value: unknown, styles: readonly string[], key: string) => hostEncode(value, styles, key),
     };
     return this.u.run(async frame => {

@@ -11,7 +11,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-func catalogSessionWithOpenTransaction(t *testing.T) *catalogSession {
+// failingSQLiteConn is one connection of an in-memory database of the failing SQLite driver, whose failures a test injects;
+// the connection and its pool close when the test ends.
+func failingSQLiteConn(t *testing.T) (context.Context, *sql.Conn) {
 	t.Helper()
 	useFailingDriver(t, "sqlite")
 	pool, err := sql.Open("orm-failing-sqlite", ":memory:")
@@ -29,6 +31,12 @@ func catalogSessionWithOpenTransaction(t *testing.T) *catalogSession {
 			t.Errorf("close *sql.Conn: %v", err)
 		}
 	})
+	return ctx, conn
+}
+
+func catalogSessionWithOpenTransaction(t *testing.T) *catalogSession {
+	t.Helper()
+	ctx, conn := failingSQLiteConn(t)
 	if _, err := conn.ExecContext(ctx, "BEGIN"); err != nil {
 		t.Fatal(err)
 	}

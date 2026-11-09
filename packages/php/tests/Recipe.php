@@ -161,7 +161,7 @@ final class Recipe
             self::$document = json_decode(
                 (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path),
                 true,
-                512,
+                RecipeKeys::DEPTH,
                 JSON_THROW_ON_ERROR
             );
             self::$documentPath = $path;
@@ -2262,6 +2262,14 @@ final class Recipe
             if (isset($expect['message'])) {
                 Assert::assertSame($expect['message'], $result['error']?->getMessage(), 'error message');
             }
+            // The error keeps the failure of the library that its rule meets as its previous exception (COD-71).
+            if (isset($expect['library_cause'])) {
+                Assert::assertInstanceOf(
+                    \Throwable::class,
+                    $result['error']?->getPrevious(),
+                    'the error keeps the failure of the library as its cause'
+                );
+            }
             return;
         }
         if ($result['error'] !== null) {
@@ -2327,9 +2335,9 @@ final class Recipe
         return $bound[$name]['value'];
     }
 
-    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their
-     * string. */
-    private static function cell(array $raw, array $bound): ?string
+    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, bytes or a written cell are their
+     * string, and a wrapper of another kind, such as an int, is the value it is, which the codec refuses as a cell. */
+    private static function cell(array $raw, array $bound): mixed
     {
         $value = self::argument($raw, $bound);
         return $value instanceof Bytes ? $value->bytes : $value;
@@ -2345,22 +2353,27 @@ final class Recipe
     }
 
     /**
-     * Whether the recipe value is bytes or a list or a map that holds bytes at any depth.
+     * Whether the recipe value has no ordered-json value: it is or holds at any depth bytes, a float that is not
+     * finite or a text that is not UTF-8, which JSON has no text for, or it nests deeper than the 256 levels that the
+     * ordered-json parser reads (FCV-4).
      *
      * @param array<string, mixed> $raw
      */
-    private static function holdsBytes(array $raw): bool
+    private static function outsideOrderedJson(array $raw, int $depth = 0): bool
     {
-        if (array_key_exists('bytes_hex', $raw)) {
+        if (array_intersect_key($raw, ['bytes_hex' => true, 'f64' => true, 'text_hex' => true]) !== []) {
             return true;
         }
-        foreach ($raw['array'] ?? [] as $item) {
-            if (self::holdsBytes($item)) {
-                return true;
-            }
+        $items = array_key_exists('array', $raw) ? $raw['array']
+            : (array_key_exists('object', $raw) ? array_column($raw['object'], 1) : null);
+        if ($items === null) {
+            return false;
         }
-        foreach ($raw['object'] ?? [] as [, $item]) {
-            if (self::holdsBytes($item)) {
+        if ($depth + 1 > 256) {
+            return true;
+        }
+        foreach ($items as $item) {
+            if (self::outsideOrderedJson($item, $depth + 1)) {
                 return true;
             }
         }
@@ -2384,9 +2397,9 @@ final class Recipe
         if (array_key_exists('ordered_json', $raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw['ordered_json'])));
         }
-        // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is
-        // (COD-63).
-        if (in_array('ordered_json', $styles, true) && !self::holdsBytes($raw)) {
+        // A value that has no ordered-json value reaches an ordered_json stage as the PHP value it is, which the stage
+        // refuses by its rule (COD-63, COD-70).
+        if (in_array('ordered_json', $styles, true) && !self::outsideOrderedJson($raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw)));
         }
         return StyledValue::value(self::toValue($raw));
@@ -2873,8 +2886,8 @@ final class Recipe
             $expected['json'] = self::sortedMembers($expected['json']);
             $compared['json'] = self::sortedMembers($compared['json']);
         }
-        $want = self::normalizedNull($expected);
-        $got = self::normalizedNull($compared);
+        $want = self::binary64Wrappers(self::normalizedNull($expected));
+        $got = self::binary64Wrappers(self::normalizedNull($compared));
         if ($want !== $got) {
             Assert::fail(
                 'want ' . json_encode($want, JSON_UNESCAPED_UNICODE)
@@ -2882,6 +2895,29 @@ final class Recipe
             );
         }
         $step->check();
+    }
+
+    /**
+     * The value with each finite float or f64 wrapper as the bits of its binary64 value, so that a runner compares a
+     * float by its value and not by its text: 2, 2.0 and "2" are one float.
+     */
+    private static function binary64Wrappers(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (count($value) === 1) {
+            $kind = array_key_first($value);
+            $number = $value[$kind];
+            if (
+                ($kind === 'float' || $kind === 'f64')
+                && (is_int($number) || is_float($number) || (is_string($number) && is_numeric($number)))
+                && is_finite((float) $number)
+            ) {
+                return ['binary64' => bin2hex(pack('E', (float) $number))];
+            }
+        }
+        return array_map(self::binary64Wrappers(...), $value);
     }
 
     /** The value with the members of every object sorted by name and each integral number as an integer. */
@@ -3051,7 +3087,8 @@ final class Recipe
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
                 return ['cells' => array_map(
-                    static fn (mixed $cell, int $at): array => self::plainWrapper($cell, $types[$at]),
+                    static fn (mixed $cell, int $at): array
+                        => self::plainWrapper($cell, $types[$at], $catalog->dialect()),
                     $snapshot->cells,
                     array_keys($snapshot->cells)
                 )];
@@ -3089,7 +3126,8 @@ final class Recipe
                     'has_more' => $page->hasMore,
                     'rows' => array_map(
                         static fn (array $row): array => array_map(
-                            static fn (int $at): array => self::plainWrapper($row[$at], $types[$at]),
+                            static fn (int $at): array
+                                => self::plainWrapper($row[$at], $types[$at], $catalog->dialect()),
                             $indexes
                         ),
                         $page->result->rows
@@ -3219,7 +3257,11 @@ final class Recipe
                     'bind' => $snapshot,
                     'key_indexes' => $snapshot->keyIndexes,
                     'keys' => array_map(
-                        static fn (int $at): array => self::plainWrapper($snapshot->cells[$at], $types[$at]),
+                        static fn (int $at): array => self::plainWrapper(
+                            $snapshot->cells[$at],
+                            $types[$at],
+                            $catalog->dialect()
+                        ),
                         $snapshot->keyIndexes
                     ),
                 ];
@@ -3227,13 +3269,15 @@ final class Recipe
                 $metadata = self::stepArgument($s['metadata'], $context);
                 return self::mutation(
                     $metadata,
-                    $catalog->insertRow($metadata, self::assignments($s['values'], $context))
+                    $catalog->insertRow($metadata, self::assignments($s['values'], $context)),
+                    $catalog->dialect()
                 );
             case 'catalog.update_row':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 return self::mutation(
                     $snapshot->metadata,
-                    $catalog->updateRow($snapshot, self::assignments($s['set'], $context))
+                    $catalog->updateRow($snapshot, self::assignments($s['set'], $context)),
+                    $catalog->dialect()
                 );
             case 'catalog.delete_row':
                 $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
@@ -5184,8 +5228,8 @@ final class Recipe
     }
 
     /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is
-     * known. */
-    private static function plainWrapper(mixed $value, ?string $nativeType): array
+     * known, on the database of the catalog. */
+    private static function plainWrapper(mixed $value, ?string $nativeType, ?string $dialect = null): array
     {
         if ($value === null) {
             return ['null' => true];
@@ -5203,15 +5247,21 @@ final class Recipe
             // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
             return ['int' => $value];
         }
-        // A PHP string is its bytes, so a value is binary by its column type or when it is not text (INT-153).
+        // A PHP string is its bytes, so a value is binary by its column type or when it is not text (INT-153); a MySQL
+        // BIT and a spatial value are bytes (INT-185).
         if (
             is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
+            || ($dialect === 'mysql' && preg_match(
+                '/^(bit|geometry|point|linestring|polygon|multipoint|multilinestring|multipolygon|geometrycollection'
+                    . '|geomcollection)\b/i',
+                $nativeType ?? ''
+            ) === 1)
             || mb_check_encoding($value, 'UTF-8') === false)
         ) {
             return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {
-            return [self::temporalKind($nativeType) ?? 'text' => $value];
+            return [self::textKind($value, $nativeType, $dialect) => $value];
         }
         if (is_float($value) && $nativeType === null && !is_finite($value)) {
             // A non-finite float with no column type is the f64 wrapper, which names it as JSON cannot.
@@ -5223,13 +5273,31 @@ final class Recipe
         }
         if (is_float($value)) {
             // A float of a described column is compared by its IEEE bits: a real column is float32, any other is
-            // float64.
-            $real = preg_match('/^(real|float4|float\(|float$)/i', $nativeType ?? '') === 1;
+            // float64, and a SQLite REAL is float64 (INT-183).
+            $real = $dialect !== 'sqlite' && preg_match('/^(real|float4|float\(|float$)/i', $nativeType ?? '') === 1;
             return $real
                 ? ['f32_bits' => unpack('V', pack('g', $value))[1]]
                 : ['f64_bits' => self::unsignedDecimal(bin2hex(pack('E', $value)))];
         }
         Assert::fail('no recipe wrapper for the plain value ' . var_export($value, true));
+    }
+
+    /**
+     * The wrapper of a text of a described column: the kind of its native type, which on SQLite only a text of that
+     * temporal form has, since SQLite returns the stored text of any column (INT-184).
+     */
+    private static function textKind(string $value, ?string $nativeType, ?string $dialect): string
+    {
+        $kind = self::temporalKind($nativeType);
+        if ($dialect !== 'sqlite' || $kind === null || $kind === 'decimal') {
+            return $kind ?? 'text';
+        }
+        $form = [
+            'date' => '/^\d{4}-\d{2}-\d{2}$/D',
+            'time' => '/^\d{2}:\d{2}:\d{2}(\.\d+)?$/D',
+            'datetime' => '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/D',
+        ][$kind];
+        return preg_match($form, $value) === 1 ? $kind : 'text';
     }
 
     private static function temporalKind(?string $nativeType): ?string
@@ -5285,12 +5353,12 @@ final class Recipe
 
     /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the
      * metadata. */
-    private static function mutation(CatalogTableMetadata $metadata, CatalogResult $result): array
+    private static function mutation(CatalogTableMetadata $metadata, CatalogResult $result, string $dialect): array
     {
         $types = self::nativeTypes($metadata, $result->columns);
         return ['rows' => array_map(
             static fn (array $row): array => array_map(
-                static fn (mixed $cell, int $at): array => self::plainWrapper($cell, $types[$at]),
+                static fn (mixed $cell, int $at): array => self::plainWrapper($cell, $types[$at], $dialect),
                 $row,
                 array_keys($row)
             ),

@@ -4,7 +4,6 @@ go 1.27.3
 
 require (
 	github.com/go-sql-driver/mysql v1.10.1
-	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/polyspec/ordered-json/packages/go v0.0.23
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3

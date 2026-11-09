@@ -358,7 +358,6 @@
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/extension_run_guard.php",
         "packages/php/tests/fixtures/CodecProbeDumper.php",
-        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
         "packages/php/tests/limit_columns_peak.php",
@@ -393,6 +392,7 @@
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/CatalogUnreadableStream.php",
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/RecipeGenerator.php"
@@ -718,7 +718,7 @@
         },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+          "reason": "test: injects a failure into each phase of the native cipher and decipher of Node, checks that each is the error of its rule (aes: the encryption failed, aes: authentication failed) with the native failure as its cause and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
@@ -1163,7 +1163,7 @@
         },
         {
           "glob": "packages/rust/build/tests/unit/catalog_value.rs",
-          "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
+          "reason": "test: tests the private conversions of the Rust catalog that no database reaches, a driver value of another host form (INT-171) and a driver or library failure kept as the source (INT-172) at the position of its column, and the Rust-only rendering of the PostgreSQL binary values of INT-185 as the text of their output functions, edge forms included; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe (FCV-2)"
         },
         {
           "glob": "packages/rust/schema/tests/cases/dbspec_model.rs",

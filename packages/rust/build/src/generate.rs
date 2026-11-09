@@ -995,6 +995,10 @@ fn model_source(gm: &Model<'_>) -> String {
         }
         if c.styled_value() {
             let store = if bt == ORDERED { "set_ordered" } else { "set_json" };
+            // The setter encodes the value by the codec stages of the column and fails at the call, before it changes the
+            // model (docs/spec/codec.md COD-73).
+            let check = if bt == ORDERED { "check_setter_ordered" } else { "check_setter" };
+            let styles = c.codec.iter().map(|style| format!("{style:?}")).collect::<Vec<_>>().join(", ");
             let sql_null = if c.nullable {
                 format!("self.__orm.set({col:?}, polyspec_orm::Param::Null);\n                self.{id} = None;")
             } else {
@@ -1003,7 +1007,7 @@ fn model_source(gm: &Model<'_>) -> String {
             let field_value = if c.nullable { "Some(value)" } else { "value" };
             write!(
                 b,
-                "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: polyspec_orm::StyledValue<{bt}>) -> polyspec_orm::Result<Self> {{\n        match v {{\n            polyspec_orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            polyspec_orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
+                "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: polyspec_orm::StyledValue<{bt}>) -> polyspec_orm::Result<Self> {{\n        match v {{\n            polyspec_orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            polyspec_orm::StyledValue::Value(value) => {{\n                polyspec_orm::codec::{check}(&[{styles}], &value)?;\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
             ).expect("fmt::Write into a String cannot fail");
         } else if let Type::Decimal(precision, scale) = c.ty {
             if c.nullable {

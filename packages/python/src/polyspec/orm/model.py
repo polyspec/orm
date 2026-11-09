@@ -14,6 +14,7 @@ from polyspec.ordered_json import (
 )
 
 from polyspec.orm import codes
+from polyspec.orm.codec import _on_own_stack
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError, StoredColumnName
@@ -286,12 +287,23 @@ def _number_text(value: float) -> str:
     return f"{sign}{mantissa}e{'+' if e >= 0 else '-'}{abs(e)}"
 
 
+# The Python frames that the JSON output takes at most for a styled value of 256 levels, the most that a setter or a decode
+# lets a column hold (COD-70), measured with a margin of 50: two frames a level. A caller that leaves fewer runs it on a
+# thread of its own, as a value stage of the codec does (codec._on_own_stack), so the output never depends on the depth of
+# its caller (COD-71). test_codec_stack_depth.py holds it at the boundary.
+_JSON_OUTPUT_FRAMES = 570
+
+
 def _json_text(value) -> str:
     """The JSON text of one output value: an ordered-json value is its stored text as is."""
+    return _on_own_stack(_JSON_OUTPUT_FRAMES, _json_value_text, value)
+
+
+def _json_value_text(value) -> str:
     if isinstance(value, StyledValue):
         if value.kind == "sql-null":
             return '{"kind":"sql-null"}'
-        return '{"kind":"value","value":' + _json_text(value.payload()) + "}"
+        return '{"kind":"value","value":' + _json_value_text(value.payload()) + "}"
     if isinstance(value, OrderedJson):
         return ordered_json_stringify(value)
     if isinstance(value, (Model, Collection)):
@@ -307,7 +319,7 @@ def _json_text(value) -> str:
     if isinstance(value, str):
         return _string_text(value)
     if isinstance(value, (list, tuple)):
-        return "[" + ",".join(_json_text(item) for item in value) + "]"
+        return "[" + ",".join(_json_value_text(item) for item in value) + "]"
     if isinstance(value, dict):
         for name in value:
             if not isinstance(name, str):
@@ -318,7 +330,7 @@ def _json_text(value) -> str:
         return (
             "{"
             + ",".join(
-                f"{_string_text(name)}:{_json_text(item)}"
+                f"{_string_text(name)}:{_json_value_text(item)}"
                 for name, item in value.items()
             )
             + "}"

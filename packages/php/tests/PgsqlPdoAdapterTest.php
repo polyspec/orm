@@ -27,7 +27,7 @@ final class PgsqlPdoAdapterTest extends TestCase
         $columns = new ReflectionProperty(PgsqlStatementAdapter::class, 'columns');
         $columns->setValue($statement, [['type' => 'float8']]);
         $convert = new ReflectionMethod(PgsqlStatementAdapter::class, 'convert');
-        $gridCell = new ReflectionMethod(Catalog::class, 'gridCell');
+        $gridCell = new ReflectionMethod(Catalog::class, 'postgresGridCell');
 
         foreach (
             [
@@ -40,7 +40,7 @@ final class PgsqlPdoAdapterTest extends TestCase
             self::assertIsFloat($value);
             self::assertEquals(
                 new CatalogGridCell('float64', $bits),
-                $gridCell->invoke(null, $value, 'postgres', 'FLOAT8', false, false)
+                $gridCell->invoke(null, $value, 'float8')
             );
         }
     }
