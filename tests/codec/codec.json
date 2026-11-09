@@ -563,12 +563,12 @@
             "ordered_json"
           ],
           "raw": {
-            "text": "\"한글/slash \\\"q\\\" \\\\ back\""
+            "text": "\"\ud55c\uae00/slash \\\"q\\\" \\\\ back\""
           },
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -579,7 +579,7 @@
             "ordered_json"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell",
           "expect": {
@@ -601,7 +601,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -863,7 +863,7 @@
             "ordered_json"
           ],
           "raw": {
-            "text": "{\"a\":1,\"b\":[1,2,{\"c\":\"한\"}],\"d\":null,\"e\":true,\"f\":1.5}"
+            "text": "{\"a\":1,\"b\":[1,2,{\"c\":\"\ud55c\"}],\"d\":null,\"e\":true,\"f\":1.5}"
           },
           "expect": {
             "none": {
@@ -890,7 +890,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -949,7 +949,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -1019,7 +1019,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -2070,12 +2070,12 @@
             "serialize"
           ],
           "raw": {
-            "text": "s:23:\"한글/slash \"q\" \\ back\";"
+            "text": "s:23:\"\ud55c\uae00/slash \"q\" \\ back\";"
           },
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -2086,7 +2086,7 @@
             "serialize"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell",
           "expect": {
@@ -2108,7 +2108,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -2366,7 +2366,7 @@
             "serialize"
           ],
           "raw": {
-            "text": "a:5:{s:1:\"a\";i:1;s:1:\"b\";a:3:{i:0;i:1;i:1;i:2;i:2;a:1:{s:1:\"c\";s:3:\"한\";}}s:1:\"d\";N;s:1:\"e\";b:1;s:1:\"f\";d:1.5;}"
+            "text": "a:5:{s:1:\"a\";i:1;s:1:\"b\";a:3:{i:0;i:1;i:1;i:2;i:2;a:1:{s:1:\"c\";s:3:\"\ud55c\";}}s:1:\"d\";N;s:1:\"e\";b:1;s:1:\"f\";d:1.5;}"
           },
           "expect": {
             "none": {
@@ -2393,7 +2393,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -2452,7 +2452,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -2522,7 +2522,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -3610,7 +3610,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -3622,7 +3622,7 @@
             "base64"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell",
           "expect": {
@@ -3645,7 +3645,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -4039,7 +4039,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -4099,7 +4099,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -4170,7 +4170,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -5227,7 +5227,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -5239,7 +5239,7 @@
             "gz"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell"
         },
@@ -5255,7 +5255,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -5541,7 +5541,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -5601,7 +5601,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -5665,7 +5665,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -6644,12 +6644,12 @@
             "yaml"
           ],
           "raw": {
-            "text": "'한글/slash \"q\" \\ back'"
+            "text": "'\ud55c\uae00/slash \"q\" \\ back'"
           },
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -6660,7 +6660,7 @@
             "yaml"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell"
         },
@@ -6675,7 +6675,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -6912,7 +6912,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n  - 1\n  - 2\n  -\n    c: 한\nd: null\ne: true\nf: 1.5\n"
+            "text": "a: 1\nb:\n  - 1\n  - 2\n  -\n    c: \ud55c\nd: null\ne: true\nf: 1.5\n"
           },
           "expect": {
             "none": {
@@ -6939,7 +6939,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -6998,7 +6998,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -7061,7 +7061,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -7885,7 +7885,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -7896,7 +7896,7 @@
             "base64"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell",
           "expect": {
@@ -7918,7 +7918,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -8101,7 +8101,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -8633,7 +8633,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -8644,7 +8644,7 @@
             "gz"
           ],
           "value": {
-            "text": "한글/slash \"q\" \\ back"
+            "text": "\ud55c\uae00/slash \"q\" \\ back"
           },
           "as": "cell"
         },
@@ -8659,7 +8659,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한글/slash \"q\" \\ back"
+                "text": "\ud55c\uae00/slash \"q\" \\ back"
               }
             }
           }
@@ -8835,7 +8835,7 @@
                         [
                           "c",
                           {
-                            "text": "한"
+                            "text": "\ud55c"
                           }
                         ]
                       ]
@@ -9385,7 +9385,7 @@
             "ip"
           ],
           "value": {
-            "text": "192.0.2.1 "
+            "text": "192.0.2.1\u00a0"
           },
           "key": "",
           "expect": {
@@ -9689,12 +9689,12 @@
             "yaml"
           ],
           "raw": {
-            "text": "ab"
+            "text": "a\u0085b"
           },
           "expect": {
             "none": {
               "value": {
-                "text": "ab"
+                "text": "a\u0085b"
               }
             }
           }
@@ -9705,7 +9705,7 @@
             "yaml"
           ],
           "value": {
-            "text": "ab"
+            "text": "a\u0085b"
           },
           "as": "cell"
         },
@@ -9720,7 +9720,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "ab"
+                "text": "a\u0085b"
               }
             }
           }
@@ -10345,7 +10345,7 @@
             "base64"
           ],
           "raw": {
-            "text": "﻿czoyOiJoaSI7"
+            "text": "\ufeffczoyOiJoaSI7"
           },
           "expect": {
             "none": {
@@ -10741,7 +10741,7 @@
             "base64"
           ],
           "raw": {
-            "text": "czoyOiJoaSI7"
+            "text": "\u0085czoyOiJoaSI7"
           },
           "expect": {
             "none": {
@@ -10774,7 +10774,7 @@
             "base64"
           ],
           "raw": {
-            "text": " czoyOiJoaSI7"
+            "text": "\u00a0czoyOiJoaSI7"
           },
           "expect": {
             "none": {
@@ -10807,7 +10807,7 @@
             "base64"
           ],
           "raw": {
-            "text": " czoyOiJoaSI7"
+            "text": "\u2028czoyOiJoaSI7"
           },
           "expect": {
             "none": {
@@ -11485,7 +11485,7 @@
             "hex"
           ],
           "raw": {
-            "text": "﻿4F"
+            "text": "\ufeff4F"
           },
           "key": "",
           "expect": {
@@ -13334,7 +13334,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "﻿a: 1\n"
+            "text": "\ufeffa: 1\n"
           },
           "expect": {
             "none": {
@@ -14010,7 +14010,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: xy\n"
+            "text": "a: x\u007fy\n"
           },
           "expect": {
             "none": {
@@ -14025,7 +14025,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: \"x\"\n"
+            "text": "a: \"x\u009f\"\n"
           },
           "expect": {
             "none": {
@@ -14055,7 +14055,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: ﻿x\n"
+            "text": "a: \ufeffx\n"
           },
           "expect": {
             "none": {
@@ -14070,7 +14070,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\n﻿b: 2\n"
+            "text": "a: 1\n\ufeffb: 2\n"
           },
           "expect": {
             "none": {
@@ -14240,16 +14240,16 @@
                 "text": "#"
               },
               {
-                "text": ""
+                "text": "\u0085"
               },
               {
-                "text": "a b"
+                "text": "a\u2028b"
               },
               {
-                "text": "a "
+                "text": "a\u2029"
               },
               {
-                "text": "한글"
+                "text": "\ud55c\uae00"
               },
               {
                 "text": "0o17"
@@ -14261,19 +14261,19 @@
                 "text": "a\u001b"
               },
               {
-                "text": "a"
+                "text": "a\u007f"
               },
               {
-                "text": ""
+                "text": "\u009f"
               },
               {
-                "text": "﻿a"
+                "text": "\ufeffa"
               },
               {
-                "text": "￾"
+                "text": "\ufffe"
               },
               {
-                "text": "￿"
+                "text": "\uffff"
               },
               {
                 "text": "1_000"
@@ -14337,16 +14337,16 @@
                     "text": "#"
                   },
                   {
-                    "text": ""
+                    "text": "\u0085"
                   },
                   {
-                    "text": "a b"
+                    "text": "a\u2028b"
                   },
                   {
-                    "text": "a "
+                    "text": "a\u2029"
                   },
                   {
-                    "text": "한글"
+                    "text": "\ud55c\uae00"
                   },
                   {
                     "text": "0o17"
@@ -14358,19 +14358,19 @@
                     "text": "a\u001b"
                   },
                   {
-                    "text": "a"
+                    "text": "a\u007f"
                   },
                   {
-                    "text": ""
+                    "text": "\u009f"
                   },
                   {
-                    "text": "﻿a"
+                    "text": "\ufeffa"
                   },
                   {
-                    "text": "￾"
+                    "text": "\ufffe"
                   },
                   {
-                    "text": "￿"
+                    "text": "\uffff"
                   },
                   {
                     "text": "1_000"
@@ -14517,9 +14517,9 @@
           "value": {
             "object": [
               [
-                "a b",
+                "a\u2028b",
                 {
-                  "text": "x\u0007y﻿  z"
+                  "text": "x\u0007y\u007f\u0085\u009f\ufeff\u2028\u2029z"
                 }
               ],
               [
@@ -14549,9 +14549,9 @@
               "value": {
                 "object": [
                   [
-                    "a b",
+                    "a\u2028b",
                     {
-                      "text": "x\u0007y﻿  z"
+                      "text": "x\u0007y\u007f\u0085\u009f\ufeff\u2028\u2029z"
                     }
                   ],
                   [
@@ -14582,7 +14582,7 @@
               "value": {
                 "object": [
                   [
-                    "a b",
+                    "a\u2028b",
                     {
                       "int": "1"
                     }
@@ -14996,7 +14996,7 @@
             "gz"
           ],
           "value": {
-            "text": "한 text"
+            "text": "\ud55c text"
           },
           "as": "gz_text"
         },
@@ -15011,7 +15011,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한 text"
+                "text": "\ud55c text"
               }
             }
           }
@@ -15100,7 +15100,7 @@
             "base64"
           ],
           "value": {
-            "text": "한 text"
+            "text": "\ud55c text"
           },
           "as": "base64_text"
         },
@@ -15115,7 +15115,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "한 text"
+                "text": "\ud55c text"
               }
             }
           }
@@ -15663,7 +15663,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n  - 1\n  - 2\n  - c: 한\n"
+            "text": "a: 1\nb:\n  - 1\n  - 2\n  - c: \ud55c\n"
           },
           "expect": {
             "none": {
@@ -15690,7 +15690,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -15709,7 +15709,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n  - 1\n  - 2\n  - c: 한"
+            "text": "a: 1\nb:\n  - 1\n  - 2\n  - c: \ud55c"
           },
           "expect": {
             "none": {
@@ -15736,7 +15736,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -15755,7 +15755,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n- 1\n- 2\n- c: 한\n...\n"
+            "text": "a: 1\nb:\n- 1\n- 2\n- c: \ud55c\n...\n"
           },
           "expect": {
             "none": {
@@ -15782,7 +15782,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -15801,7 +15801,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n    - 1\n    - 2\n    - c: 한\n"
+            "text": "a: 1\nb:\n    - 1\n    - 2\n    - c: \ud55c\n"
           },
           "expect": {
             "none": {
@@ -15828,7 +15828,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -15847,7 +15847,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: 1\nb:\n  - 1\n  - 2\n  -\n    c: 한\n"
+            "text": "a: 1\nb:\n  - 1\n  - 2\n  -\n    c: \ud55c\n"
           },
           "expect": {
             "none": {
@@ -15874,7 +15874,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -15893,7 +15893,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "'a': 1\n\"b\":\n  - 1\n  - 2\n  - 'c': \"한\"\n"
+            "text": "'a': 1\n\"b\":\n  - 1\n  - 2\n  - 'c': \"\ud55c\"\n"
           },
           "expect": {
             "none": {
@@ -15920,7 +15920,7 @@
                             [
                               "c",
                               {
-                                "text": "한"
+                                "text": "\ud55c"
                               }
                             ]
                           ]
@@ -17400,7 +17400,7 @@
             "aes"
           ],
           "value": {
-            "text": "인증된 UTF-8 🔐"
+            "text": "\uc778\uc99d\ub41c UTF-8 \ud83d\udd10"
           },
           "key": "k",
           "as": "e2"
@@ -17417,7 +17417,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "인증된 UTF-8 🔐"
+                "text": "\uc778\uc99d\ub41c UTF-8 \ud83d\udd10"
               }
             }
           }
@@ -18249,7 +18249,7 @@
             "serialize"
           ],
           "value": {
-            "text": "말"
+            "text": "\ub9d0"
           },
           "expect": {
             "none": {
@@ -18265,12 +18265,12 @@
             "serialize"
           ],
           "raw": {
-            "text": "s:3:\"맛\";"
+            "text": "s:3:\"\ub9db\";"
           },
           "expect": {
             "none": {
               "value": {
-                "text": "맛"
+                "text": "\ub9db"
               }
             }
           }
@@ -20180,7 +20180,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "a: x y\n"
+            "text": "a: x\u2028y\n"
           },
           "expect": {
             "none": {
@@ -20189,7 +20189,7 @@
                   [
                     "a",
                     {
-                      "text": "x y"
+                      "text": "x\u2028y"
                     }
                   ]
                 ]
@@ -20203,7 +20203,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "﻿--- 1\n"
+            "text": "\ufeff--- 1\n"
           },
           "expect": {
             "none": {
@@ -21108,6 +21108,38 @@
             "none": {
               "error": "CODEC_DECODE",
               "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "%YAML 1.02\n---\na\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "library_cause": true
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "%YAML 01.2\n---\na\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "library_cause": true
             }
           }
         }
@@ -23754,14 +23786,14 @@
             "yaml"
           ],
           "raw": {
-            "text": "한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한: v\n"
+            "text": "\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c: v\n"
           },
           "expect": {
             "none": {
               "value": {
                 "object": [
                   [
-                    "한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한",
+                    "\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
                     {
                       "text": "v"
                     }
@@ -23777,7 +23809,7 @@
             "yaml"
           ],
           "raw": {
-            "text": "한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한한: v\n"
+            "text": "\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c: v\n"
           },
           "expect": {
             "none": {
@@ -23793,14 +23825,14 @@
             "yaml"
           ],
           "raw": {
-            "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀: v\n"
+            "text": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00: v\n"
           },
           "expect": {
             "none": {
               "value": {
                 "object": [
                   [
-                    "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+                    "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
                     {
                       "text": "v"
                     }
@@ -24500,7 +24532,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "\u0000\u0007\b\t\t\n\u000b\f\r\u001b \"/\\   "
+                "text": "\u0000\u0007\b\t\t\n\u000b\f\r\u001b \"/\\\u0085\u00a0\u2028\u2029"
               }
             }
           }
@@ -24516,7 +24548,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "A~é가😀􏿿\u0000"
+                "text": "A~\u00e9\uac00\ud83d\ude00\udbff\udfff\u0000"
               }
             }
           }
@@ -24532,7 +24564,7 @@
           "expect": {
             "none": {
               "value": {
-                "text": "Éé"
+                "text": "\u00c9\u00e9"
               }
             }
           }
@@ -25240,6 +25272,51 @@
                     "k",
                     {
                       "text": "a\nb\n"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "|\n a\n\t\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "a\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: |\n  b\n\t\nc: d\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "text": "b\n"
+                    }
+                  ],
+                  [
+                    "c",
+                    {
+                      "text": "d"
                     }
                   ]
                 ]
@@ -28280,6 +28357,66 @@
                   }
                 ]
               }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\n.inf\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\n[.inf]\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{[x]: 1}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[{[x]: 1}]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
             }
           }
         }
