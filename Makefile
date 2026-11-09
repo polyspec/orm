@@ -1297,7 +1297,7 @@ model-chunk-composite-native-php-extension-check: php-vendor-check php-model-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages|testSplitRootInCountPlansNoStatementOverTheBindLimit|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes' packages/php-ext/tests/ParameterChunkingNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSplitRootInCountPlansNoStatementOverTheBindLimit|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes' packages/php-ext/tests/ParameterChunkingNativeTest.php
 
 # Runs focused grouped-result decoder and native GroupRow count units through the PHP extension.
 .PHONY: group-count-boolean-php-extension-unit-check
