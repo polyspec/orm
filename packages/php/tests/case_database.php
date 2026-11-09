@@ -126,7 +126,9 @@ function case_database(string $driver, callable $step): CaseDatabase
         $step("database file $path created");
         return new CaseDatabase($driver, $path, "sqlite://$path", null, $step);
     }
-    if (!in_array($driver, ['mysql', 'postgres'], true)) {
+    // MariaDB is a server of the MySQL dialect (DIA-200): its case database is a MySQL one on the server of
+    // ORM_TEST_MARIADB_DSN.
+    if (!in_array($driver, ['mysql', 'mariadb', 'postgres'], true)) {
         throw new InvalidArgumentException("case database of driver $driver");
     }
     $env = 'ORM_TEST_' . strtoupper($driver) . '_DSN';

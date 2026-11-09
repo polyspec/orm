@@ -40,7 +40,12 @@ final class RecipeApply
         'sqlite' => ['PRAGMA foreign_keys = ON'],
     ];
 
-    private const SERVER_ENV = ['mysql' => 'ORM_TEST_MYSQL_SERVER_DSN', 'postgres' => 'ORM_TEST_POSTGRES_SERVER_DSN'];
+    // MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    private const SERVER_ENV = [
+        'mysql' => 'ORM_TEST_MYSQL_SERVER_DSN',
+        'mariadb' => 'ORM_TEST_MARIADB_SERVER_DSN',
+        'postgres' => 'ORM_TEST_POSTGRES_SERVER_DSN',
+    ];
 
     /**
      * @param array<string, mixed> $context
@@ -88,10 +93,10 @@ final class RecipeApply
         return self::command($s, $context, $runStep);
     }
 
-    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185). */
+    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
     private static function dialect(string $database): string
     {
-        return $database === 'markdown' ? 'sqlite' : $database;
+        return ['markdown' => 'sqlite', 'mariadb' => 'mysql'][$database] ?? $database;
     }
 
     /**
@@ -100,7 +105,7 @@ final class RecipeApply
      */
     private static function dialectKey(string $database, array $entries): string
     {
-        return $database === 'markdown' && !array_key_exists('markdown', $entries) ? 'sqlite' : $database;
+        return array_key_exists($database, $entries) ? $database : self::dialect($database);
     }
 
     private static function required(string $name): string
@@ -148,7 +153,7 @@ final class RecipeApply
         } else {
             $pdo = self::open(self::required(self::SERVER_ENV[$database]), self::nameOf($dsn));
         }
-        foreach (self::CONNECTION_RULES[$database] as $rule) {
+        foreach (self::CONNECTION_RULES[self::dialect($database)] as $rule) {
             $pdo->exec($rule);
         }
         return $pdo;

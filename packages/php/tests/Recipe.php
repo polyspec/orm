@@ -128,7 +128,9 @@ final class Recipe
         if (!isset(self::$caseIds[$path])) {
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
             self::$caseIds[$path] = [];
-            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => []];
+            self::$databaseCaseIds[$path] = [
+                'mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => [], 'mariadb' => [],
+            ];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
                 foreach (array_keys(self::$databaseCaseIds[$path]) as $database) {
@@ -2550,35 +2552,47 @@ final class Recipe
     // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
     /** The databases of a recipe with a fixture (FCV-3). */
-    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown'];
+    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb'];
+
+    /** The SQL dialect of a database that is not a dialect of its own: a corpus runs SQLite's (DIA-185), MariaDB MySQL's (DIA-200). */
+    private const DIALECT_OF = ['markdown' => 'sqlite', 'mariadb' => 'mysql'];
 
     /**
      * Whether a case or step with the list $only runs on database: a corpus speaks SQLite's dialect, so what names
-     * sqlite names it too (FCV-3).
+     * sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3).
      *
      * @param list<string>|null $only
      */
     private static function onDatabase(?array $only, string $database): bool
     {
         return $only === null || in_array($database, $only, true)
-            || ($database === 'markdown' && in_array('sqlite', $only, true));
+            || ($database === 'markdown' && in_array('sqlite', $only, true))
+            || ($database === 'mariadb' && in_array('mysql', $only, true));
     }
 
     /**
-     * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads
-     * the SQLite entry unless the value states its own.
+     * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect
+     * unless the value states its own (FCV-3).
      */
     private static function dialectKey(string $database, mixed $entries): string
     {
-        return $database === 'markdown' && !(is_array($entries) && array_key_exists('markdown', $entries))
-            ? 'sqlite'
-            : $database;
+        return is_array($entries) && array_key_exists($database, $entries)
+            ? $database
+            : (self::DIALECT_OF[$database] ?? $database);
     }
 
-    /** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+    /** The SQL dialect of the case database. */
     private static function dialectOf(array $context): string
     {
-        return $context['database'] === 'markdown' ? 'sqlite' : $context['database'];
+        return self::DIALECT_OF[$context['database']] ?? $context['database'];
+    }
+
+    /** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+    private static function serverVariable(string $name, string $database): string
+    {
+        return $database === 'mariadb' && str_starts_with($name, 'ORM_TEST_MYSQL_')
+            ? 'ORM_TEST_MARIADB_' . substr($name, strlen('ORM_TEST_MYSQL_'))
+            : $name;
     }
 
     /** @var array<string, array{0: Schema, 1: list<Schema>}> the Schema and the external Schemas of each fixture set, built once per process */
@@ -3479,15 +3493,20 @@ final class Recipe
                     $source->commit();
                     return [];
                 }
-                $replica = (string) getenv('ORM_TEST_MYSQL_REPLICA_DSN');
+                // MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+                $variable = self::serverVariable('ORM_TEST_MYSQL_REPLICA_DSN', $context['database']);
+                $replica = (string) getenv($variable);
                 Assert::assertNotSame(
                     '',
                     $replica,
-                    'ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases '
-                        . 'and writes it'
+                    "$variable is required; run make orm-test-servers, which starts the databases and writes it"
                 );
-                $status = $source->query('SHOW BINARY LOG STATUS')->fetch(\PDO::FETCH_NUM);
-                $wait = case_admin($replica)->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
+                $mariadb = $context['database'] === 'mariadb';
+                $status = $source->query($mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS')
+                    ->fetch(\PDO::FETCH_NUM);
+                $wait = case_admin($replica)->prepare(
+                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?, 60)' : 'SELECT SOURCE_POS_WAIT(?, ?, 60)'
+                );
                 $wait->execute([$status[0], (int) $status[1]]);
                 $waited = $wait->fetchColumn();
                 Assert::assertTrue(
@@ -3558,9 +3577,15 @@ final class Recipe
                     ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT "
                         . "oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' "
                         . "AND l.pid <> pg_backend_pid() LIMIT 1"
+                    // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other
+                    // than this one, whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
+                    : ($context['database'] === 'mariadb'
+                    ? 'SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN '
+                        . 'information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() '
+                        . 'AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1'
                     : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t "
                         . "ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = "
-                        . "'{$s['table']}' LIMIT 1")->fetchColumn();
+                        . "'{$s['table']}' LIMIT 1"))->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
@@ -3683,7 +3708,7 @@ final class Recipe
                     }
                 }
                 if (str_starts_with($dsn, 'env:')) {
-                    $name = substr($dsn, 4);
+                    $name = self::serverVariable(substr($dsn, 4), $context['database']);
                     $dsn = (string) getenv($name);
                     Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
                 }

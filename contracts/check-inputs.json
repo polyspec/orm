@@ -5336,6 +5336,14 @@
         "mariadb-server"
       ]
     },
+    "mariadb-recipes-check/php": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "mariadb-server"
+      ]
+    },
     "mariadb-recipes-check/typescript": {
       "scope": "suite",
       "needs": [
