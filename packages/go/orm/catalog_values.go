@@ -17,17 +17,15 @@ import (
 // rules", INT-165 to INT-185) in a read-only grid query, a plain read-only query and every read of a described table. Each
 // rule has one code and one text; a refusal names the 1-based position of its column and no value, label or type name.
 
-// catalogRule is a refusal of one catalog value rule: its code, its text and, for a value that the driver could not decode
-// (INT-172), the failure that it keeps as its cause.
+// catalogRule is a refusal of one catalog value rule: its code and its text.
 type catalogRule struct {
-	code  string
-	text  string
-	cause error
+	code string
+	text string
 }
 
 // at is the error of the rule for the value of the 1-based column n: CODE: column n: text.
 func (r *catalogRule) at(column int) error {
-	return &ir.Error{Code: r.code, Msg: fmt.Sprintf("column %d: %s", column, r.text), Cause: r.cause}
+	return &ir.Error{Code: r.code, Msg: fmt.Sprintf("column %d: %s", column, r.text)}
 }
 
 // The rules of the table of INT-165, by their ID.
@@ -48,35 +46,10 @@ var (
 	catalogRulePastPrecision   = &catalogRule{code: CodeGridTemporalPrecision, text: "temporal value has more fraction digits than its precision"}        // INT-180
 	catalogRuleNativePrecision = &catalogRule{code: CodeGridTemporalPrecision, text: "native type declares more than 6 fraction digits"}                  // INT-181
 	catalogRuleBooleanValue    = &catalogRule{code: CodeCatalogValue, text: "a boolean column holds a value that is not a boolean"}                       // INT-182
-	catalogTextDecodeFailure   = "the driver could not decode the value"                                                                                  // INT-172
 )
 
 // catalogRuleStoredValue is the rule of a SQLite stored value outside the dbspec form of its kind (INT-176 to INT-178).
 var catalogRuleStoredValue = map[string]*catalogRule{"date": catalogRuleStoredDate, "time": catalogRuleStoredTime, "datetime": catalogRuleStoredDateTime}
-
-// catalogDecodeRule is the refusal of a value that the driver or a library failed to decode (INT-172); it keeps the
-// failure as its cause.
-func catalogDecodeRule(cause error) *catalogRule {
-	return &catalogRule{code: CodeCatalogValue, text: catalogTextDecodeFailure, cause: cause}
-}
-
-// catalogPgxDecode is the form in which pgx reports a value that it could not decode: its stdlib Rows.Next returns
-// fmt.Errorf("convert field %d failed: %w", i, err) with the 0-based index of the field (pgx v5 stdlib/sql.go).
-var catalogPgxDecode = regexp.MustCompile(`^convert field ([0-9]+) failed: `)
-
-// catalogDecodeFailure is the catalog error of a row that the driver could not decode, or nil for any other failure of a
-// read. pgx names the field of the value; go-sql-driver/mysql and the SQLite drivers decode no value that they can fail on
-// without naming its column, so only a PostgreSQL failure is one.
-func catalogDecodeFailure(err error, dialect string) error {
-	if dialect != "postgres" {
-		return nil
-	}
-	match := catalogPgxDecode.FindStringSubmatch(err.Error())
-	if match == nil {
-		return nil
-	}
-	return catalogDecodeRule(err).at(catalogDigits(match[1]) + 1)
-}
 
 // catalogDigits is the number that a text of decimal digits, which a pattern matched, writes; it is bounded by the pattern.
 func catalogDigits(digits string) int {

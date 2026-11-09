@@ -51,18 +51,9 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 		return CatalogGridResult{}, err
 	}
 	return catalogRead(ctx, c, func(s *catalogSession) (CatalogGridResult, error) {
-		statement := query
-		var columns []string
-		if c.dialect == "sqlite" {
-			// The SQLite driver parses the text of a column declared DATE, DATETIME or TIMESTAMP into a time value, and
-			// the grid must keep the stored text. Reading the columns through a positional CTE and unary plus removes the
-			// declared type while keeping each storage class (docs/spec/interfaces.md, "Rust native grid query specification").
-			names, err := s.columnNames(query, args)
-			if err != nil {
-				return CatalogGridResult{}, err
-			}
-			statement = catalogSQLiteRawQuery(query, len(names))
-			columns = names
+		statement, columns, err := s.storedQuery(query, args)
+		if err != nil {
+			return CatalogGridResult{}, err
 		}
 		// Each value is converted to its grid cell as it is read, and the budget counts the cell (INT-115): the text of a
 		// decimal or temporal cell, not the driver value it came from.
@@ -89,6 +80,26 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 		}
 		return CatalogGridResult{Columns: columns, Rows: rows}, nil
 	})
+}
+
+// storedQuery is the statement that reads the stored values of a read query, and on SQLite the column names of the query.
+// The SQLite driver parses the text of a column declared DATE, DATETIME or TIMESTAMP into a time value, and a catalog value
+// keeps the stored text (INT-153). Reading the columns through a positional CTE and unary plus removes the declared type while
+// keeping each storage class (docs/spec/interfaces.md, "Rust native grid query specification"). On MySQL and PostgreSQL the
+// statement is the query and the names are nil: the read reports them.
+func (s *catalogSession) storedQuery(query string, args []any) (string, []string, error) {
+	if s.dialect != "sqlite" {
+		return query, nil, nil
+	}
+	names, err := s.columnNames(query, args)
+	if err != nil {
+		return "", nil, err
+	}
+	// A read query may end with one semicolon (catalogValidateReadOnly), which cannot stand inside the CTE.
+	if _, semicolon, _ := catalogWords(query, s.dialect); semicolon >= 0 {
+		query = query[:semicolon]
+	}
+	return catalogSQLiteRawQuery(query, len(names)), names, nil
 }
 
 // columnNames returns the column names of a query as the driver reports them for the query itself, without reading a row.

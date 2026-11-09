@@ -112,6 +112,12 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 // sends as a startup parameter. The MySQL driver does not parse a date or datetime into a time.Time either: it would move
 // a date that is no calendar date, such as 2024-02-30, to another day, and the catalog checks the text that the server
 // sends (INT-174).
+//
+// On PostgreSQL the catalog also reads each value of a fixed-length built-in type in its binary form, which no setting
+// changes: pgx's database/sql driver asks for that form when it describes a statement, and parses the text form of a date
+// or a timestamp, which follows DateStyle, so a query that sets DateStyle (set_config) would fail that parse. A query mode
+// that does not describe (simple_protocol, exec) becomes describe_exec, which uses no named statement either; the session
+// is one transaction, which holds its server connection through a transaction pooler (CFG-28).
 func catalogNativeDSN(parsed parsedDSN) (string, error) {
 	if parsed.driver == "postgres" {
 		u, err := url.Parse(parsed.native)
@@ -120,6 +126,9 @@ func catalogNativeDSN(parsed parsedDSN) (string, error) {
 		}
 		q := u.Query()
 		q.Set("client_encoding", "UTF8")
+		if mode := q.Get("default_query_exec_mode"); mode == "simple_protocol" || mode == "exec" {
+			q.Set("default_query_exec_mode", "describe_exec")
+		}
 		// PostgreSQL reads the option string literally, so a space stays percent-encoded, as parseDSN writes it.
 		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
 		return u.String(), nil
@@ -451,6 +460,8 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		for i := range values {
 			pointers[i] = &values[i]
 		}
+		// A value that the driver fails to decode fails Scan (pgx decodes a column in ScanColumn) or the read of the row with
+		// a driver error that keeps the failure as its cause; no database sends one for a supported type (INT-172).
 		if err := rows.Scan(pointers...); err != nil {
 			return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 		}
@@ -469,9 +480,6 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		raw.rows = append(raw.rows, values)
 	}
 	if err := rows.Err(); err != nil {
-		if decode := catalogDecodeFailure(err, s.dialect); decode != nil {
-			return catalogRaw{}, decode
-		}
 		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 	}
 	return raw, nil

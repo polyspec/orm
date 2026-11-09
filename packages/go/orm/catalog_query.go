@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"strings"
-	"time"
 )
 
 // CatalogQueryLimits bounds a read-only query. A zero field takes its default: 100000 rows and 64 MiB of values. A
@@ -51,10 +50,14 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 		return CatalogQueryResult{}, err
 	}
 	return catalogRead(ctx, c, func(s *catalogSession) (CatalogQueryResult, error) {
+		statement, columns, err := s.storedQuery(query, args)
+		if err != nil {
+			return CatalogQueryResult{}, err
+		}
 		// Each value is converted as it is read, and the budget counts the converted value (INT-115).
 		var values []any
 		convert := newCatalogCells(s)
-		raw, err := s.querySized(query, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
+		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
 			v, err := catalogQueryValue(convert, value, native, column)
 			if err != nil {
 				return 0, err
@@ -70,17 +73,16 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 			width := len(raw.names)
 			rows = append(rows, values[i*width:(i+1)*width])
 		}
-		return CatalogQueryResult{Columns: raw.names, Rows: rows}, nil
+		if columns == nil {
+			columns = raw.names
+		}
+		return CatalogQueryResult{Columns: columns, Rows: rows}, nil
 	})
 }
 
 // catalogQueryValue is the value of one driver value of a read query: the Go value of its grid cell, a float widened to a
-// float64. On SQLite that is the value of its storage class; the SQLite driver parses the text of a column declared DATE,
-// DATETIME or TIMESTAMP into a time.Time, which a plain query returns as it is.
+// float64. On SQLite that is the value of its storage class, a stored date, time or datetime its text (INT-153).
 func catalogQueryValue(convert *catalogCells, value any, native string, column int) (any, error) {
-	if _, isTime := value.(time.Time); isTime && convert.dialect == "sqlite" {
-		return value, nil
-	}
 	cell, err := convert.cell(value, native, column)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,7 @@ func catalogValidateReadOnly(query, dialect string) error {
 	if query == "" {
 		return refused
 	}
-	words, ok := catalogWords(query, dialect)
+	words, _, ok := catalogWords(query, dialect)
 	if !ok || len(words) == 0 {
 		return refused
 	}
@@ -146,10 +148,12 @@ func catalogValidateReadOnly(query, dialect string) error {
 	return nil
 }
 
-// catalogWords returns the upper-cased words of a query and its semicolons. String literals, quoted identifiers and
-// comments are skipped. It reports false for an unterminated literal or comment and for a MySQL executable comment.
-func catalogWords(query, dialect string) ([]string, bool) {
+// catalogWords returns the upper-cased words of a query and its semicolons, and the byte offset of its last semicolon or -1.
+// String literals, quoted identifiers and comments are skipped. It reports false for an unterminated literal or comment and
+// for a MySQL executable comment.
+func catalogWords(query, dialect string) ([]string, int, bool) {
 	var words []string
+	semicolon := -1
 	for i := 0; i < len(query); {
 		c := query[i]
 		switch {
@@ -158,16 +162,16 @@ func catalogWords(query, dialect string) ([]string, bool) {
 		case c == '-' && strings.HasPrefix(query[i:], "--"):
 			end := strings.IndexByte(query[i:], '\n')
 			if end < 0 {
-				return words, true
+				return words, semicolon, true
 			}
 			i += end + 1
 		case c == '/' && strings.HasPrefix(query[i:], "/*"):
 			if strings.HasPrefix(query[i:], "/*!") || strings.HasPrefix(query[i:], "/*M!") {
-				return nil, false
+				return nil, -1, false
 			}
 			end := strings.Index(query[i+2:], "*/")
 			if end < 0 {
-				return nil, false
+				return nil, -1, false
 			}
 			i += end + 4
 		case c == '\'' || c == '"' || c == '`':
@@ -175,7 +179,7 @@ func catalogWords(query, dialect string) ([]string, bool) {
 			backslash := dialect == "mysql" && c != '`'
 			next, ok := catalogSkipQuoted(query, i, c, backslash)
 			if !ok {
-				return nil, false
+				return nil, -1, false
 			}
 			i = next
 		case c == '_' || isASCIILetter(c):
@@ -193,12 +197,13 @@ func catalogWords(query, dialect string) ([]string, bool) {
 			i = j
 		case c == ';':
 			words = append(words, ";")
+			semicolon = i
 			i++
 		default:
 			i++
 		}
 	}
-	return words, true
+	return words, semicolon, true
 }
 
 // catalogSkipQuoted returns the index after the literal or identifier that starts at start, with the doubled quote mark

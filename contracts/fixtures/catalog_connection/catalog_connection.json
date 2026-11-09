@@ -19435,6 +19435,110 @@
       ]
     },
     {
+      "id": "catalog_temporal_values_under_a_query_datestyle",
+      "requirements": [
+        "INT-153",
+        "INT-165",
+        "CFG-28"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "SQL, DMY"
+                  },
+                  {
+                    "text": "2026-01-02"
+                  },
+                  {
+                    "text": "2026-01-02 03:04:05.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "SQL, DMY"
+                  },
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.reconnect",
+          "dsn": "case-pooler"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "SQL, DMY"
+                  },
+                  {
+                    "text": "2026-01-02"
+                  },
+                  {
+                    "text": "2026-01-02 03:04:05.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "SQL, DMY"
+                  },
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        }
+      ]
+    },
+    {
       "id": "row_change_on_a_direct_trigger_grant",
       "not_through_pooler": "its own user and role are accounts of the server; a pooler knows no such account and shares its server connections",
       "requirements": [

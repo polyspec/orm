@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -47,8 +47,8 @@ func TestCatalogValueUnsupportedDriverValue(t *testing.T) {
 }
 
 // TestCatalogValueDriverDecodeFailure injects a value that the driver fails to decode, which no database sends for a
-// supported type (INT-172, FCV-2). pgx reports it from Rows.Next as "convert field <i> failed: <cause>" (pgx v5
-// stdlib/sql.go); the read fails with CATALOG_VALUE at the 1-based column of the field and keeps the failure as its cause.
+// supported type (INT-172, FCV-2): the driver reports it from the read of the row, and the read fails with that driver
+// error, which keeps the failure as its cause.
 //
 // Requirements: INT-172.
 func TestCatalogValueDriverDecodeFailure(t *testing.T) {
@@ -70,16 +70,61 @@ func TestCatalogValueDriverDecodeFailure(t *testing.T) {
 		}
 	})
 	cause := errors.New("invalid length for int8: 3")
-	inject(t, injectedFailure{rows: func(string) error { return fmt.Errorf("convert field %d failed: %w", 1, cause) }})
+	inject(t, injectedFailure{rows: func(string) error { return cause }})
 	session := &catalogSession{ctx: ctx, conn: conn, dialect: "postgres"}
 	_, err = session.queryRaw("SELECT 1, 2", nil, 10, 1<<20)
-	if ErrorCode(err) != CodeCatalogValue || err.Error() != "CATALOG_VALUE: column 2: the driver could not decode the value" {
-		t.Fatalf("queryRaw = %v; want CATALOG_VALUE: column 2: the driver could not decode the value", err)
+	if ErrorCode(err) != CodeDriver || err.Error() != "DRIVER: invalid length for int8: 3" {
+		t.Fatalf("queryRaw = %v; want DRIVER: invalid length for int8: 3", err)
 	}
 	if !errors.Is(err, cause) {
 		t.Fatalf("the decode failure lost its cause: %v", err)
 	}
 	if unwrapped := errors.Unwrap(err); unwrapped == nil || !errors.Is(unwrapped, cause) {
 		t.Fatalf("errors.Unwrap = %v; want the driver failure", unwrapped)
+	}
+}
+
+// TestCatalogPostgresQueryModeKeepsBinaryTemporals reads a date and a timestamp under a DateStyle that the query sets, through
+// a DSN whose pgx query mode would send their text, which follows DateStyle: the catalog reads them in the binary form, so
+// each keeps its cell in a plain and a grid query.
+//
+// Requirements: INT-153.
+// Runtime-unique (FCV-14): the query mode is an option of the Go PostgreSQL driver; the recipe case
+// catalog_temporal_values_under_a_query_datestyle reads the same query through the DSN of every runtime.
+func TestCatalogPostgresQueryModeKeepsBinaryTemporals(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	dsn := os.Getenv("ORM_TEST_POSTGRES_DSN")
+	if dsn == "" {
+		t.Fatal("ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers")
+	}
+	query := "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, " +
+		"'2026-01-02 03:04:05.5'::timestamp AS dt"
+	for _, mode := range []string{"simple_protocol", "exec"} {
+		t.Run(mode, func(t *testing.T) {
+			catalog, err := ConnectCatalog(dsn + "&default_query_exec_mode=" + mode)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := catalog.Close(); err != nil {
+					t.Errorf("close: %v", err)
+				}
+			})
+			plain, err := catalog.ReadOnlyQuery(context.Background(), query, nil, CatalogQueryLimits{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(plain.Rows) != 1 || plain.Rows[0][1] != "2026-01-02" || plain.Rows[0][2] != "2026-01-02 03:04:05.500000" {
+				t.Fatalf("ReadOnlyQuery rows = %#v", plain.Rows)
+			}
+			grid, err := catalog.ReadOnlyGridQuery(context.Background(), query, nil, CatalogQueryLimits{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []CatalogGridCell{{Kind: CatalogGridDate, Value: "2026-01-02"}, {Kind: CatalogGridDateTime, Value: "2026-01-02 03:04:05.500000"}}
+			if len(grid.Rows) != 1 || grid.Rows[0][1] != want[0] || grid.Rows[0][2] != want[1] {
+				t.Fatalf("ReadOnlyGridQuery rows = %#v; want the cells %#v", grid.Rows, want)
+			}
+		})
 	}
 }
