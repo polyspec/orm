@@ -9,7 +9,6 @@ use chrono::{NaiveDate, NaiveDateTime};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
-use sqlx::Connection as _;
 use std::time::Duration;
 
 use crate::or_panic;
@@ -71,73 +70,17 @@ fn driver_parameters_reach_sqlx() {
     assert_eq!(options.get_charset(), "latin1", "charset reaches sqlx");
 }
 
-/// The pool size a connection is opened with is its maximum open connections.
+/// A Rust pool opened without `pool_lifetime_ms` keeps the 30-minute lifetime of its pool (CFG-5), which no other client has.
 #[tokio::main(flavor = "current_thread")]
-// Requirements: CFG-4.
-async fn pool_size() {
+// Requirements: CFG-5.
+async fn pool_keeps_the_thirty_minute_lifetime_when_unset() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-pool-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("orm-rust-pool-lifetime-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
     let db = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap();
-    assert_eq!(db.stats().max_open_connections, 3, "configured pool size");
-    db.close().await;
-    remove_dir(&tmp);
-}
-
-/// `pool_idle_size` bounds the idle connections a pool keeps, and
-/// `pool_lifetime_ms` closes a connection after its lifetime; an idle size
-/// above the pool size returns CONFIG.
-#[tokio::main(flavor = "current_thread")]
-// Requirements: CFG-5.
-async fn pool_idle_size_and_lifetime() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
-    let Pool::Sqlite(unset) = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap().pool().clone() else { unreachable!() };
+    let Pool::Sqlite(unset) = db.pool().clone() else { unreachable!() };
     assert_eq!(unset.options().get_max_lifetime(), Some(std::time::Duration::from_secs(30 * 60)), "default lifetime");
-    unset.close().await;
-
-    // Three connections are in use at once; after they return the pool keeps
-    // one idle connection and closes the others.
-    let db = Db::connect(&dsn, 3, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() }).await.unwrap();
-    let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
-    let mut held = Vec::new();
-    for _ in 0..3 {
-        held.push(pool.acquire().await.unwrap());
-    }
-    assert_eq!(db.stats().open_connections, 3, "three connections in use");
-    for mut conn in held {
-        conn.return_to_pool().await;
-    }
-    assert_eq!((db.stats().idle, db.stats().open_connections), (1, 1), "pool idle size 1");
-    db.close().await;
-
-    let db = Db::connect(&dsn, 1, polyspec_orm::Config { pool_lifetime_ms: 100, ..polyspec_orm::Config::default() }).await.unwrap();
-    let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
-    assert_eq!(pool.options().get_max_lifetime(), Some(std::time::Duration::from_millis(100)), "configured lifetime");
-    assert_eq!(db.stats().open_connections, 1, "the connection opened by connect");
-    sqlx::query("CREATE TABLE lifetime_probe (value INTEGER)").execute(&pool).await.unwrap();
-    let mut waiter = sqlx::SqliteConnection::connect_with(
-        &sqlx::sqlite::SqliteConnectOptions::new().filename(tmp.join("pool.sqlite")).busy_timeout(std::time::Duration::from_secs(5)),
-    )
-    .await
-    .unwrap();
-    // The peer's write completes only after the pool closes its aged idle
-    // connection and SQLite rolls back that connection's exclusive transaction.
-    let mut conn = pool.acquire().await.unwrap();
-    sqlx::query("BEGIN EXCLUSIVE").execute(&mut *conn).await.unwrap();
-    sqlx::query("INSERT INTO lifetime_probe VALUES (1)").execute(&mut *conn).await.unwrap();
-    conn.return_to_pool().await;
-    let result = tokio::time::timeout(std::time::Duration::from_secs(5), sqlx::query("INSERT INTO lifetime_probe VALUES (2)").execute(&mut waiter))
-        .await
-        .expect("pool lifetime did not close the expired connection and release SQLite's write lock")
-        .unwrap();
-    assert_eq!(result.rows_affected(), 1);
-    let values: Vec<i64> = sqlx::query_scalar("SELECT value FROM lifetime_probe ORDER BY value").fetch_all(&pool).await.unwrap();
-    assert_eq!(values, [2], "closing the expired connection rolls back its uncommitted row");
-    waiter.close().await.unwrap();
     db.close().await;
     remove_dir(&tmp);
 }
@@ -378,5 +321,5 @@ async fn dropping_a_transaction_frees_a_single_connection() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_size, pool_idle_size_and_lifetime, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }
