@@ -58,80 +58,78 @@ func TestCatalogWriteRefusesTimeValueForTemporalColumn(t *testing.T) {
 	}
 }
 
+// catalogDescribedTestValue converts one driver value of a described column as a read of a described table does, with the
+// native type name that the driver reports for it on MySQL and PostgreSQL.
+func catalogDescribedTestValue(value any, driverType string, column CatalogColumn, dialect string) (any, error) {
+	if dialect == "sqlite" {
+		v, rule := catalogSQLiteDescribed(value, column)
+		if rule != nil {
+			return nil, rule.at(2)
+		}
+		return v, nil
+	}
+	t := catalogMySQLType(driverType)
+	if dialect == "postgres" {
+		named, ok := catalogPostgresNamed(driverType)
+		if !ok {
+			named = catalogType{refusal: catalogRuleNativeType}
+		}
+		t = named
+	}
+	if value == nil {
+		return nil, nil
+	}
+	cell, rule := catalogConvertCell(t, value, dialect)
+	if rule == nil {
+		var v any
+		if v, rule = catalogDescribedCell(cell, column, dialect); rule == nil {
+			return v, nil
+		}
+	}
+	return nil, rule.at(2)
+}
+
 // TestCatalogDescribedBool is the table of the bool read: a boolean column is read as a bool by its column type on MySQL
 // tinyint(1), on SQLite BOOLEAN and on PostgreSQL boolean; a value of any other column is left as it is, and any value
-// other than 0 or 1 of a boolean column fails.
+// other than 0 or 1 of a boolean column fails with INT-182.
 func TestCatalogDescribedBool(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	cases := []struct {
-		name    string
-		dialect string
-		native  string
-		value   any
-		want    any
-		fails   bool
+		name       string
+		dialect    string
+		native     string
+		driverType string
+		value      any
+		want       any
+		fails      bool
 	}{
-		{"mysql tinyint(1) zero", "mysql", "tinyint(1)", int64(0), false, false},
-		{"mysql tinyint(1) one", "mysql", "tinyint(1)", int64(1), true, false},
-		{"mysql tinyint(1) null", "mysql", "tinyint(1)", nil, nil, false},
-		{"mysql tinyint(1) two", "mysql", "tinyint(1)", int64(2), nil, true},
-		{"mysql plain tinyint stays integer", "mysql", "tinyint", int64(2), int64(2), false},
-		{"sqlite BOOLEAN zero", "sqlite", "BOOLEAN", int64(0), false, false},
-		{"sqlite BOOLEAN one", "sqlite", "BOOLEAN", int64(1), true, false},
-		{"sqlite BOOLEAN minus one", "sqlite", "BOOLEAN", int64(-1), nil, true},
-		{"sqlite BOOLEAN text", "sqlite", "BOOLEAN", "1", nil, true},
-		{"sqlite integer stays integer", "sqlite", "INTEGER", int64(1), int64(1), false},
-		{"postgres boolean bool", "postgres", "boolean", true, true, false},
-		{"postgres boolean two", "postgres", "boolean", int64(2), nil, true},
+		{"mysql tinyint(1) zero", "mysql", "tinyint(1)", "TINYINT", int64(0), false, false},
+		{"mysql tinyint(1) one", "mysql", "tinyint(1)", "TINYINT", int64(1), true, false},
+		{"mysql tinyint(1) null", "mysql", "tinyint(1)", "TINYINT", nil, nil, false},
+		{"mysql tinyint(1) two", "mysql", "tinyint(1)", "TINYINT", int64(2), nil, true},
+		{"mysql plain tinyint stays integer", "mysql", "tinyint", "TINYINT", int64(2), int64(2), false},
+		{"sqlite BOOLEAN zero", "sqlite", "BOOLEAN", "", int64(0), false, false},
+		{"sqlite BOOLEAN one", "sqlite", "BOOLEAN", "", int64(1), true, false},
+		{"sqlite BOOLEAN minus one", "sqlite", "BOOLEAN", "", int64(-1), nil, true},
+		{"sqlite BOOLEAN text", "sqlite", "BOOLEAN", "", "1", nil, true},
+		{"sqlite integer stays integer", "sqlite", "INTEGER", "", int64(1), int64(1), false},
+		{"postgres boolean bool", "postgres", "boolean", "BOOL", true, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			column := CatalogColumn{Name: "b", NativeType: tc.native}
-			got, err := catalogDescribedBool(tc.value, column, tc.dialect)
+			got, err := catalogDescribedTestValue(tc.value, tc.driverType, column, tc.dialect)
 			if tc.fails {
-				if err == nil {
-					t.Fatalf("catalogDescribedBool(%v) = %v, want an error", tc.value, got)
+				if err == nil || err.Error() != "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean" {
+					t.Fatalf("described %v = %v, %v; want the INT-182 refusal", tc.value, got, err)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("catalogDescribedBool(%v): %v", tc.value, err)
+				t.Fatalf("described %v: %v", tc.value, err)
 			}
 			if got != tc.want {
-				t.Fatalf("catalogDescribedBool(%v) = %v (%T), want %v (%T)", tc.value, got, got, tc.want, tc.want)
-			}
-		})
-	}
-}
-
-// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
-// starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
-// MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which a described read refuses.
-func TestCatalogGridTemporalZeroDate(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, test := range []struct {
-		name    string
-		value   time.Time
-		native  string
-		dialect string
-		want    any
-		code    string
-	}{
-		{name: "MySQL zero DATE", value: time.Time{}, native: "DATE", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
-		{name: "MySQL zero DATETIME", value: time.Time{}, native: "DATETIME", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
-		{name: "MySQL DATE at the start of its range", value: time.Date(1000, time.January, 1, 0, 0, 0, 0, time.UTC), native: "DATE", dialect: "mysql", want: "1000-01-01"},
-		{name: "PostgreSQL DATE at 0001-01-01", value: time.Time{}, native: "DATE", dialect: "postgres", want: "0001-01-01"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := catalogGridCell(test.value, test.native, test.dialect)
-			if test.code != "" {
-				if ErrorCode(err) != test.code {
-					t.Fatalf("catalogGridCell = %#v, %v; want %s", got, err, test.code)
-				}
-				return
-			}
-			if err != nil || !reflect.DeepEqual(got.Value, test.want) {
-				t.Fatalf("catalogGridCell = %#v, %v; want %#v", got, err, test.want)
+				t.Fatalf("described %v = %v (%T), want %v (%T)", tc.value, got, got, tc.want, tc.want)
 			}
 		})
 	}
@@ -140,39 +138,44 @@ func TestCatalogGridTemporalZeroDate(t *testing.T) {
 func TestCatalogDescribedTemporalText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	stamp := time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
-	whole := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 	date := time.Date(2024, time.February, 29, 0, 0, 0, 0, time.UTC)
 	for _, test := range []struct {
-		name    string
-		value   any
-		native  string
-		dialect string
-		want    any
-		code    string
+		name       string
+		value      any
+		native     string
+		driverType string
+		dialect    string
+		want       any
+		message    string
 	}{
-		{name: "MySQL datetime of default precision", value: whole, native: "datetime", dialect: "mysql", want: "2026-01-02 03:04:05"},
-		{name: "MySQL datetime(3)", value: stamp, native: "datetime(3)", dialect: "mysql", want: "2026-01-02 03:04:05.123"},
-		{name: "MySQL datetime(6)", value: stamp, native: "datetime(6)", dialect: "mysql", want: "2026-01-02 03:04:05.123000"},
-		{name: "MySQL date", value: date, native: "date", dialect: "mysql", want: "2024-02-29"},
-		{name: "MySQL time(3)", value: "12:34:56.500", native: "time(3)", dialect: "mysql", want: "12:34:56.500"},
-		{name: "MySQL time", value: "12:34:56", native: "time", dialect: "mysql", want: "12:34:56"},
-		{name: "PostgreSQL timestamp of default precision", value: stamp, native: "timestamp without time zone", dialect: "postgres", want: "2026-01-02 03:04:05.123000"},
-		{name: "PostgreSQL timestamp(3)", value: stamp, native: "timestamp(3) without time zone", dialect: "postgres", want: "2026-01-02 03:04:05.123"},
-		{name: "PostgreSQL date", value: date, native: "date", dialect: "postgres", want: "2024-02-29"},
-		{name: "PostgreSQL time(3) without trailing zeros", value: "12:34:56.5", native: "time(3) without time zone", dialect: "postgres", want: "12:34:56.500"},
-		{name: "PostgreSQL time of default precision", value: "12:34:56", native: "time without time zone", dialect: "postgres", want: "12:34:56.000000"},
-		{name: "NULL", value: nil, native: "datetime(3)", dialect: "mysql", want: nil},
-		{name: "not a dbspec type", value: whole, native: "timestamp with time zone", dialect: "postgres", code: "CATALOG_VALUE"},
-		{name: "MySQL TIMESTAMP is not a dbspec type", value: whole, native: "timestamp", dialect: "mysql", code: "CATALOG_VALUE"},
-		{name: "digit past the declared precision", value: stamp, native: "datetime(2)", dialect: "mysql", code: "GRID_TEMPORAL_PRECISION"},
-		{name: "time digit past the declared precision", value: "12:34:56.5", native: "time", dialect: "mysql", code: "GRID_TEMPORAL_PRECISION"},
-		{name: "time outside a day", value: "25:00:00", native: "time", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL datetime of default precision", value: []byte("2026-01-02 03:04:05"), native: "datetime", driverType: "DATETIME", dialect: "mysql", want: "2026-01-02 03:04:05"},
+		{name: "MySQL datetime(3)", value: []byte("2026-01-02 03:04:05.123"), native: "datetime(3)", driverType: "DATETIME", dialect: "mysql", want: "2026-01-02 03:04:05.123"},
+		{name: "MySQL datetime(6)", value: []byte("2026-01-02 03:04:05.123000"), native: "datetime(6)", driverType: "DATETIME", dialect: "mysql", want: "2026-01-02 03:04:05.123000"},
+		{name: "MySQL date", value: []byte("2024-02-29"), native: "date", driverType: "DATE", dialect: "mysql", want: "2024-02-29"},
+		{name: "MySQL time(3)", value: []byte("12:34:56.500"), native: "time(3)", driverType: "TIME", dialect: "mysql", want: "12:34:56.500"},
+		{name: "MySQL time", value: []byte("12:34:56"), native: "time", driverType: "TIME", dialect: "mysql", want: "12:34:56"},
+		{name: "PostgreSQL timestamp of default precision", value: stamp, native: "timestamp without time zone", driverType: "TIMESTAMP", dialect: "postgres", want: "2026-01-02 03:04:05.123000"},
+		{name: "PostgreSQL timestamp(3)", value: stamp, native: "timestamp(3) without time zone", driverType: "TIMESTAMP", dialect: "postgres", want: "2026-01-02 03:04:05.123"},
+		{name: "PostgreSQL date", value: date, native: "date", driverType: "DATE", dialect: "postgres", want: "2024-02-29"},
+		{name: "PostgreSQL time(3) without trailing zeros", value: "12:34:56.5", native: "time(3) without time zone", driverType: "TIME", dialect: "postgres", want: "12:34:56.500"},
+		{name: "PostgreSQL time of default precision", value: "12:34:56", native: "time without time zone", driverType: "TIME", dialect: "postgres", want: "12:34:56.000000"},
+		{name: "NULL", value: nil, native: "datetime(3)", driverType: "DATETIME", dialect: "mysql", want: nil},
+		{name: "not a dbspec type", value: stamp, native: "timestamp with time zone", driverType: "TIMESTAMPTZ", dialect: "postgres", message: "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"},
+		{name: "MySQL TIMESTAMP is not a dbspec type", value: []byte("2026-01-02 03:04:05"), native: "timestamp", driverType: "TIMESTAMP", dialect: "mysql", message: "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone"},
+		{name: "digit past the declared precision", value: []byte("2026-01-02 03:04:05.123"), native: "datetime(2)", driverType: "DATETIME", dialect: "mysql", message: "GRID_TEMPORAL_PRECISION: column 2: temporal value has more fraction digits than its precision"},
+		{name: "time digit past the declared precision", value: []byte("12:34:56.5"), native: "time", driverType: "TIME", dialect: "mysql", message: "GRID_TEMPORAL_PRECISION: column 2: temporal value has more fraction digits than its precision"},
+		{name: "native type of more than 6 digits", value: "12:34:56", native: "time(7) without time zone", driverType: "TIME", dialect: "postgres", message: "GRID_TEMPORAL_PRECISION: column 2: native type declares more than 6 fraction digits"},
+		{name: "native type of a precision that is no number", value: []byte("12:34:56"), native: "time(x)", driverType: "TIME", dialect: "mysql", message: "GRID_TEMPORAL_PRECISION: column 2: native type declares more than 6 fraction digits"},
+		{name: "time outside a day", value: []byte("25:00:00"), native: "time", driverType: "TIME", dialect: "mysql", message: "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999"},
 		{name: "SQLite text of its CHECK precision", value: "12:34:56.500", native: "TIME", dialect: "sqlite", want: "12:34:56.500"},
 		{name: "SQLite date", value: "2024-02-29", native: "DATE", dialect: "sqlite", want: "2024-02-29"},
 		{name: "SQLite TIME(3) is not a dbspec declaration", value: "12:34:56.5", native: "TIME(3)", dialect: "sqlite", want: "12:34:56.5"},
-		{name: "SQLite text of other digits than its CHECK", value: "12:34:56.5", native: "TIME", dialect: "sqlite", code: "GRID_TEMPORAL_PRECISION"},
-		{name: "MySQL zero date on the described path", value: time.Time{}, native: "date", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
-		{name: "MySQL zero datetime on the described path", value: time.Time{}, native: "datetime(3)", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "SQLite text of other digits than its CHECK", value: "12:34:56.5", native: "TIME", dialect: "sqlite", message: "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes"},
+		{name: "SQLite integer in a DATE column", value: int64(20240229), native: "DATE", dialect: "sqlite", message: "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date"},
+		{name: "SQLite text of the year 0", value: "0000-01-01", native: "DATE", dialect: "sqlite", message: "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"},
+		{name: "MySQL zero date on the described path", value: []byte("0000-00-00"), native: "date", driverType: "DATE", dialect: "mysql", message: "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"},
+		{name: "MySQL zero datetime on the described path", value: []byte("0000-00-00 00:00:00.000"), native: "datetime(3)", driverType: "DATETIME", dialect: "mysql", message: "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"},
+		{name: "MySQL date that is no calendar date", value: []byte("2024-02-30"), native: "date", driverType: "DATE", dialect: "mysql", message: "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			column := CatalogColumn{Name: "c", NativeType: test.native}
@@ -180,15 +183,15 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 				precision := 3
 				column.CheckPrecision = &precision
 			}
-			got, err := catalogDescribedTemporal(test.value, column, test.dialect)
-			if test.code != "" {
-				if ErrorCode(err) != test.code {
-					t.Fatalf("catalogDescribedTemporal = %#v, %v; want %s", got, err, test.code)
+			got, err := catalogDescribedTestValue(test.value, test.driverType, column, test.dialect)
+			if test.message != "" {
+				if err == nil || err.Error() != test.message {
+					t.Fatalf("described %#v = %#v, %v; want %s", test.value, got, err, test.message)
 				}
 				return
 			}
 			if err != nil || !reflect.DeepEqual(got, test.want) {
-				t.Fatalf("catalogDescribedTemporal = %#v, %v; want %#v", got, err, test.want)
+				t.Fatalf("described %#v = %#v, %v; want %#v", test.value, got, err, test.want)
 			}
 		})
 	}

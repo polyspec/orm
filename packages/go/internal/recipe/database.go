@@ -865,7 +865,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		for _, row := range page.Result.Rows {
 			cells := make([]any, len(indexes))
 			for i, at := range indexes {
-				cell, err := plain(row[at], page.Result.Columns[at].NativeType, c.dialect())
+				cell, err := described(row[at], page.Result.Columns[at].NativeType, c.dialect())
 				if err != nil {
 					return outcome{}, err
 				}
@@ -1004,7 +1004,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		captured := snapshot.snapshot.CapturedCells()
 		cells := make([]any, len(captured))
 		for i, cell := range captured {
-			cells[i], err = plain(cell, snapshot.metadata.Columns[i].NativeType, c.dialect())
+			cells[i], err = described(cell, snapshot.metadata.Columns[i].NativeType, c.dialect())
 			if err != nil {
 				return outcome{}, err
 			}
@@ -2204,6 +2204,9 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"int": strconv.FormatUint(v, 10)}, nil
 	case bool:
 		return map[string]any{"bool": v}, nil
+	case float32:
+		// Only a read of a described table returns a 4-byte float, as its bits cell (INT-183).
+		return map[string]any{"f32_bits": math.Float32bits(v)}, nil
 	case float64:
 		// A non-finite float is the f64 wrapper, which names it as JSON cannot.
 		switch {
@@ -2220,6 +2223,11 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"bytes_hex": hex.EncodeToString(v)}, nil
 	case string:
 		kind := temporalKind(nativeType)
+		if temporalForm[kind] != nil && !temporalForm[kind].MatchString(v) {
+			// Only a well-formed temporal text has a temporal kind: a SQLite column that declares a temporal type that is no
+			// dbspec declaration, such as TIME(3), keeps any text (INT-184).
+			kind = "text"
+		}
 		if kind == "" && !utf8.ValidString(v) {
 			// A Go string holds any bytes: a value that is not text is its bytes, as the PHP helper writes it (INT-153).
 			return map[string]any{"bytes_hex": hex.EncodeToString([]byte(v))}, nil
@@ -2232,6 +2240,22 @@ func plain(value any, nativeType, database string) (any, error) {
 		return plainTime(v, nativeType, database)
 	}
 	return nil, fmt.Errorf("no recipe wrapper for the plain value %v (%T)", value, value)
+}
+
+// described is the recipe wrapper of a value of a read of a described table: a float is its bits cell (INT-183), and any
+// other value its plain wrapper.
+func described(value any, nativeType, database string) (any, error) {
+	if v, ok := value.(float64); ok {
+		return map[string]any{"f64_bits": strconv.FormatUint(math.Float64bits(v), 10)}, nil
+	}
+	return plain(value, nativeType, database)
+}
+
+// temporalForm is the dbspec text form of each temporal kind, with up to six fraction digits.
+var temporalForm = map[string]*regexp.Regexp{
+	"date":     regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`),
+	"time":     regexp.MustCompile(`^[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?$`),
+	"datetime": regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?$`),
 }
 
 var declaredPrecision = regexp.MustCompile(`\(([0-9]+)\)`)
@@ -2338,7 +2362,7 @@ func mutation(metadata orm.CatalogTableMetadata, result orm.CatalogMutationResul
 	for _, row := range result.Rows {
 		cells := make([]any, len(row))
 		for i, value := range row {
-			cell, err := plain(value, types[i], database)
+			cell, err := described(value, types[i], database)
 			if err != nil {
 				return outcome{}, err
 			}
@@ -2368,7 +2392,8 @@ func jsonString(v any) string {
 	return string(text)
 }
 
-// normalized compares NULL by its nullness: an expect names the parameter type of NULL, and a result has none.
+// normalized compares NULL by its nullness: an expect names the parameter type of NULL, and a result has none. A float or
+// an f64 wrapper is compared by its binary64 value, not its text, so 2, 2.0 and "2" are one value (FCV-4).
 func normalized(value any) any {
 	switch v := value.(type) {
 	case []any:
@@ -2381,6 +2406,9 @@ func normalized(value any) any {
 		if _, ok := v["null"]; ok && len(v) == 1 {
 			return map[string]any{"null": true}
 		}
+		if f, ok := floatWrapper(v); ok {
+			return map[string]any{"f64": f}
+		}
 		out := make(map[string]any, len(v))
 		for key, item := range v {
 			out[key] = normalized(item)
@@ -2388,6 +2416,44 @@ func normalized(value any) any {
 		return out
 	}
 	return value
+}
+
+// floatWrapper is the binary64 value of a float or an f64 wrapper as one text: the shortest text that reads back as the
+// value, or NaN, Infinity or -Infinity. ok is false for any other value.
+func floatWrapper(v map[string]any) (string, bool) {
+	if len(v) != 1 {
+		return "", false
+	}
+	var item any
+	for key, member := range v {
+		if key != "float" && key != "f64" {
+			return "", false
+		}
+		item = member
+	}
+	var x float64
+	switch number := item.(type) {
+	case float64:
+		x = number
+	case string:
+		parsed, err := toGo(node{kind: "f64", text: number})
+		f, isFloat := parsed.(float64)
+		if err != nil || !isFloat {
+			return "", false
+		}
+		x = f
+	default:
+		return "", false
+	}
+	switch {
+	case math.IsNaN(x):
+		return "NaN", true
+	case math.IsInf(x, 1):
+		return "Infinity", true
+	case math.IsInf(x, -1):
+		return "-Infinity", true
+	}
+	return strconv.FormatFloat(x, 'g', -1, 64), true
 }
 
 // inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where
