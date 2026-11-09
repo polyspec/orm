@@ -131,8 +131,8 @@ func (s *settingsNode) model() *Settings {
 			out.Body = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		case "order":
 			out.Order = &ColumnSetting{Comments: line.comments, Column: args[0]}
-		case "checkbox":
-			out.Checkbox = &ColumnSetting{Comments: line.comments, Column: args[0]}
+		case "task_marker":
+			out.TaskMarker = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		}
 	}
 	return out
@@ -272,7 +272,7 @@ func (s *Settings) empty() bool {
 	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
 		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
 		s.Immutable == nil && s.Audit == nil && len(s.Marks) == 0 &&
-		s.Store == nil && s.Title == nil && s.Body == nil && s.Order == nil && s.Checkbox == nil
+		s.Store == nil && s.Title == nil && s.Body == nil && s.Order == nil && s.TaskMarker == nil
 }
 
 func (e *emitter) settings(t *Table, s *Settings) {
@@ -350,7 +350,7 @@ func (e *emitter) mappingSettings(s *Settings) {
 	if s.Order != nil {
 		e.line(2, s.Order.Comments, "order "+s.Order.Column)
 	}
-	if s.Checkbox != nil {
-		e.line(2, s.Checkbox.Comments, "checkbox "+s.Checkbox.Column)
+	if s.TaskMarker != nil {
+		e.line(2, s.TaskMarker.Comments, "task_marker "+s.TaskMarker.Column)
 	}
 }

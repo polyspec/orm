@@ -120,7 +120,7 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
       readonly shape: 'list' | 'table' | null;
       readonly shard: DbspecStoreShard | null;
     }
-  | { readonly kind: 'title' | 'body' | 'order' | 'checkbox'; readonly column: string }
+  | { readonly kind: 'title' | 'body' | 'order' | 'task_marker'; readonly column: string }
   | { readonly kind: 'immutable' }
   | {
       readonly kind: 'audit';

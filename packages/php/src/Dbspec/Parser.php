@@ -44,11 +44,11 @@ final class Parser
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
     /** The keyword of markdown storage settings. The cursor reads it (storageLine). */
-    private const STORAGE_KEYWORDS = ['markdown', 'store', 'title', 'body', 'order', 'checkbox'];
+    private const STORAGE_KEYWORDS = ['markdown', 'store', 'title', 'body', 'order', 'task_marker'];
     /**
      * A storage keyword written only once per table. Repeating it is a setting error at the keyword's position.
      */
-    private const ONCE_STORAGE = ['store', 'title', 'body', 'order', 'checkbox'];
+    private const ONCE_STORAGE = ['store', 'title', 'body', 'order', 'task_marker'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
@@ -2298,7 +2298,7 @@ final class Parser
                         );
                     }
                     break;
-                case 'checkbox':
+                case 'task_marker':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
                     if (
                         $definition !== null && $definition->type->name !== 'invalid'
@@ -2308,7 +2308,7 @@ final class Parser
                             'setting',
                             $line,
                             $arguments[0][1],
-                            "checkbox needs a varchar(1) or bool column, not {$definition->type->text()}"
+                            "task_marker needs a varchar(1) or bool column, not {$definition->type->text()}"
                         );
                     }
                     break;
@@ -2771,7 +2771,7 @@ final class Parser
 
     /**
      * Reads one markdown storage setting line (`markdown`, `store`, `title`, `body`, `order`,
-     * `checkbox`) by the cursor. As in Go's settingsLine,
+     * `task_marker`) by the cursor. As in Go's settingsLine,
      * the line ends at the first syntax error. The rules for the whole table are checked when the table closes.
      */
     private function storageLine(string $keyword, int $at): void

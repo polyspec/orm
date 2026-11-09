@@ -4925,7 +4925,7 @@
             "    order   sort_order",
             "    title title",
             "    markdown   body",
-            "    checkbox state",
+            "    task_marker state",
             "    store   files",
             "    body body",
             "  }",
@@ -4982,7 +4982,7 @@
                 "    title title",
                 "    body body",
                 "    order sort_order",
-                "    checkbox state",
+                "    task_marker state",
                 "  }",
                 "}",
                 "",
@@ -5038,7 +5038,7 @@
             "    order   sort_order",
             "    title title",
             "    markdown   body",
-            "    checkbox state",
+            "    task_marker state",
             "    store   files",
             "    body body",
             "  }",
@@ -5311,13 +5311,13 @@
                 [
                   14,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   14,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [

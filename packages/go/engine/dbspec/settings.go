@@ -116,8 +116,8 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		}
 	case "audit":
 		v.audit(t, s)
-	case "checkbox":
-		v.checkbox(t, s)
+	case "task_marker":
+		v.taskMarker(t, s)
 	case "markdown":
 		if c := v.columnRef(t, s.args[0], RuleSetting); c != nil && c.typ.valid &&
 			c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText {
@@ -139,13 +139,13 @@ func (v *validator) foreignKeyName(t *tableNode, ref token) {
 	}
 }
 
-// checkbox checks the column whose value a list row writes between the brackets of its task marker: a varchar(1)
+// taskMarker checks the column whose value a list row writes between the brackets of its task marker: a varchar(1)
 // column, written as its value, or a bool column, written as the unchecked and the checked task box of GFM
 // (docs/spec/dbspec.md "Settings").
-func (v *validator) checkbox(t *tableNode, s *settingNode) {
+func (v *validator) taskMarker(t *tableNode, s *settingNode) {
 	c := v.columnRef(t, s.args[0], RuleSetting)
 	if c != nil && c.typ.valid && c.typ.typ.Kind != TypeBool && c.typ.typ != (Type{Kind: TypeVarchar, Length: 1}) {
-		v.add(RuleSetting, s.args[0], "checkbox needs a varchar(1) or bool column, not %s", c.typ.typ)
+		v.add(RuleSetting, s.args[0], "task_marker needs a varchar(1) or bool column, not %s", c.typ.typ)
 	}
 }
 

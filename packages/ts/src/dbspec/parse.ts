@@ -166,11 +166,11 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       /** `shard <column> <period>`: the shard keyword token, the column and the period, or null without the clause. */
       readonly shard: { readonly at: Tk; readonly column: Tk; readonly period: Tk } | null;
     }
-  | { readonly kind: 'title' | 'body' | 'order' | 'checkbox'; readonly column: Tk }
+  | { readonly kind: 'title' | 'body' | 'order' | 'task_marker'; readonly column: Tk }
 );
 
-/** A setting that names one column of its table: title, body, order or checkbox. */
-type IColumnSetting = Extract<ISetting, { kind: 'title' | 'body' | 'order' | 'checkbox' }>;
+/** A setting that names one column of its table: title, body, order or task_marker. */
+type IColumnSetting = Extract<ISetting, { kind: 'title' | 'body' | 'order' | 'task_marker' }>;
 
 interface ISettings {
   readonly open: Tk;
@@ -1456,10 +1456,10 @@ class DocumentParser {
         entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: present(w[0], 'w[0]') };
         break;
       }
-      case 'checkbox': {
+      case 'task_marker': {
         const column = this.settingWord(toks, 1, line, 'a column name');
         if (column === null || !this.end(toks, 2, line)) return;
-        entry = { kw, comments, kind: 'checkbox', column };
+        entry = { kw, comments, kind: 'task_marker', column };
         break;
       }
       case 'audit': {
@@ -2209,8 +2209,8 @@ class DocumentParser {
         case 'order':
           this.checkOrder(table, s);
           break;
-        case 'checkbox':
-          this.checkCheckbox(table, s);
+        case 'task_marker':
+          this.checkTaskMarker(table, s);
           break;
         case 'immutable':
           if (actionChild) this.at('setting', s.kw, 'immutable is rejected on a child of a cascade or set_null foreign key');
@@ -2285,13 +2285,13 @@ class DocumentParser {
   }
 
   /**
-   * The checkbox column, whose value a list row writes between the brackets of its task marker, is a varchar(1) or a
+   * The task_marker column, whose value a list row writes between the brackets of its task marker, is a varchar(1) or a
    * bool column (docs/spec/dbspec.md "Settings").
    */
-  private checkCheckbox(table: ITable, s: IColumnSetting): void {
+  private checkTaskMarker(table: ITable, s: IColumnSetting): void {
     const c = this.columnRef(table, s.column);
     if (c && c.type !== null && c.type.kind !== 'bool' && !(c.type.kind === 'varchar' && c.type.length === 1)) {
-      this.at('setting', s.column, `checkbox needs a varchar(1) or bool column, not ${typeText(c.type)}`);
+      this.at('setting', s.column, `task_marker needs a varchar(1) or bool column, not ${typeText(c.type)}`);
     }
   }
 
@@ -2695,7 +2695,7 @@ function settingOf(s: ISetting): DbspecSetting {
     case 'title':
     case 'body':
     case 'order':
-    case 'checkbox':
+    case 'task_marker':
       setting = { comments, kind: s.kind, column: s.column.t };
       break;
     case 'audit':

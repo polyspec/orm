@@ -1676,11 +1676,11 @@ static bool take_name(scursor *c, str what, tokens *args)
     return true;
 }
 
-/* Reads the arguments of the markdown, store, title, body, order, and checkbox lines in the same order as Go's settingsLine. */
+/* Reads the arguments of the markdown, store, title, body, order, and task_marker lines in the same order as Go's settingsLine. */
 static bool new_setting_args(scursor *c, str keyword, tokens *args)
 {
     if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")
-        || str_eqc(keyword, "checkbox")) {
+        || str_eqc(keyword, "task_marker")) {
         return take_name(c, SL("a column name"), args) && sc_end(c);
     }
     /* store */
@@ -1723,13 +1723,13 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
 static bool once_kind(str kind)
 {
     return str_eqc(kind, "store") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order")
-        || str_eqc(kind, "checkbox");
+        || str_eqc(kind, "task_marker");
 }
 
 static bool new_setting_kind(str keyword)
 {
     return str_eqc(keyword, "markdown") || str_eqc(keyword, "store") || str_eqc(keyword, "title")
-        || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox");
+        || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "task_marker");
 }
 
 /* Number of tokens before the shard clause for each store kind (including the kind; Setting::STORE_ARGUMENTS). */
@@ -2376,7 +2376,7 @@ static void text_setting_check(parser *p, const tsetting_rec *s)
 
 /* The column whose value a list row writes between the brackets of its task marker: a varchar(1) column, written as its
  * value, or a bool column, written as the unchecked and the checked task box of GFM. Nullability is free. */
-static void checkbox_check(parser *p, const tsetting_rec *s)
+static void task_marker_check(parser *p, const tsetting_rec *s)
 {
     const token *name = &s->args.v[0];
     column *c = column_ref(p, s->kind, s->line, name);
@@ -2385,7 +2385,7 @@ static void checkbox_check(parser *p, const tsetting_rec *s)
     }
     const ctype *type = c->type;
     if (!str_eqc(type->name, "bool") && !(str_eqc(type->name, "varchar") && type->p[0] == 1)) {
-        error(p, "setting", s->line, name->column, fmt("checkbox needs a varchar(1) or bool column, not %S", ctype_text(type)));
+        error(p, "setting", s->line, name->column, fmt("task_marker needs a varchar(1) or bool column, not %S", ctype_text(type)));
     }
 }
 
@@ -2499,8 +2499,8 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             store_shard_check(p, s, smap_has(&kinds, SL("order")));
         } else if (str_eqc(kind, "order")) {
             order_check(p, s);
-        } else if (str_eqc(kind, "checkbox")) {
-            checkbox_check(p, s);
+        } else if (str_eqc(kind, "task_marker")) {
+            task_marker_check(p, s);
         } else if (str_eqc(kind, "immutable")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));

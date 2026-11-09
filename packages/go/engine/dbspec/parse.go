@@ -1071,7 +1071,7 @@ func (p *parser) settingsLine(c *cursor) {
 				}
 			}
 		}
-	case "title", "body", "order", "checkbox":
+	case "title", "body", "order", "task_marker":
 		ok = arg("a column name")
 	case "audit":
 		ok = c.keyword("into") && arg("the history table") &&

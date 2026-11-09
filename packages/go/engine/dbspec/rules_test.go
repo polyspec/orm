@@ -157,11 +157,11 @@ var (
 		"title title",
 		"body body",
 		"order position",
-		"checkbox status",
+		"task_marker status",
 	}
 )
 
-// TestMarkdownStorageSetting: the storage, title, body, order, and checkbox settings of markdown storage are parsed, emitted canonically, and reach the settings model.
+// TestMarkdownStorageSetting: the storage, title, body, order, and task_marker settings of markdown storage are parsed, emitted canonically, and reach the settings model.
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(markdownDoc(markdownColumns, pkID, markdownSettings...), false)
@@ -174,8 +174,8 @@ func TestMarkdownStorageSetting(t *testing.T) {
 		s.Body == nil || s.Body.Column != "body" || s.Order == nil || s.Order.Column != "position" {
 		t.Fatalf("title, body or order: %+v %+v %+v", s.Title, s.Body, s.Order)
 	}
-	if s.Checkbox == nil || s.Checkbox.Column != "status" {
-		t.Fatalf("checkbox: %+v", s.Checkbox)
+	if s.TaskMarker == nil || s.TaskMarker.Column != "status" {
+		t.Fatalf("task_marker: %+v", s.TaskMarker)
 	}
 }
 

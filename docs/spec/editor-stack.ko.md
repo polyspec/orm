@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: a420b990147c2c7fa9cb04e51db0e80af3a10a8eb47ed54723e814af883b1d83 -->
+<!-- source-sha256: 8ec9f70928ee1bd53b4dcadfe78df38390c9bc2dc8172db2333e5be2e2648e59 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -241,7 +241,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
     - **ORES-68** 위치는 선언의 이름 token이거나 setting의 keyword다.
     - **ORES-69** 이름 없는 선언인 primary key(dbspec.md:99, "exactly one per table, unnamed")는 `path`
       `[<table>, "primary key"]`이며 그 `primary` keyword 위치다.
-    - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `checkbox`,
+    - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `task_marker`,
       `use` table, diagram 항목, primary key, document 이름을 담는다.
   - **ORES-70** introspection, Mermaid import, emit, compare, diff, render, hash는 위치를 받지도 내지도 않는다.
   - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 모든 runtime이 같은 vector로 검사한다.

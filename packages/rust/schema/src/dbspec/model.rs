@@ -331,8 +331,8 @@ pub enum Setting {
     Title(Name),
     Body(Name),
     Order(Name),
-    /// `checkbox <column>`: the varchar(1) or bool column that a list row writes between the brackets of its task marker.
-    Checkbox(Name),
+    /// `task_marker <column>`: the varchar(1) or bool column that a list row writes between the brackets of its task marker.
+    TaskMarker(Name),
     Immutable,
     /// `lists` are the exclude and include lists. A valid document has at most one (docs/spec/dbspec.md "Audit").
     /// `column` is the column holding the primary key of the audit record table `references`.
@@ -412,7 +412,7 @@ impl Setting {
             Setting::Title(_) => 10,
             Setting::Body(_) => 11,
             Setting::Order(_) => 12,
-            Setting::Checkbox(_) => 13,
+            Setting::TaskMarker(_) => 13,
             Setting::Immutable => 14,
             Setting::Audit { .. } => 15,
         }

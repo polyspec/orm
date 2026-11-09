@@ -181,7 +181,7 @@ type Settings struct {
 	Title           *ColumnSetting
 	Body            *ColumnSetting
 	Order           *ColumnSetting
-	Checkbox        *ColumnSetting
+	TaskMarker      *ColumnSetting
 	ClosingComments []string
 }
 

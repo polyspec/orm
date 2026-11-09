@@ -274,7 +274,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -436,7 +436,7 @@
                   "line": 16,
                   "path": [
                     "page",
-                    "checkbox"
+                    "task_marker"
                   ]
                 },
                 {

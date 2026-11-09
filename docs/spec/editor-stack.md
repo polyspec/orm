@@ -272,7 +272,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
       unnamed"), has `path` `[<table>, "primary key"]` and the position of its `primary`
       keyword.
     - The shape is stated in `docs/spec/dbspec.md` (+ko). The vectors include a repeated `codec`, a
-      `checkbox`, a `use` table, a diagram entry, the
+      `task_marker`, a `use` table, a diagram entry, the
       primary key and the document name.
   - **ORES-70** Introspection, Mermaid import, emit, compare, diff, render and the hashes neither take nor
     produce positions.

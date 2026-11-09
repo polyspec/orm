@@ -44321,7 +44321,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -44389,7 +44389,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -44702,13 +44702,13 @@
                 [
                   17,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   17,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -45527,7 +45527,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -45594,7 +45594,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -45889,13 +45889,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -46714,7 +46714,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -46781,7 +46781,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -47076,13 +47076,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -47901,7 +47901,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -47968,7 +47968,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -48263,13 +48263,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -49088,7 +49088,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -49155,7 +49155,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -49450,13 +49450,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -50275,7 +50275,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -50342,7 +50342,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -50637,13 +50637,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -51456,7 +51456,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -51523,7 +51523,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -51824,13 +51824,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -53211,7 +53211,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -53279,7 +53279,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -53586,13 +53586,13 @@
                 [
                   17,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   17,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -59027,7 +59027,7 @@
       ]
     },
     {
-      "id": "tab-checkbox-lexer-error-only",
+      "id": "tab-task-marker-lexer-error-only",
       "requirements": [
         "ORES-19"
       ],
@@ -59042,7 +59042,7 @@
             "  state varchar(16)",
             "  primary key (id)",
             "  settings {",
-            "    checkbox state todo\t'.'",
+            "    task_marker state todo\t'.'",
             "  }",
             "}"
           ],
@@ -59052,7 +59052,7 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 24
+                  "column": 27
                 }
               ]
             }
@@ -59068,7 +59068,7 @@
             "  state varchar(16)",
             "  primary key (id)",
             "  settings {",
-            "    checkbox state todo\t'.'",
+            "    task_marker state todo\t'.'",
             "  }",
             "}"
           ],
@@ -59216,25 +59216,25 @@
                 [
                   8,
                   4,
-                  12,
+                  15,
                   "word"
                 ],
                 [
                   8,
-                  13,
-                  18,
+                  16,
+                  21,
                   "word"
                 ],
                 [
                   8,
-                  19,
-                  23,
+                  22,
+                  26,
                   "word"
                 ],
                 [
                   8,
-                  24,
                   27,
+                  30,
                   "string"
                 ],
                 [
@@ -134779,7 +134779,7 @@
       ]
     },
     {
-      "id": "checkbox-wider-varchar",
+      "id": "task-marker-wider-varchar",
       "requirements": [
         "DBS-80"
       ],
@@ -134795,7 +134795,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -134805,7 +134805,7 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 14
+                  "column": 17
                 }
               ]
             }
@@ -134822,7 +134822,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -134976,426 +134976,12 @@
                 [
                   9,
                   4,
-                  12,
-                  "setting"
-                ],
-                [
-                  9,
-                  13,
-                  17,
-                  "name"
-                ],
-                [
-                  10,
-                  2,
-                  3,
-                  "punctuation"
-                ],
-                [
-                  11,
-                  0,
-                  1,
-                  "punctuation"
-                ]
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "checkbox-integer",
-      "requirements": [
-        "DBS-80"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tasks {",
-            "  id i64 identity",
-            "  done i32",
-            "  primary key (id)",
-            "  settings {",
-            "    store document list",
-            "    checkbox done",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "rule": "setting",
-                  "line": 9,
-                  "column": 14
-                }
-              ]
-            }
-          }
-        },
-        {
-          "op": "dbspec.analyze",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tasks {",
-            "  id i64 identity",
-            "  done i32",
-            "  primary key (id)",
-            "  settings {",
-            "    store document list",
-            "    checkbox done",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "tokens": [
-                [
-                  1,
-                  0,
-                  6,
-                  "keyword"
-                ],
-                [
-                  1,
-                  7,
-                  8,
-                  "number"
-                ],
-                [
-                  1,
-                  9,
-                  13,
-                  "name"
-                ],
-                [
-                  3,
-                  0,
-                  5,
-                  "keyword"
-                ],
-                [
-                  3,
-                  6,
-                  11,
-                  "name"
-                ],
-                [
-                  3,
-                  12,
-                  13,
-                  "punctuation"
-                ],
-                [
-                  4,
-                  2,
-                  4,
-                  "name"
-                ],
-                [
-                  4,
-                  5,
-                  8,
-                  "type"
-                ],
-                [
-                  4,
-                  9,
-                  17,
-                  "keyword"
-                ],
-                [
-                  5,
-                  2,
-                  6,
-                  "name"
-                ],
-                [
-                  5,
-                  7,
-                  10,
-                  "type"
-                ],
-                [
-                  6,
-                  2,
-                  9,
-                  "keyword"
-                ],
-                [
-                  6,
-                  10,
-                  13,
-                  "keyword"
-                ],
-                [
-                  6,
-                  14,
                   15,
-                  "punctuation"
-                ],
-                [
-                  6,
-                  15,
-                  17,
-                  "name"
-                ],
-                [
-                  6,
-                  17,
-                  18,
-                  "punctuation"
-                ],
-                [
-                  7,
-                  2,
-                  10,
-                  "keyword"
-                ],
-                [
-                  7,
-                  11,
-                  12,
-                  "punctuation"
-                ],
-                [
-                  8,
-                  4,
-                  9,
-                  "setting"
-                ],
-                [
-                  8,
-                  10,
-                  18,
-                  "keyword"
-                ],
-                [
-                  8,
-                  19,
-                  23,
-                  "keyword"
-                ],
-                [
-                  9,
-                  4,
-                  12,
                   "setting"
                 ],
                 [
                   9,
-                  13,
-                  17,
-                  "name"
-                ],
-                [
-                  10,
-                  2,
-                  3,
-                  "punctuation"
-                ],
-                [
-                  11,
-                  0,
-                  1,
-                  "punctuation"
-                ]
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "checkbox-unknown-column",
-      "requirements": [
-        "DBS-80"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tasks {",
-            "  id i64 identity",
-            "  done bool",
-            "  primary key (id)",
-            "  settings {",
-            "    store document list",
-            "    checkbox missing",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "rule": "setting",
-                  "line": 9,
-                  "column": 14
-                }
-              ]
-            }
-          }
-        },
-        {
-          "op": "dbspec.analyze",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tasks {",
-            "  id i64 identity",
-            "  done bool",
-            "  primary key (id)",
-            "  settings {",
-            "    store document list",
-            "    checkbox missing",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "tokens": [
-                [
-                  1,
-                  0,
-                  6,
-                  "keyword"
-                ],
-                [
-                  1,
-                  7,
-                  8,
-                  "number"
-                ],
-                [
-                  1,
-                  9,
-                  13,
-                  "name"
-                ],
-                [
-                  3,
-                  0,
-                  5,
-                  "keyword"
-                ],
-                [
-                  3,
-                  6,
-                  11,
-                  "name"
-                ],
-                [
-                  3,
-                  12,
-                  13,
-                  "punctuation"
-                ],
-                [
-                  4,
-                  2,
-                  4,
-                  "name"
-                ],
-                [
-                  4,
-                  5,
-                  8,
-                  "type"
-                ],
-                [
-                  4,
-                  9,
-                  17,
-                  "keyword"
-                ],
-                [
-                  5,
-                  2,
-                  6,
-                  "name"
-                ],
-                [
-                  5,
-                  7,
-                  11,
-                  "type"
-                ],
-                [
-                  6,
-                  2,
-                  9,
-                  "keyword"
-                ],
-                [
-                  6,
-                  10,
-                  13,
-                  "keyword"
-                ],
-                [
-                  6,
-                  14,
-                  15,
-                  "punctuation"
-                ],
-                [
-                  6,
-                  15,
-                  17,
-                  "name"
-                ],
-                [
-                  6,
-                  17,
-                  18,
-                  "punctuation"
-                ],
-                [
-                  7,
-                  2,
-                  10,
-                  "keyword"
-                ],
-                [
-                  7,
-                  11,
-                  12,
-                  "punctuation"
-                ],
-                [
-                  8,
-                  4,
-                  9,
-                  "setting"
-                ],
-                [
-                  8,
-                  10,
-                  18,
-                  "keyword"
-                ],
-                [
-                  8,
-                  19,
-                  23,
-                  "keyword"
-                ],
-                [
-                  9,
-                  4,
-                  12,
-                  "setting"
-                ],
-                [
-                  9,
-                  13,
+                  16,
                   20,
                   "name"
                 ],
@@ -135418,7 +135004,421 @@
       ]
     },
     {
-      "id": "checkbox-repeated",
+      "id": "task-marker-integer",
+      "requirements": [
+        "DBS-80"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  done i32",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    task_marker done",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 9,
+                  "column": 17
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  done i32",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    task_marker done",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  11,
+                  "name"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  6,
+                  "name"
+                ],
+                [
+                  5,
+                  7,
+                  10,
+                  "type"
+                ],
+                [
+                  6,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  6,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  6,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  6,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  7,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  8,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  8,
+                  19,
+                  23,
+                  "keyword"
+                ],
+                [
+                  9,
+                  4,
+                  15,
+                  "setting"
+                ],
+                [
+                  9,
+                  16,
+                  20,
+                  "name"
+                ],
+                [
+                  10,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  11,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "task-marker-unknown-column",
+      "requirements": [
+        "DBS-80"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  done bool",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    task_marker missing",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 9,
+                  "column": 17
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  done bool",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    task_marker missing",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  11,
+                  "name"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  6,
+                  "name"
+                ],
+                [
+                  5,
+                  7,
+                  11,
+                  "type"
+                ],
+                [
+                  6,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  6,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  6,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  6,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  7,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  8,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  8,
+                  19,
+                  23,
+                  "keyword"
+                ],
+                [
+                  9,
+                  4,
+                  15,
+                  "setting"
+                ],
+                [
+                  9,
+                  16,
+                  23,
+                  "name"
+                ],
+                [
+                  10,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  11,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "task-marker-repeated",
       "requirements": [
         "DBS-63",
         "DBS-80"
@@ -135436,8 +135436,8 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox done",
-            "    checkbox mark",
+            "    task_marker done",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -135465,8 +135465,8 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox done",
-            "    checkbox mark",
+            "    task_marker done",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -135632,25 +135632,25 @@
                 [
                   10,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   10,
-                  13,
-                  17,
+                  16,
+                  20,
                   "name"
                 ],
                 [
                   11,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   11,
-                  13,
-                  17,
+                  16,
+                  20,
                   "name"
                 ],
                 [
@@ -135672,7 +135672,7 @@
       ]
     },
     {
-      "id": "checkbox-per-state-form",
+      "id": "task-marker-per-state-form",
       "requirements": [
         "DBS-80"
       ],
@@ -135688,7 +135688,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark todo '.'",
+            "    task_marker mark todo '.'",
             "  }",
             "}"
           ],
@@ -135698,7 +135698,7 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 19
+                  "column": 22
                 }
               ]
             }
@@ -135715,7 +135715,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark todo '.'",
+            "    task_marker mark todo '.'",
             "  }",
             "}"
           ],
@@ -135869,25 +135869,25 @@
                 [
                   9,
                   4,
-                  12,
+                  15,
                   "word"
                 ],
                 [
                   9,
-                  13,
-                  17,
+                  16,
+                  20,
                   "word"
                 ],
                 [
                   9,
-                  18,
-                  22,
+                  21,
+                  25,
                   "word"
                 ],
                 [
                   9,
-                  23,
                   26,
+                  29,
                   "string"
                 ],
                 [
@@ -136178,6 +136178,231 @@
                 ],
                 [
                   12,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "checkbox-line-refused",
+      "requirements": [
+        "DBS-80"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  mark varchar(1)",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    checkbox mark",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 9,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tasks {",
+            "  id i64 identity",
+            "  mark varchar(1)",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    checkbox mark",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  11,
+                  "name"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  6,
+                  "name"
+                ],
+                [
+                  5,
+                  7,
+                  14,
+                  "type"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  16,
+                  "number"
+                ],
+                [
+                  5,
+                  16,
+                  17,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  6,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  6,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  6,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  7,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  8,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  8,
+                  19,
+                  23,
+                  "keyword"
+                ],
+                [
+                  9,
+                  4,
+                  12,
+                  "setting"
+                ],
+                [
+                  9,
+                  13,
+                  17,
+                  "word"
+                ],
+                [
+                  10,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  11,
                   0,
                   1,
                   "punctuation"

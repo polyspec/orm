@@ -5,10 +5,10 @@
 #include "dbspec.h"
 #include "compare_by_field.h"
 
-/* Canonical order: mapping settings (markdown through checkbox) come before immutable and audit. */
+/* Canonical order: mapping settings (markdown through task_marker) come before immutable and audit. */
 static const char *const setting_kinds[] = {
     "entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-    "title", "body", "order", "checkbox", "immutable", "audit", NULL,
+    "title", "body", "order", "task_marker", "immutable", "audit", NULL,
 };
 
 static int kind_rank(str kind)

@@ -3535,13 +3535,13 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n"
+            "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    task_marker state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_hash": "sha256:151326f114737a178d1d2328e7890463b1a9fc1c13ae8cf0870c7f2551c4c142",
-                "manifest_text": "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n",
+                "manifest_hash": "sha256:1f39e4acd0ce58b1be940fd30a9d6b843d0bfb7ad860f090bd93bab408da3bd4",
+                "manifest_text": "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    task_marker state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n",
                 "schema_hash": "sha256:3ed9bb77f8937282af8942ded73eb6f3aa8a6fafc367a3a9f444ca0ce94d08f5",
                 "schema_text": "dbspec 1 schema\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n}\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n}\n"
               }
@@ -3566,7 +3566,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -3862,13 +3862,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [

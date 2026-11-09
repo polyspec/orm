@@ -1411,7 +1411,7 @@ impl Parser {
             (Kind::Word, "title") => self.name(&mut cursor).map(Setting::Title),
             (Kind::Word, "body") => self.name(&mut cursor).map(Setting::Body),
             (Kind::Word, "order") => self.name(&mut cursor).map(Setting::Order),
-            (Kind::Word, "checkbox") => self.name(&mut cursor).map(Setting::Checkbox),
+            (Kind::Word, "task_marker") => self.name(&mut cursor).map(Setting::TaskMarker),
             (Kind::Word, "immutable") => Some(Setting::Immutable),
             (Kind::Word, "audit") => (|| {
                 self.expect(&mut cursor, "into")?;

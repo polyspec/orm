@@ -622,7 +622,7 @@ class _Setting:
         self.tables = fields.get("tables")
         # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
-        # Tokens of the markdown, store, title, body, order, and checkbox lines.
+        # Tokens of the markdown, store, title, body, order, and task_marker lines.
         self.args = fields.get("args", ())
 
 
@@ -802,7 +802,7 @@ FORM_SETTINGS = frozenset(
         "title",
         "body",
         "order",
-        "checkbox",
+        "task_marker",
     }
 )
 # For each store kind, the number of tokens before the shard clause (including kind).
@@ -1785,7 +1785,7 @@ class DocumentParser:
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
-        """Reads markdown, store, title, body, order, and checkbox lines as Go's settingsLine does.
+        """Reads markdown, store, title, body, order, and task_marker lines as Go's settingsLine does.
         Returns _Setting if the line matches, otherwise None (the error was reported)."""
         c = _Cursor(self, toks, line, self.lines[line - 1])
         kw = c.next()
@@ -1798,7 +1798,7 @@ class DocumentParser:
             return ok
 
         ok = True
-        if kw.t in ("markdown", "title", "body", "order", "checkbox"):
+        if kw.t in ("markdown", "title", "body", "order", "task_marker"):
             ok = arg("a column name")
         elif kw.t == "store":
             kind, ok = c.one_of(
@@ -2758,8 +2758,8 @@ class DocumentParser:
                 )
         elif kind == "order":
             self._order(table, s)
-        elif kind == "checkbox":
-            self._checkbox(table, s)
+        elif kind == "task_marker":
+            self._task_marker(table, s)
 
     def _ref(self, tok: Tk) -> bool:
         """Go's validator.ref: if the name has the right form it is true; otherwise it reports a name diagnostic and is false."""
@@ -2864,7 +2864,7 @@ class DocumentParser:
                 return True
         return False
 
-    def _checkbox(self, table: _Table, s: _Setting) -> None:
+    def _task_marker(self, table: _Table, s: _Setting) -> None:
         """The column whose value a list row writes between the brackets of its task marker: a varchar(1) column,
         written as its value, or a bool column, written as the unchecked and the checked task box of GFM
         (docs/spec/dbspec.md "Settings")."""
@@ -2878,7 +2878,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 s.args[0],
-                f"checkbox needs a varchar(1) or bool column, not {type_text(c.type)}",
+                f"task_marker needs a varchar(1) or bool column, not {type_text(c.type)}",
             )
 
     def _codec(self, table: _Table, s: _Setting) -> None:
@@ -3411,7 +3411,7 @@ class DocumentParser:
     def _form_setting_of(self, s: _Setting) -> DbspecSetting:
         a = [t.t for t in s.args]
         base = {"kind": s.kind, "comments": tuple(s.comments)}
-        if s.kind in ("markdown", "title", "body", "order", "checkbox"):
+        if s.kind in ("markdown", "title", "body", "order", "task_marker"):
             return DbspecSetting(column=a[0], **base)
         # store
         at = STORE_ARGUMENTS[a[0]]

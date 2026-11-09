@@ -639,7 +639,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 }
                 Setting::Title(name) | Setting::Body(name) => self.text_column(name),
                 Setting::Order(name) => self.order(name),
-                Setting::Checkbox(name) => self.checkbox(name),
+                Setting::TaskMarker(name) => self.task_marker(name),
                 Setting::Immutable => {
                     if changes_rows {
                         self.report(line.pos, "setting", "immutable is rejected on a child of a cascade or set_null foreign key");
@@ -710,12 +710,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// `checkbox` names the column whose value a list row writes between the brackets of its task marker: a
+    /// `task_marker` names the column whose value a list row writes between the brackets of its task marker: a
     /// varchar(1) column, written as its value, or a bool column, written as the unchecked and the checked task box.
-    fn checkbox(&mut self, name: &Name) {
+    fn task_marker(&mut self, name: &Name) {
         if let Some(column) = self.setting_column(name) {
             if !matches!(column.ty, Type::Bool | Type::Varchar(1)) {
-                self.report(name.pos, "setting", format!("checkbox needs a varchar(1) or bool column, not {}", column.ty.render()));
+                self.report(name.pos, "setting", format!("task_marker needs a varchar(1) or bool column, not {}", column.ty.render()));
             }
         }
     }

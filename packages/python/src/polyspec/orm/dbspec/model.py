@@ -202,7 +202,7 @@ class DbspecSetting:
     tables: tuple | None = None
     exclude: tuple | None = None
     include: tuple | None = None
-    # For markdown, store, title, body, order, and checkbox only. The kind of store is form.
+    # For markdown, store, title, body, order, and task_marker only. The kind of store is form.
     form: str = ""
     shape: str = ""
     # store only: None if there is no shard clause.

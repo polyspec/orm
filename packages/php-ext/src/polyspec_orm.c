@@ -2878,7 +2878,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     static const zend_long arity[] = {2, 1, 1, 1};
     static const char *const actions[] = {"restrict", "cascade", "set_null"};
     static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-        "title", "body", "order", "checkbox", "immutable", "audit"};
+        "title", "body", "order", "task_marker", "immutable", "audit"};
     static const char *const stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"};
     static const char *const store_kinds[] = {"files", "document", "block"};
     static const zend_long store_arguments[] = {1, 2, 3};

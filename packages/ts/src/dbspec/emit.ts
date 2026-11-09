@@ -27,7 +27,7 @@ const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'title',
   'body',
   'order',
-  'checkbox',
+  'task_marker',
   'immutable',
   'audit',
 ];
@@ -99,7 +99,7 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
     case 'title':
     case 'body':
     case 'order':
-    case 'checkbox':
+    case 'task_marker':
       return `${setting.kind} ${setting.column}`;
     case 'audit':
       // The schema text is decided by the database state, so the columns that are not recorded are written as an exclude list in column order.

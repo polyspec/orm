@@ -36,7 +36,7 @@ _SETTING_ORDER = (
     "title",
     "body",
     "order",
-    "checkbox",
+    "task_marker",
     "immutable",
     "audit",
 )
@@ -124,7 +124,7 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
         if setting.form == "block":
             return f"store block {setting.foreign_key} {setting.shape}{shard}"
         return f"store document {setting.shape}{shard}"
-    if kind in ("title", "body", "order", "checkbox"):
+    if kind in ("title", "body", "order", "task_marker"):
         return f"{kind} {setting.column}"
     # Schema text is determined by database state, so columns that are not recorded are listed
     # in the exclude list in column order. Other views write the list as written.

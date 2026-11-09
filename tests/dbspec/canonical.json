@@ -6559,7 +6559,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -6614,7 +6614,7 @@
                 "    title title",
                 "    body body",
                 "    order sort_order",
-                "    checkbox state",
+                "    task_marker state",
                 "  }",
                 "}",
                 "",
@@ -6672,7 +6672,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state",
+            "    task_marker state",
             "  }",
             "}",
             "",
@@ -6967,13 +6967,13 @@
                 [
                   16,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   16,
-                  13,
-                  18,
+                  16,
+                  21,
                   "name"
                 ],
                 [
@@ -13235,7 +13235,7 @@
       ]
     },
     {
-      "id": "checkbox-varchar-one",
+      "id": "task-marker-varchar-one",
       "requirements": [
         "DBS-80"
       ],
@@ -13251,7 +13251,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -13266,7 +13266,7 @@
                 "  primary key (id)",
                 "  settings {",
                 "    store document list",
-                "    checkbox mark",
+                "    task_marker mark",
                 "  }",
                 "}"
               ]
@@ -13284,7 +13284,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox mark",
+            "    task_marker mark",
             "  }",
             "}"
           ],
@@ -13444,13 +13444,13 @@
                 [
                   9,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   9,
-                  13,
-                  17,
+                  16,
+                  20,
                   "name"
                 ],
                 [
@@ -13472,7 +13472,7 @@
       ]
     },
     {
-      "id": "checkbox-bool",
+      "id": "task-marker-bool",
       "requirements": [
         "DBS-80"
       ],
@@ -13488,7 +13488,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox done",
+            "    task_marker done",
             "  }",
             "}"
           ],
@@ -13503,7 +13503,7 @@
                 "  primary key (id)",
                 "  settings {",
                 "    store document list",
-                "    checkbox done",
+                "    task_marker done",
                 "  }",
                 "}"
               ]
@@ -13521,7 +13521,7 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    checkbox done",
+            "    task_marker done",
             "  }",
             "}"
           ],
@@ -13657,13 +13657,13 @@
                 [
                   9,
                   4,
-                  12,
+                  15,
                   "setting"
                 ],
                 [
                   9,
-                  13,
-                  17,
+                  16,
+                  20,
                   "name"
                 ],
                 [

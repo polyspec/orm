@@ -208,7 +208,7 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
         Setting::Title(column) => format!("title {}", column.text),
         Setting::Body(column) => format!("body {}", column.text),
         Setting::Order(column) => format!("order {}", column.text),
-        Setting::Checkbox(column) => format!("checkbox {}", column.text),
+        Setting::TaskMarker(column) => format!("task_marker {}", column.text),
         Setting::Immutable => "immutable".into(),
         Setting::Audit { into, column, references, action, previous, tables, lists } => {
             // The schema text is determined by the database state, so the columns that are not recorded are passed as an exclude
