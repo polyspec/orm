@@ -9,6 +9,7 @@ import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
+import { repositoryOf, runErrors } from './release-run.mts';
 import { AFTER_GROUP_CHECK, documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
@@ -2137,6 +2138,43 @@ caseTest('the size check counts the changed files of the range, a rename as its 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+// The run check of a release (T418): make release-tag takes a successful push or manual run of ci.yml on the commit it tags,
+// and refuses a run of any other workflow before kit tags. The fixtures are answers of gh api repos/<repo>/actions/runs/<id>.
+const RELEASE_SHA = 'c'.repeat(40);
+const apiRun = (fields: Record<string, unknown>): Record<string, unknown> => ({ id: 7, name: 'ci', path: '.github/workflows/ci.yml', event: 'push', status: 'completed', conclusion: 'success', head_sha: RELEASE_SHA, head_branch: 'main', ...fields });
+
+caseTest('make release-tag runs the run check on RUN before kit tags its commit', COMPUTE, () => {
+  const makefile = readFileSync(join(repositoryRoot, 'Makefile'), 'utf8');
+  const recipe = makefile.split(/^release-tag:.*\n/m)[1]?.split(/^\S/m)[0] ?? '';
+  const check = recipe.indexOf('scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")');
+  assert.ok(check >= 0, `the recipe of release-tag runs scripts/repo/release-run.mts on RUN:\n${recipe}`);
+  assert.ok(recipe.indexOf('release-run.$(KIT_EXT) tag "$$RUN"') > check, 'the run check comes before the tag step of kit');
+});
+
+caseTest('a release takes a successful push or manual run of ci.yml, also on the commit that it tags', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({})), []);
+  assert.deepEqual(runErrors('7', apiRun({}), RELEASE_SHA), []);
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_dispatch' })), []);
+});
+
+caseTest('a release refuses a run of documents.yml and of docs-pages.yml and names the workflow', COMPUTE, () => {
+  for (const [id, workflow] of [['8', 'documents.yml'], ['9', 'docs-pages.yml']] as const) {
+    assert.deepEqual(runErrors(id, apiRun({ path: `.github/workflows/${workflow}` })), [
+      `run ${id} is a run of .github/workflows/${workflow}, not of .github/workflows/ci.yml; a release takes a successful run of .github/workflows/ci.yml`,
+    ]);
+  }
+});
+
+caseTest('a release refuses a ci.yml run of another event, without success or on another commit', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_run' })), ['run 7 is a workflow_run run, not a push or workflow_dispatch run']);
+  assert.deepEqual(runErrors('7', apiRun({ conclusion: 'cancelled' })), ['run 7 has the conclusion cancelled, not success']);
+  assert.deepEqual(runErrors('7', apiRun({}), 'd'.repeat(40)), [`run 7 ran on ${RELEASE_SHA}, not on the commit ${'d'.repeat(40)} that the release tags`]);
+  assert.deepEqual(runErrors('7', apiRun({ head_sha: 'abc' })), ['run 7 names no head_sha']);
+  assert.equal(runErrors('7', { message: 'Not Found' }).length, 4);
+  assert.equal(repositoryOf({ repositoryUrl: 'https://github.com/polyspec/orm' }), 'polyspec/orm');
+  assert.throws(() => repositoryOf({}), /no repositoryUrl/);
 });
 
 // The trigger case (G5.98) checks that the `on:` blocks of ci.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,

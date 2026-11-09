@@ -266,6 +266,10 @@
       "kind": "policy",
       "reason": "the rule of this repository that a client sends no probing statement on connect"
     },
+    "scripts/repo/release-run.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a release takes a successful push or manual run of ci.yml alone; gh api reads the run, and no ecosystem tool judges which workflow a release may take"
+    },
     "scripts/repo/scripts.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that every path in a root npm script is tracked"

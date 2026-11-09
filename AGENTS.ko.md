@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: d8f6eba1a9d135c3cc7c5b9019fd2ae920889e4ad7832d6b800784a14b568add -->
+<!-- source-sha256: 33ee07b1741762a32d3b48c5861cc2b1dfdeb6347921fc9db7818a711ecdac83 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -260,8 +260,9 @@
   dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
   검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
   tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
-  tag를 만들고 옮기고 push하는 사람은 없다.
-  Enforced by: `make release-tag`
+  tag를 만들고 옮기고 push하는 사람은 없다. tag하기 전에 `scripts/repo/release-run.mts`가 `documents.yml`이나 `docs-pages.yml` 같은
+  다른 workflow의 run, 다른 event의 run, 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 거부한다.
+  Enforced by: `make release-tag`, `make repo-check`
 - Own: 이어서 `.github/workflows/release.yml`이 tag한 commit에서 GitHub Release를 게시한다:
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든

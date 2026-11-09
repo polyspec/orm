@@ -4,6 +4,7 @@
 ## Unreleased
 
 - T418: A push to `main` that changes only the root documents other than AGENTS and the plans that no code check reads starts no CI run; the new documents workflow runs the document checks on every push and fails a push of more than 3000 files, past which GitHub does not evaluate a path filter. contracts/check-inputs.json declares that repo-check reads AGENTS.md and AGENTS.ko.md and that feature-unit-check reads the checklist of kit-standard.
+- T418: `make release-tag` takes a successful push or manual run of `.github/workflows/ci.yml` alone, and refuses with the reason a run of another workflow, such as `documents.yml` or `docs-pages.yml`, a run of another event or without success, and, for a release that the run started, a run on another commit.
 
 ## 0.0.27
 

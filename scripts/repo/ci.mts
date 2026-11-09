@@ -770,7 +770,10 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
 // Makefile read, which documents.yml runs on every push. A push whose every changed path matches one starts no run of ci.yml;
 // GitHub compares the diff of the whole push, so a push that holds any other path runs every job. AGENTS.md and AGENTS.ko.md
 // are no such documents (repo-check reads them), nor the checklist of kit-standard (scripts/features/check.mts reads it), the
-// specs or any other document that a code check reads; a plan that is not listed here starts every job.
+// specs or any other document that a code check reads; a plan that is not listed here starts every job. One lint is no read
+// of a document: the lint `**` of repo-check checks the form of every path name, and layout-check of documents.yml checks the
+// form of the path of a document that ci.yml ignores, while the documents that repo-check reads by their text (AGENTS.md and
+// AGENTS.ko.md) stay its inputs (documentPathErrors).
 export const DOCUMENT_PATHS = [
   'CHANGELOG*.md', 'CODE_OF_CONDUCT*.md', 'CONTRIBUTING*.md', 'PRINCIPLES*.md', 'README*.md', 'SECURITY*.md',
   'docs/plans/check-recipes/**', 'docs/plans/cross-verification/**', 'docs/plans/execution/**',

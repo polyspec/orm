@@ -297,8 +297,10 @@ from kit and holds as its own; this file states only the rules of orm.
   `make release-tag` requires that the run succeeded and that its exact commit is on `origin/main`, and creates
   and pushes the annotated tags `vX.Y.Z` and `packages/go/vX.Y.Z` at that commit, which releases the Go module
   `github.com/polyspec/orm/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
-  pushes a tag by hand.
-  Enforced by: `make release-tag`
+  pushes a tag by hand. Before it tags, `scripts/repo/release-run.mts` refuses a run of any other workflow, such as
+  `documents.yml` or `docs-pages.yml`, of another event, without success or, for a release that the run started, on
+  another commit.
+  Enforced by: `make release-tag`, `make repo-check`
 - Own: `.github/workflows/release.yml` then publishes the GitHub Release from the tagged commit:
   `make release-assets`
   (`polyspec-orm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
