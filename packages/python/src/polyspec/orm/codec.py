@@ -13,7 +13,6 @@ import sys
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 
-from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from polyspec.ordered_json import (
     Value as OrderedJson,
@@ -67,6 +66,12 @@ def _on_own_stack(frames: int, call, *args):
         return call(*args)
     with ThreadPoolExecutor(1, thread_name_prefix="polyspec-orm-codec") as worker:
         return worker.submit(call, *args).result()
+
+
+# A failure of the process, not of an input: memory exhausted, or the Python stack exhausted, which _on_own_stack keeps
+# from a value stage. Every other exception that a library call of the codec raises is the rule of that call, with the
+# exception as its cause (COD-71), so none escapes raw.
+_RESOURCE_FAILURES = (MemoryError, RecursionError)
 
 
 class CodecError(Exception):
@@ -125,7 +130,9 @@ def _pack_ip(value: bytes) -> bytes:
     # COD-70, which keeps the failure of the library as its cause (COD-71).
     try:
         address = ipaddress.ip_address(value.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "ip: the text is not an address"
         ) from error
@@ -161,7 +168,9 @@ def host_encode(value, styles, aes_key: str):
                 encrypted = AESGCM(_aes_v2_key(aes_key)).encrypt(
                     nonce, current, _AES_PREFIX
                 )
-            except (NotImplementedError, OSError, OverflowError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_ENCODE, "aes: the encryption failed"
                 ) from error
@@ -217,7 +226,9 @@ def host_decode(raw, styles, aes_key: str):
                 current = AESGCM(_aes_v2_key(aes_key)).decrypt(
                     nonce, sealed, _AES_PREFIX
                 )
-            except (InvalidTag, OverflowError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_DECODE, "aes: authentication failed"
                 ) from error
@@ -620,7 +631,9 @@ def _ordered_json_value(value) -> OrderedJson:
     text = _json_text(value, 0)
     try:
         return ordered_json_parse(text)
-    except (TypeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "json: the value has no JSON text"
         ) from error
@@ -812,6 +825,14 @@ def _yaml_rules_before_container_key(text: str) -> None:
                 return
     except _ContainerKey, ruamel.yaml.YAMLError, StopIteration:
         return
+    except (CodecError, *_RESOURCE_FAILURES):
+        raise
+    except Exception as error:
+        # ruamel.yaml fails with an exception that is no YAMLError, such as the AssertionError of a %YAML directive
+        # whose minor version is not 1 or 2: the rule yaml-parse, with that exception as its cause (COD-71).
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
 
 
 def _decode_yaml(data: bytes):
@@ -847,11 +868,19 @@ def _decode_yaml(data: bytes):
             try:
                 _yaml_rules_before_container_key(text)
             except CodecError as rule:
-                # A rule of a node met before the key, which the tree path raises with no cause.
-                raise rule from None
+                # A rule met before the key: a rule of a node, which the tree path raises with no cause, or yaml-parse
+                # with the failure of ruamel.yaml as its cause; neither takes the failure of rapidyaml as its context.
+                raise rule from rule.__cause__
             raise CodecError(
                 codes.CODEC_DECODE, "yaml: map keys must be scalar strings"
             ) from error
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
+    except (CodecError, *_RESOURCE_FAILURES):
+        raise
+    except Exception as error:
+        # Any other failure of rapidyaml is the rule yaml-parse (COD-71).
         raise CodecError(
             codes.CODEC_DECODE, "yaml: the stream does not parse"
         ) from error
@@ -887,7 +916,9 @@ def _yaml_dump(value) -> str:
     out = io.StringIO()
     try:
         dumper.dump(value, out)
-    except (ruamel.yaml.YAMLError, TypeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "yaml: the value has no YAML text"
         ) from error
@@ -957,7 +988,9 @@ def _decode(styles, raw):
             # A zlib stream of COD-12 only: the window bits 15 refuse a gzip stream, which gz-stream refuses too.
             try:
                 current = zlib.decompress(current, 15)
-            except zlib.error as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(codes.CODEC_DECODE, "gz: bad zlib stream") from error
         elif style == "base64":
             current = _decode_base64(current)
@@ -972,7 +1005,9 @@ def _decode(styles, raw):
             # level 257 where it opens, before its contents, which is json-depth-read; any other failure is json-cell.
             try:
                 value = ordered_json_parse(current.decode("utf-8"))
-            except (TypeError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 if getattr(error, "kind", None) == "maximum_depth_exceeded":
                     raise CodecError(
                         codes.CODEC_DECODE, "json: value nesting exceeds 256 levels"
@@ -1023,7 +1058,9 @@ def _encode(styles, state: StyledValue):
         elif style == "gz":
             try:
                 current = zlib.compress(current, 9)
-            except (OverflowError, zlib.error) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_ENCODE, "gz: the compression failed"
                 ) from error

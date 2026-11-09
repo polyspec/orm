@@ -1337,6 +1337,7 @@
         "packages/ts/tests/codec-json-depth-none.test.mjs",
         "packages/python/tests/test_codec_json_depth_none.py",
         "packages/python/tests/test_codec_stack_depth.py",
+        "packages/python/tests/test_codec_library_failures.py",
         "packages/rust/tests/tests/all/codec_json_depth_none.rs",
         "packages/ts/tests/codec-lone-surrogate-none.test.mjs",
         "packages/python/tests/test_codec_lone_surrogate_none.py",

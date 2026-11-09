@@ -2657,6 +2657,7 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_non_finite_value_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_json_depth_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_stack_depth
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_library_failures
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_lone_surrogate_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_map_keys_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_styled_unset_none

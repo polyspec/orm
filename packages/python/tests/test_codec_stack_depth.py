@@ -2,7 +2,8 @@
 # (COD-70, COD-71). A Python value stage recurses on the Python stack, so codec.py runs a call whose caller leaves fewer
 # frames than the stage takes on a thread of its own; each stage is called here at 256 levels and at 257 from a caller
 # about 900 frames deep, which reaches that thread, and from a caller that leaves the stage just its budget, which runs on
-# the caller's stack and so holds the budget of _STAGE_FRAMES. The recursion limit is a property of the Python runtime, so
+# the caller's stack and so holds the budget of _STAGE_FRAMES. The JSON output of a model (model._json_text), which is no
+# codec stage, recurses the same way and is held the same way at its budget, _JSON_OUTPUT_FRAMES. The recursion limit is a property of the Python runtime, so
 # this test is native (docs/spec/feature-coverage.md FCV-2).
 # Requirements: COD-70, COD-71.
 import decimal
@@ -10,7 +11,7 @@ import sys
 import unittest
 from unittest import mock
 
-from polyspec.orm import codec
+from polyspec.orm import codec, model
 from polyspec.orm.styled_value import StyledValue
 
 from . import testcase
@@ -189,6 +190,29 @@ class CodecStackDepthTest(unittest.TestCase):
         # sys._getframe counts the frames above it, so a caller at limit - budget leaves the stage exactly its budget,
         # with a few frames of this harness inside it.
         self.check(lambda budget: sys.getrecursionlimit() - budget - 8, False)
+
+    def test_the_json_output_of_a_model_is_the_same_at_every_depth(self):
+        cases = [
+            (nested_list(256), "[" * 256 + "]" * 256),
+            (nested_dict(256), '{"a":' * 255 + "{}" + "}" * 255),
+        ]
+        for value, text in cases:
+            expected = '{"kind":"value","value":' + text + "}"
+            state = StyledValue.value(value)
+            with self.subTest(text[:2], caller="deep"):
+                self.assertEqual(
+                    at_depth(900, lambda: model._json_text(state)), expected
+                )
+            with (
+                self.subTest(text[:2], caller="at the budget"),
+                mock.patch.object(
+                    codec, "ThreadPoolExecutor", side_effect=AssertionError
+                ),
+            ):
+                frames = sys.getrecursionlimit() - model._JSON_OUTPUT_FRAMES - 8
+                self.assertEqual(
+                    at_depth(frames, lambda: model._json_text(state)), expected
+                )
 
     def test_the_thread_reads_no_decimal_context_of_the_caller(self):
         # A float of serialize is written by its digits, not by the decimal context of the thread that writes it.
