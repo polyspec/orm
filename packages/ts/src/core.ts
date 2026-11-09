@@ -7,7 +7,7 @@ import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction, functionIR } from './values.js';
 import { StyledValue } from './styled_value.js';
-import { hostEncode } from './codec.js';
+import { encodeStyled, hostEncode } from './codec.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
 import * as codes from './codes.js';
 
@@ -415,7 +415,9 @@ export class Core {
     if (styledField(field)) {
       if (!(value instanceof StyledValue)) throw new OrmError(codes.CODEC_ENCODE, `${column} requires StyledValue`);
       if (!field.nullable && value.kind === 'sql-null') throw new OrmError(codes.CODEC_ENCODE, `${column} does not accept SQL NULL`);
-      if (value.kind === 'value') value.payload();
+      // The setter encodes the value by the codec stages of its column, without the host stages, and fails with the error of
+      // the first rule of COD-70 that the value meets, before it changes the model (COD-73).
+      if (value.kind === 'value') encodeStyled(field.stages.filter(stage => !plainStages.has(stage)), value);
     } else if (value !== null) {
       if (field.type === 'decimal') {
         if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, `${column} requires exact decimal text`);

@@ -1,11 +1,12 @@
-// The checks of a styled value in TypeScript: a setter refuses a value that JSON cannot hold as given, and the value is
-// checked again when it is read for output or for encoding, so an input object that changed after its assignment fails
-// then. The test of COD-21 (docs/spec/codec.md).
+// The checks of a styled value in TypeScript: a setter refuses a value that JSON cannot hold as given by the rules of
+// COD-70, and the value is checked again when it is encoded and refused by the JSON output, so an input object that
+// changed after its assignment fails then, while payload() and the array form return it unchecked. The test of COD-21
+// and COD-73 (docs/spec/codec.md).
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after } from 'node:test';
-import { Author, OrmError, StyledValue, connect } from '../dist/index.js';
+import { Author, CodecError, OrmError, StyledValue, connect } from '../dist/index.js';
 import { installBench } from './bench-set.mjs';
 import { COMPUTE, DATABASE, caseTest } from '../../../tests/testcase.mts';
 
@@ -15,7 +16,7 @@ async function code(f) {
     await f();
     return null;
   } catch (error) {
-    if (error instanceof OrmError) return error.code;
+    if (error instanceof OrmError || error instanceof CodecError) return error.code;
     throw error;
   }
 }
@@ -40,14 +41,26 @@ caseTest('styled value checks: a setter refuses what JSON would change', COMPUTE
   if (wrong.length > 0) throw new Error(wrong.join('\n'));
 });
 
-caseTest('styled value checks: a changed input fails when it is read for output', COMPUTE, async () => {
-  const input = { a: 1 };
-  const model = new Author().setJsonSetting(StyledValue.value(input));
-  input.a = undefined;
+caseTest('styled value checks: a changed input fails the JSON output and is read unchecked', COMPUTE, async () => {
   const wrong = [];
-  for (const [name, read] of [['toJSONText', () => model.toJSONText()], ['toArray', () => model.toArray()]]) {
-    const got = await code(read);
-    if (got !== 'CODEC_ENCODE') wrong.push(`${name}: ${got}, want CODEC_ENCODE`);
+  for (const [name, change, text] of [
+    ['an undefined member', input => { input.a = undefined; }, 'a value that JSON has no form for'],
+    ['a non-finite number', input => { input.a = Number.NaN; }, 'a number that is not finite'],
+  ]) {
+    const input = { a: 1 };
+    const model = new Author().setJsonSetting(StyledValue.value(input));
+    change(input);
+    for (const [output, read] of [['toJSONText', () => model.toJSONText()], ['JSON.stringify', () => JSON.stringify(model)]]) {
+      try {
+        read();
+        wrong.push(`${name}: ${output} wrote the value`);
+      } catch (error) {
+        const want = `CODEC_ENCODE: author.json_setting: JSON output cannot write ${text}`;
+        if (!(error instanceof OrmError) || error.message !== want) wrong.push(`${name}: ${output} ${error}, want ${want}`);
+      }
+    }
+    // The array form holds the value that payload() returns unchecked (COD-27, COD-73).
+    if (model.toArray().json_setting.value !== input) wrong.push(`${name}: toArray() is not the stored value`);
   }
   if (wrong.length > 0) throw new Error(wrong.join('\n'));
 });

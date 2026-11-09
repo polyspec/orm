@@ -131,6 +131,13 @@ fn setter_case(id: &str, style: &str, case: &Value, message: &str) {
     let result = if style == "ordered_json" {
         // The value of an ordered_json column is an ordered-json value, which is built from its JSON text.
         let text = serde_json::to_string(input).or_panic(|error| format!("{id}: the input has no JSON text: {error}"));
+        if case["unreachable"]["rust"].is_string() {
+            // COD-73: no Rust value of the column holds the input; the case proves it, since an ordered-json value is
+            // built from its JSON text and holds at most ordered_json::MAX_DEPTH levels.
+            let error = ordered_json::parse(&text).expect_err(&format!("{id}: the case states that no Rust value holds the input, but it parses"));
+            assert!(error.to_string().contains("maximum nesting depth exceeded"), "{id}: the input is refused for another reason than its depth: {error}");
+            return;
+        }
         let value = ordered_json::parse(&text).or_panic(|error| format!("{id}: the input is no ordered-json value of a json column: {error}"));
         check_setter_ordered(&[style], &value)
     } else {

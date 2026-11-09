@@ -57,10 +57,14 @@ final class StyledValueTest extends TestCase
                 self::assertSame(Code::CODEC_DECODE, $exception->code_);
             }
         }
-        // The Mermaid style name json and jsons of the fixture are both the dbspec codec stage ordered_json.
-        $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
+        $styles = [self::stage($case['style'])];
+        if (array_key_exists('input', $case)) {
+            $this->assertSetterCase($case);
+        }
         if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {
-            $this->assertModelStateCase(self::modelStateProbe(), $case);
+            if (!array_key_exists('input', $case) || in_array($case['id'], self::MODEL_STATE_CASES, true)) {
+                $this->assertModelStateCase(self::modelStateProbe(), $case);
+            }
             return;
         }
         if (array_key_exists('stored_text', $case)) {
@@ -89,14 +93,102 @@ final class StyledValueTest extends TestCase
         }
     }
 
+    /** The cases of the fixture that the model-state probe runs (COD-20, COD-25). */
+    private const array MODEL_STATE_CASES = ['unselected', 'nonnull_sql_null', 'nonnull_value_null'];
+
     // Requirements: COD-20, COD-25.
     public function testModelStates(): void
     {
         $cases = array_column(self::fixture()['cases'], null, 'id');
         $probe = self::modelStateProbe();
-        foreach (['unselected', 'nonnull_sql_null', 'nonnull_value_null'] as $id) {
+        foreach (self::MODEL_STATE_CASES as $id) {
             $this->assertModelStateCase($probe, $cases[$id]);
         }
+    }
+
+    /** The codec stage of a style of the fixture: the Mermaid styles json and jsons are both ordered_json. */
+    private static function stage(string $style): string
+    {
+        return in_array($style, ['json', 'jsons'], true) ? 'ordered_json' : $style;
+    }
+
+    /** The column of the setter probe of a style, nullable or not. */
+    private static function setterColumn(string $style, bool $nullable): string
+    {
+        return self::stage($style) . ($nullable ? '_nullable' : '_required');
+    }
+
+    /**
+     * The setter of a styled column runs on a column of the style of the case (COD-20, COD-73): a case whose error has
+     * no stored text is the setter's, with its whole message where the case states one, and the setter of another case
+     * accepts its input.
+     *
+     * @param array<string, mixed> $case
+     */
+    private function assertSetterCase(array $case): void
+    {
+        $id = $case['id'];
+        $state = $case['input']['kind'] === 'sql-null'
+            ? StyledValue::sqlNull()
+            : StyledValue::value($case['input']['value']);
+        $column = self::setterColumn($case['style'], $case['nullable']);
+        $error = null;
+        try {
+            self::setterProbe()->set($column, $state);
+        } catch (OrmException $thrown) {
+            $error = $thrown;
+        }
+        if (!array_key_exists('error', $case) || array_key_exists('stored_text', $case)) {
+            self::assertNull($error, "$id: the setter refused the value: " . $error?->getMessage());
+            return;
+        }
+        self::assertNotNull($error, "$id: the setter accepted the value, want {$case['error']}");
+        self::assertSame($case['error'], $error->code_, "$id: setter error code");
+        if (array_key_exists('message', $case)) {
+            self::assertSame($case['message'], $error->getMessage(), "$id: setter error message");
+        }
+    }
+
+    /** A model with a styled column of each value stage, nullable and not, whose setter takes a column name. */
+    private static function setterProbe(): Model
+    {
+        return new class extends Model {
+            public static function meta(): array
+            {
+                $columns = [];
+                foreach (['ordered_json', 'serialize', 'yaml'] as $stage) {
+                    foreach ([true, false] as $nullable) {
+                        $name = $stage . ($nullable ? '_nullable' : '_required');
+                        $columns[$name] = [
+                            'name' => $name,
+                            'type' => 'text',
+                            'nullable' => $nullable,
+                            'default' => false,
+                            'select' => true,
+                            'codec' => [$stage],
+                            'blind_index' => '',
+                            'pk' => false,
+                            'foreign_key' => false,
+                        ];
+                    }
+                }
+                return [
+                    'entity' => 'styled_setter_probe', 'table' => 'styled_setter_probe', 'pk' => [], 'identity' => '',
+                    'updated' => '',
+                    'soft_delete' => '',
+                    'aes_version' => '',
+                    'audit' => '',
+                    'unique' => [],
+                    'indexes' => [],
+                    'columns' => $columns,
+                ];
+            }
+
+            public function set(string $column, StyledValue $value): static
+            {
+                return $this->writeColumn($column, $value);
+            }
+        };
     }
 
     private static function modelStateProbe(): Model
