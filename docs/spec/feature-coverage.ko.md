@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 2292ca108e488e8764394ec3e9a1ff5454fde3be3943874c6df5f6c09273238a -->
+<!-- source-sha256: d03ae00d2b22263b31b806104eff5ffa9eb2e3a1e388f5c9ca02979d81f6221f -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -284,6 +284,7 @@
   - `packages/rust/build/tests/cases/row_mutation.rs`의 `mutation_phases_follow_the_transaction`는 native 시험으로 남는다: 그 요구사항(INT-106a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/build/tests/cases/row_snapshot.rs`의 `row_baseline_rejects_what_only_the_rust_forms_hold`는 native 시험으로 남는다: 그 요구사항(INT-109a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/build/tests/cases/tool_cells.rs`의 `physical_tool_cells_reject_loss_without_substituting_values`는 native 시험으로 남는다: 그 요구사항(SCH-3)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
+  - `packages/rust/build/tests/cases/tool_cells.rs`의 `a_refused_multirange_read_leaves_no_prepared_statement_on_its_session`는 native 시험으로 남는다: sqlx의 실패한 prepare는 그 statement를 서버에 남기고, Rust build crate의 `tool_db` connection이 같은 connection에서 그것을 해제하며, 다른 runtime에는 그런 statement가 없다. 모든 catalog session이 `DEALLOCATE ALL`로 시작하므로(CFG-28, INT-185) recipe step은 그것을 읽을 수 없다.
   - `packages/rust/build/tests/cases/tool_columns.rs`의 `physical_query_columns_preserve_empty_results_and_duplicate_aliases`는 native 시험으로 남는다: 그 요구사항(INT-135)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/build/tests/cases/tool_columns.rs`의 `physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone`는 native 시험으로 남는다: 그 요구사항(INT-125a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/build/tests/cases/tool_limits.rs`의 `physical_tool_queries_reject_budgets_without_partial_success`는 native 시험으로 남는다: 그 요구사항(SCH-3)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
