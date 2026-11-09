@@ -47,7 +47,8 @@ static bool catalog_publish(zval *pdo, str query, zend_long start, zend_object *
             zval argument;
             ZVAL_COPY(&argument, &error);
             zval converted;
-            bool converted_ok = scall("Polyspec\\Orm\\Db::driverError", &converted, 1, &argument);
+            /* Db::driverError is a method of the connection that ran the query, so the mapped error carries its driver. */
+            bool converted_ok = pdo_call(catalog_observer_current->db, "driverError", &converted, 1, &argument, NULL);
             zval_ptr_dtor(&argument);
             zval_ptr_dtor(&error);
             if (!converted_ok) return false;
