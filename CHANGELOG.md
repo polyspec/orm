@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make repo-check` checks the FCV-2 rule again, over the inventory of contracts/implementations.json, which replaced config/parity.json (T400-1): a test of the inventory that a feature or a helper of contracts/features.json lists and that runs no recipe is a native test, and one of a feature that lists the tests of more than one implementation is a finding unless a line of FCV-2 names its file and test as In `<file>`, `<test>` with its reason after a colon; a line of FCV-2 that names no native test, or a test that its file does not hold, is a finding too (scripts/repo/native-tests.mts).
+
 ## 0.0.27
 
 - Breaking: Python reads the `yaml` stage with the YAML reader of orm, `packages/python/src/polyspec/orm/_yaml_reader.py`, which reads the productions of YAML 1.2.2 as COD-74 to COD-80 state them, and no longer with rapidyaml, nor with the event stream of ruamel.yaml before a collection key; the package no longer depends on rapidyaml, and ruamel.yaml only writes (XV33). Reads change as the first entry above states; a stream that leaves the grammar is `yaml: the stream does not parse` with a `YamlReaderError` that names the line and the column (in Unicode characters, from 1) as its cause, where the cause was the failure of rapidyaml or of ruamel.yaml, and a `%YAML 1.3` stream with a collection key is that rule with the error of the reader, no longer an `AssertionError`. The reader keeps its nodes on a list of its own, so it takes the same Python frames at every depth and a yaml decode runs on the caller's stack with a budget of 65 frames, where it took 330. Tests: `test_codec_yaml_reader_cause.py` holds the line and the column of the cause and replaces `test_codec_library_failures.py`.

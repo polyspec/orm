@@ -115,10 +115,11 @@ from kit and holds as its own; this file states only the rules of orm.
   and the variables the Makefile exports do not reach it (`make repo-check`).
   Enforced by: `make repo-check`
 - Own: A behaviour that more than one runtime has is the cases of a recipe (FCV-2 of
-  docs/spec/feature-coverage.md), and a native test of such a behaviour stays only where FCV-2 states its reason after a colon.
-  The check of this rule read the feature units of config/parity.json, which kit 0.0.100 removed; its check over the tests of
-  contracts/implementations.json is row T400-1, held.
-  Enforced by: none, its check is the held row T400-1
+  docs/spec/feature-coverage.md), and a native test of such a behaviour stays only where a line of FCV-2 names its file and
+  test and states its reason after a colon. A native test is a test of the inventory of contracts/implementations.json that a
+  feature of contracts/features.json lists and that runs no recipe (scripts/features/recipe-runners.mts); its behaviour is shared
+  when the feature lists the tests of more than one implementation. An internal test with its reason is no native test.
+  Enforced by: `make repo-check`, which runs scripts/repo/native-tests.mts
 - Own: Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record

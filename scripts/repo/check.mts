@@ -16,6 +16,9 @@ import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
+import { nativeTestErrors } from './native-tests.mts';
+import { readTree as readRecipeTree } from '../features/recipe-runners.mts';
+import { implementationFiles, implementationTestInventory } from '../features/languages.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
@@ -206,6 +209,22 @@ failures.push(...goVersionErrors(workflows));
 failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)go\.mod$/.test(path)).map(path => [path, text(path)]))));
 const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';
 failures.push(...composerVersionErrors(text('mise.toml'), workflows, composerRelease));
+
+// A shared behaviour is the cases of a recipe; a native test of it stays only where a line of FCV-2 names it with its reason. A
+// feature lists its tests in `tests`, in the tests of its owners and dependents and in the inputs of its verification; a helper
+// lists its tests too.
+failures.push(...nativeTestErrors({
+  tests: implementationTestInventory(implementationFiles(root)).tests,
+  features: [
+    ...features.features.map(feature => ({ id: feature.id, files: [...feature.tests, ...Object.values(feature.coverage?.owners ?? {}).flatMap(owner => owner.tests),
+      ...(feature.coverage?.dependents ?? []).flatMap(dependent => dependent.tests), ...feature.verification.flatMap(check => check.inputs ?? [])] })),
+    ...(features.helpers ?? []).map(helper => ({ id: `helper ${helper.id}`, files: helper.tests })),
+  ],
+  recipeTests: new Set(readRecipeTree().bindings.map(binding => binding.test)),
+  spec: text('docs/spec/feature-coverage.md'),
+  files: trackedAll,
+  read: text,
+}));
 
 if (failures.length > 0) {
   console.error(failures.join('\n'));
