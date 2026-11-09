@@ -29,6 +29,11 @@
 
 #define TEXT_UNICODE "the text is not a sequence of Unicode scalar values"
 
+/* The nesting that every value stage reads and writes, the outermost list or map at level 1 (COD-70), Codec::DEPTH, and the text of
+ * its rules after the stage, Codec::DEPTH_RULE. */
+#define DEPTH 256
+#define DEPTH_RULE "value nesting exceeds 256 levels"
+
 /* ---- engine helpers ---- */
 
 /* The class of a name, loaded by the autoloader. A class that cannot be loaded throws an Error and gives NULL. */
@@ -78,6 +83,17 @@ static bool object_is(zend_object *obj, const char *name)
 static bool exception_is(const char *name)
 {
     return object_is(EG(exception), name);
+}
+
+/* Whether an exception is a Polyspec\OrderedJson\ParseError of the kind named, the public property kind of the parser. */
+static bool parse_error_kind(zend_object *ex, const char *kind)
+{
+    if (!object_is(ex, "Polyspec\\OrderedJson\\ParseError")) {
+        return false;
+    }
+    zval rv;
+    zval *value = zend_read_property(ex->ce, ex, "kind", sizeof("kind") - 1, true, &rv);
+    return value != NULL && Z_TYPE_P(value) == IS_STRING && zend_string_equals_cstr(Z_STR_P(value), kind, strlen(kind));
 }
 
 /* Releases a string that may be NULL (a style that is not set). */
@@ -387,8 +403,9 @@ static bool str_utf8(zend_string *s)
 /* ---- the common value model ---- */
 
 /* Codec::codecValueRule: the rule of COD-70 that a value under a first serialize or yaml stage breaks, or NULL for a value of the
- * common value model of COD-16: the first node that breaks one, keys before their values. */
-static const char *codec_value_rule(zval *v)
+ * common value model of COD-16: the first node that breaks one, keys before their values, and a list or a map past the 256 levels at
+ * its start, depth being the level of its container (serialize-depth-write, yaml-depth-write). */
+static const char *codec_value_rule(zval *v, zend_long depth)
 {
     ZVAL_DEREF(v);
     switch (Z_TYPE_P(v)) {
@@ -402,6 +419,9 @@ static const char *codec_value_rule(zval *v)
         case IS_DOUBLE:
             return zend_finite(Z_DVAL_P(v)) ? NULL : "number is not finite";
         case IS_ARRAY: {
+            if (depth + 1 > DEPTH) {
+                return DEPTH_RULE;
+            }
             zend_string *key;
             zval *item;
             ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(v), key, item)
@@ -409,7 +429,7 @@ static const char *codec_value_rule(zval *v)
                 if (key != NULL && !str_utf8(key)) {
                     return TEXT_UNICODE;
                 }
-                const char *rule = codec_value_rule(item);
+                const char *rule = codec_value_rule(item, depth + 1);
                 if (rule != NULL) {
                     return rule;
                 }
@@ -430,7 +450,7 @@ static const char *codec_value_rule(zval *v)
 /* Codec::checkCodecValue: a value under the first stage is refused by the rule it breaks, prefixed by the stage. */
 static bool check_codec_value(const char *stage, zval *v)
 {
-    const char *rule = codec_value_rule(v);
+    const char *rule = codec_value_rule(v, 0);
     return rule == NULL || orm_failf("CODEC_ENCODE", "%s: %s", stage, rule);
 }
 
@@ -529,10 +549,18 @@ static bool yaml_items(zval *node, const char *method, zval *items)
     return ok;
 }
 
+/* Codec::yamlDepth: a sequence or a mapping inside a container at level depth past the 256 levels is yaml-depth. */
+static bool yaml_depth(zend_long depth)
+{
+    return depth + 1 <= DEPTH || yaml_rule(DEPTH_RULE);
+}
+
 /* Codec.php yamlNode: a purr node as a PHP value, with the rules of the codec. The node model of purrphp/yaml has four kinds (its
  * NodeVisitor): an alias, which yaml_properties refuses, a scalar, a sequence and a mapping, which is the last; a node of another
- * kind has no getEntries, and the failure of that call is yaml-parse (COD-72). */
-static bool yaml_node(zval *node, zval *schema, zval *out)
+ * kind has no getEntries, and the failure of that call is yaml-parse (COD-72). A node is met where it starts (COD-70): its
+ * properties, then the nesting rule of its level, depth being the level of its container, then its own rules, and a key before its
+ * value. */
+static bool yaml_node(zval *node, zval *schema, zval *out, zend_long depth)
 {
     bool yes;
     if (!yaml_properties(node)) {
@@ -559,6 +587,9 @@ static bool yaml_node(zval *node, zval *schema, zval *out)
         return true;
     }
 
+    if (!yaml_depth(depth)) {
+        return false;
+    }
     IS_A(node, "Purr\\Yaml\\Node\\SequenceNode", yes);
     if (yes) {
         zval items;
@@ -570,7 +601,7 @@ static bool yaml_node(zval *node, zval *schema, zval *out)
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL(items), item)
         {
             zval val;
-            if (!yaml_node(item, schema, &val)) {
+            if (!yaml_node(item, schema, &val, depth + 1)) {
                 zval_ptr_dtor(&items);
                 zval_ptr_dtor(out);
                 return false;
@@ -602,13 +633,13 @@ static bool yaml_node(zval *node, zval *schema, zval *out)
             goto fail;
         }
         if (sequence || mapping) {
-            if (yaml_properties(&keynode)) {
+            if (yaml_properties(&keynode) && yaml_depth(depth + 1)) {
                 (void)yaml_rule("map keys must be scalar strings");
             }
             zval_ptr_dtor(&keynode);
             goto fail;
         }
-        bool read = yaml_node(&keynode, schema, &key);
+        bool read = yaml_node(&keynode, schema, &key, depth + 1);
         zval_ptr_dtor(&keynode);
         if (!read) {
             goto fail;
@@ -629,7 +660,7 @@ static bool yaml_node(zval *node, zval *schema, zval *out)
             zval_ptr_dtor(&key);
             goto fail;
         }
-        read = yaml_node(&valnode, schema, &val);
+        read = yaml_node(&valnode, schema, &val, depth + 1);
         zval_ptr_dtor(&valnode);
         if (!read) {
             zval_ptr_dtor(&key);
@@ -732,7 +763,7 @@ static bool yaml_read(zend_string *text, zval *out)
         zval_ptr_dtor(&root);
         return false;
     }
-    ok = yaml_node(&root, &schema, out);
+    ok = yaml_node(&root, &schema, out, 0);
     zval_ptr_dtor(&root);
     zval_ptr_dtor(&schema);
     return ok;
@@ -1378,8 +1409,8 @@ typedef struct {
 
 /* Codec::unserialized: a serialized cell read by the grammar of PHP's unserialize, with the rules of COD-70: the values of the
  * common value model (COD-16), no object or reference (COD-34), and nothing after the value. An array opens a frame, so a nesting
- * of any depth reads without recursion; an array key is a whole value, an integer or a string, and a later key replaces an
- * earlier one, as unserialize does. */
+ * of any depth reads without recursion; an array key is a whole value, an integer or a string, and a key that repeats an earlier one
+ * is refused, which unserialize would let replace it; an array past the 256 levels is refused at its start. */
 static bool unserialized(zend_string *in, zval *out)
 {
     const char *s = ZSTR_VAL(in);
@@ -1394,6 +1425,11 @@ static bool unserialized(zend_string *in, zval *out)
         }
         char t = s[at++];
         if (t == 'a') {
+            /* An array is met where it starts: the nesting rule of its level before its fields (serialize-depth). */
+            if (depth + 1 > DEPTH) {
+                ok = serialize_rule(DEPTH_RULE);
+                break;
+            }
             const char *f;
             size_t len, members;
             if (!serialized_delimiter(s, n, &at, ':') || !serialized_field(s, n, &at, ':', &f, &len)
@@ -1438,6 +1474,16 @@ static bool unserialized(zend_string *in, zval *out)
                 if (Z_TYPE(value) != IS_LONG && Z_TYPE(value) != IS_STRING) {
                     zval_ptr_dtor(&value);
                     ok = serialize_rule("array key must be int or string");
+                    done = true;
+                    break;
+                }
+                /* A PHP array key is an integer by its decimal string, so that i:1; and s:1:"1"; are one key and i:1; and s:2:"01";
+                 * are two; the key that repeats one is met before its value (serialize-duplicate). */
+                zval *exists = Z_TYPE(value) == IS_STRING ? zend_symtable_find(Z_ARRVAL(top->items), Z_STR(value))
+                                                          : zend_hash_index_find(Z_ARRVAL(top->items), (zend_ulong)Z_LVAL(value));
+                if (exists != NULL) {
+                    zval_ptr_dtor(&value);
+                    ok = serialize_rule("duplicate array key");
                     done = true;
                     break;
                 }
@@ -1684,8 +1730,10 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
                 /* The ordered-json value keeps the member order, the number text, and {} apart from []. */
                 zval parsed;
                 if (!call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &cur)) {
+                    /* The parser names the kind of its refusal; a nesting past its 256 levels is json-depth-read. */
                     zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
-                    ok = orm_failf_previous("CODEC_DECODE", cause, "json: the cell is not JSON");
+                    bool deep = cause != NULL && parse_error_kind(cause, "maximum_depth_exceeded");
+                    ok = orm_failf_previous("CODEC_DECODE", cause, "json: %s", deep ? DEPTH_RULE : "the cell is not JSON");
                 } else {
                     zval_ptr_dtor(&cur);
                     ZVAL_COPY_VALUE(&cur, &parsed);

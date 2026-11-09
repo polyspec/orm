@@ -21,15 +21,17 @@ FIXTURE = json.loads(
         encoding="utf-8"
     )
 )
-# A model with a styled column of each nullability, for the getter and setter cases.
+# A model with a styled column of each nullability and value stage, for the getter and setter cases.
 PROBE = (
     "dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  maybe text null\n"
-    "  primary key (seq)\n  settings {\n    codec payload ordered_json\n    codec maybe ordered_json\n  }\n}\n"
+    "  serialize_maybe text null\n  yaml_maybe text null\n"
+    "  primary key (seq)\n  settings {\n    codec payload ordered_json\n    codec maybe ordered_json\n"
+    "    codec serialize_maybe serialize\n    codec yaml_maybe yaml\n  }\n}\n"
 )
 
 
-def probe(nullable: bool):
-    """A new row of the probe model and the name of its styled column of that nullability."""
+def probe(nullable: bool, style: str = "json"):
+    """A new row of the probe model and the name of its styled column of that nullability and style."""
     document, _positions, diagnostics = parse_dbspec(PROBE, {})
     if diagnostics:
         raise AssertionError(f"probe document: {diagnostics}")
@@ -38,6 +40,10 @@ def probe(nullable: bool):
         raise AssertionError(f"probe manifest: {diagnostics}")
     model = register_model(manifest.manifest_text, manifest.manifest_hash)
     entity = EntityDef(model, model.entities["styled_probe"], lambda core: core)
+    if style in ("serialize", "yaml"):
+        if not nullable:
+            raise AssertionError(f"the probe has no non-null {style} column")
+        return Core(entity), f"{style}_maybe"
     return Core(entity), "maybe" if nullable else "payload"
 
 
@@ -81,10 +87,14 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         test.assertEqual(raised.exception.code, case["getter_error"])
     if "stored_text" not in case and "input" in case:
         ran = True
-        row, column = probe(case["nullable"])
+        row, column = probe(case["nullable"], case["style"])
         with test.assertRaises(OrmError) as raised:
             row.set_value(column, state(case["input"]))
         test.assertEqual(raised.exception.code, case["error"])
+        # The whole text of the error, where the case states it (COD-73).
+        if "message" in case:
+            test.assertEqual(str(raised.exception), case["message"])
+        test.assertNotIn(column, row.values, "the setter changed the model")
     if "getter" in case and "input" in case and "write_text" in case:
         row, column = probe(case["nullable"])
         row.set_value(column, state(case["input"]))

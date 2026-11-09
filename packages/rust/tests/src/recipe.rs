@@ -6222,8 +6222,12 @@ mod tables {
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         let field = entity.field(column);
+        let styles: Vec<&str> = field.map(|field| field.codec.iter().map(String::as_str).collect()).unwrap_or_default();
+        // The setter of a column with codec stages encodes the value by them and fails at the call (COD-73).
+        let check = |value: &Value| if styles.is_empty() { Ok(()) } else { polyspec_orm::codec::check_setter(&styles, value).map_err(orm) };
         if let Some(inner) = raw.get("styled") {
             let value = bind_json(&param(inner)?);
+            check(&value)?;
             row.core.set_json(column, value.clone());
             row.values.insert(column.to_owned(), Val::Json(value));
             row.core.mark_field_ready(column);
@@ -6233,10 +6237,12 @@ mod tables {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
                 let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
+                polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
                 let value = object_of(raw)?;
+                check(&value)?;
                 row.core.set_json(column, value.clone());
                 row.values.insert(column.to_owned(), Val::Json(value));
             }
