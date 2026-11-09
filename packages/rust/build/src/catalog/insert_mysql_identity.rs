@@ -1,4 +1,5 @@
 //! Recover statement-owned AUTO_INCREMENT and server-resolved literal defaults.
+use super::CatalogError;
 use super::{
     mutation::{cell, qualified},
     page::quote,
@@ -6,7 +7,7 @@ use super::{
 };
 use crate::tool_db::{Conn, QueryLimits, P};
 
-pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql: &str, values: &[(String, P)], params: &[P]) -> Result<Vec<P>, String> {
+pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql: &str, values: &[(String, P)], params: &[P]) -> Result<Vec<P>, CatalogError> {
     let auto = metadata
         .primary_key
         .iter()
@@ -55,7 +56,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
     for (name, value) in values {
         let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
         if result.rows[0][index] != cell(value) {
-            return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ"));
+            return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ").into());
         }
     }
     row_snapshot::key_params(metadata, &result.rows[0])

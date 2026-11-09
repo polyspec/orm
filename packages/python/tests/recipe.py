@@ -47,6 +47,7 @@ from polyspec.orm import (
     codes,
     transaction_conflict,
 )
+from polyspec.orm.catalog import GridCell
 from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
 from polyspec.orm.testing import fail_next_rollback, last_affected
@@ -2782,7 +2783,8 @@ def _op_table_page(step: dict, context: dict) -> dict:
         "order_by": list(page.order_by),
         "has_more": page.has_more,
         "rows": [
-            [_plain(row[at], types[at]) for at in indexes] for row in page.result.rows
+            [_plain(row[at], types[at], _dialect_of(context)) for at in indexes]
+            for row in page.result.rows
         ],
     }
 
@@ -2919,7 +2921,10 @@ def _op_row_cells(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     types = [column.native_type for column in snapshot.metadata.columns]
     return {
-        "cells": [_plain(cell, types[at]) for at, cell in enumerate(snapshot.cells)]
+        "cells": [
+            _plain(cell, types[at], _dialect_of(context))
+            for at, cell in enumerate(snapshot.cells)
+        ]
     }
 
 
@@ -3010,13 +3015,13 @@ def _op_insert_row(step: dict, context: dict) -> dict:
     result = context["catalog"].insert_row(
         metadata, _assignments(step["values"], context)
     )
-    return _mutation(metadata, result)
+    return _mutation(metadata, result, _dialect_of(context))
 
 
 def _op_update_row(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     result = context["catalog"].update_row(snapshot, _assignments(step["set"], context))
-    return _mutation(snapshot.metadata, result)
+    return _mutation(snapshot.metadata, result, _dialect_of(context))
 
 
 def _op_delete_row(step: dict, context: dict) -> dict:
@@ -4895,9 +4900,23 @@ def _temporal_kind(native_type: str | None) -> str | None:
     return None
 
 
-def _plain(value, native_type: str | None) -> dict:
+# The forms of a date, a time and a datetime text, with any fraction digits.
+_TEMPORAL_FORMS = {
+    "date": re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}"),
+    "time": re.compile(r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"),
+    "datetime": re.compile(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"
+    ),
+}
+
+
+def _plain(value, native_type: str | None, dialect: str | None = None) -> dict:
     """The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known,
-    and a date, time or datetime cell is the dbspec text that the library returns."""
+    and a date, time or datetime cell is the dbspec text that the library returns. A float of a described read is its bits
+    cell (INT-183). A SQLite column keeps the stored text of a type that no dbspec column declares, so its text takes a
+    temporal wrapper only in the form of that kind, and is a text otherwise (INT-184)."""
+    if isinstance(value, GridCell):
+        return _grid(value)
     if value is None:
         return {"null": True}
     if isinstance(value, bool):
@@ -4907,7 +4926,14 @@ def _plain(value, native_type: str | None) -> dict:
     if isinstance(value, (bytes, bytearray)):
         return {"bytes_hex": bytes(value).hex()}
     if isinstance(value, str):
-        return {_temporal_kind(native_type) or "text": value}
+        kind = _temporal_kind(native_type)
+        if (
+            dialect == "sqlite"
+            and kind in _TEMPORAL_FORMS
+            and _TEMPORAL_FORMS[kind].fullmatch(value) is None
+        ):
+            kind = None
+        return {kind or "text": value}
     if isinstance(value, Decimal):
         return {"decimal": format(value, "f")}
     if isinstance(value, float) and not math.isfinite(value):
@@ -4943,7 +4969,7 @@ def _grid(cell) -> dict:
     raise AssertionError(f"no recipe wrapper for the grid cell {cell.kind}")
 
 
-def _mutation(metadata, result) -> dict:
+def _mutation(metadata, result, dialect: str) -> dict:
     """The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata."""
     types = [
         next((c.native_type for c in metadata.columns if c.name == name), None)
@@ -4951,7 +4977,7 @@ def _mutation(metadata, result) -> dict:
     ]
     return {
         "rows": [
-            [_plain(cell, types[at]) for at, cell in enumerate(row)]
+            [_plain(cell, types[at], dialect) for at, cell in enumerate(row)]
             for row in result.rows
         ]
     }
@@ -4965,6 +4991,14 @@ def _normalized(value) -> Any:
         return value
     if set(value) == {"null"}:
         return {"null": True}
+    if len(value) == 1 and isinstance(value.get("f64", value.get("float")), str):
+        # A float or f64 wrapper compares by its binary64 value, so 2, 2.0 and 2e0 are one value; -0 stays apart from 0.
+        number = float(value.get("f64", value.get("float")))
+        return {
+            "f64": "-0"
+            if number == 0 and math.copysign(1, number) < 0
+            else repr(number)
+        }
     return {key: _normalized(item) for key, item in value.items()}
 
 

@@ -55,6 +55,7 @@ async fn check() {
             .update_row(&updated, &[("n".into(), P::I(12))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(())))
             .await
             .unwrap_err()
+            .message()
             .starts_with("JOB_CANCELLED"));
         cancelled.store(false, Ordering::SeqCst);
         let stop = cancel_at_phase(&cancelled, MutationPhase::Locked);
@@ -62,6 +63,7 @@ async fn check() {
             .update_row(&updated, &[("n".into(), P::I(12))], cancelled, stop, std::sync::Arc::new(|| Ok(())))
             .await
             .unwrap_err()
+            .message()
             .starts_with("JOB_CANCELLED"));
         assert_current_row(&mut catalog, &table, &updated).await;
         let cancelled_after_write = Arc::new(AtomicBool::new(false));
@@ -70,6 +72,7 @@ async fn check() {
             .update_row(&updated, &[("n".into(), P::I(12))], cancelled_after_write, stop, std::sync::Arc::new(|| Ok(())))
             .await
             .unwrap_err()
+            .message()
             .starts_with("JOB_CANCELLED"));
         assert_current_row(&mut catalog, &table, &updated).await;
         let late = Arc::new(AtomicBool::new(false));
@@ -99,7 +102,7 @@ async fn check() {
         });
         let changes = vec![("n".into(), P::I(13))];
         let cancelled = catalog.update_row(&moved, &changes, cancel, observe, std::sync::Arc::new(|| Ok(()))).await.unwrap_err();
-        assert!(cancelled.starts_with("JOB_CANCELLED"), "the probed update ends cancelled: {cancelled}");
+        assert!(cancelled.message().starts_with("JOB_CANCELLED"), "the probed update ends cancelled: {cancelled}");
         assert_eq!(*held.lock().unwrap(), Some(true), "owning update must hold the original row lock");
         // Acquiring the write lock again is event/driver-driven evidence that
         // the discarded connection released it, not a polling retry.
@@ -124,7 +127,7 @@ async fn check() {
                 .update_row(&moved, &[("n".into(), P::I(14))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
                 .await
                 .unwrap_err();
-            if !error.starts_with("ROW_COMMIT_REJECTED") || events.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
+            if !error.message().starts_with("ROW_COMMIT_REJECTED") || events.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
                 commit_rejection_misclassified = true;
             }
             assert_current_row(&mut catalog, &table, &moved).await;
@@ -133,7 +136,7 @@ async fn check() {
         }
         let cancel_delete = Arc::new(AtomicBool::new(false));
         let stop = cancel_after_apply(&cancel_delete);
-        assert!(catalog.delete_row(&moved, cancel_delete, stop, std::sync::Arc::new(|| Ok(()))).await.unwrap_err().starts_with("JOB_CANCELLED"));
+        assert!(catalog.delete_row(&moved, cancel_delete, stop, std::sync::Arc::new(|| Ok(()))).await.unwrap_err().message().starts_with("JOB_CANCELLED"));
         assert_current_row(&mut catalog, &table, &moved).await;
         let descriptor = catalog.table_page(&table, 2, 0).await.unwrap().metadata.clone();
         let flag = Arc::new(AtomicBool::new(false));
@@ -142,6 +145,7 @@ async fn check() {
             .insert_row(&descriptor, &[("id".into(), P::I(4)), ("n".into(), P::I(40))], flag, stop, std::sync::Arc::new(|| Ok(())))
             .await
             .unwrap_err()
+            .message()
             .starts_with("JOB_CANCELLED"));
         let page = catalog.table_page(&table, 10, 0).await.unwrap();
         assert_eq!(page.result.rows.len(), 2);
@@ -229,6 +233,7 @@ async fn check() {
             assert_eq!(killed.rows, vec![vec![GridCell::Boolean(true)]]);
             let error = pending.await.unwrap_err();
             let cause = error
+                .message()
                 .strip_prefix("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: ")
                 .expect("a terminated PostgreSQL backend leaves commit outcome indeterminate");
             assert!(

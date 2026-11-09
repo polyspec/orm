@@ -1,4 +1,5 @@
 //! Typed insertion with database-owned generated identities.
+use super::CatalogError;
 use super::{
     metadata,
     mutation::{
@@ -17,7 +18,7 @@ mod lock_tests;
 
 /// The statement that takes, on PostgreSQL, the lock an INSERT takes (ROW EXCLUSIVE) on the declared table. It
 /// conflicts with every schema change, which needs ACCESS EXCLUSIVE.
-fn postgres_insert_lock(declared: &TableMetadata) -> Result<String, String> {
+fn postgres_insert_lock(declared: &TableMetadata) -> Result<String, CatalogError> {
     Ok(format!("LOCK TABLE {} IN ROW EXCLUSIVE MODE", qualified(declared, "postgres")?))
 }
 
@@ -30,7 +31,7 @@ impl CatalogConnection {
         cancellation: Arc<AtomicBool>,
         publish: Publisher,
         permit: CommitPermit,
-    ) -> Result<GridQueryResult, String> {
+    ) -> Result<GridQueryResult, CatalogError> {
         cancelled(&cancellation)?;
         let keys = super::insert_values::validate(declared, values, &self.dialect)?;
         publish(MutationPhase::Validated);
@@ -40,7 +41,7 @@ impl CatalogConnection {
         connection.discard_on_drop();
         cancelled(&cancellation)?;
         super::begin_session(&mut connection, write_transaction_statement(&self.dialect)).await?;
-        let result = async {
+        let result: Result<_, CatalogError> = async {
             cancelled(&cancellation)?;
             if self.dialect == "mysql" {
                 mysql_partial_revokes_off(&mut connection).await?;
@@ -102,7 +103,7 @@ impl CatalogConnection {
                         descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
                     Ok(assigned_slot(index + 1, value, &column.native_type, &self.dialect))
                 })
-                .collect::<Result<Vec<_>, String>>()?
+                .collect::<Result<Vec<_>, CatalogError>>()?
                 .join(",");
             let sql = if values.is_empty() {
                 if self.dialect == "mysql" {
@@ -147,7 +148,7 @@ impl CatalogConnection {
             for (name, value) in values {
                 let index = descriptor.columns.iter().position(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
                 if after.rows[0][index] != cell(value) {
-                    return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ"));
+                    return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ").into());
                 }
             }
             cancelled(&cancellation)?;

@@ -56,7 +56,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
                         .await
                         .map(|_| ()),
                 };
-                assert!(result.unwrap_err().starts_with("ROW_COMMIT_PERMIT_FAILED"));
+                assert!(result.unwrap_err().message().starts_with("ROW_COMMIT_PERMIT_FAILED"));
                 let after = catalog.table_page(&table, 10, 0).await.unwrap();
                 assert_eq!(after.result, page.result);
                 let phases = phases.lock().unwrap();

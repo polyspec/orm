@@ -1012,6 +1012,8 @@ class _PostgresConnection:
                 # reuses the server plan from then on (docs/operations/perf.md F1); psycopg's default threshold
                 # of 5 sends a text unprepared four times and then prepares it in a round trip of its own.
                 prepare_threshold=0,
+                # The text of every value arrives in UTF-8, whatever the server or the environment chooses (INT-185).
+                client_encoding="UTF8",
                 # Startup parameters belong to the client session, so a pooler in transaction mode sets them on
                 # every server connection it assigns to this connection and on no other.
                 options="-c TimeZone=UTC"

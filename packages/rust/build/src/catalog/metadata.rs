@@ -1,4 +1,5 @@
 //! Qualified native metadata; row identity is not mutation authorization.
+use super::CatalogError;
 use crate::tool_db::{Conn, QueryLimits, Rows, Val, P};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -37,22 +38,25 @@ pub struct TableMetadata {
     pub primary_key: Vec<String>,
     pub reliable_row_identity: bool,
 }
-pub(super) fn validate_name(value: &str) -> Result<(), String> {
+pub(super) fn validate_name(value: &str) -> Result<(), CatalogError> {
     if value.is_empty() || value.len() > 1024 || value.contains('\0') {
         return Err("TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL".into());
     }
     Ok(())
 }
-fn text(value: &Val) -> Result<String, String> {
+fn text(value: &Val) -> Result<String, CatalogError> {
     match value {
         Val::Text(value) => Ok(value.clone()),
         _ => Err("TABLE_METADATA_INVALID: expected text".into()),
     }
 }
-async fn rows(connection: &mut Conn, sql: &str, params: &[P]) -> Result<Rows, String> {
-    connection.query_bounded(sql, params, QueryLimits { max_rows: 2048, max_bytes: 4 * 1024 * 1024 }).await.map_err(|e| e.to_string())
+async fn rows(connection: &mut Conn, sql: &str, params: &[P]) -> Result<Rows, CatalogError> {
+    connection
+        .query_bounded(sql, params, QueryLimits { max_rows: 2048, max_bytes: 4 * 1024 * 1024 })
+        .await
+        .map_err(|error| CatalogError::caused(error.to_string(), error))
 }
-pub(super) async fn current_namespace(connection: &mut Conn, dialect: &str) -> Result<String, String> {
+pub(super) async fn current_namespace(connection: &mut Conn, dialect: &str) -> Result<String, CatalogError> {
     if dialect == "sqlite" {
         return Ok("main".into());
     }
@@ -69,7 +73,7 @@ pub(super) async fn current_namespace(connection: &mut Conn, dialect: &str) -> R
     validate_name(&namespace)?;
     Ok(namespace)
 }
-pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &TableRef) -> Result<TableMetadata, String> {
+pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &TableRef) -> Result<TableMetadata, CatalogError> {
     validate_name(&table.namespace)?;
     validate_name(&table.name)?;
     if dialect == "sqlite" && table.namespace != "main" {

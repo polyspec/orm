@@ -392,6 +392,7 @@
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/CatalogUnreadableStream.php",
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/RecipeGenerator.php"
@@ -1162,7 +1163,7 @@
         },
         {
           "glob": "packages/rust/build/tests/unit/catalog_value.rs",
-          "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
+          "reason": "test: tests the private conversions of the Rust catalog that no database reaches, a driver value of another host form (INT-171) and a driver or library failure kept as the source (INT-172) at the position of its column, and the Rust-only rendering of the PostgreSQL binary values of INT-185 as the text of their output functions, edge forms included; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe (FCV-2)"
         },
         {
           "glob": "packages/rust/schema/tests/cases/dbspec_model.rs",

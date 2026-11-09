@@ -25,6 +25,9 @@ var errRollbackRejected = errors.New("rollback rejected by the test driver")
 type injectedFailure struct {
 	statement func(query string) bool
 	rollback  bool
+	// rows is the error that the rows of a query fail with when the driver scans a column, as pgx fails in ScanColumn on a
+	// value that it cannot decode, or nil to read them.
+	rows func(query string) error
 }
 
 var injected atomic.Pointer[injectedFailure]
@@ -101,7 +104,38 @@ func (c failingConn) QueryContext(ctx context.Context, query string, args []driv
 	if !ok {
 		return nil, driver.ErrSkip
 	}
-	return q.QueryContext(ctx, query, args)
+	rows, err := q.QueryContext(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+	if f := injected.Load(); f != nil && f.rows != nil {
+		return &failingRows{Rows: rows, fail: func() error { return f.rows(query) }}, nil
+	}
+	return rows, nil
+}
+
+// failingRows are the rows of a query whose scan of a column fails with the error of fail, as pgx's ScanColumn fails on a
+// value that it cannot decode; a nil error scans the column.
+type failingRows struct {
+	driver.Rows
+	fail   func() error
+	values []driver.Value
+}
+
+var _ driver.RowsColumnScanner = (*failingRows)(nil)
+
+func (r *failingRows) NextRow() error {
+	if r.values == nil {
+		r.values = make([]driver.Value, len(r.Columns()))
+	}
+	return r.Next(r.values)
+}
+
+func (r *failingRows) ScanColumn(scanCtx driver.ScanContext, index int, dest any) error {
+	if err := r.fail(); err != nil {
+		return err
+	}
+	return sql.ConvertAssign(scanCtx, dest, r.values[index])
 }
 
 func (c failingConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {

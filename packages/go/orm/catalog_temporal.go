@@ -1,8 +1,8 @@
 package orm
 
 import (
-	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,10 +17,10 @@ var (
 	catalogMySQLDateTimeType  = regexp.MustCompile(`^datetime(?:\(([0-6])\))?$`)
 	catalogPostgresTimeType   = regexp.MustCompile(`^time(?:\(([0-6])\))? without time zone$`)
 	catalogPostgresStampType  = regexp.MustCompile(`^timestamp(?:\(([0-6])\))? without time zone$`)
-	catalogMySQLZonedType     = regexp.MustCompile(`^timestamp(?:\([0-6]\))?$`)
-	catalogPostgresZonedType  = regexp.MustCompile(`^(?:timestamp|time)(?:\([0-6]\))? with time zone$`)
-	catalogDescribedDateText  = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
-	catalogDescribedTimeText  = regexp.MustCompile(`^([0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.([0-9]{1,6}))?$`)
+	catalogMySQLPrecisionType = regexp.MustCompile(`^(?:time|datetime)\((.*)\)$`)
+	catalogPostgresPrecision  = regexp.MustCompile(`^(?:time|timestamp)\((.*)\) without time zone$`)
+	catalogDescribedDateText  = regexp.MustCompile(`^([0-9]{4})-([0-9]{2})-([0-9]{2})$`)
+	catalogDescribedTimeText  = regexp.MustCompile(`^([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?$`)
 	catalogDescribedStampText = regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?)$`)
 	catalogCheckOpening       = regexp.MustCompile(`(?i)CHECK\s*\(`)
 	catalogCheckGlob          = regexp.MustCompile(`GLOB '((?:\[0-9\])*)'`)
@@ -78,99 +78,30 @@ func catalogTemporalKind(column CatalogColumn, dialect string) (kind string, pre
 	return "", 0, false, false
 }
 
-// catalogDescribedTemporal is the catalog value of one driver value of a described column: the dbspec text of a date,
-// time or datetime column with exactly its declared precision, and every other value as it is. A value outside the
-// dbspec form fails with GRID_TEMPORAL_VALUE, and a non-zero digit past p, or on SQLite fraction digits other than the
-// CHECK precision, or than 0 with no CHECK, fails with GRID_TEMPORAL_PRECISION. A value of a MySQL TIMESTAMP or a
-// PostgreSQL timestamptz or timetz column follows a time zone that dbspec declares for no column, and fails with
-// CATALOG_VALUE (INT-103).
-func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (any, error) {
+// catalogNativePrecisionRule refuses the native type of a MySQL or PostgreSQL time or datetime column that declares a
+// precision above 6 or one that is not a number (INT-181); no database declares one, and p is read from the type.
+func catalogNativePrecisionRule(column CatalogColumn, dialect string) *catalogRule {
 	native := strings.ToLower(strings.TrimSpace(column.NativeType))
-	if value != nil && (dialect == "mysql" && catalogMySQLZonedType.MatchString(native) || dialect == "postgres" && catalogPostgresZonedType.MatchString(native)) {
-		return nil, catalogErr(CodeCatalogValue, "column %q of type %s follows a time zone, which dbspec does not declare", column.Name, column.NativeType)
+	pattern := catalogMySQLPrecisionType
+	if dialect == "postgres" {
+		pattern = catalogPostgresPrecision
 	}
-	kind, precision, declared, ok := catalogTemporalKind(column, dialect)
-	if !ok || value == nil {
-		return value, nil
+	match := pattern.FindStringSubmatch(native)
+	if match == nil {
+		return nil
 	}
-	invalid := func(format string, args ...any) (any, error) {
-		return nil, catalogErr(CodeGridTemporalValue, "column %q: %s", column.Name, fmt.Sprintf(format, args...))
+	if p, err := strconv.Atoi(match[1]); err != nil || p < 0 || p > 6 || strconv.Itoa(p) != match[1] {
+		return catalogRuleNativePrecision
 	}
-	if dialect == "sqlite" {
-		text, isText := value.(string)
-		if !isText {
-			return invalid("holds a value that is not a dbspec %s", kind)
-		}
-		digits, err := catalogDescribedFraction(text, kind)
-		if err != nil {
-			return invalid("%v", err)
-		}
-		if kind == "date" {
-			return text, nil
-		}
-		if !declared {
-			// INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
-			precision = 0
-		}
-		if digits != precision {
-			return nil, catalogErr(CodeGridTemporalPrecision, "column %q holds a fraction whose digits are not the %d that its dbspec CHECK fixes", column.Name, precision)
-		}
-		return text, nil
-	}
-	var text string
-	switch v := value.(type) {
-	case time.Time:
-		if dialect == "mysql" && v.IsZero() {
-			// INT-103 and T334-3-3-4: the MySQL zero date 0000-00-00 is a date outside 0001-01-01 to 9999-12-31, as the grid path refuses it.
-			return invalid("MySQL zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31")
-		}
-		date, err := catalogGridDate(v.Year(), int(v.Month()), v.Day())
-		if err != nil {
-			return invalid("%v", err)
-		}
-		switch kind {
-		case "date":
-			if v.Hour() != 0 || v.Minute() != 0 || v.Second() != 0 || v.Nanosecond() != 0 {
-				return invalid("a date value has a time of day")
-			}
-			return date, nil
-		case "datetime":
-			if v.Nanosecond()%1000 != 0 {
-				return nil, catalogErr(CodeGridTemporalPrecision, "column %q: a datetime value has a digit past six fraction digits", column.Name)
-			}
-			text = fmt.Sprintf("%s %02d:%02d:%02d.%06d", date, v.Hour(), v.Minute(), v.Second(), v.Nanosecond()/1000)
-		default:
-			return invalid("a time value of a %s column", kind)
-		}
-	case string:
-		if _, err := catalogDescribedFraction(v, kind); err != nil {
-			return invalid("%v", err)
-		}
-		if kind == "date" {
-			return v, nil
-		}
-		text = v
-		if kind == "time" {
-			clock, err := catalogGridClock(v)
-			if err != nil {
-				return invalid("%v", err)
-			}
-			text = clock
-		} else {
-			match := catalogDescribedStampText.FindStringSubmatch(v)
-			clock, err := catalogGridClock(match[2])
-			if err != nil {
-				return invalid("%v", err)
-			}
-			text = match[1] + " " + clock
-		}
-	default:
-		return invalid("holds a value that is not a dbspec %s", kind)
-	}
-	// text has six fraction digits here; it keeps exactly p of them.
+	return nil
+}
+
+// catalogDescribedPrecision is the dbspec text of a time or datetime cell, which has six fraction digits, with exactly the
+// p digits of its column; a non-zero digit past p fails (INT-180).
+func catalogDescribedPrecision(text string, precision int) (string, *catalogRule) {
 	dot := strings.LastIndexByte(text, '.')
 	if strings.Trim(text[dot+1+precision:], "0") != "" {
-		return nil, catalogErr(CodeGridTemporalPrecision, "column %q: a %s value has a non-zero digit past its %d fraction digits", column.Name, kind, precision)
+		return "", catalogRulePastPrecision
 	}
 	if precision == 0 {
 		return text[:dot], nil
@@ -178,66 +109,54 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 	return text[:dot+1+precision], nil
 }
 
-// catalogDescribedFraction checks that text is in the dbspec form of its kind and returns its number of fraction digits.
-func catalogDescribedFraction(text, kind string) (int, error) {
-	switch kind {
-	case "date":
-		if !catalogDescribedDateText.MatchString(text) {
-			return 0, fmt.Errorf("the text is not a dbspec date")
+// convertDescribed converts the raw result of a read of a described table, a page or a row that a change reads back, by
+// the catalog value rules: each value takes the cell of the native type that its driver reports, and a value of the 1-based
+// column n among the described columns that a rule refuses fails with CODE: column n: text. The Go value of a cell is that
+// of catalogCellValue, a float a float32 or a float64 by its width (INT-183); a date, time or datetime is its dbspec text
+// with the declared precision p of its column, and a boolean column a bool.
+func (s *catalogSession) convertDescribed(raw catalogRaw, metadata CatalogTableMetadata) ([][]any, error) {
+	if len(raw.types) != len(metadata.Columns) {
+		return nil, catalogErr(catalogCodeMetadata, "%d native types for %d columns", len(raw.types), len(metadata.Columns))
+	}
+	cells := newCatalogCells(s)
+	out := make([][]any, 0, len(raw.rows))
+	for _, row := range raw.rows {
+		converted := make([]any, len(row))
+		for i, value := range row {
+			column := metadata.Columns[i]
+			var v any
+			var rule *catalogRule
+			if s.dialect == "sqlite" {
+				v, rule = catalogSQLiteDescribed(value, column)
+			} else {
+				cell, err := cells.cell(value, raw.types[i], i+1)
+				if err != nil {
+					return nil, err
+				}
+				v, rule = catalogDescribedCell(cell, column, s.dialect)
+			}
+			if rule != nil {
+				return nil, rule.at(i + 1)
+			}
+			converted[i] = v
 		}
-		_, err := catalogGridDateText(text)
-		return 0, err
-	case "time":
-		match := catalogDescribedTimeText.FindStringSubmatch(text)
-		if match == nil {
-			return 0, fmt.Errorf("the text is not a dbspec time")
-		}
-		_, err := catalogGridClock(text)
-		return len(match[2]), err
+		out = append(out, converted)
 	}
-	match := catalogDescribedStampText.FindStringSubmatch(text)
-	if match == nil {
-		return 0, fmt.Errorf("the text is not a dbspec datetime")
-	}
-	if _, err := catalogGridDateText(match[1]); err != nil {
-		return 0, err
-	}
-	return catalogDescribedFraction(match[2], "time")
+	return out, nil
 }
 
-// catalogConvertDescribed converts the raw result of a read of a described table, a page or a row that a change reads
-// back, with the native types of the descriptor and the dbspec text of its temporal columns.
-func catalogConvertDescribed(raw catalogRaw, metadata CatalogTableMetadata, dialect string) ([][]any, error) {
-	rows, err := catalogConvert(raw, catalogNativeTypes(metadata))
-	if err != nil {
-		return nil, err
-	}
-	for _, row := range rows {
-		for i, column := range metadata.Columns {
-			value, err := catalogDescribedTemporal(row[i], column, dialect)
-			if err != nil {
-				return nil, err
-			}
-			value, err = catalogDescribedBool(value, column, dialect)
-			if err != nil {
-				return nil, err
-			}
-			row[i] = value
-		}
-	}
-	return rows, nil
-}
-
-// catalogDescribedBool reads a boolean column as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite
-// BOOLEAN come back from the driver as the integer 0 or 1, and a PostgreSQL boolean already as a bool. Any other value of
-// such a column fails.
-func catalogDescribedBool(value any, column CatalogColumn, dialect string) (any, error) {
+// catalogBooleanColumn reports a boolean column (DIA-29): MySQL tinyint(1), and PostgreSQL and SQLite boolean.
+func catalogBooleanColumn(column CatalogColumn, dialect string) bool {
 	native := strings.TrimSpace(column.NativeType)
-	isBool := (dialect == "mysql" && strings.EqualFold(native, "tinyint(1)")) ||
-		(dialect != "mysql" && strings.EqualFold(native, "boolean"))
-	if !isBool || value == nil {
-		return value, nil
+	if dialect == "mysql" {
+		return strings.EqualFold(native, "tinyint(1)")
 	}
+	return strings.EqualFold(native, "boolean")
+}
+
+// catalogBooleanValue is the bool of a value of a boolean column: a bool, or the integer 0 or 1 that MySQL and SQLite store
+// (INT-182).
+func catalogBooleanValue(value any) (any, *catalogRule) {
 	switch v := value.(type) {
 	case bool:
 		return v, nil
@@ -246,7 +165,115 @@ func catalogDescribedBool(value any, column CatalogColumn, dialect string) (any,
 			return v == 1, nil
 		}
 	}
-	return nil, catalogErr(catalogCodeValue, "column %q holds a value that is not a boolean", column.Name)
+	return nil, catalogRuleBooleanValue
+}
+
+// catalogDescribedCell is the Go value of a MySQL or PostgreSQL cell of a described column.
+func catalogDescribedCell(cell CatalogGridCell, column CatalogColumn, dialect string) (any, *catalogRule) {
+	if cell.Kind == CatalogGridNull {
+		return nil, nil
+	}
+	if catalogBooleanColumn(column, dialect) {
+		return catalogBooleanValue(cell.Value)
+	}
+	switch cell.Kind {
+	case CatalogGridTime, CatalogGridDateTime:
+		if rule := catalogNativePrecisionRule(column, dialect); rule != nil {
+			return nil, rule
+		}
+		precision := 6
+		if dialect == "mysql" {
+			precision = 0
+		}
+		if _, p, _, ok := catalogTemporalKind(column, dialect); ok {
+			precision = p
+		}
+		text, isText := cell.Value.(string)
+		if !isText {
+			return nil, catalogRuleDriverValue
+		}
+		return catalogDescribedPrecision(text, precision)
+	}
+	return catalogCellValue(cell), nil
+}
+
+// catalogSQLiteDescribed is the Go value of a SQLite value of a described column: the value of its storage class, since no
+// conversion refuses a value for the type that its column declares (INT-184), except that the stored value of a dbspec
+// date, time or datetime column must be its dbspec text (INT-176 to INT-179), and that of a boolean column 0 or 1.
+func catalogSQLiteDescribed(value any, column CatalogColumn) (any, *catalogRule) {
+	if value == nil {
+		return nil, nil
+	}
+	if kind, precision, declared, ok := catalogTemporalKind(column, "sqlite"); ok {
+		text, isText := value.(string)
+		if !isText {
+			return nil, catalogRuleStoredValue[kind]
+		}
+		digits, rule := catalogSQLiteTemporalText(text, kind)
+		if rule != nil {
+			return nil, rule
+		}
+		if !declared {
+			// INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
+			precision = 0
+		}
+		if kind != "date" && digits != precision {
+			return nil, catalogRuleCheckDigits
+		}
+		return text, nil
+	}
+	if catalogBooleanColumn(column, "sqlite") {
+		return catalogBooleanValue(value)
+	}
+	cell, rule := catalogSQLiteCell(value)
+	if rule != nil {
+		return nil, rule
+	}
+	return catalogCellValue(cell), nil
+}
+
+// catalogSQLiteTemporalText checks that a SQLite text is in the dbspec form of its kind (INT-176 to INT-178), then that its
+// date is in range and of the calendar and its time within a day (INT-173 to INT-175), and returns its number of fraction
+// digits.
+func catalogSQLiteTemporalText(text, kind string) (int, *catalogRule) {
+	form := catalogRuleStoredValue[kind]
+	date, clock := text, text
+	switch kind {
+	case "date":
+		clock = ""
+	case "time":
+		date = ""
+	default:
+		match := catalogDescribedStampText.FindStringSubmatch(text)
+		if match == nil {
+			return 0, form
+		}
+		date, clock = match[1], match[2]
+	}
+	var dateMatch, clockMatch []string
+	if date != "" {
+		if dateMatch = catalogDescribedDateText.FindStringSubmatch(date); dateMatch == nil {
+			return 0, form
+		}
+	}
+	if clock != "" {
+		if clockMatch = catalogDescribedTimeText.FindStringSubmatch(clock); clockMatch == nil {
+			return 0, form
+		}
+	}
+	if dateMatch != nil {
+		if _, rule := catalogDateCell(catalogDigits(dateMatch[1]), catalogDigits(dateMatch[2]), catalogDigits(dateMatch[3])); rule != nil {
+			return 0, rule
+		}
+	}
+	if clockMatch == nil {
+		return 0, nil
+	}
+	hour, minute, second := catalogDigits(clockMatch[1]), catalogDigits(clockMatch[2]), catalogDigits(clockMatch[3])
+	if hour > 23 || minute > 59 || second > 59 {
+		return 0, catalogRuleTimeRange
+	}
+	return len(clockMatch[4]), nil
 }
 
 // catalogSelectList is the select list of a read of a described table, in physical order. The SQLite driver parses the

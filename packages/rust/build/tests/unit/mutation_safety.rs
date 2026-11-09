@@ -43,7 +43,7 @@ async fn rust_duplicate_row_mutations_share_cancellation_and_key_preflight() {
             Err(error) => error,
             Ok(_) => panic!("cancelled mutation must fail preflight"),
         };
-        assert!(error.starts_with("JOB_CANCELLED:"));
+        assert!(error.message().starts_with("JOB_CANCELLED:"));
         assert!(phases.lock().unwrap().is_empty(), "a cancelled mutation is not published as validated");
     })
     .await

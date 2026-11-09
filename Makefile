@@ -12,6 +12,7 @@
 .PHONY: php-go-text-check
 .PHONY: go-catalog-session-error-check
 .PHONY: catalog-described-temporal-go-check
+.PHONY: catalog-value-go-check
 .PHONY: go-sqlite-version-check
 .PHONY: catalog-php-extension-surface-check
 .PHONY: transaction-failure-php-extension-check
@@ -3592,6 +3593,15 @@ catalog-described-temporal-go-check:
 
 CHECK_TARGETS += catalog-described-temporal-go-check
 CI_TARGETS_static += catalog-described-temporal-go-check
+
+# catalog-value-go-check runs the native injection tests of the Go catalog value rules (docs/spec/feature-coverage.md FCV-2),
+# which no recipe case reaches: a driver value that is not the host form of its column type fails with INT-171, and a value
+# that the driver could not decode with INT-172, which keeps the failure as its cause.
+catalog-value-go-check:
+	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure)$$' -count=1
+
+CHECK_TARGETS += catalog-value-go-check
+CI_TARGETS_static += catalog-value-go-check
 
 CHECK_TARGETS += rust-temporal-args-check
 CI_TARGETS_static += rust-temporal-args-check

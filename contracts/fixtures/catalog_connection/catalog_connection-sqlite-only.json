@@ -1,7 +1,11 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "INT-103"
+    "INT-103",
+    "INT-165",
+    "INT-176",
+    "INT-177",
+    "INT-178"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -73,7 +77,11 @@
     {
       "id": "sqlite_temporal_checks",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-165",
+        "INT-176",
+        "INT-177",
+        "INT-178"
       ],
       "only": [
         "sqlite"
@@ -88,6 +96,39 @@
           "op": "sql.exec",
           "reason": "a value in the dbspec form with the digits that its CHECK fixes",
           "sql": "INSERT INTO kcat_temporal_ok (id, a) VALUES (1, '2026-01-02 03:04:05.123')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "columns declared DATE, DATETIME and TIMESTAMP, whose text a driver could parse into a time value",
+          "sql": "CREATE TABLE kcat_query_temporal (id INTEGER PRIMARY KEY, d DATE, dt DATETIME, ts TIMESTAMP)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a plain query gives the text of each grid cell, the stored text, never a time value (INT-165, INT-153)",
+          "sql": "INSERT INTO kcat_query_temporal (id, d, dt, ts) VALUES (1, '2026-01-02', '2026-01-02 03:04:05.123', '2026-01-02 03:04:05')"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "sqlite": "SELECT d, dt, ts FROM kcat_query_temporal"
+          },
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "2026-01-02"
+                  },
+                  {
+                    "text": "2026-01-02 03:04:05.123"
+                  },
+                  {
+                    "text": "2026-01-02 03:04:05"
+                  }
+                ]
+              ]
+            }
+          }
         },
         {
           "op": "sql.exec",
@@ -142,7 +183,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -167,7 +209,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date"
             }
           }
         },
@@ -192,7 +235,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date"
             }
           }
         },
@@ -217,7 +261,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec time"
             }
           }
         },
@@ -242,7 +287,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         }

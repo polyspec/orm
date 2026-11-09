@@ -1,4 +1,5 @@
 //! Explicit table pages retain native column/key provenance, not edit authority.
+use super::CatalogError;
 use super::{metadata, read_only, temporal, TableMetadata, TableRef};
 use crate::tool_db::{Conn, GridQueryResult, QueryLimits};
 
@@ -11,7 +12,7 @@ pub struct TablePage {
     pub order_by: Vec<String>,
     pub has_more: bool,
 }
-pub(super) fn validate_request(table: &TableRef, limit: usize, offset: u64) -> Result<(), String> {
+pub(super) fn validate_request(table: &TableRef, limit: usize, offset: u64) -> Result<(), CatalogError> {
     metadata::validate_name(&table.namespace)?;
     metadata::validate_name(&table.name)?;
     if !(1..=1000).contains(&limit) || offset > 1_000_000 {
@@ -19,7 +20,7 @@ pub(super) fn validate_request(table: &TableRef, limit: usize, offset: u64) -> R
     }
     Ok(())
 }
-pub(super) fn quote(value: &str, dialect: &str) -> Result<String, String> {
+pub(super) fn quote(value: &str, dialect: &str) -> Result<String, CatalogError> {
     let mark = match dialect {
         "mysql" => '`',
         "postgres" | "sqlite" => '"',
@@ -27,7 +28,7 @@ pub(super) fn quote(value: &str, dialect: &str) -> Result<String, String> {
     };
     Ok(format!("{mark}{}{mark}", value.replace(mark, &format!("{mark}{mark}"))))
 }
-pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, String> {
+pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, CatalogError> {
     let metadata = metadata::describe(connection, dialect, table).await?;
     if metadata.columns.is_empty() {
         return Err("TABLE_PAGE_UNSUPPORTED: relation has no selectable columns".into());
@@ -51,7 +52,7 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
     let (result, has_more) = match read {
         Ok(page) => page,
         // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
-        Err(error) if error.starts_with("CATALOG_LIMIT") => return Err(error),
+        Err(error) if error.message().starts_with("CATALOG_LIMIT") => return Err(error),
         Err(error) => {
             return match metadata::describe(connection, dialect, table).await {
                 Ok(after) if after != metadata => Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into()),
@@ -62,7 +63,14 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
     let after = metadata::describe(connection, dialect, table).await?;
     assemble(metadata, result, has_more, after, limit, offset)
 }
-fn assemble(metadata: TableMetadata, result: GridQueryResult, has_more: bool, after: TableMetadata, limit: usize, offset: u64) -> Result<TablePage, String> {
+fn assemble(
+    metadata: TableMetadata,
+    result: GridQueryResult,
+    has_more: bool,
+    after: TableMetadata,
+    limit: usize,
+    offset: u64,
+) -> Result<TablePage, CatalogError> {
     if result.columns.len() != metadata.columns.len() || result.columns.iter().zip(&metadata.columns).any(|(actual, declared)| actual.name != declared.name) {
         return Err("TABLE_PAGE_METADATA_CHANGED: prepared columns differ from descriptor".into());
     }

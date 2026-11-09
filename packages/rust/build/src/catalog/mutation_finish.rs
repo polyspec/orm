@@ -1,9 +1,15 @@
 //! Shared writable transaction acknowledgement, never automatic retry.
 use super::mutation::{CommitPermit, MutationPhase, Publisher};
+use super::CatalogError;
 use crate::tool_db::Conn;
 
-pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Result<T, String>, publish: Publisher, permit: CommitPermit) -> Result<T, String> {
-    let result = result.and_then(|value| permit().map(|()| value).map_err(|error| format!("ROW_COMMIT_PERMIT_FAILED: {error}")));
+pub(super) async fn finish<T: Send + 'static>(
+    mut connection: Conn,
+    result: Result<T, CatalogError>,
+    publish: Publisher,
+    permit: CommitPermit,
+) -> Result<T, CatalogError> {
+    let result = result.and_then(|value| permit().map(|()| value).map_err(|error| CatalogError::from(format!("ROW_COMMIT_PERMIT_FAILED: {error}"))));
     let value = match result {
         Ok(value) => value,
         Err(error) => {
@@ -29,14 +35,14 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
             Err(error) if explicitly_rejected(&error) => {
                 if connection.rollback().await.is_err() {
                     publish(MutationPhase::Indeterminate);
-                    return Err(format!("ROW_COMMIT_INDETERMINATE: rejection cleanup unconfirmed; do not retry: {error}"));
+                    return Err(format!("ROW_COMMIT_INDETERMINATE: rejection cleanup unconfirmed; do not retry: {error}").into());
                 }
                 publish(MutationPhase::RolledBack);
-                Err(format!("ROW_COMMIT_REJECTED: native commit rejected: {error}"))
+                Err(format!("ROW_COMMIT_REJECTED: native commit rejected: {error}").into())
             }
             Err(error) => {
                 publish(MutationPhase::Indeterminate);
-                Err(format!("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: {error}"))
+                Err(format!("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: {error}").into())
             }
         }
     });
