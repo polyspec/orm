@@ -323,6 +323,9 @@ function mysqlColumn(field: FieldPacket): DriverColumn {
 }
 
 const MYSQL_BINARY_CHARSET = 63;
+// Every MySQL connection sends this statement when it connects: utf8mb4 in utf8mb4_0900_bin, the collation of the text
+// columns that the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike (DIA-202).
+const MYSQL_SET_NAMES = 'SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin';
 const MYSQL_UNSIGNED_FLAG = 32;
 const MYSQL_INTEGER_TYPES = new Set(['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT']);
 /** The MySQL column type codes of the protocol, by name (mysql2 TypeCode). */
@@ -1105,8 +1108,9 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         decimalNumbers: false,
         jsonStrings: true,
         supportBigNumbers: exact,
-        // The connection fixes its character set, so that no server or account default chooses the encoding of a text (INT-185).
-        charset: 'UTF8MB4_UNICODE_CI',
+        // The handshake names utf8mb4, so that no server or account default chooses the encoding of a text (INT-185); the
+        // connection then sends MYSQL_SET_NAMES, whose collation no handshake byte holds (DIA-202).
+        charset: 'UTF8MB4_GENERAL_CI',
         // The catalog reads a FLOAT as its exact text, so that the single-precision bits are rounded from the text and not from a double,
         // and a geometry as the bytes that the server sends (INT-185).
         ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null; buffer(): Buffer | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : field.type === 'GEOMETRY' ? field.buffer() : next()) } : {}),
@@ -1115,6 +1119,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const setup: SessionSetup = { server: 'mysql' };
       const core = mysqlCorePool(created);
       core.on('connection', connection => {
+        connection.query(MYSQL_SET_NAMES, error => { if (error) setup.error = error; });
         // The server is read by VERSION() (DIA-201).
         connection.query('SELECT VERSION() AS version', (error: unknown, rows?: unknown) => {
           if (error) { setup.error = error; return; }

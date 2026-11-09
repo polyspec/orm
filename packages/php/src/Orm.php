@@ -62,11 +62,14 @@ final class Orm
         switch ($driver) {
             case 'mysql':
                 // Session settings are one init command that runs once when the connection opens. Each setting
-                // does not incur a separate round trip to send a statement.
+                // does not incur a separate round trip to send a statement. It begins with SET NAMES utf8mb4 COLLATE
+                // utf8mb4_0900_bin, the collation of the text columns that the renderer writes, so a text literal
+                // compares by code point as a column does, on MySQL and MariaDB alike (DIA-202).
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
                     // MySQL bounds SELECT statements with max_execution_time.
-                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '"
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin, "
+                        . "time_zone = '+00:00', sql_mode = '"
                         . self::MYSQL_SQL_MODE . "'"
                         . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = '
                             . '' . $config->statementTimeoutMs : ''),

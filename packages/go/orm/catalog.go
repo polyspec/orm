@@ -108,8 +108,8 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 }
 
 // catalogNativeDSN is the driver DSN of a MySQL or PostgreSQL catalog connection. The catalog fixes the character set of
-// its connection when it connects, so the encoding is no setting of a read (INT-185): utf8mb4 on MySQL, which
-// go-sql-driver/mysql sets with SET NAMES on each new connection, and the UTF8 client_encoding on PostgreSQL, which pgx
+// its connection when it connects, so the encoding is no setting of a read (INT-185): utf8mb4 in utf8mb4_0900_bin on
+// MySQL, which every MySQL connection sets with SET NAMES when it connects (DIA-202), and the UTF8 client_encoding on PostgreSQL, which pgx
 // sends as a startup parameter. The MySQL driver does not parse a date or datetime into a time.Time either: it would move
 // a date that is no calendar date, such as 2024-02-30, to another day, and the catalog checks the text that the server
 // sends (INT-174).
@@ -140,9 +140,6 @@ func catalogNativeDSN(parsed parsedDSN) (string, error) {
 		return "", err
 	}
 	cfg.ParseTime = false
-	if err := cfg.Apply(mysql.Charset("utf8mb4", "utf8mb4_general_ci")); err != nil {
-		return "", err
-	}
 	return cfg.FormatDSN(), nil
 }
 

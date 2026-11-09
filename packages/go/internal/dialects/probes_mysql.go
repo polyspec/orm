@@ -337,6 +337,11 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (v varchar(5) COLLATE utf8mb4_bin, UNIQUE KEY uq (v))", "INSERT INTO t VALUES ('a'), ('A')")
 			e.Fails("INSERT INTO t VALUES ('a ')", "1062")
 		}),
+		p("collation.connection_set_names", "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin sets the connection collation, so a text literal compares by code point: a <> A, a <> 'a ', a <> á and B < a", func(e *Env) {
+			e.Exec("SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin")
+			e.Want("SELECT CONCAT(@@character_set_client, ' ', @@character_set_results, ' ', @@collation_connection)", "utf8mb4 utf8mb4 utf8mb4_0900_bin")
+			e.Want("SELECT CONCAT('a' = 'A', 'a' = 'a ', 'a' = 'á', 'B' < 'a')", "0001")
+		}),
 		p("collation.utf8mb4_0900_bin_codepoint", "utf8mb4_0900_bin is NO PAD and orders by code point", func(e *Env) {
 			e.Exec("CREATE TABLE t (v varchar(5) COLLATE utf8mb4_0900_bin, UNIQUE KEY uq (v))",
 				"INSERT INTO t VALUES ('a'), ('a '), ('A'), ('á'), ('B'), ('Z'), ('_')")

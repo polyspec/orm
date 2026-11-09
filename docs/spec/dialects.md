@@ -32,6 +32,17 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   statement timeout, to `CANCELED`; 4031, the idle disconnect of MySQL, is `CONNECTION_LOST` on MySQL alone (statement
   runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
 
+- **DIA-202** The connection collation — MySQL 8.4 / MariaDB 11.8 (probes `mysql.collation.connection_set_names`,
+  `mariadb.collation.connection_set_names`): every connection of the `mysql` dialect, the catalog connection among
+  them, sends `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin` when it connects, in every runtime, so a text literal and a
+  text value without a column compare by code point as a column of the renderer does (DIA-119, DIA-90): `'a' = 'A'`,
+  `'a' = 'a '` and `'a' = 'á'` are false and `'B' < 'a'` is true. Both servers accept that one form with the same result
+  (DIA-200, rule 1). The handshake alone does not set it: its one byte holds no `utf8mb4_0900_bin` (309), and the
+  default of the character set differs by server, `utf8mb4_0900_ai_ci` on MySQL and `utf8mb4_uca1400_ai_ci` on MariaDB
+  (probes `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). The
+  statement runner case `a_text_literal_compares_by_code_point_on_every_connection` holds it on every database;
+  PostgreSQL compares under `COLLATE "C"` and SQLite under `BINARY` to the same result.
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`

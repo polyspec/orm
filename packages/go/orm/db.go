@@ -549,6 +549,30 @@ func RegisterDeallocator(name string, deallocate func(ctx context.Context, drive
 // openSQL opens the database/sql pool. The MySQL driver reads datetime cells
 // in the connection time zone, so a cell arrives as the value localTime
 // returns unchanged.
+// mysqlSetNames is the statement that every MySQL connection sends when it connects (DIA-202): utf8mb4 in
+// utf8mb4_0900_bin, the collation of the text columns that the renderer writes, so a text literal compares by code point
+// as a column does, on MySQL and MariaDB alike.
+const mysqlSetNames = "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin"
+
+// namesConnector sends mysqlSetNames on each new connection of the pool. go-sql-driver/mysql refuses to send it itself:
+// its option Charset accepts only a collation of its one-byte handshake table, which has no utf8mb4_0900_bin (309).
+type namesConnector struct{ driver.Connector }
+
+func (c namesConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	conn, err := c.Connector.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	execer, ok := conn.(driver.ExecerContext)
+	if !ok {
+		return nil, errors.Join(fmt.Errorf("mysql connection %T sends no statement", conn), conn.Close())
+	}
+	if _, err := execer.ExecContext(ctx, mysqlSetNames, nil); err != nil {
+		return nil, errors.Join(err, conn.Close())
+	}
+	return conn, nil
+}
+
 func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	if dsn.driver != "mysql" || sqlDriver != "mysql" {
 		return sql.Open(sqlDriver, dsn.native)
@@ -576,7 +600,7 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.OpenDB(connector), nil
+	return sql.OpenDB(namesConnector{connector}), nil
 }
 
 func lookupDriver(name string) (string, bool) {

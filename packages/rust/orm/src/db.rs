@@ -252,7 +252,16 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
                     return Err(bad("mysql DSN ssl-mode requires TCP and does not accept socket".into()));
                 }
             }
-            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())))
+            // sqlx sends SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin when it connects: the collation of the text columns that
+            // the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike
+            // (DIA-202).
+            ConnectOptions::MySql(
+                MySqlConnectOptions::from_str(rest.as_str())
+                    .map_err(sqlx_err)?
+                    .timezone(Some("+00:00".to_owned()))
+                    .charset("utf8mb4")
+                    .collation("utf8mb4_0900_bin"),
+            )
         }
         "postgres" => {
             let host = url.host_str().unwrap_or("").to_owned() + &pairs.iter().filter(|(k, _)| k == "host").map(|(_, v)| v.clone()).collect::<String>();

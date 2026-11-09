@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 930bb12f153370de62a8d2d80d10635c0ce6d3d63d986a7d95377f92da8a1ab1 -->
+<!-- source-sha256: 0f346254fae17fa8c464f23e6d682e537edd110d0f95637741f993ebe1a0375a -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -27,6 +27,16 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   server의 표([errors](errors.yaml))로 읽으며 모든 runtime에서 같다. MySQL은 3819를 `CONSTRAINT`로 바꾸고 4025는 `DRIVER`
   error로 두며, MariaDB는 4025를 `CONSTRAINT`로, statement timeout인 1969를 `CANCELED`로 바꾼다. MySQL의 idle 연결 끊김인
   4031은 MySQL에서만 `CONNECTION_LOST`다(statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
+
+- **DIA-202** 연결의 collation — MySQL 8.4 / MariaDB 11.8 (probe `mysql.collation.connection_set_names`,
+  `mariadb.collation.connection_set_names`): catalog 연결을 포함해 `mysql` dialect의 모든 연결은 모든 runtime에서 연결할 때
+  `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin`을 실행한다. 그래서 text literal과 column 없는 text 값은 renderer의 column처럼
+  code point로 비교한다(DIA-119, DIA-90). `'a' = 'A'`, `'a' = 'a '`, `'a' = 'á'`는 거짓이고 `'B' < 'a'`는 참이다. 두 server는
+  이 한 형식을 같은 결과로 받는다(DIA-200, 규칙 1). handshake만으로는 정해지지 않는다. 그 한 byte에는 `utf8mb4_0900_bin`(309)이
+  들어가지 않고, character set의 기본값은 server마다 달라 MySQL은 `utf8mb4_0900_ai_ci`, MariaDB는 `utf8mb4_uca1400_ai_ci`다(probe
+  `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). Statement runner case
+  `a_text_literal_compares_by_code_point_on_every_connection`가 모든 database에서 이를 지킨다. PostgreSQL은 `COLLATE "C"`로,
+  SQLite는 `BINARY`로 비교하며 결과가 같다.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

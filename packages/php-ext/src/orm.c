@@ -1153,7 +1153,9 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         add_index_bool(&options, Z_LVAL(found_rows), true);
         zval_ptr_dtor(&found_rows);
         smart_str command = {0};
-        smart_str_appends(&command, "SET time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+        /* SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin begins the init command: the collation of the text columns that the
+         * renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike (DIA-202). */
+        smart_str_appends(&command, "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin, time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
         if (timeout > 0) {
             smart_str_appends(&command, ", SESSION max_execution_time = ");
             smart_str_append_long(&command, timeout);

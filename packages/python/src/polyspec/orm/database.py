@@ -900,6 +900,12 @@ def _tls_failure(error: BaseException) -> bool:
     return False
 
 
+# Every MySQL connection sends this statement when it connects: utf8mb4 in utf8mb4_0900_bin, the collation of the text
+# columns that the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB
+# alike (DIA-202). The handshake names utf8mb4 alone: no handshake byte holds utf8mb4_0900_bin (309).
+MYSQL_SET_NAMES = "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin"
+
+
 class _MysqlConnection:
     """One PyMySQL connection. Imported when needed."""
 
@@ -951,6 +957,7 @@ class _MysqlConnection:
             _raise_driver_error("mysql", error)
         # The server is read once by VERSION(), never by the handshake (DIA-201); an error before it is read is MySQL's.
         self.server = "mysql"
+        self.execute(MYSQL_SET_NAMES, [])
         version = self.execute("SELECT VERSION()", [])["rows"][0][0]
         self.server = "mariadb" if "-MariaDB" in str(version) else "mysql"
         # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
