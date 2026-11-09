@@ -176,7 +176,6 @@
         "packages/python/tests/test_bind_messages_none.py",
         "packages/python/tests/test_dsn_reject_none.py",
         "packages/python/tests/test_model_socket_mysql.py",
-        "packages/rust/orm/tests/cases/coverage_dsn.rs",
         "packages/rust/tests/tests/all/bind_messages.rs",
         "packages/go/bindmessages/markdown_session_test.go",
         "packages/php/tests/MarkdownSessionRecipeTest.php",

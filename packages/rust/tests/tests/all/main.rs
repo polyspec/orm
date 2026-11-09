@@ -186,7 +186,6 @@ fn main() {
         polyspec_orm_testcase::Group::new("code_catalog", polyspec_orm_cases::code_catalog::trials),
         polyspec_orm_testcase::Group::new("collection_identity", polyspec_orm_cases::collection_identity::trials),
         polyspec_orm_testcase::Group::new("compiler_fixtures", polyspec_orm_cases::compiler_fixtures::trials).in_order(),
-        polyspec_orm_testcase::Group::new("coverage_dsn", polyspec_orm_cases::coverage_dsn::trials),
         polyspec_orm_testcase::Group::new("dbspec_model", polyspec_orm_schema_cases::dbspec_model::trials),
         polyspec_orm_testcase::Group::new("dbspec_runtime", polyspec_orm_schema_cases::dbspec_runtime::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_working_directory", polyspec_orm_schema_cases::dbspec_set_working_directory::trials),

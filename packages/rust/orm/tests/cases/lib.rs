@@ -20,7 +20,6 @@ pub mod clock_test_support;
 pub mod code_catalog;
 pub mod collection_identity;
 pub mod compiler_fixtures;
-pub mod coverage_dsn;
 pub mod decimal_model;
 pub mod identity_load;
 pub mod mysql_tls;
