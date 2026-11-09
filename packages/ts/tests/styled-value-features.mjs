@@ -28,7 +28,7 @@ function rejectsLostOutput(label, read) {
   try { read(); throw new Error(`${label}: input was silently omitted`); }
   catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
 }
-// Requirements: COD-21.
+// Requirements: COD-21, COD-73.
 await suite.run('styled-value/lost-output', COMPUTE, () => {
   rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
   rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
@@ -52,9 +52,35 @@ await suite.run('styled-value/lost-output', COMPUTE, () => {
   const document = { present: 1 };
   const author = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
   document.missing = undefined;
-  rejectsLostOutput('model array', () => author.toArray());
+  // The array form holds the value that payload() returns unchecked (COD-27, COD-73); the JSON output refuses it.
+  if (author.toArray().json_setting.value !== document) throw new Error('model array: the array form is not the stored value');
   rejectsLostOutput('model JSON value', () => author.toJSON());
   rejectsLostOutput('model JSON text', () => author.toJSONText());
+});
+// The JSON output writes an ordered-json value at any depth of a styled value as its stored text, and a bigint as its exact
+// digits (COD-16, COD-26); a class object is its toJSON form, read once, so a form that is the object again has no JSON
+// form and is refused, never read again (COD-73).
+// Requirements: COD-16, COD-26, COD-73.
+await suite.run('styled-value/nested-json-output', COMPUTE, () => {
+  const text = '{"n":1.50,"m":9007199254740993}';
+  const author = new orm.Author().setJsonSetting(orm.StyledValue.value({ inner: decode(['ordered_json'], text).payload() }));
+  const want = `"json_setting":{"kind":"value","value":{"inner":${text}}}`;
+  if (!author.toJSONText().includes(want)) throw new Error(`toJSONText lost the stored text: ${author.toJSONText()}`);
+  if (!JSON.stringify(author).includes(want)) throw new Error(`JSON.stringify lost the stored text: ${JSON.stringify(author)}`);
+  const styled = orm.StyledValue.value([decode(['ordered_json'], text).payload(), 9007199254740993n]);
+  if (JSON.stringify(styled) !== `{"kind":"value","value":[${text},9007199254740993]}`) throw new Error(`a styled value wrote ${JSON.stringify(styled)}`);
+  // JavaScript would reorder the key "1" of a nested ordered-json value, so JSON.stringify refuses it and toJSONText writes it.
+  const reordered = new orm.Author().setJsonSetting(orm.StyledValue.value([decode(['ordered_json'], '{"a":1,"1":2}').payload()]));
+  rejectsLostOutput('nested reordered key', () => JSON.stringify(reordered));
+  if (!reordered.toJSONText().includes('[{"a":1,"1":2}]')) throw new Error(`toJSONText reordered: ${reordered.toJSONText()}`);
+  class Self { toJSON() { return this; } }
+  const document = { a: 1 };
+  const changed = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
+  document.a = new Self();
+  for (const [label, read] of [['toJSONText', () => changed.toJSONText()], ['JSON.stringify', () => JSON.stringify(changed)], ['styled', () => JSON.stringify(orm.StyledValue.value(new Self()))]]) {
+    try { read(); throw new Error(`${label}: a self toJSON form was written`); }
+    catch (error) { if (error.code !== 'CODEC_ENCODE' || !error.message.endsWith('JSON output cannot write a value that JSON has no form for')) throw error; }
+  }
 });
 // Core.jsonColumn, which the getter of an ordered_json column calls: it takes a styled SQL NULL or ordered-json value and
 // refuses any other value with a TypeError that names the column.

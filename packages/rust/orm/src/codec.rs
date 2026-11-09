@@ -6,9 +6,11 @@ use std::io::{Read, Write};
 use std::sync::LazyLock;
 
 use base64::Engine as _;
+use granit_parser::{
+    ErrorKind as YamlErrorKind, Event as YamlEvent, Parser as YamlParser, ScalarStyle, Span as YamlSpan, TryLoadError, TrySpannedEventReceiver,
+};
 use ordered_json as strict_json;
 use regex::Regex;
-use saphyr_parser::{Event as YamlEvent, Parser as YamlParser, ScalarStyle, Span as YamlSpan, SpannedEventReceiver};
 use serde_json::{Map, Value};
 
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
@@ -24,6 +26,10 @@ fn err(code: &str, msg: impl Into<String>) -> Error {
 fn err_cause(code: &str, msg: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
     Error::Engine { code: code.into(), msg: msg.into(), source: Some(Box::new(cause)) }
 }
+
+/// The levels of nested lists and maps that every stage reads and writes; a list or a map at the next level is refused
+/// (COD-70 `json-depth`, `serialize-depth`, `yaml-depth` and their write rules).
+const NESTING_LEVELS: usize = 256;
 
 /// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `ordered_json`
 /// stage returns `Val::Ordered`; the other stages return `Val::Json`.
@@ -63,7 +69,11 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 value = Some(Val::Json(yaml_decode(&cur)?));
             }
             "ordered_json" => {
-                value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| err_cause(CODEC_DECODE, "json: the cell is not JSON", error))?))
+                value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| {
+                    // The ordered-json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
+                    let text = if error.kind() == "maximum_depth_exceeded" { "json: value nesting exceeds 256 levels" } else { "json: the cell is not JSON" };
+                    err_cause(CODEC_DECODE, text, error)
+                })?))
             }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
@@ -198,9 +208,8 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     let first = styles.first().copied();
     let written = match first {
         Some("serialize") => {
-            number_check(value, "serialize")?;
             let mut s = String::new();
-            php_serialize(&mut s, value)?;
+            php_serialize(&mut s, value, 1)?;
             Written::Text(s)
         }
         Some("yaml") => Written::Text(yaml_encode(value)?),
@@ -215,18 +224,53 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     finish(rest, written)
 }
 
-/// The ordered-json text of a common value. A value nested deeper than the levels that the ordered-json parser reads has no
-/// such text (`json-depth` of COD-70); any other failure of the library is `json-text`.
+/// The check of the setter of a styled column (COD-73): the value is encoded by the codec stages of `styles`, the styles
+/// of the column, without its host stages, as `encode` of those stages does, so the setter fails at the call with the
+/// error of the first rule of COD-70 that the value meets, before it changes the model.
+pub fn check_setter(styles: &[&str], value: &Value) -> Result<()> {
+    let codec: Vec<&str> = styles.iter().copied().filter(|style| !is_host(style)).collect();
+    encode(&codec, StyledValue::Value(value)).map(drop)
+}
+
+/// [`check_setter`] for the ordered-json value of a column whose first stage is `ordered_json`.
+pub fn check_setter_ordered(styles: &[&str], value: &strict_json::Value) -> Result<()> {
+    let codec: Vec<&str> = styles.iter().copied().filter(|style| !is_host(style)).collect();
+    encode_ordered(&codec, StyledValue::Value(value)).map(drop)
+}
+
+/// The ordered-json text of a common value. A value nested deeper than the 256 levels that the ordered-json parser reads has
+/// no such text (`json-depth` of COD-70), which the walk of the value finds before serde_json writes it; any failure of
+/// the library is `json-text`.
 fn json_encode(value: &Value) -> Result<String> {
+    write_check(value, "json", false)?;
     let raw = serde_json::to_vec(value).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
-    let parsed = strict_json::parse_bytes(&raw).map_err(|error| {
-        let text = if error.kind() == "maximum_depth_exceeded" { "json: value nesting exceeds 256 levels" } else { "json: the value has no JSON text" };
-        err_cause(CODEC_ENCODE, text, error)
-    })?;
+    let parsed = strict_json::parse_bytes(&raw).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
     Ok(strict_json::stringify(&parsed))
 }
 
-// ---- yaml: YAML 1.2 with the core schema: read through saphyr-parser, written by serde-saphyr ----
+/// Walks a value to write in its node order, without recursion: a list or a map at level 257 is `<style>-depth-write`
+/// (`json-depth` for json) before the nodes inside it, and with `numbers` an integer beyond i64, which the common value
+/// model (COD-16) does not hold, is `yaml-int-range-write` where it stands (COD-70).
+fn write_check(value: &Value, style: &str, numbers: bool) -> Result<()> {
+    let mut nodes: Vec<(&Value, usize)> = vec![(value, 1)];
+    while let Some((node, level)) = nodes.pop() {
+        match node {
+            Value::Array(_) | Value::Object(_) if level > NESTING_LEVELS => {
+                return Err(err(CODEC_ENCODE, format!("{style}: value nesting exceeds 256 levels")));
+            }
+            // The stack takes the members in reverse, so that they are met in their order.
+            Value::Array(items) => nodes.extend(items.iter().rev().map(|item| (item, level + 1))),
+            Value::Object(map) => nodes.extend(map.values().rev().map(|item| (item, level + 1))),
+            Value::Number(number) if numbers && number.is_u64() && number.as_i64().is_none() => {
+                return Err(err(CODEC_ENCODE, format!("{style}: integer is outside the i64 range")));
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+// ---- yaml: YAML 1.2 with the core schema: read through granit-parser, written by serde-saphyr ----
 
 /// A collection the reader is building: a sequence, or a mapping with the key of the
 /// value that comes next.
@@ -236,35 +280,31 @@ enum YamlFrame {
 }
 
 /// Builds the common value of one YAML document from the parser events, and refuses
-/// in the same pass every form that docs/spec/codec.md (yaml) refuses.
+/// in the same pass every form that docs/spec/codec.md (yaml) refuses. The first refusal stops the parse.
 #[derive(Default)]
 struct YamlReader {
     documents: usize,
     frames: Vec<YamlFrame>,
     value: Option<Value>,
-    error: Option<Error>,
+}
+
+/// The refusal of the rule `message`, which names no position (COD-70), with the failure that found it, if any.
+fn yaml_refusal(message: &str, source: Option<YamlCause>) -> Error {
+    Error::Engine { code: CODEC_DECODE.into(), msg: format!("yaml: {message}"), source }
+}
+
+fn yaml_fail(message: &str) -> Result<()> {
+    Err(yaml_refusal(message, None))
 }
 
 impl YamlReader {
-    fn fail(&mut self, message: &str) {
-        self.refuse(message, None);
-    }
-
-    /// Keeps the first refusal of the stream: the text of its rule, which names no position (COD-70), and the failure that
-    /// found it, if any.
-    fn refuse(&mut self, message: &str, source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>) {
-        if self.error.is_none() {
-            self.error = Some(Error::Engine { code: CODEC_DECODE.into(), msg: format!("yaml: {message}"), source });
-        }
-    }
-
     /// Whether the next node is a mapping key.
     fn at_key(&self) -> bool {
         matches!(self.frames.last(), Some(YamlFrame::Mapping { key: None, .. }))
     }
 
     /// Places a finished node: a mapping key, a mapping value, a sequence item, or the document.
-    fn place(&mut self, value: Value) {
+    fn place(&mut self, value: Value) -> Result<()> {
         match self.frames.last_mut() {
             Some(YamlFrame::Sequence(items)) => items.push(value),
             Some(YamlFrame::Mapping { map, key }) => match key.take() {
@@ -276,68 +316,79 @@ impl YamlReader {
                     let name = match value {
                         Value::String(name) => name,
                         Value::Number(number) if number.is_i64() => number.to_string(),
-                        _ => return self.fail("map keys must be strings or integers"),
+                        _ => return yaml_fail("map keys must be strings or integers"),
                     };
                     if map.contains_key(&name) {
-                        return self.fail("duplicate map key");
+                        return yaml_fail("duplicate map key");
                     }
                     *key = Some(name);
                 }
             },
             None => self.value = Some(value),
         }
+        Ok(())
     }
 
-    fn start_collection(&mut self, anchor: usize, tag: bool, frame: YamlFrame) {
+    /// Opens a sequence or a mapping: its anchor and its tag first, then the nesting rule of its level, then the rule of
+    /// a map key (COD-70).
+    fn start_collection(&mut self, anchor: usize, tag: bool, frame: YamlFrame) -> Result<()> {
         if anchor != 0 {
-            self.fail("anchors are not supported");
+            yaml_fail("anchors are not supported")
         } else if tag {
-            self.fail("explicit tags are not supported");
+            yaml_fail("explicit tags are not supported")
+        } else if self.frames.len() == NESTING_LEVELS {
+            yaml_fail("value nesting exceeds 256 levels")
         } else if self.at_key() {
-            self.fail("map keys must be scalar strings");
+            yaml_fail("map keys must be scalar strings")
         } else {
             self.frames.push(frame);
+            Ok(())
         }
     }
 }
 
-impl<'input> SpannedEventReceiver<'input> for YamlReader {
-    fn on_event(&mut self, event: YamlEvent<'input>, _span: YamlSpan) {
-        if self.error.is_some() {
-            return;
-        }
+impl<'input> TrySpannedEventReceiver<'input> for YamlReader {
+    type Error = Error;
+
+    fn on_event(&mut self, event: YamlEvent<'input>, _span: YamlSpan) -> Result<()> {
         match event {
-            YamlEvent::DocumentStart(_) => {
+            YamlEvent::DocumentStart(..) => {
                 self.documents += 1;
                 if self.documents > 1 {
-                    self.fail("multiple documents are not supported");
+                    return yaml_fail("multiple documents are not supported");
                 }
+                Ok(())
             }
-            YamlEvent::Alias(_) => self.fail("aliases are not supported"),
+            YamlEvent::Alias(_) => yaml_fail("aliases are not supported"),
             YamlEvent::Scalar(text, style, anchor, tag) => {
                 if anchor != 0 {
-                    self.fail("anchors are not supported");
+                    yaml_fail("anchors are not supported")
                 } else if tag.is_some() {
-                    self.fail("explicit tags are not supported");
+                    yaml_fail("explicit tags are not supported")
                 } else if style != ScalarStyle::Plain {
-                    self.place(Value::String(text.into_owned()));
+                    self.place(Value::String(text.into_owned()))
                 } else {
                     match yaml_core_scalar(text.into_owned()) {
                         Ok(value) => self.place(value),
-                        Err((message, source)) => self.refuse(message, source),
+                        Err((message, source)) => Err(yaml_refusal(message, source)),
                     }
                 }
             }
-            YamlEvent::SequenceStart(anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Sequence(Vec::new())),
-            YamlEvent::MappingStart(anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Mapping { map: Map::new(), key: None }),
+            YamlEvent::SequenceStart(_, anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Sequence(Vec::new())),
+            YamlEvent::MappingStart(_, anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Mapping { map: Map::new(), key: None }),
             YamlEvent::SequenceEnd | YamlEvent::MappingEnd => match self.frames.pop() {
                 Some(YamlFrame::Sequence(items)) => self.place(Value::Array(items)),
                 Some(YamlFrame::Mapping { map, .. }) => self.place(Value::Object(map)),
-                // saphyr-parser balances every end with its start, so no stream reaches this guard; it states yaml-parse,
+                // granit-parser balances every end with its start, so no stream reaches this guard; it states yaml-parse,
                 // with what it found as the cause (COD-72).
-                None => self.refuse("the stream does not parse", Some(Box::new(YamlReaderFault("a collection end without a start")))),
+                None => Err(yaml_refusal("the stream does not parse", Some(Box::new(YamlReaderFault("a collection end without a start"))))),
             },
-            YamlEvent::Nothing | YamlEvent::StreamStart | YamlEvent::StreamEnd | YamlEvent::DocumentEnd => {}
+            // A comment is presentation, not a node; yaml_decode turns off its events, which the comments feature that
+            // serde-saphyr enables would emit.
+            YamlEvent::Comment(..) | YamlEvent::StreamStart | YamlEvent::StreamEnd | YamlEvent::DocumentEnd => Ok(()),
+            // The event list of granit-parser is open to new kinds; a kind the reader does not know states yaml-parse,
+            // with the event as the cause, rather than passing unread (COD-72).
+            _ => Err(yaml_refusal("the stream does not parse", Some(Box::new(YamlReaderFault("an event the reader does not know"))))),
         }
     }
 }
@@ -354,11 +405,6 @@ impl std::fmt::Display for YamlReaderFault {
 
 impl std::error::Error for YamlReaderFault {}
 
-/// The report of saphyr-parser for an alias whose anchor is not in the stream, the one way the library tells it. The text
-/// is the library's, so the unit test `yaml_unknown_anchor_report_is_the_locked_library_text` pins it against the locked
-/// saphyr-parser version: a library that changes it turns that test red instead of turning an alias into yaml-parse.
-const YAML_UNKNOWN_ANCHOR: &str = "while parsing node, found unknown anchor";
-
 /// The failure that found a refused plain scalar.
 type YamlCause = Box<dyn std::error::Error + Send + Sync + 'static>;
 /// A refused plain scalar: the rule it breaks and the failure that found it, if any.
@@ -369,7 +415,7 @@ static YAML_CORE_FLOAT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\A(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z").unwrap());
 
 /// Resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2, 10.3.2):
-/// null, bool, int and float by their regular expressions, and str otherwise. saphyr-parser
+/// null, bool, int and float by their regular expressions, and str otherwise. granit-parser
 /// reports a plain scalar as its text and resolves no tag, so the core schema is applied here. An integer
 /// outside i64 and a float that is not finite are outside the common value model.
 fn yaml_core_scalar(text: String) -> std::result::Result<Value, YamlScalarRefusal> {
@@ -408,7 +454,7 @@ fn yaml_printable(c: char) -> bool {
     matches!(c, '\t' | '\n' | '\r' | ' '..='~' | '\u{85}' | '\u{a0}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..) && c != '\u{feff}'
 }
 
-/// Reads one YAML document into the common value model in one pass of the saphyr-parser events.
+/// Reads one YAML document into the common value model in one pass of the granit-parser events.
 /// A stream without a document (empty, or comments only) is refused: an empty text is not a
 /// YAML value. An explicit empty document (`---`) is null. Before parsing, the reader
 /// removes a leading byte order mark and refuses a character outside c-printable.
@@ -419,16 +465,20 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
         return Err(err(CODEC_DECODE, "yaml: the stream holds a character that is not printable"));
     }
     let mut reader = YamlReader::default();
-    let parsed = YamlParser::new_from_str(source).load(&mut reader, true);
-    match (reader.error, parsed) {
-        // The reader meets the nodes of the document in their order, so a rule that a node before the failure of the
-        // parse breaks is the error (COD-70).
-        (Some(error), _) => Err(error),
-        // saphyr-parser refuses an alias whose anchor is not in the stream before it reports the alias as an event.
-        (None, Err(error)) if error.info() == YAML_UNKNOWN_ANCHOR => Err(err_cause(CODEC_DECODE, "yaml: aliases are not supported", error)),
-        (None, Err(error)) => Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", error)),
-        (None, Ok(())) if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
-        (None, Ok(())) => Ok(reader.value.unwrap_or(Value::Null)),
+    // The nesting limits of the library are lifted: the reader refuses a list or a map at level 257 by yaml-depth, as the
+    // node starts, so no limit of the library decides a stream (COD-70).
+    let options = granit_parser::options! { emit_comments: false, flow_nesting_limit: usize::MAX, block_nesting_limit: usize::MAX };
+    match YamlParser::new_from_str_with_options(source, options).try_load(&mut reader, true) {
+        // The reader meets the nodes of the document in their order and stops the parse at its first refusal, so a rule
+        // that a node before the failure of the parse breaks is the error (COD-70).
+        Err(TryLoadError::Receiver(error)) => Err(error),
+        // granit-parser refuses an alias whose anchor is not in the stream before it reports the alias as an event.
+        Err(TryLoadError::Scan(error)) if matches!(error.kind(), YamlErrorKind::UnknownAnchor) => {
+            Err(err_cause(CODEC_DECODE, "yaml: aliases are not supported", error))
+        }
+        Err(TryLoadError::Scan(error)) => Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", error)),
+        Ok(()) if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
+        Ok(()) => Ok(reader.value.unwrap_or(Value::Null)),
     }
 }
 
@@ -437,7 +487,7 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
 /// number outside the common value model returns CODEC_ENCODE. The written text is read back, and
 /// a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
 fn yaml_encode(value: &Value) -> Result<String> {
-    number_check(value, "yaml")?;
+    write_check(value, "yaml", true)?;
     let text = serde_saphyr::to_string(value).map_err(|error| err_cause(CODEC_ENCODE, "yaml: the value has no YAML text", error))?;
     const READ_BACK: &str = "yaml: the written text does not read back as the value";
     match yaml_decode(text.as_bytes()) {
@@ -448,29 +498,23 @@ fn yaml_encode(value: &Value) -> Result<String> {
     }
 }
 
-/// Refuses a number the common value model (COD-16) does not hold: an integer beyond i64.
-fn number_check(value: &Value, style: &str) -> Result<()> {
-    match value {
-        Value::Number(number) if number.is_u64() && number.as_i64().is_none() => Err(err(CODEC_ENCODE, format!("{style}: integer is outside the i64 range"))),
-        Value::Array(items) => items.iter().try_for_each(|item| number_check(item, style)),
-        Value::Object(map) => map.values().try_for_each(|item| number_check(item, style)),
-        _ => Ok(()),
-    }
-}
-
 // ---- PHP serialize format ----
 
-fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
+/// Writes a value at `level` in the PHP serialize format, in the order of its text: a list or a map at level 257 is
+/// `serialize-depth-write` before its members, so the recursion holds at most 257 calls (COD-70).
+fn php_serialize(out: &mut String, v: &Value, level: usize) -> Result<()> {
+    if matches!(v, Value::Array(_) | Value::Object(_)) && level > NESTING_LEVELS {
+        return Err(err(CODEC_ENCODE, "serialize: value nesting exceeds 256 levels"));
+    }
     match v {
         Value::Null => out.push_str("N;"),
         Value::Bool(b) => out.push_str(if *b { "b:1;" } else { "b:0;" }),
         Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                out.push_str(&format!("i:{i};"));
-            } else if let Some(f) = n.as_f64() {
-                out.push_str(&format!("d:{};", php_float(f)));
-            } else {
-                return Err(err(CODEC_ENCODE, "serialize: integer is outside the i64 range"));
+            // An integer beyond i64 is outside the common value model (COD-16), though serde_json gives it as an f64 too.
+            match (n.as_i64(), n.as_f64()) {
+                (Some(i), _) => out.push_str(&format!("i:{i};")),
+                (None, Some(f)) if n.is_f64() => out.push_str(&format!("d:{};", php_float(f))),
+                _ => return Err(err(CODEC_ENCODE, "serialize: integer is outside the i64 range")),
             }
         }
         Value::String(s) => out.push_str(&format!("s:{}:\"{}\";", s.len(), s)),
@@ -478,7 +522,7 @@ fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
             out.push_str(&format!("a:{}:{{", items.len()));
             for (i, e) in items.iter().enumerate() {
                 out.push_str(&format!("i:{i};"));
-                php_serialize(out, e)?;
+                php_serialize(out, e, level + 1)?;
             }
             out.push('}');
         }
@@ -491,7 +535,7 @@ fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
                     Some(n) => out.push_str(&format!("i:{n};")),
                     None => out.push_str(&format!("s:{}:\"{}\";", k.len(), k)),
                 }
-                php_serialize(out, &m[k])?;
+                php_serialize(out, &m[k], level + 1)?;
             }
             out.push('}');
         }
@@ -532,13 +576,105 @@ fn php_float(f: f64) -> String {
     format!("{mant}E{}{}", if exp < 0 { "-" } else { "+" }, exp.abs())
 }
 
+/// Reads a PHP serialize cell without recursion: the arrays that are open are a stack, so a cell nested to any depth is
+/// read on a stack of a fixed size, and the `a` field at level 257 is `serialize-depth` before its length (COD-70).
 fn php_unserialize(b: &[u8]) -> Result<Value> {
     let mut p = Parser { b, i: 0 };
-    let v = p.value()?;
-    if p.i != b.len() {
-        return Err(p.fail("trailing data"));
+    let mut open: Vec<PhpArray> = Vec::new();
+    loop {
+        let at_key = open.last().is_some_and(|array| array.key.is_none());
+        let mut node = match p.node(open.len() + 1, at_key)? {
+            PhpNode::Scalar(value) => Some(value),
+            PhpNode::Array(len) => {
+                open.push(PhpArray::new(len));
+                None
+            }
+        };
+        // Places the node in the array that holds it, and closes each array whose members are all read.
+        loop {
+            if let Some(value) = node.take() {
+                match open.last_mut() {
+                    Some(array) => array.place(value).map_err(|msg| p.fail(msg))?,
+                    None => {
+                        if p.i != b.len() {
+                            return Err(p.fail("trailing data"));
+                        }
+                        return Ok(value);
+                    }
+                }
+            }
+            match open.last() {
+                Some(array) if array.is_complete() => {
+                    p.expect(b'}')?;
+                    node = open.pop().map(PhpArray::into_value);
+                }
+                _ => break,
+            }
+        }
     }
-    Ok(v)
+}
+
+/// A node of a serialize cell: a scalar value, or the start of an array of that many members.
+enum PhpNode {
+    Scalar(Value),
+    Array(usize),
+}
+
+/// An array that the reader is reading: its length, its members so far, the key of the member that comes next, the keys
+/// it has met, and whether its keys so far are 0, 1, 2, ... in order, which makes it a list.
+struct PhpArray {
+    len: usize,
+    keys: Vec<String>,
+    vals: Vec<Value>,
+    seen: std::collections::HashSet<String>,
+    key: Option<String>,
+    sequential: bool,
+}
+
+impl PhpArray {
+    fn new(len: usize) -> Self {
+        Self { len, keys: Vec::new(), vals: Vec::new(), seen: std::collections::HashSet::new(), key: None, sequential: true }
+    }
+
+    fn is_complete(&self) -> bool {
+        self.key.is_none() && self.vals.len() == self.len
+    }
+
+    /// Places a key or a member: a key is an integer, by its decimal string, or a string, and a key that repeats an
+    /// earlier one is `serialize-duplicate` where it repeats (COD-70).
+    fn place(&mut self, value: Value) -> std::result::Result<(), &'static str> {
+        if let Some(key) = self.key.take() {
+            self.keys.push(key);
+            self.vals.push(value);
+            return Ok(());
+        }
+        let key = match (value.as_i64(), value) {
+            (Some(i), Value::Number(_)) => {
+                // A key is sequential when it is the position of its member, which a usize holds and so fits i64.
+                if i64::try_from(self.vals.len()) != Ok(i) {
+                    self.sequential = false;
+                }
+                i.to_string()
+            }
+            (_, Value::String(s)) => {
+                self.sequential = false;
+                s
+            }
+            _ => return Err("array key must be int or string"),
+        };
+        if !self.seen.insert(key.clone()) {
+            return Err("duplicate array key");
+        }
+        self.key = Some(key);
+        Ok(())
+    }
+
+    fn into_value(self) -> Value {
+        if self.sequential {
+            return Value::Array(self.vals);
+        }
+        Value::Object(self.keys.into_iter().zip(self.vals).collect())
+    }
 }
 
 struct Parser<'a> {
@@ -593,9 +729,28 @@ impl<'a> Parser<'a> {
         field.parse().map_err(|error| self.fail_cause(msg, error))
     }
 
-    fn value(&mut self) -> Result<Value> {
+    /// Reads the node at `level`; `at_key` tells that it is an array key, which an array is not, so an `a` key is refused
+    /// where it starts, after the nesting rule of its level (COD-70).
+    fn node(&mut self, level: usize, at_key: bool) -> Result<PhpNode> {
         let t = *self.b.get(self.i).ok_or_else(|| self.fail("unexpected end"))?;
         self.i += 1;
+        if t == b'a' {
+            if level > NESTING_LEVELS {
+                return Err(self.fail("value nesting exceeds 256 levels"));
+            }
+            if at_key {
+                return Err(self.fail("array key must be int or string"));
+            }
+            self.expect(b':')?;
+            let n = self.length("bad array length")?;
+            self.expect(b'{')?;
+            return Ok(PhpNode::Array(n));
+        }
+        self.scalar(t).map(PhpNode::Scalar)
+    }
+
+    /// The scalar of type `t`, whose type byte is read.
+    fn scalar(&mut self, t: u8) -> Result<Value> {
         match t {
             b'N' => {
                 self.expect(b';')?;
@@ -640,42 +795,6 @@ impl<'a> Parser<'a> {
                 self.expect(b'"')?;
                 self.expect(b';')?;
                 Ok(Value::String(s))
-            }
-            b'a' => {
-                self.expect(b':')?;
-                let n = self.length("bad array length")?;
-                self.expect(b'{')?;
-                let mut keys: Vec<String> = Vec::new();
-                let mut vals: Vec<Value> = Vec::new();
-                let mut sequential = true;
-                for k in 0..n {
-                    let read = self.value()?;
-                    let key = match (read.as_i64(), read) {
-                        (Some(i), Value::Number(_)) => {
-                            // A key is sequential when it is the position k, which a usize holds and so fits i64.
-                            if i64::try_from(k) != Ok(i) {
-                                sequential = false;
-                            }
-                            i.to_string()
-                        }
-                        (_, Value::String(s)) => {
-                            sequential = false;
-                            s
-                        }
-                        _ => return Err(self.fail("array key must be int or string")),
-                    };
-                    keys.push(key);
-                    vals.push(self.value()?);
-                }
-                self.expect(b'}')?;
-                if sequential {
-                    return Ok(Value::Array(vals));
-                }
-                let mut m = Map::new();
-                for (k, v) in keys.into_iter().zip(vals) {
-                    m.insert(k, v);
-                }
-                Ok(Value::Object(m))
             }
             b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, "serialize: objects and references are not supported")),
             _ => Err(self.fail("unknown type")),

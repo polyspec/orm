@@ -980,9 +980,9 @@ func encodeValue(ent *runtimemodel.Entity, column string, v any) (any, error) {
 	}
 	styled, ok := v.(StyledValue)
 	if !ok {
-		return nil, codecErr(CodeCodecEncode, "column %s requires StyledValue, got %T", column, v)
+		return nil, codecErr(CodeCodecEncode, "%s requires StyledValue", column)
 	}
-	if _, err := NormalizeStyled(codec, col.Null, styled); err != nil {
+	if _, err := NormalizeStyled(column, codec, col.Null, styled); err != nil {
 		return nil, err
 	}
 	return Encode(codec, styled)
