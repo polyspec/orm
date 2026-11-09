@@ -381,9 +381,10 @@ def _same_row(a, b) -> bool:
     return all(_cell_key(x) == _cell_key(y) for x, y in zip(a, b))
 
 
-def _words(query: str, dialect: str):
+def _words(query: str, dialect: str, semicolons: list | None = None):
     """The upper-cased words of a query and its semicolons; string literals, quoted identifiers and comments are skipped.
-    Returns (None, False) for an unterminated literal or comment and for a MySQL executable comment."""
+    Returns (None, False) for an unterminated literal or comment and for a MySQL executable comment. semicolons, when
+    given, receives the index of each semicolon."""
     words = []
     i = 0
     n = len(query)
@@ -427,6 +428,8 @@ def _words(query: str, dialect: str):
             i = j
         elif c == ";":
             words.append(";")
+            if semicolons is not None:
+                semicolons.append(i)
             i += 1
         else:
             i += 1
@@ -875,9 +878,10 @@ def _driver_value(position: int) -> OrmError:
     return _value_error(codes.CATALOG_VALUE, position, _DRIVER_VALUE_TEXT)
 
 
-def _decode_failure(position: int, failure: BaseException) -> OrmError:
-    """INT-172: a value that the driver or a library fails to decode; the failure is the cause (__cause__ and cause)."""
-    return _error(codes.CATALOG_VALUE, f"column {position}: {_DECODE_TEXT}", failure)
+def _decode_failure(failure: BaseException) -> OrmError:
+    """INT-172: a value that the driver or a library fails to decode, which names no column; the failure is the cause
+    (__cause__ and cause)."""
+    return _error(codes.CATALOG_VALUE, _DECODE_TEXT, failure)
 
 
 def _temporal_error(position: int, text: str) -> OrmError:
@@ -989,8 +993,9 @@ def _pg_timestamp(text: str, position: int) -> str:
 # The cell class of a PostgreSQL type OID (INT-185): a type of its own cell kind, a text type whose output no session
 # setting changes (oid among them), timestamptz and timetz (INT-168), or "native", a type that has no cell (INT-170). An
 # OID that is not here is read from pg_type: a base type that INT-185 does not name, such as citext, is "native", an enum
-# is text, a domain takes the class of its base type, and an array, a range, a multirange or a composite is text when
-# every element or field is of an integer, decimal, boolean or text class.
+# is text, a domain takes the class of its base type, and an array, a range or a composite is text when every element or
+# field is of an integer, decimal, boolean or text class. A multirange, and a type that holds one, is "multirange":
+# INT-185 refuses its column by its type, before any value is read, a NULL included.
 _PG_CLASSES = {
     16: "boolean",
     17: "binary",
@@ -1028,8 +1033,7 @@ _PG_CLASSES = {
 _PG_ELEMENT_CLASSES = ("integer", "decimal", "boolean", "text")
 _PG_TYPE_SQL = (
     "SELECT t.typtype::text,t.typcategory::text,t.typelem::int8,t.typbasetype::int8,t.typrelid::int8,"
-    "COALESCE(r.rngsubtype,0)::int8,COALESCE(m.rngtypid,0)::int8 FROM pg_type t "
-    "LEFT JOIN pg_range r ON r.rngtypid=t.oid LEFT JOIN pg_range m ON m.rngmultitypid=t.oid WHERE t.oid=$1::int8::oid"
+    "COALESCE(r.rngsubtype,0)::int8 FROM pg_type t LEFT JOIN pg_range r ON r.rngtypid=t.oid WHERE t.oid=$1::int8::oid"
 )
 _PG_FIELDS_SQL = "SELECT atttypid::int8 FROM pg_attribute WHERE attrelid=$1::int8::oid AND attnum>0 AND NOT attisdropped ORDER BY attnum"
 _PG_INTEGER_TEXT = re.compile(r"-?[0-9]+")
@@ -1205,7 +1209,7 @@ def _grid_cell(
     except OrmError:
         raise
     except Exception as failure:
-        raise _decode_failure(position, failure) from failure
+        raise _decode_failure(failure) from failure
 
 
 # The declared precision p of a described MySQL or PostgreSQL time or datetime column, from its native type, with the
@@ -1307,7 +1311,7 @@ def _described_value(
     except OrmError:
         raise
     except Exception as failure:
-        raise _decode_failure(position, failure) from failure
+        raise _decode_failure(failure) from failure
     cell = _grid_cell(value, dialect, code, False, position, cls)
     if cell.kind in ("float32", "float64"):
         return cell
@@ -1365,23 +1369,22 @@ def _pg_loaded_oids() -> tuple:
 
 
 def _mysql_decoders(result) -> None:
-    """Makes each decoder of a pymysql result a decoder of one column, so that a value that pymysql or a converter fails to
-    decode is the failure of that column, with the failure as its cause (INT-172)."""
+    """Wraps each decoder of a pymysql result, so that a value that pymysql or a converter fails to decode is INT-172, with
+    the failure as its cause."""
 
-    def column(position: int, encoding, converter):
+    def column(encoding, converter):
         def decode(data):
             try:
                 if encoding is not None:
                     data = data.decode(encoding)
                 return data if converter is None else converter(data)
             except Exception as failure:
-                raise _decode_failure(position, failure) from failure
+                raise _decode_failure(failure) from failure
 
         return decode
 
     result.converters = [
-        (None, column(position, encoding, converter))
-        for position, (encoding, converter) in enumerate(result.converters, start=1)
+        (None, column(encoding, converter)) for encoding, converter in result.converters
     ]
 
 
@@ -1391,6 +1394,50 @@ def _sqlite_text(value: bytes):
         return value.decode()
     except UnicodeDecodeError:
         return value
+
+
+# The PostgreSQL settings that the output of a cell depends on by INT-185 (INT-186), as the columns that a read of cells adds
+# to each row and that the session reads when its transaction begins and before it ends.
+_PG_SETTING_COLUMNS = (
+    "current_setting('DateStyle'), current_setting('IntervalStyle'), current_setting('TimeZone'), "
+    "current_setting('extra_float_digits'), current_setting('bytea_output'), current_setting('lc_monetary'), "
+    "current_setting('search_path')"
+)
+_PG_SETTING_COUNT = 7
+# The output settings that the transaction of a session fixes, under which the output of every cell kind is its exact text
+# (INT-186); ISO leaves the order of date input as it was.
+_PG_FIXED_SETTINGS = (
+    "SELECT set_config('DateStyle', 'ISO', true), set_config('extra_float_digits', '1', true), "
+    "set_config('bytea_output', 'hex', true)"
+)
+_SETTING_CHANGED_TEXT = (
+    "the query changed a setting that the output of its values depends on"
+)
+
+
+def _settings_read(sql: str) -> str:
+    """The statement of a PostgreSQL read of cells, run so that each row carries the output settings under which the server
+    writes it (INT-186): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs right before the
+    server sends that row and runs its output functions. The one trailing semicolon that a read query may hold cannot stand
+    inside the CTE, and the statement ends a line, so a trailing line comment ends before the CTE closes."""
+    semicolons: list = []
+    _words(sql, "postgres", semicolons)
+    if semicolons:
+        sql = sql[: semicolons[-1]] + sql[semicolons[-1] + 1 :]
+    return (
+        f"WITH catalog_read AS MATERIALIZED (\n{sql}\n) SELECT catalog_read.*, "
+        f"{_PG_SETTING_COLUMNS} FROM catalog_read"
+    )
+
+
+def _setting_text(value) -> str:
+    """The text of a setting column, which a catalog read takes as the bytes of the server text."""
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as failure:
+            raise _decode_failure(failure) from failure
+    return value
 
 
 class _Session:
@@ -1403,6 +1450,25 @@ class _Session:
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
+        # The PostgreSQL output settings when the transaction began (INT-186); None on the other dialects.
+        self.settings: tuple | None = None
+
+    def output_settings(self) -> tuple:
+        """The values of the PostgreSQL output settings in the transaction of the session (INT-186)."""
+        rows = self.run("SELECT " + _PG_SETTING_COLUMNS, [], 2, METADATA_BYTES).rows
+        if len(rows) != 1:
+            raise _error(
+                codes.TABLE_METADATA_INVALID,
+                f"current_setting returned {len(rows)} rows",
+            )
+        return tuple(rows[0])
+
+    def settings_unchanged(self) -> None:
+        """Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ
+        from their values when it began (INT-186): a change that no row carries, as in a result of no rows. A local setting
+        reverts when the transaction ends, so the check runs inside it."""
+        if self.settings is not None and self.output_settings() != self.settings:
+            raise _error(codes.CATALOG_VALUE, _SETTING_CHANGED_TEXT)
 
     def run(
         self,
@@ -1432,6 +1498,14 @@ class _Session:
             text, args = for_mysql(sql, list(params))
         else:
             text, args = for_postgres(sql, list(params))
+        # A PostgreSQL read of cells carries the output settings of each row (INT-186).
+        settings = (
+            self.settings
+            if self.dialect == "postgres" and (grid or query or described is not None)
+            else None
+        )
+        if settings is not None:
+            text = _settings_read(text)
         # A budgeted read streams its rows. A MySQL result is unbuffered, and a PostgreSQL read with no parameter is a cursor,
         # so a stop ends the statement on the server; a buffered read has to finish the whole statement first.
         streamed = max_rows is not None
@@ -1457,8 +1531,8 @@ class _Session:
             catalog = grid or described is not None
             if catalog and self.dialect == "postgres":
                 # A grid or described read takes the bytes of the text that PostgreSQL writes for each value, and the
-                # conversion reads each by the cell class of its column (INT-185), so that a decoding failure is the
-                # failure of one column (INT-172). psycopg is imported only by such a PostgreSQL read.
+                # conversion reads each by the cell class of its column (INT-185), so that a decoding failure is INT-172.
+                # psycopg is imported only by such a PostgreSQL read.
                 for oid in _pg_loaded_oids():
                     cursor.adapters.register_loader(oid, _pg_raw_loader())
             elif query and self.dialect == "postgres":
@@ -1478,6 +1552,15 @@ class _Session:
             if cursor.description:
                 names = [column[0] for column in cursor.description]
                 type_codes = [column[1] for column in cursor.description]
+                if settings is not None:
+                    # The setting columns are no columns of the result.
+                    if len(names) < _PG_SETTING_COUNT:
+                        raise _error(
+                            codes.TABLE_METADATA_INVALID,
+                            f"the read returned {len(names)} columns",
+                        )
+                    names = names[:-_PG_SETTING_COUNT]
+                    type_codes = type_codes[:-_PG_SETTING_COUNT]
                 if described is not None:
                     _same_names(names, described.columns)
                 classes = [None] * len(names)
@@ -1492,10 +1575,25 @@ class _Session:
                     _mysql_decoders(cursor._result)
                 else:
                     unsigned = [False] * len(names)
-                if catalog and self.dialect == "postgres":
+                if (catalog or query) and self.dialect == "postgres":
                     memo: dict = {}
                     classes = [self._pg_class(oid, memo, 0) for oid in type_codes]
+                    # A multirange is refused by its type, at its first column, before any row is read (INT-185).
+                    for index, cls in enumerate(classes):
+                        if cls == "multirange":
+                            raise _value_error(
+                                codes.CATALOG_VALUE, index + 1, _NATIVE_TEXT
+                            )
                 for row in _stream_rows(cursor, cursor_name):
+                    if settings is not None:
+                        # A row written under other output settings refuses the read before any of its values is
+                        # converted; its setting columns count against no budget.
+                        written = tuple(
+                            _setting_text(value) for value in row[-_PG_SETTING_COUNT:]
+                        )
+                        if written != settings:
+                            raise _error(codes.CATALOG_VALUE, _SETTING_CHANGED_TEXT)
+                        row = row[:-_PG_SETTING_COUNT]
                     if keep is not None and len(rows) == keep:
                         past = True
                         continue
@@ -1587,10 +1685,12 @@ class _Session:
         rows = self.run(_PG_TYPE_SQL, [oid]).rows
         cls = "native"
         if len(rows) == 1:
-            typtype, category, element, base, relation, subtype, range_type = rows[0]
+            typtype, category, element, base, relation, subtype = rows[0]
 
             def elements(oids) -> str:
                 each = [self._pg_class(item, memo, depth + 1) for item in oids]
+                if "multirange" in each:
+                    return "multirange"
                 return (
                     "text"
                     if each and all(item in _PG_ELEMENT_CLASSES for item in each)
@@ -1606,7 +1706,7 @@ class _Session:
             elif typtype == "r":
                 cls = elements([subtype])
             elif typtype == "m":
-                cls = elements([range_type])
+                cls = "multirange"
             elif typtype == "c":
                 cls = elements(
                     [row[0] for row in self.run(_PG_FIELDS_SQL, [relation]).rows]
@@ -1933,6 +2033,10 @@ class CatalogConnection:
                 # "cached plan must not change result type". The transaction holds that server connection for the whole
                 # session (CFG-28).
                 session.run("DEALLOCATE ALL")
+                # The transaction fixes the output settings under which every cell kind is its exact text, and keeps their
+                # values, which each row of a read of cells and the end of the transaction are compared with (INT-186).
+                session.run(_PG_FIXED_SETTINGS)
+                session.settings = session.output_settings()
         except BaseException:
             self._close(session)
             raise
@@ -1972,6 +2076,7 @@ class CatalogConnection:
         session = self._begin(read_only=True)
         try:
             value = work(session)
+            session.settings_unchanged()
         except Exception as error:
             self._end(session, error)
             raise  # _end raises the error after it closes the session; this line is never reached
@@ -1984,6 +2089,7 @@ class CatalogConnection:
             if self._dialect == "mysql":
                 session.mysql_partial_revokes_off()
             value = work(session)
+            session.settings_unchanged()
         except Exception as error:
             self._end(session, error)
             raise  # _end raises the error after it closes the session; this line is never reached
