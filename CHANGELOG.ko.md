@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- FCV-2가 code_catalog.rs의 Rust `trials`(INT-65)를 그 이유와 함께 이름 짓는다(T400-1): 각 runtime은 오류 code를 자기 언어의 source로 선언하고 그 시험은 그 선언을 생성된 catalog와 대조하므로, 그것이 읽는 source를 담는 recipe 값이 없다.
 - Rust coverage_dsn.rs를 지운다(T400-1): 그 단언은 각각 모든 runtime이 실행하는 recipe `dsn_connection`의 사례 `dsn_connection`의 step이다. 알 수 없는 scheme의 DSN은 `CONFIG`이고, 각 database의 DSN은 그 database의 driver로 연결되어 statement를 실행한다.
 - `make recipe-runners-check`는 conformance 본문의 runner program을 FCV-15의 vector runner(scripts/features/recipe-runners.mts의 `VECTOR_RUNNERS`)로 읽으며, source가 아닌 선언된 runner는 finding이다(T400-1): 생성 메서드 본문과 고정 시계 본문은 모든 runtime이 실행하는 사례이므로 FCV-2는 더 이상 이를 native라 하지 않는다. FCV-2 검사는 `native_trials!`가 없는 Rust 사례 파일의 harness 함수 `trials`를 그 native 시험으로 읽어, compiler_fixtures.rs의 compile fixture를 이름 짓고 Rust vector suite를 드러낸다. statement-runner 줄은 Go와 Rust compiler가 그 사용을 거부한다는 이유로 Go, PHP, PHP extension, Python의 거부 시험을 이름 짓고, 다른 줄이 시험을 이름 짓는 planner 줄은 지운다.
 - 여러 행 insert를 batch로 나누는 것(PRT-41)은 모든 runtime이 모든 database에서 실행하는 recipe `model_writes`의 사례 `creates_runs_rows_in_batches_*`이다(T400-1): 각 사례는 자기 batch 크기로 행을 만들고 statement event에서 begin, batch마다의 multi-row INSERT, commit을 읽으며, 행이 없는 사례는 statement를 하나도 읽지 않으므로 `model.creates`는 빈 행 목록을 받는다. contracts/fixtures/insert_parts.json과 이를 비공개 분할 함수에 넘기던 native 시험인 Go `TestInsertPartsFixture`, PHP와 PHP extension의 InsertPartsTest, Python test_insert_parts.py, TypeScript insert-parts.mjs, model.rs의 Rust `insert_parts_cases`를 target client-unit-check/insert-parts, dbspec-php-extension-check/planner/insert-parts와 함께 지운다.
