@@ -250,11 +250,13 @@ function refuse(rule: ValueRule, cause?: unknown): ValueRefusal {
 
 /**
  * The error of a conversion of the value in the column at index (0-based): a refusal becomes `<CODE>: column <n>: <text>` with the
- * 1-based n, keeping the failure that caused it (INT-165, INT-172); any other error is unchanged.
+ * 1-based n, keeping the failure that caused it (INT-165); a decode failure is `<CODE>: <text>` with no column and keeps its failure as
+ * its cause (INT-172); any other error is unchanged.
  */
 function atColumn(index: number, error: unknown): unknown {
   if (!(error instanceof ValueRefusal)) return error;
   const [code, text] = RULES[error.rule];
+  if (error.rule === 'decode') return err(code, text, error.cause);
   return err(code, `column ${index + 1}: ${text}`, error.cause);
 }
 
@@ -338,6 +340,9 @@ FROM t JOIN pg_type p ON p.oid = t.oid JOIN pg_namespace ns ON ns.oid = p.typnam
 /** Whether a built-in PostgreSQL type has a text cell, by its oid, as postgresText found it; a built-in type does not change. */
 const POSTGRES_BUILTIN_TEXT = new Map<number, boolean>();
 
+/** Whether a built-in PostgreSQL type holds a multirange, by its oid, as holdsMultirange found it; a built-in type does not change. */
+const POSTGRES_BUILTIN_MULTIRANGE = new Map<number, boolean>();
+
 /** One row of POSTGRES_TYPES_SQL. */
 interface PostgresType {
   schema: string;
@@ -371,6 +376,24 @@ function postgresText(oid: number, types: ReadonlyMap<number, PostgresType>, see
   if (type.typtype === 'c') return type.fields !== undefined && type.fields.every(field => component(field));
   if (type.typtype === 'b' && type.category === 'A' && type.element !== 0) return component(type.element);
   if (type.typtype === 'b' && type.schema === 'pg_catalog') return POSTGRES_CLASSES[type.name.toUpperCase()] === 'text';
+  return false;
+}
+
+/**
+ * Whether the PostgreSQL type oid is a multirange or an array, a range, a domain or a composite that holds one: a column of such a type
+ * is refused by its type, whether its value is NULL or not (INT-185), so that every runtime refuses the statement at its first such
+ * column.
+ */
+function holdsMultirange(oid: number, types: ReadonlyMap<number, PostgresType>, seen: ReadonlySet<number> = new Set()): boolean {
+  const type = types.get(oid);
+  if (type === undefined || seen.has(oid)) return false;
+  const inner = new Set([...seen, oid]);
+  const part = (next: number | undefined): boolean => next !== undefined && next !== 0 && holdsMultirange(next, types, inner);
+  if (type.typtype === 'm') return true;
+  if (type.typtype === 'd') return part(type.base);
+  if (type.typtype === 'r') return part(type.subtype);
+  if (type.typtype === 'c') return (type.fields ?? []).some(field => part(field));
+  if (type.typtype === 'b' && type.category === 'A') return part(type.element);
   return false;
 }
 
@@ -1332,11 +1355,21 @@ class Session {
         row: values => deliver(sqliteStoredCells(values)),
       }, noop);
     }
-    if (unresolved.length > 0) {
+    // A column of a type that holds a multirange is refused by its type, NULL or not, and the first such column is the failure of the
+    // read, before any refusal of a value (INT-185).
+    const typed = out.columns.flatMap((column, at) => {
+      const oid = unresolvedOid(this.dialect, column);
+      return oid === undefined ? [] : [{ oid, at }];
+    });
+    const kinds = typed.length > 0 || unresolved.length > 0 ? await this.postgresKinds([...new Set([...typed, ...unresolved].map(item => item.oid))]) : undefined;
+    const multirange = typed.find(item => kinds?.get(item.oid)?.multirange === true);
+    if (multirange !== undefined) {
+      failure = atColumn(multirange.at, refuse('native'));
+      overflow = undefined;
+    } else if (unresolved.length > 0) {
       // Every value read before a failure or a stop precedes it in the stream, so the first one of a type with no cell (INT-170) is the
       // failure of the read.
-      const text = await this.postgresText([...new Set(unresolved.map(item => item.oid))]);
-      const refused = unresolved.find(item => text.get(item.oid) !== true);
+      const refused = unresolved.find(item => kinds?.get(item.oid)?.text !== true);
       if (refused !== undefined) {
         failure = atColumn(refused.at, refuse('native'));
         overflow = undefined;
@@ -1354,20 +1387,32 @@ class Session {
   }
 
   /**
-   * Whether each PostgreSQL type of oids has a text cell (INT-185), from the server's catalog in this session (POSTGRES_TYPES_SQL). A
-   * built-in type, whose oid is below 16384 (FirstNormalObjectId), is kept for later reads; another type can change between reads.
+   * Whether each PostgreSQL type of oids has a text cell and whether it holds a multirange (INT-185), from the server's catalog in this
+   * session (POSTGRES_TYPES_SQL). A built-in type, whose oid is below 16384 (FirstNormalObjectId), is kept for later reads and read
+   * once; another type can change between reads.
    */
-  private async postgresText(oids: readonly number[]): Promise<Map<number, boolean>> {
-    const rows: unknown[][] = [];
-    await this.session.scan(POSTGRES_TYPES_SQL, [`{${oids.join(',')}}`], { columns: () => undefined, row: values => { rows.push([...values]); return true; } }, noop);
-    const types = postgresTypes(rows);
-    const text = new Map<number, boolean>();
+  private async postgresKinds(oids: readonly number[]): Promise<Map<number, { text: boolean; multirange: boolean }>> {
+    const kinds = new Map<number, { text: boolean; multirange: boolean }>();
+    const unknown: number[] = [];
     for (const oid of oids) {
-      const found = postgresText(oid, types);
-      text.set(oid, found);
-      if (oid < 16384) POSTGRES_BUILTIN_TEXT.set(oid, found);
+      const text = POSTGRES_BUILTIN_TEXT.get(oid);
+      const multirange = POSTGRES_BUILTIN_MULTIRANGE.get(oid);
+      if (text === undefined || multirange === undefined) unknown.push(oid);
+      else kinds.set(oid, { text, multirange });
     }
-    return text;
+    if (unknown.length === 0) return kinds;
+    const rows: unknown[][] = [];
+    await this.session.scan(POSTGRES_TYPES_SQL, [`{${unknown.join(',')}}`], { columns: () => undefined, row: values => { rows.push([...values]); return true; } }, noop);
+    const types = postgresTypes(rows);
+    for (const oid of unknown) {
+      const found = { text: postgresText(oid, types), multirange: holdsMultirange(oid, types) };
+      kinds.set(oid, found);
+      if (oid < 16384) {
+        POSTGRES_BUILTIN_TEXT.set(oid, found.text);
+        POSTGRES_BUILTIN_MULTIRANGE.set(oid, found.multirange);
+      }
+    }
+    return kinds;
   }
 
   /** Reads the rows of a statement with each value as it is, counted by its size. */

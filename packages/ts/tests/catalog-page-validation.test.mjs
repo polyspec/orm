@@ -65,8 +65,8 @@ for (const [name, dialect, type, value] of [
   });
 }
 
-// Requirements: INT-165, INT-172. A PostgreSQL bytea text that is in neither form of bytea_output fails to decode; the refusal keeps the
-// decoder's failure as its cause, in the grid query and in the plain query.
+// Requirements: INT-165, INT-172. A PostgreSQL bytea text that is in neither form of bytea_output fails to decode; the refusal names no
+// column and keeps the decoder's failure as its cause, in the grid query and in the plain query.
 for (const text of ['\\x0', '\\xzz', '\\9', 'café']) {
   caseTest(`the catalog keeps the decode failure of the bytea text ${JSON.stringify(text)} as its cause`, COMPUTE, async () => {
     const decodes = [
@@ -76,7 +76,7 @@ for (const text of ['\\x0', '\\xzz', '\\9', 'café']) {
     for (const read of decodes) {
       await assert.rejects(
         read(injected('postgres', [{ name: 'a', type: 'INT8' }, { name: 'b', type: 'BYTEA' }], ['1', text])),
-        error => error instanceof OrmError && error.code === 'CATALOG_VALUE' && error.message === 'CATALOG_VALUE: column 2: the driver could not decode the value' &&
+        error => error instanceof OrmError && error.code === 'CATALOG_VALUE' && error.message === 'CATALOG_VALUE: the driver could not decode the value' &&
           error.cause instanceof TypeError,
       );
     }
