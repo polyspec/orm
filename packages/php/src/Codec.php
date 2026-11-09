@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+use Polyspec\OrderedJson\ParseError;
 use Polyspec\OrderedJson\Value;
 use Purr\Yaml\Document;
 use Purr\Yaml\Dumper\Dumper;
@@ -37,6 +38,12 @@ final class Codec
 {
     /** The nesting that the ordered-json parser reads (json-depth of COD-70). */
     private const int JSON_DEPTH = 256;
+
+    /** The nesting that every value stage reads and writes, the outermost list or map at level 1 (COD-70). */
+    private const int DEPTH = 256;
+
+    /** The text of the nesting rules of COD-70, after the stage. */
+    private const string DEPTH_RULE = 'value nesting exceeds 256 levels';
 
     /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
     public static function blindIndex(mixed $v, string $key): ?string
@@ -182,6 +189,10 @@ final class Codec
                     // The ordered-json value keeps the member order, the number text, and {} apart from [].
                     try {
                         $v = orderedJsonParse($v);
+                    } catch (ParseError $e) {
+                        // The parser names the kind of its refusal; a nesting past its 256 levels is json-depth-read.
+                        $rule = $e->kind === 'maximum_depth_exceeded' ? self::DEPTH_RULE : 'the cell is not JSON';
+                        throw new OrmException(Code::CODEC_DECODE, "json: $rule", $e);
                     } catch (\Throwable $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'json: the cell is not JSON', $e);
                     }
@@ -258,9 +269,10 @@ final class Codec
 
     /**
      * The rule of COD-70 that a value under a first serialize or yaml stage breaks, or null for a value of the common
-     * value model of COD-16: the first node that breaks one, keys before their values.
+     * value model of COD-16: the first node that breaks one, keys before their values, and a list or a map past the 256
+     * levels at its start, $depth being the level of its container (serialize-depth-write, yaml-depth-write).
      */
-    private static function codecValueRule(mixed $value): ?string
+    private static function codecValueRule(mixed $value, int $depth = 0): ?string
     {
         if ($value === null || is_bool($value) || is_int($value)) {
             return null;
@@ -272,11 +284,14 @@ final class Codec
             return is_finite($value) ? null : 'number is not finite';
         }
         if (is_array($value)) {
+            if ($depth + 1 > self::DEPTH) {
+                return self::DEPTH_RULE;
+            }
             foreach ($value as $key => $item) {
                 if (is_string($key) && !mb_check_encoding($key, 'UTF-8')) {
                     return 'the text is not a sequence of Unicode scalar values';
                 }
-                $rule = self::codecValueRule($item);
+                $rule = self::codecValueRule($item, $depth + 1);
                 if ($rule !== null) {
                     return $rule;
                 }
@@ -533,8 +548,10 @@ final class Codec
     /**
      * A node as a PHP value, with the rules of the codec. The node model of purrphp/yaml has four kinds (its
      * NodeVisitor): an alias, which yamlProperties refuses, a scalar, a sequence and a mapping, which is the last.
+     * A node is met where it starts (COD-70): its properties, then the nesting rule of its level, $depth being the
+     * level of its container, then its own rules, and a key before its value.
      */
-    private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed
+    private static function yamlNode(AbstractNode $node, CoreSchema $schema, int $depth = 0): mixed
     {
         self::yamlProperties($node);
         if ($node instanceof ScalarNode) {
@@ -546,10 +563,11 @@ final class Codec
             }
             return $value;
         }
+        self::yamlDepth($depth);
         if ($node instanceof SequenceNode) {
             $out = [];
             foreach ($node->getItems() as $item) {
-                $out[] = self::yamlNode($item, $schema);
+                $out[] = self::yamlNode($item, $schema, $depth + 1);
             }
             return $out;
         }
@@ -559,18 +577,27 @@ final class Codec
             $keyNode = $entry->getKey();
             if ($keyNode instanceof SequenceNode || $keyNode instanceof MappingNode) {
                 self::yamlProperties($keyNode);
+                self::yamlDepth($depth + 1);
                 throw self::yamlRule('map keys must be scalar strings');
             }
-            $key = self::yamlNode($keyNode, $schema);
+            $key = self::yamlNode($keyNode, $schema, $depth + 1);
             if (!is_string($key) && !is_int($key)) {
                 throw self::yamlRule('map keys must be strings or integers');
             }
             if (array_key_exists($key, $out)) {
                 throw self::yamlRule('duplicate map key');
             }
-            $out[$key] = self::yamlNode($entry->getValue(), $schema);
+            $out[$key] = self::yamlNode($entry->getValue(), $schema, $depth + 1);
         }
         return $out;
+    }
+
+    /** Refuses a sequence or a mapping inside a container at level $depth past the 256 levels (yaml-depth). */
+    private static function yamlDepth(int $depth): void
+    {
+        if ($depth + 1 > self::DEPTH) {
+            throw self::yamlRule(self::DEPTH_RULE);
+        }
     }
 
     /**
@@ -702,7 +729,8 @@ final class Codec
      * Reads a serialized cell by the grammar of PHP's unserialize, with the rules of COD-70: the values of the common
      * value model (COD-16), no object or reference (COD-34), and nothing after the value. An array opens a frame
      * [items, members left, whether its key is read, key], so a nesting of any depth reads without recursion; an array
-     * key is a whole value, an integer or a string, and a later key replaces an earlier one, as unserialize does.
+     * key is a whole value, an integer or a string, and a key that repeats an earlier one is refused, which unserialize
+     * would let replace it; an array past the 256 levels is refused at its start.
      */
     private static function unserialized(string $text): mixed
     {
@@ -716,6 +744,10 @@ final class Codec
             }
             $type = $text[$at++];
             if ($type === 'a') {
+                // An array is met where it starts: the nesting rule of its level before its fields (serialize-depth).
+                if (count($open) + 1 > self::DEPTH) {
+                    throw self::serializeRule(self::DEPTH_RULE);
+                }
                 self::serializedDelimiter($text, $at, ':');
                 $members = self::serializedLength(self::serializedField($text, $at, ':'), 'array');
                 self::serializedDelimiter($text, $at, '{');
@@ -739,6 +771,12 @@ final class Codec
                 if (!$open[$top][2]) {
                     if (!is_int($value) && !is_string($value)) {
                         throw self::serializeRule('array key must be int or string');
+                    }
+                    // A PHP array key is an integer by its decimal string, so that i:1; and s:1:"1"; are one key and
+                    // i:1; and s:2:"01"; are two; the key that repeats one is met before its value
+                    // (serialize-duplicate).
+                    if (array_key_exists($value, $open[$top][0])) {
+                        throw self::serializeRule('duplicate array key');
                     }
                     $open[$top][2] = true;
                     $open[$top][3] = $value;

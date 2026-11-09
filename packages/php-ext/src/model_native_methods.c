@@ -1,5 +1,6 @@
 /* Focused native Model methods backed by model_state and model_chain. */
 #include "model_native_methods.h"
+#include "codec.h"
 #include "model_state.h"
 #include "model_chain.h"
 #include "pending_time_parts.h"
@@ -1155,6 +1156,24 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
                 model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text);
                 RETURN_THROWS();
             }
+            /* The setter encodes the value by the codec stages of its column, without the host stages, and fails at the call with
+             * the error of the first rule that the value meets, before the model changes (COD-73); the write encodes it again. */
+            HashTable *stages = zend_new_array(zend_hash_num_elements(Z_ARRVAL_P(codec)));
+            zval *stage;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(codec), stage) {
+                if (Z_TYPE_P(stage) == IS_STRING && !codec_is_host_style(Z_STR_P(stage))) {
+                    Z_TRY_ADDREF_P(stage);
+                    zend_hash_next_index_insert(stages, stage);
+                }
+            } ZEND_HASH_FOREACH_END();
+            zval encoded;
+            bool encodes = codec_encode(stages, input, &encoded);
+            zend_array_release(stages);
+            if (!encodes) {
+                zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
+                RETURN_THROWS();
+            }
+            zval_ptr_dtor(&encoded);
             zval_ptr_dtor(&set_value);
             ZVAL_COPY(&set_value, input);
             zval_ptr_dtor(&value);
