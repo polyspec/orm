@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: d01b856454fbac1f6ef67e2544f4fc50f0de3a69081bea255b522f94cf08460f -->
+<!-- source-sha256: 21f7c39bbd8538bb86a51e1e7f5c5aee9ac6635c6e77fc42acfacff0524a3786 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -11,7 +11,7 @@
 | distribution | Go: module path; PHP: `bin/orm-gen`을 포함한 composer package `polyspec/orm`; TypeScript: `orm-gen` bin을 포함한 npm package `@polyspec/orm`; Rust: `polyspec-orm`과 `polyspec-orm-build` crate | — | registry 게시가 필요하면 별도 결정으로 처리한다 |
 | configuration | DSN과 secret은 연결 호출의 인자다. 스키마 경로는 연결 옵션(Go, PHP, TypeScript)이거나, 생성된 스키마가 `Db.connect_schema`의 인자이거나(Python), 빌드가 포함한다(Rust) | — | — |
 | drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | 다른 드라이버가 hot path에서 2배 빠르다는 측정 |
-| YAML 코덱 | Go `github.com/min-0-max/go-yaml` `v1.19.2-p1`(읽기, `github.com/goccy/go-yaml` fork의 release로, flow collection이나 명시 key의 block node인 map key를 그 node로 읽는다(YAML 1.2.2 6.9절과 8.2.2절). upstream은 이를 거부한다. 둘 다 U+0085를 내용으로 읽는다)와 `go.yaml.in/yaml/v3`(쓰기), Python `rapidyaml`(읽기)와 `ruamel.yaml`(쓰기), PHP `purrphp/yaml`(읽기와 쓰기, fork `min-0-max/yaml`), Rust `saphyr-parser`(읽기)와 `serde-saphyr`(쓰기), TypeScript `yaml`; lock 파일을 커밋한다. PHP extension은 현재 PHP library 호출로 YAML에 접근하며 native codec 이전은 T182-2에서 열려 있다. | 80개 vector와 잘못된 입력 사례는 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 기대값이다. 이는 contract이며 native codec coverage가 완료됐다는 뜻은 아니다. | 공통 벡터와 오류 사례가 유지되는 경우에만 라이브러리를 교체한다 |
+| YAML 코덱 | Go `github.com/min-0-max/go-yaml` `v1.19.2-p1`(읽기, `github.com/goccy/go-yaml` fork의 release로, flow collection이나 명시 key의 block node인 map key를 그 node로 읽는다(YAML 1.2.2 6.9절과 8.2.2절). upstream은 이를 거부한다. 둘 다 U+0085를 내용으로 읽는다)와 `go.yaml.in/yaml/v3`(쓰기), Python `rapidyaml`(읽기)와 `ruamel.yaml`(쓰기), PHP `purrphp/yaml`(읽기와 쓰기, fork `min-0-max/yaml`), Rust `granit-parser`(읽기, codec이 257 단계를 자기 규칙으로 거부하도록 nesting 한도를 풀었다)와 `serde-saphyr`(쓰기), TypeScript `yaml`; lock 파일을 커밋한다. PHP extension은 현재 PHP library 호출로 YAML에 접근하며 native codec 이전은 T182-2에서 열려 있다. | 80개 vector와 잘못된 입력 사례는 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 기대값이다. 이는 contract이며 native codec coverage가 완료됐다는 뜻은 아니다. | 공통 벡터와 오류 사례가 유지되는 경우에만 라이브러리를 교체한다 |
 
 ## release asset에서 설치
 

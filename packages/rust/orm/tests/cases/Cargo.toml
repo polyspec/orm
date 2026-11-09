@@ -24,7 +24,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# unbounded_depth: the styled column states nest deeper than the 128 levels that serde_json reads by default (COD-70).
+serde_json = { version = "1", features = ["unbounded_depth"] }
 
 [lints]
 workspace = true

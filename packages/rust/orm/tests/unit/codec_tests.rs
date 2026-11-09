@@ -64,14 +64,14 @@ fn codec_parser_refusals_state_the_stage_text() {
     assert_eq!(error.to_string(), "CODEC_DECODE: aes: authentication failed");
 }
 
-/// saphyr-parser reports an alias whose anchor is not in the stream only by the text of its error, which the yaml stage
-/// reads as `yaml-alias`; the locked library must still report it with that text, or this test turns red.
+/// granit-parser reports an alias whose anchor is not in the stream as a parse error of its own kind, which the yaml stage
+/// reads as `yaml-alias`.
 #[test]
-fn yaml_unknown_anchor_report_is_the_locked_library_text() {
+fn yaml_unknown_anchor_is_yaml_alias() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut reader = YamlReader::default();
-    let error = YamlParser::new_from_str("a: *missing\n").load(&mut reader, true).expect_err("an alias without its anchor must not parse");
-    assert_eq!(error.info(), YAML_UNKNOWN_ANCHOR);
+    let error = YamlParser::new_from_str("a: *missing\n").try_load(&mut reader, true).expect_err("an alias without its anchor must not parse");
+    assert!(matches!(&error, TryLoadError::Scan(error) if matches!(error.kind(), YamlErrorKind::UnknownAnchor)), "{error:?}");
     let error = decode(&["yaml".into()], &Val::Str("a: *missing\n".into())).expect_err("an alias must fail");
     assert_eq!(error.to_string(), "CODEC_DECODE: yaml: aliases are not supported");
     assert!(std::error::Error::source(&error).is_some(), "the parser error is the cause");
@@ -82,8 +82,7 @@ fn yaml_unknown_anchor_report_is_the_locked_library_text() {
 fn yaml_reader_guards_state_yaml_parse() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut reader = YamlReader::default();
-    reader.on_event(YamlEvent::SequenceEnd, YamlSpan::default());
-    let error = reader.error.expect("an end without a start is refused");
+    let error = reader.on_event(YamlEvent::SequenceEnd, YamlSpan::default()).expect_err("an end without a start is refused");
     assert_eq!(error.to_string(), "CODEC_DECODE: yaml: the stream does not parse");
     assert_eq!(std::error::Error::source(&error).map(ToString::to_string).as_deref(), Some("a collection end without a start"));
 }
