@@ -4,7 +4,7 @@
 // MySQL privilege fixture. The servers listen on 127.0.0.1 over TCP; the other endpoints are
 // Unix sockets in the socket folder (socketPaths), which stop and the ProxySQL admin interface use.
 //
-//   test-servers.mts start | tls | stop | mysql-privilege-start | mysql-stop | mysql-start <mysql port> <mysql replica port>
+//   test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mysql-stop | mysql-start <mysql port> <mysql replica port>
 //
 // start chooses six free ports on 127.0.0.1 (scripts/free-ports.mts) for the servers of this checkout, so two checkouts
 // never contend for one fixed port; a server owns its port from the moment it listens. The environment file records
@@ -32,6 +32,7 @@ import { createHash, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
 import { errorCode, errorMessage } from '../tests/errors.mts';
+import { startMariadb, stopMariadb } from './test-servers-mariadb.mts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -41,7 +42,7 @@ export class TestServerError extends Error {
   constructor(message: string, status = 1, options?: ErrorOptions) { super(message, options); this.status = status; }
 }
 
-function shutdownError(message: string, errors: unknown[]): TestServerError {
+export function shutdownError(message: string, errors: unknown[]): TestServerError {
   const cause = errors.length === 1 ? errors[0] : new AggregateError(errors, message);
   return new TestServerError(`${message}: ${errors.map(errorMessage).join('; ')}`, 1, { cause });
 }
@@ -73,10 +74,23 @@ export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('
     proxysqlData: join(dir, 'proxysql'),
     proxysqlPid: join(dir, 'proxysql.pid'),
     pgbouncerPid: join(dir, 'pgbouncer.pid'),
+    // The MariaDB servers (scripts/test-servers-mariadb.mts) are their own set, with their own environment file and leases.
+    mariadbPid: join(dir, 'mariadb.pid'),
+    mariadbReplicaPid: join(dir, 'mariadb-replica.pid'),
+    mariadbPrivilegePid: join(dir, 'mariadb-privilege.pid'),
+    mariadbProxysqlPid: join(dir, 'mariadb-proxysql.pid'),
+    mariadbEnv: join(dir, 'mariadb.env'),
+    mariadbLeases: join(root, '.runtime/mariadb.leases'),
     sockets: {
       mysql: join(socketDir, 'mysql.sock'),
       mysqlReplica: join(socketDir, 'mysql-replica.sock'),
       mysqlPrivilege: join(socketDir, 'mysql-privilege.sock'),
+      mariadb: join(socketDir, 'mariadb.sock'),
+      mariadbReplica: join(socketDir, 'mariadb-replica.sock'),
+      mariadbPrivilege: join(socketDir, 'mariadb-privilege.sock'),
+      mariadbProxysqlAdmin: join(socketDir, 'mariadb-psql-admin.sock'),
+      mariadbProxysqlAdminPgsql: join(socketDir, 'mariadb-psql-apg.sock'),
+      mariadbProxysqlPgsql: join(socketDir, 'mariadb-psql-pg.sock'),
       proxysqlAdmin: join(socketDir, 'proxysql-admin.sock'),
       proxysqlAdminPgsql: join(socketDir, 'proxysql-admin-pgsql.sock'),
       proxysqlPgsql: join(socketDir, 'proxysql-pgsql.sock'),
@@ -224,14 +238,14 @@ export function environmentPorts(text: string, file: string): Ports {
     postgresReplica: port('ORM_TEST_POSTGRES_REPLICA_DSN'), proxysql: port('ORM_TEST_PROXYSQL_DSN'), pgbouncer: port('ORM_TEST_PGBOUNCER_DSN') };
 }
 
-function checkedPort(text: string): number {
+export function checkedPort(text: string): number {
   const port = /^\d+$/.test(text) ? Number(text) : NaN;
   if (!(port >= 1 && port <= 65535)) throw new TestServerError(`test-servers: invalid port '${text}'`, 2);
   return port;
 }
 
 // run runs a command, passing its output on, and fails naming it when it fails. input feeds its standard input.
-function run(program: string, args: string[], options: SpawnSyncOptions = {}): void {
+export function run(program: string, args: string[], options: SpawnSyncOptions = {}): void {
   const ran = spawnSync(program, args, { stdio: ['ignore', 'inherit', 'inherit'], ...options });
   if (ran.error) throw new TestServerError(`test-servers: ${program}: ${ran.error.message}`);
   if (ran.status !== 0) throw new TestServerError(`test-servers: ${program} ${args[0] ?? ''} exited with ${ran.status ?? ran.signal}`);
@@ -250,7 +264,7 @@ function holdExclusive(p: Paths): void {
   holdExclusiveLease(p.leases);
 }
 
-function holdExclusiveLease(leases: string): void {
+export function holdExclusiveLease(leases: string): void {
   const held = spawnSync(program('LEASE'), ['hold', leases, 'exclusive', '--pid', String(process.pid)], { stdio: ['ignore', 'inherit', 'inherit'] });
   if (held.status !== 0) throw new TestServerError('', held.status ?? 1);
 }
@@ -266,7 +280,7 @@ function readPid(file: string): number {
   return pid;
 }
 
-const pidRunning = (file: string): boolean => {
+export const pidRunning = (file: string): boolean => {
   let pid: number;
   try { pid = readPid(file); }
   catch (error) { if (errorCode(error) === 'ENOENT') return false; throw error; }
@@ -322,6 +336,7 @@ function stopServers(p: Paths): void {
     } catch (error) { errors.push(error); }
   }
   try { stopMysqlPrivilege(p); } catch (error) { errors.push(error); }
+  try { stopMariadb(p); } catch (error) { errors.push(error); }
   try { stopMysql(p); } catch (error) { errors.push(error); }
   // INT is the fast shutdown of PostgreSQL. `pg_ctl stop -w` would wait at most 60 s (PGCTLTIMEOUT) and has no setting
   // without a limit.
@@ -373,7 +388,7 @@ const allRunning = (p: Paths): boolean => {
 
 // socketDir makes the socket folder, owned by this user and naming this checkout. A folder left by this checkout is
 // reused; one another checkout or user owns is refused.
-function socketDir(p: Paths): void {
+export function socketDir(p: Paths): void {
   if (existsSync(p.socketDir)) {
     const owner = existsSync(join(p.socketDir, 'checkout')) ? readFileSync(join(p.socketDir, 'checkout'), 'utf8').trim() : '';
     if (statSync(p.socketDir).uid !== userInfo().uid || owner !== p.root)
@@ -680,32 +695,42 @@ export const REPLICA_PARTIAL_REVOKES_SQL = 'SET GLOBAL partial_revokes = ON';
 
 // proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-35).
 export function proxysqlConfig(p: Paths, ports: Ports): string {
-  return `datadir="${p.proxysqlData}"
+  return proxysqlConfigOf({ data: p.proxysqlData, admin: p.sockets.proxysqlAdmin, adminPgsql: p.sockets.proxysqlAdminPgsql, pgsql: p.sockets.proxysqlPgsql,
+    port: ports.proxysql, backend: ports.mysql, serverVersion: '8.4.0' });
+}
+
+/** The places of one ProxySQL: its data folder, its three Unix sockets, its client port, the port of its one backend and the version it reports. */
+export type ProxysqlPlaces = { data: string; admin: string; adminPgsql: string; pgsql: string; port: number; backend: number; serverVersion: string };
+
+// proxysqlConfigOf is the configuration of a ProxySQL at <places>; the ProxySQL of the MySQL servers and that of the MariaDB servers
+// differ only in their places and the server version they report.
+export function proxysqlConfigOf(places: ProxysqlPlaces): string {
+  return `datadir="${places.data}"
 admin_variables=
 {
   admin_credentials="admin:admin"
-  mysql_ifaces="${p.sockets.proxysqlAdmin}"
-  pgsql_ifaces="${p.sockets.proxysqlAdminPgsql}"
+  mysql_ifaces="${places.admin}"
+  pgsql_ifaces="${places.adminPgsql}"
   restapi_enabled=false
   web_enabled=false
 }
 mysql_variables=
 {
-  interfaces="127.0.0.1:${ports.proxysql}"
+  interfaces="127.0.0.1:${places.port}"
   threads=2
   monitor_enabled=false
-  server_version="8.4.0"
+  server_version="${places.serverVersion}"
   threshold_resultset_size=65536
   kill_backend_connection_when_disconnect=true
 }
 pgsql_variables=
 {
-  interfaces="${p.sockets.proxysqlPgsql}"
+  interfaces="${places.pgsql}"
   monitor_enabled=false
 }
 mysql_servers=
 (
-  { address="127.0.0.1", port=${ports.mysql}, hostgroup=0, max_connections=${PROXYSQL_BACKEND_CONNECTIONS} }
+  { address="127.0.0.1", port=${places.backend}, hostgroup=0, max_connections=${PROXYSQL_BACKEND_CONNECTIONS} }
 )
 mysql_users=
 (
@@ -811,7 +836,7 @@ async function start(p: Paths): Promise<void> {
   console.log(`test-servers: started; environment ${p.env}`);
 }
 
-const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start; run it through the matching make target';
+const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start; run it through the matching make target';
 
 export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void> {
   const [action, ...rest] = args;
@@ -831,6 +856,10 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
     case 'mysql-privilege-start':
       arity(0);
       return startMysqlPrivilege(p);
+    case 'mariadb-start':
+      // mariadb-start starts the MariaDB servers, a set of their own (scripts/test-servers-mariadb.mts).
+      arity(0);
+      return startMariadb(p);
     case 'mysql-stop':
       // mysql-stop and mysql-start <mysql port> <mysql replica port> are the steps of the MySQL migration
       // (scripts/test-servers-mysql.mts): they stop the MySQL servers, and initialize and start them with the declared

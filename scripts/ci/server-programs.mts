@@ -2,11 +2,18 @@
 // servers of the database checks, as it does locally: MySQL 8.4.11 from the Ubuntu packages, PostgreSQL 17 and PgBouncer
 // from the PostgreSQL apt repository, and ProxySQL 3.0.9 from its Ubuntu 24.04 arm64 package, checked by its sha256,
 // whose dependencies Ubuntu 26.04 provides. make orm-test-servers finds mysqld at its package path /usr/sbin/mysqld on PATH.
+//
+// The MySQL and the MariaDB packages of Ubuntu conflict (mariadb-client-core conflicts with virtual-mysql-client-core, which
+// mysql-client-core provides), so a runner holds one of them: the argument names the server family of the CI group, mysql or
+// mariadb, which make orm-install-server-programs reads from the need mariadb-server of the targets of the group
+// (scripts/check/ci-setup.mts). With mariadb the script installs mariadb-server-core and mariadb-client-core of MARIADB_VERSION
+// (scripts/mariadb-build.mts) and mariadb-client, which holds mariadb-admin and mariadb-tzinfo-to-sql, from which make orm-test-mariadb starts the MariaDB servers, and no MySQL, PostgreSQL or pooler.
 // The image loads an AppArmor profile for /usr/sbin/mysqld that allows only /var/lib/mysql; it is removed because the
 // servers keep their data in .runtime/servers. In a GitHub Actions job the PostgreSQL bin directory is added to GITHUB_PATH.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, writeFileSync } from 'node:fs';
+import { MARIADB_VERSION, MARIADB_VERSION_LINE } from '../mariadb-build.mts';
 
 const PROXYSQL = 'https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_arm64.deb';
 const PROXYSQL_SHA256 = 'e12b272107f1ac65ae8a9f9015a9c696b7b2f78b6ad35f84b5ce086449eb2a0f';
@@ -29,7 +36,19 @@ function version(program: string, args: string[], pattern: RegExp): void {
   if (result.status !== 0 || !pattern.test(line)) fail(`${[program, ...args].join(' ')} printed ${JSON.stringify(line)}, not ${pattern}`);
 }
 
+const family = process.argv[2];
+if (family !== 'mysql' && family !== 'mariadb') fail(`usage: server-programs.mts mysql | mariadb; got ${JSON.stringify(family ?? '')}`);
+
 run('sudo', ['apt-get', 'update', '-q'], { quiet: true });
+if (family === 'mariadb') {
+  run('sudo', ['apt-get', 'install', '-y', '-q', 'mariadb-server-core', 'mariadb-client-core', 'mariadb-client'], { quiet: true });
+  // The AppArmor profile of /usr/sbin/mariadbd is removed when the image loads one, as the one of mysqld below.
+  if (spawnSync('sudo', ['grep', '-qs', '^/usr/sbin/mariadbd ', '/sys/kernel/security/apparmor/profiles']).status === 0)
+    run('sudo', ['tee', '/sys/kernel/security/apparmor/.remove'], { quiet: true, input: '/usr/sbin/mariadbd' });
+  version('mariadbd', ['--version'], MARIADB_VERSION_LINE);
+  console.log(`server-programs: MariaDB ${MARIADB_VERSION}`);
+  process.exit(0);
+}
 run('sudo', ['apt-get', 'install', '-y', '-q', 'postgresql-common', 'sqlite3', 'mysql-server-core', 'mysql-client-core'], { quiet: true });
 run('sudo', ['/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh', '-y'], { quiet: true });
 run('sudo', ['apt-get', 'install', '-y', '-q', 'postgresql-17', 'pgbouncer'], { quiet: true });

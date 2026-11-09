@@ -3,7 +3,7 @@
 
 ## Unreleased
 
-- MariaDB 11.8.6 joins the database checks as the database `mariadb`, a server of the MySQL dialect (DIA-200, FCV-3): `make orm-install-mariadb` builds it from the source release of the MariaDB Foundation, pinned by version and sha256 (`scripts/mariadb-build.mts`).
+- MariaDB 11.8.6 joins the database checks as the database `mariadb`, a server of the MySQL dialect (DIA-200, FCV-3): `make orm-install-mariadb` builds it from the source release of the MariaDB Foundation, pinned by version and sha256 (`scripts/mariadb-build.mts`), and `make orm-test-mariadb` starts its primary, its read-only replica, a privilege probe server with trust-function-creators off and a ProxySQL in front of the primary, with the TLS files of the MySQL TLS cases, and writes `.runtime/servers/mariadb.env` (`ORM_TEST_MARIADB_*`).
 
 ## 0.0.27
 

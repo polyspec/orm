@@ -230,8 +230,10 @@ jobs:
         id: server-programs
         if: ${{ !cancelled() && steps.group-needs.outputs.server-programs == 'true' }}
         # scripts/ci/server-programs.mts installs the programs from which make
-        # orm-test-servers starts the servers.
-        run: make orm-install-server-programs
+        # orm-test-servers starts the servers; in a group of the MariaDB
+        # servers (output mariadb) it installs the MariaDB packages instead,
+        # from which make orm-test-mariadb starts them.
+        run: make orm-install-server-programs MARIADB=${{ steps.group-needs.outputs.mariadb }}
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
+import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
 import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
@@ -235,10 +236,11 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   let holder;
   const stop = () => spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
-    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6).
+    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6, and the MariaDB servers).
     mkdirSync(join(root, 'scripts'));
     mkdirSync(join(root, 'tests'));
-    copyFileSync(new URL('./test-servers.mts', import.meta.url), join(root, 'scripts/test-servers.mts'));
+    for (const file of ['test-servers.mts', 'test-servers-mariadb.mts', 'mariadb-build.mts'])
+      copyFileSync(new URL(`./${file}`, import.meta.url), join(root, 'scripts', file));
     copyFileSync(new URL('../tests/errors.mts', import.meta.url), join(root, 'tests/errors.mts'));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
     execFileSync('mkfifo', [release, ready]);
@@ -594,7 +596,8 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
 caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
   const root = `/Users/someone/Projects/polyspec/${'a-very-long-worktree-name-'.repeat(4)}T135`;
   const sockets = Object.values(paths(root).sockets);
-  assert.equal(sockets.length, 6);
+  // The MySQL primary, replica and privilege probe server, the three of the ProxySQL of MySQL, and the same six of MariaDB.
+  assert.equal(sockets.length, 12);
   for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
   // The same checkout gets the same directory, and another checkout another directory.
   assert.equal(paths(root).sockets.mysql, sockets[0]);
@@ -724,4 +727,26 @@ caseTest('the test-server environment writes the MySQL socket of the primary as 
   const p = paths('/checkout');
   const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.equal(variables.ORM_TEST_MYSQL_SOCKET, p.sockets.mysql, 'the environment does not write the primary socket');
+});
+
+// The MariaDB servers (scripts/test-servers-mariadb.mts) write every variable of MARIADB_VARIABLES and read their ports back; the
+// replica refuses writes, the privilege probe server logs binary changes with trust-function-creators off and has no TLS files, and
+// every server keeps a TCP client at 127.0.0.1 the user of that host.
+caseTest('the MariaDB servers write their environment and give each role its settings', COMPUTE, () => {
+  const p = paths('/checkout');
+  const ports = { mariadb: 1, mariadbReplica: 2, mariadbPrivilege: 3, proxysql: 4 };
+  const variables = mariadbEnvironment(p, ports);
+  assert.deepEqual(Object.keys(variables), MARIADB_VARIABLES);
+  assert.equal(variables.ORM_TEST_MARIADB_SOCKET, p.sockets.mariadb);
+  const text = Object.entries(variables).map(([name, value]) => `export ${name}='${value}'\n`).join('');
+  assert.deepEqual(mariadbEnvironmentPorts(text, 'mariadb.env'), ports);
+  assert.throws(() => mariadbEnvironmentPorts('', 'mariadb.env'), /records no port in ORM_TEST_MARIADB_SERVER_DSN/);
+  const primary = mariadbdArguments(p, 'primary', 1);
+  const replica = mariadbdArguments(p, 'replica', 2);
+  const privilege = mariadbdArguments(p, 'privilege', 3);
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--skip-name-resolve'), args.join(' '));
+  assert.ok(replica.includes('--read-only=ON') && !primary.includes('--read-only=ON') && !privilege.includes('--read-only=ON'));
+  assert.ok(privilege.includes('--log-bin-trust-function-creators=OFF') && primary.includes('--log-bin-trust-function-creators=ON'));
+  assert.ok(!privilege.some(arg => arg.startsWith('--ssl-')) && primary.some(arg => arg.startsWith('--ssl-ca=')));
+  assert.deepEqual([primary, replica, privilege].map(args => args.find(arg => arg.startsWith('--server-id='))), ['--server-id=1', '--server-id=2', '--server-id=3']);
 });

@@ -49,10 +49,11 @@ export const CI_SETUP: Record<string, string | null> = {
 // that failure is a job failure, and the log of that step is the cause.
 export const RUNNER_STEPS = ['checkout', 'node'];
 
-// NEEDS are the needs a target may declare. databases and mysql-privilege-server are prepared by the runner's setup
-// phase: databases uses servers and databases/create, and the privilege server is a separate optional MySQL fixture. The rest
-// are prepared by the CI setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
-export const NEEDS = ['databases', 'mysql-privilege-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
+// NEEDS are the needs a target may declare. databases, mysql-privilege-server and mariadb-server are prepared by the runner's
+// setup phase: databases uses servers and databases/create, the privilege server is a separate optional MySQL fixture, and
+// mariadb-server starts the MariaDB servers (make orm-test-mariadb), a set of their own. The rest are prepared by the CI setup
+// steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
+export const NEEDS = ['databases', 'mysql-privilege-server', 'mariadb-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
 // release and .php-version) together with Composer; PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
@@ -64,7 +65,10 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
   rust: ['rust'],
   php: ['php', 'php-min', 'composer'],
   'php-extension-tools': ['php-extension-tools'],
-  'server-programs': ['server-programs', 'databases'],
+  'server-programs': ['server-programs', 'databases', 'mariadb-server'],
+  // mariadb makes the server-programs step install the MariaDB packages instead of the MySQL ones, which conflict with them
+  // (scripts/ci/server-programs.mts), so a group that needs the MariaDB servers starts no MySQL server (groupSetupErrors).
+  mariadb: ['mariadb-server'],
   databases: ['databases'],
   python: ['python'],
   flowmark: ['flowmark'],
@@ -113,6 +117,8 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 export const SETUP_NEEDS: Record<string, string[]> = {
   databases: ['go-lease', 'node-modules', 'server-programs', 'flowmark'],
   'mysql-privilege-server': ['databases'],
+  // The MariaDB servers are started from server-programs and managed by the Go lease runner.
+  'mariadb-server': ['go-lease', 'server-programs'],
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],
   'interfaces-typescript': ['node-modules'],
@@ -148,6 +154,10 @@ export function groupSetupErrors(groups: Record<string, string[]>, needs: Needs,
   const errors: string[] = [];
   for (const [group, targets] of Object.entries(groups)) {
     const values = outputs(targets, needs);
+    // A runner holds the MySQL or the MariaDB packages, never both (scripts/ci/server-programs.mts).
+    const wanted = new Set(targets.flatMap(target => expandNeeds(needs[target] ?? [])));
+    if (wanted.has('mariadb-server') && wanted.has('databases'))
+      errors.push(`CI group ${group} needs both databases and mariadb-server; the runner installs the MySQL or the MariaDB packages, which conflict, so the targets of MariaDB are a group of their own`);
     for (const target of targets) {
       for (const need of expandNeeds(needs[target] ?? [])) {
         const why = (needs[target] ?? []).includes(need) ? `${target} needs ${need}` : `${target} needs databases, whose setup step databases/create needs ${need}`;

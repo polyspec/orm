@@ -58,8 +58,12 @@ TEST_ENV ?= .runtime/servers/env
 # features.json) pass it as TEST_ENV="$$ORM_TEST_ENV". make owner-check
 # (scripts/features/owners.mts) changes it to the environment file of its own run.
 export ORM_TEST_ENV = $(abspath $(TEST_ENV))
-# MARIADB_BIN holds the folders of the MariaDB that make orm-install-mariadb builds (scripts/mariadb-build.mts), bin and
-# scripts, the folder of mariadb-install-db.
+# make orm-test-mariadb starts the MariaDB primary and its replica, a set of servers of their own (scripts/test-servers-mariadb.mts),
+# and writes MARIADB_ENV; the recipe entries of the database mariadb read it through WITH_MARIADB_ENV. MARIADB_BIN holds the
+# folders of the MariaDB that make orm-install-mariadb builds (scripts/mariadb-build.mts), bin and scripts, the folder of
+# mariadb-install-db; the MariaDB targets put them first on PATH, and on the CI runner, where they do not exist, the programs are
+# those of the Ubuntu packages.
+MARIADB_ENV ?= .runtime/servers/mariadb.env
 MARIADB_VERSION := $(shell sed -n "s/^export const MARIADB_VERSION = '\(.*\)';$$/\1/p" scripts/mariadb-build.mts)
 MARIADB_BIN := $(CURDIR)/var/mariadb/$(MARIADB_VERSION)/bin:$(CURDIR)/var/mariadb/$(MARIADB_VERSION)/scripts
 # DECIMAL_ENV is the file that holds the DSN of the decimal database. The decimal check and the decimal command of feature-check
@@ -456,6 +460,9 @@ commit-msg-check:
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) FLOWMARK=$(FLOWMARK) &&
+# WITH_MARIADB_ENV is WITH_TEST_ENV for the entries of the database mariadb: it reads MARIADB_ENV and holds the shared lease of the
+# MariaDB servers, ORM_TEST_MARIADB_LEASES of that file.
+WITH_MARIADB_ENV = test -f $(abspath $(MARIADB_ENV)) || { echo "$(abspath $(MARIADB_ENV)) is missing; run make orm-test-mariadb" >&2; exit 1; }; . $(abspath $(MARIADB_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_MARIADB_LEASES:?$(abspath $(MARIADB_ENV)) names no lease directory; run make orm-test-mariadb to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
@@ -1535,10 +1542,15 @@ orm-test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
+
 # make orm-install-mariadb builds the MariaDB of the test servers from its pinned source release into var/mariadb (scripts/mariadb-build.mts).
-.PHONY: orm-install-mariadb
+.PHONY: orm-install-mariadb orm-test-mariadb
 orm-install-mariadb:
 	$(ONLINE) $(NODE) scripts/mariadb-build.mts
+orm-test-mariadb:
+	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s $(LEASE)
+	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
 
 # The dialect-facts probe needs its own writable MySQL server with binary logging and trust-function-creators disabled.
 .PHONY: orm-test-mysql-privilege-start
@@ -1556,7 +1568,7 @@ orm-test-servers-tls:
 orm-test-servers-stop:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
+	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
 # worktree-remove WORKTREE=<path> removes a worktree of this repository: it first stops the servers that run from the
 # .runtime/servers of that worktree (its make orm-test-servers-stop, which knows them by their pid files), since a server
@@ -3338,9 +3350,10 @@ orm-install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/packages/go/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark/packages/go@$$(cat tests/markdown/flowmark.version)
 # orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts
-# (scripts/ci/server-programs.mts).
+# (scripts/ci/server-programs.mts): the MySQL family, or with MARIADB=true, the output mariadb of the group-needs step of a
+# group whose targets need the MariaDB servers, the MariaDB family that make orm-test-mariadb starts.
 orm-install-server-programs:
-	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
+	$(ONLINE) $(NODE) scripts/ci/server-programs.mts $(if $(filter true,$(MARIADB)),mariadb,mysql)
 # orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension polyspec_orm are those of the
 # PHP on PATH (scripts/ci/php-extension-tools.mts), and writes the copy of the SQLite cancel callback that the build compiles; every
 # job that builds the extension runs it (T290). The build runs the gen_stub.php of that PHP itself, so nothing installs the arginfo

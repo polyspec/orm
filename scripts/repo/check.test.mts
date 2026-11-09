@@ -897,6 +897,11 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
     ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
+  // A group of the MariaDB servers installs the MariaDB packages, which conflict with the MySQL ones, so it starts no MySQL server.
+  assert.deepEqual(groupOutputs(['m'], { m: ['go', 'mariadb-server'] }),
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: true, databases: false, python: false, flowmark: false });
+  assert.deepEqual(groupSetupErrors({ both: ['m', 'd'] }, { m: ['go', 'mariadb-server'], d: ['go', 'databases'] }).filter(line => line.includes('mariadb-server')),
+    ['CI group both needs both databases and mariadb-server; the runner installs the MySQL or the MariaDB packages, which conflict, so the targets of MariaDB are a group of their own']);
 });
 
 caseTest('feature helper checks provision the databases and PHP extension their owners execute', COMPUTE, () => {
@@ -918,17 +923,17 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, mariadb: false, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: false, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': false, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['api'], { api: ['interfaces-typescript'] }),
-    { 'node-modules': true, 'interfaces-typescript': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
   assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
     'the native extension build tools require the pinned PHP setup');
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
