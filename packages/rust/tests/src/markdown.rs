@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 use crate::plain::Plain;
-use markdown_model::{CodecRows, Logs, People, Tasks};
+use markdown_model::{CodecRows, Logs, People, Tags, Tasks};
 use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
 use serde_json::{json, Value};
 
@@ -433,6 +433,13 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let m = People::new().connect(db).set_id("P1").set_name("Ann B").duplication(People::new().set_name("Ann B")).create().await?;
             let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
             json!({ "created": m.get_id()?, "name": read.get_name()? })
+        }
+        "insert_on_duplicate_unique" => {
+            let created = Tags::new().connect(db).set_name("spec").set_uses(1).create().await?;
+            let met = Tags::new().connect(db).set_name("spec").set_uses(1).duplication(Tags::new().set_uses(2)).create().await?;
+            let read = Tags::new().connect(db).name("spec").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let count = Tags::new().connect(db).get_count().await?;
+            json!({ "created": created.get_id()?, "met": met.get_id()?, "uses": read.get_uses()?, "count": count })
         }
         "delete" => {
             Tasks::new().connect(db).id("T2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;

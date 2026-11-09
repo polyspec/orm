@@ -144,6 +144,7 @@
     { "id": "update", "expect": { "id": "P2", "age": 26 } },
     { "id": "update_optimistic_conflict", "expect": { "error": "OPTIMISTIC_LOCK" } },
     { "id": "insert_on_duplicate", "expect": { "created": "P1", "name": "Ann B" } },
+    { "id": "insert_on_duplicate_unique", "expect": { "created": 1, "met": 1, "uses": 2, "count": 1 } },
     { "id": "delete", "expect": 2 },
     { "id": "delete_referenced", "expect": { "error": "FOREIGN_KEY" } },
     { "id": "soft_delete", "expect": 2 },

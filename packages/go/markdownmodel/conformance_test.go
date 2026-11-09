@@ -497,6 +497,38 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return map[string]any{"created": id, "name": name}, nil
 		},
+		"insert_on_duplicate_unique": func(s *served) (any, error) {
+			created, err := markdownmodel.Tags().Connect(s.db).SetName("spec").SetUses(1).Create()
+			if err != nil {
+				return nil, err
+			}
+			met, err := markdownmodel.Tags().Connect(s.db).SetName("spec").SetUses(1).
+				Duplication(markdownmodel.Tags().SetUses(2)).Create()
+			if err != nil {
+				return nil, err
+			}
+			read, err := markdownmodel.Tags().Connect(s.db).Name("spec").Get()
+			if err != nil {
+				return nil, err
+			}
+			count, err := markdownmodel.Tags().Connect(s.db).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			createdID, err := created.GetId()
+			if err != nil {
+				return nil, err
+			}
+			metID, err := met.GetId()
+			if err != nil {
+				return nil, err
+			}
+			uses, err := read.GetUses()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"created": createdID, "met": metID, "uses": uses, "count": count}, nil
+		},
 		"delete": func(s *served) (any, error) {
 			m, err := markdownmodel.Tasks().Connect(s.db).Id("T2").Get()
 			if err != nil {

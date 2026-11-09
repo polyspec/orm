@@ -47,6 +47,17 @@ table logs {
   }
 }
 
+table tags {
+  id i64 identity
+  name varchar(64)
+  uses i32 default 0
+  primary key (id)
+  unique uq_tags_name (name)
+  settings {
+    store document table
+  }
+}
+
 table codec_rows {
   id varchar(32)
   payload text null

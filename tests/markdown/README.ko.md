@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: d2e1bd5eecef711867dcb4aa14df9a1a10e00f99a79e29d17fd818784a8a0059 -->
+<!-- source-sha256: 7fd0dbbb29d19a6b8eeceee4d407d7e9e8d51e7d16295f6ecc3f159b5b28fd37 -->
 # Markdown corpus 적합성
 
 markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../docs/spec/dialects.ko.md)).
@@ -11,7 +11,7 @@ flowmark server가 제공하는 corpus 하나에서 `cases.json`의 case를 실�
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
 | `session.json` | session 메시지의 recipe(PRT-66). 각 step은 database 없이 replies로 답하는 listener에서 실행된다(`make markdown-session-check`, FCV-4 `markdown.session`) |
-| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(text key, soft delete column과 수정 시각 column을 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
+| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(text key, soft delete column과 수정 시각 column을 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `tags`(`identity` key와 unique key), `codec_rows`(base64 codec과 명시 선택 payload) |
 | `catalogs/aes.dbs`, `catalogs/audit.dbs` | `aes` column과 `audit` setting의 catalog이며, `install_aes`와 `install_audit`가 각자의 새 corpus에서 set의 유일한 document로 install하고 `{"error": null}`, 또는 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark/packages/go` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
@@ -56,7 +56,7 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 - 쓰고 다시 읽는 case의 결과는 `cases.json`이 적은 대로 다시 읽은 값이다.
 
 각 case는 capability 표의 surface 하나를 다룬다. 모든 IR 종류(`one`, `all`, `count`, `group_count`, `sum`, `avg`,
-`paginate`, 행 하나와 여러 행과 `identity` key와 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
+`paginate`, 행 하나와 여러 행과 `identity` key, primary key와 unique key에서의 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
 foreign key 거절과 soft delete의 `delete`, `restore`), join과 relation, commit, rollback, savepoint rollback의
 트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 `update_nowait`, SQLite처럼 동작하는 `getQuery()`와 `isolation`,
 engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이다), corpus나 token이 다른 연결(`CONFIG`),

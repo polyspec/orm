@@ -26,6 +26,7 @@ use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\MarkdownModel\Logs;
 use Polyspec\Orm\Tests\MarkdownModel\CodecRows;
 use Polyspec\Orm\Tests\MarkdownModel\People;
+use Polyspec\Orm\Tests\MarkdownModel\Tags;
 use Polyspec\Orm\Tests\MarkdownModel\Tasks;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
@@ -447,6 +448,18 @@ class MarkdownConformanceTest extends TestCase
                     ->duplication((new People())->setName('Ann B'))->create();
                 $read = (new People())->connect($s->db)->id('P1')->get();
                 return ['created' => $m->getId(), 'name' => $read->getName()];
+            },
+            'insert_on_duplicate_unique' => static function (Served $s): mixed {
+                $created = (new Tags())->connect($s->db)->setName('spec')->setUses(1)->create();
+                $met = (new Tags())->connect($s->db)->setName('spec')->setUses(1)
+                    ->duplication((new Tags())->setUses(2))->create();
+                $read = (new Tags())->connect($s->db)->name('spec')->get();
+                return [
+                    'created' => $created->getId(),
+                    'met' => $met->getId(),
+                    'uses' => $read->getUses(),
+                    'count' => (new Tags())->connect($s->db)->getCount(),
+                ];
             },
             'delete' => static function (Served $s): mixed {
                 (new Tasks())->connect($s->db)->id('T2')->get()->delete();

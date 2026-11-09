@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { OrmError, StyledValue, orm } from '../dist/index.js';
-import { CodecRows, Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
+import { CodecRows, Logs, People, Tags, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 /** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
 
@@ -137,6 +137,13 @@ export const conformanceCases = {
       .duplication(new People().setName('Ann B')).create();
     const read = await new People().connect(s.db).id('P1').get();
     return { created: m.getId(), name: read.getName() };
+  },
+  insert_on_duplicate_unique: async s => {
+    const created = await new Tags().connect(s.db).setName('spec').setUses(1).create();
+    const met = await new Tags().connect(s.db).setName('spec').setUses(1)
+      .duplication(new Tags().setUses(2)).create();
+    const read = await new Tags().connect(s.db).name('spec').get();
+    return { created: created.getId(), met: met.getId(), uses: read.getUses(), count: await new Tags().connect(s.db).getCount() };
   },
   delete: async s => {
     const m = await new Tasks().connect(s.db).id('T2').get();

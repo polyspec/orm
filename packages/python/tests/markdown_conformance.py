@@ -524,6 +524,25 @@ def conformance_cases() -> dict:
         read = People().connect(s.db).id("P1").get()
         return {"created": m.get_id(), "name": read.get_name()}
 
+    def insert_on_duplicate_unique(s):
+        Tags = s.models.Tags
+        created = Tags().connect(s.db).set_name("spec").set_uses(1).create()
+        met = (
+            Tags()
+            .connect(s.db)
+            .set_name("spec")
+            .set_uses(1)
+            .duplication(Tags().set_uses(2))
+            .create()
+        )
+        read = Tags().connect(s.db).name("spec").get()
+        return {
+            "created": created.get_id(),
+            "met": met.get_id(),
+            "uses": read.get_uses(),
+            "count": Tags().connect(s.db).get_count(),
+        }
+
     def delete(s):
         s.models.Tasks().connect(s.db).id("T2").get().delete()
         return s.models.Tasks().connect(s.db).get_count()
@@ -987,6 +1006,7 @@ def conformance_cases() -> dict:
         "update": update,
         "update_optimistic_conflict": update_optimistic_conflict,
         "insert_on_duplicate": insert_on_duplicate,
+        "insert_on_duplicate_unique": insert_on_duplicate_unique,
         "delete": delete,
         "delete_referenced": delete_referenced,
         "soft_delete": soft_delete,

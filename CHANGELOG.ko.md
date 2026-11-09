@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dbd585c29bc220b79aca4c641aa21b2914c77de75474e9a08faaf3056bffe8f0 -->
+<!-- source-sha256: 11c69a4efb83fd5d88e23762bacedec88a68b17be1db59f12ab5e9a62db22925 -->
 # 변경 이력
 
 ## Unreleased
 
+- markdown corpus conformance는 unique key에서의 upsert를 유지한다. corpus에 identity key와 unique key `uq_tags_name`을 가진 `tags`가 생기고, 사례 `insert_on_duplicate_unique`는 여섯 runner 모두에서 tag 하나를 넣은 뒤 같은 이름을 `on_duplicate` insert로 넣는다. 그 insert는 그 key에서만 행과 만나(PRT-6) 그 행을 갱신한다. `people`의 primary key에서의 upsert는 그대로 남는다 (T417).
 - TypeScript `orm-gen gen --scan`은 source map이 source 하나를 가리키는 compile된 module을 그 source로 읽는다 (DSL-151, T417). set의 `models.ts`를 compile한 dist에서 import한 class는 그 set의 것이다. 전에는 manifest가 바뀐 뒤 dist의 낡은 `MANIFEST_HASH` 때문에 다른 set의 것이 되어, 첫 build가 scan한 source가 dist로 부르는 method를 모두 빼고 같은 model에 닿으려면 build를 한 번 더 해야 했다.
 - Makefile의 model 생성기(go-models, php-models, python-models)와 TypeScript build는 생성하는 각 entry의 document set이 있는 directory, 곧 set과 그 document를 담은 directory를 key로 삼는다. 그래서 tests/markdown, tests/bind, contracts/fixtures 아래 fixture를 바꾸면 그것을 읽는 model이 다시 생성된다. 전에는 Go key가 packages/go만, PHP key가 corpus와 contracts/fixtures의 fixture를 빼고, Python key가 document 없이 set 파일만, TypeScript key가 contracts/fixtures 밖의 fixture를 빼고 이름 붙여서 model이 그대로 남았다 (T417).
 - Breaking: dbspec은 database가 주지 않는 값을 주지 않는다 (DBS-79, DIA-159, T417). markdown corpus가 text key를 할당하게 하던 `key_prefix '<p>'` setting은 모든 runtime의 문법에서 빠진다 (DBS-77과 PRT-73은 철회한다). `key_prefix` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. `order <column>`은 형제 묶음을 쓰는 순서로 남고, 아무것도 그 column을 할당하지 않는다. 어느 runtime의 planner도 markdown 연결에서 key나 order column을 더는 건너뛰지 않으므로, 기본값 없는 non-null column을 뺀 insert는 MySQL, PostgreSQL, SQLite에서처럼 markdown에서도 `IR_INVALID` "required column <table>.<column> is not set"이고, insert는 identity key만 돌려준다. markdown conformance corpus는 행의 key를 직접 쓰며, 그 `people` table은 upsert의 충돌 key가 하나이도록 unique key를 갖지 않는다.
