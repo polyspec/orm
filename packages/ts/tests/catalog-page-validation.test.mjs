@@ -30,13 +30,24 @@ caseTest('tablePage refuses prepared columns that differ from the descriptor', C
  * A catalog over a driver that answers every statement of a read session and streams one row of the given columns and values for the
  * query: the seam where a driver hands the catalog its values, which no server can be made to send malformed (FCV-2).
  */
+// The seven PostgreSQL output settings of INT-186 as a server answers them: the read of the settings, and each row of a read of cells,
+// which carries them after its own columns, answer the same values, so the injected values reach their conversion.
+const SETTINGS = ['ISO, MDY', 'postgres', 'UTC', '1', 'hex', 'C', '"$user", public'];
+const SETTING_COLUMNS = SETTINGS.map(() => ({ name: 'current_setting', type: 'TEXT' }));
+
 function injected(dialect, columns, values) {
   const answer = { rows: [], affected: 0, insertId: null, columns: [] };
   const session = {
     async control() { return answer; },
-    async scan(_sql, _params, sink) {
-      sink.columns(columns);
-      sink.row(values);
+    async scan(sql, _params, sink) {
+      if (dialect === 'postgres' && sql.startsWith('SELECT current_setting(')) {
+        sink.columns(SETTING_COLUMNS);
+        sink.row(SETTINGS);
+        return;
+      }
+      const settings = dialect === 'postgres' && sql.startsWith('WITH catalog_read AS MATERIALIZED (');
+      sink.columns(settings ? [...columns, ...SETTING_COLUMNS] : columns);
+      sink.row(settings ? [...values, ...SETTINGS] : values);
     },
     release() {},
   };
@@ -65,8 +76,8 @@ for (const [name, dialect, type, value] of [
   });
 }
 
-// Requirements: INT-165, INT-172. A PostgreSQL bytea text that is in neither form of bytea_output fails to decode; the refusal keeps the
-// decoder's failure as its cause, in the grid query and in the plain query.
+// Requirements: INT-165, INT-172. A PostgreSQL bytea text that is in neither form of bytea_output fails to decode; the refusal names no
+// column and keeps the decoder's failure as its cause, in the grid query and in the plain query.
 for (const text of ['\\x0', '\\xzz', '\\9', 'café']) {
   caseTest(`the catalog keeps the decode failure of the bytea text ${JSON.stringify(text)} as its cause`, COMPUTE, async () => {
     const decodes = [
@@ -76,7 +87,7 @@ for (const text of ['\\x0', '\\xzz', '\\9', 'café']) {
     for (const read of decodes) {
       await assert.rejects(
         read(injected('postgres', [{ name: 'a', type: 'INT8' }, { name: 'b', type: 'BYTEA' }], ['1', text])),
-        error => error instanceof OrmError && error.code === 'CATALOG_VALUE' && error.message === 'CATALOG_VALUE: column 2: the driver could not decode the value' &&
+        error => error instanceof OrmError && error.code === 'CATALOG_VALUE' && error.message === 'CATALOG_VALUE: the driver could not decode the value' &&
           error.cause instanceof TypeError,
       );
     }
