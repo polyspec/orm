@@ -1,8 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2912b22d16758aa33f1636a597a6cb524d319759c27a9aca3509c9abb3c731f0 -->
+<!-- source-sha256: dd97a177422a63402bee8626141b61e328e374cb972eb4629fcdc97837cd4f3e -->
 # 변경 이력
 
 ## Unreleased
+
+- T418: AGENTS가 아닌 루트 문서와 어떤 코드 검사도 읽지 않는 plan만 바꾸는 `main`으로의 push는 CI run을 시작하지 않는다. 새 documents workflow가 모든 push에서 문서 검사를 실행하고, GitHub가 path filter를 평가하지 않는 3000개를 넘는 파일의 push를 실패시킨다. contracts/check-inputs.json은 repo-check가 AGENTS.md와 AGENTS.ko.md를, feature-unit-check가 kit-standard의 checklist를 읽는다고 선언한다.
+- T418: `make release-tag`는 `.github/workflows/ci.yml`의 성공한 push run이나 수동 run만 받으며, `documents.yml`이나 `docs-pages.yml` 같은 다른 workflow의 run, 다른 event의 run이나 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 이유와 함께 거부한다.
 
 ## 0.0.27
 

@@ -413,8 +413,11 @@ release-tools-path: ## Append var/tools/bin and the shims of mise to GITHUB_PATH
 	@echo "$(KIT_TOOLS)/mise/shims" >> "$$GITHUB_PATH"
 	@echo "$(KIT_TOOLS)/bin" >> "$$GITHUB_PATH"
 	@for name in $(MISE_ENVIRONMENT); do echo "$$name=$$(printenv $$name)"; done >> "$$GITHUB_ENV"
-release-tag: ## Tag the commit of the successful CI run RUN with vX.Y.Z of its change log and the Go module tags; AUTO for a workflow_run; reads the run with gh
+# The run check (scripts/repo/release-run.mts, T418) comes first: kit's release-run takes a successful run of any workflow, and
+# a release takes a run of ci.yml alone. With AUTO the workflow checked out the head commit of the run, which the check compares.
+release-tag: ## Tag the commit of the successful ci.yml run RUN with vX.Y.Z of its change log and the Go module tags; AUTO for a workflow_run; reads the run with gh
 	@test -n "$$RUN" || { echo "release-tag: RUN is required; run make release-tag RUN=<id of a successful ci.yml run>" >&2; exit 1; }
+	$(NODE) scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")
 	RELEASE_MAIN=origin/main $(NODE) $(KIT)/release-run.$(KIT_EXT) tag "$$RUN"$(if $(AUTO), --auto)
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
@@ -2585,6 +2588,19 @@ docs-build: orm-codes-typescript
 # in .runtime/check/<run id>/report, which the workflow uploads as the job summary and an artifact.
 docs-ci:
 	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-site-check
+
+# DOCUMENT_CHECKS are the checks that read the documents that ci.yml ignores (DOCUMENT_PATHS of scripts/repo/ci.mts, T418), which
+# documents.yml runs on every push; ci.yml runs them too, so the run that a release takes holds them. make repo-check fails a
+# document of DOCUMENT_PATHS that a target outside them reads. documents-ci runs them as the make orm-check runner, as docs-ci
+# does, without a test server, and runs the next target even when one fails.
+DOCUMENT_CHECKS = layout-check docs-check rules-check docs-rules-check docs-implementation-count-check docs-verify-idempotent docs-site-check
+documents-ci:
+	$(NODE) scripts/check/run.mts --job-summary - $(DOCUMENT_CHECKS)
+
+# diff-size-check fails a push whose diff holds more than the 3000 files over which GitHub evaluates the paths-ignore of ci.yml
+# (scripts/repo/diff-size.mts); documents.yml runs it with the event of GITHUB_EVENT_NAME and GITHUB_EVENT_PATH.
+diff-size-check:
+	$(NODE) scripts/repo/diff-size.mts
 
 orm-docs-check: orm-codes-typescript
 	$(NPM) run docs:check

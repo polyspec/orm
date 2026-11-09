@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 695ef8b2d87398465f9d9e5db0d98a9a2b28a7d39f2fdc9afcb9be28e476c156 -->
+<!-- source-sha256: 33ee07b1741762a32d3b48c5861cc2b1dfdeb6347921fc9db7818a711ecdac83 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -141,7 +141,12 @@
   Enforced by: none, review에서의 판단이다
 - Own: `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
-  통과한다(`make ci-passed`). `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+  통과한다(`make ci-passed`). 바뀐 모든 경로가 그 `paths-ignore`(`scripts/repo/ci.mts`의 `DOCUMENT_PATHS`)의 문서인
+  push는 그 run을 시작하지 않는다. `.github/workflows/documents.yml`은 `main`으로의 모든 push에서 Makefile의
+  `DOCUMENT_CHECKS` 검사를 실행하고, GitHub가 path filter를 평가하지 않는 3000개를 넘는 파일의 push를 실패시킨다.
+  `DOCUMENT_CHECKS` 밖의 검사가 읽는 문서는 무시하지 않으며, version commit은 VERSION을 바꾸므로 모든 job을 실행하고
+  그 run이 release가 받는 run이다. `[skip ci]`는 push의 head commit만 읽으므로 쓰지 않는다.
+  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
@@ -255,8 +260,9 @@
   dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
   검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
   tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
-  tag를 만들고 옮기고 push하는 사람은 없다.
-  Enforced by: `make release-tag`
+  tag를 만들고 옮기고 push하는 사람은 없다. tag하기 전에 `scripts/repo/release-run.mts`가 `documents.yml`이나 `docs-pages.yml` 같은
+  다른 workflow의 run, 다른 event의 run, 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 거부한다.
+  Enforced by: `make release-tag`, `make repo-check`
 - Own: 이어서 `.github/workflows/release.yml`이 tag한 commit에서 GitHub Release를 게시한다:
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든

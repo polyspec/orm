@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- T418: A push to `main` that changes only the root documents other than AGENTS and the plans that no code check reads starts no CI run; the new documents workflow runs the document checks on every push and fails a push of more than 3000 files, past which GitHub does not evaluate a path filter. contracts/check-inputs.json declares that repo-check reads AGENTS.md and AGENTS.ko.md and that feature-unit-check reads the checklist of kit-standard.
+- T418: `make release-tag` takes a successful push or manual run of `.github/workflows/ci.yml` alone, and refuses with the reason a run of another workflow, such as `documents.yml` or `docs-pages.yml`, a run of another event or without success, and, for a release that the run started, a run on another commit.
+
 ## 0.0.27
 
 - Breaking: Python reads the `yaml` stage with the YAML reader of orm, `packages/python/src/polyspec/orm/_yaml_reader.py`, which reads the productions of YAML 1.2.2 as COD-74 to COD-80 state them, and no longer with rapidyaml, nor with the event stream of ruamel.yaml before a collection key; the package no longer depends on rapidyaml, and ruamel.yaml only writes (XV33). Reads change as the first entry above states; a stream that leaves the grammar is `yaml: the stream does not parse` with a `YamlReaderError` that names the line and the column (in Unicode characters, from 1) as its cause, where the cause was the failure of rapidyaml or of ruamel.yaml, and a `%YAML 1.3` stream with a collection key is that rule with the error of the reader, no longer an `AssertionError`. The reader keeps its nodes on a list of its own, so it takes the same Python frames at every depth and a yaml decode runs on the caller's stack with a budget of 65 frames, where it took 330. Tests: `test_codec_yaml_reader_cause.py` holds the line and the column of the cause and replaces `test_codec_library_failures.py`.
