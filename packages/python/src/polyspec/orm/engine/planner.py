@@ -1105,9 +1105,7 @@ class Planner:
         sql = "SELECT "
         agg = sub.get("agg") or ""
         if agg == "sum":
-            sql += f"COALESCE(SUM({self._qcol(root, sub['column'])}), 0)"
-        elif agg == "avg":
-            sql += f"AVG({self._qcol(root, sub['column'])})"
+            sql += f"COALESCE({self._sub_sum(root, sub['column'])}, 0)"
         elif agg == "count":
             sql += "COUNT(*)"
         else:
@@ -1129,12 +1127,30 @@ class Planner:
             )
         return sql
 
+    def _sub_sum(self, root: _Scope, column: str) -> str:
+        """The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
+        the sum of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32,
+        whose SQLite integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type
+        of the column refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160)."""
+        q = self._qcol(root, column)
+        field = field_of(root.ent, column)
+        if (
+            self.d.name == "sqlite"
+            and field is not None
+            and field.type in ("i16", "i32", "i64")
+        ):
+            hi, lo = f"SUM({q} >> 32)", f"SUM({q} & 4294967295)"
+            # A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
+            return (
+                f"CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 "
+                f"ELSE ({hi} + {lo} / 4294967296) * 4294967296 + {lo} % 4294967296 END"
+            )
+        return f"SUM({q})"
+
     def _sub_type(self, sub: dict) -> str:
         agg = sub.get("agg")
         if agg == "count":
             return "i64"
-        if agg == "avg":
-            return "f64"
         entity_name = sub["query"]["entity"]
         entity = self.m.entities.get(entity_name)
         if entity is None:

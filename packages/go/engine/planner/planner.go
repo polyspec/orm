@@ -1715,6 +1715,20 @@ func exactAggregate(columnType string) bool {
 	return false
 }
 
+// subSum is the sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
+// the sum of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose
+// SQLite integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the column
+// refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
+func (p *Planner) subSum(root *scope, column string) string {
+	q := p.qcol(root, column)
+	if f := root.ent.Field(column); p.D.Name() == "sqlite" && f != nil && (f.Type == "i16" || f.Type == "i32" || f.Type == "i64") {
+		hi, lo := "SUM("+q+" >> 32)", "SUM("+q+" & 4294967295)"
+		// A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
+		return "CASE WHEN MAX(typeof(" + q + ") NOT IN ('integer', 'null')) THEN 0.5 ELSE (" + hi + " + " + lo + " / 4294967296) * 4294967296 + " + lo + " % 4294967296 END"
+	}
+	return "SUM(" + q + ")"
+}
+
 // subSelect renders a subquery for an IN list or a scalar column. The
 // subquery root gets its own alias and resolves "^" refs against outer.
 func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, error) {
@@ -1725,9 +1739,7 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 	sb.WriteString("SELECT ")
 	switch sub.Agg {
 	case "sum":
-		sb.WriteString("COALESCE(SUM(" + p.qcol(root, sub.Column) + "), 0)")
-	case "avg":
-		sb.WriteString("AVG(" + p.qcol(root, sub.Column) + ")")
+		sb.WriteString("COALESCE(" + p.subSum(root, sub.Column) + ", 0)")
 	case "count":
 		sb.WriteString("COUNT(*)")
 	default:
@@ -1770,8 +1782,6 @@ func (p *Planner) subType(sub *ir.Sub) (string, error) {
 	switch sub.Agg {
 	case "count":
 		return "i64", nil
-	case "avg":
-		return "f64", nil
 	}
 	entity := p.M.Entities[sub.Query.Entity]
 	if entity == nil {

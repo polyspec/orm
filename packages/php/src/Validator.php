@@ -1193,8 +1193,10 @@ final class Validator
                     throw self::err(Code::IR_INVALID, 'subquery needs a column');
                 }
                 break;
-            case 'sum':
             case 'avg':
+                // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+                throw self::err(Code::IR_INVALID, 'avg subquery is not one value on every database');
+            case 'sum':
                 if (!$scalar) {
                     throw self::err(Code::IR_INVALID, "$agg subquery is only valid as a column");
                 }

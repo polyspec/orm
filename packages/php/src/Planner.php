@@ -1303,8 +1303,7 @@ final class Planner
         $root->outer = $outer;
         $column = $sub['column'] ?? '';
         $sql = 'SELECT ' . match ($sub['agg'] ?? '') {
-            'sum' => 'COALESCE(SUM(' . $this->qcol($root, $column) . '), 0)',
-            'avg' => 'AVG(' . $this->qcol($root, $column) . ')',
+            'sum' => 'COALESCE(' . $this->subSum($root, $column) . ', 0)',
             'count' => 'COUNT(*)',
             default => $this->qcol($root, $column),
         };
@@ -1329,13 +1328,30 @@ final class Planner
         return $sql;
     }
 
+    /**
+     * The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the
+     * sum of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose
+     * SQLite integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the
+     * column refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
+     */
+    private function subSum(PlanScope $root, string $column): string
+    {
+        $q = $this->qcol($root, $column);
+        $type = RuntimeModel::column($root->ent, $column)['type'] ?? '';
+        if ($this->d->name === 'sqlite' && in_array($type, ['i16', 'i32', 'i64'], true)) {
+            $hi = "SUM($q >> 32)";
+            $lo = "SUM($q & 4294967295)";
+            // A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
+            return "CASE WHEN MAX(typeof($q) NOT IN ('integer', 'null')) THEN 0.5 "
+                . "ELSE ($hi + $lo / 4294967296) * 4294967296 + $lo % 4294967296 END";
+        }
+        return "SUM($q)";
+    }
+
     private function subType(array $sub): string
     {
         if (($sub['agg'] ?? '') === 'count') {
             return 'i64';
-        }
-        if (($sub['agg'] ?? '') === 'avg') {
-            return 'f64';
         }
         $entityName = $sub['query']['entity'];
         $entity = $this->m->entities[$entityName] ?? null;

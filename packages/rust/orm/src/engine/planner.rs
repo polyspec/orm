@@ -1149,8 +1149,7 @@ impl<'m> Planner<'m> {
         let root = &root;
         let mut sb = String::from("SELECT ");
         match sub.agg.as_str() {
-            "sum" => sb.push_str(&format!("COALESCE(SUM({}), 0)", self.qcol(root, &sub.column))),
-            "avg" => sb.push_str(&format!("AVG({})", self.qcol(root, &sub.column))),
+            "sum" => sb.push_str(&format!("COALESCE({}, 0)", self.sub_sum(root, &sub.column))),
             "count" => sb.push_str("COUNT(*)"),
             _ => sb.push_str(&self.qcol(root, &sub.column)),
         }
@@ -1181,10 +1180,25 @@ impl<'m> Planner<'m> {
         Ok(sb)
     }
 
+    /// The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum
+    /// of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose SQLite
+    /// integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the column
+    /// refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
+    fn sub_sum(&self, root: &Scope<'_>, column: &str) -> String {
+        let q = self.qcol(root, column);
+        if self.d.name() == "sqlite" && root.ent.field(column).is_some_and(|f| matches!(f.ty, Type::I16 | Type::I32 | Type::I64)) {
+            let (hi, lo) = (format!("SUM({q} >> 32)"), format!("SUM({q} & 4294967295)"));
+            // A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
+            return format!(
+                "CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE ({hi} + {lo} / 4294967296) * 4294967296 + {lo} % 4294967296 END"
+            );
+        }
+        format!("SUM({q})")
+    }
+
     fn sub_type(&self, sub: &ir::Sub) -> Result<String> {
         match sub.agg.as_str() {
             "count" => Ok("i64".into()),
-            "avg" => Ok("f64".into()),
             _ => {
                 let entity = self.entity(&sub.query.entity)?;
                 self.column_of(entity, &sub.column)

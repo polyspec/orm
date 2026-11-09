@@ -387,7 +387,10 @@ class Validator {
       case '':
         if (column === '') fail(codes.IR_INVALID, 'subquery needs a column');
         break;
-      case 'sum': case 'avg': {
+      case 'avg':
+        // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+        fail(codes.IR_INVALID, 'avg subquery is not one value on every database');
+      case 'sum': {
         if (!scalar) fail(codes.IR_INVALID, `${s.agg} subquery is only valid as a column`);
         const c = columnOf(ent, column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${column}`);
         if (!numericTypes.has(c.type)) fail(codes.OPERATOR_NOT_ALLOWED, `${s.agg} on ${ent.name}.${column} (${c.type})`);

@@ -12431,7 +12431,7 @@
            ]
           }
          },
-         "agg": "avg"
+         "agg": "sum"
         }
        }
       },
@@ -12448,7 +12448,7 @@
        "value": [
         {
          "name": "first_author",
-         "type": "f64",
+         "type": "i64",
          "hidden": false
         }
        ]

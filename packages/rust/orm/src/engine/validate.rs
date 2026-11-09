@@ -786,7 +786,9 @@ impl<'m> Validator<'m> {
                     return Err(err(codes::IR_INVALID, "subquery needs a column"));
                 }
             }
-            "sum" | "avg" => {
+            // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+            "avg" => return Err(err(codes::IR_INVALID, "avg subquery is not one value on every database")),
+            "sum" => {
                 if !scalar {
                     return Err(err(codes::IR_INVALID, format!("{} subquery is only valid as a column", s.agg)));
                 }

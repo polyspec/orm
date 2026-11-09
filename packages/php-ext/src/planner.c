@@ -2196,13 +2196,26 @@ static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub
     zend_string *agg = gs(c, sub, "agg");
     zend_string *sel;
     if (zend_string_equals_literal(agg, "sum")) {
+        /* SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column is the two
+         * sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose SQLite integer arithmetic gives the
+         * exact sum within the i64 range and a REAL past it, which the i64 type of the column refuses as MySQL's and
+         * PostgreSQL's sums past it are refused (PRT-84, INT-160). */
         zend_string *qc = qcol(c, root, column);
         OKP(qc);
-        sel = fmt(c, "COALESCE(SUM(%s), 0)", ZSTR_VAL(qc));
-    } else if (zend_string_equals_literal(agg, "avg")) {
-        zend_string *qc = qcol(c, root, column);
-        OKP(qc);
-        sel = fmt(c, "AVG(%s)", ZSTR_VAL(qc));
+        HashTable *col = NULL;
+        if (!col_of(c, root->ent, column, &col)) return NULL;
+        zend_string *name = dialect_name(c);
+        OKP(name);
+        zend_string *type = col != NULL ? gs(c, col, "type") : NULL;
+        bool integer = type != NULL && (zend_string_equals_literal(type, "i16") || zend_string_equals_literal(type, "i32")
+            || zend_string_equals_literal(type, "i64"));
+        if (integer && zend_string_equals_literal(name, "sqlite")) {
+            const char *q = ZSTR_VAL(qc);
+            /* A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84). */
+            sel = fmt(c, "COALESCE(CASE WHEN MAX(typeof(%s) NOT IN ('integer', 'null')) THEN 0.5 ELSE (SUM(%s >> 32) + SUM(%s & 4294967295) / 4294967296) * 4294967296 + SUM(%s & 4294967295) %% 4294967296 END, 0)", q, q, q, q);
+        } else {
+            sel = fmt(c, "COALESCE(SUM(%s), 0)", ZSTR_VAL(qc));
+        }
     } else if (zend_string_equals_literal(agg, "count")) {
         sel = fmt(c, "COUNT(*)");
     } else {
@@ -2241,9 +2254,6 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
     zend_string *agg = gs(c, sub, "agg");
     if (zend_string_equals_literal(agg, "count")) {
         return fmt(c, "i64");
-    }
-    if (zend_string_equals_literal(agg, "avg")) {
-        return fmt(c, "f64");
     }
     zend_string *entity_name = gs(c, ga(sub, "query"), "entity");
     HashTable *ent = entity(c, entity_name);

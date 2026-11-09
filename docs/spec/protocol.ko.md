@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: d52d1d4300c752930817e1dce1878bb3a8576bd13bc9740596c5d8e78a4eb4ed -->
+<!-- source-sha256: 3d2b903bd98c90e94974ee78747aff168b6f5d4609dbf9cab74f7b682f659545 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -92,7 +92,7 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
 Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
-Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
+Sub   = {"query": Query, "column": "user_seq", "agg": "sum | count"}
 ```
 
 - **PRT-16** `conn`은 항목을 같은 그룹의 이전 항목에 연결한다. 첫 항목에는 연결자가 없다. `or`를 가진 첫 항목은 `OR_AT_GROUP_START`로, `and`를 가진 첫 항목은 `IR_INVALID`로 실패한다. top-level `where`나 `on` 그룹은 이전 형제가 없으므로 그 자신의 `conn`은 `IR_INVALID`로 실패한다.
@@ -101,6 +101,8 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - **PRT-19** `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 0001-01-01부터 9999-12-31 23:59:59.999999 밖이거나 그 폭을 넘는 interval의 상대 시간 함수는 NULL이므로 비교도 그 부정도 어떤 행과도 맞지 않는다([dialects](dialects.ko.md)). 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
 - **PRT-20** 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`와 `right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로([dbspec](dbspec.md)) 만난다: 정수는 정수와, `decimal`은 같은 scale의 `decimal`과, `f64`, `bool`, `varchar`와 `text`는 서로, `uuid`, `date`, 같은 precision의 `time` 또는 `datetime`, `bytes`는 `bytes`와 만난다. 그 밖의 쌍은 `OPERATOR_NOT_ALLOWED`로 실패한다. database마다 답이 다르기 때문이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). validator는 dbspec check 검증의 표를 읽으며, conformance vector `column_pairs`가 두 종류의 쌍을 모두 실행한다.
 - **PRT-21** 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 count가 1인 `limit`(`offset`은 무엇이든)과, 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가지므로 모든 database에서 많아야 한 행을 내고 일치하는 행이 없으면 NULL이다. 그것이 없으면 요청은 `IR_INVALID`이다. 여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답하고 SQLite는 첫 행을 돌려주기 때문이다. `limit`은 `in` subquery(MySQL 1235)와 집계 subquery에서는 계속 `IR_INVALID`이다.
+- **PRT-83** `agg`가 `avg`인 스칼라 컬럼 subquery는 모든 런타임에서 `IR_INVALID`(`avg subquery is not one value on every database`)이다. 그 평균은 외부 행의 SQL 값 하나이고 어떤 executor도 나누지 않으므로 database의 `AVG`가 된다. MySQL은 이를 소수 S + 4자리로, PostgreSQL은 유효 숫자 16자리 이상으로 반올림하고 SQLite는 binary64를 거치는데, `avg<Col>()`은 DSL-161의 정확한 평균을 준다. SQLite에는 몫의 S + 16자리를 담을 i64보다 넓은 정확한 타입이 없어 SQL은 그 평균을 모든 database에서 같게 계산할 수 없으므로, 요청은 database의 값을 주는 대신 거부된다. 정확한 평균의 컬럼은 같은 행에 대한 subquery `sum`과 subquery `count`이며, 그 몫은 호출자가 나눈다. `tests/ir/validate.json`의 case `scalar_column_subquery_avg`와 recipe `conformance_verification`의 case `scalar_subquery_avg_is_refused`가 이를 지킨다.
+- **PRT-84** 정수 컬럼에 대한 `agg`가 `sum`인 스칼라 컬럼 subquery는 SQLite와 markdown에서 `SUM(c)` 대신 DIA-202의 두 합을 SQL에서 합친 `CASE WHEN MAX(typeof(c) NOT IN ('integer', 'null')) THEN 0.5 ELSE (SUM(c >> 32) + SUM(c & 4294967295) / 4294967296) * 4294967296 + SUM(c & 4294967295) % 4294967296 END`를 선택한다. SQLite는 i64 범위를 넘는 `SUM(c)`를 `DRIVER` 오류 `integer overflow`로 거부하기 때문이다. 상위 합에 하위 합의 올림을 더해 2^32를 곱한 값은 합을 2^32의 배수로 내림한 값이며, 합이 i64 범위 안이면 그 값도 범위 안에 있으므로 SQLite의 정수 연산은 거기서 정확한 합을 주고, 범위를 넘으면 REAL을 준다. 그 컬럼의 plan 타입은 `i64`(INT-160)이고, 이 타입은 그 REAL을 MySQL과 PostgreSQL이 범위를 넘어 반환하는 decimal 합과 같이 `CODEC_DECODE: <entity>.<column>: i64 cell is not an exact integer in its range`로 거부하므로, 범위를 넘는 합은 모든 database에서 같게 실패한다. 정수가 아닌 셀은 합을 0.5로 만들며, 타입은 그런 셀의 decimal text를 거부하듯 이를 거부한다. recipe `conformance_verification`의 case `added_sum_above_i64`와 `added_sum_fractional`이 이를 지킨다.
 - **PRT-22** 열 비교(`eq_col` 등)는 기본 연산자(`eq_col`이면 `eq`)가 왼쪽 컬럼 type의 연산자이고 어느 컬럼도 codec이 없을 때 허용되므로, `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 `OPERATOR_NOT_ALLOWED`로 실패한다. codec이 `ip` 하나뿐인 두 컬럼은 양쪽이 dialect의 같은 저장 형태이므로 `eq_col`과 `not_eq_col`을 받는다. `uuid`나 `bytes` 열은 `eq`, `not_eq`, `in`, `not_in`, `is_null`, `is_not_null`만 받으므로 `uuid gt`는 `OPERATOR_NOT_ALLOWED`로 실패한다.
 - **PRT-23** `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.
 - **PRT-24** 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.

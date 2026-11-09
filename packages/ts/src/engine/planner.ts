@@ -798,6 +798,23 @@ export class Planner {
     return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail(codes.CAPABILITY_UNSUPPORTED, `${f.name} is not available on ${this.d.name}`);
   }
 
+  /**
+   * The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum
+   * of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose SQLite
+   * integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the column
+   * refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
+   */
+  private subSum(root: Scope, column: string): string {
+    const q = this.qcol(root, column);
+    const type = columnOf(root.ent, column)?.type;
+    if (this.d.name === 'sqlite' && (type === 'i16' || type === 'i32' || type === 'i64')) {
+      const hi = `SUM(${q} >> 32)`, lo = `SUM(${q} & 4294967295)`;
+      // A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
+      return `CASE WHEN MAX(typeof(${q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE (${hi} + ${lo} / 4294967296) * 4294967296 + ${lo} % 4294967296 END`;
+    }
+    return `SUM(${q})`;
+  }
+
   /** A subquery for an IN list or a scalar column; "^" refers to outer. */
   private subSelect(b: Builder, outer: Scope, sub: Subquery): string {
     b.subs++;
@@ -806,8 +823,7 @@ export class Planner {
     let sql = 'SELECT ';
     const column = (): string => present(sub.column, `the column of a subquery of ${sub.query.entity}`);
     switch (sub.agg ?? '') {
-      case 'sum': sql += `COALESCE(SUM(${this.qcol(root, column())}), 0)`; break;
-      case 'avg': sql += `AVG(${this.qcol(root, column())})`; break;
+      case 'sum': sql += `COALESCE(${this.subSum(root, column())}, 0)`; break;
       case 'count': sql += 'COUNT(*)'; break;
       default: sql += this.qcol(root, column());
     }
@@ -829,7 +845,6 @@ export class Planner {
   private subType(sub: Subquery): string {
     switch (sub.agg) {
       case 'count': return 'i64';
-      case 'avg': return 'f64';
     }
     const entity = this.m.entities.get(sub.query.entity);
     if (!entity) fail(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
