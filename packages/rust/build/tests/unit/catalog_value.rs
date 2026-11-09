@@ -1,8 +1,10 @@
 //! The catalog value rules that no recipe step can reach (FCV-2): a driver value that is not the host form of its column type
 //! (INT-171) and a failure of the driver or of a library to decode a value (INT-172), injected at the conversion of a row;
-//! and the text form of the PostgreSQL types of a text cell (INT-185), written from their binary values.
+//! the text form of the PostgreSQL types of a text cell (INT-185), written from their binary values; and the prepare failure of
+//! sqlx on a type kind that it does not know, which starts the describe of a multirange column (INT-185).
 // Requirements: INT-165, INT-171, INT-172, INT-185.
 use super::catalog_query_error;
+use crate::tool_db::pg_describe::is_unknown_type_kind;
 use crate::tool_db::pg_text::{form, numeric, own_kind, render, Form};
 use crate::tool_db::value::{self, at_column, refusal_of, ValueRefusal};
 use crate::tool_db::{temporal_val, GridCell};
@@ -259,4 +261,16 @@ fn a_container_is_written_with_the_quotes_of_its_output_function() {
     dated.extend(0i32.to_be_bytes());
     let error = at_column(render(&Form::Record, &dated).expect_err("a date field has no text output"), 0);
     assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 1: unsupported native type");
+}
+
+#[test]
+fn only_the_type_kind_failure_of_the_sqlx_resolver_starts_the_multirange_describe() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    // sqlx-postgres 0.9 fails to decode `pg_type.typtype` of a multirange as this column decode error (INT-185).
+    let kind = sqlx::Error::ColumnDecode { index: "\"typtype\"".into(), source: "unknown type code 109".into() };
+    assert!(is_unknown_type_kind(&kind));
+    // A decode failure of another column, or an error of another variant, is no such failure and leaves as itself.
+    let other = sqlx::Error::ColumnDecode { index: "\"typcategory\"".into(), source: "unknown type code 109".into() };
+    assert!(!is_unknown_type_kind(&other));
+    assert!(!is_unknown_type_kind(&sqlx::Error::Decode("unknown type code 109".into())));
 }

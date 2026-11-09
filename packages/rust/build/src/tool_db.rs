@@ -11,6 +11,7 @@ mod binds;
 mod grid;
 mod limits;
 mod params;
+pub(crate) mod pg_describe;
 pub(crate) mod pg_text;
 mod result;
 pub mod value;
@@ -418,7 +419,10 @@ macro_rules! fetch_cursor_result {
     ($conn:expr, $sql:expr, $budget:expr, $cell:ident, $result:ident) => {{
         let (connection, text) = ($conn, $sql.0);
         let statement_length = text.len();
-        let statement = (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await?;
+        let statement = match (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await {
+            Ok(statement) => statement,
+            Err(error) => return Err(pg_describe::refusal(&mut **connection, &text, &[], error).await),
+        };
         let columns = result::columns(statement_length, statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
         let cursor = format!("orm_read_{}", CURSOR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
@@ -468,7 +472,11 @@ macro_rules! grid_result_of {
 macro_rules! prepare_query {
     ($conn:expr,$sql:expr,$params:expr,postgres) => {{
         let types = binds::postgres_types($params)?;
-        (&mut **$conn).prepare_with($sql.into_sql_str(), &types).await?
+        let text = $sql.0.clone();
+        match (&mut **$conn).prepare_with($sql.into_sql_str(), &types).await {
+            Ok(statement) => statement,
+            Err(error) => return Err(pg_describe::refusal(&mut **$conn, &text, &types, error).await),
+        }
     }};
     ($conn:expr,$sql:expr,$params:expr,mysql) => {
         (&mut **$conn).prepare($sql.into_sql_str()).await?
