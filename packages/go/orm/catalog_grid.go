@@ -59,7 +59,7 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 		// decimal or temporal cell, not the driver value it came from.
 		var cells []CatalogGridCell
 		convert := newCatalogCells(s)
-		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
+		raw, err := s.querySized(statement, args, maxRows, maxBytes, true, func(value any, native string, column int) (int, error) {
 			cell, err := convert.cell(value, native, column)
 			if err != nil {
 				return 0, err

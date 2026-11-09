@@ -67,7 +67,7 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		}
 		// One extra row is the sentinel that reports HasMore.
 		query += " LIMIT " + strconv.Itoa(limit+1) + " OFFSET " + strconv.FormatInt(offset, 10)
-		raw, err := s.queryRaw(query, nil, limit+1, catalogPageBytes)
+		raw, err := s.queryCellsRaw(query, nil, limit+1, catalogPageBytes)
 		if err != nil {
 			// A column that went away during the read fails the statement: the descriptor tells that from any other failure.
 			if ErrorCode(err) != CodeCatalogLimit {

@@ -19,7 +19,7 @@ type CatalogQueryResult struct {
 }
 
 func catalogReadRows(s *catalogSession, metadata CatalogTableMetadata, query string, args []any) ([][]any, error) {
-	raw, err := s.queryRaw(query, args, 2, catalogPageBytes)
+	raw, err := s.queryCellsRaw(query, args, 2, catalogPageBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 		// Each value is converted as it is read, and the budget counts the converted value (INT-115).
 		var values []any
 		convert := newCatalogCells(s)
-		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
+		raw, err := s.querySized(statement, args, maxRows, maxBytes, true, func(value any, native string, column int) (int, error) {
 			v, err := catalogQueryValue(convert, value, native, column)
 			if err != nil {
 				return 0, err
