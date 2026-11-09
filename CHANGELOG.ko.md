@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0df2f7ed5341930492523f8a9379673ea4f734b6de15ae9b77f3c3eb523ba01a -->
+<!-- source-sha256: dbd585c29bc220b79aca4c641aa21b2914c77de75474e9a08faaf3056bffe8f0 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript `orm-gen gen --scan`은 source map이 source 하나를 가리키는 compile된 module을 그 source로 읽는다 (DSL-151, T417). set의 `models.ts`를 compile한 dist에서 import한 class는 그 set의 것이다. 전에는 manifest가 바뀐 뒤 dist의 낡은 `MANIFEST_HASH` 때문에 다른 set의 것이 되어, 첫 build가 scan한 source가 dist로 부르는 method를 모두 빼고 같은 model에 닿으려면 build를 한 번 더 해야 했다.
 - Makefile의 model 생성기(go-models, php-models, python-models)와 TypeScript build는 생성하는 각 entry의 document set이 있는 directory, 곧 set과 그 document를 담은 directory를 key로 삼는다. 그래서 tests/markdown, tests/bind, contracts/fixtures 아래 fixture를 바꾸면 그것을 읽는 model이 다시 생성된다. 전에는 Go key가 packages/go만, PHP key가 corpus와 contracts/fixtures의 fixture를 빼고, Python key가 document 없이 set 파일만, TypeScript key가 contracts/fixtures 밖의 fixture를 빼고 이름 붙여서 model이 그대로 남았다 (T417).
 - Breaking: dbspec은 database가 주지 않는 값을 주지 않는다 (DBS-79, DIA-159, T417). markdown corpus가 text key를 할당하게 하던 `key_prefix '<p>'` setting은 모든 runtime의 문법에서 빠진다 (DBS-77과 PRT-73은 철회한다). `key_prefix` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. `order <column>`은 형제 묶음을 쓰는 순서로 남고, 아무것도 그 column을 할당하지 않는다. 어느 runtime의 planner도 markdown 연결에서 key나 order column을 더는 건너뛰지 않으므로, 기본값 없는 non-null column을 뺀 insert는 MySQL, PostgreSQL, SQLite에서처럼 markdown에서도 `IR_INVALID` "required column <table>.<column> is not set"이고, insert는 identity key만 돌려준다. markdown conformance corpus는 행의 key를 직접 쓰며, 그 `people` table은 upsert의 충돌 key가 하나이도록 unique key를 갖지 않는다.
 - PHP extension은 `markdown`, `title`, `body`, `order`, `task_marker` 줄의 column 뒤에 오는 token을 다른 모든 runtime처럼 그 token에서 `syntax` error로 거부한다. 전에는 그 줄을 받아들이고 token을 버렸다 (DBS-63, T416).
