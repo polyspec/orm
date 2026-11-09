@@ -4,6 +4,8 @@
 //! statement is then prepared by the server through the simple protocol, which resolves no type, its output types are read from
 //! `pg_prepared_statements.result_types` (PostgreSQL 14, the release that adds multiranges), and the first column whose type is
 //! or holds a multirange is refused by INT-170 by its type, whether its value is NULL or not.
+//! The failed prepare leaves a statement on the server whose name only sqlx knew, so every prepared statement of the session
+//! is released before the refusal returns, and the session keeps no statement of a failed read.
 use sqlx::postgres::{PgConnection, PgTypeInfo};
 use sqlx::{AssertSqlSafe, TypeInfo};
 
@@ -38,26 +40,41 @@ pub(crate) fn is_unknown_type_kind(error: &sqlx::Error) -> bool {
 }
 
 /// The error of a failed prepare of `text` with the parameter types `types`: INT-170 at the first column that is or holds a
-/// multirange when sqlx failed on the kind of an output type, else the error itself. A failure of the describe is that failure.
+/// multirange when sqlx failed on the kind of an output type, else the error itself. A failure of the describe or of the release
+/// is that failure.
 pub(super) async fn refusal(connection: &mut PgConnection, text: &str, types: &[PgTypeInfo], error: sqlx::Error) -> sqlx::Error {
-    if !is_unknown_type_kind(&error) || connection.server_version_num().is_some_and(|version| version < MULTIRANGE_RELEASE) {
+    if !is_unknown_type_kind(&error) {
         return error;
     }
-    match first_multirange(connection, text, types).await {
-        Ok(Some(column)) => sqlx::Error::Decode(Box::new(ValueRefusal::new(UNSUPPORTED_NATIVE_TYPE, column))),
-        Ok(None) => error,
-        Err(describe) => describe,
+    let found = if connection.server_version_num().is_some_and(|version| version < MULTIRANGE_RELEASE) {
+        Ok(None)
+    } else {
+        first_multirange(connection, text, types).await
+    };
+    match (found, release(connection).await) {
+        (Err(describe), _) => describe,
+        (_, Err(release)) => release,
+        (Ok(Some(column)), Ok(())) => sqlx::Error::Decode(Box::new(ValueRefusal::new(UNSUPPORTED_NATIVE_TYPE, column))),
+        (Ok(None), Ok(())) => error,
     }
 }
 
-/// Prepares `text` on the server, reads the position of its first multirange column and deallocates it.
+/// Releases every prepared statement of the session. The failed prepare of sqlx left a statement on the server under a name that
+/// only sqlx knew and that its cache does not hold, so it is released with all the others: the statements that the cache holds
+/// are closed first, so that no later read names one that the server no longer has, and DEALLOCATE ALL releases the rest, the
+/// statement of the describe included. The connection, and the transaction that a caller may hold on it, stay open.
+async fn release(connection: &mut PgConnection) -> Result<(), sqlx::Error> {
+    sqlx::Connection::clear_cached_statements(&mut *connection).await?;
+    sqlx::raw_sql("DEALLOCATE ALL").execute(&mut *connection).await.map(|_| ())
+}
+
+/// Prepares `text` on the server and reads the position of its first multirange column; `release` deallocates it.
 async fn first_multirange(connection: &mut PgConnection, text: &str, types: &[PgTypeInfo]) -> Result<Option<usize>, sqlx::Error> {
     let name = format!("orm_describe_{}", DESCRIBE_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
     let parameters = if types.is_empty() { String::new() } else { format!(" ({})", types.iter().map(TypeInfo::name).collect::<Vec<_>>().join(", ")) };
     sqlx::raw_sql(AssertSqlSafe(format!("PREPARE {name}{parameters} AS {text}"))).execute(&mut *connection).await?;
-    let found = sqlx::query_scalar::<_, Option<i64>>(FIRST_MULTIRANGE).bind(&name).fetch_one(&mut *connection).await;
-    sqlx::raw_sql(AssertSqlSafe(format!("DEALLOCATE {name}"))).execute(&mut *connection).await?;
-    match found? {
+    let found = sqlx::query_scalar::<_, Option<i64>>(FIRST_MULTIRANGE).bind(&name).fetch_one(&mut *connection).await?;
+    match found {
         Some(position) => usize::try_from(position).map(Some).map_err(|error| sqlx::Error::Decode(Box::new(error))),
         None => Ok(None),
     }
