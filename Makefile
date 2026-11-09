@@ -2055,7 +2055,7 @@ PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
 .PHONY: python-models
 PYTHON_MODELS_STAMP = $(CURDIR)/packages/python/tests/models/python-models.key
 python-models: python-venv-check
-	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(PYTHON_MODELS_SET) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
+	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(dir $(PYTHON_MODELS_SET)) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 .PHONY: python-model-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
@@ -3276,10 +3276,13 @@ orm-install-php: orm-codes-php
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
+# The inputs of the PHP models are also the directory of the document set of each entry, which holds the set and its documents, so a
+# fixture change regenerates the models that it is read into.
+PHP_MODELS_SETS = $(sort $(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(PHP_MODELS_FILE))))
 # Each entry generates into <dir>.tmp, which replaces <dir> by a rename after the generator succeeds (B1-4), so a stopped run leaves the
 # previous directory whole and never a directory with some files new and some old.
 php-models: php-vendor-check
-	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) tests/bind -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) $(PHP_MODELS_SETS) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
@@ -3308,8 +3311,11 @@ orm-install-rust-crates:
 GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
 GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
+# The inputs of the Go models are packages/go and the directory of the document set of each entry (named from packages/go), which holds
+# the set and its documents, so a fixture change regenerates the models that it is read into.
+GO_MODELS_SETS = $(sort $(patsubst ../../%,%,$(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(GO_MODELS_FILE)))))
 go-models:
-	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go $(GO_MODELS_SETS) -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e606f4882905f310638233e3c0d27cc7ff29bd44423251278ac385f242c52b73 -->
+<!-- source-sha256: 0df2f7ed5341930492523f8a9379673ea4f734b6de15ae9b77f3c3eb523ba01a -->
 # 변경 이력
 
 ## Unreleased
 
+- Makefile의 model 생성기(go-models, php-models, python-models)와 TypeScript build는 생성하는 각 entry의 document set이 있는 directory, 곧 set과 그 document를 담은 directory를 key로 삼는다. 그래서 tests/markdown, tests/bind, contracts/fixtures 아래 fixture를 바꾸면 그것을 읽는 model이 다시 생성된다. 전에는 Go key가 packages/go만, PHP key가 corpus와 contracts/fixtures의 fixture를 빼고, Python key가 document 없이 set 파일만, TypeScript key가 contracts/fixtures 밖의 fixture를 빼고 이름 붙여서 model이 그대로 남았다 (T417).
 - Breaking: dbspec은 database가 주지 않는 값을 주지 않는다 (DBS-79, DIA-159, T417). markdown corpus가 text key를 할당하게 하던 `key_prefix '<p>'` setting은 모든 runtime의 문법에서 빠진다 (DBS-77과 PRT-73은 철회한다). `key_prefix` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. `order <column>`은 형제 묶음을 쓰는 순서로 남고, 아무것도 그 column을 할당하지 않는다. 어느 runtime의 planner도 markdown 연결에서 key나 order column을 더는 건너뛰지 않으므로, 기본값 없는 non-null column을 뺀 insert는 MySQL, PostgreSQL, SQLite에서처럼 markdown에서도 `IR_INVALID` "required column <table>.<column> is not set"이고, insert는 identity key만 돌려준다. markdown conformance corpus는 행의 key를 직접 쓰며, 그 `people` table은 upsert의 충돌 key가 하나이도록 unique key를 갖지 않는다.
 - PHP extension은 `markdown`, `title`, `body`, `order`, `task_marker` 줄의 column 뒤에 오는 token을 다른 모든 runtime처럼 그 token에서 `syntax` error로 거부한다. 전에는 그 줄을 받아들이고 token을 버렸다 (DBS-63, T416).
 - Breaking: dbspec은 state machine을 갖지 않으며, `task_marker`는 그 column의 값을 보여 준다 (DBS-63, DBS-80, T416). `state_machine` setting은 `initial`, `terminal`, 전환, `history`, `limit` 줄과 그 검사와 함께 모든 runtime의 문법에서 빠진다 (DBS-73, DBS-81, DBS-82, DBS-83은 철회한다). `state_machine` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. MySQL, PostgreSQL, SQLite 어디도 state machine을 갖지 않기 때문이다. GFM의 task list item marker에서 이름을 딴 `task_marker <column>`이 `checkbox`를 대신한다: table의 column 하나를 가리키며, list 행은 그 값을 task list item marker의 괄호 사이에 쓴다: `varchar(1)` column은 그 값으로, `bool` column은 GFM의 체크하지 않은 checkbox와 체크한 checkbox로 쓴다. 다른 type의 column은 그 column에서 `setting` error이고, 두 번째 `task_marker` 줄은 반복이며, state별 형태 `task_marker <column> <state> '<glyph>'`는 그 state에서 `syntax` error다. `checkbox` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. 둘 중 하나를 선언했던 문서의 manifest hash는 그 text와 함께 바뀐다.
