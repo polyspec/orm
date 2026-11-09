@@ -21,8 +21,9 @@ async fn physical_tool_cells() {
             "mysql" => "SELECT CAST(1.5 AS DOUBLE)",
             _ => "SELECT 1.5",
         };
-        if connection.query(float, &[]).await.is_ok() {
-            failures.push(format!("{dialect}:unsupported-type"));
+        // A plain read of a float is its f64 value (INT-102), not a refused type.
+        if !matches!(connection.query(float, &[]).await.as_deref(), Ok([row]) if row.as_slice() == [tool_db::Val::Float(1.5)]) {
+            failures.push(format!("{dialect}:float-value"));
         }
         let bytes = if dialect == "postgres" { "SELECT decode('ff','hex')" } else { "SELECT X'FF'" };
         if !matches!(connection.query(bytes, &[]).await.as_deref(), Ok([row]) if row.as_slice() == [tool_db::Val::Binary(vec![0xff])]) {

@@ -25,7 +25,7 @@ fn page_assembly_refuses_prepared_columns_that_differ_from_the_descriptor() {
     let result = GridQueryResult { columns: vec![QueryColumn { name: "a".into(), native_type: "INT8".into() }], rows: vec![] };
     let mut columns = result.clone();
     columns.columns[0].name = "other".into();
-    assert!(assemble(metadata.clone(), columns, false, metadata.clone(), 1, 0).unwrap_err().starts_with("TABLE_PAGE_METADATA_CHANGED"));
+    assert!(assemble(metadata.clone(), columns, false, metadata.clone(), 1, 0).unwrap_err().message().starts_with("TABLE_PAGE_METADATA_CHANGED"));
     assert!(assemble(metadata.clone(), result, false, metadata, 1, 0).is_ok());
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= std::time::Duration::from_secs(5) {

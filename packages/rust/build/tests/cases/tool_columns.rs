@@ -60,7 +60,7 @@ async fn stale_statement() {
     catalog.query("BEGIN", &[], limits()).await.unwrap();
     catalog.query("ALTER TABLE catalog_stale_statement ALTER COLUMN value TYPE TEXT", &[], limits()).await.unwrap();
     let error = catalog.query(read, &[], limits()).await.unwrap_err();
-    assert!(error.contains("cached plan must not change result type"), "{error}");
+    assert!(error.message().contains("cached plan must not change result type"), "{error}");
     catalog.query("ROLLBACK", &[], limits()).await.unwrap();
     catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();
     catalog.close().await;
@@ -72,7 +72,7 @@ async fn stale_statement() {
     catalog.query("DROP TABLE IF EXISTS catalog_stale_statement", &[], limits()).await.unwrap();
     catalog.query("CREATE TABLE catalog_stale_statement (value TINYINT)", &[], limits()).await.unwrap();
     let error = catalog.query("INSERT INTO catalog_stale_statement (value) VALUES (1000)", &[], limits()).await.unwrap_err();
-    assert!(error.contains("Out of range"), "{error}");
+    assert!(error.message().contains("Out of range"), "{error}");
     let open = catalog.query("SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_mysql_thread_id = CONNECTION_ID()", &[], limits()).await.unwrap();
     assert_eq!(open.rows, vec![vec![Val::Int(0)]], "a value error of MySQL opened a transaction");
     catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();

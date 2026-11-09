@@ -48,7 +48,8 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
         }
     });
     let cancelled = catalog.insert_row(&metadata, &[("n".into(), P::I(2))], flag, observe, std::sync::Arc::new(|| Ok(()))).await;
-    if !matches!(cancelled,Err(ref error) if error.starts_with("JOB_CANCELLED")) || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
+    if !matches!(cancelled,Err(ref error) if error.message().starts_with("JOB_CANCELLED")) || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack)
+    {
         failures.push(format!("{dialect}: expression identity cancellation must confirm rollback"));
     }
     if catalog.table_page(&table, 5, 0).await.unwrap().result.rows != stored.result.rows {

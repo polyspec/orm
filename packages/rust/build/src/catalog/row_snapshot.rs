@@ -1,4 +1,5 @@
 //! Checked original values for optimistic row editing, not write authorization.
+use super::CatalogError;
 use super::{metadata, TableKind, TableMetadata, TablePage};
 use crate::tool_db::{GridCell, GridQueryResult, P};
 use sha2::{Digest, Sha256};
@@ -15,14 +16,14 @@ impl std::fmt::Debug for RowSnapshot {
         f.debug_struct("RowSnapshot").field("columns", &self.cells.len()).field("keys", &self.key_indexes.len()).finish_non_exhaustive()
     }
 }
-fn invalid() -> String {
+fn invalid() -> CatalogError {
     "ROW_SNAPSHOT_INVALID: invalid original row or descriptor".into()
 }
 
-fn invalid_with(error: impl std::fmt::Display) -> String {
-    format!("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: {error}")
+fn invalid_with(error: impl std::fmt::Display) -> CatalogError {
+    format!("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: {error}").into()
 }
-pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
+pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, CatalogError> {
     metadata::validate_name(&value.table.namespace).map_err(invalid_with)?;
     metadata::validate_name(&value.table.name).map_err(invalid_with)?;
     if !matches!(value.kind, TableKind::Table | TableKind::Partitioned)
@@ -61,7 +62,7 @@ pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
     }
     Ok(indexes)
 }
-pub(super) fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), String> {
+pub(super) fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), CatalogError> {
     if result.columns.len() != metadata.columns.len() {
         return Err(invalid());
     }
@@ -74,7 +75,7 @@ pub(super) fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> 
     }
     Ok(())
 }
-pub(super) fn key_params(metadata: &TableMetadata, cells: &[GridCell]) -> Result<Vec<P>, String> {
+pub(super) fn key_params(metadata: &TableMetadata, cells: &[GridCell]) -> Result<Vec<P>, CatalogError> {
     metadata
         .primary_key
         .iter()
@@ -85,7 +86,7 @@ pub(super) fn key_params(metadata: &TableMetadata, cells: &[GridCell]) -> Result
         .collect()
 }
 
-pub(super) fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), String> {
+pub(super) fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), CatalogError> {
     if cells.len() != metadata.columns.len() {
         return Err(invalid());
     }
@@ -116,14 +117,14 @@ impl Write for RevisionWriter {
         Ok(())
     }
 }
-pub(super) fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, String> {
+pub(super) fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, CatalogError> {
     let mut writer = RevisionWriter { hash: Sha256::new(), bytes: 0 };
     serde_json::to_writer(&mut writer, &("orm-row-baseline-v1", metadata, cells))
         .map_err(|error| format!("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: {error}"))?;
     Ok(format!("{:x}", writer.hash.finalize()))
 }
 impl RowSnapshot {
-    pub fn from_page(page: &TablePage, row_index: usize) -> Result<Self, String> {
+    pub fn from_page(page: &TablePage, row_index: usize) -> Result<Self, CatalogError> {
         super::page::validate_request(&page.metadata.table, page.limit, page.offset).map_err(invalid_with)?;
         if page.result.rows.len() > page.limit || (page.has_more && page.result.rows.len() != page.limit) || page.order_by != page.metadata.primary_key {
             return Err(invalid());
@@ -152,7 +153,7 @@ impl RowSnapshot {
         self.metadata.primary_key.iter().zip(&self.key_indexes).map(|(name, index)| (name.as_str(), &self.cells[*index]))
     }
     /// Caller must fetch by original keys under its owning writable lock.
-    pub fn check_current(&self, metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), String> {
+    pub fn check_current(&self, metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), CatalogError> {
         if metadata != &self.metadata {
             return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());
         }
