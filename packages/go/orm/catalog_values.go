@@ -46,6 +46,7 @@ var (
 	catalogRulePastPrecision   = &catalogRule{code: CodeGridTemporalPrecision, text: "temporal value has more fraction digits than its precision"}        // INT-180
 	catalogRuleNativePrecision = &catalogRule{code: CodeGridTemporalPrecision, text: "native type declares more than 6 fraction digits"}                  // INT-181
 	catalogRuleBooleanValue    = &catalogRule{code: CodeCatalogValue, text: "a boolean column holds a value that is not a boolean"}                       // INT-182
+	catalogTextDecodeFailure   = "the driver could not decode the value"                                                                                  // INT-172, with no column
 )
 
 // catalogRuleStoredValue is the rule of a SQLite stored value outside the dbspec form of its kind (INT-176 to INT-178).
@@ -68,7 +69,13 @@ type catalogType struct {
 	unsigned bool
 	// integerText marks a text type whose driver value is an integer: a PostgreSQL oid, whose text is its digits.
 	integerText bool
+	// byType marks a type that refusal refuses by the type itself, a NULL included: a PostgreSQL multirange, or an array,
+	// range, domain or composite that holds one (INT-185).
+	byType bool
 }
+
+// catalogRefusedType is the type that INT-170 refuses by its type, whether its value is NULL or not.
+var catalogRefusedType = catalogType{refusal: catalogRuleNativeType, byType: true}
 
 // catalogMySQLType is the type of a column by the name that go-sql-driver/mysql reports for it (fields.go,
 // typeDatabaseName). MySQL BIT and the spatial types are bytes cells, and JSON, ENUM and SET text cells (INT-185).
@@ -104,6 +111,24 @@ func catalogMySQLType(native string) catalogType {
 	return catalogType{refusal: catalogRuleNativeType}
 }
 
+// refuseByType is the refusal of the first column of a PostgreSQL read whose type INT-185 refuses by the type itself,
+// before any value is read, or nil: a NULL of such a column is refused too.
+func (c *catalogCells) refuseByType(types []string) error {
+	if c.dialect != "postgres" {
+		return nil
+	}
+	for i, native := range types {
+		t, err := c.nativeType(native)
+		if err != nil {
+			return err
+		}
+		if t.byType {
+			return t.refusal.at(i + 1)
+		}
+	}
+	return nil
+}
+
 // catalogPostgresNamed is the type of a PostgreSQL column by the upper-case name of its type, as pgx reports a type of its
 // type map and as pg_type names a built-in type; ok is false for a name that INT-185 does not name, which INT-170 refuses.
 func catalogPostgresNamed(name string) (catalogType, bool) {
@@ -135,13 +160,19 @@ func catalogPostgresNamed(name string) (catalogType, bool) {
 		"MACADDR8", "TSVECTOR", "TSQUERY", "PG_LSN":
 		// No setting changes the output of these types (INT-185). A type that INT-185 does not name is refused.
 		return catalogType{kind: CatalogGridText}, true
-	case "INT4RANGE", "INT8RANGE", "NUMRANGE", "INT4MULTIRANGE", "INT8MULTIRANGE", "NUMMULTIRANGE":
+	case "INT4RANGE", "INT8RANGE", "NUMRANGE":
 		// A range writes its bounds by the output of its subtype, which no setting changes.
 		return catalogType{kind: CatalogGridText}, true
+	case "INT4MULTIRANGE", "INT8MULTIRANGE", "NUMMULTIRANGE", "DATEMULTIRANGE", "TSMULTIRANGE", "TSTZMULTIRANGE":
+		// A multirange is refused by its type (INT-185).
+		return catalogRefusedType, true
 	}
 	if element, isArray := strings.CutPrefix(name, "_"); isArray {
 		// An array writes each element by the output of its type (INT-185).
 		elementType, known := catalogPostgresNamed(element)
+		if elementType.byType {
+			return catalogRefusedType, true
+		}
 		if known && catalogFixedOutput(elementType) {
 			return catalogType{kind: CatalogGridText}, true
 		}
@@ -233,8 +264,8 @@ func (c *catalogCells) nativeType(native string) (catalogType, error) {
 const catalogPostgresTypeDepth = 16
 
 // postgresType is the type of a PostgreSQL type OID by pg_type (INT-185): an enum is a text cell, a domain takes the rule
-// of its base type, and an array, a range, a multirange or a composite is a text cell when every type that it writes has a
-// fixed output. A built-in type is classified by its name, and any other type, the base type of an extension or of a user
+// of its base type, an array, a range or a composite is a text cell when every type that it writes has a fixed output, and
+// a multirange, and a type that holds one, is refused by its type. A built-in type is classified by its name, and any other type, the base type of an extension or of a user
 // included, is refused by INT-170.
 func (s *catalogSession) postgresType(oid uint32, depth int) (catalogType, error) {
 	refused := catalogType{refusal: catalogRuleNativeType}
@@ -273,6 +304,9 @@ func (s *catalogSession) postgresType(oid uint32, depth int) (catalogType, error
 			if err != nil {
 				return catalogType{}, err
 			}
+			if t.byType {
+				return catalogRefusedType, nil
+			}
 			if !catalogFixedOutput(t) {
 				return refused, nil
 			}
@@ -284,7 +318,9 @@ func (s *catalogSession) postgresType(oid uint32, depth int) (catalogType, error
 		return catalogType{kind: CatalogGridText}, nil
 	case "d":
 		return s.postgresType(uint32(base), depth+1)
-	case "r", "m":
+	case "m":
+		return catalogRefusedType, nil
+	case "r":
 		return fixed(subtype)
 	case "c":
 		raw, err := s.queryRaw("SELECT atttypid::bigint FROM pg_attribute WHERE attrelid = $1 AND attnum > 0 AND NOT attisdropped ORDER BY attnum", []any{relation}, catalogMetadataRows, catalogMetadataBytes)

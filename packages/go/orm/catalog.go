@@ -406,7 +406,8 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 
 // querySized reads a bounded result like queryRaw, with size giving the bytes that each value of the 1-based column of its
 // native type counts against maxBytes; an error of size ends the read with that error. A value that the driver could not
-// decode fails with CATALOG_VALUE and keeps the failure as its cause (INT-172).
+// decode fails with CATALOG_VALUE and keeps the failure as its cause (INT-172), and a PostgreSQL column of a type that
+// INT-185 refuses by its type fails before any value is read.
 func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, size func(value any, native string, column int) (int, error)) (raw catalogRaw, err error) {
 	// The query has its own context: a budget that ends the read cancels it, so that closing the rows does not read the rest
 	// of a result the server still streams (a cross join of the bench table would otherwise run to its end).
@@ -449,6 +450,10 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	for i, columnType := range columnTypes {
 		raw.types[i] = columnType.DatabaseTypeName()
 	}
+	if err := newCatalogCells(s).refuseByType(raw.types); err != nil {
+		stopped = true
+		return catalogRaw{}, err
+	}
 	budget := 0
 	for rows.Next() {
 		if len(raw.rows) == maxRows {
@@ -460,10 +465,10 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		for i := range values {
 			pointers[i] = &values[i]
 		}
-		// A value that the driver fails to decode fails Scan (pgx decodes a column in ScanColumn) or the read of the row with
-		// a driver error that keeps the failure as its cause; no database sends one for a supported type (INT-172).
+		// Scan into an any copies the driver value, so a failure of Scan is a value that the driver failed to decode (pgx
+		// decodes a column in ScanColumn): CATALOG_VALUE with no column, the failure kept as its cause (INT-172).
 		if err := rows.Scan(pointers...); err != nil {
-			return catalogRaw{}, mapDriverErrContext(err, s.ctx)
+			return catalogRaw{}, &ir.Error{Code: CodeCatalogValue, Msg: catalogTextDecodeFailure, Cause: err}
 		}
 		for i, value := range values {
 			n, err := size(value, raw.types[i], i+1)

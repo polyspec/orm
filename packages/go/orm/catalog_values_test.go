@@ -47,8 +47,8 @@ func TestCatalogValueUnsupportedDriverValue(t *testing.T) {
 }
 
 // TestCatalogValueDriverDecodeFailure injects a value that the driver fails to decode, which no database sends for a
-// supported type (INT-172, FCV-2): the driver reports it from the read of the row, and the read fails with that driver
-// error, which keeps the failure as its cause.
+// supported type (INT-172, FCV-2): the driver fails the scan of its column, as pgx's ScanColumn does, and the read fails with
+// CATALOG_VALUE and no column, the failure kept as its cause.
 //
 // Requirements: INT-172.
 func TestCatalogValueDriverDecodeFailure(t *testing.T) {
@@ -73,8 +73,8 @@ func TestCatalogValueDriverDecodeFailure(t *testing.T) {
 	inject(t, injectedFailure{rows: func(string) error { return cause }})
 	session := &catalogSession{ctx: ctx, conn: conn, dialect: "postgres"}
 	_, err = session.queryRaw("SELECT 1, 2", nil, 10, 1<<20)
-	if ErrorCode(err) != CodeDriver || err.Error() != "DRIVER: invalid length for int8: 3" {
-		t.Fatalf("queryRaw = %v; want DRIVER: invalid length for int8: 3", err)
+	if ErrorCode(err) != CodeCatalogValue || err.Error() != "CATALOG_VALUE: the driver could not decode the value" {
+		t.Fatalf("queryRaw = %v; want CATALOG_VALUE: the driver could not decode the value", err)
 	}
 	if !errors.Is(err, cause) {
 		t.Fatalf("the decode failure lost its cause: %v", err)
