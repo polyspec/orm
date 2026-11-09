@@ -58,12 +58,14 @@ const declared = (implementation: string, text: string): string[] => {
   if (implementation === 'php' || implementation === 'php-extension') return read(/public (?:static )?function (test\w*)\(/g);
   if (implementation === 'python') return read(/^(?: {4})?(?:async )?def (test_\w+)\(/gm);
   if (implementation === 'typescript') return read(/(?<![.\w])(?:caseTest|test|it)\(\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")/g);
-  // Rust: a function under a test attribute, and the functions that `native_trials!("group": a, b)` makes trials of.
+  // Rust: a function under a test attribute, the functions that `native_trials!("group": a, b)` makes trials of, and in a file
+  // without that macro the harness function `trials` that builds the trials of a file of cases.
   const code = rustCode(text);
   const attributed = read(/#\[(?:tokio::)?test\b[^\]]*\](?:\s*#\[[^\]]*\])*\s*(?:pub(?:\([^)]*\))? )?(?:async )?fn (\w+)/g, code);
   const trials = [...text.matchAll(/\bnative_trials!\(\s*"[^"]*"\s*:\s*([\w\s,]+?)\s*\)/g)]
     .flatMap(([, names = '']) => names.split(',').map(name => name.trim()).filter(Boolean));
-  return [...attributed, ...trials];
+  const harness = trials.length === 0 ? read(/^pub fn (trials)\(\)/gm, code) : [];
+  return [...attributed, ...trials, ...harness];
 };
 
 // The tests of a file: a PHP class holds the tests of the traits it uses, which live in support files; a test that a class

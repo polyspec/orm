@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { keysFile } from './recipe-keys.mts';
 import { implementationFiles, implementationTestInventory } from './languages.mts';
 import { jsonFiles } from './recipe-files.mts';
+import { RUNNER_SOURCES } from '../../tests/conformance/check/recipe_vectors.mts';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -30,6 +31,13 @@ export const RUNNERS: { [implementation: string]: Runner } = {
     files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/all\/[^/]+\/dispatch\.rs)$/,
   },
 };
+
+/**
+ * VECTOR_RUNNERS are the runner programs of the conformance bodies of each runtime (FCV-15): tests/conformance/check/recipe_vectors.mts
+ * runs the generated-method and fixed-clock bodies of tests/conformance/vectors.json through them in every runtime, the PHP extension
+ * through the PHP runner, so those bodies are cases that every runtime runs and not native tests.
+ */
+export const VECTOR_RUNNERS: Record<string, string[]> = RUNNER_SOURCES;
 
 /**
  * READERS are the test files that read the data of a recipe without running its steps, each with its reason; the other test files
@@ -108,6 +116,10 @@ export function findings(tree: Tree): string[] {
   for (const [path, text] of tree.sources) {
     const owned = Object.values(RUNNERS).some(runner => runner.files.test(path));
     if (!owned && text.includes('OP_UNKNOWN') && !/(_test\.go|[./]test\.m?[jt]s|Test\.php|tests?\.rs)$/.test(path)) out.push(`${path}: refuses an op outside the runner of its runtime`);
+  }
+  for (const [implementation, files] of Object.entries(VECTOR_RUNNERS)) {
+    if (!(implementation in RUNNERS)) out.push(`${implementation}: a vector runner of no runtime`);
+    for (const file of files) if (!tree.sources.has(file)) out.push(`${implementation}: the vector runner ${file} does not exist`);
   }
   for (const op of tree.ops) {
     if (!tree.steps.has(op)) out.push(`the schema op ${op} is the op of no step of a recipe`);

@@ -2478,6 +2478,19 @@ caseTest('a native test of a shared behaviour that FCV-2 does not name is a find
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('packages/php/tests/ATest.php', 'testOwn'), unstated('packages/php/tests/ATest.php', 'testFromTrait'),
     unstated('packages/rust/orm/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/orm/tests/cases/a.rs', 'a_trial')]);
 });
+
+// A Rust file of cases without native_trials! makes its trials in the harness function `trials`, which is its native test (T400-1).
+// Requirements: FCV-2.
+caseTest('the harness function trials of a Rust file of cases is its native test', COMPUTE, () => {
+  const harness = 'packages/rust/orm/tests/cases/b.rs';
+  const files = { ...nativeFiles, [harness]: 'pub fn trials() -> Vec<Trial> {\n    cases().map(|c| Trial::test(c.id, run)).collect()\n}\n' };
+  const inputs = nativeInputs(statedAll, files);
+  const [shared, ...others] = inputs.features;
+  assert.ok(shared !== undefined, 'the fixture has the shared feature');
+  const widened = { ...inputs, tests: { ...inputs.tests, rust: [...inputs.tests.rust, harness] }, features: [{ ...shared, files: [...shared.files, harness] }, ...others] };
+  assert.deepEqual(nativeTestErrors(widened), [unstated(harness, 'trials')]);
+  assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-3**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-3**`) }), []);
+});
 caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', COMPUTE, () => {
   // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
