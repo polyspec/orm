@@ -419,6 +419,8 @@ static bool cat_convert_bound(zval *rows, zval *row, zval *types, const char *di
 }
 
 static bool cat_pg_classes(zval *db, zval *pdo, zval *oids, zval *classes);
+static bool cat_pg_builtins(zval *oids);
+static bool cat_pg_refuse_multirange(zval *classes);
 
 /* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows (Catalog::cursorRead): a budget stop leaves the
  * rest of the result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts
@@ -469,8 +471,11 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
             }
             described = true;
             zval classes;
-            if (classify && !cat_pg_classes(db, pdo, ids, &classes)) {
-                /* The lookup error is the one reported and stays pending through the close. */
+            ZVAL_UNDEF(&classes);
+            bool looked = classify || !cat_pg_builtins(ids);
+            if (looked && (!cat_pg_classes(db, pdo, ids, &classes) || !cat_pg_refuse_multirange(&classes))) {
+                /* The lookup error or the refusal is the one reported and stays pending through the close. */
+                if (Z_TYPE(classes) == IS_ARRAY) zval_ptr_dtor(&classes);
                 zval_ptr_dtor(&chunk);
                 zval_ptr_dtor(&st);
                 cat_cursor_close_keep(pdo);
@@ -483,6 +488,8 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
             if (classify) {
                 zval_ptr_dtor(types);
                 ZVAL_COPY_VALUE(types, &classes);
+            } else if (looked) {
+                zval_ptr_dtor(&classes);
             }
         }
         fetched = (zend_long)zend_hash_num_elements(Z_ARRVAL(chunk));
@@ -673,7 +680,8 @@ static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                            zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
 {
-    zval driver;
+    zval driver, buffered;
+    ZVAL_UNDEF(&buffered);
     if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) goto driver;
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
@@ -700,14 +708,47 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     }
     if (!ok) goto driver_st;
     zval_ptr_dtor(&r);
-    if (!cat_statement_columns(&st, names, types, oids)) goto driver_st;
+    zval found;
+    array_init(&found);
+    zval *ids = oids != NULL ? oids : &found;
+    ok = cat_statement_columns(&st, names, types, ids);
+    if (ok && postgres && !cat_pg_builtins(ids)) {
+        /* A lookup of a type runs a statement, which ends this one, so its rows are read first. */
+        zval mode, classes;
+        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+        ZVAL_UNDEF(&classes);
+        if (!pdo_call(&st, "fetchAll", &buffered, 1, &mode, NULL)) {
+            ZVAL_UNDEF(&buffered);
+            ok = false;
+        } else if (!cat_pg_classes(db, pdo, ids, &classes) || !cat_pg_refuse_multirange(&classes)) {
+            /* The lookup error or the refusal is the one reported. */
+            if (Z_TYPE(classes) == IS_ARRAY) zval_ptr_dtor(&classes);
+            zval_ptr_dtor(&found);
+            zval_ptr_dtor(&buffered);
+            zval_ptr_dtor(&st);
+            zval_ptr_dtor(names);
+            zval_ptr_dtor(types);
+            zval_ptr_dtor(rows);
+            return false;
+        }
+        if (Z_TYPE(classes) == IS_ARRAY) zval_ptr_dtor(&classes);
+    }
+    zval_ptr_dtor(&found);
+    if (!ok) goto driver_st;
     zend_long budget = 0;
+    uint32_t next = 0;
     for (;;) {
         zval mode, row;
-        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-        ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
-        if (!ok) goto driver_st;
-        if (Z_TYPE(row) == IS_FALSE) break;
+        if (Z_TYPE(buffered) == IS_ARRAY) {
+            zval *kept = zend_hash_index_find(Z_ARRVAL(buffered), next++);
+            if (kept == NULL) break;
+            ZVAL_COPY(&row, kept);
+        } else {
+            ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+            ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
+            if (!ok) goto driver_st;
+            if (Z_TYPE(row) == IS_FALSE) break;
+        }
         int limit;
         if (convert == NULL) {
             limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
@@ -733,6 +774,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
                 zend_clear_exception();
             }
             zval_ptr_dtor(&st);
+            if (Z_TYPE(buffered) == IS_ARRAY) zval_ptr_dtor(&buffered);
             if (failure != NULL) {
                 EG(exception) = failure;
             } else {
@@ -741,6 +783,8 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
             return false;
         }
     }
+    if (Z_TYPE(buffered) == IS_ARRAY) zval_ptr_dtor(&buffered);
+    ZVAL_UNDEF(&buffered);
     if (!pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) goto driver_st;
     zval_ptr_dtor(&r);
     zval_ptr_dtor(&st);
@@ -748,6 +792,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
 driver_st:
     zval_ptr_dtor(&st);
 driver:
+    if (Z_TYPE(buffered) == IS_ARRAY) zval_ptr_dtor(&buffered);
     cat_driver_error(db);
     zval_ptr_dtor(names);
     zval_ptr_dtor(types);
@@ -1900,7 +1945,9 @@ static bool cat_rule_at(zend_long column)
     }
     const char *code = cat_broken.code;
     zend_object *cause = cat_broken.cause;
-    zend_string *message = zend_strpprintf(0, "column " ZEND_LONG_FMT ": %s", column, cat_broken.text);
+    /* A driver of one runtime does not tell which column it failed to decode, so INT-172 names none (INT-165). */
+    zend_string *message = strcmp(cat_broken.text, CAT_RULE_DRIVER_DECODE) == 0 ? zend_string_init(cat_broken.text, strlen(cat_broken.text), 0)
+        : zend_strpprintf(0, "column " ZEND_LONG_FMT ": %s", column, cat_broken.text);
     cat_broken.code = NULL;
     cat_broken.text = NULL;
     cat_broken.cause = NULL;
@@ -2505,6 +2552,9 @@ static const char *cat_pg_builtin_class(zend_long oid)
 static const char *cat_pg_container(const char *const *classes, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
+        if (strcmp(classes[i], "multirange") == 0) return "multirange";
+    }
+    for (size_t i = 0; i < count; i++) {
         if (strcmp(classes[i], "int") != 0 && strcmp(classes[i], "numeric") != 0 && strcmp(classes[i], "bool") != 0
             && strcmp(classes[i], "text") != 0) {
             return "refused";
@@ -2582,7 +2632,10 @@ static bool cat_pg_class(zval *db, zval *pdo, zval *cache, zend_long oid, const 
         const char *element;
         ok = cat_pg_class(db, pdo, cache, cat_pg_long(row, 2), &element);
         if (ok) class_ = cat_pg_container(&element, 1);
-    } else if ((kind == 'r' || kind == 'm') && subtype != NULL && Z_TYPE_P(subtype) != IS_NULL) {
+    } else if (kind == 'm') {
+        /* A multirange is refused by its type (INT-185). */
+        class_ = "multirange";
+    } else if (kind == 'r' && subtype != NULL && Z_TYPE_P(subtype) != IS_NULL) {
         const char *element;
         ok = cat_pg_class(db, pdo, cache, cat_pg_long(row, 5), &element);
         if (ok) class_ = cat_pg_container(&element, 1);
@@ -2611,6 +2664,22 @@ static bool cat_pg_class(zval *db, zval *pdo, zval *cache, zend_long oid, const 
     return true;
 }
 
+/* Refuses a PostgreSQL result with a column of a multirange type, or of a type that holds one, by its type and before any
+ * value, NULL or not (Catalog::refuseMultirange, INT-185): the first such column is INT-170. It returns false with the error
+ * thrown. */
+static bool cat_pg_refuse_multirange(zval *classes)
+{
+    zend_ulong at;
+    zval *class_;
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(classes), at, class_) {
+        if (Z_TYPE_P(class_) == IS_STRING && zend_string_equals_literal(Z_STR_P(class_), "multirange")) {
+            cat_rule("CATALOG_VALUE", CAT_RULE_NATIVE_TYPE);
+            return cat_rule_at((zend_long)at + 1);
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 /* Whether each OID of a PostgreSQL result is that of a built-in type, whose class needs no lookup (Catalog::pgBuiltins). */
 static bool cat_pg_builtins(zval *oids)
 {
@@ -2634,6 +2703,7 @@ static bool cat_pg_classes(zval *db, zval *pdo, zval *oids, zval *classes)
         if (Z_TYPE_P(oid) == IS_LONG && !cat_pg_class(db, pdo, &cache, Z_LVAL_P(oid), &class_)) {
             zval_ptr_dtor(&cache);
             zval_ptr_dtor(classes);
+            ZVAL_UNDEF(classes);
             return false;
         }
         add_next_index_string(classes, class_);
@@ -2947,7 +3017,7 @@ static bool cat_reader_of(zval *db, zval *pdo, zval *cache, const char *dialect,
     if (strcmp(class_, "year") == 0) reader->text = CAT_RULE_MYSQL_YEAR;
     else if (strcmp(class_, "mysql_timestamp") == 0) reader->text = CAT_RULE_MYSQL_TIMESTAMP;
     else if (strcmp(class_, "zoned") == 0) reader->text = CAT_RULE_POSTGRES_ZONED;
-    else if (strcmp(class_, "refused") == 0) reader->text = CAT_RULE_NATIVE_TYPE;
+    else if (strcmp(class_, "refused") == 0 || strcmp(class_, "multirange") == 0) reader->text = CAT_RULE_NATIVE_TYPE;
     else if (strcmp(class_, "bool") == 0) reader->read = CAT_READ_BOOL;
     else if (strcmp(class_, "bit") == 0) {
         reader->read = CAT_READ_BIT;
@@ -3204,7 +3274,7 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
                 cat_driver_error(db);
             }
         }
-        if (ok) ok = cat_pg_classes(db, pdo, &oids, &classes);
+        if (ok) ok = cat_pg_classes(db, pdo, &oids, &classes) && cat_pg_refuse_multirange(&classes);
     }
     zend_long budget = 0;
     uint32_t next = 0;

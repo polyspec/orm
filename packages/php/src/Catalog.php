@@ -838,6 +838,7 @@ final class Catalog
                         };
                     }
                     $classes = $this->pgClasses($pdo, $metas);
+                    self::refuseMultirange($classes);
                 }
                 $rows = $this->boundedRows(
                     $fetch,
@@ -1117,7 +1118,10 @@ final class Catalog
     /** The error of a rule at the 1-based column n: `CODE: column n: text`, with the failure it keeps (INT-172). */
     private static function atColumn(CatalogRule $rule, int $column): OrmException
     {
-        return new OrmException($rule->ruleCode, "column $column: " . $rule->getMessage(), $rule->getPrevious());
+        // A driver of one runtime does not tell which column it failed to decode, so INT-172 names none (INT-165).
+        $text = $rule->getMessage() === self::RULE_DRIVER_DECODE ? $rule->getMessage()
+            : "column $column: " . $rule->getMessage();
+        return new OrmException($rule->ruleCode, $text, $rule->getPrevious());
     }
 
     /** The text of a driver value that the driver delivers as text (INT-171). */
@@ -1663,6 +1667,7 @@ final class Catalog
             $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;
             $st = $this->prepareQuery($pdo, $sql, $args, true);
             return $this->readStatement($st, $connectionId, function () use (
+                $pdo,
                 $st,
                 $maxRows,
                 $maxBytes,
@@ -1673,8 +1678,18 @@ final class Catalog
                     static fn (array $meta): string => strtoupper((string) ($meta['native_type'] ?? '')),
                     $metas
                 );
+                $fetch = static fn (): array|false => $st->fetch(\PDO::FETCH_NUM);
+                if ($this->dialect === 'postgres' && !self::pgBuiltins($metas)) {
+                    // A lookup of a type runs a statement, which ends this one, so its rows are read first.
+                    $buffered = $st->fetchAll(\PDO::FETCH_NUM);
+                    $next = 0;
+                    $fetch = static function () use (&$buffered, &$next): array|false {
+                        return $buffered[$next++] ?? false;
+                    };
+                    self::refuseMultirange($this->pgClasses($pdo, $metas));
+                }
                 $rows = $this->boundedRows(
-                    static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                    $fetch,
                     $maxRows,
                     $maxBytes,
                     $convert === null ? null
@@ -1709,12 +1724,15 @@ final class Catalog
             $sql,
             $maxRows,
             $maxBytes,
-            static function (\PDOStatement $first) use (&$names, &$types, &$oids): void {
-                for ($i = 0, $n = $first->columnCount(); $i < $n; $i++) {
-                    $meta = $first->getColumnMeta($i) ?: [];
+            function (\PDOStatement $first) use ($pdo, &$names, &$types, &$oids): void {
+                $metas = self::columnMetas($first);
+                foreach ($metas as $meta) {
                     $names[] = (string) ($meta['name'] ?? '');
                     $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
                     $oids[] = self::oidOf($meta);
+                }
+                if (!self::pgBuiltins($metas)) {
+                    self::refuseMultirange($this->pgClasses($pdo, $metas));
                 }
             },
             $convert === null ? null : static function (\PDOStatement $st, array $row) use (&$types, $convert): array {
@@ -1744,6 +1762,7 @@ final class Catalog
                 $metas = self::columnMetas($first);
                 $names = array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas);
                 $classes = $this->pgClasses($pdo, $metas);
+                self::refuseMultirange($classes);
             },
             static function (\PDOStatement $st, array $row) use (&$classes): array {
                 $cells = [];
@@ -2215,7 +2234,7 @@ final class Catalog
             'year' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
             'mysql_timestamp' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
             'zoned' => $refuse(Code::CATALOG_VALUE, self::RULE_POSTGRES_ZONED),
-            'refused' => $refuse(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
+            'refused', 'multirange' => $refuse(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
             'bool' => self::describedBoolean(...),
             'bit' => static fn (mixed $value): string => self::bitBytes($value, self::declaredWidth($native)),
             'spatial' => self::driverBytes(...),
@@ -2290,6 +2309,20 @@ final class Catalog
         );
     }
 
+    /**
+     * Refuses a PostgreSQL result with a column of a multirange type, or of a type that holds one, by its type and
+     * before any value, NULL or not (INT-185): the first such column is INT-170.
+     *
+     * @param list<string> $classes
+     */
+    private static function refuseMultirange(array $classes): void
+    {
+        $at = array_search('multirange', $classes, true);
+        if ($at !== false) {
+            throw self::atColumn(self::rule(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE), $at + 1);
+        }
+    }
+
     /** Whether each column of a PostgreSQL result has a built-in type, whose class needs no lookup. */
     private static function pgBuiltins(array $metas): bool
     {
@@ -2331,8 +2364,9 @@ final class Catalog
             $type[0] === 'd' => $this->pgClass($pdo, (int) $type[3]),
             $type[0] === 'b' && $type[1] === 'A' && (int) $type[2] !== 0
                 => self::pgContainer([$this->pgClass($pdo, (int) $type[2])]),
-            ($type[0] === 'r' || $type[0] === 'm') && $type[5] !== null
-                => self::pgContainer([$this->pgClass($pdo, (int) $type[5])]),
+            // A multirange is refused by its type (INT-185).
+            $type[0] === 'm' => 'multirange',
+            $type[0] === 'r' && $type[5] !== null => self::pgContainer([$this->pgClass($pdo, (int) $type[5])]),
             $type[0] === 'c' => self::pgContainer(array_map(
                 fn (array $field): string => $this->pgClass($pdo, (int) $field[0]),
                 $this->pgRows(
@@ -2355,6 +2389,9 @@ final class Catalog
      */
     private static function pgContainer(array $classes): string
     {
+        if (in_array('multirange', $classes, true)) {
+            return 'multirange';
+        }
         foreach ($classes as $class) {
             if (!in_array($class, ['int', 'numeric', 'bool', 'text'], true)) {
                 return 'refused';
