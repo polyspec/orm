@@ -64,25 +64,15 @@ fn codec_parser_refusals_state_the_stage_text() {
     assert_eq!(error.to_string(), "CODEC_DECODE: aes: authentication failed");
 }
 
-/// granit-parser reports an alias whose anchor is not in the stream as a parse error of its own kind, which the yaml stage
-/// reads as `yaml-alias`.
+/// The cause of `yaml-parse` is the error of the reader, which names the line and the column where the stream leaves the
+/// grammar, the column in Unicode characters and the byte order mark not counted (COD-80).
 #[test]
-fn yaml_unknown_anchor_is_yaml_alias() {
+fn yaml_parse_keeps_the_position_of_the_reader() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let mut reader = YamlReader::default();
-    let error = YamlParser::new_from_str("a: *missing\n").try_load(&mut reader, true).expect_err("an alias without its anchor must not parse");
-    assert!(matches!(&error, TryLoadError::Scan(error) if matches!(error.kind(), YamlErrorKind::UnknownAnchor)), "{error:?}");
-    let error = decode(&["yaml".into()], &Val::Str("a: *missing\n".into())).expect_err("an alias must fail");
-    assert_eq!(error.to_string(), "CODEC_DECODE: yaml: aliases are not supported");
-    assert!(std::error::Error::source(&error).is_some(), "the parser error is the cause");
-}
-
-/// The guards of the yaml reader that no stream reaches state yaml-parse and keep what they found as the cause (COD-72).
-#[test]
-fn yaml_reader_guards_state_yaml_parse() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let mut reader = YamlReader::default();
-    let error = reader.on_event(YamlEvent::SequenceEnd, YamlSpan::default()).expect_err("an end without a start is refused");
-    assert_eq!(error.to_string(), "CODEC_DECODE: yaml: the stream does not parse");
-    assert_eq!(std::error::Error::source(&error).map(ToString::to_string).as_deref(), Some("a collection end without a start"));
+    for (stream, line, column) in [("a: 'b'#c\n", 1, 7), ("\u{feff}한: [\n b,\n,]\n", 3, 1), ("a: 1\r\nb: \"\\q\"\n", 2, 6), ("[a", 1, 3)] {
+        let error = decode(&["yaml".into()], &Val::Str(stream.into())).expect_err("a stream outside the grammar must fail");
+        assert_eq!(error.to_string(), "CODEC_DECODE: yaml: the stream does not parse");
+        let cause = std::error::Error::source(&error).map(ToString::to_string);
+        assert_eq!(cause.as_deref(), Some(format!("the stream leaves the YAML grammar at line {line}, column {column}").as_str()), "{stream:?}");
+    }
 }
