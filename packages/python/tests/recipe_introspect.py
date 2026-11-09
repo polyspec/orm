@@ -44,7 +44,8 @@ class _CountingAdapter:
 
 class _Native:
     """One native connection of the case database: a corpus has no native driver but a session of its flowmark
-    server, which states SQL in SQLite's dialect (DIA-185); any other database is its driver connection."""
+    server, which states SQL in SQLite's dialect (DIA-185); any other database is the driver connection of its dialect, which
+    is MySQL's for MariaDB (DIA-200)."""
 
     def __init__(self, database: str, dsn: str):
         if database == "markdown":
@@ -53,20 +54,21 @@ class _Native:
             self._close = self._corpus.close
             self.errors = (OrmError,)
             return
-        connection = connect(database, dsn)
-        if database == "sqlite":
+        dialect = _sql_dialect(database)
+        connection = connect(dialect, dsn)
+        if dialect == "sqlite":
             connection.isolation_level = None
         self.adapter = Adapter(connection)
         self._close = connection.close
-        self.errors = _driver_errors(database)
+        self.errors = _driver_errors(dialect)
 
     def close(self) -> None:
         self._close()
 
 
 def _sql_dialect(database: str) -> str:
-    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185)."""
-    return "sqlite" if database == "markdown" else database
+    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200)."""
+    return {"markdown": "sqlite", "mariadb": "mysql"}.get(database, database)
 
 
 def _texts(step: dict, directory: Path) -> tuple[dict[str, str], dict]:

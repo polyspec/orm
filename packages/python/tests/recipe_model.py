@@ -642,8 +642,10 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             [step["text"]],
         )
         built = author.core.build("count")
-        # A corpus runs SQL in SQLite's dialect (DIA-185).
-        dialect = "sqlite" if context["database"] == "markdown" else context["database"]
+        # A corpus runs SQL in SQLite's dialect (DIA-185), MariaDB in MySQL's (DIA-200).
+        dialect = {"markdown": "sqlite", "mariadb": "mysql"}.get(
+            context["database"], context["database"]
+        )
         plan = Engine(author.core.ent.model.runtime, dialect).compile(built.finish())
         # The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
         # fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).

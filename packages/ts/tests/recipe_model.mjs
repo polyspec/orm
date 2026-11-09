@@ -294,14 +294,14 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
     },
     // query.search (FCV-4, PRT-75): a count with a fulltext_boolean chain key over the columns. The statement is compiled with
     // the engine of the case dialect (DIA-187 refuses SQLite); a blank text runs on the case connection, where the bind check
-    // refuses it with IR_INVALID (DIA-6).
+    // refuses it with IR_INVALID (DIA-6). A corpus compiles in SQLite's dialect (DIA-185), MariaDB in MySQL's (DIA-200).
     async 'query.search'(s, context) {
       const db = connection(s.connection, context);
       if (s.model !== 'Author') throw new Error(`model ${s.model} has no query.search entry`);
       const author = new Author().connect(db);
       author[CORE].whereChain('', [{ conn: '', op: 'fulltext_boolean', column: '', columns: s.columns, compare: '' }], [s.text]);
       const built = author[CORE].build('count');
-      const plan = new Engine(Author.entity.model, context.database === 'markdown' ? 'sqlite' : context.database).compile(built.finish());
+      const plan = new Engine(Author.entity.model, ({ markdown: 'sqlite', mariadb: 'mysql' })[context.database] ?? context.database).compile(built.finish());
       // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
       // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
       const boolean = plan.steps[0].bind_slots[0]?.transform === 'fulltext_boolean';

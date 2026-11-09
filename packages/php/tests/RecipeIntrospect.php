@@ -14,6 +14,9 @@ use RuntimeException;
 /** The dbspec.introspect op (docs/spec/feature-coverage.md FCV-4, DIA-133, DIA-198) of the recipe runner. */
 final class RecipeIntrospect
 {
+    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
+    private const DIALECT_OF = ['markdown' => 'sqlite', 'mariadb' => 'mysql'];
+
     private const CONNECTION_RULES = [
         'mysql' => ["SET time_zone = '+00:00'"],
         'postgres' => ['SET client_min_messages = warning', "SET TimeZone = 'UTC'"],
@@ -33,9 +36,9 @@ final class RecipeIntrospect
     public static function step(RecipeStep $step, array $context): array
     {
         // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is
-        // SQLite's.
+        // SQLite's; MariaDB runs SQL in MySQL's (DIA-200).
         $markdown = $context['database'] === 'markdown';
-        $database = $markdown ? 'sqlite' : $context['database'];
+        $database = self::DIALECT_OF[$context['database']] ?? $context['database'];
         if (isset($step['catalog_of'])) {
             return self::catalogQueryFailure($step['catalog_of'], $context['dsn']);
         }
@@ -113,8 +116,9 @@ final class RecipeIntrospect
      */
     public static function planPhysical(RecipeStep $step, array $context): array
     {
-        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's (case_admin).
-        $database = $context['database'] === 'markdown' ? 'sqlite' : $context['database'];
+        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's (case_admin);
+        // MariaDB runs SQL in MySQL's (DIA-200).
+        $database = self::DIALECT_OF[$context['database']] ?? $context['database'];
         $id = $step['case'];
         $matching = array_values(array_filter(
             plan_vectors_at($context['dir'] . '/' . $step['vectors'])['cases'],

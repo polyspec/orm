@@ -90,15 +90,19 @@ async function catalogQueryFailure(dialect, database, dsn) {
   }
 }
 
+// The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
+const sqlDialect = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
+
 // introspectStep runs a dbspec.introspect step: on one native connection of the case database, the connection rules, the
 // rendered documents and the statements of the vector, then the public introspectDbspec. A vector with a document compares
 // the emitted document and the unsupported objects; any other requires none unsupported and the schema text of the source.
 // Its result is the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
 export async function introspectStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
+  // MariaDB runs SQL in MySQL's (DIA-200).
   const native = context.database;
-  const database = native === 'markdown' ? 'sqlite' : native;
+  const database = sqlDialect(native);
   if (step.catalog_of !== undefined) return catalogQueryFailure(step.catalog_of, native, dsn);
   const { texts, vector } = sourceOf(step, dir);
   const documents = parseSet(texts);
@@ -159,9 +163,10 @@ const documentText = lines => `${lines.join('\n')}\n`;
 // run, the target is read again and no table or column named dbspec$ remains.
 export async function planPhysicalStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
+  // MariaDB runs SQL in MySQL's (DIA-200).
   const native = context.database;
-  const database = native === 'markdown' ? 'sqlite' : native;
+  const database = sqlDialect(native);
   const id = step.case;
   const vector = readPlanCases(resolve(dir, step.vectors)).find(candidate => candidate.id === id);
   if (vector === undefined) throw new Error(`the vectors have no case ${id}`);
