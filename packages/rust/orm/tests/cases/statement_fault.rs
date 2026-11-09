@@ -1,9 +1,7 @@
-//! The test statement fault on SQLite, MySQL and PostgreSQL
-//! (contracts/fixtures/statement_fault.json, protocol section 3.2). The next
-//! statement of a connection is not sent; the client reports it as the ORM error
-//! with the fixture code and message at the statement end of a driver error.
-//! The fault is consumed by that statement, transaction control statements do not
-//! consume it, and an empty code or message is refused and arms nothing.
+//! The refusal of an empty argument of the test statement fault on SQLite, MySQL and PostgreSQL
+//! (contracts/fixtures/statement_fault.json, protocol section 3.2): an empty code or message panics, the
+//! programmer-error signal of Rust, and arms nothing. The refused statement, its event and its consumption
+//! are the cases a_statement_fault_* of the recipe transactions.
 //!
 //! The cases run in case databases of their own (polyspec-orm-case-database),
 //! reached through ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN. The test fails
@@ -71,50 +69,6 @@ async fn count(db: &Db) -> i64 {
 }
 
 /// Checks the error of a refused statement: its code and message are the fixture's.
-fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
-    let fixture = fixture();
-    assert_eq!(error.code(), fixture.code, "{driver}: {subject}: code of {error}");
-    assert!(error.to_string().contains(&fixture.message), "{driver}: {subject}: message of {error} does not name {:?}", fixture.message);
-}
-
-/// The next insert is refused: the client reports the fixture error and the table is unchanged.
-async fn refused_insert(driver: &str, dsn: &str) {
-    let fixture = fixture();
-    let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
-    let error = create(&db, "refused").await.expect_err("the insert is refused");
-    check_fault(driver, &error, "insert");
-    assert_eq!(count(&db).await, 0, "{driver}: the refused insert leaves the table unchanged");
-    db.close().await;
-}
-
-/// The fault is consumed by one statement: the insert after the refused one runs.
-async fn consumed_by_one_statement(driver: &str, dsn: &str) {
-    let fixture = fixture();
-    let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
-    let error = create(&db, "refused").await.expect_err("the insert is refused");
-    check_fault(driver, &error, "first insert");
-    create(&db, "kept").await.or_panic(|e| format!("{driver}: the second insert after the consumed fault: {e}"));
-    create(&db, "kept again").await.or_panic(|e| format!("{driver}: the third insert: {e}"));
-    assert_eq!(count(&db).await, 2, "{driver}: only the two accepted inserts are stored");
-    db.close().await;
-}
-
-/// Inside a transaction the fault refuses the insert; the transaction control
-/// statements before it do not consume the fault. The rollback succeeds, so the
-/// error is the fixture error and not ROLLBACK.
-async fn refused_in_transaction(driver: &str, dsn: &str) {
-    let fixture = fixture();
-    let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
-    let error = db.transaction(async || create(&db, "refused").await).retry(0).await.expect_err("the transaction with the refused insert");
-    assert!(!matches!(error, polyspec_orm::Error::Rollback { .. }), "{driver}: the rollback succeeds, so the error is not ROLLBACK: {error}");
-    check_fault(driver, &error, "transaction");
-    assert_eq!(count(&db).await, 0, "{driver}: the refused transaction stores no row");
-    db.close().await;
-}
-
 /// An empty code or an empty message panics (the programmer-error signal of
 /// Rust) and arms nothing: the next insert runs.
 async fn empty_argument_refused(driver: &str, dsn: &str) {
@@ -136,9 +90,6 @@ async fn bounded(driver: &str, case: &str) {
     let dsn = database.dsn().to_owned();
     let run = async {
         match case.as_str() {
-            "refused_insert" => refused_insert(driver, &dsn).await,
-            "consumed_by_one_statement" => consumed_by_one_statement(driver, &dsn).await,
-            "refused_in_transaction" => refused_in_transaction(driver, &dsn).await,
             "empty_argument_refused" => empty_argument_refused(driver, &dsn).await,
             other => unreachable!("unknown case {other}"),
         }
@@ -186,42 +137,6 @@ fn panic_reason(payload: Box<dyn std::any::Any + Send>) -> String {
         .unwrap_or_else(|| "the run panicked".to_string())
 }
 
-async fn refused_insert_sqlite() {
-    bounded("sqlite", "refused_insert").await;
-}
-
-async fn refused_insert_mysql() {
-    bounded("mysql", "refused_insert").await;
-}
-
-async fn refused_insert_postgres() {
-    bounded("postgres", "refused_insert").await;
-}
-
-async fn consumed_by_one_statement_sqlite() {
-    bounded("sqlite", "consumed_by_one_statement").await;
-}
-
-async fn consumed_by_one_statement_mysql() {
-    bounded("mysql", "consumed_by_one_statement").await;
-}
-
-async fn consumed_by_one_statement_postgres() {
-    bounded("postgres", "consumed_by_one_statement").await;
-}
-
-async fn refused_in_transaction_sqlite() {
-    bounded("sqlite", "refused_in_transaction").await;
-}
-
-async fn refused_in_transaction_mysql() {
-    bounded("mysql", "refused_in_transaction").await;
-}
-
-async fn refused_in_transaction_postgres() {
-    bounded("postgres", "refused_in_transaction").await;
-}
-
 async fn empty_argument_refused_sqlite() {
     bounded("sqlite", "empty_argument_refused").await;
 }
@@ -241,39 +156,6 @@ pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
         every_fixture_case_has_a_test_per_driver,
     )];
     trials.extend(statement_fault_cases());
-    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
-    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
-    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::consumed_by_one_statement_sqlite",
-        polyspec_orm_testcase::DATABASE,
-        consumed_by_one_statement_sqlite,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::consumed_by_one_statement_mysql",
-        polyspec_orm_testcase::DATABASE,
-        consumed_by_one_statement_mysql,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::consumed_by_one_statement_postgres",
-        polyspec_orm_testcase::DATABASE,
-        consumed_by_one_statement_postgres,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::refused_in_transaction_sqlite",
-        polyspec_orm_testcase::DATABASE,
-        refused_in_transaction_sqlite,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::refused_in_transaction_mysql",
-        polyspec_orm_testcase::DATABASE,
-        refused_in_transaction_mysql,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::refused_in_transaction_postgres",
-        polyspec_orm_testcase::DATABASE,
-        refused_in_transaction_postgres,
-    ));
     trials.push(polyspec_orm_testcase::async_trial(
         "statement_fault::empty_argument_refused_sqlite",
         polyspec_orm_testcase::DATABASE,

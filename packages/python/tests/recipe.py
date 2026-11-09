@@ -50,7 +50,7 @@ from polyspec.orm import (
 from polyspec.orm.catalog import GridCell
 from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
-from polyspec.orm.testing import fail_next_rollback, last_affected
+from polyspec.orm.testing import fail_next_rollback, fail_next_statement, last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -4298,6 +4298,11 @@ def _op_fault_next_rollback(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_fault_next_statement(step: dict, context: dict) -> dict:
+    fail_next_statement(_connection_of(step, context), step["code"], step["message"])
+    return {}
+
+
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
     refusal: Exception = RuntimeError("subscriber refused the event")
@@ -4704,6 +4709,7 @@ _DATABASE_OPS = {
     "events.fail_subscriber": _op_events_fail_subscriber,
     "db.execute": lambda step, context: _op_db_execute(step, context),
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
+    "fault.next_statement": lambda step, context: _op_fault_next_statement(step, context),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,

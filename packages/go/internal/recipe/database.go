@@ -122,6 +122,8 @@ type databaseStep struct {
 	Count   []string `json:"count"`
 	Detail  string   `json:"detail"`
 	Message string   `json:"message"`
+	// Code is the error code of fault.next_statement (PRT-48), armed with Message.
+	Code string `json:"code"`
 	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
 	Request json.RawMessage   `json:"request"`
 	Params  []json.RawMessage `json:"params"`

@@ -3722,7 +3722,9 @@ mod database {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
-                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{message}")) };
+                // A failure without an expected error ends the step with the error as its call returned it, its Display
+                // (`text`), so that a transaction around the step returns that error and not the code before it again.
+                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{}", text.unwrap_or(message.as_str()))) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
                 let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
@@ -4033,6 +4035,13 @@ mod database {
             "fault.next_rollback" => {
                 let db = connection_db(step, context).map_err(fault)?;
                 polyspec_orm::testing::fail_next_rollback(&db);
+                Output::fields(json!({}))
+            }
+            "fault.next_statement" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let code = crate::recipe_reads::read(step, "code")["code"].as_str().unwrap_or_default().to_owned();
+                let message = crate::recipe_reads::read(step, "message")["message"].as_str().unwrap_or_default().to_owned();
+                polyspec_orm::testing::fail_next_statement(&db, &code, &message);
                 Output::fields(json!({}))
             }
             "events.fail_subscriber" => {

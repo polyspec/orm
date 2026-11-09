@@ -3309,6 +3309,10 @@ final class Recipe
                 require_once dirname(__DIR__) . '/testing/Faults.php';
                 \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
                 return [];
+            case 'fault.next_statement':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                \Polyspec\Orm\Testing\Faults::failNextStatement(self::connectionOf($s, $context), $s['code'], $s['message']);
+                return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
                 $refusal = $s['refusal'] ?? null;

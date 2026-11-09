@@ -240,6 +240,12 @@
       "connection",
       "op"
     ],
+    "fault.next_statement": [
+      "code",
+      "connection",
+      "message",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",

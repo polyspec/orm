@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 4ca90f468a4f87797244833837d062e65d740b119a652cd851c8a0d1e8dbe446 -->
+<!-- source-sha256: 1e73776f4ce64ed9fc0576a3c54d75391fd4a4163ebc95ebda1352658687b507 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -210,7 +210,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 
 test는 자기 클라이언트의 test entry point로 연결의 다음 statement가 주어진 오류 code와 message로 결정적으로 실패하게 한다. entry point는 3.1의 rollback fault와 같은 entry point다([3.1](#_3-1-test-faults)). entry point는 handle의 연결에 fault를 설정하고, 그 연결의 모든 handle이 이를 공유한다. 인자는 database, `code`([errors.yaml](errors.yaml)의 code)와 `message`(빈 값이 아닌 text)다. 빈 `code`나 `message`는 클라이언트의 프로그래머 오류 신호로 거절되며 fault를 설정하지 않는다. Go와 Rust는 panic, TypeScript는 `TypeError`, PHP는 `InvalidArgumentException`, Python은 `ValueError`다.
 
-연결이 호출자를 위해 실행하는 다음 statement(model 읽기나 쓰기, query, schema statement(table 재구성이 자기 statement 앞뒤로 설정하고 복원하는 SQLite `foreign_keys` pragma를 포함한다), session 값, named lock의 획득이나 해제)는 데이터베이스로 보내지 않는다. 클라이언트는 그 statement를 주어진 code와 message의 `OrmException`으로 보고하며, driver 오류가 가는 것과 같은 statement 종료 지점을 거치므로 그 statement의 event에 오류가 실린다. 거절된 statement는 데이터베이스를 바꾸지 않고, 그 statement가 fault를 소비한다. transaction 장치의 statement는 fault를 소비하지 않는다. 이는 `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `RELEASE`, `ROLLBACK TO`, transaction이 시작할 때 적용하는 설정(격리, 읽기 전용, statement timeout, `read_uncommitted`, `query_only`), transaction이 끝날 때 복원하는 local과 설정, SQLite row lock table의 statement다. 생성, row 삽입, 삽입을 감싸는 `busy_timeout` 변경을 포함한다. statement fault가 이미 설정된 연결에 다시 설정하면 새 fault가 이전 fault를 대체한다. 거절된 statement는 [3.1](#_3-1-test-faults)의 rollback fault를 소비하지 않고, rollback은 statement fault를 소비하지 않는다.
+연결이 호출자를 위해 실행하는 다음 statement(model 읽기나 쓰기, query, schema statement(table 재구성이 자기 statement 앞뒤로 설정하고 복원하는 SQLite `foreign_keys` pragma를 포함한다), session 값, named lock의 획득이나 해제)는 데이터베이스로 보내지 않는다. 클라이언트는 그 statement를 주어진 code와 message의 `OrmException`으로 보고하며, driver 오류가 가는 것과 같은 statement 종료 지점을 거치므로 그 statement의 event에 오류가 실린다. 거절된 statement는 데이터베이스를 바꾸지 않고, 그 statement가 fault를 소비한다. transaction 장치의 statement는 fault를 소비하지 않는다. 이는 `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `RELEASE`, `ROLLBACK TO`, transaction이 시작할 때 적용하는 설정(격리, 읽기 전용, statement timeout, `read_uncommitted`, `query_only`), transaction이 끝날 때 복원하는 local과 설정, SQLite row lock table의 statement다. 생성, row 삽입, 삽입을 감싸는 `busy_timeout` 변경을 포함한다. statement fault가 이미 설정된 연결에 다시 설정하면 새 fault가 이전 fault를 대체한다. 거절된 statement는 [3.1](#_3-1-test-faults)의 rollback fault를 소비하지 않고, rollback은 statement fault를 소비하지 않는다. recipe `transactions`의 case `a_statement_fault_refuses_the_next_statement`, `a_statement_fault_is_consumed_by_one_statement`, `a_statement_fault_in_a_transaction_refuses_the_insert_and_not_the_begin`이 recipe op `fault.next_statement`(FCV-4)로 거절된 statement, 그 event, 그 소비, fault를 소비하지 않는 transaction statement를 모든 runtime에서 모든 데이터베이스에 대해 보인다.
 
 fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다.
 
