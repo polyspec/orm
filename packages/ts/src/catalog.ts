@@ -90,10 +90,23 @@ export interface CatalogTableMetadata {
 }
 
 /**
- * One value of a plain read. An integer inside the JavaScript safe range is a number; a larger one is a bigint, so no integer
- * is rounded. Binary values are Uint8Array copies, decimals are their plain text, and temporal values are their dbspec text.
+ * A floating-point value of a read (INT-183): its number, and whether it is a 4-byte float (MySQL FLOAT, PostgreSQL real), whose number
+ * holds a single-precision value. A float is never a plain number, so a REAL that SQLite stores as 2.0 stays a float and is not read as
+ * the integer 2 (INT-152).
  */
-export type CatalogValue = null | boolean | number | bigint | string | Uint8Array;
+export class CatalogFloat {
+  public constructor(
+    public readonly value: number,
+    public readonly single: boolean,
+  ) {}
+}
+
+/**
+ * One value of a plain read. An integer inside the JavaScript safe range is a number; a larger one is a bigint, so no integer
+ * is rounded. A float is a CatalogFloat, NaN and the infinities included. Binary values are Uint8Array copies, decimals are their plain
+ * text, and temporal values are their dbspec text.
+ */
+export type CatalogValue = null | boolean | number | bigint | string | Uint8Array | CatalogFloat;
 
 /**
  * One cell of a grid read, typed by the native type of its column (the Rust GridCell). Integer is a signed value and unsigned a MySQL
@@ -408,7 +421,7 @@ function hostInteger(value: unknown): bigint {
 }
 
 /** An integer for a plain read: a number inside the safe range, otherwise the exact bigint. */
-function integerValue(value: bigint): CatalogValue {
+function integerValue(value: bigint): number | bigint {
   return value >= MIN_SAFE && value <= MAX_SAFE ? Number(value) : value;
 }
 
@@ -673,7 +686,8 @@ function describedTemporal(value: unknown, kind: 'date' | 'time' | 'datetime', t
 function sqliteValue(value: unknown): CatalogValue {
   if (value === null) return null;
   if (typeof value === 'bigint') return integerValue(value);
-  if (typeof value === 'number' || typeof value === 'string') return value;
+  if (typeof value === 'number') return new CatalogFloat(value, false);
+  if (typeof value === 'string') return value;
   if (value instanceof Uint8Array) return new Uint8Array(value);
   throw refuse('driverValue');
 }
@@ -744,9 +758,9 @@ function plainValue(value: unknown, column: DriverColumn, dialect: DriverName): 
     case 'year':
       return integerValue(checkedInteger(value, kind === 'unsigned'));
     case 'float32':
-      return float32FromBits(hostFloat32(value));
+      return new CatalogFloat(float32FromBits(hostFloat32(value)), true);
     case 'float64':
-      return hostFloat64(value);
+      return new CatalogFloat(hostFloat64(value), false);
     case 'decimal':
       return hostDecimal(value, false);
     case 'boolean':
@@ -927,6 +941,8 @@ function cellKey(cell: unknown): string {
     return `d${Object.is(cell, -0) ? '-0' : String(cell)}`;
   }
   if (typeof cell === 'bigint') return `i${cell.toString()}`;
+  // A float is its kind and its IEEE-754 bits, so signed zero and NaN are values (INT-107).
+  if (cell instanceof CatalogFloat) return `f${cell.single ? 32 : 64}:${float64Bits(cell.value).toString()}`;
   if (typeof cell === 'string') return `s${Buffer.byteLength(cell, 'utf8')}:${cell}`;
   if (cell instanceof Uint8Array) return `x${Buffer.from(cell).toString('hex')}`;
   throw err(CODE_SNAPSHOT, 'unsupported cell type');
@@ -934,6 +950,17 @@ function cellKey(cell: unknown): string {
 
 function sameCell(a: unknown, b: unknown): boolean {
   return cellKey(a) === cellKey(b);
+}
+
+/**
+ * Whether a stored cell holds the value that a write gave: a float holds a number when its number is that number, and any other cell
+ * when it is the same cell, an integer whatever its host form.
+ */
+function sameWritten(stored: unknown, written: unknown): boolean {
+  // A bound integer is a bigint (checkParams), and a read returns a safe integer as a number.
+  const value = typeof written === 'bigint' ? integerValue(written) : written;
+  if (stored instanceof CatalogFloat && typeof value === 'number') return Object.is(stored.value, value);
+  return sameCell(stored, value);
 }
 
 function sameRow(a: readonly unknown[], b: readonly unknown[]): boolean {
@@ -994,7 +1021,11 @@ function checkParams(params: readonly unknown[], code: string): DriverValue[] {
     if (param === null || typeof param === 'boolean' || typeof param === 'string' || typeof param === 'bigint' || param instanceof Uint8Array) {
       return param;
     }
+    // A safe integer number is an integer value, as a read returns one (CatalogValue), so it binds as an integer and SQLite stores no
+    // REAL for it; any other finite number and a CatalogFloat bind as a double.
+    if (typeof param === 'number' && Number.isSafeInteger(param)) return BigInt(param);
     if (typeof param === 'number' && Number.isFinite(param)) return param;
+    if (param instanceof CatalogFloat && Number.isFinite(param.value)) return param.value;
     throw err(code, `parameter ${index + 1} has unsupported type ${typeof param} or is not finite`);
   });
 }
@@ -1941,7 +1972,7 @@ export class CatalogConnection {
       const [stored] = after;
       if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one inserted row');
       for (const change of changes) {
-        if (!sameCell(stored[change.index], change.value)) {
+        if (!sameWritten(stored[change.index], change.value)) {
           throw err(CODE_WRITE, `stored inserted values of "${descriptor.columns[change.index]?.name ?? ''}" differ`);
         }
       }
@@ -1966,7 +1997,7 @@ export class CatalogConnection {
     return this.write(async session => {
       const descriptor = await this.lockOriginal(session, original, keys);
       const sets = changes.map((change, index) => `${quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect)}=${placeholder(index + 1, this.dialect)}`);
-      const args: DriverValue[] = [...changes.map(change => change.value), ...keys.map(key => key ?? null)];
+      const args: DriverValue[] = checkParams([...changes.map(change => change.value), ...keys.map(key => key ?? null)], CODE_PARAM);
       const predicate = descriptor.primaryKey
         .map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(changes.length + index + 1, this.dialect)}`)
         .join(' AND ');
@@ -1982,7 +2013,7 @@ export class CatalogConnection {
       if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one updated row');
       descriptor.columns.forEach((column, index) => {
         if (column.generated) return; // A generated column may be recomputed by the database.
-        if (!sameCell(stored[index], updated[index])) throw err(CODE_WRITE, `stored ordinary values of "${column.name}" differ`);
+        if (!sameWritten(stored[index], updated[index])) throw err(CODE_WRITE, `stored ordinary values of "${column.name}" differ`);
       });
       return { columns: descriptor.columns.map(column => column.name), rows: after };
     });

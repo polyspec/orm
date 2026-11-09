@@ -14,7 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CatalogFloat, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
@@ -713,6 +713,8 @@ function eventObject(record) {
 /** The recipe wrapper of a bind value (the values of the statement_events fixture: text, int and null). */
 function bindWrapper(value) {
   if (value === null) return { null: true };
+  // A float of a read is a CatalogFloat; the f64 wrapper names a non-finite one, as JSON cannot.
+  if (value instanceof CatalogFloat) return Number.isFinite(value.value) ? { float: String(value.value) } : { f64: String(value.value) };
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'string') return { text: value };
   if (typeof value === 'boolean') return { bool: value };
@@ -860,7 +862,7 @@ const OPS = {
       return at;
     });
     const types = page.result.columns.map(c => c.nativeType);
-    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => described(row[at], types[at], catalog.dialect))) };
+    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => described(row[at], types[at]))) };
   },
   async 'catalog.read_only_query'(s, context) {
     const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(stepArgument(bind, context), context))), limits(s));
@@ -904,7 +906,7 @@ const OPS = {
   async 'catalog.row_cells'(s, context) {
     const snapshot = stepArgument(s.snapshot, context);
     const types = snapshot.metadata.columns.map(c => c.nativeType);
-    return { cells: snapshot.originalCells().map((cell, at) => plain(cell, types[at])) };
+    return { cells: snapshot.originalCells().map((cell, at) => described(cell, types[at])) };
   },
   async 'catalog.insert_row'(s, context) {
     const metadata = stepArgument(s.metadata, context);
@@ -1255,6 +1257,8 @@ function sequenceValues({ from, count }) {
 /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
 function plain(value, nativeType) {
   if (value === null) return { null: true };
+  // A float of a read is a CatalogFloat; the f64 wrapper names a non-finite one, as JSON cannot.
+  if (value instanceof CatalogFloat) return Number.isFinite(value.value) ? { float: String(value.value) } : { f64: String(value.value) };
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'boolean') return { bool: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
@@ -1266,18 +1270,14 @@ function plain(value, nativeType) {
 }
 
 /**
- * The recipe wrapper of a value of a described table. A float is a bits cell (INT-183): the number of a 4-byte float column (MySQL
- * FLOAT, PostgreSQL real) holds a single-precision value, and any other float a double, a SQLite REAL included. A text takes the
- * temporal or decimal kind of its column only in the form of that kind: a SQLite column declared TIME(3) keeps a text such as abc
- * (INT-184).
+ * The recipe wrapper of a value of a described table. A float is a bits cell (INT-183): a CatalogFloat of a 4-byte float holds a
+ * single-precision value. A text takes the temporal or decimal kind of its column only in the form of that kind: a SQLite column
+ * declared TIME(3) keeps a text such as abc (INT-184).
  */
-function described(value, nativeType, dialect) {
-  const type = (nativeType ?? '').toLowerCase();
-  if (typeof value === 'number') {
-    const float32 = dialect !== 'sqlite' && /^(float|real)\b/.test(type);
-    const float = float32 || (dialect === 'sqlite' ? !type.includes('int') && /real|floa|doub/.test(type) : /^(double|float|real)\b/.test(type));
-    if (float32) return { f32_bits: new Uint32Array(new Float32Array([value]).buffer)[0] };
-    if (float || !Number.isInteger(value)) return { f64_bits: String(new BigUint64Array(new Float64Array([value]).buffer)[0]) };
+function described(value, nativeType) {
+  if (value instanceof CatalogFloat) {
+    if (value.single) return { f32_bits: new Uint32Array(new Float32Array([value.value]).buffer)[0] };
+    return { f64_bits: String(new BigUint64Array(new Float64Array([value.value]).buffer)[0]) };
   }
   if (typeof value === 'string') {
     const kind = temporalKind(nativeType);
@@ -1320,7 +1320,7 @@ function grid(cell) {
 /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
 function mutation(metadata, result) {
   const types = result.columns.map(column => metadata.columns.find(c => c.name === column)?.nativeType ?? null);
-  return { rows: result.rows.map(row => row.map((cell, at) => plain(cell, types[at]))) };
+  return { rows: result.rows.map(row => row.map((cell, at) => described(cell, types[at]))) };
 }
 
 /** NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none. */
@@ -1328,6 +1328,11 @@ function normalized(value) {
   if (Array.isArray(value)) return value.map(normalized);
   if (value === null || typeof value !== 'object') return value;
   if (Object.keys(value).length === 1 && 'null' in value) return { null: true };
+  // An f64 wrapper is compared by its binary64 value, so it equals the float wrapper of that value whatever its text (2 or 2.0).
+  if (Object.keys(value).length === 1 && typeof (value.f64 ?? value.float) === 'string') {
+    const number = Number(value.f64 ?? value.float);
+    return { f64: Object.is(number, -0) ? '-0' : String(number) };
+  }
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)]));
 }
 

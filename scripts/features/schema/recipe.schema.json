@@ -437,12 +437,20 @@
           "additionalProperties": false,
           "properties": {
             "f64": {
-              "enum": [
-                "NaN",
-                "Infinity",
-                "-Infinity"
+              "anyOf": [
+                {
+                  "enum": [
+                    "NaN",
+                    "Infinity",
+                    "-Infinity"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$"
+                }
               ],
-              "description": "A non-finite binary64 number (the bind vectors of tests/bind/vectors.json); a finite one is a float wrapper."
+              "description": "A binary64 number that a runner compares by its value, not by its text: a non-finite one (the bind vectors of tests/bind/vectors.json), or a finite one such as the integral float of a plain read, whose text differs by runtime (2 or 2.0)."
             }
           }
         },
