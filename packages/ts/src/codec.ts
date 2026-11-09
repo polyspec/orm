@@ -3,11 +3,11 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import { isIP } from 'node:net';
 import { isUtf8 } from 'node:buffer';
 import { ParseError as JsonParseError, Value as JsonValue, parse as orderedJsonParse, parseBytes as orderedJsonParseBytes, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Document, isAlias, isScalar, isSeq, parseAllDocuments, visit } from 'yaml';
-import type { Alias, ParsedNode } from 'yaml';
+import { Document, visit } from 'yaml';
 import { present } from './present.js';
 import { StyledValue, storedValue } from './styled_value.js';
 import * as codes from './codes.js';
+import { YamlSyntaxError, readYaml } from './yaml_reader.js';
 import type { CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED, CONFIG } from './codes.js';
 
 /** The common value model of COD-16: an integer is a bigint within i64, and a float is a finite number. */
@@ -195,6 +195,9 @@ function string(value: Uint8Array, rule: string): string {
   try {
     return text.decode(value);
   } catch (error) {
+    // The decoder refuses bytes that are not UTF-8 with a TypeError; any other failure, such as a RangeError of a stack
+    // that the caller exhausted, is not that rule.
+    if (!(error instanceof TypeError)) throw error;
     throw new CodecError(codes.CODEC_DECODE, rule, { cause: error });
   }
 }
@@ -373,12 +376,43 @@ function yamlStage(value: CodecValue): string {
   } catch (error) {
     throw new CodecError(codes.CODEC_ENCODE, 'yaml: the value has no YAML text', { cause: error });
   }
+  let read: CodecValue;
   try {
-    decodeYaml(utf8.encode(written));
+    read = decodeYaml(utf8.encode(written));
   } catch (error) {
     throw new CodecError(codes.CODEC_ENCODE, 'yaml: the written text does not read back as the value', { cause: error });
   }
+  if (!sameValue(read, value)) {
+    throw new CodecError(codes.CODEC_ENCODE, 'yaml: the written text does not read back as the value', { cause: new Error('the YAML reader reads the written text as another value') });
+  }
   return written;
+}
+
+/**
+ * Whether two common values are the same value: an integer and a float are distinct, a float by its bits (-0.0 is not
+ * 0.0), a list by its items in order, and a map by its members whatever their order.
+ */
+function sameValue(x: CodecValue, y: CodecValue): boolean {
+  const pairs: Array<[CodecValue, CodecValue]> = [[x, y]];
+  for (let pair = pairs.pop(); pair !== undefined; pair = pairs.pop()) {
+    const [a, b] = pair;
+    if (typeof a === 'number' && typeof b === 'number') {
+      if (!Object.is(a, b)) return false;
+    } else if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      a.forEach((item, index) => pairs.push([item, b[index] ?? null]));
+    } else if (a !== null && b !== null && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+      const keys = Object.keys(a);
+      if (keys.length !== Object.keys(b).length) return false;
+      for (const key of keys) {
+        if (!Object.hasOwn(b, key)) return false;
+        pairs.push([a[key] ?? null, b[key] ?? null]);
+      }
+    } else if (a !== b) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -386,14 +420,18 @@ function yamlStage(value: CodecValue): string {
  * fraction or exponent is written with one fraction digit and reads back as a float (COD-29). A string, a key or a value,
  * that holds a character outside c-printable is double-quoted, and the character is written as its escape (YAML 1.2.2,
  * 5.7): the library escapes only the characters below U+0020, and these characters come only from string content, so
- * each one left in the text is inside a double-quoted scalar.
+ * each one left in the text is inside a double-quoted scalar. A string of spaces and line breaks only, and a string as the
+ * node of the document that the library writes with a wrong indentation indicator, are double-quoted as well
+ * (YAML_BLANK_LINES, YAML_ROOT_MARKER_SPACE), so that the reader reads every written text as its value (yaml-read-back).
  */
 function yamlText(value: CodecValue): string {
   const document = new Document(value, { version: '1.2', schema: 'core', sortMapEntries: true });
   visit(document, {
-    Scalar(_key, node) {
+    Scalar(_key, node, path) {
       if (typeof node.value === 'number' && /^-?[0-9]+$/.test(JSON.stringify(node.value))) node.minFractionDigits = 1;
-      if (typeof node.value === 'string' && YAML_NOT_PRINTABLE.test(node.value)) node.type = 'QUOTE_DOUBLE';
+      if (typeof node.value !== 'string') return;
+      const root = path.length === 1;
+      if (YAML_NOT_PRINTABLE.test(node.value) || YAML_BLANK_LINES.test(node.value) || (root && YAML_ROOT_MARKER_SPACE.test(node.value) && YAML_MARKER_LINE.test(node.value))) node.type = 'QUOTE_DOUBLE';
     },
   });
   return document.toString().replace(new RegExp(YAML_NOT_PRINTABLE.source, 'gu'), character => {
@@ -585,103 +623,43 @@ function jsonText(value: unknown, depth: number): string {
   return `{${members.join(',')}}`;
 }
 
+// A text of spaces and line breaks only, with a space and a line break, which the library writes as a block scalar whose
+// lines are all empty: a block scalar without a line that is not empty takes the spaces of its longest line as its
+// indentation (YAML 1.2.2, 8.1.1.1), so the reader reads those lines without their spaces; double-quoted, it keeps them.
+const YAML_BLANK_LINES = /^(?=[^]*\n)(?=[^]* )[ \n]+$/u;
+
+// A string whose leading spaces and line breaks hold a space, and a line of which starts with `%`, `---` or `...`: as the
+// node of the document, the library writes it as a block scalar indented by two spaces with the indentation indicator 2,
+// but the parent of the node of a document is at -1 spaces (YAML 1.2.2, 9.1.3), so the indicator 2 reads its content at
+// one space and keeps one space of each line (COD-78); double-quoted, it is read as written.
+const YAML_ROOT_MARKER_SPACE = /^[ \n]* /u;
+const YAML_MARKER_LINE = /^(?:%|---|\.\.\.)/mu;
+
 // A character outside c-printable (YAML 1.2.2, 5.1), or a byte order mark, which is the encoding mark at the start of the
 // stream (5.2) and never content.
 const YAML_NOT_PRINTABLE = /[^\t\n\r\x20-\x7e\x85\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\u{10000}-\u{10ffff}]/u;
 
-/**
- * The value of a YAML stream (COD-29, COD-70): the stream rules (UTF-8, c-printable) before its parse, then the nodes of
- * the one document in their order, each refused by its rule, and a failure of the library as `yaml-parse` with that
- * failure as its cause (COD-71). The parser keeps each key as the node it reads, so a key that is not a string or an
- * integer is refused by its kind, and duplicates are found here by the decimal string of an integral key.
- */
-function decodeYaml(current: Uint8Array): CodecValue {
-  const source = string(current, 'yaml: the stream is not UTF-8');
-  const stream = source.startsWith('\ufeff') ? source.slice(1) : source;
-  if (YAML_NOT_PRINTABLE.test(stream)) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream holds a character that is not printable');
-  const documents = yamlDocuments(stream);
-  // A stream without a document (empty, or comments only) is not a YAML value.
-  const document = documents[0];
-  if (document === undefined) throw yamlRule('no document');
-  // Each document is met before the next, so the rules of the first come before the start of a second (COD-70).
-  const value = yamlValue(document.contents, 1);
-  const failure = document.errors[0] ?? document.warnings[0];
-  if (failure !== undefined) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream does not parse', { cause: failure });
-  if (documents.length > 1) throw yamlRule('multiple documents are not supported');
-  return value;
-}
-
-/**
- * The documents of a YAML stream. The parser keeps each key as the node it reads, so that a key that is not a string or
- * an integer is refused by its kind, and duplicates are found by yamlValue; a failure of the library is yaml-parse.
- */
-function yamlDocuments(stream: string) {
-  try {
-    return parseAllDocuments(stream, { version: '1.2', schema: 'core', strict: true, uniqueKeys: false, stringKeys: false, intAsBigInt: true });
-  } catch (error) {
-    throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream does not parse', { cause: error });
-  }
-}
-
-/** A rule of the yaml stage that a node of the document breaks. */
+/** A rule of COD-70 that a YAML stream breaks, which the stage finds by the reader of its own and so has no cause. */
 function yamlRule(rule: string): CodecError {
   return new CodecError(codes.CODEC_DECODE, `yaml: ${rule}`);
 }
 
 /**
- * The value of a node of a YAML document, its nodes read in their order, each node where it starts (COD-70): first an
- * alias, an anchor and an explicit tag, the core tags included (the parser sets a node's anchor and tag only when the
- * text writes them), then the nesting rule of its level, where a sequence or a mapping at `level` is refused past 256
- * levels, then its own rules: an integer is within i64 and a float is finite. A key comes before its value: a collection
- * is no key, a plain key that the core schema reads as a boolean, a null or a float is no key, and an integral key is its
- * decimal string, so two keys of one string are duplicates (COD-29). The parsed nodes are the four kinds of the library
- * and the empty node, each handled.
+ * The value of a YAML stream (COD-29, COD-70): the stream rules (UTF-8, c-printable) before its read, then the YAML reader
+ * of orm (COD-74 to COD-80), which no library stands behind. A rule that the reader meets is its text, and a stream that
+ * leaves the grammar is `yaml-parse` with the error of the reader, which names the line and the column, as its cause
+ * (COD-71, COD-80).
  */
-function yamlValue(node: ParsedNode | null, level: number): CodecValue {
-  if (node === null) return null;
-  yamlNodeStart(node, level);
-  if (isScalar(node)) return yamlScalar(node.value);
-  if (isSeq(node)) return node.items.map(item => yamlValue(item, level + 1));
-  const members: { [key: string]: CodecValue } = {};
-  const seen = new Set<string>();
-  for (const pair of node.items) {
-    const key = pair.key;
-    if (key !== null) yamlNodeStart(key, level + 1);
-    if (!isScalar(key)) throw yamlRule('map keys must be scalar strings');
-    const name: unknown = key.value;
-    if (typeof name !== 'string' && typeof name !== 'bigint') throw yamlRule('map keys must be strings or integers');
-    if (typeof name === 'bigint' && !i64(name)) throw yamlRule('integer is outside the i64 range');
-    const text = String(name);
-    if (seen.has(text)) throw yamlRule('duplicate map key');
-    seen.add(text);
-    Object.defineProperty(members, text, { value: yamlValue(pair.value, level + 1), enumerable: true, writable: true, configurable: true });
+function decodeYaml(current: Uint8Array): CodecValue {
+  const source = string(current, 'yaml: the stream is not UTF-8');
+  const stream = source.startsWith('\ufeff') ? source.slice(1) : source;
+  if (YAML_NOT_PRINTABLE.test(stream)) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream holds a character that is not printable');
+  try {
+    return readYaml(stream, yamlRule);
+  } catch (error) {
+    if (error instanceof YamlSyntaxError) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream does not parse', { cause: error });
+    throw error;
   }
-  return members;
-}
-
-/** The rules of a node that are met where it starts: an alias, its anchor, its tag, and for a sequence or a mapping the
- * nesting rule of its level. */
-function yamlNodeStart(node: ParsedNode, level: number): asserts node is Exclude<ParsedNode, Alias.Parsed> {
-  if (isAlias(node)) throw yamlRule('aliases are not supported');
-  if (node.anchor !== undefined) throw yamlRule('anchors are not supported');
-  if (node.tag !== undefined) throw yamlRule('explicit tags are not supported');
-  if (!isScalar(node) && level > MAX_LEVELS) throw yamlRule('value nesting exceeds 256 levels');
-}
-
-/** The value of a scalar of the core schema read with intAsBigInt: a null, a boolean, a string, a bigint or a number. */
-function yamlScalar(value: unknown): CodecValue {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
-  if (typeof value === 'bigint') {
-    if (!i64(value)) throw yamlRule('integer is outside the i64 range');
-    return value;
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw yamlRule('number is not finite');
-    return value;
-  }
-  // The core schema resolves a scalar only to the five kinds above; a value of another kind is the library's own, which
-  // the stage does not read (COD-72).
-  throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream does not parse', { cause: new TypeError(`the YAML library read a scalar as ${typeof value}`) });
 }
 
 /** The serialize text of a value that commonValue checked. */
