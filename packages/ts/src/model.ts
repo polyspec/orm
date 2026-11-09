@@ -821,7 +821,7 @@ function batchFits(driver: string, parts: readonly number[], columns: number): v
  * The row counts of the batches a multi-row insert of rows rows runs as, in row order (docs/spec/protocol.md "Relation
  * steps"): each batch rows, the last one the rows left when fewer.
  */
-export function insertParts(rows: number, batch: number): number[] {
+function insertParts(rows: number, batch: number): number[] {
   const parts: number[] = [];
   for (let left = rows; left > 0; left -= Math.min(left, batch)) parts.push(Math.min(left, batch));
   return parts;
