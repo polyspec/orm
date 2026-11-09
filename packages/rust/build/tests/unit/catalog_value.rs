@@ -17,25 +17,27 @@ fn a_driver_value_of_another_host_form_is_refused_at_its_column() {
     let error = at_column(temporal_val(GridCell::Integer(7)).expect_err("an integer is no temporal value"), 2);
     let refusal = refusal_of(&error).expect("a refusal");
     assert_eq!(refusal.rule(), value::UNSUPPORTED_DRIVER_VALUE);
-    assert_eq!(refusal.column(), 3);
+    assert_eq!(refusal.column(), Some(3));
     assert!(refusal.source().is_none());
     assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 3: unsupported driver value");
 }
 
 #[test]
-fn a_driver_failure_keeps_its_cause() {
+fn a_driver_failure_names_no_column_and_keeps_its_cause() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // A failure of the driver's own decode, as sqlx reports a try_get that fails.
     let failure = sqlx::Error::ColumnDecode { index: "1".into(), source: "invalid length 3 for a uuid".into() };
     let error = at_column(failure, 1);
     let refusal = refusal_of(&error).expect("a refusal");
-    assert_eq!(refusal.to_string(), "CATALOG_VALUE: column 2: the driver could not decode the value");
+    // INT-172 names no column, at whichever position the failure occurred.
+    assert_eq!(refusal.column(), None);
+    assert_eq!(refusal.to_string(), "CATALOG_VALUE: the driver could not decode the value");
     let cause = refusal.source().expect("the driver failure is the cause");
     assert!(matches!(cause.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::ColumnDecode { .. })), "{cause:?}");
     assert!(cause.to_string().contains("invalid length 3 for a uuid"), "{cause}");
     // The public error of the catalog keeps the driver failure as its source.
     let public = catalog_query_error(error);
-    assert_eq!(public.message(), "CATALOG_VALUE: column 2: the driver could not decode the value");
+    assert_eq!(public.message(), "CATALOG_VALUE: the driver could not decode the value");
     let cause = public.source().expect("the catalog error keeps the cause");
     assert!(matches!(cause.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::ColumnDecode { .. })), "{cause:?}");
 }
@@ -47,7 +49,7 @@ fn a_library_failure_keeps_its_cause() {
     let failure = render(&Form::Scalar(2950), &[1, 2, 3]).expect_err("a uuid holds 16 bytes");
     let error = at_column(failure, 0);
     let refusal = refusal_of(&error).expect("a refusal");
-    assert_eq!(refusal.to_string(), "CATALOG_VALUE: column 1: the driver could not decode the value");
+    assert_eq!(refusal.to_string(), "CATALOG_VALUE: the driver could not decode the value");
     let cause = refusal.source().expect("the library failure is the cause");
     assert!(cause.to_string().contains("the length of a fixed-size value"), "{cause}");
 }
