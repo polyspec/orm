@@ -4,11 +4,21 @@
 A SQL dialect is the SQL syntax and execution rule set for one database system. In this project, `mysql`, `postgres`, and `sqlite` select identifier quoting, placeholders, type mapping, write syntax, and supported SQL functions. The planner asks the selected SQL dialect for every database-specific part; the IR and plan format do not change.
 Executors still see the same plan shape: steps, bind slots, assemble.
 
-- **DIA-200** MariaDB is a server of the `mysql` dialect, not a dialect of its own. A dialect is what the scheme of the DSN
-  selects, and the scheme `mysql://` ([config](config.md)) reaches a MariaDB server as it reaches MySQL: the client plans
-  each request as on MySQL and sends the same statements. orm has no scheme of MariaDB, so it has no second rendering to
-  select; where MariaDB answers a statement otherwise than MySQL, that is the result of the one dialect on another server,
-  stated as that server's result, and never a rendering of its own.
+- **DIA-200** MariaDB is a server of the `mysql` dialect, not a dialect of its own: the DSN scheme selects the dialect,
+  and the scheme `mysql://` ([config](config.md)) reaches a MariaDB server as it reaches MySQL. The dialect holds both
+  servers to one result by these rules, applied in this order:
+  1. The `mysql` dialect renders one SQL that both servers accept with the same result. Where a probe shows that a form
+     of MySQL alone fails on MariaDB and a form exists that both accept with the same result, such as a collation that
+     both have with the same comparison, the dialect renders that form on both servers.
+  2. Only where no common form exists does the client read the identity and the version of the server once, when it
+     connects (`VERSION()` or the handshake), and render the form of that server. Each such point is a numbered rule of
+     this document that names the probe that proves it; it is not a dialect of its own and not a copied recipe.
+  3. A behaviour that MariaDB cannot hold at all is refused on MariaDB with a stated error code of
+     [errors](errors.yaml), the same in every runtime, before any statement that would give another result; it is never a
+     silent difference.
+  4. A difference in an answer that is the server's own, such as the text of a server error or the name of an
+     introspected type, is the result of the case on that server, which its recipe states as the `mariadb` expect of the
+     case (FCV-3).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

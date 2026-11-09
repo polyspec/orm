@@ -1,13 +1,22 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 8c40992b5b51dc2f6a5474b7d15f5671e05bc6953798ac1654b3ef86b002c0be -->
+<!-- source-sha256: ab6a1e7c87e53eaf53fe9e7864420dc99cd840bd66bdda342ae5bd4dc11d7bc6 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
 
-- **DIA-200** MariaDB는 `mysql` dialect의 server이며 dialect가 따로 있지 않다. Dialect는 DSN의 scheme이 고르는 것이고,
-  scheme `mysql://`([config](config.ko.md))은 MySQL에 닿듯 MariaDB server에도 닿는다. 클라이언트는 각 요청을 MySQL에서처럼
-  계획하고 같은 문을 server에 전한다. orm에는 MariaDB의 scheme이 없으므로 고를 두 번째 rendering도 없다. MariaDB가 어떤 문에 MySQL과
-  다르게 답하면 그것은 한 dialect를 다른 server에서 실행한 결과이며, 그 server의 결과로 적는다. 별도의 rendering은 없다.
+- **DIA-200** MariaDB는 `mysql` dialect의 server이며 dialect가 따로 있지 않다. Dialect는 DSN의 scheme이 고르고,
+  scheme `mysql://`([config](config.ko.md))은 MySQL에 닿듯 MariaDB server에도 닿는다. Dialect는 다음 규칙을 이 순서로
+  적용해 두 server의 결과를 하나로 맞춘다.
+  1. `mysql` dialect는 두 server가 같은 결과로 받는 SQL 하나를 render한다. MySQL에만 있는 형식이 MariaDB에서 실패함을
+     probe가 보이고, 두 server가 같은 결과로 받는 형식(예: 두 server에 모두 있고 비교가 같은 collation)이 있으면, dialect는
+     두 server에서 그 형식을 render한다.
+  2. 공통 형식이 없는 곳에서만 클라이언트는 연결할 때 한 번 server의 정체와 version을 읽고(`VERSION()` 또는 handshake) 그
+     server의 형식을 render한다. 그런 곳은 각각 이 문서의 번호 있는 규칙이며 그것을 증명하는 probe를 적는다. 별도의
+     dialect도 아니고 복사한 recipe도 아니다.
+  3. MariaDB가 전혀 지닐 수 없는 동작은 MariaDB에서 [errors](errors.yaml)의 정해진 error code로 거부하며, 모든 runtime에서
+     같고, 다른 결과를 낼 문보다 먼저 거부한다. 조용한 차이는 없다.
+  4. server 자신의 답에 있는 차이(server error의 문구, introspect한 type 이름 등)는 그 server에서 그 case의 결과이며, recipe는
+     그것을 case의 `mariadb` expect로 적는다(FCV-3).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
