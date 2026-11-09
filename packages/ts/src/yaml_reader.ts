@@ -405,7 +405,8 @@ class Reader {
         while (/^[0-9]$/u.test(this.at(i))) i++;
         const minorText = this.slice(minor, i);
         if (minorText === '') throw this.leave(i);
-        if (majorText.replace(/^0+(?=.)/u, '') !== '1' || minorText.replace(/^0+(?=.)/u, '') !== '2') throw this.leave(major);
+        // COD-75: the version is read only when its text is `1.2`; `01.2` and `1.02` are other texts.
+        if (majorText !== '1' || minorText !== '2') throw this.leave(major);
       } else if (name === 'TAG') {
         i = this.directiveSeparate(i);
         const handle = i;
