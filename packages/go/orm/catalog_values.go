@@ -14,7 +14,7 @@ import (
 )
 
 // The catalog conversion of a driver value follows the catalog value rules (docs/spec/interfaces.md, "Catalog value
-// rules", INT-165 to INT-185) in a read-only grid query, a plain read-only query and every read of a described table. Each
+// rules", INT-165 to INT-186) in a read-only grid query, a plain read-only query and every read of a described table. Each
 // rule has one code and one text; a refusal names the 1-based position of its column and no value, label or type name.
 
 // catalogRule is a refusal of one catalog value rule: its code and its text.

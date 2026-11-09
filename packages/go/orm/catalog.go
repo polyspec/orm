@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -115,7 +116,8 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 //
 // On PostgreSQL the catalog also reads each value of a fixed-length built-in type in its binary form, which no setting
 // changes: pgx's database/sql driver asks for that form when it describes a statement, and parses the text form of a date
-// or a timestamp, which follows DateStyle, so a query that sets DateStyle (set_config) would fail that parse. A query mode
+// or a timestamp, which follows DateStyle, so a query that sets DateStyle would fail that parse before INT-186 refuses the
+// read. A query mode
 // that does not describe (simple_protocol, exec) becomes describe_exec, which uses no named statement either; the session
 // is one transaction, which holds its server connection through a transaction pooler (CFG-28).
 func catalogNativeDSN(parsed parsedDSN) (string, error) {
@@ -173,6 +175,55 @@ type catalogSession struct {
 	dialect string
 	// rollbacks learns that SQLite rolled the transaction back by itself; it is nil on MySQL and PostgreSQL.
 	rollbacks *rollbackWatch
+	// settings are the values of the PostgreSQL output settings when the transaction began (INT-186); nil elsewhere.
+	settings []any
+}
+
+// catalogOutputSettingColumns are the PostgreSQL settings that the output of a cell depends on by INT-185 (INT-186).
+const catalogOutputSettingColumns = "current_setting('DateStyle'), current_setting('IntervalStyle'), current_setting('TimeZone'), " +
+	"current_setting('extra_float_digits'), current_setting('bytea_output'), current_setting('lc_monetary'), " +
+	"current_setting('search_path')"
+
+// catalogOutputSettings reads the output settings in the transaction of a session.
+const catalogOutputSettings = "SELECT " + catalogOutputSettingColumns
+
+// catalogFixedOutputSettings sets, for the transaction of a session, the output settings under which the output of every cell kind
+// is its exact text (INT-186): ISO leaves the order of date input as it was.
+const catalogFixedOutputSettings = "SELECT set_config('DateStyle', 'ISO', true), set_config('extra_float_digits', '1', true), " +
+	"set_config('bytea_output', 'hex', true)"
+
+// catalogRuleSettingChanged refuses a read whose statement changed an output setting (INT-186).
+func catalogRuleSettingChanged() error {
+	return catalogErr(CodeCatalogValue, "the query changed a setting that the output of its values depends on")
+}
+
+// outputSettings reads the values of the output settings in the transaction of the session.
+func (s *catalogSession) outputSettings() ([]any, error) {
+	raw, err := s.queryRaw(catalogOutputSettings, nil, 2, catalogMetadataBytes)
+	if err != nil {
+		return nil, err
+	}
+	if len(raw.rows) != 1 {
+		return nil, catalogErr(catalogCodeMetadata, "current_setting returned %d rows", len(raw.rows))
+	}
+	return raw.rows[0], nil
+}
+
+// settingsUnchanged refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends,
+// differ from their values when the transaction began (INT-186): a change that no row carries, as in a result of no rows. A
+// local setting reverts when the transaction ends, so the check runs inside it.
+func (s *catalogSession) settingsUnchanged() error {
+	if s.settings == nil {
+		return nil
+	}
+	now, err := s.outputSettings()
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(now, s.settings) {
+		return catalogRuleSettingChanged()
+	}
+	return nil
 }
 
 // begin opens a session with a read-only transaction or a writable one. A SQLite read-only session sets query_only first.
@@ -216,6 +267,14 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		if err := c.db.deallocate(ctx, conn); err != nil {
 			return nil, s.discard(mapDriverErrContext(err, ctx))
 		}
+		if _, err := s.queryRaw(catalogFixedOutputSettings, nil, 2, catalogMetadataBytes); err != nil {
+			return nil, s.end(err)
+		}
+		settings, err := s.outputSettings()
+		if err != nil {
+			return nil, s.end(err)
+		}
+		s.settings = settings
 	}
 	if c.dialect == "sqlite" {
 		watch, err := watchRollback(conn)
@@ -304,6 +363,9 @@ func catalogRead[T any](ctx context.Context, c *CatalogConnection, fn func(s *ca
 		return zero, err
 	}
 	value, err := fn(s)
+	if err == nil {
+		err = s.settingsUnchanged()
+	}
 	if err != nil {
 		return zero, refusedRead(s.end(err))
 	}
@@ -337,6 +399,9 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 	}
 	value, err := fn(s)
 	if err != nil {
+		return zero, s.end(err)
+	}
+	if err := s.settingsUnchanged(); err != nil {
 		return zero, s.end(err)
 	}
 	if _, err := s.conn.ExecContext(ctx, "COMMIT"); err != nil {
@@ -401,14 +466,38 @@ type catalogRaw struct {
 // queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values,
 // each driver value counted by catalogSize.
 func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (catalogRaw, error) {
-	return s.querySized(query, args, maxRows, maxBytes, func(value any, _ string, _ int) (int, error) { return catalogSize(value), nil })
+	return s.querySized(query, args, maxRows, maxBytes, false, catalogRawSize)
+}
+
+// queryCellsRaw reads a bounded result of cells like queryRaw, with the output settings of each row checked (INT-186).
+func (s *catalogSession) queryCellsRaw(query string, args []any, maxRows int, maxBytes int) (catalogRaw, error) {
+	return s.querySized(query, args, maxRows, maxBytes, true, catalogRawSize)
+}
+
+func catalogRawSize(value any, _ string, _ int) (int, error) { return catalogSize(value), nil }
+
+// catalogSettingsRead runs the statement of a PostgreSQL read of cells so that each row carries the output settings under
+// which the server writes it (INT-186): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs
+// right before the server sends that row and runs its output functions. A read query may end with one semicolon
+// (catalogValidateReadOnly), which cannot stand inside the CTE.
+func catalogSettingsRead(query string) string {
+	if _, semicolon, _ := catalogWords(query, "postgres"); semicolon >= 0 {
+		query = query[:semicolon]
+	}
+	return "WITH catalog_read AS MATERIALIZED (\n" + query + "\n) SELECT catalog_read.*, " + catalogOutputSettingColumns + " FROM catalog_read"
 }
 
 // querySized reads a bounded result like queryRaw, with size giving the bytes that each value of the 1-based column of its
 // native type counts against maxBytes; an error of size ends the read with that error. A value that the driver could not
 // decode fails with CATALOG_VALUE and keeps the failure as its cause (INT-172), and a PostgreSQL column of a type that
-// INT-185 refuses by its type fails before any value is read.
-func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, size func(value any, native string, column int) (int, error)) (raw catalogRaw, err error) {
+// INT-185 refuses by its type fails before any value is read. A read of cells (cells) on PostgreSQL checks the output settings
+// of each row before its values (INT-186); the columns of the settings are no columns of the result and count against no
+// budget.
+func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, cells bool, size func(value any, native string, column int) (int, error)) (raw catalogRaw, err error) {
+	settings := 0
+	if cells && s.settings != nil {
+		query, settings = catalogSettingsRead(query), len(s.settings)
+	}
 	// The query has its own context: a budget that ends the read cancels it, so that closing the rows does not read the rest
 	// of a result the server still streams (a cross join of the bench table would otherwise run to its end).
 	qctx, cancel := context.WithCancel(s.ctx)
@@ -446,6 +535,11 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	if err != nil {
 		return catalogRaw{}, mapDriverErr(err)
 	}
+	if len(names) < settings || len(columnTypes) != len(names) {
+		return catalogRaw{}, catalogErr(catalogCodeMetadata, "the read returned %d columns", len(names))
+	}
+	width := len(names) - settings
+	names, columnTypes = names[:width], columnTypes[:width]
 	raw = catalogRaw{names: names, types: make([]string, len(columnTypes))}
 	for i, columnType := range columnTypes {
 		raw.types[i] = columnType.DatabaseTypeName()
@@ -460,8 +554,8 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 			stopped = true
 			return catalogRaw{}, catalogErr("CATALOG_LIMIT", "result has more than %d rows", maxRows)
 		}
-		values := make([]any, len(names))
-		pointers := make([]any, len(names))
+		values := make([]any, width+settings)
+		pointers := make([]any, len(values))
 		for i := range values {
 			pointers[i] = &values[i]
 		}
@@ -470,6 +564,11 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		if err := rows.Scan(pointers...); err != nil {
 			return catalogRaw{}, &ir.Error{Code: CodeCatalogValue, Msg: catalogTextDecodeFailure, Cause: err}
 		}
+		if settings > 0 && !reflect.DeepEqual(values[width:], s.settings) {
+			stopped = true
+			return catalogRaw{}, catalogRuleSettingChanged()
+		}
+		values = values[:width]
 		for i, value := range values {
 			n, err := size(value, raw.types[i], i+1)
 			if err != nil {
