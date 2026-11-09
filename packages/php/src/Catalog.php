@@ -47,6 +47,19 @@ final class Catalog
     private const RULE_FRACTION_PAST_PRECISION = 'temporal value has more fraction digits than its precision';
     private const RULE_NATIVE_PRECISION = 'native type declares more than 6 fraction digits';
     private const RULE_BOOLEAN = 'a boolean column holds a value that is not a boolean';
+    private const RULE_SETTING_CHANGED = 'the query changed a setting that the output of its values depends on';
+
+    /** The PostgreSQL settings that the output of a cell depends on by INT-185, as columns of a read (INT-186). */
+    private const PG_SETTING_COLUMNS = "current_setting('DateStyle'), current_setting('IntervalStyle'), "
+        . "current_setting('TimeZone'), current_setting('extra_float_digits'), current_setting('bytea_output'), "
+        . "current_setting('lc_monetary'), current_setting('search_path')";
+
+    /**
+     * The output settings that a PostgreSQL session sets for its transaction, under which the output of every cell kind
+     * is its exact text (INT-186): ISO leaves the order of date input as it was.
+     */
+    private const PG_FIXED_SETTINGS = "SELECT set_config('DateStyle', 'ISO', true), "
+        . "set_config('extra_float_digits', '1', true), set_config('bytea_output', 'hex', true)";
 
     /**
      * The class of each built-in PostgreSQL type by its OID (INT-185): a type of its own cell kind, a zoned type of
@@ -112,6 +125,9 @@ final class Catalog
 
     /** @var array<int, string> the classes of the PostgreSQL types that the session looked up, by OID (pgClass) */
     private array $pgTypeClasses = [];
+
+    /** @var list<mixed>|null the PostgreSQL output settings when the transaction of the session began (INT-186) */
+    private ?array $pgSettings = null;
 
     /** @var int The server's net_write_timeout, read once at connect, in seconds. */
     private int $netWriteTimeout = 0;
@@ -283,7 +299,7 @@ final class Catalog
             // One extra row is the sentinel that reports hasMore.
             $sql .= ' LIMIT ' . ($limit + 1) . ' OFFSET ' . $offset;
             try {
-                $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
+                $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES, cells: true);
             } catch (OrmException $failure) {
                 // A column that went away during the read fails the statement: the descriptor tells that from any other
                 // failure.
@@ -428,7 +444,8 @@ final class Catalog
                 $args,
                 $maxRows,
                 $maxBytes,
-                fn (mixed $value, string $native, int $column): mixed => $this->queryValue($value, $native, $column)
+                fn (mixed $value, string $native, int $column): mixed => $this->queryValue($value, $native, $column),
+                true
             );
             return new CatalogResult($raw['names'], $raw['rows']);
         });
@@ -564,7 +581,8 @@ final class Catalog
                         $sql . ' RETURNING ' . self::quoteList(self::columnNames($descriptor), $this->dialect),
                         $args,
                         2,
-                        self::PAGE_BYTES
+                        self::PAGE_BYTES,
+                        cells: true
                     );
                     if (count($returned['rows']) !== 1) {
                         throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
@@ -581,7 +599,14 @@ final class Catalog
                     }
                     if ($hasGeneratedKeys) {
                         if ($mysqlLocatorSql !== null) {
-                            $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
+                            $returned = $this->query(
+                                $pdo,
+                                $mysqlLocatorSql,
+                                $mysqlLocatorArgs,
+                                2,
+                                self::PAGE_BYTES,
+                                cells: true
+                            );
                             $returnedRows = $this->rowsForDescriptor($pdo, $returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
@@ -641,7 +666,8 @@ final class Catalog
                                     . ' WHERE ' . implode(' AND ', $predicates) . ' LIMIT 2 FOR UPDATE',
                                 $keyArgs,
                                 2,
-                                self::PAGE_BYTES
+                                self::PAGE_BYTES,
+                                cells: true
                             );
                             $returnedRows = $this->rowsForDescriptor($pdo, $returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
@@ -809,8 +835,9 @@ final class Catalog
     private function gridQuery(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
+            [$settings, $sql] = $this->cellsRead($sql, true);
             if ($this->dialect === 'postgres' && $args === []) {
-                return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes);
+                return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes, $settings);
             }
             // MySQL streams the rows, so that a budget stops a read before the rest of its result; PDO reports neither
             // the UNSIGNED flag nor the binary charset, so the column definitions are read first, with no result open.
@@ -823,9 +850,10 @@ final class Catalog
                 $st,
                 $columns,
                 $maxRows,
-                $maxBytes
+                $maxBytes,
+                $settings
             ): array {
-                $metas = self::columnMetas($st);
+                $metas = self::withoutSettings(self::columnMetas($st), $settings);
                 $fetch = static fn (): array|false => $st->fetch(\PDO::FETCH_NUM);
                 $classes = [];
                 if ($this->dialect === 'postgres') {
@@ -864,7 +892,8 @@ final class Catalog
                             }
                         }
                         return $cells;
-                    }
+                    },
+                    $settings
                 );
                 return [
                     'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
@@ -1342,6 +1371,7 @@ final class Catalog
         }
         // A type of a past session may be gone, and its OID taken by another type.
         $this->pgTypeClasses = [];
+        $this->pgSettings = null;
         $pdo = $this->db->pdo();
         try {
             if ($this->dialect === 'sqlite') {
@@ -1357,10 +1387,19 @@ final class Catalog
             throw $this->db->driverError($e);
         }
         try {
+            if ($this->dialect === 'postgres') {
+                try {
+                    $pdo->exec(self::PG_FIXED_SETTINGS);
+                } catch (\PDOException $e) {
+                    throw $this->db->driverError($e);
+                }
+                $this->pgSettings = $this->pgOutputSettings($pdo);
+            }
             if (!$readOnly && $this->dialect === 'mysql') {
                 $this->mysqlPartialRevokesOff($pdo);
             }
             $value = $fn($pdo);
+            $this->pgSettingsUnchanged($pdo);
         } catch (\Throwable $cause) {
             if ($this->streamLeft) {
                 throw $cause;
@@ -1389,6 +1428,79 @@ final class Catalog
     /**
      * Rolls the transaction back and rethrows cause; a failed rollback is reported with cause as its previous error.
      */
+    /** @return list<mixed> The values of the PostgreSQL output settings in the transaction of the session. */
+    private function pgOutputSettings(\PDO $pdo): array
+    {
+        try {
+            $st = $pdo->prepare('SELECT ' . self::PG_SETTING_COLUMNS);
+            $st->execute();
+            $rows = $st->fetchAll(\PDO::FETCH_NUM);
+        } catch (\PDOException $e) {
+            throw $this->db->driverError($e);
+        }
+        if (count($rows) !== 1) {
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'current_setting returned ' . count($rows) . ' rows');
+        }
+        return $rows[0];
+    }
+
+    /**
+     * Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ
+     * from their values when the transaction began (INT-186): a change that no row carries, as in a result of no rows.
+     * A local setting reverts when the transaction ends, so the check runs inside it.
+     */
+    private function pgSettingsUnchanged(\PDO $pdo): void
+    {
+        if ($this->pgSettings !== null && $this->pgOutputSettings($pdo) !== $this->pgSettings) {
+            throw new OrmException(Code::CATALOG_VALUE, self::RULE_SETTING_CHANGED);
+        }
+    }
+
+    /**
+     * The statement of a PostgreSQL read of cells, run so that each row carries the output settings under which the
+     * server writes it (INT-186): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs
+     * right before the server sends that row and runs its output functions. A read query may end with one semicolon
+     * (validateReadOnly), which cannot stand inside the CTE.
+     */
+    private static function settingsRead(string $sql): string
+    {
+        $semicolon = null;
+        self::words($sql, 'postgres', $semicolon);
+        if ($semicolon !== null) {
+            $sql = substr($sql, 0, $semicolon);
+        }
+        return "WITH catalog_read AS MATERIALIZED (\n" . $sql . "\n) SELECT catalog_read.*, " . self::PG_SETTING_COLUMNS
+            . ' FROM catalog_read';
+    }
+
+    /**
+     * The count of setting columns that a read of cells carries after its own columns (INT-186), and the read of the
+     * statement: 0 and the statement itself off PostgreSQL or for a read that is not of cells.
+     *
+     * @return array{int, string}
+     */
+    private function cellsRead(string $sql, bool $cells): array
+    {
+        if (!$cells || $this->pgSettings === null) {
+            return [0, $sql];
+        }
+        return [count($this->pgSettings), self::settingsRead($sql)];
+    }
+
+    /**
+     * The metadata of the columns of a result without its setting columns (INT-186).
+     *
+     * @param list<array<string, mixed>> $metas
+     * @return list<array<string, mixed>>
+     */
+    private static function withoutSettings(array $metas, int $settings): array
+    {
+        if (count($metas) < $settings) {
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'the read returned ' . count($metas) . ' columns');
+        }
+        return array_slice($metas, 0, count($metas) - $settings);
+    }
+
     private function rollback(\PDO $pdo, \Throwable $cause): never
     {
         try {
@@ -1476,19 +1588,29 @@ final class Catalog
      * @param int $maxRows
      * @param int $maxBytes
      * @param (\Closure(list<mixed>): list<mixed>)|null $transform
+     * @param int $settings the count of setting columns after the columns of each row, checked before the row (INT-186)
      * @return list<list<mixed>>
      */
     private function boundedRows(
         \Closure $fetch,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $transform = null
+        ?\Closure $transform = null,
+        int $settings = 0
     ): array {
         $rows = [];
         $budget = 0;
         while (($row = $fetch()) !== false) {
             if (count($rows) === $maxRows) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
+            }
+            if ($settings > 0) {
+                // The settings of a row are checked before any of its values (INT-186); they are no values of it.
+                $width = count($row) - $settings;
+                if (array_slice($row, $width) !== $this->pgSettings) {
+                    throw new OrmException(Code::CATALOG_VALUE, self::RULE_SETTING_CHANGED);
+                }
+                $row = array_slice($row, 0, $width);
             }
             $cells = $transform === null ? $row : $transform($row);
             foreach ($cells as $cell) {
@@ -1657,12 +1779,15 @@ final class Catalog
         array $args,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $convert = null
+        ?\Closure $convert = null,
+        bool $cells = false
     ): array {
         try {
             // A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123).
-            if ($this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ')) {
-                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
+            $cursor = $this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ');
+            [$settings, $sql] = $this->cellsRead($sql, $cells);
+            if ($cursor) {
+                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert, $settings);
             }
             $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;
             $st = $this->prepareQuery($pdo, $sql, $args, true);
@@ -1671,9 +1796,10 @@ final class Catalog
                 $st,
                 $maxRows,
                 $maxBytes,
-                $convert
+                $convert,
+                $settings
             ): array {
-                $metas = self::columnMetas($st);
+                $metas = self::withoutSettings(self::columnMetas($st), $settings);
                 $types = array_map(
                     static fn (array $meta): string => strtoupper((string) ($meta['native_type'] ?? '')),
                     $metas
@@ -1693,7 +1819,8 @@ final class Catalog
                     $maxRows,
                     $maxBytes,
                     $convert === null ? null
-                        : static fn (array $row): array => array_map($convert, $row, $types, array_keys($row))
+                        : static fn (array $row): array => array_map($convert, $row, $types, array_keys($row)),
+                    $settings
                 );
                 return [
                     'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
@@ -1714,8 +1841,14 @@ final class Catalog
      *
      * @return array{names: list<string>, types: list<string>, oids: list<?int>, rows: list<list<mixed>>}
      */
-    private function cursorQuery(\PDO $pdo, string $sql, int $maxRows, int $maxBytes, ?\Closure $convert = null): array
-    {
+    private function cursorQuery(
+        \PDO $pdo,
+        string $sql,
+        int $maxRows,
+        int $maxBytes,
+        ?\Closure $convert = null,
+        int $settings = 0
+    ): array {
         $names = [];
         $types = [];
         $oids = [];
@@ -1724,8 +1857,8 @@ final class Catalog
             $sql,
             $maxRows,
             $maxBytes,
-            function (\PDOStatement $first) use ($pdo, &$names, &$types, &$oids): void {
-                $metas = self::columnMetas($first);
+            function (\PDOStatement $first) use ($pdo, &$names, &$types, &$oids, $settings): void {
+                $metas = self::withoutSettings(self::columnMetas($first), $settings);
                 foreach ($metas as $meta) {
                     $names[] = (string) ($meta['name'] ?? '');
                     $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
@@ -1737,7 +1870,8 @@ final class Catalog
             },
             $convert === null ? null : static function (\PDOStatement $st, array $row) use (&$types, $convert): array {
                 return array_map($convert, $row, $types, array_keys($row));
-            }
+            },
+            $settings
         );
         return ['names' => $names, 'types' => $types, 'oids' => $oids, 'rows' => $rows];
     }
@@ -1749,7 +1883,7 @@ final class Catalog
     }
 
     /** The PostgreSQL grid query without parameters, read through a cursor. */
-    private function cursorGrid(\PDO $pdo, string $sql, int $maxRows, int $maxBytes): array
+    private function cursorGrid(\PDO $pdo, string $sql, int $maxRows, int $maxBytes, int $settings): array
     {
         $names = [];
         $classes = [];
@@ -1758,8 +1892,8 @@ final class Catalog
             $sql,
             $maxRows,
             $maxBytes,
-            function (\PDOStatement $first) use ($pdo, &$names, &$classes): void {
-                $metas = self::columnMetas($first);
+            function (\PDOStatement $first) use ($pdo, &$names, &$classes, $settings): void {
+                $metas = self::withoutSettings(self::columnMetas($first), $settings);
                 $names = array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas);
                 $classes = $this->pgClasses($pdo, $metas);
                 self::refuseMultirange($classes);
@@ -1774,7 +1908,8 @@ final class Catalog
                     }
                 }
                 return $cells;
-            }
+            },
+            $settings
         );
         return ['names' => $names, 'rows' => $rows];
     }
@@ -1795,6 +1930,7 @@ final class Catalog
         int $maxBytes,
         \Closure $begin,
         ?\Closure $cells,
+        int $settings = 0,
     ): array {
         $cursor = 'orm_read_' . bin2hex(random_bytes(6));
         $pdo->exec("DECLARE $cursor NO SCROLL CURSOR FOR $sql");
@@ -1830,7 +1966,8 @@ final class Catalog
                 $maxBytes,
                 $cells === null ? null : function (array $row) use ($cells, &$current): array {
                     return $cells($current, $row);
-                }
+                },
+                $settings
             );
         } catch (\Throwable $primary) {
             // After a stop or a failed transaction the cursor may already be gone; the transaction ends it either way.
@@ -2965,7 +3102,7 @@ final class Catalog
         $sql = 'SELECT ' . self::quoteList(self::columnNames($metadata), $this->dialect)
             . ' FROM ' . self::qualified($metadata->table, $this->dialect)
             . ' WHERE ' . $this->keyPredicate($metadata) . ' LIMIT 2' . $suffix;
-        $raw = $this->query($pdo, $sql, $keys, 2, self::PAGE_BYTES);
+        $raw = $this->query($pdo, $sql, $keys, 2, self::PAGE_BYTES, cells: true);
         self::sameNames($raw['names'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
         return $this->describedRows($pdo, $raw, $metadata);
     }
@@ -3090,7 +3227,7 @@ final class Catalog
      *
      * @return list<string>|null
      */
-    private static function words(string $query, string $dialect): ?array
+    private static function words(string $query, string $dialect, ?int &$semicolon = null): ?array
     {
         $words = [];
         $n = strlen($query);
@@ -3145,6 +3282,7 @@ final class Catalog
             } else {
                 if ($c === ';') {
                     $words[] = ';';
+                    $semicolon = $i;
                 }
                 $i++;
             }

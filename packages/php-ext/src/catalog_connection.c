@@ -421,6 +421,177 @@ static bool cat_convert_bound(zval *rows, zval *row, zval *types, const char *di
 static bool cat_pg_classes(zval *db, zval *pdo, zval *oids, zval *classes);
 static bool cat_pg_builtins(zval *oids);
 static bool cat_pg_refuse_multirange(zval *classes);
+static ssize_t cat_skip_quoted(const char *q, size_t n, size_t start, char quote, bool backslash);
+
+/* ---- output settings (INT-186) ---------------------------------------------------------------------------------------------- */
+
+/* The PostgreSQL settings that the output of a cell depends on by INT-185, as columns of a read (INT-186). */
+#define CAT_PG_SETTING_COLUMNS "current_setting('DateStyle'), current_setting('IntervalStyle'), current_setting('TimeZone'), " \
+    "current_setting('extra_float_digits'), current_setting('bytea_output'), current_setting('lc_monetary'), " \
+    "current_setting('search_path')"
+/* The output settings that a PostgreSQL session sets for its transaction, under which the output of every cell kind is its
+ * exact text (INT-186): ISO leaves the order of date input as it was. */
+#define CAT_PG_FIXED_SETTINGS "SELECT set_config('DateStyle', 'ISO', true), set_config('extra_float_digits', '1', true), " \
+    "set_config('bytea_output', 'hex', true)"
+#define CAT_RULE_SETTING_CHANGED "the query changed a setting that the output of its values depends on"
+
+/* The PostgreSQL output settings when the transaction of the session began (Catalog::$pgSettings); undefined off PostgreSQL
+ * and outside a session. */
+static zval cat_pg_settings;
+
+static void cat_pg_settings_clear(void)
+{
+    if (Z_TYPE(cat_pg_settings) == IS_ARRAY) zval_ptr_dtor(&cat_pg_settings);
+    ZVAL_UNDEF(&cat_pg_settings);
+}
+
+/* The count of setting columns that a read of cells carries after its own columns: 0 outside a PostgreSQL session. */
+static uint32_t cat_pg_settings_count(void)
+{
+    return Z_TYPE(cat_pg_settings) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL(cat_pg_settings)) : 0;
+}
+
+/* Reads the values of the output settings in the transaction of the session (Catalog::pgOutputSettings) into out, an array
+ * that the caller releases; on failure the mapped error is thrown. */
+static bool cat_pg_output_settings(zval *db, zval *pdo, zval *out)
+{
+    zval q, st, r, mode;
+    ZVAL_STRING(&q, "SELECT " CAT_PG_SETTING_COLUMNS);
+    bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    if (!ok) {
+        cat_driver_error(db);
+        return false;
+    }
+    ok = pdo_call(&st, "execute", &r, 0, NULL, NULL);
+    if (ok) {
+        zval_ptr_dtor(&r);
+        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+        ok = pdo_call(&st, "fetchAll", &r, 1, &mode, NULL);
+    }
+    zval_ptr_dtor(&st);
+    if (!ok) {
+        cat_driver_error(db);
+        return false;
+    }
+    zval *row = zend_hash_num_elements(Z_ARRVAL(r)) == 1 ? zend_hash_index_find(Z_ARRVAL(r), 0) : NULL;
+    if (row == NULL || Z_TYPE_P(row) != IS_ARRAY) {
+        db_throw_orm("TABLE_METADATA_INVALID", "current_setting returned %u rows", zend_hash_num_elements(Z_ARRVAL(r)));
+        zval_ptr_dtor(&r);
+        return false;
+    }
+    ZVAL_COPY(out, row);
+    zval_ptr_dtor(&r);
+    return true;
+}
+
+/* Sets the output settings for the transaction of a PostgreSQL session and reads their values (INT-186). */
+static bool cat_pg_settings_begin(zval *db, zval *pdo)
+{
+    if (!cat_try_exec(pdo, CAT_PG_FIXED_SETTINGS)) {
+        cat_driver_error(db);
+        return false;
+    }
+    return cat_pg_output_settings(db, pdo, &cat_pg_settings);
+}
+
+/* Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ from their
+ * values when the transaction began (Catalog::pgSettingsUnchanged): a change that no row carries, as in a result of no rows. A
+ * local setting reverts when the transaction ends, so the check runs inside it. */
+static bool cat_pg_settings_unchanged(zval *db, zval *pdo)
+{
+    if (Z_TYPE(cat_pg_settings) != IS_ARRAY) return true;
+    zval now;
+    if (!cat_pg_output_settings(db, pdo, &now)) return false;
+    bool same = zend_is_identical(&now, &cat_pg_settings);
+    zval_ptr_dtor(&now);
+    if (!same) {
+        db_throw_orm("CATALOG_VALUE", "%s", CAT_RULE_SETTING_CHANGED);
+        return false;
+    }
+    return true;
+}
+
+/* The offset of the last semicolon of a PostgreSQL statement outside its literals, quoted identifiers and comments
+ * (Catalog::words), or -1. */
+static ssize_t cat_semicolon_at(const char *q, size_t n)
+{
+    ssize_t at = -1;
+    for (size_t i = 0; i < n;) {
+        char c = q[i];
+        if (c == '-' && i + 1 < n && q[i + 1] == '-') {
+            const char *nl = memchr(q + i, '\n', n - i);
+            if (nl == NULL) break;
+            i = (size_t)(nl - q) + 1;
+        } else if (c == '/' && i + 1 < n && q[i + 1] == '*') {
+            size_t k = i + 2;
+            while (k + 1 < n && !(q[k] == '*' && q[k + 1] == '/')) k++;
+            if (k + 1 >= n) break;
+            i = k + 2;
+        } else if (c == '\'' || c == '"' || c == '`') {
+            ssize_t next = cat_skip_quoted(q, n, i, c, false);
+            if (next < 0) break;
+            i = (size_t)next;
+        } else {
+            if (c == ';') at = (ssize_t)i;
+            i++;
+        }
+    }
+    return at;
+}
+
+/* The statement of a PostgreSQL read of cells, run so that each row carries the output settings under which the server writes
+ * it (Catalog::settingsRead): a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs right before the
+ * server sends that row and runs its output functions. A read query may end with one semicolon (cat_validate_read_only), which
+ * cannot stand inside the CTE. */
+static zend_string *cat_settings_read(const char *sql)
+{
+    size_t n = strlen(sql);
+    ssize_t semicolon = cat_semicolon_at(sql, n);
+    int len = semicolon >= 0 ? (int)semicolon : (int)n;
+    return zend_strpprintf(0, "WITH catalog_read AS MATERIALIZED (\n%.*s\n) SELECT catalog_read.*, " CAT_PG_SETTING_COLUMNS
+                           " FROM catalog_read", len, sql);
+}
+
+/* Drops the setting columns from the end of each array of column metadata of a read (Catalog::withoutSettings). */
+static bool cat_without_settings(uint32_t settings, zval *names, zval *types, zval *oids)
+{
+    if (settings == 0) return true;
+    uint32_t count = zend_hash_num_elements(Z_ARRVAL_P(names));
+    if (count < settings) {
+        db_throw_orm("TABLE_METADATA_INVALID", "the read returned %u columns", count);
+        return false;
+    }
+    zval *lists[3] = {names, types, oids};
+    for (int k = 0; k < 3; k++) {
+        if (lists[k] == NULL) continue;
+        for (uint32_t i = count; i > count - settings; i--) zend_hash_index_del(Z_ARRVAL_P(lists[k]), i - 1);
+    }
+    return true;
+}
+
+/* Checks the settings that a fetched row carries after its values against the settings of the session, before any value of the
+ * row is converted (INT-186), and drops them from the row: they are no values of it and count against no budget. A row past the
+ * row limit is left to the limit. On a refusal the row is released and the error thrown. */
+static bool cat_row_settings(zval *rows, zval *row, zend_long max_rows, uint32_t settings)
+{
+    if (settings == 0 || (zend_long)zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) return true;
+    uint32_t count = zend_hash_num_elements(Z_ARRVAL_P(row));
+    bool same = count >= settings;
+    for (uint32_t i = 0; same && i < settings; i++) {
+        zval *got = zend_hash_index_find(Z_ARRVAL_P(row), count - settings + i);
+        zval *want = zend_hash_index_find(Z_ARRVAL(cat_pg_settings), i);
+        same = got != NULL && want != NULL && zend_is_identical(got, want);
+    }
+    if (!same) {
+        zval_ptr_dtor(row);
+        db_throw_orm("CATALOG_VALUE", "%s", CAT_RULE_SETTING_CHANGED);
+        return false;
+    }
+    SEPARATE_ARRAY(row);
+    for (uint32_t i = count; i > count - settings; i--) zend_hash_index_del(Z_ARRVAL_P(row), i - 1);
+    return true;
+}
 
 /* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows (Catalog::cursorRead): a budget stop leaves the
  * rest of the result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts
@@ -429,7 +600,8 @@ static bool cat_pg_refuse_multirange(zval *classes);
  * each column replaces its type in types (cat_pg_classes), whose lookups run statements that end the chunk's statement. oids,
  * when given, gets the type OID of each column. */
 static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max_rows, zend_long max_bytes,
-                             zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool classify)
+                             zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool classify,
+                             uint32_t settings)
 {
     zval q, r, local;
     array_init(&local);
@@ -469,6 +641,16 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
                 zval_ptr_dtor(&st);
                 goto driver_cursor;
             }
+            if (!cat_without_settings(settings, names, types, ids)) {
+                zval_ptr_dtor(&chunk);
+                zval_ptr_dtor(&st);
+                cat_cursor_close_keep(pdo);
+                zval_ptr_dtor(&local);
+                zval_ptr_dtor(names);
+                zval_ptr_dtor(types);
+                zval_ptr_dtor(rows);
+                return false;
+            }
             described = true;
             zval classes;
             ZVAL_UNDEF(&classes);
@@ -499,6 +681,10 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL(chunk), kept) {
             zval row;
             ZVAL_COPY(&row, kept);
+            if (!cat_row_settings(rows, &row, max_rows, settings)) {
+                failed = true;
+                break;
+            }
             if (convert == NULL) {
                 limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
             } else if (!cat_convert_bound(rows, &row, types, "postgres", convert, max_rows, max_bytes, &budget, &limit)) {
@@ -573,7 +759,8 @@ static bool cat_bind_typed(zval *st, zval *args)
  * streams its rows unbuffered, and a budget stop kills it by its connection id; a PostgreSQL statement without parameters
  * reads through a cursor. */
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids);
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool insert,
+                           uint32_t settings);
 
 /* A PostgreSQL statement with parameters is rewritten: PDO binds only ? placeholders, so each $n becomes ? and its parameter
  * follows in the order of the placeholders (a repeated $n binds its value again). */
@@ -620,17 +807,25 @@ static bool cat_has_pg_placeholder(const char *sql)
 }
 
 static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids);
+                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool cells);
 
 /* A bounded result as the PHP client's query(). oids, when given, gets the PostgreSQL type OID of each column
- * (cat_statement_columns), an array that the caller releases after a read that succeeds. */
+ * (cat_statement_columns), an array that the caller releases after a read that succeeds. A read of cells (cells) on PostgreSQL
+ * checks the output settings of each row before its values (INT-186). */
+static bool cat_query_read(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool cells)
+{
+    if (oids != NULL) array_init(oids);
+    bool ok = cat_query_rewritten(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids, cells);
+    if (!ok && oids != NULL) zval_ptr_dtor(oids);
+    return ok;
+}
+
+/* A bounded result as the PHP client's query(), with the type OIDs of its columns; no read of cells. */
 static bool cat_query_oids(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                            zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
 {
-    if (oids != NULL) array_init(oids);
-    bool ok = cat_query_rewritten(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids);
-    if (!ok && oids != NULL) zval_ptr_dtor(oids);
-    return ok;
+    return cat_query_read(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids, false);
 }
 
 /* A bounded result as the PHP client's query(), with no type OIDs. */
@@ -642,7 +837,7 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
 
 /* A bounded result with the PostgreSQL placeholders of a statement with parameters rewritten. */
 static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
+                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool cells)
 {
     array_init(names);
     array_init(types);
@@ -657,28 +852,39 @@ static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args
     }
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     zval_ptr_dtor(&driver);
-    if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(sql)) {
-        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids);
+    /* A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123). */
+    bool insert = strncmp(sql, "INSERT ", 7) == 0;
+    uint32_t settings = cells && postgres ? cat_pg_settings_count() : 0;
+    zend_string *read = settings > 0 ? cat_settings_read(sql) : NULL;
+    const char *statement = read != NULL ? ZSTR_VAL(read) : sql;
+    bool ok;
+    if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(statement)) {
+        ok = cat_query_body(db, pdo, statement, args, max_rows, max_bytes, names, types, rows, convert, oids, insert, settings);
+    } else {
+        zend_string *source = zend_string_init(statement, strlen(statement), 0);
+        zend_string *rewritten = NULL;
+        zval rewritten_args;
+        bool rewrote = cat_pg_rewrite(source, args, &rewritten, &rewritten_args);
+        zend_string_release(source);
+        if (!rewrote) {
+            zval_ptr_dtor(names);
+            zval_ptr_dtor(types);
+            zval_ptr_dtor(rows);
+            ok = false;
+        } else {
+            ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert,
+                                oids, insert, settings);
+            zend_string_release(rewritten);
+            zval_ptr_dtor(&rewritten_args);
+        }
     }
-    zend_string *source = zend_string_init(sql, strlen(sql), 0);
-    zend_string *rewritten = NULL;
-    zval rewritten_args;
-    bool rewrote = cat_pg_rewrite(source, args, &rewritten, &rewritten_args);
-    zend_string_release(source);
-    if (!rewrote) {
-        zval_ptr_dtor(names);
-        zval_ptr_dtor(types);
-        zval_ptr_dtor(rows);
-        return false;
-    }
-    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert, oids);
-    zend_string_release(rewritten);
-    zval_ptr_dtor(&rewritten_args);
+    if (read != NULL) zend_string_release(read);
     return ok;
 }
 
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool insert,
+                           uint32_t settings)
 {
     zval driver, buffered;
     ZVAL_UNDEF(&buffered);
@@ -686,9 +892,8 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
     zval_ptr_dtor(&driver);
-    /* A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123). */
-    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 && strncmp(sql, "INSERT ", 7) != 0) {
-        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert, oids, false);
+    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 && !insert) {
+        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert, oids, false, settings);
     }
     zend_long connection_id = 0;
     if (mysql && !cat_mysql_connection_id(pdo, &connection_id)) goto driver;
@@ -712,6 +917,14 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     array_init(&found);
     zval *ids = oids != NULL ? oids : &found;
     ok = cat_statement_columns(&st, names, types, ids);
+    if (ok && !cat_without_settings(settings, names, types, ids)) {
+        zval_ptr_dtor(&found);
+        zval_ptr_dtor(&st);
+        zval_ptr_dtor(names);
+        zval_ptr_dtor(types);
+        zval_ptr_dtor(rows);
+        return false;
+    }
     if (ok && postgres && !cat_pg_builtins(ids)) {
         /* A lookup of a type runs a statement, which ends this one, so its rows are read first. */
         zval mode, classes;
@@ -750,7 +963,9 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
             if (Z_TYPE(row) == IS_FALSE) break;
         }
         int limit;
-        if (convert == NULL) {
+        if (!cat_row_settings(rows, &row, max_rows, settings)) {
+            limit = -1;
+        } else if (convert == NULL) {
             limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
         } else if (!cat_convert_bound(rows, &row, types, postgres ? "postgres" : mysql ? "mysql" : "sqlite", convert, max_rows,
                                       max_bytes, &budget, &limit)) {
@@ -910,9 +1125,12 @@ static bool cat_int(zval *v, zend_long *out)
 
 /* ---- sessions -------------------------------------------------------------------------------------------------------------- */
 
+static void cat_abort(zval *db, zval *pdo);
+
 /* Opens the read-only transaction of a session on the Db's PDO handle (Catalog::begin). SQLite sets query_only itself. */
 static bool cat_begin_read(zval *db, const char *dialect, zval *pdo)
 {
+    cat_pg_settings_clear();
     if (!pdo_call(db, "pdo", pdo, 0, NULL, NULL)) {
         return false;
     }
@@ -931,12 +1149,17 @@ static bool cat_begin_read(zval *db, const char *dialect, zval *pdo)
         cat_driver_error(db);
         return false;
     }
+    if (strcmp(dialect, "postgres") == 0 && !cat_pg_settings_begin(db, pdo)) {
+        cat_abort(db, pdo);
+        return false;
+    }
     return true;
 }
 
 /* Ends a failed session: ROLLBACK, and the cause stays the pending error. A failed ROLLBACK becomes OrmException::rollback(cause, driver error). */
 static void cat_abort(zval *db, zval *pdo)
 {
+    cat_pg_settings_clear();
     /* The connection that a left stream has lost has no transaction to roll back. */
     if (cat_stream_left(db)) return;
     zval cause;
@@ -963,6 +1186,11 @@ static void cat_abort(zval *db, zval *pdo)
 /* Ends a successful read session with ROLLBACK; a failure is ROW_ROLLBACK_FAILED with the driver error as its previous error. */
 static bool cat_end_read(zval *db, zval *pdo)
 {
+    if (!cat_pg_settings_unchanged(db, pdo)) {
+        cat_abort(db, pdo);
+        return false;
+    }
+    cat_pg_settings_clear();
     if (cat_try_rollback(pdo)) {
         return true;
     }
@@ -1776,7 +2004,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
 
     zval args, names, types, rows, oids;
     array_init(&args);
-    bool ok = cat_query_oids(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL, &oids);
+    bool ok = cat_query_read(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL, &oids, true);
     zval_ptr_dtor(&args);
     smart_str_free(&sql);
     if (!ok) {
@@ -3206,7 +3434,8 @@ static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_ro
     array_init(&types);
     zval_ptr_dtor(rows);
     array_init(rows);
-    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, rows, cat_grid_postgres_row, NULL, true)) {
+    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, rows, cat_grid_postgres_row, NULL, true,
+                          cat_pg_settings_count())) {
         return false;
     }
     zval_ptr_dtor(&types);
@@ -3264,6 +3493,8 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
     }
     if (ok) ok = cat_statement_columns(&st, names, &types, &oids);
     if (!ok) cat_driver_error(db);
+    uint32_t settings = postgres ? cat_pg_settings_count() : 0;
+    if (ok) ok = cat_without_settings(settings, names, &types, &oids);
     if (ok && postgres) {
         if (!cat_pg_builtins(&oids)) {
             zval mode;
@@ -3294,7 +3525,7 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
             }
             if (Z_TYPE(row) == IS_FALSE) break;
         }
-        if (!cat_grid_row_limit(rows, &row, max_rows)) {
+        if (!cat_grid_row_limit(rows, &row, max_rows) || !cat_row_settings(rows, &row, max_rows, settings)) {
             ok = false;
             break;
         }
@@ -3717,6 +3948,7 @@ static bool cat_read_only_inputs(zval *self, zend_string *sql, zval *params, zen
 /* Opens a writable transaction (Catalog::begin, writable): SQLite takes the write lock at once. */
 static bool cat_begin_write(zval *db, const char *dialect, zval *pdo)
 {
+    cat_pg_settings_clear();
     if (!pdo_call(db, "pdo", pdo, 0, NULL, NULL)) {
         return false;
     }
@@ -3728,6 +3960,10 @@ static bool cat_begin_write(zval *db, const char *dialect, zval *pdo)
         : strcmp(dialect, "postgres") == 0 ? "BEGIN" : "BEGIN IMMEDIATE";
     if (!cat_try_exec(pdo, begin)) {
         cat_driver_error(db);
+        return false;
+    }
+    if (strcmp(dialect, "postgres") == 0 && !cat_pg_settings_begin(db, pdo)) {
+        cat_abort(db, pdo);
         return false;
     }
     return true;
@@ -3760,6 +3996,11 @@ static void cat_rollback_throw(zval *db, zval *pdo, zval *cause)
  * is an unknown outcome: ROW_COMMIT_INDETERMINATE, never retried. */
 static bool cat_commit(zval *db, zval *pdo)
 {
+    if (!cat_pg_settings_unchanged(db, pdo)) {
+        cat_abort(db, pdo);
+        return false;
+    }
+    cat_pg_settings_clear();
     if (cat_try_exec(pdo, "COMMIT")) {
         return true;
     }
@@ -4099,7 +4340,8 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     }
     smart_str_0(&sql);
     zval got_names, got_types, raw, oids;
-    bool ok = cat_query_oids(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw, NULL, &oids);
+    bool ok = cat_query_read(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw, NULL, &oids,
+                             true);
     smart_str_free(&sql);
     zval_ptr_dtor(&key_args);
     if (!ok) {
@@ -4424,7 +4666,7 @@ static bool cat_check_current(zval *current, zval *original)
 static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *metadata, const char *sql, zval *args, zval *rows)
 {
     zval names, types, raw, expected, oids;
-    if (!cat_query_oids(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw, NULL, &oids)) return false;
+    if (!cat_query_read(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw, NULL, &oids, true)) return false;
     zval_ptr_dtor(&types);
     cat_column_names(metadata, &expected);
     bool same = zend_compare(&names, &expected) == 0;
@@ -5530,7 +5772,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         return;
     }
     zval names, types, rows, converted, result;
-    if (!cat_query(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows, cat_query_row)) {
+    if (!cat_query_read(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows, cat_query_row, NULL, true)) {
         zval_ptr_dtor(&args);
         cat_abort(db, &pdo);
         zval_ptr_dtor(&pdo);
@@ -5556,8 +5798,25 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
 }
 
 /* The grid query with the PostgreSQL placeholders of a statement with parameters rewritten, as cat_query does. */
+static bool cat_grid_pdo_rewritten(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows,
+                                   zend_long max_bytes, zval *names, zval *rows);
+
+/* The grid query, on PostgreSQL run so that each row carries the output settings that its cells depend on (INT-186). */
 static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                          zval *names, zval *rows)
+{
+    if (strcmp(dialect, "postgres") != 0 || cat_pg_settings_count() == 0) {
+        return cat_grid_pdo_rewritten(db, dialect, pdo, sql, args, max_rows, max_bytes, names, rows);
+    }
+    zval read;
+    ZVAL_STR(&read, cat_settings_read(Z_STRVAL_P(sql)));
+    bool ok = cat_grid_pdo_rewritten(db, dialect, pdo, &read, args, max_rows, max_bytes, names, rows);
+    zval_ptr_dtor(&read);
+    return ok;
+}
+
+static bool cat_grid_pdo_rewritten(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows,
+                                   zend_long max_bytes, zval *names, zval *rows)
 {
     if (strcmp(dialect, "postgres") != 0 || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(Z_STRVAL_P(sql))) {
         return cat_grid_pdo_statement(db, dialect, pdo, sql, args, max_rows, max_bytes, names, rows);

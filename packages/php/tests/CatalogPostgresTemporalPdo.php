@@ -37,6 +37,22 @@ final class CatalogPostgresTemporalPdo extends CatalogAnswerPdo
 
     public function answer(string $query): array
     {
+        $settings = ['ISO, MDY', 'postgres', 'UTC', '1', 'hex', 'C', '"$user", public'];
+        if (str_starts_with($query, 'SELECT current_setting(')) {
+            // The output settings of the session (INT-186).
+            return [[$settings], array_fill(0, count($settings), 'current_setting'), array_fill(0, 7, 'text')];
+        }
+        $wrapper = "WITH catalog_read AS MATERIALIZED (\n";
+        if (str_starts_with($query, $wrapper)) {
+            // A read of cells carries the output settings after the columns of each row (INT-186).
+            $end = (int) strrpos($query, "\n) SELECT catalog_read.*, ");
+            [$rows, $names, $types] = $this->answer(substr($query, strlen($wrapper), $end - strlen($wrapper)));
+            return [
+                array_map(static fn (array $row): array => array_merge($row, $settings), $rows),
+                array_merge($names, array_fill(0, count($settings), 'current_setting')),
+                array_merge($types, array_fill(0, count($settings), 'text')),
+            ];
+        }
         if (str_starts_with($query, 'SELECT c.relkind::text')) {
             return [[['r']], ['relkind'], ['text']];
         }
