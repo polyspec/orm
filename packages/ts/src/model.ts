@@ -9,7 +9,7 @@ import type { Assemble, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
-import { StyledValue, checkJsonOutput, orderedJsonOutput } from './styled_value.js';
+import { StyledValue, jsonOutputText, jsonOutputValue, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
 import { GroupRow, GroupRows } from './group_rows.js';
@@ -1068,7 +1068,7 @@ function toArray(c: Core): Record<string, unknown> {
  * returns the same text.
  */
 function toJson(c: Core): Record<string, unknown> {
-  return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(jsonColumn(c, k, v))]));
+  return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(jsonColumn(c, k, v), `${c.ent.entity.name}.${k}: `)]));
 }
 
 /** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
@@ -1098,10 +1098,13 @@ export function addedColumnValue(type: string, raw: unknown, zone: string): unkn
   }
 }
 
-/** The JSON text of a row value: an ordered-json value as its stored text. */
-function jsonText(value: unknown): string {
+/**
+ * The JSON text of a row value: an ordered-json value as its stored text, at any depth of a styled value, whose value is
+ * refused where JSON would write it as another value, with the place of the output before the text (COD-73).
+ */
+function jsonText(value: unknown, place: string): string {
   if (value instanceof StyledValue) return value.kind === 'sql-null'
-    ? '{"kind":"sql-null"}' : `{"kind":"value","value":${jsonText(value.payload())}}`;
+    ? '{"kind":"sql-null"}' : `{"kind":"value","value":${jsonOutputText(value.payload(), place)}}`;
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
@@ -1110,25 +1113,22 @@ function jsonText(value: unknown): string {
 
 /** The JSON text of a row, members in row order. */
 function rowText(c: Core): string {
-  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(jsonColumn(c, k, v))}`).join(',')}}`;
+  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(jsonColumn(c, k, v), `${c.ent.entity.name}.${k}: `)}`).join(',')}}`;
 }
 
-function jsonValue(value: unknown): unknown {
+/** The value of a row value for JSON.stringify; a styled value is written as jsonText writes it, refused at the place. */
+function jsonValue(value: unknown, place: string): unknown {
   if (value instanceof StyledValue) return value.kind === 'sql-null'
-    ? { kind: 'sql-null' } : { kind: 'value', value: jsonValue(value.payload()) };
+    ? { kind: 'sql-null' } : { kind: 'value', value: jsonOutputValue(value.payload(), place) };
   if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
   return exactIntegers(arrayValue(value));
 }
 
-/**
- * JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26); the value of a
- * styled column, which payload() returns unchecked, is refused where JSON would write it as another value (COD-73).
- */
+/** JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26). */
 function jsonColumn(c: Core, name: string, value: unknown): unknown {
   if (value instanceof Uint8Array) throw new OrmError(codes.CODEC_ENCODE, `${c.ent.entity.name}.${name}: JSON output cannot write bytes`);
-  if (value instanceof StyledValue && value.kind === 'value') checkJsonOutput(value.payload(), `${c.ent.entity.name}.${name}: `);
   return value;
 }
 

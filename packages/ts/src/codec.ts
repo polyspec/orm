@@ -559,8 +559,14 @@ function jsonText(value: unknown, depth: number): string {
     if (value instanceof Uint8Array || typeof toJSON !== 'function') {
       throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
     }
-    // The JSON form of the object stands at its place.
-    return jsonText(toJSON.call(value), depth);
+    // The JSON form of the object stands at its place. JSON.stringify reads toJSON once, so a form that is again an object
+    // of a class, the object itself included, is an object without a JSON form.
+    const form: unknown = toJSON.call(value);
+    if (form !== null && typeof form === 'object' && !(form instanceof JsonValue) && !Array.isArray(form)) {
+      const formProto: unknown = Object.getPrototypeOf(form);
+      if (formProto !== Object.prototype && formProto !== null) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
+    }
+    return jsonText(form, depth);
   }
   // The nesting rule of a list or a map comes before its own rules (COD-70).
   if (depth >= MAX_LEVELS) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
