@@ -34,15 +34,29 @@ final class CatalogPageValidationTest extends TestCase
     // Requirements: INT-103, INT-117.
     public function testDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
     {
-        CatalogPostgresTemporalCases::assertDeclaredPrecision(
-            static function (CatalogPostgresTemporalPdo $pdo): Catalog {
-                $db = new Db($pdo, 'postgres', new Config(), new \DateTimeZone('UTC'));
-                $catalog = (new \ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
-                (new \ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
-                (new \ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'postgres');
-                return $catalog;
-            },
-        );
+        CatalogPostgresTemporalCases::assertDeclaredPrecision(self::postgresCatalog(...));
+    }
+
+    // Requirements: INT-165, INT-171. No server sends a datetime text for a date column.
+    public function testDescribedPostgresDriverValueOfNoConversionIsRefused(): void
+    {
+        CatalogPostgresTemporalCases::assertUnsupportedDriverValue(self::postgresCatalog(...));
+    }
+
+    // Requirements: INT-165, INT-172. No server sends a bytea stream that cannot be read.
+    public function testDescribedPostgresUndecodableDriverValueKeepsItsCause(): void
+    {
+        CatalogPostgresTemporalCases::assertUndecodableDriverValue(self::postgresCatalog(...));
+    }
+
+    /** A library catalog on a PostgreSQL connection without a server. */
+    private static function postgresCatalog(CatalogPostgresTemporalPdo $pdo): Catalog
+    {
+        $db = new Db($pdo, 'postgres', new Config(), new \DateTimeZone('UTC'));
+        $catalog = (new \ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
+        (new \ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'postgres');
+        return $catalog;
     }
 
     // Requirements: INT-121. What no server can answer: a statement names its columns in the select list, and a server

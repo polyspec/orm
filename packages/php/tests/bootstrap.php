@@ -98,6 +98,7 @@ require_once __DIR__ . '/NativeFixtureVectors.php';
 require_once __DIR__ . '/CatalogAnswerPdo.php';
 require_once __DIR__ . '/CatalogAnswerStatement.php';
 require_once __DIR__ . '/CatalogPostgresTemporalPdo.php';
+require_once __DIR__ . '/CatalogUnreadableStream.php';
 require_once __DIR__ . '/CatalogPostgresTemporalCases.php';
 require_once __DIR__ . '/dbspec_limit_cases.php';
 require_once __DIR__ . '/DbspecSqliteLockCases.php';
