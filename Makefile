@@ -917,7 +917,7 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 dbspec-compare-check/unit:
 	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed editable,
-# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
+# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
 # take this interpreter as ORM_PYTHON and import the package through that install.
 PYTHON_VENV = $(abspath packages/python/.venv)
@@ -2657,7 +2657,7 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_non_finite_value_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_json_depth_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_stack_depth
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_library_failures
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_yaml_reader_cause
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_lone_surrogate_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_map_keys_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_styled_unset_none
