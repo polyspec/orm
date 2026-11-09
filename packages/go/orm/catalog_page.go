@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-// CatalogResult is the typed result of a table page: its columns in physical order and its rows.
+// CatalogResult is the typed result of a table page: its columns in physical order and its rows. A value is nil for NULL,
+// an int64 (a uint64 for a MySQL unsigned value), a float32 or a float64 by the width of its float type (INT-183), a bool
+// for a boolean column, a string for a decimal, a text and the dbspec text of a date, time or datetime, or a copy of binary
+// bytes (docs/spec/interfaces.md, "Catalog value rules").
 type CatalogResult struct {
 	Columns []CatalogColumn
 	Rows    [][]any
@@ -89,7 +92,7 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		if hasMore {
 			raw.rows = raw.rows[:limit]
 		}
-		rows, err := catalogConvertDescribed(raw, metadata, c.dialect)
+		rows, err := s.convertDescribed(raw, metadata)
 		if err != nil {
 			return CatalogTablePage{}, err
 		}
@@ -250,6 +253,9 @@ func catalogCellKey(cell any) (string, error) {
 		return "i" + strconv.FormatInt(v, 10), nil
 	case uint64:
 		return "i" + strconv.FormatUint(v, 10), nil
+	case float32:
+		// A 4-byte float cell (INT-183) compares as the float64 that holds it exactly, so it equals the float64 written to it.
+		return catalogCellKey(float64(v))
 	case float64:
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return "", catalogErr("ROW_SNAPSHOT_INVALID", "non-finite float cell")

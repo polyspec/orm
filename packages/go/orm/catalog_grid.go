@@ -4,12 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
-	"regexp"
-	"strconv"
 	"strings"
-	"time"
-	"unicode/utf8"
 )
 
 // CatalogGridKind is the tag of a grid cell (docs/spec/interfaces.md, "Rust native grid query specification").
@@ -47,9 +42,9 @@ type CatalogGridResult struct {
 	Rows    [][]CatalogGridCell
 }
 
-// ReadOnlyGridQuery runs one read query like ReadOnlyQuery and returns typed grid cells instead of catalog values. A value
-// of a native type that has no grid cell, a MySQL TIMESTAMP, a PostgreSQL timestamptz or timetz, a time outside
-// 00:00:00 to 23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL infinity fail with CATALOG_VALUE.
+// ReadOnlyGridQuery runs one read query like ReadOnlyQuery and returns typed grid cells instead of catalog values. Each
+// value follows the catalog value rules (docs/spec/interfaces.md, "Catalog value rules"): a value that a rule refuses fails
+// with the code of the rule and the message CODE: column n: text, n the 1-based position of its column.
 func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogGridResult, error) {
 	args, maxRows, maxBytes, err := c.readOnlyArgs(query, params, limits)
 	if err != nil {
@@ -72,8 +67,9 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 		// Each value is converted to its grid cell as it is read, and the budget counts the cell (INT-115): the text of a
 		// decimal or temporal cell, not the driver value it came from.
 		var cells []CatalogGridCell
-		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string) (int, error) {
-			cell, err := catalogGridCell(value, native, c.dialect)
+		convert := newCatalogCells(s)
+		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
+			cell, err := convert.cell(value, native, column)
 			if err != nil {
 				return 0, err
 			}
@@ -133,12 +129,6 @@ func catalogSQLiteRawQuery(query string, width int) string {
 	return "WITH g(" + strings.Join(names, ", ") + ") AS (\n" + query + "\n) SELECT " + strings.Join(cols, ", ") + " FROM g"
 }
 
-var (
-	catalogGridDateRE     = regexp.MustCompile(`^([0-9]{4})-([0-9]{2})-([0-9]{2})$`)
-	catalogGridTimeRE     = regexp.MustCompile(`^([0-9]{2,3}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?$`)
-	catalogGridDateTimeRE = regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{2,3}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?)$`)
-)
-
 // catalogGridCellSize is the bytes that a grid cell counts against a result budget (INT-115): the UTF-8 bytes of a text,
 // decimal or temporal cell, the length of a binary cell and 8 for every other cell, null included.
 func catalogGridCellSize(cell CatalogGridCell) int {
@@ -150,266 +140,4 @@ func catalogGridCellSize(cell CatalogGridCell) int {
 	default:
 		return 8
 	}
-}
-
-// catalogGridCell is the grid cell of one driver value with the native type name that the driver reports for its column.
-// SQLite has no native type names of its storage classes, so its cells follow the storage class of each value.
-func catalogGridCell(value any, native string, dialect string) (CatalogGridCell, error) {
-	native = strings.ToUpper(native)
-	cell := func(kind CatalogGridKind, v any) (CatalogGridCell, error) {
-		return CatalogGridCell{Kind: kind, Value: v}, nil
-	}
-	refuse := func(format string, args ...any) (CatalogGridCell, error) {
-		return CatalogGridCell{}, catalogErr(catalogCodeValue, "grid value of native type %q: %s", native, fmt.Sprintf(format, args...))
-	}
-	if value == nil {
-		return cell(CatalogGridNull, nil)
-	}
-	if dialect == "sqlite" {
-		return catalogGridSQLite(value, refuse, cell)
-	}
-	switch native {
-	case "YEAR":
-		// The MySQL YEAR type has no grid cell; its integer value is not an integer column (the spec's unsupported types).
-		return refuse("MySQL YEAR has no grid cell")
-	case "TIMESTAMP":
-		if dialect == "mysql" {
-			return refuse("MySQL TIMESTAMP follows a time zone")
-		}
-	case "TIMESTAMPTZ", "TIMETZ":
-		return refuse("PostgreSQL %s is unsupported", native)
-	}
-	switch v := value.(type) {
-	case bool:
-		return cell(CatalogGridBoolean, v)
-	case int64:
-		if strings.HasPrefix(native, "UNSIGNED ") {
-			if v < 0 {
-				return refuse("a negative value is not an unsigned integer")
-			}
-			return cell(CatalogGridUnsigned, uint64(v))
-		}
-		return cell(CatalogGridInteger, v)
-	case uint64:
-		return cell(CatalogGridUnsigned, v)
-	case float32:
-		return cell(CatalogGridFloat32, math.Float32bits(v))
-	case float64:
-		if native == "FLOAT4" || native == "FLOAT" {
-			return cell(CatalogGridFloat32, math.Float32bits(float32(v)))
-		}
-		return cell(CatalogGridFloat64, math.Float64bits(v))
-	case time.Time:
-		return catalogGridTimeValue(v, native, dialect, refuse, cell)
-	case string:
-		return catalogGridTextual(v, native, dialect, refuse, cell)
-	case []byte:
-		if catalogGridBinaryName(native) {
-			return cell(CatalogGridBinary, append([]byte(nil), v...))
-		}
-		return catalogGridTextual(string(v), native, dialect, refuse, cell)
-	default:
-		return refuse("the driver value has no grid cell")
-	}
-}
-
-// catalogGridSQLite is the grid cell of a SQLite value by its storage class.
-func catalogGridSQLite(value any, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error) {
-	switch v := value.(type) {
-	case int64:
-		return cell(CatalogGridInteger, v)
-	case float64:
-		return cell(CatalogGridFloat64, math.Float64bits(v))
-	case string:
-		// A stored value that is not valid UTF-8 is its bytes (INT-153).
-		if !utf8.ValidString(v) {
-			return cell(CatalogGridBinary, []byte(v))
-		}
-		return cell(CatalogGridText, v)
-	case []byte:
-		return cell(CatalogGridBinary, append([]byte(nil), v...))
-	default:
-		return refuse("the driver value has no grid cell")
-	}
-}
-
-// catalogGridTimeValue is the grid cell of a driver time value: a MySQL DATE, DATETIME or a PostgreSQL DATE, TIMESTAMP. The
-// wall clock of the value is the dbspec text, in UTC for the connection time zone of the driver.
-func catalogGridTimeValue(v time.Time, native, dialect string, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error) {
-	if dialect == "mysql" && v.IsZero() {
-		// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00. MySQL's DATE and DATETIME range starts at
-		// 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is no MySQL
-		// value: this is the zero date, which INT-103 refuses as a date outside 0001-01-01 to 9999-12-31.
-		return catalogGridTemporalRefusal(fmt.Errorf("MySQL zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31"))
-	}
-	date, err := catalogGridDate(v.Year(), int(v.Month()), v.Day())
-	if err != nil {
-		return refuse("%v", err)
-	}
-	switch {
-	case native == "DATE":
-		return cell(CatalogGridDate, date)
-	case native == "DATETIME" && dialect == "mysql", native == "TIMESTAMP" && dialect == "postgres":
-		return cell(CatalogGridDateTime, fmt.Sprintf("%s %02d:%02d:%02d.%06d", date, v.Hour(), v.Minute(), v.Second(), v.Nanosecond()/1000))
-	default:
-		return refuse("a time value has no grid cell in %s", dialect)
-	}
-}
-
-// catalogGridTextual is the grid cell of a value that the driver returns as text: a decimal, a time, a date, a datetime,
-// an unsigned, a float or a character value. Binary columns are handled before it.
-func catalogGridTextual(text string, native, dialect string, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error) {
-	if dialect == "mysql" && strings.HasPrefix(native, "UNSIGNED ") {
-		u, err := strconv.ParseUint(text, 10, 64)
-		if err != nil {
-			return refuse("the text is not an unsigned integer")
-		}
-		return cell(CatalogGridUnsigned, u)
-	}
-	base := strings.TrimPrefix(native, "UNSIGNED ")
-	switch base {
-	case "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT":
-		n, err := strconv.ParseInt(text, 10, 64)
-		if err != nil {
-			return refuse("the text is not a signed 64-bit integer")
-		}
-		return cell(CatalogGridInteger, n)
-	case "FLOAT":
-		f, err := strconv.ParseFloat(text, 32)
-		if err != nil {
-			return refuse("the text is not a float")
-		}
-		return cell(CatalogGridFloat32, math.Float32bits(float32(f)))
-	case "DOUBLE":
-		f, err := strconv.ParseFloat(text, 64)
-		if err != nil {
-			return refuse("the text is not a float")
-		}
-		return cell(CatalogGridFloat64, math.Float64bits(f))
-	case "DECIMAL", "NUMERIC":
-		if !catalogGridFiniteDecimal(text) {
-			return refuse("the decimal is not finite")
-		}
-		return cell(CatalogGridDecimal, text)
-	case "TIME":
-		clock, err := catalogGridClock(text)
-		if err != nil {
-			return catalogGridTemporalRefusal(err)
-		}
-		return cell(CatalogGridTime, clock)
-	case "DATE":
-		date, err := catalogGridDateText(text)
-		if err != nil {
-			return catalogGridTemporalRefusal(err)
-		}
-		return cell(CatalogGridDate, date)
-	case "DATETIME", "TIMESTAMP":
-		match := catalogGridDateTimeRE.FindStringSubmatch(text)
-		if match == nil {
-			return catalogGridTemporalRefusal(fmt.Errorf("datetime is not YYYY-MM-DD HH:MM:SS"))
-		}
-		date, err := catalogGridDateText(match[1])
-		if err != nil {
-			return catalogGridTemporalRefusal(err)
-		}
-		clock, err := catalogGridClock(match[2])
-		if err != nil {
-			return catalogGridTemporalRefusal(err)
-		}
-		return cell(CatalogGridDateTime, date+" "+clock)
-	}
-	if catalogGridTextName(native) {
-		// A value that is not valid UTF-8 is its bytes (INT-153).
-		if !utf8.ValidString(text) {
-			return cell(CatalogGridBinary, []byte(text))
-		}
-		return cell(CatalogGridText, text)
-	}
-	return refuse("unsupported native type %q", native)
-}
-
-// catalogGridBinaryName reports the native types of binary columns: MySQL BINARY, VARBINARY and the BLOB family, and
-// PostgreSQL bytea.
-func catalogGridBinaryName(native string) bool {
-	switch native {
-	case "BINARY", "VARBINARY", "BLOB", "TINYBLOB", "MEDIUMBLOB", "LONGBLOB", "BYTEA":
-		return true
-	}
-	return false
-}
-
-// catalogGridTextName reports the native types whose values are text, as catalogBytesValue reads them.
-func catalogGridTextName(native string) bool {
-	return strings.Contains(native, "CHAR") || strings.Contains(native, "TEXT") || strings.Contains(native, "JSON") ||
-		strings.Contains(native, "ENUM") || native == "SET" || strings.Contains(native, "UUID") ||
-		strings.Contains(native, "XML") || strings.Contains(native, "NAME")
-}
-
-// catalogGridFiniteDecimal reports whether a decimal text is a finite plain number; PostgreSQL writes NaN and the
-// infinities of numeric as text.
-func catalogGridFiniteDecimal(text string) bool {
-	return text != "" && text != "NaN" && !strings.Contains(text, "Infinity")
-}
-
-// catalogGridDate is the dbspec text YYYY-MM-DD of a calendar date from 0001-01-01 to 9999-12-31.
-func catalogGridDate(year, month, day int) (string, error) {
-	if year < 1 || year > 9999 {
-		return "", fmt.Errorf("date outside 0001-01-01 to 9999-12-31")
-	}
-	if t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC); t.Year() != year || int(t.Month()) != month || t.Day() != day {
-		return "", fmt.Errorf("date is not a calendar date")
-	}
-	return fmt.Sprintf("%04d-%02d-%02d", year, month, day), nil
-}
-
-// catalogGridDateText checks a date text YYYY-MM-DD and returns it.
-func catalogGridDateText(text string) (string, error) {
-	match := catalogGridDateRE.FindStringSubmatch(text)
-	if match == nil {
-		return "", fmt.Errorf("date is not YYYY-MM-DD")
-	}
-	year, err := strconv.Atoi(match[1])
-	if err != nil {
-		return "", err
-	}
-	month, err := strconv.Atoi(match[2])
-	if err != nil {
-		return "", err
-	}
-	day, err := strconv.Atoi(match[3])
-	if err != nil {
-		return "", err
-	}
-	return catalogGridDate(year, month, day)
-}
-
-// catalogGridClock checks a time text HH:MM:SS with up to six fraction digits, and returns it with six fraction digits.
-// A time outside 00:00:00 to 23:59:59.999999 fails, which includes a negative MySQL TIME and PostgreSQL 24:00:00.
-func catalogGridClock(text string) (string, error) {
-	match := catalogGridTimeRE.FindStringSubmatch(text)
-	if match == nil {
-		return "", fmt.Errorf("time is not HH:MM:SS")
-	}
-	hour, err := strconv.Atoi(match[1])
-	if err != nil {
-		return "", err
-	}
-	minute, err := strconv.Atoi(match[2])
-	if err != nil {
-		return "", err
-	}
-	second, err := strconv.Atoi(match[3])
-	if err != nil {
-		return "", err
-	}
-	if hour > 23 || minute > 59 || second > 59 {
-		return "", fmt.Errorf("time outside 00:00:00 to 23:59:59.999999")
-	}
-	fraction := match[4] + strings.Repeat("0", 6-len(match[4]))
-	return fmt.Sprintf("%02d:%02d:%02d.%s", hour, minute, second, fraction), nil
-}
-
-// catalogGridTemporalRefusal is the refusal of a temporal text outside its range or form: GRID_TEMPORAL_VALUE (INT-103).
-func catalogGridTemporalRefusal(err error) (CatalogGridCell, error) {
-	return CatalogGridCell{}, catalogErr("GRID_TEMPORAL_VALUE", "%v", err)
 }

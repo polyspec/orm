@@ -92,12 +92,47 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 		}
 		// mode=rw keeps the driver from creating a missing file.
 		parsed.native += "&mode=rw"
+	case "mysql", "postgres":
+		native, err := catalogNativeDSN(parsed)
+		if err != nil {
+			return nil, configErr("%v", err)
+		}
+		parsed.native = native
 	}
 	db, err := open(context.Background(), parsed, Config{})
 	if err != nil {
 		return nil, err
 	}
 	return &CatalogConnection{db: db, dialect: parsed.driver}, nil
+}
+
+// catalogNativeDSN is the driver DSN of a MySQL or PostgreSQL catalog connection. The catalog fixes the character set of
+// its connection when it connects, so the encoding is no setting of a read (INT-185): utf8mb4 on MySQL, which
+// go-sql-driver/mysql sets with SET NAMES on each new connection, and the UTF8 client_encoding on PostgreSQL, which pgx
+// sends as a startup parameter. The MySQL driver does not parse a date or datetime into a time.Time either: it would move
+// a date that is no calendar date, such as 2024-02-30, to another day, and the catalog checks the text that the server
+// sends (INT-174).
+func catalogNativeDSN(parsed parsedDSN) (string, error) {
+	if parsed.driver == "postgres" {
+		u, err := url.Parse(parsed.native)
+		if err != nil {
+			return "", err
+		}
+		q := u.Query()
+		q.Set("client_encoding", "UTF8")
+		// PostgreSQL reads the option string literally, so a space stays percent-encoded, as parseDSN writes it.
+		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
+		return u.String(), nil
+	}
+	cfg, err := mysql.ParseDSN(parsed.native)
+	if err != nil {
+		return "", err
+	}
+	cfg.ParseTime = false
+	if err := cfg.Apply(mysql.Charset("utf8mb4", "utf8mb4_general_ci")); err != nil {
+		return "", err
+	}
+	return cfg.FormatDSN(), nil
 }
 
 // Dialect is the database of the connection: mysql, postgres or sqlite.
@@ -357,12 +392,13 @@ type catalogRaw struct {
 // queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values,
 // each driver value counted by catalogSize.
 func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (catalogRaw, error) {
-	return s.querySized(query, args, maxRows, maxBytes, func(value any, _ string) (int, error) { return catalogSize(value), nil })
+	return s.querySized(query, args, maxRows, maxBytes, func(value any, _ string, _ int) (int, error) { return catalogSize(value), nil })
 }
 
-// querySized reads a bounded result like queryRaw, with size giving the bytes that each value of a column of its native
-// type counts against maxBytes; an error of size ends the read with that error.
-func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, size func(value any, native string) (int, error)) (raw catalogRaw, err error) {
+// querySized reads a bounded result like queryRaw, with size giving the bytes that each value of the 1-based column of its
+// native type counts against maxBytes; an error of size ends the read with that error. A value that the driver could not
+// decode fails with CATALOG_VALUE and keeps the failure as its cause (INT-172).
+func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, size func(value any, native string, column int) (int, error)) (raw catalogRaw, err error) {
 	// The query has its own context: a budget that ends the read cancels it, so that closing the rows does not read the rest
 	// of a result the server still streams (a cross join of the bench table would otherwise run to its end).
 	qctx, cancel := context.WithCancel(s.ctx)
@@ -419,7 +455,7 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 			return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 		}
 		for i, value := range values {
-			n, err := size(value, raw.types[i])
+			n, err := size(value, raw.types[i], i+1)
 			if err != nil {
 				stopped = true
 				return catalogRaw{}, err
@@ -433,6 +469,9 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		raw.rows = append(raw.rows, values)
 	}
 	if err := rows.Err(); err != nil {
+		if decode := catalogDecodeFailure(err, s.dialect); decode != nil {
+			return catalogRaw{}, decode
+		}
 		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 	}
 	return raw, nil
@@ -571,6 +610,12 @@ func catalogParams(params []any) ([]any, error) {
 			out[i] = int64(v)
 		case int64:
 			out[i] = v
+		case float32:
+			// A 4-byte float cell of a read (INT-183) binds as the float64 that holds it exactly.
+			if math.IsNaN(float64(v)) || math.IsInf(float64(v), 0) {
+				return nil, catalogErr(catalogCodeParam, "parameter %d is not finite", i+1)
+			}
+			out[i] = float64(v)
 		case float64:
 			if math.IsNaN(v) || math.IsInf(v, 0) {
 				return nil, catalogErr(catalogCodeParam, "parameter %d is not finite", i+1)

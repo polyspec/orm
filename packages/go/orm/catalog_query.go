@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"strings"
+	"time"
 )
 
 // CatalogQueryLimits bounds a read-only query. A zero field takes its default: 100000 rows and 64 MiB of values. A
@@ -26,7 +27,7 @@ func catalogReadRows(s *catalogSession, metadata CatalogTableMetadata, query str
 	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
 		return nil, err
 	}
-	return catalogConvertDescribed(raw, metadata, s.dialect)
+	return s.convertDescribed(raw, metadata)
 }
 
 // catalogWriteWords are the keywords that a read query never uses as a statement or clause: a query that contains one is
@@ -39,9 +40,11 @@ var catalogWriteWords = map[string]bool{
 }
 
 // ReadOnlyQuery runs one read query (SELECT, WITH or VALUES) in a fresh read-only session. A query that writes, locks or
-// has more than one statement fails with QUERY_READ_ONLY before it runs. Values come back as int64, float64, bool, string,
-// time.Time, a copy of binary bytes, decimal text or nil for NULL; any other native type fails. A MySQL or PostgreSQL
-// date, time or datetime is the text of its grid cell (INT-153).
+// has more than one statement fails with QUERY_READ_ONLY before it runs. Values come back as int64, uint64 (a MySQL
+// unsigned value), float64, bool, string, a copy of binary bytes, decimal text or nil for NULL. On MySQL and PostgreSQL each
+// value follows the catalog value rules (docs/spec/interfaces.md, "Catalog value rules") as in ReadOnlyGridQuery: a date,
+// time or datetime is the text of its grid cell (INT-153), a float of either width a float64 (INT-183), and a value that a
+// rule refuses fails with CODE: column n: text.
 func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogQueryResult, error) {
 	args, maxRows, maxBytes, err := c.readOnlyArgs(query, params, limits)
 	if err != nil {
@@ -50,8 +53,9 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 	return catalogRead(ctx, c, func(s *catalogSession) (CatalogQueryResult, error) {
 		// Each value is converted as it is read, and the budget counts the converted value (INT-115).
 		var values []any
-		raw, err := s.querySized(query, args, maxRows, maxBytes, func(value any, native string) (int, error) {
-			v, err := catalogQueryValue(value, native, c.dialect)
+		convert := newCatalogCells(s)
+		raw, err := s.querySized(query, args, maxRows, maxBytes, func(value any, native string, column int) (int, error) {
+			v, err := catalogQueryValue(convert, value, native, column)
 			if err != nil {
 				return 0, err
 			}
@@ -70,19 +74,22 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 	})
 }
 
-// catalogQueryValue is the catalog value of one value of a read query: a MySQL or PostgreSQL date, time or datetime is the
-// text of its grid cell (INT-153), and any other value its catalog value.
-func catalogQueryValue(value any, native string, dialect string) (any, error) {
-	t := strings.ToUpper(native)
-	temporal := t == "DATE" || t == "TIME" || dialect == "mysql" && t == "DATETIME" || dialect == "postgres" && t == "TIMESTAMP"
-	if value != nil && dialect != "sqlite" && temporal {
-		cell, err := catalogGridCell(value, native, dialect)
-		if err != nil {
-			return nil, err
-		}
-		return cell.Value, nil
+// catalogQueryValue is the value of one driver value of a read query: the Go value of its grid cell, a float widened to a
+// float64. On SQLite that is the value of its storage class; the SQLite driver parses the text of a column declared DATE,
+// DATETIME or TIMESTAMP into a time.Time, which a plain query returns as it is.
+func catalogQueryValue(convert *catalogCells, value any, native string, column int) (any, error) {
+	if _, isTime := value.(time.Time); isTime && convert.dialect == "sqlite" {
+		return value, nil
 	}
-	return catalogValue(value, native)
+	cell, err := convert.cell(value, native, column)
+	if err != nil {
+		return nil, err
+	}
+	v := catalogCellValue(cell)
+	if narrow, isFloat32 := v.(float32); isFloat32 {
+		return float64(narrow), nil
+	}
+	return v, nil
 }
 
 // readOnlyArgs checks a read query, its limits and its parameters, and returns the parameters with the row and byte

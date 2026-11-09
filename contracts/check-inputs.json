@@ -3463,6 +3463,19 @@
         "packages/go/orm/failing_driver_test.go"
       ]
     },
+    "catalog-value-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/catalog.go",
+        "packages/go/orm/catalog_values.go",
+        "packages/go/orm/catalog_values_test.go",
+        "packages/go/orm/failing_driver_test.go"
+      ]
+    },
     "catalog-described-temporal-go-check": {
       "scope": "owner",
       "needs": [
@@ -3478,7 +3491,8 @@
         "packages/go/orm/catalog_page.go",
         "packages/go/orm/catalog_query.go",
         "packages/go/orm/catalog_temporal.go",
-        "packages/go/orm/catalog_temporal_test.go"
+        "packages/go/orm/catalog_temporal_test.go",
+        "packages/go/orm/catalog_values.go"
       ]
     },
     "catalog-php-extension-surface-check": {

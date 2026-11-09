@@ -25,6 +25,8 @@ var errRollbackRejected = errors.New("rollback rejected by the test driver")
 type injectedFailure struct {
 	statement func(query string) bool
 	rollback  bool
+	// rows is the error that the rows of a query fail with when the driver reads their first row, or nil to read them.
+	rows func(query string) error
 }
 
 var injected atomic.Pointer[injectedFailure]
@@ -101,7 +103,28 @@ func (c failingConn) QueryContext(ctx context.Context, query string, args []driv
 	if !ok {
 		return nil, driver.ErrSkip
 	}
-	return q.QueryContext(ctx, query, args)
+	rows, err := q.QueryContext(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+	if f := injected.Load(); f != nil && f.rows != nil {
+		return failingRows{Rows: rows, fail: func() error { return f.rows(query) }}, nil
+	}
+	return rows, nil
+}
+
+// failingRows are the rows of a query whose read fails with the error of fail, as a driver fails on a value that it
+// cannot decode; a nil error reads the rows.
+type failingRows struct {
+	driver.Rows
+	fail func() error
+}
+
+func (r failingRows) Next(dest []driver.Value) error {
+	if err := r.fail(); err != nil {
+		return err
+	}
+	return r.Rows.Next(dest)
 }
 
 func (c failingConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
