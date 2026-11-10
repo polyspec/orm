@@ -35,19 +35,24 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   CHECK fault is 4025 and reads as `CONSTRAINT`, and it has no `AUTOEXTEND_SIZE` and refuses that statement with 1064, a
   `DRIVER` error, as MySQL gives `DRIVER` for its 4025, so one expect of the dialect holds both servers (DIA-200, rule 1).
 
-- **DIA-202** The connection collation — MySQL 8.4 / MariaDB 11.8 (probes `mysql.collation.connection_set_names`,
-  `mariadb.collation.connection_set_names`): every connection of the `mysql` dialect, the catalog connection among
-  them, sends `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin` when it connects, in every runtime, so a text literal and a
-  text value without a column compare by code point as a column of the renderer does (DIA-119, DIA-90): `'a' = 'A'`,
-  `'a' = 'a '` and `'a' = 'á'` are false and `'B' < 'a'` is true. Both servers accept that one form with the same result
-  (DIA-200, rule 1). The handshake alone does not set it: its one byte holds no `utf8mb4_0900_bin` (309), and the
-  default of the character set differs by server, `utf8mb4_0900_ai_ci` on MySQL and `utf8mb4_uca1400_ai_ci` on MariaDB
-  (probes `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). The
-  statement runner case `a_text_literal_compares_by_code_point_on_every_connection` holds it on every database;
-  PostgreSQL compares under `COLLATE "C"` and SQLite under `BINARY` to the same result. Its query is one per dialect,
-  since `@@collation_connection` and `@@character_set_results` are variables of the `mysql` dialect, PostgreSQL gives a
-  comparison as a boolean, cast to an integer, and reads its encoding by `current_setting('client_encoding')`, and SQLite
-  by `pragma_encoding`; MariaDB runs the query of `mysql` with the result of MySQL (DIA-200, rule 1).
+- **DIA-202** The connection collation — MySQL 8.4 / MariaDB 11.8 (probes `mysql.collation.literal_collate`,
+  `mariadb.collation.literal_collate`): every connection of the `mysql` dialect, the catalog connection among them,
+  sends `SET NAMES utf8mb4` when it connects, in every runtime, and names no collation. The collation of the connection
+  is then the default of the server for utf8mb4, `utf8mb4_0900_ai_ci` on MySQL and `utf8mb4_uca1400_ai_ci` on MariaDB
+  (probes `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`), and
+  no statement depends on it: a text column that the renderer writes compares under its own `utf8mb4_0900_bin`
+  (DIA-119, DIA-90), whose collation outranks that of a literal or a parameter, and SQL that compares text with no such
+  column states `COLLATE utf8mb4_0900_bin`. Both servers have that one name (id 309; MariaDB 11.8 lists it beside its
+  own `utf8mb4_nopad_bin`) and compare under it by code point with no padding, to the same result directly and through
+  ProxySQL: `'a' = 'A'`, `'a' = 'a '` and `'a' = 'á'` are false and `'B' < 'a'` is true (DIA-200, rule 1). A connection
+  that names the collation in `SET NAMES` is no common form: ProxySQL 3.0.9 has no collation above id 307 and refuses
+  `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin` with 1115, so the pooler lane could not connect. The statement runner
+  case `a_text_literal_compares_by_code_point_under_the_collation_it_states` holds it on every database; PostgreSQL
+  compares under `COLLATE "C"` and SQLite under `BINARY` to the same result. Its query is one per dialect, since
+  `COLLATE utf8mb4_0900_bin`, `@@character_set_connection` and `@@character_set_results` belong to the `mysql` dialect,
+  PostgreSQL gives a comparison as a boolean, cast to an integer, and reads its encoding by
+  `current_setting('client_encoding')`, and SQLite by `pragma_encoding`; MariaDB runs the query of `mysql` with the
+  result of MySQL (DIA-200, rule 1).
 
 - **DIA-203** The server of the introspection — MySQL 8.4 / MariaDB 11.8 (probes `mysql.check.not_enforced_option`,
   `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,

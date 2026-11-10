@@ -5288,7 +5288,7 @@
       ]
     },
     {
-      "id": "a_text_literal_compares_by_code_point_on_every_connection",
+      "id": "a_text_literal_compares_by_code_point_under_the_collation_it_states",
       "requirements": [
         "DIA-202",
         "INT-150"
@@ -5308,7 +5308,7 @@
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT 'a' = 'A', 'a' = 'a ', 'a' = 'á', 'B' < 'a', @@collation_connection = 'utf8mb4_0900_bin', @@character_set_results = 'utf8mb4'",
+                "mysql": "SELECT 'a' = 'A' COLLATE utf8mb4_0900_bin, 'a' = 'a ' COLLATE utf8mb4_0900_bin, 'a' = 'á' COLLATE utf8mb4_0900_bin, 'B' < 'a' COLLATE utf8mb4_0900_bin, @@character_set_connection = 'utf8mb4', @@character_set_results = 'utf8mb4'",
                 "postgres": "SELECT CAST('a' = 'A' AS int), CAST('a' = 'a ' AS int), CAST('a' = 'á' AS int), CAST('B' < 'a' COLLATE \"C\" AS int), 1, CAST(current_setting('client_encoding') = 'UTF8' AS int)",
                 "sqlite": "SELECT 'a' = 'A', 'a' = 'a ', 'a' = 'á', 'B' < 'a', 1, (SELECT encoding = 'UTF-8' FROM pragma_encoding)"
               }

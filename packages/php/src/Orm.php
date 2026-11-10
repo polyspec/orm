@@ -62,14 +62,15 @@ final class Orm
         switch ($driver) {
             case 'mysql':
                 // Session settings are one init command that runs once when the connection opens. Each setting
-                // does not incur a separate round trip to send a statement. It begins with SET NAMES utf8mb4 COLLATE
-                // utf8mb4_0900_bin, the collation of the text columns that the renderer writes, so a text literal
-                // compares by code point as a column does, on MySQL and MariaDB alike (DIA-202).
+                // does not incur a separate round trip to send a statement. It begins with SET NAMES utf8mb4, with no
+                // collation, which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin
+                // with 1115): a text column that the renderer writes compares under its own utf8mb4_0900_bin, and SQL
+                // that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202).
                 // The statement timeout is not in it: its variable is the one of the server, which the connection
                 // reads only after it opens (DIA-208).
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
-                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin, "
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET NAMES utf8mb4, "
                         . "time_zone = '+00:00', sql_mode = '"
                         . self::MYSQL_SQL_MODE . "'",
                 ] + self::mysqlTlsOptions($sslCa);

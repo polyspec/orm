@@ -252,14 +252,10 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
                     return Err(bad("mysql DSN ssl-mode requires TCP and does not accept socket".into()));
                 }
             }
-            // sqlx sends SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin when it connects: the collation of the text columns that
-            // the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike
-            // (DIA-202).
-            let options = MySqlConnectOptions::from_str(rest.as_str())
-                .map_err(sqlx_err)?
-                .timezone(Some("+00:00".to_owned()))
-                .charset("utf8mb4")
-                .collation("utf8mb4_0900_bin");
+            // sqlx sends SET NAMES utf8mb4 when it connects, with no collation, which a pooler in front of the server may not
+            // know (ProxySQL refuses utf8mb4_0900_bin with 1115): a text column that the renderer writes compares under its
+            // own utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202).
+            let options = MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())).charset("utf8mb4");
             // A DSN without ssl-mode connects without TLS, also to a server that offers it (CFG-44): sqlx would otherwise
             // take TLS whenever the server offers it, with no check of its certificate. A named ssl-mode reaches sqlx (CFG-20).
             ConnectOptions::MySql(if pairs.iter().any(|(key, _)| key == "ssl-mode") { options } else { options.ssl_mode(sqlx::mysql::MySqlSslMode::Disabled) })

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 4fd6baa7eaf31a1f182772aa1474db865932ed0e35780c65338bcd976ac5cabc -->
+<!-- source-sha256: 9cfd670006f02dd2f3072c0232c438b359adfb2d63239ca5e26bfec35f728c36 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -32,18 +32,22 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   statement를 1064, 곧 `DRIVER` error로 거부하며 MySQL도 그 4025에 `DRIVER`를 주므로, dialect의 expect 하나가 두 server를
   지킨다(DIA-200, 규칙 1).
 
-- **DIA-202** 연결의 collation — MySQL 8.4 / MariaDB 11.8 (probe `mysql.collation.connection_set_names`,
-  `mariadb.collation.connection_set_names`): catalog 연결을 포함해 `mysql` dialect의 모든 연결은 모든 runtime에서 연결할 때
-  `SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin`을 실행한다. 그래서 text literal과 column 없는 text 값은 renderer의 column처럼
-  code point로 비교한다(DIA-119, DIA-90). `'a' = 'A'`, `'a' = 'a '`, `'a' = 'á'`는 거짓이고 `'B' < 'a'`는 참이다. 두 server는
-  이 한 형식을 같은 결과로 받는다(DIA-200, 규칙 1). handshake만으로는 정해지지 않는다. 그 한 byte에는 `utf8mb4_0900_bin`(309)이
-  들어가지 않고, character set의 기본값은 server마다 달라 MySQL은 `utf8mb4_0900_ai_ci`, MariaDB는 `utf8mb4_uca1400_ai_ci`다(probe
-  `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). Statement runner case
-  `a_text_literal_compares_by_code_point_on_every_connection`가 모든 database에서 이를 지킨다. PostgreSQL은 `COLLATE "C"`로,
-  SQLite는 `BINARY`로 비교하며 결과가 같다. `@@collation_connection`과 `@@character_set_results`는 `mysql` dialect의 변수이고,
-  PostgreSQL은 비교를 boolean으로 주어 integer로 cast하며 encoding을 `current_setting('client_encoding')`으로, SQLite는
-  `pragma_encoding`으로 읽으므로 그 query는 dialect마다 하나다. MariaDB는 `mysql`의 query를 실행해 MySQL과 같은 결과를 준다
-  (DIA-200, 규칙 1).
+- **DIA-202** 연결의 collation — MySQL 8.4 / MariaDB 11.8 (probe `mysql.collation.literal_collate`,
+  `mariadb.collation.literal_collate`): catalog 연결을 포함해 `mysql` dialect의 모든 연결은 모든 runtime에서 연결할 때
+  `SET NAMES utf8mb4`를 실행하고 collation은 지정하지 않는다. 그러면 연결의 collation은 server의 utf8mb4 기본값, 곧 MySQL은
+  `utf8mb4_0900_ai_ci`, MariaDB는 `utf8mb4_uca1400_ai_ci`가 된다(probe `mysql.collation.default_accent_case_insensitive`,
+  `mariadb.collation.default_accent_case_insensitive`). 어떤 문장도 이 값에 기대지 않는다. renderer가 쓴 text column은 자기
+  `utf8mb4_0900_bin`으로 비교하며(DIA-119, DIA-90), 그 collation이 literal이나 parameter의 collation보다 우선한다. 그런 column 없이
+  text를 비교하는 SQL은 `COLLATE utf8mb4_0900_bin`을 적는다. 두 server 모두 이 한 이름을 알고(id 309, MariaDB 11.8은 자기
+  `utf8mb4_nopad_bin` 옆에 이를 둔다), 그 아래에서 padding 없이 code point로 비교하며, 직접 연결과 ProxySQL을 거친 연결에서
+  결과가 같다. `'a' = 'A'`, `'a' = 'a '`, `'a' = 'á'`는 거짓이고 `'B' < 'a'`는 참이다(DIA-200, 규칙 1). `SET NAMES`에
+  collation을 적는 연결은 공통 형식이 아니다. ProxySQL 3.0.9는 id 307보다 큰 collation을 몰라 `SET NAMES utf8mb4 COLLATE
+  utf8mb4_0900_bin`을 1115로 거부하므로 pooler lane이 연결하지 못했다. Statement runner case
+  `a_text_literal_compares_by_code_point_under_the_collation_it_states`가 모든 database에서 이를 지킨다. PostgreSQL은
+  `COLLATE "C"`로, SQLite는 `BINARY`로 비교하며 결과가 같다. `COLLATE utf8mb4_0900_bin`, `@@character_set_connection`,
+  `@@character_set_results`는 `mysql` dialect의 것이고, PostgreSQL은 비교를 boolean으로 주어 integer로 cast하며 encoding을
+  `current_setting('client_encoding')`으로, SQLite는 `pragma_encoding`으로 읽으므로 그 query는 dialect마다 하나다. MariaDB는
+  `mysql`의 query를 실행해 MySQL과 같은 결과를 준다(DIA-200, 규칙 1).
 
 - **DIA-203** introspection의 server — MySQL 8.4 / MariaDB 11.8 (probe `mysql.check.not_enforced_option`,
   `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,

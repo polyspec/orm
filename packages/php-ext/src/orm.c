@@ -1183,11 +1183,12 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         add_index_bool(&options, Z_LVAL(found_rows), true);
         zval_ptr_dtor(&found_rows);
         smart_str command = {0};
-        /* SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin begins the init command: the collation of the text columns that the
-         * renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike (DIA-202). The
+        /* SET NAMES utf8mb4 begins the init command, with no collation, which a pooler in front of the server may not know
+         * (ProxySQL refuses utf8mb4_0900_bin with 1115): a text column that the renderer writes compares under its own
+         * utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202). The
          * statement timeout is the variable of the server: a connection that opens again for the same Db knows it and takes it
          * here, and the first connection sets it after it reads the server (CFG-7, DIA-208). */
-        smart_str_appends(&command, "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin, time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+        smart_str_appends(&command, "SET NAMES utf8mb4, time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
         if (server != NULL && timeout > 0) {
             smart_str_appends(&command, ", ");
             orm_mysql_statement_timeout(&command, server, timeout);

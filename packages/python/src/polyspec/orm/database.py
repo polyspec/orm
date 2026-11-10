@@ -919,10 +919,11 @@ def _tls_failure(error: BaseException) -> bool:
     return False
 
 
-# Every MySQL connection sends this statement when it connects: utf8mb4 in utf8mb4_0900_bin, the collation of the text
-# columns that the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB
-# alike (DIA-202). The handshake names utf8mb4 alone: no handshake byte holds utf8mb4_0900_bin (309).
-MYSQL_SET_NAMES = "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin"
+# Every MySQL connection sends this statement when it connects (DIA-202): the character set utf8mb4, with no collation,
+# which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin with 1115). A text column that
+# the renderer writes compares under its own utf8mb4_0900_bin, and SQL that compares text with no such column states
+# COLLATE utf8mb4_0900_bin, which MySQL and MariaDB both accept with the same result.
+MYSQL_SET_NAMES = "SET NAMES utf8mb4"
 
 
 def _mysql_statement_timeout(server: str, timeout_ms: int) -> str:

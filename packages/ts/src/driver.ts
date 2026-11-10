@@ -339,9 +339,11 @@ function mysqlColumn(field: FieldPacket): DriverColumn {
 }
 
 const MYSQL_BINARY_CHARSET = 63;
-// Every MySQL connection sends this statement when it connects: utf8mb4 in utf8mb4_0900_bin, the collation of the text
-// columns that the renderer writes, so a text literal compares by code point as a column does, on MySQL and MariaDB alike (DIA-202).
-const MYSQL_SET_NAMES = 'SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin';
+// Every MySQL connection sends this statement when it connects (DIA-202): the character set utf8mb4, with no collation, which
+// a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin with 1115). A text column that the renderer
+// writes compares under its own utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE
+// utf8mb4_0900_bin, which MySQL and MariaDB both accept with the same result.
+const MYSQL_SET_NAMES = 'SET NAMES utf8mb4';
 const MYSQL_UNSIGNED_FLAG = 32;
 const MYSQL_INTEGER_TYPES = new Set(['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT']);
 /** The MySQL column type codes of the protocol, by name (mysql2 TypeCode). */
@@ -1142,7 +1144,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         jsonStrings: true,
         supportBigNumbers: exact,
         // The handshake names utf8mb4, so that no server or account default chooses the encoding of a text (INT-185); the
-        // connection then sends MYSQL_SET_NAMES, whose collation no handshake byte holds (DIA-202).
+        // connection then sends MYSQL_SET_NAMES, as every runtime sends it (DIA-202).
         charset: 'UTF8MB4_GENERAL_CI',
         // The catalog reads a FLOAT as its exact text, so that the single-precision bits are rounded from the text and not from a double,
         // and a geometry as the bytes that the server sends (INT-185).

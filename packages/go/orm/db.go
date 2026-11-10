@@ -554,13 +554,13 @@ func RegisterDeallocator(name string, deallocate func(ctx context.Context, drive
 // openSQL opens the database/sql pool. The MySQL driver reads datetime cells
 // in the connection time zone, so a cell arrives as the value localTime
 // returns unchanged.
-// mysqlSetNames is the statement that every MySQL connection sends when it connects (DIA-202): utf8mb4 in
-// utf8mb4_0900_bin, the collation of the text columns that the renderer writes, so a text literal compares by code point
-// as a column does, on MySQL and MariaDB alike.
-const mysqlSetNames = "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin"
+// mysqlSetNames is the statement that every MySQL connection sends when it connects (DIA-202): the character set utf8mb4,
+// with no collation, which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin with 1115). A
+// text column that the renderer writes compares under its own utf8mb4_0900_bin, and SQL that compares text with no such
+// column states COLLATE utf8mb4_0900_bin, which MySQL and MariaDB both accept with the same result.
+const mysqlSetNames = "SET NAMES utf8mb4"
 
-// namesConnector sends mysqlSetNames on each new connection of the pool. go-sql-driver/mysql refuses to send it itself:
-// its option Charset accepts only a collation of its one-byte handshake table, which has no utf8mb4_0900_bin (309).
+// namesConnector sends mysqlSetNames on each new connection of the pool, as every runtime sends it as a statement of its own.
 type namesConnector struct{ driver.Connector }
 
 func (c namesConnector) Connect(ctx context.Context) (driver.Conn, error) {
