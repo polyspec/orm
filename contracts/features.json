@@ -4036,6 +4036,7 @@
         "packages/rust/tests/tests/all/dbspec_apply_mysql.rs",
         "packages/rust/tests/tests/all/dbspec_apply_postgres.rs",
         "packages/rust/tests/tests/all/dbspec_apply_sqlite.rs",
+        "packages/rust/tests/tests/all/dbspec_dialect_refusal_none.rs",
         "packages/rust/tests/tests/all/dbspec_introspect_messages_none.rs",
         "packages/rust/tests/tests/all/dbspec_limits_none.rs",
         "packages/rust/tests/tests/all/dbspec_load_set_none.rs",
@@ -4194,7 +4195,9 @@
             "tests/dbspec/hashes.json",
             "tests/dbspec/sets.json",
             "packages/rust/tests/tests/all/set_parse_none.rs",
-            "packages/rust/tests/tests/all/dbspec_mermaid_none.rs"
+            "packages/rust/tests/tests/all/dbspec_mermaid_none.rs",
+            "packages/rust/tests/tests/all/dbspec_dialect_refusal_none.rs",
+            "tests/dbspec/dialect-refusal.json"
           ]
         },
         {

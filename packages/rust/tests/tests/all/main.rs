@@ -64,6 +64,7 @@ mod dbspec_apply_mysql;
 mod dbspec_apply_postgres;
 mod dbspec_apply_sqlite;
 mod dbspec_apply_verification_errors_none;
+mod dbspec_dialect_refusal_none;
 mod dbspec_introspect_markdown;
 mod dbspec_introspect_messages_none;
 mod dbspec_introspect_mysql;
@@ -268,6 +269,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("dbspec_apply_sqlite", dbspec_apply_sqlite::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_markdown", dbspec_apply_markdown::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_verification_errors_none", dbspec_apply_verification_errors_none::trials),
+        polyspec_orm_testcase::Group::new("dbspec_dialect_refusal_none", dbspec_dialect_refusal_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_messages_none", dbspec_introspect_messages_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_mysql", dbspec_introspect_mysql::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_postgres", dbspec_introspect_postgres::trials),

@@ -88,6 +88,16 @@ fn report_case(id: &str, database: &str) {
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
 /// `<entry>::<case id>`.
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+    trials_of(entry, path, database, None)
+}
+
+/// One trial for each case of the recipe at `path` that `ids` names, as `trials` makes them: the binding of a recipe whose
+/// other cases Rust's types cannot write states the cases it runs. An id that the recipe does not hold fails the binding.
+pub fn trials_of_cases(entry: &str, path: &str, database: &str, ids: &[&str]) -> Vec<polyspec_orm_testcase::Trial> {
+    trials_of(entry, path, database, Some(ids))
+}
+
+fn trials_of(entry: &str, path: &str, database: &str, ids: Option<&[&str]>) -> Vec<polyspec_orm_testcase::Trial> {
     assert_eq!(database, NONE, "recipe {path}: database {database} has no case database in this helper");
     let (root, text) = recipe_text(path);
     let recipe: Value = match crate::recipe_keys::parse_recipe(&text) {
@@ -95,10 +105,15 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         Err(error) => panic!("recipe {path}: {error}"),
     };
     let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
+    if let Some(id) = ids.and_then(|ids| ids.iter().find(|id| !cases.iter().any(|case| case["id"].as_str() == Some(**id)))) {
+        panic!("recipe {path} has no case {id}");
+    }
+    let named = |case: &&Value| ids.is_none_or(|ids| ids.iter().any(|id| case["id"].as_str() == Some(*id)));
     // The documents of a dbspec step are relative to the directory of the recipe file.
     let dir: PathBuf = root.join(path).parent().map_or_else(|| root.clone(), Path::to_path_buf);
     cases
         .iter()
+        .filter(named)
         .map(|case| {
             let case = case.clone();
             let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
