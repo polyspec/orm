@@ -68,7 +68,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             "ordered_json" => {
                 value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| {
                     // The ordered-json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
-                    let text = if error.kind() == "maximum_depth_exceeded" { "json: value nesting exceeds 256 levels" } else { "json: the cell is not JSON" };
+                    let text = if error.kind() == strict_json::ErrorKind::MaximumDepthExceeded { "json: value nesting exceeds 256 levels" } else { "json: the cell is not JSON" };
                     err_cause(CODEC_DECODE, text, error)
                 })?))
             }
