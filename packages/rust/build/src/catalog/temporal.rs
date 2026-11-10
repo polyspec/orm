@@ -293,7 +293,10 @@ pub(super) async fn check_write_precision(connection: &mut Conn, metadata: &Tabl
     Ok(())
 }
 
-/// Runs the statement that selects all the metadata's columns, and applies the column precision to the temporal cells.
+/// Runs the statement that selects all the metadata's columns, and applies the column precision to the temporal cells. Its
+/// callers are the reads of a row change (the locking lookup of a key and the read of an inserted identity), so a server
+/// error is the error of that change, as the other runtimes return it: a locking read that a read-only server refuses
+/// (MariaDB 1290) is `READ_ONLY`, not the `QUERY_READ_ONLY` of a read-only query.
 pub(super) async fn read(
     connection: &mut Conn,
     metadata: &TableMetadata,
@@ -302,7 +305,7 @@ pub(super) async fn read(
     params: &[P],
     limits: QueryLimits,
 ) -> Result<GridQueryResult, CatalogError> {
-    let mut result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(super::catalog_query_error)?;
+    let mut result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(super::catalog_write_error)?;
     let checks = sqlite_check_precisions(connection, metadata, dialect).await?;
     declared_precision(metadata, dialect, &checks, &mut result)?;
     Ok(result)
