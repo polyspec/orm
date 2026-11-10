@@ -30,7 +30,10 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   is therefore read by the table of the server of its connection ([errors](errors.yaml)), the same in every runtime:
   MySQL maps 3819 to `CONSTRAINT` and leaves 4025 a `DRIVER` error, MariaDB maps 4025 to `CONSTRAINT` and 1969, its
   statement timeout, to `CANCELED`; 4031, the idle disconnect of MySQL, is `CONNECTION_LOST` on MySQL alone (statement
-  runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
+  runner case `a_server_error_number_is_read_by_the_table_of_its_server`). Its statements are one per dialect, since a
+  CHECK fault and a refused table option are written differently on each database, and MariaDB runs those of `mysql`: its
+  CHECK fault is 4025 and reads as `CONSTRAINT`, and it has no `AUTOEXTEND_SIZE` and refuses that statement with 1064, a
+  `DRIVER` error, as MySQL gives `DRIVER` for its 4025, so one expect of the dialect holds both servers (DIA-200, rule 1).
 
 - **DIA-202** The connection collation — MySQL 8.4 / MariaDB 11.8 (probes `mysql.collation.connection_set_names`,
   `mariadb.collation.connection_set_names`): every connection of the `mysql` dialect, the catalog connection among
@@ -41,7 +44,10 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   default of the character set differs by server, `utf8mb4_0900_ai_ci` on MySQL and `utf8mb4_uca1400_ai_ci` on MariaDB
   (probes `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). The
   statement runner case `a_text_literal_compares_by_code_point_on_every_connection` holds it on every database;
-  PostgreSQL compares under `COLLATE "C"` and SQLite under `BINARY` to the same result.
+  PostgreSQL compares under `COLLATE "C"` and SQLite under `BINARY` to the same result. Its query is one per dialect,
+  since `@@collation_connection` and `@@character_set_results` are variables of the `mysql` dialect, PostgreSQL gives a
+  comparison as a boolean, cast to an integer, and reads its encoding by `current_setting('client_encoding')`, and SQLite
+  by `pragma_encoding`; MariaDB runs the query of `mysql` with the result of MySQL (DIA-200, rule 1).
 
 - **DIA-203** The server of the introspection — MySQL 8.4 / MariaDB 11.8 (probes `mysql.check.not_enforced_option`,
   `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,
@@ -108,7 +114,9 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   (DIA-201) and before any other statement `SESSION max_execution_time = <ms>` on MySQL and
   `SESSION max_statement_time = <ms / 1000>`, written with three fraction digits, on MariaDB. A statement that MariaDB
   stops returns `CANCELED` (1969, DIA-201), so MariaDB bounds a write too, as PostgreSQL does. The case
-  `mysql_session_settings` of the recipe dsn_connection reads the setting of each server.
+  `mysql_session_settings` of the recipe dsn_connection reads the setting of each server: its `session_read` reads
+  `@@SESSION.max_execution_time` on MySQL and `CAST(@@SESSION.max_statement_time * 1000 AS SIGNED)` on MariaDB, since each
+  server has the variable of the other as no variable (1193), and both give the one expected row.
 
 - **DIA-209** Row locks — MySQL 8.4 / MariaDB 11.8 (probes `mysql.lock.share_clause`, `mariadb.lock.share_clause`,
   `mysql.lock.nowait_held`, `mariadb.lock.nowait_held`): the lock `share` renders ` LOCK IN SHARE MODE`, which both

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 0f28dde2c9f1de41b0f2a5d6e380474d3caae14d3e9097c970ce83635abbaa4b -->
+<!-- source-sha256: 2b17da39d405a8eb9ed081b40ceb4ebeed38eed62223ee4c0130a719cb001ce5 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -27,6 +27,10 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   server의 표([errors](errors.yaml))로 읽으며 모든 runtime에서 같다. MySQL은 3819를 `CONSTRAINT`로 바꾸고 4025는 `DRIVER`
   error로 두며, MariaDB는 4025를 `CONSTRAINT`로, statement timeout인 1969를 `CANCELED`로 바꾼다. MySQL의 idle 연결 끊김인
   4031은 MySQL에서만 `CONNECTION_LOST`다(statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
+  CHECK 위반과 거부되는 table option은 database마다 다르게 쓰므로 그 statement는 dialect마다 하나이며, MariaDB는 `mysql`의
+  statement를 실행한다. MariaDB의 CHECK 위반은 4025로 `CONSTRAINT`로 읽히고, MariaDB에는 `AUTOEXTEND_SIZE`가 없어 그
+  statement를 1064, 곧 `DRIVER` error로 거부하며 MySQL도 그 4025에 `DRIVER`를 주므로, dialect의 expect 하나가 두 server를
+  지킨다(DIA-200, 규칙 1).
 
 - **DIA-202** 연결의 collation — MySQL 8.4 / MariaDB 11.8 (probe `mysql.collation.connection_set_names`,
   `mariadb.collation.connection_set_names`): catalog 연결을 포함해 `mysql` dialect의 모든 연결은 모든 runtime에서 연결할 때
@@ -36,7 +40,10 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   들어가지 않고, character set의 기본값은 server마다 달라 MySQL은 `utf8mb4_0900_ai_ci`, MariaDB는 `utf8mb4_uca1400_ai_ci`다(probe
   `mysql.collation.default_accent_case_insensitive`, `mariadb.collation.default_accent_case_insensitive`). Statement runner case
   `a_text_literal_compares_by_code_point_on_every_connection`가 모든 database에서 이를 지킨다. PostgreSQL은 `COLLATE "C"`로,
-  SQLite는 `BINARY`로 비교하며 결과가 같다.
+  SQLite는 `BINARY`로 비교하며 결과가 같다. `@@collation_connection`과 `@@character_set_results`는 `mysql` dialect의 변수이고,
+  PostgreSQL은 비교를 boolean으로 주어 integer로 cast하며 encoding을 `current_setting('client_encoding')`으로, SQLite는
+  `pragma_encoding`으로 읽으므로 그 query는 dialect마다 하나다. MariaDB는 `mysql`의 query를 실행해 MySQL과 같은 결과를 준다
+  (DIA-200, 규칙 1).
 
 - **DIA-203** introspection의 server — MySQL 8.4 / MariaDB 11.8 (probe `mysql.check.not_enforced_option`,
   `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,
@@ -100,7 +107,9 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   (CFG-6)를 가진 연결은 모든 runtime에서, pool의 모든 연결에서, server를 읽은 뒤(DIA-201) 다른 statement보다 먼저 MySQL에서는
   `SESSION max_execution_time = <ms>`를, MariaDB에서는 소수 세 자리로 적은 `SESSION max_statement_time = <ms / 1000>`을
   설정한다. MariaDB가 멈춘 statement는 `CANCELED`를 돌려주므로(1969, DIA-201), MariaDB는 PostgreSQL처럼 write도 제한한다.
-  recipe dsn_connection의 case `mysql_session_settings`가 각 server의 설정을 읽는다.
+  recipe dsn_connection의 case `mysql_session_settings`가 각 server의 설정을 읽는다. 각 server에는 다른 server의 변수가
+  없으므로(1193) 그 `session_read`는 MySQL에서 `@@SESSION.max_execution_time`을, MariaDB에서
+  `CAST(@@SESSION.max_statement_time * 1000 AS SIGNED)`를 읽고, 둘 다 기대한 한 row를 준다.
 
 - **DIA-209** Row lock — MySQL 8.4 / MariaDB 11.8 (probe `mysql.lock.share_clause`, `mariadb.lock.share_clause`,
   `mysql.lock.nowait_held`, `mariadb.lock.nowait_held`): lock `share`는 두 server가 공유 row lock으로 읽는
