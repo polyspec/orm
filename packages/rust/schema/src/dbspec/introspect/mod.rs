@@ -45,6 +45,44 @@ pub struct Unsupported {
     pub reason: String,
 }
 
+/// The reason of the unsupported column of a uuid in the text storage of a release up to 0.0.28, or of a conversion that
+/// stopped (DIA-144), which dbspec apply converts to 16 bytes (PLN-108). The column stays in the document as a uuid.
+pub const TEXT_STORAGE_REASON: &str = "uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes";
+
+/// The lower-case canonical text of the 16 bytes `b` of a uuid (DIA-27): two hex digits a byte, in order, with a hyphen
+/// before the bytes 4, 6, 8 and 10.
+pub fn uuid_text(b: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(36);
+    for (i, x) in b.iter().enumerate() {
+        if matches!(i, 4 | 6 | 8 | 10) {
+            out.push('-');
+        }
+        out.push(char::from(DIGITS[usize::from(x >> 4)]));
+        out.push(char::from(DIGITS[usize::from(x & 15)]));
+    }
+    out
+}
+
+/// The bytes of the hex digits `text`, two digits to a byte, or `None` when `text` is not hex digits in pairs.
+pub fn hex_bytes(text: &str) -> Option<Vec<u8>> {
+    let digits = text.as_bytes();
+    if !digits.len().is_multiple_of(2) {
+        return None;
+    }
+    digits.chunks(2).map(|pair| Some(hex_digit(pair[0])? << 4 | hex_digit(pair[1])?)).collect()
+}
+
+/// The value of one hex digit of either case.
+fn hex_digit(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
 /// The introspected document and the unsupported objects ordered by table,
 /// kind and name.
 #[derive(Clone, Debug)]

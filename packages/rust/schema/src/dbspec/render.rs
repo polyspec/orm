@@ -93,8 +93,6 @@ pub(crate) struct Renderer {
     pub d: Dialect,
 }
 
-pub(crate) const UUID_PATTERN: &str = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
-
 impl Renderer {
     /// Quotes an identifier.
     pub fn q(&self, name: &str) -> String {
@@ -213,7 +211,7 @@ impl Renderer {
                 Type::Varchar(n) => format!("varchar({n}) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin"),
                 Type::Text => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin".into(),
                 Type::Bytes => "LONGBLOB".into(),
-                Type::Uuid => "char(36) CHARACTER SET ascii COLLATE ascii_bin".into(),
+                Type::Uuid => "BINARY(16)".into(),
                 Type::Date => "DATE".into(),
                 Type::Time(p) => format!("TIME({p})"),
                 Type::DateTime(p) => format!("DATETIME({p})"),
@@ -241,8 +239,8 @@ impl Renderer {
                 Type::Decimal(p, s) => format!("DECIMALINT({p},{s})"),
                 Type::F64 => "REAL".into(),
                 Type::Varchar(n) => format!("varchar({n})"),
-                Type::Text | Type::Uuid => "TEXT".into(),
-                Type::Bytes => "BLOB".into(),
+                Type::Text => "TEXT".into(),
+                Type::Bytes | Type::Uuid => "BLOB".into(),
                 Type::Date => "DATE".into(),
                 Type::Time(_) => "TIME".into(),
                 Type::DateTime(_) => "DATETIME".into(),
@@ -269,6 +267,10 @@ impl Renderer {
                 (_, "true") => "1".into(),
                 _ => "0".into(),
             };
+        }
+        if self.d != Dialect::Postgres && matches!(t, Some(Type::Uuid)) {
+            // A uuid default is the 16 bytes of its canonical text on MySQL and SQLite (DIA-123).
+            return format!("X'{}'", text.trim_matches('\'').replace('-', ""));
         }
         if text.starts_with('\'') {
             return if self.d == Dialect::MySql { text.replace('\\', "\\\\") } else { text.to_owned() };
@@ -301,9 +303,9 @@ impl Renderer {
         match self.d {
             Dialect::MySql => match c.ty {
                 Type::Bool => Some(format!("{q} IN (0, 1)")),
-                // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
-                // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
-                Type::Uuid => Some(format!("{q} REGEXP '{UUID_PATTERN}'")),
+                // BINARY(16) pads a shorter value, so the CHECK holds every stored value and is the named marker that tells a
+                // uuid from a bytes column (probes mysql.render.uuid_bytes, mariadb.render.uuid_bytes; DIA-48, DIA-144).
+                Type::Uuid => Some(format!("length({q}) = 16")),
                 Type::Time(_) => Some(format!("{q} >= '00:00:00' AND {q} < '24:00:00'")),
                 _ => None,
             },
@@ -496,10 +498,9 @@ fn sqlite_check(q: &str, t: Type) -> Option<String> {
         }
         Type::F64 => format!("typeof({q}) IN ('real', 'null')"),
         Type::Varchar(n) => format!("length({q}) <= {n}"),
-        Type::Uuid => {
-            let hex = |n: usize| "[0-9a-f]".repeat(n);
-            format!("{q} GLOB '{}-{}-{}-{}-{}'", hex(8), hex(4), hex(4), hex(4), hex(12))
-        }
+        // A uuid is a BLOB of 16 bytes; the CHECK is the named marker that tells it from a bytes column (probe
+        // sqlite.render.uuid_bytes; DIA-48, DIA-144).
+        Type::Uuid => format!("typeof({q}) IN ('blob', 'null') AND length({q}) = 16"),
         Type::Date => format!("{q} IS date({q})"),
         Type::Time(0) => format!("{q} IS time({q}) AND {q} < '24:00:00'"),
         Type::Time(p) => {

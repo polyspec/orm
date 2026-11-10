@@ -1,13 +1,14 @@
 //! Reads the SQLite catalog. It joins sqlite_master and the table-valued pragmas to read all
 //! tables at once.
 
+use super::super::literal::quote;
 use super::super::model::{Column, Name, Type};
 use super::super::names::renderer_name;
 use super::super::render::{Dialect, Renderer};
 use super::check::{decode_check, unscaled_decimal};
 use super::number;
 use super::trigger::ITrigger;
-use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Unsupported};
+use super::{action_name, group, hex_bytes, uuid_text, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Unsupported, TEXT_STORAGE_REASON};
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -119,11 +120,18 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         if st.identity == name {
             col.identity = true;
         } else {
-            let Some(typ) = sqlite_type(&r, &declared, &name, check.as_deref())? else {
-                c.report("column", &table, &name, format!("declared type {declared} with CHECK {:?} has no dbspec type", check.unwrap_or_default()));
-                continue;
+            col.typ = match sqlite_type(&r, &declared, &name, check.as_deref())? {
+                Some(typ) => typ,
+                None if declared == "TEXT" && check.as_deref() == Some(text_storage_check(&name).as_str()) => {
+                    // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
+                    c.report("column", &table, &name, TEXT_STORAGE_REASON);
+                    Type::Uuid
+                }
+                None => {
+                    c.report("column", &table, &name, format!("declared type {declared} with CHECK {:?} has no dbspec type", check.unwrap_or_default()));
+                    continue;
+                }
             };
-            col.typ = typ;
         }
         st.checks.remove(&check_name);
         let typ = col.typ;
@@ -189,8 +197,8 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
             "bigint" => vec![Type::I64],
             "BOOLEAN" => vec![Type::Bool],
             "REAL" => vec![Type::F64],
-            "TEXT" => vec![Type::Text, Type::Uuid],
-            "BLOB" => vec![Type::Bytes],
+            "TEXT" => vec![Type::Text],
+            "BLOB" => vec![Type::Bytes, Type::Uuid],
             "DATE" => vec![Type::Date],
             "TIME" => (0..=6).map(Type::Time).collect(),
             "DATETIME" => (0..=6).map(Type::DateTime).collect(),
@@ -210,6 +218,15 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
     }))
 }
 
+/// The GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144).
+fn text_storage_check(column: &str) -> String {
+    let hex = |n: usize| "[0-9a-f]".repeat(n);
+    format!("\"{column}\" GLOB '{}-{}-{}-{}-{}'", hex(8), hex(4), hex(4), hex(4), hex(12))
+}
+
+/// A uuid default as the renderer writes it on SQLite, X' and the 32 hex digits of its 16 bytes (DIA-123).
+static UUID_DEFAULT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^X'([0-9a-f]{32})'$").expect("SQLite uuid default pattern"));
+
 /// Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale, and
 /// a bool is 1 or 0.
 fn sqlite_default(r: &Renderer, text: &str, typ: Type) -> Option<String> {
@@ -220,6 +237,11 @@ fn sqlite_default(r: &Renderer, text: &str, typ: Type) -> Option<String> {
     }
     if typ == Type::Bool && (text == "1" || text == "0") {
         return Some(if text == "1" { "true" } else { "false" }.to_owned());
+    }
+    if typ == Type::Uuid {
+        if let Some(m) = UUID_DEFAULT.captures(text) {
+            return hex_bytes(group(&m, 1)).map(|b| quote(&uuid_text(&b)));
+        }
     }
     if NUMBER_DEFAULT.is_match(text) {
         if let Type::Decimal(_, scale) = typ {

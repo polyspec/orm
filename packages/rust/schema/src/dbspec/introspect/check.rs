@@ -4,6 +4,7 @@
 use super::super::literal::quote;
 use super::super::model::Type;
 use super::super::render::Dialect;
+use super::{hex_bytes, uuid_text};
 use std::collections::BTreeMap;
 
 /// Reads the check expression `text` as a dbspec predicate. `columns` are the table's columns
@@ -61,6 +62,7 @@ enum TokenKind {
     Word,
     Number,
     Str,
+    Bytes,
     Op,
     Punct,
 }
@@ -96,6 +98,22 @@ fn tokens(dialect: Dialect, text: &str) -> Result<Vec<Token>, String> {
             let (value, n) = read_sql_string(dialect, rest)?;
             out.push(Token { kind: TokenKind::Str, text: value });
             i += n;
+        } else if rest.starts_with("0x") || (ch == b'X' || ch == b'x') && text[i + 1..].starts_with('\'') {
+            // A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123).
+            let quoted = ch != b'0';
+            let mut j = i + 2;
+            while j < bytes.len() && bytes[j].is_ascii_hexdigit() {
+                j += 1;
+            }
+            let hex = text[i + 2..j].to_ascii_lowercase();
+            if quoted {
+                if j >= bytes.len() || bytes[j] != b'\'' {
+                    return Err("unclosed binary literal".to_owned());
+                }
+                j += 1;
+            }
+            out.push(Token { kind: TokenKind::Bytes, text: hex });
+            i = j;
         } else if ch.is_ascii_digit() {
             let mut j = i;
             while j < bytes.len() && (bytes[j].is_ascii_digit() || bytes[j] == b'.') {
@@ -344,6 +362,10 @@ impl Decoder<'_> {
                 self.i += 1;
                 Ok(operand("string", t.text))
             }
+            TokenKind::Bytes => {
+                self.i += 1;
+                Ok(operand("bytes", t.text))
+            }
             TokenKind::Op if t.text == "-" => {
                 self.i += 1;
                 let parenthesized = self.punct("(");
@@ -461,6 +483,12 @@ impl Decoder<'_> {
             }
             "string" => Ok(quote(&o.text)),
             "bool" => Ok(o.text.clone()),
+            // The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has no other
+            // binary literal.
+            "bytes" => match (hex_bytes(&o.text), typ) {
+                (Some(b), Some(Type::Uuid)) if b.len() == 16 => Ok(quote(&uuid_text(&b))),
+                _ => Err(format!("the binary literal {} is no uuid literal", o.text)),
+            },
             _ => Ok(match typ {
                 Some(Type::Bool) if o.text == "1" => "true".to_owned(),
                 Some(Type::Bool) if o.text == "0" => "false".to_owned(),
