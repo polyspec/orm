@@ -148,7 +148,7 @@ The shared vectors `tests/dbspec/set-parse.json` hold sets with their names, the
 | `varchar(n)` | 1 ≤ n ≤ 16383 characters, no U+0000 | `varchar(n)` | `varchar(n)` | `varchar(n)` + length CHECK |
 | `text` | any length, no U+0000 | `LONGTEXT` | `text` | `TEXT` |
 | `bytes` | any length | `LONGBLOB` | `bytea` | `BLOB` |
-| `uuid` | lower-case canonical text | `char(36)` ascii_bin + pattern CHECK | `uuid` | `TEXT` + pattern CHECK |
+| `uuid` | lower-case canonical text, stored in 16 bytes | `BINARY(16)` + length CHECK | `uuid` | `BLOB` + type and length CHECK |
 | `date` | 0001-01-01 to 9999-12-31 | `DATE` | `date` | `DATE` + CHECK |
 | `time(p)` | time of day below 24:00:00, 0 ≤ p ≤ 6 | `TIME(p)` + day CHECK | `time(p)` + day CHECK | `TIME` + CHECK |
 | `datetime(p)` | local date-time, 0 ≤ p ≤ 6 | `DATETIME(p)` | `timestamp(p)` | `DATETIME` + CHECK |

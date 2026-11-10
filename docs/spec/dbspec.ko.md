@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 14ec2f9e8ce1e6dda128e716186a1d82c4bec152fbabb721fe586f4bfb7ce7e9 -->
+<!-- source-sha256: 375444304b326e428550516897649d3c920b087e6c87a181de75d84da819bab8 -->
 # dbspec
 
 [English](dbspec.md)
@@ -150,7 +150,7 @@ table users {
 | `varchar(n)` | 1 ≤ n ≤ 16383 문자, U+0000 없음 | `varchar(n)` | `varchar(n)` | `varchar(n)` + 길이 CHECK |
 | `text` | 길이 제한 없음, U+0000 없음 | `LONGTEXT` | `text` | `TEXT` |
 | `bytes` | 길이 제한 없음 | `LONGBLOB` | `bytea` | `BLOB` |
-| `uuid` | 소문자 canonical text | `char(36)` ascii_bin + pattern CHECK | `uuid` | `TEXT` + pattern CHECK |
+| `uuid` | 소문자 canonical text, 16 byte로 저장 | `BINARY(16)` + length CHECK | `uuid` | `BLOB` + type과 length CHECK |
 | `date` | 0001-01-01 ~ 9999-12-31 | `DATE` | `date` | `DATE` + CHECK |
 | `time(p)` | 24:00:00 미만의 하루 중 시각, 0 ≤ p ≤ 6 | `TIME(p)` + 하루 CHECK | `time(p)` + 하루 CHECK | `TIME` + CHECK |
 | `datetime(p)` | local date-time, 0 ≤ p ≤ 6 | `DATETIME(p)` | `timestamp(p)` | `DATETIME` + CHECK |

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d8a3b725d6ce5e026080a2727b11eda21441396b14672766dd0a2359a3207c4e -->
+<!-- source-sha256: 36d65c67963ba6de28d43f97b2a39d4ae2a7117ada51a8d03d55603964edc4d8 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -58,8 +58,8 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   없으므로 공통 query가 없고(DIA-200, 규칙 2) MariaDB의 모든 CHECK는 적용되는 것으로 읽는다. MariaDB는 CHECK 이름의 범위를
   table로 정하므로 그 `CHECK_CLAUSE`는 table과 CHECK 이름의 쌍을 key로 읽는다. 또 `CHECK_CLAUSE`를 바깥 괄호와 introducer 없이, string
   literal에 escape를 한 번 붙인 SQL text로 쓴다. 그 text에 MySQL `CHECK_CLAUSE`의 두 번째 escape를 붙이면 한 reader가 두
-  server의 clause를 읽는다(DIA-146). MariaDB의 renderer CHECK는 `` `c` in (0,1) ``, `` `c` regexp '^…$' ``,
-  `` `c` >= '00:00:00' and `c` < '24:00:00' ``이다(probe `mariadb.render.bool_check`, `mariadb.render.uuid_check`,
+  server의 clause를 읽는다(DIA-146). MariaDB의 renderer CHECK는 `` `c` in (0,1) ``, `` length(`c`) = 16 ``,
+  `` `c` >= '00:00:00' and `c` < '24:00:00' ``이다(probe `mariadb.render.bool_check`, `mariadb.render.uuid_bytes`,
   `mariadb.render.time_of_day_check`; DIA-144).
 
 - **DIA-204** 정수 display width — MySQL 8.4 / MariaDB 11.8 (probe `mysql.int.display_width_dropped`,
@@ -254,7 +254,7 @@ import (
 - **DIA-24** SQLite datetime은 UTC 기준 `YYYY-MM-DD HH:MM:SS` text이고 `datetime(p)` 컬럼은 정확히 p자리 소수를, `time(p)` 컬럼의 time은 `HH:MM:SS`와 정확히 p자리 소수를 가진다(renderer의 CHECK가 요구한다). 실행기는 bind slot이 싣는 p로 그 형식을 bind한다. 삽입이 생략한 `default now` 컬럼 값은 실행기가 UTC 시각으로 채운다. datetime이나 time 컬럼과 비교하거나 대입하는 문자열도 같은 형식으로 바꾼다. `YYYY-MM-DD[ T]HH:MM:SS[.f]`나 `HH:MM:SS[.f]`는 0으로 p자리까지 채우고, p자리 뒤의 자리는 0이어야 하며 버려지고 0이 아니면 `CODEC_ENCODE`를 반환한다. `Z`나 `±HH:MM`을 포함한 문자열은 UTC로 변환한다. date 컬럼은 `YYYY-MM-DD`를 받는다. 그 밖의 문자열은 `CODEC_ENCODE`를 반환한다. 클라이언트는 MySQL과 PostgreSQL에서도 datetime과 time 값을 이 text 형식으로 bind한다. `time(p)` 컬럼은 소수 정확히 p자리의 text로 읽으며, 그 text는 데이터베이스가 쓴다. MySQL은 `CAST(c AS CHAR)`, PostgreSQL은 p = 0이면 `to_char(c, 'HH24:MI:SS')`, 그 밖에는 `substr(to_char(c, 'HH24:MI:SS.US'), 1, 9 + p)`이다. PostgreSQL은 `time` 값을 `CAST(CAST(? AS text) AS time)`로 bind한다. conformance vector `datetime_p0_roundtrip`과 `time_p3_roundtrip`이 그런 값을 삽입하고 같은 매개변수로 다시 읽어 비교하고, planner case `planner_time_select`와 `planner_time_insert`가 statement를 고정한다.
 - **DIA-25** `decimal(P,S)` 컬럼은 MySQL에서 `DECIMAL(P,S)`, PostgreSQL에서 `NUMERIC(P,S)`, SQLite에서 `DECIMALINT(P,S)`를 사용한다. SQLite는 정확한 값을 10^S배 한 부호 있는 정수로 저장하고, 실행기는 읽을 때 생성 모델의 고정 소수부 자릿수 십진 문자열로 변환한다. 선언은 `1 ≤ P ≤ 18`, `0 ≤ S ≤ P`를 요구하므로 배율 정수가 부호 있는 64비트 정수 범위에 들어간다. 정수 decimal의 매니페스트에도 `scale: 0`을 명시한다. 잘못된 텍스트, 초과 자릿수, 소수부 손실, 맞지 않는 저장 셀은 `CODEC_ENCODE` 또는 `CODEC_DECODE`로 실패한다.
 - **DIA-26** `jsontext` 컬럼은 모든 방언에서 텍스트다. PostgreSQL은 `text`, MySQL은 `LONGTEXT`, SQLite는 TEXT다. 저장한 텍스트를 그대로 반환하므로 멤버 순서, 중복 키, 빈 객체와 빈 배열의 구분이 유지된다. ORM에는 JSON 경로 조건과 JSON 인덱스가 없으며, 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만든다.
-- **DIA-27** `uuid` 컬럼은 PostgreSQL에서 네이티브 `uuid`, MySQL에서 `char(36)`, SQLite에서 TEXT다. 클라이언트는 uuid 값을 텍스트로 bind한다. 모든 planner는 PostgreSQL `uuid` 컬럼을 `CAST(col AS text)`로 읽고 값을 `CAST(CAST(? AS text) AS uuid)`로 bind한다(conformance vector `uuid_roundtrip`).
+- **DIA-27** `uuid` 컬럼은 모든 데이터베이스에서 16 byte를 담는다: PostgreSQL에서 네이티브 `uuid`, MySQL과 MariaDB에서 `BINARY(16)`, SQLite와 flowmark에서 16 byte BLOB이다. interface에서 그 값은 모든 runtime에서 하나의 text, 곧 36자의 소문자 canonical 형식이다: `0-9a-f`의 숫자 8, 4, 4, 4, 12개를 `-`로 잇는다. MySQL과 SQLite에서 클라이언트는 uuid parameter를 그 숫자 32개가 순서대로, 두 숫자에 한 byte씩 쓰는 16 byte로 bind하고, 16 byte인 uuid 셀을 다시 그 text로 읽는다. 어떤 server 함수도 값을 바꾸지 않으며(MariaDB에는 `UUID_TO_BIN`과 `BIN_TO_UUID`가 없다), text의 어떤 field도 자리를 옮기지 않는다. 모든 planner는 PostgreSQL `uuid` 컬럼을 `CAST(col AS text)`로 읽고 값을 `CAST(CAST(? AS text) AS uuid)`로 bind하므로 PostgreSQL 클라이언트는 text를 bind하고 읽는다. 16 byte는 text의 순서를 따르고 PostgreSQL은 `uuid`를 byte로 비교하므로(`postgres.uuid.byte_order`), 같음, `ORDER BY`, 범위 연산자(PRT-22)는 모든 데이터베이스에서 byte 순서로 비교하며 이는 canonical text의 순서다. conformance vector `uuid_roundtrip`과 recipe `conformance_verification`의 case `uuid_stored_in_16_bytes`, `uuid_order_is_the_order_of_its_text`, `uuid_equality_and_range`가 다섯 데이터베이스에서 하나의 결과를 지킨다. 16 byte가 아니거나 PostgreSQL에서 canonical text가 아닌 uuid 셀은 `CODEC_DECODE` `uuid cell is not a uuid`다(COD-1).
 - **DIA-28** MySQL은 TEXT, BLOB, JSON, geometry 컬럼의 리터럴 기본값을 식 형식 `DEFAULT ('value')`로 기록하며 MySQL 8.0.13 이상이 필요하다. import는 이를 리터럴로 다시 읽는다.
 - **DIA-29** Boolean은 PostgreSQL `boolean`, MySQL `BOOLEAN`/`TINYINT(1)`의 숫자 `0`/`1` 기본값, SQLite INTEGER 0/1을 사용한다. 정수가 아니라 boolean을 bind한다.
 - **DIA-30** CHECK 표현식은 PostgreSQL과 SQLite에서 선언한 표현식을 그대로 생성한다. MySQL은 predicate를 반환하는 `CASE` CHECK 정의를 거부하므로 명시적인 boolean 비교로 감싼다. `NULL`은 `UNKNOWN`으로 유지되어 표준 CHECK 의미를 보존한다. MySQL CHECK 이름은 table이 아니라 database 범위이지만, renderer는 모든 CHECK 이름을 접두어 없이 그대로 쓴다. schema 검사는 제약·인덱스·생성 이름을 모두 전체 schema에서 유일하고 63바이트 이하로 유지하므로, 더 긴 생성 이름은 그것을 만드는 column이나 setting의 `name.length` 오류이며 줄이거나 hash를 붙이지 않는다([dbspec 이름](dbspec.md#names)).
@@ -302,7 +302,7 @@ import (
 - **DIA-45** `text` — MySQL 8.4: `TEXT`는 65535바이트 이하(1406), `LONGTEXT`는 4 GiB 이하. 리터럴 기본값은 `DEFAULT ('x')`가 필요하고(1101) index는 prefix가 필요하다(1170); PostgreSQL 17: 길이 없는 `text`. Probe에서 1 MiB를 저장했다. 필드 한도는 1 GB; SQLite: `TEXT`, `SQLITE_MAX_LENGTH`(기본 10^9바이트) 한도; Probe: `mysql.text.max_bytes`, `mysql.text.literal_default_needs_expression`, `mysql.text.index_needs_prefix`, `postgres.text.unlimited`; 결정과 중립 rendering: **Decision:** `text`로 지원한다. MySQL `LONGTEXT`, PostgreSQL `text`, SQLite `TEXT`. `text` 컬럼은 key나 index에 포함할 수 없다. 최대 값은 PostgreSQL 1 GB 필드 한도, SQLite `SQLITE_MAX_LENGTH`, MySQL `max_allowed_packet` 중 가장 작은 값이다. Ordered JSON은 codec setting을 가진 `text`다; Introspection: MySQL `DATA_TYPE`, PostgreSQL `atttypid`, SQLite 선언 타입
 - **DIA-46** text의 U+0000 — MySQL 8.4: 저장한다; PostgreSQL 17: 거부한다(22021); SQLite: 저장하며 `length()`는 그 앞에서 멈춘다; Probe: `mysql.text.nul_preserved`, `postgres.text.nul_rejected`, `sqlite.text.nul_preserved`; 결정과 중립 rendering: **Decision:** U+0000은 중립 text 값이 아니다. 모든 데이터베이스에서 클라이언트가 `text`와 `varchar`의 U+0000을 어떤 statement보다 먼저 `CODEC_ENCODE`로 거부한다(conformance vector `text_nul_rejected`); Introspection: 해당 없음
 - **DIA-47** Bytes — MySQL 8.4: `BINARY(n)`은 0바이트로 채우고 `VARBINARY(n)`은 길이를 검사한다(1406). `LONGBLOB`; PostgreSQL 17: `bytea`는 길이가 없다(42601); SQLite: `BLOB`은 길이가 없다; Probe: `mysql.binary.zero_padded`, `mysql.varbinary.length_enforced`, `postgres.bytea.no_length`; 결정과 중립 rendering: **Decision:** 길이 없는 `bytes`를 지원한다. MySQL `LONGBLOB`, PostgreSQL `bytea`, SQLite `BLOB`. 채움과 길이는 MySQL에만 있으므로 `binary(n)`과 `varbinary(n)`은 지원하지 않는다; Introspection: MySQL `DATA_TYPE`, PostgreSQL `atttypid`, SQLite 선언 타입
-- **DIA-48** UUID — MySQL 8.4: 타입이 없다(1064); PostgreSQL 17: `uuid`는 중괄호와 대문자를 받고 소문자를 반환한다; SQLite: 타입이 없다; Probe: `mysql.uuid.no_type`, `postgres.uuid.native_normalized`, `mysql.render.uuid_check`, `mariadb.render.uuid_check`, `mariadb.check.alter_rewrites_introducers`, `sqlite.render.uuid_check`; 결정과 중립 rendering: **Decision:** 소문자 표준 텍스트를 담는 `uuid`로 지원한다. PostgreSQL `uuid`, MySQL `char(36) CHARACTER SET ascii COLLATE ascii_bin`과 renderer CHECK `u REGEXP '^[0-9a-f]{8}-…$'`(MySQL과 MariaDB 모두 그 `ascii_bin` column에서 대소문자를 구별해 맞추며, MariaDB에는 `REGEXP_LIKE`가 없다(1305, CHECK 안에서 1901)), SQLite `TEXT`와 문자 class 36개의 renderer CHECK `u GLOB`. 클라이언트는 소문자 표준 텍스트를 쓰고 다른 형식은 어떤 statement보다 먼저 `CODEC_ENCODE`로 거부하므로(conformance vector `uuid_form_rejected`) PostgreSQL의 다른 입력 형식 변환은 쓰지 않는다; Introspection: PostgreSQL `uuid`, MySQL과 SQLite 타입과 CHECK 텍스트
+- **DIA-48** UUID — MySQL 8.4: 타입이 없다(1064); MariaDB 11.8: text의 group을 다른 순서로 저장해 `ORDER BY`가 text의 순서가 아닌 `UUID` 타입; PostgreSQL 17: byte로 비교하는 16 byte `uuid`이며 중괄호와 대문자를 받고 소문자를 반환한다; SQLite: 타입이 없다; Probe: `mysql.uuid.no_type`, `mariadb.uuid.no_type`, `postgres.uuid.native_normalized`, `postgres.uuid.byte_order`, `mysql.render.uuid_bytes`, `mariadb.render.uuid_bytes`, `mysql.uuid.binary_pads`, `mariadb.uuid.binary_pads`, `sqlite.render.uuid_bytes`; 결정과 중립 rendering: **Decision:** 값이 소문자 canonical text인 16 byte `uuid`로 지원한다(DIA-27). PostgreSQL `uuid`, MySQL과 MariaDB `BINARY(16)`과 renderer CHECK `length(u) = 16`이며, 정렬이 다른 데이터베이스와 다른 MariaDB 자체의 `UUID`는 쓰지 않는다(DIA-200의 규칙 1은 두 server가 똑같이 정렬하는 한 형식을 지킨다). SQLite `BLOB`과 renderer CHECK `typeof(u) IN ('blob', 'null') AND length(u) = 16`. `BINARY(16)`은 더 짧은 값을 0 byte로 채우고 더 긴 값을 거부하므로(1406, `mysql.uuid.binary_pads`) 그 CHECK는 저장된 모든 값에서 참이며, uuid를 `bytes` column과 구별하는 이름을 가진 표시다(DIA-144). 클라이언트는 언제나 16 byte를 bind한다. 대문자와 중괄호를 포함해 소문자 canonical 형식이 아닌 text는 PostgreSQL을 포함한 모든 데이터베이스와 여섯 runtime 모두에서 어떤 statement보다 먼저 클라이언트의 encode가 `CODEC_ENCODE` `parameter <i> is not a lower-case canonical uuid`로 거부하므로(conformance vector `uuid_form_rejected`) PostgreSQL의 다른 형식 읽기는 쓰지 않고 어떤 입력도 정규화하지 않는다. 0.0.28까지의 release는 uuid를 MySQL에서 `char(36) CHARACTER SET ascii COLLATE ascii_bin`, SQLite에서 `TEXT`로 저장했다. dbspec apply가 그런 column을 16 byte로 바꾼다(PLN-108); Introspection: PostgreSQL `uuid`, MySQL과 SQLite 타입과 CHECK 텍스트
 - **DIA-49** Enum — MySQL 8.4: `ENUM`은 목록 밖의 값을 거부하고(1265), 생략한 NOT NULL 컬럼에 첫 값을 저장하며, 목록 위치로 정렬한다; PostgreSQL 17: `CREATE TYPE … AS ENUM`은 별도 타입 객체(`USER-DEFINED`, `pg_enum`)이며 목록 밖의 값을 거부하고(22P02) 목록 위치로 정렬한다; SQLite: `enum('a','b')`는 문법 오류다; Probe: `mysql.enum.rejects_unknown`, `mysql.enum.not_null_first_value_default`, `mysql.enum.sorts_by_position`, `postgres.enum.type_object`, `sqlite.enum.type_name_rejected`; 결정과 중립 rendering: **Decision:** native enum은 지원하지 않는다. 값 목록은 `in` CHECK 정의를 가진 `varchar(n)` 컬럼이며 모든 데이터베이스에서 텍스트로 정렬한다; Introspection: MySQL `ENUM` 컬럼과 PostgreSQL enum 타입은 미지원으로 보고한다
 - **DIA-50** JSON — MySQL 8.4: `JSON`은 마지막 중복 키를 남기고 멤버 순서를 바꾼다; PostgreSQL 17: `json`은 텍스트를 유지하고 `jsonb`는 마지막 중복 키를 남기며 순서를 바꾼다; MariaDB 11.8: `JSON`은 컬럼 `c`의 이름을 단 `CHECK (json_valid(c))`를 가진 `utf8mb4_bin`의 `LONGTEXT`이며, 멤버 순서와 중복 키를 포함해 텍스트를 쓴 그대로 유지한다; SQLite: 텍스트다. `json()`은 중복 키를 유지한다; Probe: `mysql.json.normalizes`, `mariadb.json.normalizes`, `postgres.json.text_jsonb_normalized`, `sqlite.json.text_kept`; 결정과 중립 rendering: **Decision:** native JSON 타입은 지원하지 않는다. Ordered JSON은 ordered-json codec setting을 가진 `text` 컬럼이다; Introspection: MySQL `JSON`, PostgreSQL `json`/`jsonb` 컬럼은 미지원으로 보고한다. MariaDB에서는 컬럼과 그 `json_valid` CHECK를 각각 미지원으로 보고하므로, `tests/dbspec/introspect.json`의 vector `mysql-unsupported`는 그 `mariadb` 결과에 CHECK `doc`을 적는다(DIA-200, 규칙 4)
 
@@ -471,14 +471,14 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 | `varchar(n)` | `varchar(n) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin` | `varchar(n) COLLATE "C"` | `varchar(n)` |
 | `text` | `LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin` | `text COLLATE "C"` | `TEXT` |
 | `bytes` | `LONGBLOB` | `bytea` | `BLOB` |
-| `uuid` | `char(36) CHARACTER SET ascii COLLATE ascii_bin` | `uuid` | `TEXT` |
+| `uuid` | `BINARY(16)` | `uuid` | `BLOB` |
 | `date` | `DATE` | `date` | `DATE` |
 | `time(p)` | `TIME(p)` | `time(p)` | `TIME` |
 | `datetime(p)` | `DATETIME(p)` | `timestamp(p)` | `DATETIME` |
 
 - **DIA-121** **Identity.** MySQL은 `BIGINT NOT NULL AUTO_INCREMENT`와 table 수준 `PRIMARY KEY`, PostgreSQL은 `bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL`과 table 수준 `PRIMARY KEY`, SQLite는 column에 `INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT`를 쓰고 table 수준 primary key는 없다.
 - **DIA-122** **Default.** literal default는 literal의 dialect 형식(아래)으로 쓴다. `default now`는 MySQL `CURRENT_TIMESTAMP(p)`, PostgreSQL `statement_timestamp()`, SQLite는 소수 자릿수가 정확히 p인 UTC text다. p = 0이면 `strftime('%Y-%m-%d %H:%M:%S', 'now')`, p ≤ 3이면 `substr(strftime('%Y-%m-%d %H:%M:%f', 'now'), 1, 20 + p)`, p > 3이면 0을 p − 3개 붙인 `(strftime('%Y-%m-%d %H:%M:%f', 'now') || '0…')`이며 모두 괄호로 감싼다. 이 default는 raw SQL을 위한 것이다: ORM insert는 빼먹은 `default now` 컬럼에 PostgreSQL과 SQLite에서는 `now` slot을 bind하고 MySQL에서는 `CURRENT_TIMESTAMP(p)`에 맡긴다([protocol](protocol.ko.md) "Clock").
-- **DIA-123** **Literal.** 정수, `f64`, 문자열은 문서대로 쓴다. MySQL은 backslash를 escape로 읽으므로 MySQL 문자열은 모든 backslash를 두 번 쓴다. `true`와 `false`는 MySQL과 SQLite에서 `1`과 `0`, PostgreSQL에서 `TRUE`와 `FALSE`다. SQLite decimal literal은 정수 값 × 10^s다. `decimal(13,2)`의 `7.50`은 `750`이다.
+- **DIA-123** **Literal.** 정수, `f64`, 문자열은 문서대로 쓴다. MySQL은 backslash를 escape로 읽으므로 MySQL 문자열은 모든 backslash를 두 번 쓴다. `true`와 `false`는 MySQL과 SQLite에서 `1`과 `0`, PostgreSQL에서 `TRUE`와 `FALSE`다. SQLite decimal literal은 정수 값 × 10^s다. `decimal(13,2)`의 `7.50`은 `750`이다. `uuid` literal은 MySQL과 SQLite에서 16 byte, 곧 `X'`와 text의 소문자 숫자 32개와 `'`이고, PostgreSQL에서 따옴표로 감싼 text다. `'0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'`은 `X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10'`이다.
 - **DIA-124** **Key.** `PRIMARY KEY (…)`는 key column을 나열한다. PostgreSQL은 기본 이름 `<table>_pkey`를 유지한다. unique key는 MySQL과 PostgreSQL에서 `CONSTRAINT <name> UNIQUE (…)`, SQLite에서 `CREATE UNIQUE INDEX <name> ON <table> (…)`이며, 그래서 SQLite catalog가 그 이름을 보고한다. 내림차순 index column 뒤에는 `DESC`를 쓴다.
 - **DIA-125** **Foreign key.** `RESTRICT`, `CASCADE`, `SET NULL`로 `CONSTRAINT <name> FOREIGN KEY (…) REFERENCES <table> (…) ON DELETE <action> ON UPDATE <action>`이다.
 - **DIA-126** **Check.** 선언된 check는 `CONSTRAINT <name> CHECK (<predicate>)`다. column 이름은 따옴표로 감싸고, `and`, `or`, `not`, `in`, `between`, `is null`, `is not null`은 대문자, literal은 dialect 형식, 괄호는 적힌 대로 쓴다.
@@ -495,7 +495,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 | `decimal(p,s)` | | | `typeof(c) IN ('integer', 'null') AND c BETWEEN -(10^p − 1) AND 10^p − 1` |
 | `f64` | | | `typeof(c) IN ('real', 'null')` |
 | `varchar(n)` | | | `length(c) <= n` |
-| `uuid` | `c REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'` | | `c GLOB` 문자 class 36개 |
+| `uuid` | `length(c) = 16` | | `typeof(c) IN ('blob', 'null') AND length(c) = 16` |
 | `date` | | | `c IS date(c)` |
 | `time(0)` | `c >= '00:00:00' AND c < '24:00:00'` | `c < '24:00:00'` | `c IS time(c) AND c < '24:00:00'` |
 | `time(p)`, p > 0 | `time(0)`과 같음 | `time(0)`과 같음 | `length(c) = 9 + p AND substr(c, 1, 8) IS time(substr(c, 1, 8)) AND substr(c, 1, 8) < '24:00:00' AND substr(c, 9, 1) = '.' AND substr(c, 10) GLOB` 숫자 class p개 |
@@ -533,16 +533,16 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 | 길이 제한 text | `utf8mb4_0900_bin`의 `varchar(n)` | collation `C`의 `character varying(n)` | renderer CHECK가 있는 `varchar(n)` | `varchar(n)` |
 | text | `utf8mb4_0900_bin`의 `longtext` | collation `C`의 `text` | CHECK 없는 `TEXT` | `text` |
 | bytes | `longblob` | `bytea` | `BLOB` | `bytes` |
-| uuid | renderer CHECK가 있는 `ascii_bin`의 `char(36)` | `uuid` | renderer CHECK가 있는 `TEXT` | `uuid` |
+| uuid | renderer CHECK가 있는 `binary(16)` | `uuid` | renderer CHECK가 있는 `BLOB` | `uuid` |
 | date | `date` | `date` | renderer CHECK가 있는 `DATE` | `date` |
 | 하루 중 시각 | renderer CHECK가 있는 `time`이나 `time(p)` | renderer CHECK가 있는 `time(p) without time zone` | p 하나의 renderer CHECK가 있는 `TIME` | `time(p)` |
 | date-time | `datetime`이나 `datetime(p)` | `timestamp(p) without time zone` | p 하나의 renderer CHECK가 있는 `DATETIME` | `datetime(p)` |
 
-- **DIA-137** MySQL은 precision 0을 괄호 없이 쓴다(`time`, `datetime`). type, collation, character set이 이 표에 없는 column, renderer CHECK 없는 MySQL `tinyint(1)`, `char(36)`, `time` column, CHECK가 어떤 dbspec type의 renderer 출력도 아닌 SQLite column은 미지원으로 보고한다.
+- **DIA-137** MySQL은 precision 0을 괄호 없이 쓴다(`time`, `datetime`). type, collation, character set이 이 표에 없는 column, renderer CHECK 없는 MySQL `tinyint(1)`, `binary(16)`, `time` column, CHECK가 어떤 dbspec type의 renderer 출력도 아닌 SQLite column은 미지원으로 보고한다.
 
 - **DIA-138** **Null.** `IS_NULLABLE`, `attnotnull`, `pragma_table_xinfo.notnull`이 `null`을 준다.
 - **DIA-139** **Identity.** MySQL `EXTRA` `auto_increment`, PostgreSQL `attidentity` `d`, SQLite `INTEGER PRIMARY KEY AUTOINCREMENT`인 단일 column `bigint` primary key는 `identity`다. PostgreSQL `attidentity` `a`(`ALWAYS`)는 미지원이다.
-- **DIA-140** **Default.** literal default는 column의 canonical default 형식으로 읽는다. MySQL `COLUMN_DEFAULT`는 escape를 푼 값(문자열, 숫자, `bool`이면 `1`이나 `0`)이다. PostgreSQL `pg_get_expr`는 `'-5'::integer`, `'a''b'::character varying`, `'2026-01-01'::date`처럼 cast를 가진 literal을 주며 cast를 뗀다. SQLite `dflt_value`는 렌더링한 literal이며 decimal은 scale을 곱한 정수다. 시각 default는 renderer 출력과 같을 때 `default now`다: `DEFAULT_GENERATED`인 MySQL `CURRENT_TIMESTAMP`나 `CURRENT_TIMESTAMP(p)`, PostgreSQL `statement_timestamp()`, 그 precision의 SQLite `strftime` 식. 그 밖의 식은 미지원이다.
+- **DIA-140** **Default.** literal default는 column의 canonical default 형식으로 읽는다. MySQL `COLUMN_DEFAULT`는 escape를 푼 값(문자열, 숫자, `bool`이면 `1`이나 `0`)이다. PostgreSQL `pg_get_expr`는 `'-5'::integer`, `'a''b'::character varying`, `'2026-01-01'::date`처럼 cast를 가진 literal을 주며 cast를 뗀다. SQLite `dflt_value`는 렌더링한 literal이며 decimal은 scale을 곱한 정수다. `uuid` default는 16 byte에서 canonical text로 읽는다. `binary(16)`의 MySQL `COLUMN_DEFAULT`는 `0x`와 대문자 숫자 32개이고, text 저장(DIA-144)인 column의 `char(36)`과 `varbinary(36)`은 그 text이거나 그 `0x` 숫자다. SQLite `dflt_value`는 렌더링한 `X'…'`다. 시각 default는 renderer 출력과 같을 때 `default now`다: `DEFAULT_GENERATED`인 MySQL `CURRENT_TIMESTAMP`나 `CURRENT_TIMESTAMP(p)`, PostgreSQL `statement_timestamp()`, 그 precision의 SQLite `strftime` 식. 그 밖의 식은 미지원이다.
 
 ### Key, index, foreign key
 
@@ -552,7 +552,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ### Check
 
-- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` regexp_like(`c`,_utf8mb4\'^…$\') ``, `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``이고 MariaDB에서는 DIA-203의 형식이며, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 uuid pattern에 `_ascii` introducer를 주고 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다.
+- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` (length(`c`) = 16) ``(`mysql.render.uuid_bytes`), `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``이고 MariaDB에서는 DIA-203의 형식이며, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다. MySQL과 SQLite에서 `uuid`의 renderer CHECK는 그 type의 이름을 가진 표시이며, `bytes` column은 그것을 갖지 않으므로 uuid를 `bytes` column과 구별한다. 0.0.28까지의 release가 만든 uuid의 text 저장 column, 곧 CHECK `` regexp_like(`c`,_utf8mb4\'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\',_utf8mb4\'c\') ``를 가진 `ascii_bin`의 MySQL `char(36)`과 문자 class 36개의 CHECK `c GLOB`을 가진 SQLite `TEXT`, 그리고 멈춘 변환(PLN-108)의 CHECK `` (length(`c`) in (16,36)) ``을 가진 MySQL `varbinary(36)` column은 `uuid` column으로 읽고, 이유 `uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes`를 가진 미지원 column으로 보고한다.
 
 - **DIA-145** 그 밖의 check는 [dbspec](dbspec.md#checks)의 predicate로 읽어 canonical form으로 쓴다.
 
@@ -684,7 +684,7 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.render.datetime_utc_session` | MySQL의 fact가 성립한다 |
 | `mariadb.render.time_of_day_check` | CHECK (v >= '00:00:00' AND v < '24:00:00')를 가진 TIME(6)은 하루 안의 시각만 받는다(4025) |
 | `mariadb.render.timestamp_conversion` | MySQL의 fact가 성립한다 |
-| `mariadb.render.uuid_check` | REGEXP CHECK를 가진 CHAR(36) ascii_bin은 소문자 canonical UUID text만 받고(4025), REGEXP_LIKE는 거부된다(1901) |
+| `mariadb.render.uuid_bytes` | CHECK (length(u) = 16)을 가진 BINARY(16)은 CHECK_CLAUSE가 length(`u`) = 16이고, uuid의 16 byte를 저장해 text의 순서로 정렬한다 |
 | `mariadb.sequence.unsupported` | MariaDB에는 CREATE SEQUENCE가 있고, sequence는 그 자체 종류의 table이다 |
 | `mariadb.session.partial_revokes_listed` | MariaDB에는 partial_revokes가 없고(1193), SHOW GLOBAL VARIABLES는 그 row를 내놓지 않는다 |
 | `mariadb.session.sql_mode_set` | MySQL의 fact가 성립한다 |
@@ -708,7 +708,8 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.unique.nulls_distinct` | MySQL의 fact가 성립한다 |
 | `mariadb.upsert.any_unique_key` | MySQL의 fact가 성립한다 |
 | `mariadb.upsert.not_null_unique_first` | MySQL의 fact가 성립한다 |
-| `mariadb.uuid.no_type` | MariaDB에는 UUID type이 있고 DATA_TYPE uuid로 보고된다 |
+| `mariadb.uuid.binary_pads` | MySQL의 fact가 성립한다 |
+| `mariadb.uuid.no_type` | MariaDB에는 UUID type이 있고 DATA_TYPE uuid로 보고되며, 그 ORDER BY는 text의 순서가 아니다 |
 | `mariadb.varbinary.length_enforced` | MySQL의 fact가 성립한다 |
 | `mariadb.varchar.length_in_characters` | MySQL의 fact가 성립한다 |
 | `mariadb.varchar.max_length` | MySQL의 fact가 성립한다 |
