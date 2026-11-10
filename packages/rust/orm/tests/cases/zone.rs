@@ -60,15 +60,34 @@ fn event(db: &Db) -> ZoneEvent {
 }
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
-// Requirements: CFG-19, CFG-20, CFG-37.
+// Requirements: CFG-19, CFG-20, CFG-37, DIA-202.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
     let polyspec_orm::db::ConnectOptions::Postgres(options) = parsed.options else { panic!("not postgres://") };
     assert_eq!(options.get_application_name(), Some("orm"), "application_name reaches sqlx");
+    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?socket=/run/mysqld/mysqld.sock").expect("mysql DSN");
+    let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
+    assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/mysqld/mysqld.sock"), "socket reaches sqlx");
+    // The connection character set is the engine's own, utf8mb4, whatever the DSN names (DIA-202).
     let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?charset=latin1").expect("mysql DSN");
     let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
-    assert_eq!(options.get_charset(), "latin1", "charset reaches sqlx");
+    assert_eq!(options.get_charset(), "utf8mb4", "charset is fixed to utf8mb4");
+}
+
+/// A MySQL DSN without ssl-mode connects without TLS, and a named ssl-mode reaches sqlx unchanged.
+// Requirements: CFG-44, CFG-20.
+fn mysql_dsn_without_ssl_mode_disables_tls() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let mode = |dsn: &str| {
+        let parsed = polyspec_orm::db::parse_dsn(dsn).expect("mysql DSN");
+        let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
+        options.get_ssl_mode()
+    };
+    assert!(matches!(mode("mysql://orm@db.local/orm_example"), sqlx::mysql::MySqlSslMode::Disabled), "no ssl-mode is DISABLED");
+    assert!(matches!(mode("mysql://orm@db.local/orm_example?timezone=UTC"), sqlx::mysql::MySqlSslMode::Disabled), "timezone alone is DISABLED");
+    assert!(matches!(mode("mysql://orm@db.local/orm_example?ssl-mode=required"), sqlx::mysql::MySqlSslMode::Required), "a named ssl-mode is kept");
+    assert!(matches!(mode("mysql://orm@db.local/orm_example?ssl-mode=preferred"), sqlx::mysql::MySqlSslMode::Preferred), "PREFERRED is kept when named");
 }
 
 /// The pool size a connection is opened with is its maximum open connections.
@@ -378,5 +397,5 @@ async fn dropping_a_transaction_frees_a_single_connection() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_size, pool_idle_size_and_lifetime, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, mysql_dsn_without_ssl_mode_disables_tls, pool_size, pool_idle_size_and_lifetime, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }
