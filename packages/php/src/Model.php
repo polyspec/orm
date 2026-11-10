@@ -2050,9 +2050,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     /**
      * The cell of an added column of the plan column $plan, from its cell $v of the row $vals: the sum of an integer
-     * column is the exact integer of its split cells on SQLite and markdown, as its decimal text, and a sum of a column
-     * that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84); any other cell is
-     * $v.
+     * or decimal column is the exact integer of its split cells on SQLite and markdown, as its decimal text, and a sum
+     * of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84); a
+     * decimal is its exact text of its scale (INT-160), and any other cell is $v.
      *
      * @param array<string, mixed> $plan
      * @param list<mixed> $vals
@@ -2066,7 +2066,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         array $vals,
     ): mixed {
         $sumOf = $plan['sum_of'] ?? '';
-        if (($plan['sum_parts'] ?? []) !== []) {
+        $scale = $plan['scale'] ?? 0;
+        $split = ($plan['sum_parts'] ?? []) !== [];
+        if ($split) {
             $flag = $plan['non_integer']
                 ?? throw new OrmException(
                     Code::INTERNAL,
@@ -2080,13 +2082,50 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw self::cellRefusal($entity, $name, self::cellMessage($kind), $error);
             }
             if ($nonInteger) {
-                throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, 0));
+                throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, $scale));
             }
         }
-        if ($sumOf !== '' && is_string($v) && str_contains($v, '.')) {
-            throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, 0));
+        // The text of a sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds one.
+        if ($sumOf !== '' && is_string($v) && strlen(explode('.', $v, 2)[1] ?? '') > $scale) {
+            throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, $scale));
+        }
+        if ($kind === 'decimal' && $v !== null) {
+            return self::addedDecimal($v, $plan['precision'] ?? 0, $scale, $split)
+                ?? throw self::cellRefusal($entity, $name, self::cellMessage('decimal'));
         }
         return $v;
+    }
+
+    /**
+     * The exact decimal text of $scale fraction digits of a decimal added column, or null when $v is none: SQLite
+     * and markdown store a decimal as its integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of
+     * at most $scale fraction digits, which is padded to them (INT-160). A precision other than 0, that of a column
+     * that is not a sum, bounds its digits. A $scaled cell, the exact sum of a split sum, is the digits of that
+     * integer.
+     */
+    private static function addedDecimal(mixed $v, int $precision, int $scale, bool $scaled): ?string
+    {
+        if (is_int($v) || ($scaled && is_string($v) && preg_match('/^-?[0-9]+$/D', $v) === 1)) {
+            $negative = str_starts_with((string) $v, '-');
+            // |v| as digits: the magnitude of PHP_INT_MIN is not an int.
+            $digits = ltrim((string) $v, '-');
+        } elseif (is_string($v) && preg_match('/^(-?)([0-9]+)(?:\.([0-9]+))?$/D', $v, $m) === 1) {
+            $fraction = $m[3] ?? '';
+            if (strlen($fraction) > $scale) {
+                return null;
+            }
+            $negative = $m[1] === '-';
+            $digits = $m[2] . str_pad($fraction, $scale, '0');
+        } else {
+            return null;
+        }
+        $digits = ltrim($digits, '0');
+        if ($precision > 0 && strlen($digits) > $precision) {
+            return null;
+        }
+        $digits = str_pad($digits, $scale + 1, '0', STR_PAD_LEFT);
+        $text = $scale > 0 ? substr($digits, 0, -$scale) . '.' . substr($digits, -$scale) : $digits;
+        return $negative && trim($digits, '0') !== '' ? "-$text" : $text;
     }
 
     /**

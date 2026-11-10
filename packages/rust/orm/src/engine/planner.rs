@@ -777,7 +777,6 @@ impl<'m> Planner<'m> {
             sep(sb);
             let mut styles = Vec::new();
             let mut typ = "varchar".to_owned();
-            let mut sum_of = None;
             let expr = match c.kind {
                 OutKind::Fn(f) => {
                     typ = function_type(&f.name, col, &s.ent.name, &c.column)?;
@@ -787,13 +786,14 @@ impl<'m> Planner<'m> {
                 }
                 OutKind::Sub(sub) => {
                     typ = self.sub_type(sub)?;
-                    sum_of = self.sub_sum_of(sub)?;
-                    if let (Some(summed), "sqlite") = (&sum_of, self.d.name()) {
-                        // SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column
-                        // is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a
-                        // value that is not an integer, which the executor combines and checks; the plan column states their
-                        // cells (DIA-202, PRT-84).
-                        let mut out_col = OutCol { name: c.name.clone(), typ: typ.clone(), sum_of: Some(summed.clone()), ..Default::default() };
+                    let sum_of = self.sub_sum_of(sub)?;
+                    let (precision, scale) = self.sub_decimal(sub)?;
+                    let mut out_col = OutCol { name: c.name.clone(), typ: typ.clone(), sum_of, precision, scale, ..Default::default() };
+                    if out_col.sum_of.is_some() && self.d.name() == "sqlite" {
+                        // SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or
+                        // decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell
+                        // that reports a value that is not an integer, which the executor combines and checks; the plan column
+                        // states their cells (DIA-202, PRT-84).
                         for k in 0..=SPLIT_PARTS {
                             if k > 0 {
                                 sb.push_str(", ");
@@ -813,7 +813,12 @@ impl<'m> Planner<'m> {
                         continue;
                     }
                     let e = self.sub_select(b, s, sub, None)?;
-                    format!("({e})")
+                    let out = format!("{}__{}", s.alias, c.name);
+                    sb.push_str(&format!("({e}) AS {}", self.d.quote(&out)));
+                    out_names.push(out);
+                    out_col.index = out_names.len() - 1;
+                    asm.columns.push(out_col);
+                    continue;
                 }
                 OutKind::Column => {
                     let col = col.ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, c.column)))?;
@@ -827,7 +832,7 @@ impl<'m> Planner<'m> {
             if let Some(col) = col {
                 typ = col.ty.name().to_owned();
             }
-            asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false, sum_of, ..Default::default() });
+            asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false, ..Default::default() });
         }
         if has_aes {
             let version = s
@@ -1216,13 +1221,26 @@ impl<'m> Planner<'m> {
         Ok(sb)
     }
 
-    /// The integer column that a scalar subquery sums, which the plan column states (PRT-84).
+    /// The integer or decimal column that a scalar subquery sums, which the plan column states (PRT-84).
     fn sub_sum_of(&self, sub: &ir::Sub) -> Result<Option<String>> {
         if sub.agg != "sum" {
             return Ok(None);
         }
         let entity = self.entity(&sub.query.entity)?;
-        Ok(entity.field(&sub.column).filter(|field| matches!(field.ty, Type::I16 | Type::I32 | Type::I64)).map(|field| field.name.clone()))
+        Ok(entity.field(&sub.column).filter(|field| matches!(field.ty, Type::I16 | Type::I32 | Type::I64 | Type::Decimal(..))).map(|field| field.name.clone()))
+    }
+
+    /// The precision and scale of the decimal column of a scalar subquery, which the plan column states, its value being its
+    /// exact decimal text of that scale; a sum states no precision, since it leaves the precision of its column (INT-160).
+    fn sub_decimal(&self, sub: &ir::Sub) -> Result<(Option<u8>, Option<u8>)> {
+        if sub.agg == "count" {
+            return Ok((None, None));
+        }
+        let entity = self.entity(&sub.query.entity)?;
+        Ok(match entity.field(&sub.column).map(|field| &field.ty) {
+            Some(Type::Decimal(precision, scale)) => ((sub.agg != "sum").then_some(*precision), Some(*scale)),
+            _ => (None, None),
+        })
     }
 
     fn sub_type(&self, sub: &ir::Sub) -> Result<String> {

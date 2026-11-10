@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 763d21bf1d758cc46f6685f48a373efb0c7307a03fff84061c956c4ad4722485 -->
+<!-- source-sha256: 3e23ea9ed1b164289bcdb663828c01da2f408df90577344e6f43a55bd0ab1622 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -220,7 +220,7 @@ recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client
 
 모델 행은 선언 필드, 추가 컬럼, 관계 결과, `new<Name>`으로 추가한 값을 하나의 명칭 공간에 저장하며 명칭 중복을 거부한다. getter는 선언 타입을 반환한다. setter는 필드를 변경하고 dirty로 표시한다. update는 optimistic locking에 필요한 필드를 제외하고 dirty 필드만 전송한다. 원본 version은 변경 전에 읽어 update 조건에 사용한다.
 
-- **INT-160** plan 열이 타입을 명시한 추가 열은 모든 runtime에서 그 타입을 반환한다. `i16`, `i32`, `i64`, `f64`, `bool`, `date`, `datetime`은 그 타입의 선언 열과 같이 디코드한다. text는 범위 안의 정수 숫자 그대로일 때만 그 타입의 정수이므로, 범위를 넘거나 소수부가 있는 DECIMAL은 `CODEC_DECODE`로 실패한다. TypeScript는 COD-45의 범위를 지킨다. `i16`이나 `i32` 열을 합하는 scalar subquery의 plan 타입은 `i64`다. 합은 열의 범위를 벗어나기 때문이다. 그 밖의 타입이거나 타입이 없는 plan 열은 driver 값을 반환한다. i64 범위를 넘는 subquery 합은 모든 database에서 그 `CODEC_DECODE`로 실패하며, executor가 PRT-84의 부분 합을 합치는 SQLite와 markdown도 그렇다.
+- **INT-160** plan 열이 타입을 명시한 추가 열은 모든 runtime에서 그 타입을 반환한다. `i16`, `i32`, `i64`, `f64`, `bool`, `date`, `datetime`은 그 타입의 선언 열과 같이 디코드한다. text는 범위 안의 정수 숫자 그대로일 때만 그 타입의 정수이므로, 범위를 넘거나 소수부가 있는 DECIMAL은 `CODEC_DECODE`로 실패한다. TypeScript는 COD-45의 범위를 지킨다. `i16`이나 `i32` 열을 합하는 scalar subquery의 plan 타입은 `i64`다. 합은 열의 범위를 벗어나기 때문이다. `decimal(p,s)` 열의 scalar subquery는 값이든 합이든 모든 database에서 소수부 `s`자리의 정확한 decimal text다. SQLite와 markdown은 DIA-25의 10^s배 정수를 저장하고 MySQL과 PostgreSQL은 text를 보내며, 이를 `s`자리로 채운다. 값은 `p`자리를 넘는 경우를 포함해 그 열의 셀로 거부되고, 합의 자릿수에는 제한이 없으며, 소수부가 `s`자리를 넘는 값을 담는 열의 합은 `CODEC_DECODE: column <column> holds a value that is not a decimal of scale <s>`로 실패한다. 그 밖의 타입이거나 타입이 없는 plan 열은 driver 값을 반환한다. i64 범위를 넘는 subquery 합은 모든 database에서 그 `CODEC_DECODE`로 실패하며, executor가 PRT-84의 부분 합을 합치는 SQLite와 markdown도 그렇다.
 
 relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust의 relation getter는 error도 돌려준다. related row가 없는 행은 결과 없음으로 읽히고, 저장된 relation 값의 type이 getter 결과와 다르면 `INTERNAL`이다. collection keying은 결정적이다. 중복 key는 선언된 정책을 따르고, 선언되지 않은 key function은 오류다.
 

@@ -546,7 +546,6 @@ export class Planner {
       let expr: string;
       let colStyles: string[] = [];
       let type = 'string';
-      let sumOf = '';
       if (c.fn) {
         if (col === undefined) fail(codes.INTERNAL, `${s.ent.name}.${c.column} is missing from validated column-function metadata`);
         expr = this.columnFunction(b, s, c.column, c.fn);
@@ -560,9 +559,12 @@ export class Planner {
           asm.columns.push(sub.col);
           continue;
         }
-        expr = sub.expr;
-        type = sub.col.type;
-        sumOf = sub.col.sum_of ?? '';
+        const out = `${s.alias}__${c.name}`;
+        parts.push(`${sub.expr} AS ${this.d.quote(out)}`);
+        outNames.push(out);
+        idx.n++;
+        asm.columns.push(sub.col);
+        continue;
       } else {
         const own = present(col, `column ${s.ent.name}.${c.column}`);
         expr = this.readColumn(this.qcol(s, c.column), own);
@@ -572,7 +574,7 @@ export class Planner {
       parts.push(`${expr} AS ${this.d.quote(out)}`);
       outNames.push(out);
       if (col) type = col.type;
-      asm.columns.push({ index: idx.n++, name: c.name, column: c.column, type, styles: colStyles, hidden: false, ...(sumOf === '' ? {} : { sum_of: sumOf }) });
+      asm.columns.push({ index: idx.n++, name: c.name, column: c.column, type, styles: colStyles, hidden: false });
     }
     if (hasAES) {
       const version = columnOf(s.ent, s.ent.aesVersion) ?? fail(codes.SCHEMA_INVALID, `${s.ent.name}: AES column requires an aes_version column`);
@@ -815,14 +817,19 @@ export class Planner {
 
   /**
    * The scalar subquery column name at the cell idx.n. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
-   * the sum of an integer column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that
+   * the sum of an integer or decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that
    * reports a value that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states
-   * their cells. Every other subquery is one cell, and the sum of an integer column states the column it sums.
+   * their cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+   * decimal column states its scale and, but for a sum, its precision (INT-160).
    */
   private subColumn(b: Builder, s: Scope, name: string, sub: Subquery, idx: { n: number }, outNames: string[]): { expr: string; col: OutputColumn; split: boolean } {
     const col: OutputColumn = { index: idx.n, name, column: '', type: this.subType(sub), styles: [], hidden: false };
     const field = this.subField(sub);
-    if (sub.agg === 'sum' && field && (field.type === 'i16' || field.type === 'i32' || field.type === 'i64')) col.sum_of = field.name;
+    if (field?.type === 'decimal') {
+      col.scale = field.scale;
+      if (sub.agg !== 'sum') col.precision = field.precision;
+    }
+    if (sub.agg === 'sum' && field && ['i16', 'i32', 'i64', 'decimal'].includes(field.type)) col.sum_of = field.name;
     if (col.sum_of === undefined || this.d.name !== 'sqlite') return { expr: `(${this.subSelect(b, s, sub)})`, col, split: false };
     const selects: ((q: string) => string)[] = [0, 1, 2, 3].map(k => (q: string) => `COALESCE(SUM(${splitParts(q)[k]}), 0)`);
     selects.push(nonIntegerCell);

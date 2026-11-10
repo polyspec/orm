@@ -89946,6 +89946,257 @@
    ]
   },
   {
+   "id": "decimal_subquery_column_is_its_text_of_scale",
+   "requirements": [
+    "INT-160",
+    "PRT-84",
+    "DIA-25"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "48.0450"
+      },
+      "large": {
+       "text": "0"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "-0.0012"
+      },
+      "large": {
+       "text": "9999999999999999"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "999999999.9999"
+      },
+      "large": {
+       "text": "9999999999999999"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "columns": [
+          "amount"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "amount_first"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "columns": [
+          "amount"
+         ],
+         "where": {
+          "seq": {
+           "int": "2"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "amount_second"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "columns": [
+          "large"
+         ],
+         "where": {
+          "seq": {
+           "int": "2"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "large_second"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "aggregate": {
+          "agg": "sum",
+          "column": "amount"
+         },
+         "where": {
+          "seq": {
+           "gt": {
+            "int": "0"
+           }
+          }
+         }
+        }
+       },
+       "as": "amount_sum"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "aggregate": {
+          "agg": "sum",
+          "column": "large"
+         },
+         "where": {
+          "seq": {
+           "gt": {
+            "int": "0"
+           }
+          }
+         }
+        }
+       },
+       "as": "large_sum"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "DecimalValue",
+         "aggregate": {
+          "agg": "sum",
+          "column": "amount"
+         },
+         "where": {
+          "seq": {
+           "gt": {
+            "int": "3"
+           }
+          }
+         }
+        }
+       },
+       "as": "amount_none"
+      }
+     ],
+     "pick": [
+      "seq",
+      "amount_first",
+      "amount_second",
+      "large_second",
+      "amount_sum",
+      "large_sum",
+      "amount_none"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 907,
+         "amount_first": "48.0450",
+         "amount_second": "-0.0012",
+         "large_second": "9999999999999999",
+         "amount_sum": "1000000048.0437",
+         "large_sum": "19999999999999998",
+         "amount_none": "0.0000"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 907,
+         "amount_first": "48.0450",
+         "amount_second": "-0.0012",
+         "large_second": "9999999999999999",
+         "amount_sum": "1000000048.0437",
+         "large_sum": "19999999999999998",
+         "amount_none": "0.0000"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 907,
+         "amount_first": "48.0450",
+         "amount_second": "-0.0012",
+         "large_second": "9999999999999999",
+         "amount_sum": "1000000048.0437",
+         "large_sum": "19999999999999998",
+         "amount_none": "0.0000"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "scalar_subquery_avg_is_refused",
    "requirements": [
     "PRT-83",

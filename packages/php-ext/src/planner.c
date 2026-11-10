@@ -870,6 +870,7 @@ static zval *step_array(pctx *c, pstep *st)
 static zend_string *qcol(pctx *c, pscope *s, zend_string *col);
 static zend_string *sub_type(pctx *c, HashTable *sub);
 static zend_string *sub_sum_of(pctx *c, HashTable *sub);
+static bool sub_decimal(pctx *c, HashTable *sub, zval *oc);
 
 /* Appends a string to a list. */
 static void lpushs(zval *list, zend_string *s)
@@ -2125,12 +2126,13 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
             zend_string *dn = dialect_name(c);
             OKP(dn);
             if (ZSTR_LEN(sumOf) > 0 && zend_string_equals_literal(dn, "sqlite")) {
-                /* SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column is the
-                 * four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is
+                /* SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+                 * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is
                  * not an integer, which the executor combines and checks; the plan column states their cells (DIA-202,
                  * PRT-84). */
                 zval *oc = out_col(c, *idx, name, cname, type, styles, false);
                 puts_(oc, "sum_of", sumOf);
+                if (!sub_decimal(c, sh, oc)) return NULL;
                 zval *sumParts = newlist(c);
                 for (int k = 0; k <= SPLIT_PARTS; k++) {
                     zend_string *inner = sub_select(c, b, s, sh, k);
@@ -2154,7 +2156,14 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
             }
             zend_string *inner = sub_select(c, b, s, sh, -1);
             OKP(inner);
-            expr = fmt(c, "(%s)", ZSTR_VAL(inner));
+            zend_string *out = fmt(c, "%s__%s", ZSTR_VAL(s->alias), ZSTR_VAL(name));
+            lpushs(parts, fmt(c, "(%s) AS %s", ZSTR_VAL(inner), ZSTR_VAL(quote(c, out))));
+            lpushs(outNames, out);
+            zval *oc = out_col(c, (*idx)++, name, cname, type, styles, false);
+            if (ZSTR_LEN(sumOf) > 0) puts_(oc, "sum_of", sumOf);
+            if (!sub_decimal(c, sh, oc)) return NULL;
+            lpush(ast->columns, oc);
+            continue;
         } else {
             zend_string *q = qcol(c, s, cname);
             OKP(q);
@@ -2170,9 +2179,6 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
             type = gs(c, col, "type");
         }
         zval *oc = out_col(c, (*idx)++, name, cname, type, styles, false);
-        if (sumOf != NULL && ZSTR_LEN(sumOf) > 0) {
-            puts_(oc, "sum_of", sumOf);
-        }
         lpush(ast->columns, oc);
     } ZEND_HASH_FOREACH_END();
     if (hasAes) {
@@ -2252,7 +2258,24 @@ static bool add_soft_delete_filter(pctx *c, pscope *root, zval *where)
     return true;
 }
 
-/* The integer column that a scalar subquery sums, which states it (PRT-84), or the empty string; NULL on failure. */
+/* sub_decimal states, on the plan column oc of a scalar subquery of a decimal column, the scale of that column and, but for
+ * a sum, which leaves the precision of its column, its precision: the value is its exact decimal text of that scale
+ * (INT-160). It is false on failure. */
+static bool sub_decimal(pctx *c, HashTable *sub, zval *oc)
+{
+    if (zend_string_equals_literal(gs(c, sub, "agg"), "count")) return true;
+    HashTable *ent = entity(c, gs(c, ga(sub, "query"), "entity"));
+    if (ent == NULL) return true;
+    HashTable *col = NULL;
+    if (!col_of(c, ent, gs(c, sub, "column"), &col)) return false;
+    if (col == NULL || !zend_string_equals_literal(gs(c, col, "type"), "decimal")) return true;
+    putl(oc, "scale", gl(col, "scale", 0));
+    if (!zend_string_equals_literal(gs(c, sub, "agg"), "sum")) putl(oc, "precision", gl(col, "precision", 0));
+    return true;
+}
+
+/* The integer or decimal column that a scalar subquery sums, which states it (PRT-84), or the empty string; NULL on
+ * failure. */
 static zend_string *sub_sum_of(pctx *c, HashTable *sub)
 {
     if (!zend_string_equals_literal(gs(c, sub, "agg"), "sum")) {
@@ -2266,7 +2289,7 @@ static zend_string *sub_sum_of(pctx *c, HashTable *sub)
     if (!col_of(c, ent, gs(c, sub, "column"), &col)) return NULL;
     zend_string *type = col != NULL ? gs(c, col, "type") : NULL;
     bool integer = type != NULL && (zend_string_equals_literal(type, "i16") || zend_string_equals_literal(type, "i32")
-        || zend_string_equals_literal(type, "i64"));
+        || zend_string_equals_literal(type, "i64") || zend_string_equals_literal(type, "decimal"));
     return integer ? gs(c, col, "name") : fmt(c, "%s", "");
 }
 

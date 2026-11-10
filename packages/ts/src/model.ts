@@ -1230,6 +1230,7 @@ function exactIntegers(value: unknown): unknown {
  */
 export function addedColumnValue(col: OutputColumn, raw: unknown, row: readonly unknown[], zone: string): unknown {
   const type = col.type;
+  const scale = col.scale ?? 0;
   if (col.sum_parts !== undefined && col.sum_parts.length > 0) {
     if (col.non_integer === undefined) throw new OrmError(codes.INTERNAL, `the split sum ${col.name} states no cell of a value that is not an integer`);
     const flag = col.non_integer;
@@ -1237,12 +1238,16 @@ export function addedColumnValue(col: OutputColumn, raw: unknown, row: readonly 
     try {
       sum = splitSumValue(col.sum_parts.map(i => row[i]), row[flag]);
     } catch (cause) { throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`, cause); }
-    if (sum === nonInteger) throw nonIntegerRefusal(present(col.sum_of, `the summed column of ${col.name}`), type, 0);
+    if (sum === nonInteger) throw nonIntegerRefusal(present(col.sum_of, `the summed column of ${col.name}`), type, scale);
     raw = sum;
   }
   if (raw === null || raw === undefined) return null;
-  if (col.sum_of !== undefined && typeof raw === 'string' && raw.includes('.')) throw nonIntegerRefusal(col.sum_of, type, 0);
+  // The text of a sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds such a value.
+  const text = typeof raw === 'string' ? raw : raw instanceof Uint8Array ? new TextDecoder().decode(raw) : undefined;
+  if (col.sum_of !== undefined && text !== undefined && (text.split('.')[1] ?? '').length > scale) throw nonIntegerRefusal(col.sum_of, type, scale);
   switch (type) {
+    case 'decimal':
+      return addedDecimal(raw, col.precision ?? 0, scale);
     case 'i16': case 'i32': case 'i64': {
       if (typeof raw !== 'string') return convert(type, raw, zone);
       if (!/^-?(?:0|[1-9][0-9]*)$/.test(raw)) throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`);
@@ -1253,6 +1258,34 @@ export function addedColumnValue(col: OutputColumn, raw: unknown, row: readonly 
     default:
       return raw;
   }
+}
+
+/**
+ * The exact decimal text of scale fraction digits of a decimal added column: SQLite and markdown store a decimal as its
+ * integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of at most scale fraction digits, which is padded
+ * to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its digits.
+ */
+function addedDecimal(raw: unknown, precision: number, scale: number): string {
+  const refusal = (): OrmError => new OrmError(codes.CODEC_DECODE, 'decimal cell is not a decimal of its precision and scale');
+  let negative: boolean;
+  let digits: string;
+  if (typeof raw === 'bigint') {
+    negative = raw < 0n;
+    digits = (negative ? -raw : raw).toString();
+  } else if (typeof raw === 'string' || raw instanceof Uint8Array) {
+    const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
+    const match = /^(-?)([0-9]+)(?:\.([0-9]+))?$/.exec(text);
+    if (match === null) throw refusal();
+    const fraction = match[3] ?? '';
+    if (fraction.length > scale) throw refusal();
+    negative = match[1] === '-';
+    digits = `${match[2] ?? ''}${fraction.padEnd(scale, '0')}`;
+  } else throw refusal();
+  digits = digits.replace(/^0+/, '');
+  if (precision > 0 && digits.length > precision) throw refusal();
+  digits = digits.padStart(scale + 1, '0');
+  const text = scale > 0 ? `${digits.slice(0, -scale)}.${digits.slice(-scale)}` : digits;
+  return negative && /[1-9]/.test(digits) ? `-${text}` : text;
 }
 
 /**

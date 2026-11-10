@@ -661,7 +661,6 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		col := s.ent.Field(c.column)
 		var expr string
 		var styles []string
-		var sumOf string
 		typ := "text"
 		switch {
 		case c.fn != nil:
@@ -688,8 +687,11 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				continue
 			}
 			expr = sub.expr
-			typ = sub.col.Type
-			sumOf = sub.col.SumOf
+			sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
+			*outNames = append(*outNames, s.alias+"__"+c.name)
+			asm.Columns = append(asm.Columns, sub.col)
+			*idx++
+			continue
 		default:
 			expr = p.readColumn(s, c.column, col)
 			styles = p.clientStyles(col.Codec)
@@ -699,7 +701,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		if col != nil {
 			typ = col.Type
 		}
-		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: c.name, Column: c.column, Type: typ, Styles: styles, SumOf: sumOf})
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: c.name, Column: c.column, Type: typ, Styles: styles})
 		*idx++
 	}
 	if hasAES {
@@ -1750,9 +1752,10 @@ type subPlan struct {
 }
 
 // subColumn plans the scalar subquery column c at the cell *idx. SQLite refuses a SUM past the i64 range, so on SQLite, and
-// on markdown, the sum of an integer column is the four scalar subqueries of the sums of its 16-bit parts and the one of the
+// on markdown, the sum of an integer or decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the
 // cell that reports a value that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan
-// column states their cells. Every other subquery is one cell, and the sum of an integer column states the column it sums.
+// column states their cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it
+// sums, and a decimal column states its scale and, but for a sum, its precision (INT-160).
 func (p *Planner) subColumn(b *builder, s *scope, c outCol, idx *int, outNames *[]string) (subPlan, error) {
 	typ, err := p.subType(c.sub)
 	if err != nil {
@@ -1760,7 +1763,15 @@ func (p *Planner) subColumn(b *builder, s *scope, c outCol, idx *int, outNames *
 	}
 	col := plan.OutCol{Index: *idx, Name: c.name, Type: typ}
 	field := p.subField(c.sub)
-	if c.sub.Agg == "sum" && field != nil && (field.Type == "i16" || field.Type == "i32" || field.Type == "i64") {
+	if field != nil && field.Type == "decimal" {
+		scale := field.Scale
+		col.Scale = &scale
+		if c.sub.Agg != "sum" {
+			col.Precision = field.Precision
+		}
+	}
+	if c.sub.Agg == "sum" && field != nil &&
+		(field.Type == "i16" || field.Type == "i32" || field.Type == "i64" || field.Type == "decimal") {
 		col.SumOf = field.Name
 	}
 	if col.SumOf == "" || p.D.Name() != "sqlite" {

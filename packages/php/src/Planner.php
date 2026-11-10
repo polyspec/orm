@@ -439,7 +439,6 @@ final class Planner
             }
             $styles = [];
             $type = 'string';
-            $sumOf = '';
             if (isset($c['fn'])) {
                 if ($col === null) {
                     throw self::err(
@@ -458,8 +457,11 @@ final class Planner
                     $asm->columns[] = $subCol;
                     continue;
                 }
-                $type = $subCol['type'];
-                $sumOf = $subCol['sum_of'] ?? '';
+                $parts[] = $expr . ' AS ' . $this->d->quote($s->alias . '__' . $c['name']);
+                $outNames[] = $s->alias . '__' . $c['name'];
+                $idx++;
+                $asm->columns[] = $subCol;
+                continue;
             } else {
                 $expr = $this->readColumn($this->qcol($s, $c['column']), $col);
                 $styles = $this->clientStyles($col);
@@ -469,11 +471,7 @@ final class Planner
             if ($col !== null) {
                 $type = $col['type'];
             }
-            $outCol = self::outCol($idx++, $c['name'], $c['column'], $type, $styles);
-            if ($sumOf !== '') {
-                $outCol['sum_of'] = $sumOf;
-            }
-            $asm->columns[] = $outCol;
+            $asm->columns[] = self::outCol($idx++, $c['name'], $c['column'], $type, $styles);
         }
         if ($hasAes && !in_array($s->ent['aes_version'], array_column($projection, 'column'), true)) {
             // A row that reads an AES column also reads the key version column, which was not selected, hidden
@@ -1359,10 +1357,11 @@ final class Planner
 
     /**
      * The select expression of the scalar subquery column $name at the cell $idx, its plan column, and whether it is
-     * split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column is
-     * the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is
-     * not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their cells.
-     * Every other subquery is one cell, and the sum of an integer column states the column it sums.
+     * split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+     * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
+     * that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+     * cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+     * decimal column states its scale and, but for a sum, its precision (INT-160).
      *
      * @param list<string> $outNames
      * @return array{string, array<string, mixed>, bool}
@@ -1371,7 +1370,14 @@ final class Planner
     {
         $col = self::outCol($idx, $name, '', $this->subType($sub), []);
         $field = $this->subField($sub);
-        if (($sub['agg'] ?? '') === 'sum' && $field !== null && in_array($field['type'], ['i16', 'i32', 'i64'], true)) {
+        $sum = ($sub['agg'] ?? '') === 'sum';
+        if ($field !== null && $field['type'] === 'decimal') {
+            $col['scale'] = $field['scale'];
+            if (!$sum) {
+                $col['precision'] = $field['precision'];
+            }
+        }
+        if ($sum && $field !== null && in_array($field['type'], ['i16', 'i32', 'i64', 'decimal'], true)) {
             $col['sum_of'] = $field['name'];
         }
         if (!isset($col['sum_of']) || $this->d->name !== 'sqlite') {

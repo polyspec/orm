@@ -86,8 +86,12 @@ pub struct OutCol {
     pub typ: String,
     pub styles: Vec<String>,
     pub hidden: bool,
-    /// The integer column that a scalar subquery sums (PRT-84).
+    /// The integer or decimal column that a scalar subquery sums (PRT-84).
     pub sum_of: Option<String>,
+    /// The precision and scale of the decimal column of a scalar subquery, whose value is its exact decimal text of that
+    /// scale (INT-160); a sum states no precision, since it leaves the precision of its column.
+    pub precision: Option<u8>,
+    pub scale: Option<u8>,
     /// The cells of the sums of the four 16-bit parts of that column, highest first, and the cell that reports a value that
     /// is not an integer, on SQLite and markdown (DIA-202, PRT-84).
     pub sum_parts: Vec<usize>,

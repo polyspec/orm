@@ -719,7 +719,6 @@ class Planner:
                 has_aes = True
             col_styles: list = []
             type_ = "string"
-            sum_of = ""
             if c.get("fn"):
                 if col is None:
                     _fail(
@@ -738,8 +737,12 @@ class Planner:
                     parts.append(expr)
                     asm["columns"].append(sub_col)
                     continue
-                type_ = sub_col["type"]
-                sum_of = sub_col.get("sum_of", "")
+                out = f"{s.alias}__{c['name']}"
+                parts.append(f"{expr} AS {self.d.quote(out)}")
+                out_names.append(out)
+                asm["columns"].append(sub_col)
+                idx["n"] += 1
+                continue
             else:
                 expr = self._read_column(self._qcol(s, c["column"]), col)
                 col_styles = self._client_styles(_styles(col))
@@ -756,7 +759,6 @@ class Planner:
                     "type": type_,
                     "styles": col_styles,
                     "hidden": False,
-                    **({"sum_of": sum_of} if sum_of else {}),
                 }
             )
             idx["n"] += 1
@@ -1143,10 +1145,11 @@ class Planner:
         self, b: _Builder, s: _Scope, name: str, sub: dict, idx, out_names
     ) -> tuple[str, dict, bool]:
         """The select expression of the scalar subquery column name at the cell idx["n"], its plan column, and whether it
-        is split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column is
-        the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is not
-        an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their cells. Every
-        other subquery is one cell, and the sum of an integer column states the column it sums."""
+        is split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+        column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
+        that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+        cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+        decimal column states its scale and, but for a sum, its precision (INT-160)."""
         col: dict = {
             "index": idx["n"],
             "name": name,
@@ -1156,10 +1159,14 @@ class Planner:
             "hidden": False,
         }
         field = self._sub_field(sub)
+        if field is not None and field.type == "decimal":
+            col["scale"] = field.scale
+            if sub.get("agg") != "sum":
+                col["precision"] = field.precision
         if (
             sub.get("agg") == "sum"
             and field is not None
-            and field.type in ("i16", "i32", "i64")
+            and field.type in ("i16", "i32", "i64", "decimal")
         ):
             col["sum_of"] = field.name
         if "sum_of" not in col or self.d.name != "sqlite":

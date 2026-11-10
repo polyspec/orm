@@ -1176,6 +1176,7 @@ def _added_column_value(col: dict, raw, row, zone: str):
     driver value. The sum of an integer column is the exact integer of its split cells on SQLite and markdown, and a sum
     of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84)."""
     type_ = col["type"]
+    scale = col.get("scale", 0)
     if col.get("sum_parts"):
         if col.get("non_integer") is None:
             raise OrmError(
@@ -1191,14 +1192,14 @@ def _added_column_value(col: dict, raw, row, zone: str):
                 codes.CODEC_DECODE, f"{type_} cell is not an exact integer in its range"
             ) from error
         if raw is _NON_INTEGER:
-            raise _non_integer_refusal(col["sum_of"], type_, 0)
+            raise _non_integer_refusal(col["sum_of"], type_, scale)
     if raw is None:
         return None
-    if col.get("sum_of") and (
-        (isinstance(raw, str) and "." in raw)
-        or (isinstance(raw, Decimal) and raw.as_tuple().exponent != 0)
-    ):
-        raise _non_integer_refusal(col["sum_of"], type_, 0)
+    # The sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds such a value.
+    if col.get("sum_of") and _fraction_digits(raw) > scale:
+        raise _non_integer_refusal(col["sum_of"], type_, scale)
+    if type_ == "decimal":
+        return _added_decimal(raw, col.get("precision", 0), scale)
     if type_ in ("i16", "i32", "i64") and isinstance(raw, str):
         # A text is an integer only exactly.
         if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", raw) is None:
@@ -1209,6 +1210,53 @@ def _added_column_value(col: dict, raw, row, zone: str):
     if type_ in ("i16", "i32", "i64", "f64", "bool", "date", "datetime"):
         return convert(type_, raw, zone)
     return raw
+
+
+def _fraction_digits(raw) -> int:
+    """The number of fraction digits of a text or Decimal sum cell, 0 for any other cell."""
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    if isinstance(raw, str):
+        return len(raw.split(".", 1)[1]) if "." in raw else 0
+    if isinstance(raw, Decimal) and raw.is_finite():
+        exponent = raw.as_tuple().exponent
+        return -exponent if isinstance(exponent, int) and exponent < 0 else 0
+    return 0
+
+
+def _added_decimal(raw, precision: int, scale: int) -> str:
+    """The exact decimal text of scale fraction digits of a decimal added column: SQLite and markdown store a decimal as
+    its integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text or Decimal, of at most scale fraction
+    digits, which is padded to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its
+    digits."""
+    refusal = OrmError(
+        codes.CODEC_DECODE, "decimal cell is not a decimal of its precision and scale"
+    )
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        negative, digits = raw < 0, str(abs(raw))
+    elif isinstance(raw, Decimal) and raw.is_finite():
+        sign, numerals, exponent = raw.as_tuple()
+        if not isinstance(exponent, int) or -exponent > scale:
+            raise refusal
+        negative = sign == 1
+        digits = "".join(map(str, numerals)) + "0" * (exponent + scale)
+    elif isinstance(raw, str):
+        match = re.fullmatch(r"(-?)([0-9]+)(?:\.([0-9]+))?", raw)
+        if match is None or len(match.group(3) or "") > scale:
+            raise refusal
+        negative = match.group(1) == "-"
+        fraction = match.group(3) or ""
+        digits = match.group(2) + fraction + "0" * (scale - len(fraction))
+    else:
+        raise refusal
+    digits = digits.lstrip("0")
+    if precision > 0 and len(digits) > precision:
+        raise refusal
+    digits = digits.rjust(scale + 1, "0")
+    text = f"{digits[:-scale]}.{digits[-scale:]}" if scale > 0 else digits
+    return f"-{text}" if negative and digits.strip("0") else text
 
 
 def _group_value(db, column: dict, raw, schema: Entity):
