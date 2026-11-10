@@ -30,15 +30,7 @@ jobs:
       - name: hashes of the lock files
         id: locks
         if: ${{ !cancelled() }}
-        run: |
-          locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }
-          {
-            echo "npm=$(locks '*package-lock.json')"
-            echo "tools=$(locks mise.toml '.mise/locks/**' config/toolchain.json)"
-            echo "go=$(locks '*go.sum')"
-            echo "composer=$(locks '*composer.lock')"
-            echo "uv=$(locks '*uv.lock')"
-          } >> "$GITHUB_OUTPUT"
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}

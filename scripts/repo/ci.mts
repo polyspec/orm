@@ -3,7 +3,7 @@ import { Minimatch } from 'minimatch';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
 import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
-import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
+import { CI_SETUP, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 
@@ -52,8 +52,9 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
     }
     errors.push('ci.yml does not start the database servers with make orm-test-servers');
   } else {
-    // The CI setup step (scripts/check/ci-setup.mts) is installation and environment checking that needs no server.
-    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
+    // The CI setup step and the runner steps (scripts/check/ci-setup.mts) are installation, hashing and environment checking that
+    // need no server.
+    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '') && !RUNNER_STEPS.includes(step.id ?? '')).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make orm-test-servers starts the servers`));
   }
   for (const variable of variables) {
@@ -879,17 +880,7 @@ export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed
 // LOCKS_STEP hashes the tracked lock files of each cache once, after the checkout of a job (lockedCacheErrors).
 export const LOCKS_STEP: Record<string, unknown> = {
   name: 'hashes of the lock files', id: 'locks', if: NOT_CANCELLED,
-  run: [
-    'locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }',
-    '{',
-    '  echo "npm=$(locks \'*package-lock.json\')"',
-    '  echo "tools=$(locks mise.toml \'.mise/locks/**\' config/toolchain.json)"',
-    '  echo "go=$(locks \'*go.sum\')"',
-    '  echo "composer=$(locks \'*composer.lock\')"',
-    '  echo "uv=$(locks \'*uv.lock\')"',
-    '} >> "$GITHUB_OUTPUT"',
-    '',
-  ].join('\n'),
+  run: 'make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"',
 };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },

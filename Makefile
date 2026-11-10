@@ -640,6 +640,17 @@ check-run:
 # ci-group-needs writes the setup steps that the job of CI group GROUP runs as step output lines (`<output>=true|false`): it decides them from the need
 # that each target of the group declares in contracts/check-inputs.json (scripts/check/ci-setup.mts). The workflow adds those lines
 # to $GITHUB_OUTPUT, and a setup step runs only when its own output is true.
+# ci-lock-hashes writes the cache keys of a CI job as step outputs, one line each: the sha256 of the tracked lock files of each
+# cache (npm, the tools of mise.toml, Go, composer, uv). The job computes them once after the checkout, since actions/cache evaluates
+# its key again after the last step, where hashFiles would read the workspace as the job left it (T427).
+ci-lock-hashes:
+	@locks() { files=$$(git ls-files -- "$$@") && test -n "$$files" || { echo "ci-lock-hashes: git tracks no file of $$*" >&2; return 1; }; \
+	  sums=$$(git ls-files -z -- "$$@" | xargs -0 sha256sum) || return 1; \
+	  printf '%s\n' "$$sums" | sha256sum | cut -c1-64; }; \
+	npm=$$(locks '*package-lock.json') && tools=$$(locks mise.toml '.mise/locks/**' config/toolchain.json) && \
+	go=$$(locks '*go.sum') && composer=$$(locks '*composer.lock') && uv=$$(locks '*uv.lock') && \
+	printf 'npm=%s\ntools=%s\ngo=%s\ncomposer=%s\nuv=%s\n' "$$npm" "$$tools" "$$go" "$$composer" "$$uv"
+
 ci-group-needs:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
 	@$(NODE) scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
