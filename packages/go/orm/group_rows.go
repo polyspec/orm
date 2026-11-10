@@ -248,7 +248,8 @@ func groupCell(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field
 	case "varchar", "text":
 		return textCell(column.Type, raw)
 	case "uuid":
-		return uuidCell(raw, db.driver == "postgres")
+		// The select already read the uuid cell as its canonical text (validateRuntimeScalars, DIA-27).
+		return uuidCell(raw, true)
 	case "bytes":
 		if declared != nil && len(declared.Codec) > 0 {
 			return AsString(raw)
