@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 9ab8d86731aa0f0c5a26d6d933d9683ab1094348a340e8682427ee4fdf4dd3b6 -->
+<!-- source-sha256: f57c7ef9318c9ee4f0d70ee4ea4ba411d1b91c81a510338190534f2441fca72e -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -82,9 +82,10 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   runtime에서 `SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'`로 읽고 row가 하나라도
   나오면 거부한다. MySQL은 설정이 켜져 있을 때 그 설정을 내놓고, MariaDB에는 partial revoke도 `partial_revokes`도 없어
   (1193) row를 내놓지 않으므로, 이 한 형식이 두 server에 같은 결과로 답한다(DIA-200, 규칙 1). catalog recipe의 case
-  `row_change_with_partial_revokes_enabled`가 MariaDB의 답을 적는다. 그 replica에는 켤 설정이 없어 검사는 각 row 변경을
-  통과시키고, read-only replica가 그것을 1290(`READ_ONLY`)으로 거부한다. MySQL의 `super_read_only` replica가 자기에게
-  닿은 쓰기를 거부하는 것과 같다.
+  `row_change_with_partial_revokes_enabled`는 MariaDB에서 이 검사가 아무것도 거부하지 않음을 관측한다. 두 replica는 같은
+  방식으로 쓰기를 거부한다: MySQL의 replica는 `super_read_only`로, MariaDB의 replica는 `read_only`에 DSN 계정의 `READ ONLY ADMIN`
+  없이 돌아, 둘 다 그 계정의 쓰기를 1290(`READ_ONLY`)으로 거부한다. MySQL에서는 검사가 먼저 `ROW_MUTATION_UNSUPPORTED`로
+  답하고, MariaDB에서는 insert, update, delete가 검사를 통과해 replica의 1290(`READ_ONLY`)을 만나며 row는 그대로다.
 
 - **DIA-208** Statement timeout — MySQL 8.4 / MariaDB 11.8 (probe `mysql.session.statement_timeout`,
   `mariadb.session.statement_timeout`): MySQL은 SELECT를 millisecond 단위의 `max_execution_time`으로 제한하고(3024)
