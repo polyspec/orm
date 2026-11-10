@@ -120,6 +120,27 @@ type icolumn struct {
 	null     bool
 	identity bool
 	dflt     string
+	// textStorage marks a uuid column in the text storage of a release up to 0.0.28, or of a conversion that stopped
+	// (DIA-144, PLN-108); columnType is its MySQL COLUMN_TYPE.
+	textStorage bool
+	columnType  string
+}
+
+// TextStorageReason is the reason of the unsupported column of a uuid in text storage (DIA-144), which dbspec apply
+// converts to 16 bytes (PLN-108).
+const TextStorageReason = "uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes"
+
+// UUIDText is the lower-case canonical text of the 16 bytes b of a uuid (DIA-27).
+func UUIDText(b []byte) string {
+	const digits = "0123456789abcdef"
+	out := make([]byte, 0, 36)
+	for i, x := range b {
+		if i == 4 || i == 6 || i == 8 || i == 10 {
+			out = append(out, '-')
+		}
+		out = append(out, digits[x>>4], digits[x&15])
+	}
+	return string(out)
 }
 
 type ikey struct {

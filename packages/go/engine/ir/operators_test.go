@@ -19,11 +19,12 @@ func TestStringAndTextSupportOrderedCursorPredicates(t *testing.T) {
 	}
 }
 
-// A uuid column accepts only equality and list comparison. PostgreSQL uuid has no LIKE.
-func TestUUIDAllowsEqualityOnly(t *testing.T) {
+// A uuid column accepts equality, list comparison and the range operators, which compare byte order (DIA-27). PostgreSQL
+// uuid has no LIKE.
+func TestUUIDAllowsEqualityAndRange(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	column := &runtimemodel.Field{Type: "uuid"}
-	for op, want := range map[string]bool{"eq": true, "in": true, "is_null": true, "contains": false, "gt": false} {
+	for op, want := range map[string]bool{"eq": true, "in": true, "is_null": true, "contains": false, "gt": true, "between": true} {
 		if got := OpAllowed(column, op); got != want {
 			t.Errorf("uuid %s = %v, want %v", op, got, want)
 		}

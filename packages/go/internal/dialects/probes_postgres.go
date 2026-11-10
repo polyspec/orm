@@ -168,6 +168,11 @@ func postgresProbes() []Probe {
 			e.Exec("CREATE TABLE t (u uuid)", "INSERT INTO t VALUES ('{A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11}')")
 			e.Want("SELECT u::text FROM t", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
 		}),
+		p("uuid.byte_order", "uuid orders and compares by its 16 bytes, the order of its lower-case text", func(e *Env) {
+			e.Exec("CREATE TABLE t (u uuid)", "INSERT INTO t VALUES ('ffffffff-0000-4000-8000-000000000000'), ('0000000f-0000-4000-8000-000000000000'), ('7f000000-ffff-4fff-bfff-000000000001'), ('00000000-0000-4000-8000-00000000000f')")
+			e.WantRows("SELECT u::text FROM t ORDER BY u", "00000000-0000-4000-8000-00000000000f,0000000f-0000-4000-8000-000000000000,7f000000-ffff-4fff-bfff-000000000001,ffffffff-0000-4000-8000-000000000000")
+			e.WantRows("SELECT encode(uuid_send(u), 'hex') FROM t WHERE u > '0000000f-0000-4000-8000-000000000000' ORDER BY u", "7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
+		}),
 		p("enum.type_object", "ENUM is a named type object: unknown values fail (22P02), columns report USER-DEFINED, order follows the list", func(e *Env) {
 			e.Exec("CREATE TYPE mood AS ENUM ('b', 'a')", "CREATE TABLE t (v mood)", "INSERT INTO t VALUES ('a'), ('b')")
 			e.Fails("INSERT INTO t VALUES ('c')", "22P02")

@@ -245,8 +245,10 @@ func groupCell(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field
 			return nil, codecErr(CodeInternal, "time group column %s has no declaration", column.Name)
 		}
 		return AsTimeText(raw, declared.Precision)
-	case "varchar", "text", "uuid":
+	case "varchar", "text":
 		return textCell(column.Type, raw)
+	case "uuid":
+		return uuidCell(raw, db.driver == "postgres")
 	case "bytes":
 		if declared != nil && len(declared.Codec) > 0 {
 			return AsString(raw)

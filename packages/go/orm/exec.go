@@ -211,6 +211,9 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 					return nil, nil, err
 				}
 			}
+			if v, err = d.uuidBind(v, b.ColType); err != nil {
+				return nil, nil, err
+			}
 			if b.ColType == "decimal" && v != nil {
 				value, ok := v.(string)
 				if !ok {
@@ -232,7 +235,14 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 			}
 			out = append(out, d.cfg.AESVersion)
 		case "parent":
-			out = append(out, parentVals...)
+			for i, v := range parentVals {
+				if len(b.KeyTypes) > 0 {
+					if v, err = d.uuidBind(v, b.KeyTypes[i%len(b.KeyTypes)]); err != nil {
+						return nil, nil, err
+					}
+				}
+				out = append(out, v)
+			}
 		case "now":
 			mask(NowBind)
 			if clock.IsZero() {
@@ -242,6 +252,9 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 		case "audit":
 			v, err := auditValue(r.audit, b.Name)
 			if err != nil {
+				return nil, nil, err
+			}
+			if v, err = d.uuidBind(v, b.ColType); err != nil {
 				return nil, nil, err
 			}
 			out = append(out, v)
@@ -258,6 +271,16 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 		}
 	}
 	return out, masks, nil
+}
+
+// uuidBind binds the value v of a slot of type colType: a uuid text is its 16 bytes on MySQL, MariaDB, SQLite and
+// flowmark, and the text itself on PostgreSQL, which casts it (DIA-27). Another value is v.
+func (d *DB) uuidBind(v any, colType string) (any, error) {
+	text, ok := v.(string)
+	if colType != "uuid" || !ok || d.driver == "postgres" {
+		return v, nil
+	}
+	return uuidBytes(text)
 }
 
 // auditValue is the value of the audit slot: the primary
@@ -917,7 +940,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		for i := range cells {
 			vals[i] = cells[i].v
 		}
-		if decodeErr = decodeSelectedRow(vals, si, st, keyring); decodeErr != nil {
+		if decodeErr = decodeSelectedRow(vals, si, st, keyring, d.driver == "postgres"); decodeErr != nil {
 			break
 		}
 		out = append(out, vals)
@@ -937,7 +960,9 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	return out, nil
 }
 
-func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
+// decodeSelectedRow decodes the cells of a read row; textUUID is whether a uuid cell is its text, as PostgreSQL reads
+// it, or its 16 bytes (DIA-27).
+func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring, textUUID bool) error {
 	for _, sc := range si.styled {
 		if sc.asm.AESVersion == nil && slices.Contains(sc.host, "aes") {
 			// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
@@ -976,7 +1001,7 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		}
 		vals[sc.index] = v
 	}
-	if err := validateRuntimeScalars(vals, st.Assemble); err != nil {
+	if err := validateRuntimeScalars(vals, st.Assemble, textUUID); err != nil {
 		return err
 	}
 	return restoreByteColumns(vals, st.Assemble)
@@ -984,8 +1009,8 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 
 // validateRuntimeScalars checks the cell of each declared column against its column type, with the message of that type
 // (COD-1). An added column follows INT-160, so it is not checked here, and the key version column holds the version
-// that COD-44 reads.
-func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
+// that COD-44 reads. A uuid cell becomes its canonical text (DIA-27).
+func validateRuntimeScalars(vals []any, asm *plan.Assemble, textUUID bool) error {
 	for i, col := range asm.Columns {
 		if col.Index < 0 || col.Index >= len(vals) {
 			return codecErr(CodeInternal, "column %q index %d is out of bounds", col.Name, col.Index)
@@ -1010,8 +1035,13 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			_, err = AsFloat64(vals[col.Index])
 		case "bool":
 			_, err = AsBool(vals[col.Index])
-		case "varchar", "text", "uuid":
+		case "varchar", "text":
 			_, err = textCell(col.Type, vals[col.Index])
+		case "uuid":
+			var text string
+			if text, err = uuidCell(vals[col.Index], textUUID); err == nil {
+				vals[col.Index] = text
+			}
 		}
 		if err != nil {
 			return columnDecodeErr(asm.Entity, col.Name, err)
@@ -1019,7 +1049,7 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 	}
 	for _, child := range asm.Children {
 		if child.Kind == "join" && child.Assemble != nil {
-			if err := validateRuntimeScalars(vals, child.Assemble); err != nil {
+			if err := validateRuntimeScalars(vals, child.Assemble, textUUID); err != nil {
 				return err
 			}
 		}

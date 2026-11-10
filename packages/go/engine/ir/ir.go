@@ -225,7 +225,7 @@ var opsByType = map[string][]string{
 	"time":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"datetime": {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"varchar":  {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"},
-	"uuid":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
+	"uuid":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"text":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"},
 	"bool":     {"eq", "not_eq", "is_null", "is_not_null"},
 	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},

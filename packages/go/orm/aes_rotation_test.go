@@ -62,7 +62,7 @@ func assertAESRowDecodeIsInternal(t *testing.T, step *plan.Step, si *scanInfo, w
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = decodeSelectedRow([]any{enc}, si, step, mustAESKeyring(t, map[int32]string{1: "k"}, 1))
+	err = decodeSelectedRow([]any{enc}, si, step, mustAESKeyring(t, map[int32]string{1: "k"}, 1), false)
 	if got := ErrorCode(err); got != CodeInternal {
 		t.Fatalf("%s: code = %q, want %s (err %v)", what, got, CodeInternal, err)
 	}

@@ -24,7 +24,7 @@ func TestDecodeSelectedRowRejectsInvalidRuntimeScalars(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			step := &plan.Step{Assemble: &plan.Assemble{Entity: "typed_value", Columns: []plan.OutCol{{Index: 0, Name: "value", Column: "value", Type: tc.type_}}}}
-			err := decodeSelectedRow([]any{tc.value}, &scanInfo{}, step, AESKeyring{})
+			err := decodeSelectedRow([]any{tc.value}, &scanInfo{}, step, AESKeyring{}, false)
 			if err == nil || err.Error() != tc.want {
 				t.Fatalf("invalid %s cell error = %v, want %s", tc.name, err, tc.want)
 			}
@@ -34,7 +34,7 @@ func TestDecodeSelectedRowRejectsInvalidRuntimeScalars(t *testing.T) {
 		{Index: 0, Name: "wide", Column: "wide", Type: "i64"}, {Index: 1, Name: "ratio", Column: "ratio", Type: "f64"},
 		{Index: 2, Name: "active", Column: "active", Type: "bool"},
 	}}}
-	if err := decodeSelectedRow([]any{int64(7), float64(1.25), true}, &scanInfo{}, step, AESKeyring{}); err != nil {
+	if err := decodeSelectedRow([]any{int64(7), float64(1.25), true}, &scanInfo{}, step, AESKeyring{}, false); err != nil {
 		t.Fatalf("valid scalar cells failed decoding: %v", err)
 	}
 }

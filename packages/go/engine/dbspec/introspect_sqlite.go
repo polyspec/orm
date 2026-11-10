@@ -3,6 +3,7 @@ package dbspec
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -111,7 +112,12 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			col.typ, col.identity = Type{Kind: TypeI64}, true
 		} else {
 			typ, ok := sqliteType(r, declared, name, check, hasCheck)
-			if !ok {
+			switch {
+			case !ok && declared == "TEXT" && hasCheck && check == sqliteTextStorageCheck(name):
+				// The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
+				typ, col.textStorage = Type{Kind: TypeUUID}, true
+				c.report("column", table, name, "%s", TextStorageReason)
+			case !ok:
 				c.report("column", table, name, "declared type %s with CHECK %q has no dbspec type", declared, check)
 				return nil
 			}
@@ -230,9 +236,9 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 		case "REAL":
 			candidates = []Type{{Kind: TypeF64}}
 		case "TEXT":
-			candidates = []Type{{Kind: TypeText}, {Kind: TypeUUID}}
+			candidates = []Type{{Kind: TypeText}}
 		case "BLOB":
-			candidates = []Type{{Kind: TypeBytes}}
+			candidates = []Type{{Kind: TypeBytes}, {Kind: TypeUUID}}
 		case "DATE":
 			candidates = []Type{{Kind: TypeDate}}
 		case "TIME", "DATETIME":
@@ -254,6 +260,16 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 	return Type{}, false
 }
 
+// sqliteTextStorageCheck is the GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144).
+func sqliteTextStorageCheck(column string) string {
+	hex := func(n int) string { return strings.Repeat("[0-9a-f]", n) }
+	return `"` + column + `"` + " GLOB '" + hex(8) + "-" + hex(4) + "-" + hex(4) + "-" + hex(4) + "-" + hex(12) + "'"
+}
+
+// sqliteUUIDDefault is a uuid default as the renderer writes it on SQLite, X' and the 32 hex digits of its 16 bytes
+// (DIA-123).
+var sqliteUUIDDefault = regexp.MustCompile(`^X'([0-9a-f]{32})'$`)
+
 // sqliteDefault reads dflt_value as a dbspec literal or now. A decimal is the integer multiplied by the scale,
 // and a bool is 1 or 0.
 func sqliteDefault(r renderer, text string, typ Type) (string, bool) {
@@ -266,6 +282,12 @@ func sqliteDefault(r renderer, text string, typ Type) (string, bool) {
 			return "true", true
 		}
 		return "false", true
+	case typ.Kind == TypeUUID && sqliteUUIDDefault.MatchString(text):
+		b, err := hex.DecodeString(sqliteUUIDDefault.FindStringSubmatch(text)[1])
+		if err != nil {
+			return "", false
+		}
+		return quote(UUIDText(b)), true
 	case typ.Kind == TypeDecimal && sqliteNumberDefault.MatchString(text):
 		return unscaledDecimal(text, typ.Scale), true
 	case sqliteNumberDefault.MatchString(text):

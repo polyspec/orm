@@ -3,6 +3,7 @@ package dbspec
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -47,7 +48,7 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
 	mysqlEventsQuery   = `SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME`
 )
 
-var mysqlTypePattern = regexp.MustCompile(`^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$`)
+var mysqlTypePattern = regexp.MustCompile(`^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|binary\(16\)|char\(36\)|varbinary\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$`)
 
 func readMySQL(ctx context.Context, q Querier, server Server) (*catalog, error) {
 	c := &catalog{}
@@ -99,6 +100,8 @@ func readMySQL(ctx context.Context, q Querier, server Server) (*catalog, error) 
 			return nil
 		}
 		col.typ = typ
+		col.textStorage = typ.Kind == TypeUUID && needsCheck != "binary(16)"
+		col.columnType = columnType
 		extra = strings.TrimSpace(extra)
 		switch {
 		case extra == "auto_increment":
@@ -208,6 +211,9 @@ func readMySQL(ctx context.Context, q Querier, server Server) (*catalog, error) 
 				c.report("check", table, name, "the check %s is not the renderer CHECK", clause)
 				return nil
 			}
+			if col.textStorage {
+				c.report("column", table, column, "%s", TextStorageReason)
+			}
 			if checked[table] == nil {
 				checked[table] = map[string]bool{}
 			}
@@ -305,8 +311,14 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 		return Type{Kind: TypeText}, "", text
 	case "longblob":
 		return Type{Kind: TypeBytes}, "", true
+	case "binary(16)":
+		return Type{Kind: TypeUUID}, columnType, true
 	case "char(36)":
+		// The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
 		return Type{Kind: TypeUUID}, columnType, charset == "ascii" && collation == "ascii_bin"
+	case "varbinary(36)":
+		// The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109).
+		return Type{Kind: TypeUUID}, columnType, true
 	case "date":
 		return Type{Kind: TypeDate}, "", m[2] == ""
 	case "time":
@@ -320,15 +332,19 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 // mysqlRendererCheck is the form in which a renderer CHECK remains in CHECK_CLAUSE
 // (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it without the outer parentheses and the
 // introducers, in the escaped form that readMySQL gives its CHECK_CLAUSE (probes mariadb.check.catalog_text,
-// mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
+// mariadb.render.bool_check, mariadb.render.uuid_bytes, mariadb.render.time_of_day_check; DIA-203).
 func mysqlRendererCheck(server Server, col icolumn) string {
 	c := "`" + col.name + "`"
+	if col.textStorage {
+		return mysqlTextStorageCheck(server, col)
+	}
 	if server == ServerMariaDB {
 		switch col.typ.Kind {
 		case TypeBool:
 			return c + " in (0,1)"
 		case TypeUUID:
-			return c + " regexp \\'" + uuidPattern + "\\'"
+			// MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes).
+			return "octet_length(" + c + ") = 16"
 		case TypeTime:
 			return c + " >= \\'00:00:00\\' and " + c + " < \\'24:00:00\\'"
 		}
@@ -338,11 +354,30 @@ func mysqlRendererCheck(server Server, col icolumn) string {
 	case TypeBool:
 		return "(" + c + " in (0,1))"
 	case TypeUUID:
-		return "regexp_like(" + c + ",_utf8mb4\\'" + uuidPattern + "\\')"
+		return "(length(" + c + ") = 16)"
 	case TypeTime:
 		return "((" + c + " >= _utf8mb4\\'00:00:00\\') and (" + c + " < _utf8mb4\\'24:00:00\\'))"
 	}
 	return ""
+}
+
+// uuidPattern is the pattern of the CHECK of the text storage of a uuid (DIA-144).
+const uuidPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+// mysqlTextStorageCheck is the CHECK_CLAUSE of a uuid column in text storage (DIA-144): the pattern CHECK of a
+// char(36) column that a release up to 0.0.28 rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the
+// CHECK of a varbinary(36) column whose conversion stopped (PLN-109).
+func mysqlTextStorageCheck(server Server, col icolumn) string {
+	c := "`" + col.name + "`"
+	switch {
+	case col.columnType == "varbinary(36)" && server == ServerMariaDB:
+		return "octet_length(" + c + ") in (16,36)"
+	case col.columnType == "varbinary(36)":
+		return "(length(" + c + ") in (16,36))"
+	case server == ServerMariaDB:
+		return c + " regexp \\'" + uuidPattern + "\\'"
+	}
+	return "regexp_like(" + c + ",_utf8mb4\\'" + uuidPattern + "\\',_utf8mb4\\'c\\')"
 }
 
 // mysqlIntroducer is the character set introducer before a string literal in CHECK_CLAUSE.
@@ -467,6 +502,9 @@ var mysqlNumber = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$`)
 // mariadbClock is a clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p).
 var mariadbClock = regexp.MustCompile(`^current_timestamp\(([1-6]?)\)$`)
 
+// mariadbHexLiteral is a binary default of MariaDB's COLUMN_DEFAULT.
+var mariadbHexLiteral = regexp.MustCompile(`^x'([0-9a-f]{2})*'$`)
+
 // mariadbDefault reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as
 // SQL text: NULL for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as
 // written, and an expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe
@@ -489,6 +527,10 @@ func mariadbDefault(dflt sql.NullString, extra string) (sql.NullString, string, 
 		return sql.NullString{String: value, Valid: true}, extra, nil
 	case mysqlNumber.MatchString(text):
 		return dflt, extra, nil
+	case mariadbHexLiteral.MatchString(text):
+		// MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case hex
+		// (probe mariadb.render.uuid_bytes).
+		return sql.NullString{String: "0x" + strings.ToUpper(text[2:len(text)-1]), Valid: true}, extra, nil
 	}
 	if m := mariadbClock.FindStringSubmatch(text); m != nil {
 		if m[1] == "" {
@@ -539,6 +581,16 @@ func mysqlDefault(value string, typ Type) string {
 		return quote(value)
 	case TypeI16, TypeI32, TypeI64, TypeDecimal, TypeF64:
 		return value
+	case TypeUUID:
+		// A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of the text
+		// of a varbinary(36) column whose conversion stopped (PLN-109).
+		if hexText, ok := strings.CutPrefix(value, "0x"); ok {
+			if b, err := hex.DecodeString(hexText); err == nil && len(b) == 16 {
+				return quote(UUIDText(b))
+			} else if err == nil {
+				return quote(string(b))
+			}
+		}
 	}
 	return quote(value)
 }
