@@ -30,11 +30,13 @@ from polyspec.orm.codec import (
 from polyspec.orm.clock import wall_micros
 from polyspec.orm.canonical import canonical_request
 from polyspec.orm.bind_check import (
+    _CANONICAL_UUID,
     bind_slot_type,
     check_assign,
     check_param,
     transform_param,
 )
+from polyspec.orm.dbspec.introspect_catalog import uuid_text
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
@@ -542,8 +544,42 @@ def _text_or_bytes(value: bytes):
         return value
 
 
-def convert(type_: str, value, zone: str, declared: Field | None = None):
-    """Converts a cell to a value of its column type (docs/spec/dbspec.md "Runtime model")."""
+def uuid_bytes(text: str) -> bytes:
+    """The 16 bytes that the 32 digits of the canonical text of a uuid write in their order, two digits to a byte
+    (DIA-27); the text is checked before (PRT-67)."""
+    if _CANONICAL_UUID.match(text) is None:
+        raise OrmError(
+            codes.CODEC_ENCODE, "uuid value is not a lower-case canonical uuid"
+        )
+    return bytes.fromhex(text.replace("-", ""))
+
+
+def _uuid_cell(value, text_uuid: bool) -> str:
+    """A uuid cell as its lower-case canonical text (DIA-27): on PostgreSQL, which reads it as CAST(col AS text), that
+    text, and on MySQL, MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused with the message of the
+    uuid type (COD-1)."""
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        raw = bytes(value)
+        if not text_uuid:
+            if len(raw) == 16:
+                return uuid_text(raw)
+        elif _CANONICAL_UUID.match(raw.decode("latin-1")) is not None:
+            return raw.decode("ascii")
+    elif isinstance(value, str) and text_uuid and _CANONICAL_UUID.match(value):
+        return value
+    raise OrmError(codes.CODEC_DECODE, "uuid cell is not a uuid")
+
+
+def convert(
+    type_: str,
+    value,
+    zone: str,
+    declared: Field | None = None,
+    text_uuid: bool | None = None,
+):
+    """Converts a cell to a value of its column type (docs/spec/dbspec.md "Runtime model"). text_uuid is whether a uuid
+    cell is its text, as PostgreSQL reads it, or its 16 bytes (DIA-27); a value of the API, which is the text, takes
+    True."""
 
     if value is None:
         return None
@@ -624,7 +660,13 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise OrmError(codes.CODEC_DECODE, "bytes cell is not bytes")
         return bytes(value)
-    if type_ in ("varchar", "text", "uuid"):
+    if type_ == "uuid":
+        if text_uuid is None:
+            raise OrmError(
+                codes.INTERNAL, "a uuid cell is read without its storage form"
+            )
+        return _uuid_cell(value, text_uuid)
+    if type_ in ("varchar", "text"):
         if isinstance(value, bytes):
             try:
                 return value.decode("utf-8")
@@ -2127,9 +2169,9 @@ class Db:
                         value = blind_index(value, self.blind_index_key)
                 elif slot.get("host_styles"):
                     value = host_encode(value, slot["host_styles"], self.aes_key)
-                push(value)
+                push(self._uuid_bind(value, slot["col_type"]))
             elif source == "audit":
-                push(_audit_value(slot, audit))
+                push(self._uuid_bind(_audit_value(slot, audit), slot["col_type"]))
             elif source == "config":
                 if slot["name"] != "aes_version":
                     raise OrmError(
@@ -2137,7 +2179,10 @@ class Db:
                     )
                 push(self.aes_version)
             elif source == "parent":
-                for value in parents or ():
+                key_types = slot.get("key_types") or ()
+                for i, value in enumerate(parents or ()):
+                    if key_types:
+                        value = self._uuid_bind(value, key_types[i % len(key_types)])
                     push(value)
             elif source == "now":
                 # A statement reads the clock once, so its clock columns are equal.
@@ -2147,6 +2192,18 @@ class Db:
             else:
                 raise OrmError(codes.INTERNAL, f"bind from {source}")
         return {"values": values, "masked": masked}
+
+    def _uuid_bind(self, value, col_type: str):
+        """The value of a slot of type col_type: a uuid text is its 16 bytes on MySQL, MariaDB, SQLite and flowmark, the
+        32 digits of the text in their order, two digits to a byte, and the text itself on PostgreSQL, which casts it
+        (DIA-27). Another value is value."""
+        if (
+            col_type != "uuid"
+            or not isinstance(value, str)
+            or self.sql_driver == "postgres"
+        ):
+            return value
+        return uuid_bytes(value)
 
     def execute(self, step: dict, params: list) -> None:
         """Runs one compiled statement step, a step of a plan of Engine.compile, with the request

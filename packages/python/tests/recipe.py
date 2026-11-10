@@ -4442,9 +4442,13 @@ def _utils_stats(step: dict, context: dict) -> dict:
 
 
 def _bind_cell(bind) -> dict:
-    """The recipe wrapper of a bind of an event: a vector writes the bytes of a bind as their text."""
+    """The recipe wrapper of a bind of an event, in the one form of every runtime: UTF-8 bytes are their text, and other
+    bytes, the 16 bytes of a uuid among them, are bytes_hex."""
     if isinstance(bind, (bytes, bytearray, memoryview)):
-        return {"text": bytes(bind).decode("utf-8", "replace")}
+        try:
+            return {"text": bytes(bind).decode("utf-8")}
+        except UnicodeDecodeError:
+            return {"bytes_hex": bytes(bind).hex()}
     return _plain(bind, None)
 
 

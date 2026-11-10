@@ -1,7 +1,7 @@
 # Reads a dialect catalog's check expression as dbspec predicate text
 # (docs/spec/dialects.md "Introspection", "Checks").
 from polyspec.orm.dbspec.parse import go_rune_quote, goq
-from polyspec.orm.dbspec.introspect_catalog import quote
+from polyspec.orm.dbspec.introspect_catalog import quote, uuid_text
 
 __all__ = ["CheckDecodeError", "decode_check", "unscaled_decimal"]
 
@@ -72,6 +72,19 @@ def _check_tokens(dialect: str, text: str) -> list:
             value, n = _read_sql_string(dialect, text[i:])
             out.append({"kind": "string", "text": value})
             i += n
+        elif text.startswith("0x", i) or (ch in "Xx" and text.startswith("'", i + 1)):
+            # A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123).
+            end = "" if ch == "0" else "'"
+            j = i + 2
+            while j < len(text) and text[j] in "0123456789abcdefABCDEF":
+                j += 1
+            digits = text[i + 2 : j]
+            if end != "":
+                if j >= len(text) or text[j] != "'":
+                    raise CheckDecodeError("unclosed binary literal")
+                j += 1
+            out.append({"kind": "bytes", "text": digits.lower()})
+            i = j
         elif _is_digit(ch):
             j = i
             while j < len(text) and (_is_digit(text[j]) or text[j] == "."):
@@ -278,6 +291,9 @@ class _CheckDecoder:
         if t["kind"] == "string":
             self.i += 1
             return _operand("string", t["text"])
+        if t["kind"] == "bytes":
+            self.i += 1
+            return _operand("bytes", t["text"])
         if t["kind"] == "op" and t["text"] == "-":
             self.i += 1
             if self._punct("("):
@@ -381,6 +397,14 @@ class _CheckDecoder:
             return quote(o["text"])
         if o["type"] == "bool":
             return o["text"]
+        if o["type"] == "bytes":
+            # The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has no
+            # other binary literal.
+            if len(o["text"]) != 32 or type_ is None or type_.kind != "uuid":
+                raise CheckDecodeError(
+                    f"the binary literal {o['text']} is no uuid literal"
+                )
+            return quote(uuid_text(bytes.fromhex(o["text"])))
         # number
         if type_ is not None and type_.kind == "bool" and o["text"] == "1":
             return "true"
