@@ -7432,7 +7432,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -7886,7 +7886,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -8187,7 +8187,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -8488,7 +8488,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -8789,7 +8789,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -9090,7 +9090,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -9391,7 +9391,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -9692,7 +9692,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -9993,7 +9993,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -10294,7 +10294,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "mysql": {
@@ -10595,7 +10595,7 @@
           "sql": {
             "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
             "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
-            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+            "sqlite": "SELECT seq, nullif(lower(hex(owner_id)), ''), lower(hex(code)) FROM token ORDER BY seq"
           },
           "expect": {
             "sqlite": {
