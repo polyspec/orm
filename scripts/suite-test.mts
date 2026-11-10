@@ -6,11 +6,13 @@
 //   --list prints the commands and runs none.
 // Each file runs from the checkout root with the environment of the make target (the servers and databases of TEST_ENV,
 // FLOWMARK, ORM_PYTHON). ORM_SUITE_LANES (default 4) is the number of files that run at the same time; a case of a database
-// test makes a database of its own (FCV-9), so files do not share state.
+// test makes a database of its own (FCV-9), so files do not share state. The files that run a recipe of contracts/fixtures run
+// after the others, one at a time, as the recipe targets of every database run their cases (docs/spec/dialects.md DIA-212).
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { render, run, variable, type Command } from './check/commands.mts';
 import { implementationFiles, implementationTestInventory } from './features/languages.mts';
+import { readTree, type Binding } from './features/recipe-runners.mts';
 import { performanceTest } from './features/performance-reference.mts';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -57,6 +59,22 @@ export function suiteTests(lane: SuiteLane, tests: Record<string, string[]> = im
   return files.filter(file => !Object.hasOwn(OWNED_ELSEWHERE, file) && !MARIADB_ENTRY.test(file)).sort();
 }
 
+/**
+ * recipeEntries is the test files of `lane` that run a recipe of contracts/fixtures, the recipes of a fixture (FCV-3). The
+ * cases of such a recipe create and drop databases, and DDL of two cases at once on MariaDB can leave a trigger backup that
+ * fails a later DROP DATABASE (DIA-212), so the recipe runs of every database run one case at a time.
+ */
+export function recipeEntries(lane: SuiteLane, bindings: readonly Binding[]): Set<string> {
+  return new Set(bindings
+    .filter(binding => binding.implementation === lane && binding.recipes.some(recipe => recipe.startsWith('contracts/fixtures/')))
+    .map(binding => binding.test));
+}
+
+/** suiteBatches divides `files` into the files that run `lanes` at a time and the recipe entries, which run one at a time after them. */
+export function suiteBatches(files: readonly string[], entries: ReadonlySet<string>): { together: string[]; inTurn: string[] } {
+  return { together: files.filter(file => !entries.has(file)), inTurn: files.filter(file => entries.has(file)) };
+}
+
 /** suiteCommand is the process that runs one test file of `lane`, from the checkout root. */
 export function suiteCommand(lane: SuiteLane, test: string): Command {
   switch (lane) {
@@ -70,10 +88,9 @@ export function suiteCommand(lane: SuiteLane, test: string): Command {
   }
 }
 
-/** runSuite runs the files of `lane`, `lanes` at a time, and returns the commands that failed. */
-async function runSuite(lane: SuiteLane, lanes: number): Promise<string[]> {
-  const commands = suiteTests(lane).map(test => suiteCommand(lane, test));
-  const failed: string[] = [];
+/** runFiles runs `files` of `lane`, `lanes` at a time, and adds the commands that failed to `failed`. */
+async function runFiles(lane: SuiteLane, files: readonly string[], lanes: number, failed: string[]): Promise<void> {
+  const commands = files.map(test => suiteCommand(lane, test));
   let next = 0;
   const worker = async (): Promise<void> => {
     while (next < commands.length) {
@@ -89,6 +106,14 @@ async function runSuite(lane: SuiteLane, lanes: number): Promise<string[]> {
     }
   };
   await Promise.all(Array.from({ length: Math.min(lanes, commands.length) }, worker));
+}
+
+/** runSuite runs the files of `lane`, `lanes` at a time and then the recipe entries one at a time, and returns the commands that failed. */
+async function runSuite(lane: SuiteLane, lanes: number): Promise<string[]> {
+  const { together, inTurn } = suiteBatches(suiteTests(lane), recipeEntries(lane, readTree().bindings));
+  const failed: string[] = [];
+  await runFiles(lane, together, lanes, failed);
+  await runFiles(lane, inTurn, 1, failed);
   return failed;
 }
 
@@ -99,7 +124,9 @@ if (import.meta.main) {
     process.exit(2);
   }
   if (flag === '--list') {
-    for (const test of suiteTests(lane)) console.log(render(suiteCommand(lane, test), root));
+    // The files that run together, then the recipe entries in the order they run, one at a time.
+    const { together, inTurn } = suiteBatches(suiteTests(lane), recipeEntries(lane, readTree().bindings));
+    for (const test of [...together, ...inTurn]) console.log(render(suiteCommand(lane, test), root));
   } else {
     const lanes = Number(process.env['ORM_SUITE_LANES'] ?? 4);
     if (!Number.isInteger(lanes) || lanes < 1) {

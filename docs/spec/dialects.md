@@ -177,7 +177,18 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   failed with 1010; the code is the same on 12.2 and on main. That is a defect of the server, and the test servers run the
   MariaDB release as it is: sixteen sessions of twenty-five databases each made 3200 copies on 11.8.6, of which 5 stayed
   and 5 drops failed with 1010. A case whose drop fails with 1010 fails with that error, and the client of every runtime
-  returns it as the server gave it, as it does for a user's MariaDB under the same load.
+  returns it as the server gave it, as it does for a user's MariaDB under the same load. The position is global to the server, so a copy
+  stays only while a DDL statement of another session runs, in any database; with no DDL at the same time no copy stays:
+  one session of two hundred databases made 1600 copies on 11.8.6 and left none. So the recipe runs of every runtime run one
+  case at a time, by one policy on every database (MySQL, MariaDB, PostgreSQL, SQLite and markdown): Go, Python and PHP run
+  the cases of a recipe target in order; every TypeScript recipe target runs its files with `--test-concurrency=1`
+  (`RECIPE_TS_TEST` of the Makefile); every group of a recipe in the Rust programs all and mariadb is a recipe group
+  (`Group::recipe`), which runs its trials in order, and every Rust recipe target runs with `--no-fail-fast`
+  (`RECIPE_RUST_TEST`); and the suites (scripts/suite-test.mts) run the files of a recipe of contracts/fixtures one at a
+  time, after their other files. A case whose subject is concurrency, such as concurrent sessions or a lock wait, makes its
+  concurrency inside the case. That changes the order of the cases only, and no case is left out. Runs that share one server, such as the runs
+  of several agents on one machine, still run DDL at the same time: a 1010 of such a run names DIA-212 as its cause, and
+  its case is judged by a run of that case alone.
 
 - **DIA-213** The database of an introspection read — MySQL 8.4 / MariaDB 11.8: MariaDB reads an `information_schema`
   table of one database only when a condition names the schema column of the table that a row describes, `TABLE_SCHEMA`

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: c611bb59d84ff4a5389fe01ee8dd5f2c58b0d286a87121720bcaabcf544dceb5 -->
+<!-- source-sha256: 4fd6baa7eaf31a1f182772aa1474db865932ed0e35780c65338bcd976ac5cabc -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -165,7 +165,18 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   만들고 database를 지우자 11.8.6에서 사본 960개 중 하나가 남았고, 그 삭제는 1010으로 실패했다. 12.2와 main의 code도
   같다. 이것은 server의 결함이고, test server는 MariaDB release를 그대로 쓴다. 11.8.6에서 각 스물다섯 database의 열여섯
   session이 사본 3200개를 만들었고, 그중 5개가 남아 삭제 5개가 1010으로 실패했다. 삭제가 1010으로 실패한 case는 그 오류로
-  실패하고, 모든 runtime의 client는 같은 부하의 사용자 MariaDB에서처럼 그 오류를 server가 준 그대로 돌려준다.
+  실패하고, 모든 runtime의 client는 같은 부하의 사용자 MariaDB에서처럼 그 오류를 server가 준 그대로 돌려준다. 그 위치는 server
+  전체에 하나이므로, 사본은 어느 database에서든 다른 session의 DDL statement가 동시에 실행될 때만 남는다. 동시에 실행되는 DDL이
+  없으면 사본은 남지 않는다. 11.8.6에서 한 session이 database 이백 개로 사본 1600개를 만들었고, 하나도 남지 않았다. 그래서
+  모든 runtime의 recipe run은 모든 database(MySQL, MariaDB, PostgreSQL, SQLite, markdown)에서 같은 정책 하나로 case를
+  한 번에 하나씩 실행한다. Go, Python, PHP는 recipe target의 case를 차례로 실행하고, 모든 TypeScript recipe target은
+  파일을 `--test-concurrency=1`로 실행하며(Makefile의 `RECIPE_TS_TEST`), Rust program all과 mariadb에서 recipe의 모든
+  group은 trial을 차례로 실행하는 recipe group(`Group::recipe`)이고 모든 Rust recipe target은 `--no-fail-fast`로
+  실행하며(`RECIPE_RUST_TEST`), suite(scripts/suite-test.mts)는 contracts/fixtures recipe의 파일을 다른 파일 뒤에 한 번에
+  하나씩 실행한다. 동시 session이나 lock 대기처럼 동시성이 주제인 case는 그 동시성을 case 안에서 만든다. 이것은 case의
+  순서만 바꾸고, 빠지는 case는 없다.
+  한 machine에서 여러 agent가 돌리는 run처럼 server 하나를 나누어 쓰는 run은 여전히 DDL을 동시에 실행한다. 그런 run의
+  1010은 원인으로 DIA-212를 짚고, 그 case를 단독으로 다시 돌려 판정한다.
 
 - **DIA-213** introspection 읽기의 database — MySQL 8.4 / MariaDB 11.8: MariaDB는 조건이 row가 설명하는 table의 schema
   column인 `TABLE_SCHEMA`(`TRIGGERS`에서는 `EVENT_OBJECT_SCHEMA`)를 이름 지을 때만 `information_schema` table을 한 database에서
