@@ -3,14 +3,17 @@
   The PHPUnit configuration of the package's tests. Each test class declares its size: #[Small] for a case that computes in
   memory and reads repository files, #[Medium] for one that runs statements on a database of TEST_ENV, #[Large] for one that
   runs a child process (php, go, node). The time limits are wall-clock deadlines that end a stalled case, not limits on its
-  own computation: a case over its limit fails. PHPUnit enforces them where pcntl is loaded (php-invoker).
+  own computation: a case over its limit fails. The test runner of kit enforces them: its PHPUnit extension sends the limit
+  of each test as the deadline of that test, which a case with a step deadline moves (packages/php/tests/CaseDeadline.php), and the
+  runner stops a test past its deadline. PHPUnit's own time limit (enforceTimeLimit, php-invoker) is off, since its alarm
+  would end such a case at the limit of its size, before its deadline.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="../../vendor-php/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          recordTestRunHistory="false"
          colors="false"
-         enforceTimeLimit="true"
+         enforceTimeLimit="false"
          timeoutForSmallTests="60"
          timeoutForMediumTests="120"
          timeoutForLargeTests="300"
