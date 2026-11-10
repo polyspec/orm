@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: f1890b6c37510da0efa68804307893d71a695c88c6296be83e5f227b98f52391 -->
+<!-- source-sha256: 12ba7a6869d726162b1b28808fd6a0e224ec61489aa82a982165948684731230 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -166,6 +166,16 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   만든다. MariaDB는 `ALTER USER ... DEFAULT ROLE`과 `SET DEFAULT ROLE r TO u`를 거부하고(1064), MySQL은
   `SET DEFAULT ROLE r FOR u`를 거부한다(1064). 그래서 case는 procedure를 server마다 한 번씩 쓰며, 다른 step과 expect는 두
   server에서 같다.
+
+- **DIA-215** replica 기다리기 — MySQL 8.4 / MariaDB 11.8: harness의 step `replica.await`(CFG-23)는 primary의 binary log
+  위치를 읽고 replica가 그 위치를 적용할 때까지 replica에서 기다리며, 두 부분 어느 쪽에도 두 server에 통하는 statement가
+  없다. MySQL은 위치를 `SHOW BINARY LOG STATUS`로 읽는데 MariaDB는 이를 거부하고(1064), MariaDB는 `SHOW BINLOG STATUS`나
+  `SHOW MASTER STATUS`로 읽는데 MySQL 8.4는 이를 거부한다(1064). MySQL은 `SOURCE_POS_WAIT`로 기다리는데 MariaDB에는 그
+  함수가 없다(1305). MySQL 8.4는 MariaDB의 이름인 `MASTER_POS_WAIT`도 실행하지만 그 이름이 없어질 것이라는 warning 1287을
+  함께 내므로, harness는 이를 공통 형식으로 쓰지 않는다. GTID로 기다리는 공통 형식도 없다: MySQL 시험 server는
+  `gtid_mode = OFF`로 돌아 `WAIT_FOR_EXECUTED_GTID_SET`이 실패하고(3062), `MASTER_GTID_WAIT`는 MariaDB에만 있다. 그래서 모든
+  runtime의 harness는 case의 database에 따라 MySQL에서 `SHOW BINARY LOG STATUS`와 `SOURCE_POS_WAIT`를, MariaDB에서
+  `SHOW BINLOG STATUS`와 `MASTER_POS_WAIT`를 실행하며, 기다림과 그 기한은 두 server에서 같다.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

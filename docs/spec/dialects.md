@@ -178,6 +178,17 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   `ALTER USER ... DEFAULT ROLE` and `SET DEFAULT ROLE r TO u` (1064), and MySQL refuses `SET DEFAULT ROLE r FOR u` (1064).
   The case therefore writes its procedure once for each server; its other steps and its expects are the same on both.
 
+- **DIA-215** The wait for a replica — MySQL 8.4 / MariaDB 11.8: the step `replica.await` of the harness (CFG-23) reads the
+  binary log position of the primary and waits on the replica until the replica has applied it, and no statement of
+  either part holds on both servers. MySQL reads the position by `SHOW BINARY LOG STATUS`, which MariaDB refuses (1064),
+  and MariaDB by `SHOW BINLOG STATUS` or `SHOW MASTER STATUS`, which MySQL 8.4 refuses (1064). MySQL waits by
+  `SOURCE_POS_WAIT`, which MariaDB does not have (1305). MySQL 8.4 still runs `MASTER_POS_WAIT`, the name of MariaDB, but
+  only with warning 1287, which says that the name will be removed, so the harness does not take it as a common form. A
+  wait by GTID has no common form either: the MySQL test servers run with `gtid_mode = OFF`, so `WAIT_FOR_EXECUTED_GTID_SET`
+  fails (3062), and `MASTER_GTID_WAIT` is MariaDB's alone. The harness of each runtime therefore runs `SHOW BINARY LOG
+  STATUS` and `SOURCE_POS_WAIT` on MySQL and `SHOW BINLOG STATUS` and `MASTER_POS_WAIT` on MariaDB, chosen by the database of
+  the case; the wait and its deadline are the same on both.
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
