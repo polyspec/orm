@@ -22,14 +22,8 @@ pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
 /// Validates a request against the manifest and plans it for a dialect. A step of the plan that
 /// reads no rows runs with [`crate::Db::execute`] (docs/operations/usage.md "Execute a compiled statement").
 pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
-    compile_for(m, d, r, false)
-}
-
-/// Plans the request as `compile` does; `assigns` is a database that assigns the `key_prefix` key and the `order` position of
-/// a row an insert leaves out, a corpus that a flowmark server serves (docs/spec/protocol.md section 5).
-pub(crate) fn compile_for(m: &Manifest, d: Dialect, r: &ir::Request, assigns: bool) -> Result<Plan> {
     validate::validate(m, r)?;
-    planner::Planner { m, d, assigns }.compile(r)
+    planner::Planner { m, d }.compile(r)
 }
 
 /// Validates the request against the manifest.

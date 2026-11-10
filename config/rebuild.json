@@ -246,6 +246,10 @@
       "kind": "policy",
       "reason": "the rule of this repository that the CI workflow starts the database servers and passes their variables as make orm-test-servers does; it reads the workflow with yaml"
     },
+    "scripts/repo/diff-size.mts": {
+      "kind": "ecosystem",
+      "tool": "git diff --name-only --no-renames counts the files of the diff that GitHub compares for a push; the script compares that count to the 3000 files of GitHub's path filter"
+    },
     "scripts/repo/kit-copies.mts": {
       "kind": "policy",
       "reason": "the files that orm keeps in the form of kit, so the rules of this repository skip them"
@@ -261,6 +265,10 @@
     "scripts/repo/probes.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a client sends no probing statement on connect"
+    },
+    "scripts/repo/release-run.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a release takes a successful push or manual run of ci.yml alone; gh api reads the run, and no ecosystem tool judges which workflow a release may take"
     },
     "scripts/repo/scripts.mts": {
       "kind": "policy",

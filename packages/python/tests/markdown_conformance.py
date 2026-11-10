@@ -246,6 +246,7 @@ def conformance_cases() -> dict:
         m = (
             s.models.People()
             .connect(s.db)
+            .set_id("P1")
             .set_name("Ann")
             .set_email("ann@example.com")
             .set_age(30)
@@ -258,24 +259,39 @@ def conformance_cases() -> dict:
         People = s.models.People
         bob = (
             People()
+            .set_id("P2")
             .set_name("Bob")
             .set_email("bob@example.com")
             .set_age(25)
             .set_score("2.00")
         )
-        cara = People().set_name("Cara").set_email(None).set_age(None).set_score("0.50")
+        cara = (
+            People()
+            .set_id("P3")
+            .set_name("Cara")
+            .set_email(None)
+            .set_age(None)
+            .set_score("0.50")
+        )
         return People().connect(s.db).creates([bob, cara], 2)
 
     def insert_rows_tasks(s):
         Tasks = s.models.Tasks
         rows = [
             Tasks()
+            .set_id("T1")
             .set_owner("P1")
             .set_title("write spec")
             .set_points(3)
             .set_due("2026-10-01"),
-            Tasks().set_owner("P1").set_title("review").set_points(5).set_due(None),
             Tasks()
+            .set_id("T2")
+            .set_owner("P1")
+            .set_title("review")
+            .set_points(5)
+            .set_due(None),
+            Tasks()
+            .set_id("T3")
             .set_owner("P2")
             .set_title("ship")
             .set_points(8)
@@ -500,13 +516,32 @@ def conformance_cases() -> dict:
         m = (
             People()
             .connect(s.db)
+            .set_id("P1")
             .set_name("Ann B")
-            .set_email("ann@example.com")
             .duplication(People().set_name("Ann B"))
             .create()
         )
         read = People().connect(s.db).id("P1").get()
         return {"created": m.get_id(), "name": read.get_name()}
+
+    def insert_on_duplicate_unique(s):
+        Tags = s.models.Tags
+        created = Tags().connect(s.db).set_name("spec").set_uses(1).create()
+        met = (
+            Tags()
+            .connect(s.db)
+            .set_name("spec")
+            .set_uses(1)
+            .duplication(Tags().set_uses(2))
+            .create()
+        )
+        read = Tags().connect(s.db).name("spec").get()
+        return {
+            "created": created.get_id(),
+            "met": met.get_id(),
+            "uses": read.get_uses(),
+            "count": Tags().connect(s.db).get_count(),
+        }
 
     def delete(s):
         s.models.Tasks().connect(s.db).id("T2").get().delete()
@@ -971,6 +1006,7 @@ def conformance_cases() -> dict:
         "update": update,
         "update_optimistic_conflict": update_optimistic_conflict,
         "insert_on_duplicate": insert_on_duplicate,
+        "insert_on_duplicate_unique": insert_on_duplicate_unique,
         "delete": delete,
         "delete_referenced": delete_referenced,
         "soft_delete": soft_delete,

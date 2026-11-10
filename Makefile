@@ -413,8 +413,11 @@ release-tools-path: ## Append var/tools/bin and the shims of mise to GITHUB_PATH
 	@echo "$(KIT_TOOLS)/mise/shims" >> "$$GITHUB_PATH"
 	@echo "$(KIT_TOOLS)/bin" >> "$$GITHUB_PATH"
 	@for name in $(MISE_ENVIRONMENT); do echo "$$name=$$(printenv $$name)"; done >> "$$GITHUB_ENV"
-release-tag: ## Tag the commit of the successful CI run RUN with vX.Y.Z of its change log and the Go module tags; AUTO for a workflow_run; reads the run with gh
+# The run check (scripts/repo/release-run.mts, T418) comes first: kit's release-run takes a successful run of any workflow, and
+# a release takes a run of ci.yml alone. With AUTO the workflow checked out the head commit of the run, which the check compares.
+release-tag: ## Tag the commit of the successful ci.yml run RUN with vX.Y.Z of its change log and the Go module tags; AUTO for a workflow_run; reads the run with gh
 	@test -n "$$RUN" || { echo "release-tag: RUN is required; run make release-tag RUN=<id of a successful ci.yml run>" >&2; exit 1; }
+	$(NODE) scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")
 	RELEASE_MAIN=origin/main $(NODE) $(KIT)/release-run.$(KIT_EXT) tag "$$RUN"$(if $(AUTO), --auto)
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
@@ -2013,7 +2016,7 @@ PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
 .PHONY: python-models
 PYTHON_MODELS_STAMP = $(CURDIR)/packages/python/tests/models/python-models.key
 python-models: python-venv-check
-	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(PYTHON_MODELS_SET) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
+	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(dir $(PYTHON_MODELS_SET)) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 .PHONY: python-model-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
@@ -2543,6 +2546,19 @@ docs-build: orm-codes-typescript
 # in .runtime/check/<run id>/report, which the workflow uploads as the job summary and an artifact.
 docs-ci:
 	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-site-check
+
+# DOCUMENT_CHECKS are the checks that read the documents that ci.yml ignores (DOCUMENT_PATHS of scripts/repo/ci.mts, T418), which
+# documents.yml runs on every push; ci.yml runs them too, so the run that a release takes holds them. make repo-check fails a
+# document of DOCUMENT_PATHS that a target outside them reads. documents-ci runs them as the make orm-check runner, as docs-ci
+# does, without a test server, and runs the next target even when one fails.
+DOCUMENT_CHECKS = layout-check docs-check rules-check docs-rules-check docs-implementation-count-check docs-verify-idempotent docs-site-check
+documents-ci:
+	$(NODE) scripts/check/run.mts --job-summary - $(DOCUMENT_CHECKS)
+
+# diff-size-check fails a push whose diff holds more than the 3000 files over which GitHub evaluates the paths-ignore of ci.yml
+# (scripts/repo/diff-size.mts); documents.yml runs it with the event of GITHUB_EVENT_NAME and GITHUB_EVENT_PATH.
+diff-size-check:
+	$(NODE) scripts/repo/diff-size.mts
 
 orm-docs-check: orm-codes-typescript
 	$(NPM) run docs:check
@@ -3234,10 +3250,13 @@ orm-install-php: orm-codes-php
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
+# The inputs of the PHP models are also the directory of the document set of each entry, which holds the set and its documents, so a
+# fixture change regenerates the models that it is read into.
+PHP_MODELS_SETS = $(sort $(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(PHP_MODELS_FILE))))
 # Each entry generates into <dir>.tmp, which replaces <dir> by a rename after the generator succeeds (B1-4), so a stopped run leaves the
 # previous directory whole and never a directory with some files new and some old.
 php-models: php-vendor-check
-	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) tests/bind -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) $(PHP_MODELS_SETS) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
@@ -3266,8 +3285,11 @@ orm-install-rust-crates:
 GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
 GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
+# The inputs of the Go models are packages/go and the directory of the document set of each entry (named from packages/go), which holds
+# the set and its documents, so a fixture change regenerates the models that it is read into.
+GO_MODELS_SETS = $(sort $(patsubst ../../%,%,$(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(GO_MODELS_FILE)))))
 go-models:
-	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go $(GO_MODELS_SETS) -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models

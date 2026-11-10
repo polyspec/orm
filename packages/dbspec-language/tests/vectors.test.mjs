@@ -38,9 +38,11 @@ function othersOf(texts, name) {
 const headerName = lines => lines[0].split(' ')[2];
 
 /** The 1-based line and code point column of a range start, with the rule: the form of the case errors. */
-function errorOf(text, d) {
+function errorOf(text, d, want) {
   const line = parserLines(text)[d.range.start.line];
-  return { line: d.range.start.line + 1, column: codePointIndex(line, d.range.start.character) + 1, rule: d.rule };
+  const error = { line: d.range.start.line + 1, column: codePointIndex(line, d.range.start.character) + 1, rule: d.rule };
+  // The message is compared where the expected diagnostic states it.
+  return want?.message === undefined ? error : { ...error, message: d.message };
 }
 
 /** The text and the set of a recipe step: its lines joined with the step's line ends, and the other documents by name. */
@@ -89,7 +91,7 @@ for (const c of recipes.invalid) {
     const step = stepOf(c, 'dbspec.format');
     const { text, set } = stepInput(step);
     const doc = openDocument(text, { set });
-    assert.deepEqual(doc.diagnostics.map(d => errorOf(text, d)), step.expect.none.diagnostics);
+    assert.deepEqual(doc.diagnostics.map((d, i) => errorOf(text, d, step.expect.none.diagnostics[i])), step.expect.none.diagnostics);
     const formatted = doc.format();
     assert.equal(formatted.text, null);
     assert.deepEqual(formatted.diagnostics, doc.diagnostics);

@@ -1230,8 +1230,7 @@ final class Db
         // The connection plans only the sets registered to it.
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
-        // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
-        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize, $this->corpus);
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
         $r->canonicalize();
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
@@ -1333,8 +1332,7 @@ final class Db
 
     /**
      * @internal @return array{0: int|float|string|null, 1: int} the key of the inserted row and the
-     *     affected rows: the generated identity, or the key_prefix key that a corpus allocated on a markdown
-     *     connection, which the insert reads with RETURNING (PRT-73)
+     *     affected rows: the generated identity
      */
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array
     {

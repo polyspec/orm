@@ -7,7 +7,7 @@ use polyspec_orm_tests::bench_models::{bench_config, bench_dispatcher, cells, co
 use polyspec_orm_tests::recipe::ModelDispatcher;
 use serde_json::{json, Value};
 
-use crate::model::{Author, CompositeAccount, CompositeMembership, SCHEMA};
+use crate::model::{Author, CompositeAccount, CompositeMembership, RankedTask, SCHEMA};
 
 /// The factory that the recipe helper calls once for each case.
 pub fn models() -> Box<dyn ModelDispatcher> {
@@ -115,10 +115,32 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
     Ok(json!({ "attempts": attempts, "deadlocks": deadlocks, "same_flow": same_flow }))
 }
 
+/// model.create and model.count of RankedTask, whose order column the application writes (DBS-79).
+async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+    if op == "model.count" {
+        let filter = &polyspec_orm_tests::recipe_reads::read(step, "where")["where"];
+        if !filter.is_null() && filter.as_object().is_none_or(|filter| !filter.is_empty()) {
+            return Err(format!("RankedTask where {filter} has no recipe entry"));
+        }
+        let count = RankedTask::new().connect(db).get_count().await.map_err(fail)?;
+        return Ok(json!({ "value": { "int": count.to_string() } }));
+    }
+    let mut row = RankedTask::new().connect(db);
+    for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "values")["values"])? {
+        row = match column.as_str() {
+            "title" => row.set_title(text(value)?),
+            "position" => row.set_position(i32::try_from(int(value)?).map_err(|e| format!("RankedTask position {value}: {e}"))?),
+            other => return Err(format!("RankedTask column {other} has no recipe entry")),
+        };
+    }
+    row.create().await.map(|_| json!({})).map_err(fail)
+}
+
 /// The op of `step` on `db`: its fields, which the expect of the step compares.
 async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "transaction.deadlock" => transaction_deadlock(db, step).await,
+        "model.create" | "model.count" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "RankedTask" => ranked_task(db, op, step).await,
         "model.create" => set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.create().await.map(|_| json!({})).map_err(fail),
         "model.creates" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "CompositeMembership" => {
             let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"]

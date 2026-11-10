@@ -2591,7 +2591,9 @@ function checkRefusal(text, set, want) {
   const formatted = formatDbspec(text, set);
   assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
   for (const got of [parsed.diagnostics, formatted.diagnostics]) {
-    assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+    // The message is compared where the expected diagnostic states it.
+    const rows = got.map((d, i) => ({ rule: d.rule, line: d.line, column: d.column, ...(want[i]?.message === undefined ? {} : { message: d.message }) }));
+    assert.deepEqual(rows, want, 'diagnostics');
     for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
   }
 }

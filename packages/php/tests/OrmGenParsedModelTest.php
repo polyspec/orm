@@ -23,8 +23,8 @@ class OrmGenParsedModelTest extends TestCase
 
     private const NAMESPACE = 'Polyspec\\Orm\\Tests\\ParsedModel';
     private const UNPARSABLE = 'not a dbspec document';
-    /** The sha256 of the JSON of the entities of the bench set, in RuntimeModel::FORMAT 1. */
-    private const FORMAT_FINGERPRINT = '750c57b875ca2628f3876b6b4480c1b9e1ab29053533554c9b5802e5b46709ec';
+    /** The sha256 of the JSON of the entities of the bench set, in RuntimeModel::FORMAT 2. */
+    private const FORMAT_FINGERPRINT = '96cc255f4afe940744a6421ab0180dbf161897175a175cfed19742629e773717';
     /** Reads the runtime model of the set in the directory of the first argument and prints the result as JSON. */
     private const READER = <<<'READER'
     <?php
@@ -137,7 +137,7 @@ class OrmGenParsedModelTest extends TestCase
     public function testTheFormatNamesWhatBuildMakes(): void
     {
         $set = dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json';
-        self::assertSame(1, RuntimeModel::FORMAT);
+        self::assertSame(2, RuntimeModel::FORMAT);
         self::assertSame(
             self::FORMAT_FINGERPRINT,
             hash('sha256', json_encode(RuntimeModel::build(RuntimeModel::set($set))->entities, JSON_THROW_ON_ERROR)),

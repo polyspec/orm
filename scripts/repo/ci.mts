@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { Minimatch } from 'minimatch';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
 import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
@@ -765,13 +766,72 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
   return errors;
 }
 
-// WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main and on manual runs,
+// DOCUMENT_PATHS are the paths-ignore of the push trigger of ci.yml (T418): the documents that only DOCUMENT_CHECKS of the
+// Makefile read, which documents.yml runs on every push. A push whose every changed path matches one starts no run of ci.yml;
+// GitHub compares the diff of the whole push, so a push that holds any other path runs every job. AGENTS.md and AGENTS.ko.md
+// are no such documents (repo-check reads them), nor the checklist of kit-standard (scripts/features/check.mts reads it), the
+// specs or any other document that a code check reads; a plan that is not listed here starts every job. One lint is no read
+// of a document: the lint `**` of repo-check checks the form of every path name, and layout-check of documents.yml checks the
+// form of the path of a document that ci.yml ignores, while the documents that repo-check reads by their text (AGENTS.md and
+// AGENTS.ko.md) stay its inputs (documentPathErrors).
+export const DOCUMENT_PATHS = [
+  'CHANGELOG*.md', 'CODE_OF_CONDUCT*.md', 'CONTRIBUTING*.md', 'PRINCIPLES*.md', 'README*.md', 'SECURITY*.md',
+  'docs/plans/check-recipes/**', 'docs/plans/cross-verification/**', 'docs/plans/execution/**',
+  'docs/plans/kit-standard/plan.md', 'docs/plans/kit-standard/*.ko.md',
+];
+
+// WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main that change a path outside
+// DOCUMENT_PATHS and on manual runs; documents.yml runs the document checks on every push to main and on manual runs;
 // docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows Kit owns (release.yml
 // among them) are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
 export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
-  '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
+  '.github/workflows/ci.yml': { push: { branches: ['main'], 'paths-ignore': DOCUMENT_PATHS }, workflow_dispatch: null },
+  '.github/workflows/documents.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
   '.github/workflows/docs-pages.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
 };
+
+// A pattern of a workflow path filter: `*` within one path segment, `**` across segments, as GitHub reads it.
+const filterPattern = (glob: string) => new Minimatch(glob, { dot: true });
+
+// workflowStarts returns whether a push that changes `paths` starts a workflow whose push trigger is `trigger`: with
+// paths-ignore, GitHub starts it when some changed path matches no pattern of it; with no path filter, on every push.
+export function workflowStarts(trigger: unknown, paths: readonly string[]): boolean {
+  const ignore: unknown = typeof trigger === 'object' && trigger !== null ? Object.entries(trigger).find(([key]) => key === 'paths-ignore')?.[1] : undefined;
+  if (ignore === undefined) return paths.length > 0;
+  if (!Array.isArray(ignore) || !ignore.every(glob => typeof glob === 'string')) throw new Error('paths-ignore is no list of patterns');
+  const patterns = ignore.map(filterPattern);
+  return paths.some(path => !patterns.some(pattern => pattern.match(path)));
+}
+
+// SUITE_READS are the documents that suite targets read, which declare no inputs (contracts/check-inputs.json): rules-check
+// reads the rules of AGENTS.md and PRINCIPLES.md, layout-check the name of every path, and the feature verification reads the
+// checklist of kit-standard (scripts/features/check.mts).
+export const SUITE_READS: Record<string, string[]> = {
+  'rules-check': ['AGENTS*.md', 'PRINCIPLES*.md'],
+  'layout-check': ['**'],
+  'feature-verify-rust': ['docs/plans/kit-standard/checklist.md'],
+  'feature-verify-other': ['docs/plans/kit-standard/checklist.md'],
+};
+
+// documentPathErrors returns one error for each tracked path that `ignore` matches and that a target outside `documentChecks`
+// reads: an owner target by its inputs or by a lint that names the path, or a suite target of `suiteReads`. The lint `**` of
+// repo-check checks the form of every path name, which layout-check checks for a document too; repo-check reads AGENTS.md and
+// AGENTS.ko.md, its inputs. A path that such a target reads is never ignored, so ci.yml runs that target on its change.
+export function documentPathErrors(ignore: readonly string[], tracked: readonly string[], targets: Record<string, { inputs?: string[]; lints?: string[] }>, documentChecks: readonly string[], suiteReads: Record<string, string[]> = SUITE_READS): string[] {
+  const patterns = ignore.map(filterPattern);
+  const reads: [string, Minimatch[]][] = [
+    ...Object.entries(targets).map(([target, { inputs, lints }]): [string, Minimatch[]] => [target, [...(inputs ?? []), ...(lints ?? []).filter(glob => glob !== '**')].map(filterPattern)]),
+    ...Object.entries(suiteReads).map(([target, globs]): [string, Minimatch[]] => [target, globs.map(filterPattern)]),
+  ];
+  const errors: string[] = [];
+  for (const path of tracked.filter(file => patterns.some(pattern => pattern.match(file)))) {
+    for (const [target, globs] of reads) {
+      if (!documentChecks.includes(target) && globs.some(glob => glob.match(path)))
+        errors.push(`ci.yml ignores ${path}, which ${target} reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml`);
+    }
+  }
+  return errors;
+}
 
 // workflowTriggerErrors returns one error for each place where a workflow in WORKFLOW_TRIGGERS is missing or has a different `on:` value, and for each place where another workflow runs on push,
 // pull_request, or merge_group.
@@ -786,7 +846,7 @@ export function workflowTriggerErrors(workflows: Record<string, string>): string
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
     const ran = events(readWorkflow(workflow, path)).filter(event => ['push', 'pull_request', 'merge_group'].includes(event));
-    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml and docs-pages.yml run on these events`);
+    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, documents.yml and docs-pages.yml run on these events`);
   }
   return errors;
 }

@@ -80,6 +80,8 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return userOp(s, c, db)
 	case "NoteReader":
 		return noteReaderOp(s, c, db)
+	case "RankedTask":
+		return rankedTaskOp(s, c, db)
 	}
 	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.k("model").Model)
 }
@@ -149,6 +151,17 @@ type columnSetter func(v any, column string) error
 func int64Setter[R any](set func(int64) R) columnSetter {
 	return func(v any, column string) error {
 		n, err := int64Of(v, column)
+		if err == nil {
+			set(n)
+		}
+		return err
+	}
+}
+
+// int32Setter is the columnSetter of a model setter of an i32 column.
+func int32Setter[R any](set func(int32) R) columnSetter {
+	return func(v any, column string) error {
+		n, err := int32Of(v, column)
 		if err == nil {
 			set(n)
 		}
@@ -1072,6 +1085,33 @@ func noteReaderOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, erro
 		rows = append(rows, []any{wrapperOf(parent["seq"]), wrapperOf(child.ToArray()["title"])})
 	}
 	return outcome{fields: map[string]any{"rows": rows}}, nil
+}
+
+// rankedTaskOp runs model.create and model.count of RankedTask, whose order column the application writes (DBS-79).
+func rankedTaskOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	switch s.k("op").Op {
+	case "model.create":
+		values, err := modelValues(s.k("values").Values, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m := model.RankedTask().Connect(db)
+		err = setColumns("RankedTask", values, map[string]columnSetter{
+			"title":    stringSetter(m.SetTitle),
+			"position": int32Setter(m.SetPosition),
+		})
+		if err != nil {
+			return outcome{}, err
+		}
+		_, err = m.Create()
+		return outcome{fields: map[string]any{}}, err
+	case "model.count":
+		if len(s.k("where").Where) > 0 && string(s.k("where").Where) != "{}" {
+			return outcome{}, fmt.Errorf("RankedTask where %s has no recipe entry", s.k("where").Where)
+		}
+		return modelCount(model.RankedTask().Connect(db))
+	}
+	return outcome{}, fmt.Errorf("op %s has no RankedTask entry", s.k("op").Op)
 }
 
 // searchEntity is the runtime-model entity of the model Author: an entity without an `entity` setting is named by its table

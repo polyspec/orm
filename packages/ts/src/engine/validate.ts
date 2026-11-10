@@ -443,8 +443,8 @@ function hasGroupBy(q: RequestQuery): boolean {
  * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while PostgreSQL
  * and SQLite name one target and a meeting on another key is a unique violation, so no order of keys reproduces both:
  * an upsert has exactly one key that can meet the inserted row, and the insert assigns every column of it. The
- * candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor assigns), and
- * each unique key; a blind index column counts as assigned with its AES source.
+ * candidates are the primary key, unless the insert leaves it out (an identity), and each unique key; a blind index
+ * column counts as assigned with its AES source.
  */
 export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly string[] {
   const assigned = new Set(set.map(a => a.column));

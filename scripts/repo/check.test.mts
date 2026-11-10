@@ -8,7 +8,9 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
+import { repositoryOf, runErrors } from './release-run.mts';
+import { AFTER_GROUP_CHECK, documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -96,6 +98,26 @@ caseTest('the Go model build regenerates models', COMPUTE, () => {
   const generation = result.stdout.indexOf('go run ./cmd/orm-gen sets');
   assert.ok(generation >= 0, 'build-go does not run the Go model generator');
   assert.match(result.stdout, /go run \.\/cmd\/orm-gen sets/);
+});
+
+// A model generator's key covers the directory of the document set of each of its entries, which holds the set and its documents, so a
+// fixture change regenerates the models that it is read into: the Go and PHP keys once named only their own package.
+caseTest('the key of a model generator covers the document set of each of its entries', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const sets = (file: string, base: string) => [...text(file).matchAll(/^--set (\S+)/gm)].map(match => posix.dirname(posix.normalize(posix.join(base, match[1] ?? ''))));
+  const expected: [string, string[]][] = [
+    ['go-models', sets('packages/go/models.txt', 'packages/go')],
+    ['php-models', sets('packages/php/models.txt', '.')],
+    ['python-models', [posix.dirname(/^PYTHON_MODELS_SET = (\S+)$/m.exec(text('Makefile'))?.[1] ?? '')]],
+  ];
+  for (const [target, dirs] of expected) {
+    const result = spawnSync('make', ['-n', '--no-print-directory', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(result.status, 0, result.stderr);
+    const line = result.stdout.split('\n').find(entry => entry.includes('once.mts') && entry.includes(`/${target}.key `));
+    assert.ok(line !== undefined, `${target} runs no keyed generator: ${result.stdout}`);
+    const inputs = (line.split(' -- ')[0] ?? '').split(/\s+/).map(path => path.replace(/\/$/, ''));
+    for (const dir of dirs) assert.ok(inputs.includes(dir), `${target} does not key on ${dir}: ${line.split(' -- ')[0]}`);
+  }
 });
 
 caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
@@ -253,7 +275,7 @@ const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/w
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
 caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/documents.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
@@ -2047,6 +2069,135 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
   assert.throws(() => timeFailureErrors({ 'a_test.go': 'package a\n' }), /timeFailureErrors reads no Go source \(a_test\.go\); go vet runs the analyzer timefailure of tests\/analyzers over it/);
 });
 
+// The selection cases of ci.yml by the changed paths of a push (T418): its push trigger starts no run when every changed path
+// is a document of DOCUMENT_PATHS, and every job otherwise; the version commit, an undeclared path and a change under
+// packages/go run every group, the Go groups among them.
+const repositoryRoot = new URL('../..', import.meta.url).pathname;
+const ciPush = (): unknown => {
+  const on = readWorkflow(readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'), 'ci.yml').value['on'];
+  return typeof on === 'object' && on !== null ? Object.entries(on).find(([event]) => event === 'push')?.[1] : undefined;
+};
+const SELECTION: { name: string; paths: string[]; starts: boolean }[] = [
+  { name: 'a document-only push, the checklist cells of a row', paths: ['docs/plans/execution/checklist.md', 'docs/plans/execution/checklist.ko.md'], starts: false },
+  { name: 'a push of the root documents and the plans', paths: ['README.md', 'README.ko.md', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'PRINCIPLES.md', 'SECURITY.md', 'CONTRIBUTING.ko.md', 'CODE_OF_CONDUCT.md', 'docs/plans/cross-verification/plan.md', 'docs/plans/kit-standard/checklist.ko.md'], starts: false },
+  { name: 'a change under packages/go', paths: ['packages/go/orm/db.go'], starts: true },
+  { name: 'a change under packages/go pushed with documents', paths: ['docs/plans/execution/checklist.md', 'packages/go/orm/db.go'], starts: true },
+  { name: 'AGENTS.md, which repo-check reads', paths: ['AGENTS.md'], starts: true },
+  { name: 'the checklist of kit-standard, which the feature checks read', paths: ['docs/plans/kit-standard/checklist.md'], starts: true },
+  { name: 'a spec, which the docs-implementation and recipe checks read', paths: ['docs/spec/dbspec.md'], starts: true },
+  { name: 'an undeclared path', paths: ['notes.txt'], starts: true },
+  { name: 'an undeclared plan', paths: ['docs/plans/new-plan/plan.md'], starts: true },
+  { name: 'a version commit', paths: ['VERSION', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'package.json', 'packages/ts/package.json', 'packages/php/composer.json'], starts: true },
+];
+for (const change of SELECTION) {
+  caseTest(`ci.yml on push: ${change.name} ${change.starts ? 'starts every group' : 'starts no run'}`, COMPUTE, () => {
+    assert.equal(workflowStarts(ciPush(), change.paths), change.starts, `${change.paths.join(', ')} against ${JSON.stringify(ciPush())}`);
+  });
+}
+
+caseTest('ci.yml ignores no package file of config/release.json and no VERSION, so a version commit runs every group', COMPUTE, () => {
+  const release: unknown = JSON.parse(readFileSync(join(repositoryRoot, 'config/release.json'), 'utf8'));
+  const manifests: unknown = typeof release === 'object' && release !== null ? Object.entries(release).find(([key]) => key === 'manifests')?.[1] : undefined;
+  assert.ok(typeof manifests === 'object' && manifests !== null, 'config/release.json names its manifests');
+  for (const file of ['VERSION', ...Object.keys(manifests)]) assert.ok(workflowStarts(ciPush(), [file]), `ci.yml ignores ${file}`);
+});
+
+caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', COMPUTE, () => {
+  assert.equal(workflowStarts({ branches: ['main'] }, ['README.md']), true);
+  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['README.md']), false);
+  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['packages/go/README.md']), true);
+  assert.equal(workflowStarts({ 'paths-ignore': ['docs/plans/**'] }, ['docs/plans/a/b/c.md']), false);
+  assert.throws(() => workflowStarts({ 'paths-ignore': 'docs/**' }, ['a']), /paths-ignore is no list of patterns/);
+});
+
+caseTest('every path that ci.yml ignores is read by the document checks of documents.yml alone', COMPUTE, () => {
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repositoryRoot }).toString().split('\0').filter(Boolean);
+  const documentChecks = (makeVariables(readFileSync(join(repositoryRoot, 'Makefile'), 'utf8')).get('DOCUMENT_CHECKS') ?? '').split(/\s+/).filter(Boolean);
+  assert.ok(documentChecks.length > 0, 'the Makefile declares DOCUMENT_CHECKS');
+  assert.deepEqual(documentPathErrors(DOCUMENT_PATHS, tracked, readCheckInputs(repositoryRoot).targets, documentChecks), []);
+  assert.ok(tracked.some(file => !workflowStarts(ciPush(), [file])), 'ci.yml ignores a tracked path');
+  // A path that a code check reads is refused: by the inputs of an owner target, by a lint that names it, and by a suite read.
+  const targets = { 'docs-check': { inputs: ['**/*.md'] }, 'spec-check': { inputs: ['docs/spec/**'] }, 'go-vet-check': { lints: ['**/*.go'] }, 'repo-check': { lints: ['**'] } };
+  assert.deepEqual(documentPathErrors(['docs/**', '*.go'], ['docs/spec/a.md', 'docs/plans/p.md', 'a.go'], targets, ['docs-check'], { 'feature-verify-rust': ['docs/plans/p.md'] }), [
+    'ci.yml ignores docs/spec/a.md, which spec-check reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+    'ci.yml ignores docs/plans/p.md, which feature-verify-rust reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+    'ci.yml ignores a.go, which go-vet-check reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+  ]);
+});
+
+const SHA_BEFORE = 'a'.repeat(40);
+const SHA_AFTER = 'b'.repeat(40);
+caseTest('the diff of a push is the two-dot diff of its before and after commits, and a manual run has none', COMPUTE, () => {
+  assert.deepEqual(diffOf('push', { ref: 'refs/heads/main', before: SHA_BEFORE, after: SHA_AFTER }), { range: `${SHA_BEFORE}..${SHA_AFTER}` });
+  assert.ok('none' in diffOf('workflow_dispatch', {}));
+  assert.throws(() => diffOf('push', { ref: 'refs/heads/main', before: '0'.repeat(40), after: SHA_AFTER }), /creates refs\/heads\/main/);
+  assert.throws(() => diffOf('push', { before: SHA_BEFORE }), /the event has no after/);
+  assert.throws(() => diffOf('pull_request', {}), /pull_request is none that ci\.yml filters/);
+});
+
+caseTest(`a diff of ${LIMIT} files passes the size check and one of ${LIMIT + 1} fails it`, COMPUTE, () => {
+  assert.equal(judge('x..y', LIMIT), undefined);
+  assert.match(judge('x..y', LIMIT + 1) ?? '', /x\.\.y changes 3001 files, more than the 3000/);
+});
+
+caseTest('the size check counts the changed files of the range, a rename as its two paths', PROCESS, () => {
+  const directory = mkdtempSync(join(tmpdir(), 'diff-size-'));
+  try {
+    const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd: directory, encoding: 'utf8' }).trim();
+    git('init', '-q');
+    writeFileSync(join(directory, 'a.md'), 'a\n');
+    writeFileSync(join(directory, 'b.go'), 'package b\n');
+    git('add', '.');
+    git('commit', '-q', '--no-verify', '-m', 'one');
+    const before = git('rev-parse', 'HEAD');
+    writeFileSync(join(directory, 'a.md'), 'a2\n');
+    git('mv', 'b.go', 'c.go');
+    writeFileSync(join(directory, 'with space.txt'), 'x\n');
+    git('add', '.');
+    git('commit', '-q', '--no-verify', '-m', 'two');
+    assert.equal(changedFiles(directory, `${before}..HEAD`), 4);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+// The run check of a release (T418): make release-tag takes a successful push or manual run of ci.yml on the commit it tags,
+// and refuses a run of any other workflow before kit tags. The fixtures are answers of gh api repos/<repo>/actions/runs/<id>.
+const RELEASE_SHA = 'c'.repeat(40);
+const apiRun = (fields: Record<string, unknown>): Record<string, unknown> => ({ id: 7, name: 'ci', path: '.github/workflows/ci.yml', event: 'push', status: 'completed', conclusion: 'success', head_sha: RELEASE_SHA, head_branch: 'main', ...fields });
+
+caseTest('make release-tag runs the run check on RUN before kit tags its commit', COMPUTE, () => {
+  const makefile = readFileSync(join(repositoryRoot, 'Makefile'), 'utf8');
+  const recipe = makefile.split(/^release-tag:.*\n/m)[1]?.split(/^\S/m)[0] ?? '';
+  const check = recipe.indexOf('scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")');
+  assert.ok(check >= 0, `the recipe of release-tag runs scripts/repo/release-run.mts on RUN:\n${recipe}`);
+  assert.ok(recipe.indexOf('release-run.$(KIT_EXT) tag "$$RUN"') > check, 'the run check comes before the tag step of kit');
+});
+
+caseTest('a release takes a successful push or manual run of ci.yml, also on the commit that it tags', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({})), []);
+  assert.deepEqual(runErrors('7', apiRun({}), RELEASE_SHA), []);
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_dispatch' })), []);
+});
+
+caseTest('a release refuses a run of documents.yml and of docs-pages.yml and names the workflow', COMPUTE, () => {
+  for (const [id, workflow] of [['8', 'documents.yml'], ['9', 'docs-pages.yml']] as const) {
+    assert.deepEqual(runErrors(id, apiRun({ path: `.github/workflows/${workflow}` })), [
+      `run ${id} is a run of .github/workflows/${workflow}, not of .github/workflows/ci.yml; a release takes a successful run of .github/workflows/ci.yml`,
+    ]);
+  }
+});
+
+caseTest('a release refuses a ci.yml run of another event, without success or on another commit', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_run' })), ['run 7 is a workflow_run run, not a push or workflow_dispatch run']);
+  assert.deepEqual(runErrors('7', apiRun({ conclusion: 'cancelled' })), ['run 7 has the conclusion cancelled, not success']);
+  assert.deepEqual(runErrors('7', apiRun({}), 'd'.repeat(40)), [`run 7 ran on ${RELEASE_SHA}, not on the commit ${'d'.repeat(40)} that the release tags`]);
+  assert.deepEqual(runErrors('7', apiRun({ head_sha: 'abc' })), ['run 7 names no head_sha']);
+  assert.equal(runErrors('7', { message: 'Not Found' }).length, 4);
+  assert.equal(repositoryOf({ repositoryUrl: 'https://github.com/polyspec/orm' }), 'polyspec/orm');
+  assert.throws(() => repositoryOf({}), /no repositoryUrl/);
+});
+
 // The trigger case (G5.98) checks that the `on:` blocks of ci.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
 // pull_request or merge_group.
 caseTest('every workflow runs on its declared events only', COMPUTE, () => {
@@ -2058,7 +2209,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text([stringify({ on })])]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  pull_request:', '  push:', '    branches: [main]', '  workflow_dispatch:']) }), [
-    '.github/workflows/ci.yml has the triggers {"pull_request":null,"push":{"branches":["main"]},"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
+    `.github/workflows/ci.yml has the triggers {"pull_request":null,"push":{"branches":["main"]},"workflow_dispatch":null} instead of ${JSON.stringify(WORKFLOW_TRIGGERS['.github/workflows/ci.yml'])}`,
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
     '.github/workflows/docs-pages.yml has the triggers {"push":{"branches":["main"]},"pull_request":null,"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
@@ -2066,13 +2217,13 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const { ['.github/workflows/docs-pages.yml']: _, ...withoutPages } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutPages, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
     '.github/workflows/docs-pages.yml is missing; it runs on {"push":{"branches":["main"]},"workflow_dispatch":null}',
-    '.github/workflows/review.yml runs on pull_request; only ci.yml and docs-pages.yml run on these events',
+    '.github/workflows/review.yml runs on pull_request; only ci.yml, documents.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
   // release.yml is owned by Kit, so the table holds no entry for it (KSTD-5-25).
   assert.equal(Object.hasOwn(WORKFLOW_TRIGGERS, '.github/workflows/release.yml'), false);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
-    '.github/workflows/release.yml runs on push; only ci.yml and docs-pages.yml run on these events',
+    '.github/workflows/release.yml runs on push; only ci.yml, documents.yml and docs-pages.yml run on these events',
   ]);
 });
 

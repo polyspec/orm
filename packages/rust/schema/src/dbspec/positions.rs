@@ -26,19 +26,12 @@ pub(crate) fn positions(declarations: &[Declaration]) -> Vec<Position> {
 }
 
 /// The words that make a setting's repeat unique (docs/spec/dbspec.md "Settings"): the column of codec and
-/// markdown, the foreign key of navigation, the AES column of blind_index, the column and state of checkbox,
-/// and the form and states of a state_machine line, whose column is left out since a table holds one
-/// machine. Every other setting appears at most once and has no identity.
+/// markdown, the foreign key of navigation, and the AES column of blind_index. Every other setting appears at
+/// most once and has no identity.
 fn setting_identity(words: &SettingWords) -> Vec<String> {
     let args = &words.args;
     match words.keyword.as_str() {
         "codec" | "markdown" | "navigation" | "blind_index" => vec![args[0].clone()],
-        "checkbox" => vec![args[0].clone(), args[1].clone()],
-        "state_machine" => match words.form.as_str() {
-            "transition" => vec!["transition".to_owned(), args[1].clone(), args[2].clone()],
-            "history" => vec!["history".to_owned()],
-            form => vec![form.to_owned(), args[1].clone()],
-        },
         _ => Vec::new(),
     }
 }

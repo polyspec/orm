@@ -1,6 +1,6 @@
 {
   "name": "@polyspec/orm",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "TypeScript ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite",
   "license": "MIT",
   "repository": {
@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.23/polyspec-ordered-json-0.0.23.tgz",
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.24/polyspec-ordered-json-0.0.24.tgz",
     "mysql2": "^3.24.6",
     "oxc-parser": "0.156.0",
     "pg": "^8.23.1",

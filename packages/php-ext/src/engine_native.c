@@ -361,9 +361,8 @@ ZEND_METHOD(Polyspec_Orm_Assemble, cells)
 
 /* ---- Engine ---- */
 
-/* new Engine($model, $dialect, $cacheSize, $assigns): a Validator of the model and a Planner of the model, the Dialect and
- * whether the database assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
-static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size, bool assigns)
+/* new Engine($model, $dialect, $cacheSize): a Validator of the model and a Planner of the model and the Dialect. */
+static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size)
 {
     zval validator, planner, dialect_object, name;
     if (!engine_new("Polyspec\\Orm\\Validator", &validator, 1, model)) {
@@ -376,11 +375,10 @@ static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend
         zval_ptr_dtor(&validator);
         return false;
     }
-    zval pargs[3];
+    zval pargs[2];
     ZVAL_COPY_VALUE(&pargs[0], model);
     ZVAL_COPY_VALUE(&pargs[1], &dialect_object);
-    ZVAL_BOOL(&pargs[2], assigns);
-    ok = engine_new("Polyspec\\Orm\\Planner", &planner, 3, pargs);
+    ok = engine_new("Polyspec\\Orm\\Planner", &planner, 2, pargs);
     zval_ptr_dtor(&dialect_object);
     if (!ok) {
         zval_ptr_dtor(&validator);
@@ -402,32 +400,25 @@ ZEND_METHOD(Polyspec_Orm_Engine, __construct)
     zval *model;
     zend_string *dialect;
     zend_long cache_size;
-    bool assigns = false;
-    ZEND_PARSE_PARAMETERS_START(3, 4)
+    ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_OBJECT_OF_CLASS(model, polyspec_runtime_model_ce)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
-    if (!engine_construct(ZEND_THIS, model, dialect, cache_size, assigns)) {
+    if (!engine_construct(ZEND_THIS, model, dialect, cache_size)) {
         RETURN_THROWS();
     }
 }
 
-/* Engine::for: the engine shared by the generated model of a manifest hash, by the dialect and by whether the database
- * assigns keys. */
+/* Engine::for: the engine shared by the generated model of a manifest hash and by the dialect. */
 ZEND_METHOD(Polyspec_Orm_Engine, for)
 {
     zend_string *hash, *dialect;
     zend_long cache_size;
-    bool assigns = false;
-    ZEND_PARSE_PARAMETERS_START(3, 4)
+    ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_STR(hash)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
     zval *engines = zend_read_static_property(polyspec_engine_ce, "engines", sizeof("engines") - 1, 0);
     if (engines == NULL || Z_TYPE_P(engines) != IS_ARRAY) {
@@ -438,8 +429,6 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
     smart_str_append(&key, hash);
     smart_str_appendc(&key, '\0');
     smart_str_append(&key, dialect);
-    smart_str_appendc(&key, '\0');
-    if (assigns) smart_str_appends(&key, "assigns");
     zend_string *k = smart_str_extract(&key);
     zval *found = zend_symtable_find(Z_ARRVAL_P(engines), k);
     if (found != NULL) {
@@ -459,7 +448,7 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
         RETURN_THROWS();
     }
     object_init_ex(&engine, polyspec_engine_ce);
-    if (!engine_construct(&engine, &model, dialect, cache_size, assigns)) {
+    if (!engine_construct(&engine, &model, dialect, cache_size)) {
         zval_ptr_dtor(&engine);
         zval_ptr_dtor(&model);
         zend_string_release(k);

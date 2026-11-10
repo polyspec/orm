@@ -20,7 +20,7 @@ final class Setting
 {
     public const KINDS = [
         'entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index',
-        'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine',
+        'navigation', 'markdown', 'store', 'title', 'body', 'order', 'task_marker',
         'immutable', 'audit'
     ];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
@@ -32,8 +32,6 @@ final class Setting
      * @param list<string> $comments
      * @param list<string>|null $exclude
      * @param list<string>|null $include
-     * @param 'transition'|'terminal'|'initial'|'history'|'limit'|null $form The line form of a state_machine setting
-     * @param list<string>|null $requires The `require (...)` columns of a transition or terminal line
      */
     public function __construct(
         public string $kind,
@@ -41,8 +39,6 @@ final class Setting
         public array $comments = [],
         public ?array $exclude = null,
         public ?array $include = null,
-        public ?string $form = null,
-        public ?array $requires = null,
     ) {
     }
 

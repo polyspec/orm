@@ -165,21 +165,14 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
 /**
  * An insert assigns every required column: a NOT NULL column without a
  * default that is neither the identity column nor a column the planner writes
- * (the AES key version and the audit column), nor, on a database that assigns
- * them, the key_prefix key and the order position. An omitted column with a
+ * (the AES key version and the audit column). An omitted column with a
  * default takes the database default.
  */
-function validateRequiredAssignments(ent: Entity, set: readonly Assignment[], assigns: boolean): void {
+function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void {
   for (const col of ent.fields) {
     if (col.nullable || col.hasDefault || col.identity || col.name === ent.aesVersion || col.name === ent.auditColumn || assigned(set, col.name)) continue;
-    if (assigns && ((allocatedKey(ent) && col.name === ent.primaryKey[0]) || col.name === ent.order)) continue;
     fail(codes.IR_INVALID, `required column ${ent.name}.${col.name} is not set`);
   }
-}
-
-/** Whether a database that assigns keys allocates the key of ent: a key_prefix setting over one primary key column. */
-function allocatedKey(ent: Entity): boolean {
-  return ent.keyPrefix !== '' && ent.primaryKey.length === 1;
 }
 
 function addBlindIndexAssignments(ent: Entity, input: Assignment[]): { assignments: Assignment[]; sourceIndices: number[] } {
@@ -243,11 +236,7 @@ function placedJoins(g: Group, out: Set<string>): void {
 }
 
 export class Planner {
-  /**
-   * assigns says that the database assigns the key_prefix key and the order position of a row that an insert leaves
-   * them out of, as a flowmark corpus does.
-   */
-  public constructor(public readonly m: RuntimeModel, public readonly d: Dialect, private readonly assigns = false) {}
+  public constructor(public readonly m: RuntimeModel, public readonly d: Dialect) {}
 
   /** The scope of the join `rel` of s, which buildScopes made. */
   private joinScope(s: Scope, rel: string): Scope { return present(s.joins.get(rel), `the scope of join ${rel}`); }
@@ -953,7 +942,7 @@ export class Planner {
     const input = r.set ?? [];
     const { assignments: set, sourceIndices } = addBlindIndexAssignments(ent, input);
     validateAESAssignments(ent, set, false);
-    validateRequiredAssignments(ent, set, this.assigns);
+    validateRequiredAssignments(ent, set);
     // load writes the row with its stored key as it is, so it takes and requires the identity column's value.
     const load = r.load === true;
     if (load && ent.identity !== '' && !set.some(a => a.column === ent.identity && a.p !== undefined)) {
@@ -1000,8 +989,6 @@ export class Planner {
       sql += this.d.upsert(conflictTarget(ent, set), sets.join(', '));
     }
     if (this.d.insertReturningId && ent.identity !== '') sql += ` RETURNING ${this.d.quote(ent.identity)}`;
-    // The key that the database allocated, or the key of the row an upsert met.
-    else if (this.assigns && allocatedKey(ent)) sql += ` RETURNING ${this.d.quote(present(ent.primaryKey[0], 'the primary key'))}`;
     return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
   }
 

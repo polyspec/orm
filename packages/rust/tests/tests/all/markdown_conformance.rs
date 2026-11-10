@@ -38,6 +38,7 @@ const CASES: &[&str] = &[
     "update",
     "update_optimistic_conflict",
     "insert_on_duplicate",
+    "insert_on_duplicate_unique",
     "delete",
     "delete_referenced",
     "soft_delete",

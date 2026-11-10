@@ -209,8 +209,6 @@ func (d *DB) register(s *Schema) error {
 	if err != nil {
 		return err
 	}
-	// A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
-	eng.P.Assigns = d.corpus
 	d.m.engines[s.Hash] = eng
 	d.m.schemas[s.Hash] = s
 	return nil

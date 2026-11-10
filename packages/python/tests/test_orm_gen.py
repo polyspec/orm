@@ -75,11 +75,11 @@ class OrmGenTest(unittest.TestCase):
 
         self.assertEqual(
             models.MANIFEST_HASH,
-            "sha256:6d3906c335402a6c6deddf639438e65ef9218e55d3ad86eccb9746349fb1f5b3",
+            "sha256:17ab57ea09162c73e601b9636e42d5df436b0a87dce92c0ba786ac3c931f6b9a",
         )
         author = models.Author()
         self.assertEqual(author.entity_def.entity.name, "author")
-        self.assertEqual(len(models.model.entities), 26)
+        self.assertEqual(len(models.model.entities), 27)
         self.assertEqual(list(models.model.entities)[:3], ["author", "user", "service"])
         self.assertTrue(models.SCHEMA.manifest_text.startswith("dbspec 1 bench"))
         self.assertEqual(

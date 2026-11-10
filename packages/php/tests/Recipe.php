@@ -1489,12 +1489,18 @@ final class Recipe
             Assert::fail("a document with a diagnostic was rewritten: {$formatted->text}");
         }
         foreach ([$parsed->diagnostics, $formatted->diagnostics] as $got) {
-            $rows = array_map(
-                static fn(object $d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column],
-                $got
-            );
+            // The message is compared where the expected diagnostic states it.
+            $rows = [];
+            foreach (array_values($got) as $i => $d) {
+                $row = ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column];
+                if (isset($want[$i]['message'])) {
+                    $row['message'] = $d->message;
+                }
+                $rows[] = $row;
+            }
             $expect = array_map(
-                static fn(array $d): array => ['rule' => $d['rule'], 'line' => $d['line'], 'column' => $d['column']],
+                static fn(array $d): array => ['rule' => $d['rule'], 'line' => $d['line'], 'column' => $d['column']]
+                    + (isset($d['message']) ? ['message' => $d['message']] : []),
                 $want
             );
             if ($expect === [] || $rows !== $expect) {

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 19aa2e85fdfe49d0a165b1748884066b5a7d0796360137ae86443a7ab793ba8d -->
+<!-- source-sha256: 6073e203461df10cd66f00f231b3e00e6fa06baaa585be279a299a7b70006ed7 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -277,10 +277,9 @@ scheme `markdown://`은 flowmark server가 제공하는 markdown corpus에 연�
 - **PRT-67a** Go는 모델의 시간 setter가 거부한 첫 text를 기록하여 chain의 형식을 지킨다. 모델의 문장은 그 column과 text를 담은 `CODEC_ENCODE`를 돌려주고 행은 바뀌지 않는다. 다른 runtime은 setter나 쓰기에서 거부하므로 이 case는 FCV-2에 따라 native다.
 - **PRT-68** **Codec.** 클라이언트가 SQL과 같이 codec 단계를 직접 적용한다. 쓰기의 값은 보내기 전에 인코딩하고, 읽기의 값은 받은 뒤에 디코딩한다.
 - **PRT-69** **값.** row의 값은 매개변수의 형식을 가진다: 유한한 REAL은 소수부나 지수가 있는 JSON 수(`2.0`, `1e+21`)이고 INTEGER는 둘 다 없는 수이므로, 클라이언트는 앞의 것을 `f64`로, 뒤의 것을 정수로 읽어 값의 storage class를 지킨다. 클라이언트는 SQLite driver가 그 값을 읽는 대로 읽는다. driver가 선언된 type을 읽는 곳에서는 그 column의 선언된 type(`type`)으로 읽는다. 예를 들어 `DATE`, `DATETIME`, `TIME` column은 text를 담는다. 클라이언트는 SQLite에서처럼 요청 형태에 맞게 row를 조립한다. 조인, 관계, `key_by`, `flatten`은 1.2절이 정의한 대로다. row의 array form(`toArray`, COD-27)은 모든 클라이언트와 모든 데이터베이스에서 각 시간 column을 그 type에 따라 한 형식으로 쓴다. `date`는 `YYYY-MM-DD`, `datetime(p)`는 `YYYY-MM-DD HH:MM:SS`, `time(p)`는 `HH:MM:SS`이고, 각각 점과 정확히 p개의 소수 자릿수가 뒤따르며 p가 0이면 점이 없다. 이것이 그 값의 하나뿐인 텍스트다. typed getter가 이것을 반환하고(dbspec.md, 생성된 type), SQLite가 이것을 저장하며(DIA-24), 기술된 표의 grid cell이 이것을 담는다(INT-103). 그래서 `date`는 datetime으로 쓰이지 않고, `time(3)` 값은 그 모두에서 `10:00:00.500`이다. plan type이 `datetime`인 추가 열(INT-160)은 정밀도를 선언하지 않으므로, 읽기 전용 grid query의 cell처럼(INT-103) 여섯 소수 자릿수로 쓴다. row의 JSON form(COD-26)도 각 시간 column을 같은 형식으로 쓴다.
-- **PRT-70** **쓰기.** `affected`와 `last_insert_id`는 SQLite의 값이며, 3절은 SQLite에서처럼 이 값을 읽는다. `on_duplicate`가 있는 insert는 1이고, `update`는 일치한 row를 계산한다. corpus가 할당하는 key는 `RETURNING`으로 읽는다(PRT-73).
+- **PRT-70** **쓰기.** `affected`와 `last_insert_id`는 SQLite의 값이며, 3절은 SQLite에서처럼 이 값을 읽는다. `on_duplicate`가 있는 insert는 1이고, `update`는 일치한 row를 계산한다.
 - **PRT-71** **오류.** 실패한 메시지는 `{"error": {"code": <code>, "message": <text>, "result_code"?: <n>}}`로 답을 받는다. code는 [errors.yaml](errors.yaml)의 코드 하나이며, 클라이언트는 그 code와 message의 오류를 돌려준다. `result_code`는 실패에 SQLite result code가 있을 때의 그 값이며, 클라이언트는 SQLite driver의 result code를 대응시키듯 대응시킨다(PRT-79). 끝난 lock 대기는 `CANCELED`이고 message는 `(SQLITE_BUSY)`로 끝난다. transaction이 읽은 뒤 engine 밖에서 바뀐 corpus 파일을 찾은 `COMMIT`은 파일과 줄을 적은 `WRITE_CONFLICT`다. 바뀐 읽기 위에서 callback을 다시 실행하는 것은 `DEADLOCK`과 달리 결코 안전하지 않으므로, 클라이언트는 retry 옵션이 있어도 이를 다시 시도하지 않는다. 끊긴 연결은 `CONNECTION_LOST`이며, 한도보다 오래 쉬는 transaction의 연결을 닫기 전에 server가 쓰는 답도 그렇다. 호출의 context나 signal이 끝나면 클라이언트는 연결을 닫고 호출은 `CANCELED`이며, server는 닫힌 연결의 transaction을 rollback한다.
 - **PRT-72** **세션.** SQLite 연결처럼 연결 하나가 세션이다. `PRAGMA` 설정과 트랜잭션은 그 연결의 것이다. 트랜잭션은 `BEGIN`부터 끝까지 연결 하나를 쥐고, 트랜잭션 밖의 문은 pool의 아무 연결에서 자기 트랜잭션으로 실행된다.
-- **PRT-73** **할당 column.** 표의 `key_prefix` key와 `order` column은 corpus가 할당하므로, markdown 연결에서 insert는 이를 생략할 수 있다. planner는 이를 요구하지 않으며, `key_prefix` 표의 insert는 `RETURNING`으로 key를 읽는다. corpus가 할당한 key이거나 `on_duplicate`가 만난 row의 key다. 1.4절은 planner가 할당하는 column을 정의하며, 이 column들은 대신 corpus가 할당한다.
 
 ## 6. Notifications
 

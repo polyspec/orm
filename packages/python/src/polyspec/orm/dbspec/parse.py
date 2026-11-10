@@ -600,7 +600,6 @@ class _Setting:
         "tables",
         "lists",
         "args",
-        "form",
     )
 
     def __init__(self, kw, comments, kind, **fields):
@@ -623,16 +622,14 @@ class _Setting:
         self.tables = fields.get("tables")
         # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
-        # Tokens and form of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines.
+        # Tokens of the markdown, store, title, body, order, and task_marker lines.
         self.args = fields.get("args", ())
-        self.form = fields.get("form", "")
 
 
 def _setting_identity(s: _Setting) -> tuple[str, ...]:
     """Return what the repeat rule of a setting makes unique (docs/spec/dbspec.md "Settings"; the same as
     settingIdentity in engine/dbspec/positions.go): the column of codec, markdown and blind_index, the
-    foreign key of navigation, the column and state of checkbox, and the form and states of a state_machine
-    line (its column left out). Every other setting has no identity."""
+    foreign key of navigation. Every other setting appears at most once and has no identity."""
     keyword = s.kw.t
     if keyword == "codec" or keyword == "blind_index":
         return (s.column.t,)
@@ -640,14 +637,6 @@ def _setting_identity(s: _Setting) -> tuple[str, ...]:
         return (s.foreign_key.t,)
     if keyword == "markdown":
         return (s.args[0].t,)
-    if keyword == "checkbox":
-        return (s.args[0].t, s.args[1].t)
-    if keyword == "state_machine":
-        if s.form == "transition":
-            return ("transition", s.args[1].t, s.args[2].t)
-        if s.form == "history":
-            return ("history",)
-        return (s.form, s.args[1].t)
     return ()
 
 
@@ -810,26 +799,14 @@ FORM_SETTINGS = frozenset(
     {
         "markdown",
         "store",
-        "key_prefix",
         "title",
         "body",
         "order",
-        "checkbox",
-        "state_machine",
+        "task_marker",
     }
 )
 # For each store kind, the number of tokens before the shard clause (including kind).
 STORE_ARGUMENTS = {"files": 1, "document": 2, "block": 3}
-
-
-def go_int64(text: str):
-    """Same as Go's strconv.ParseInt(text, 10, 64): an optional '-' and decimal digits, in int64 range. Otherwise None."""
-    if re.fullmatch(r"-?[0-9]+", text) is None:
-        return None
-    n = int(text)
-    if -(1 << 63) <= n < (1 << 63):
-        return n
-    return None
 
 
 class _Cursor:
@@ -893,11 +870,6 @@ class _Cursor:
             return tok, True
         return None, self.fail(what)
 
-    def quoted(self, what: str):
-        if self.more() and self.toks[self.i].k == STR:
-            return self.next(), True
-        return None, self.fail(what)
-
     def value(self, what: str):
         """Reads one literal. A '-' joins the digit right after it to make a negative number."""
         if self.peek(OP, "-"):
@@ -917,28 +889,6 @@ class _Cursor:
             _mark_value(tok)
             return tok, True
         return None, self.fail(what)
-
-    def arrow(self) -> bool:
-        if (
-            self.peek(OP, "-")
-            and self.i + 1 < len(self.toks)
-            and self.toks[self.i + 1].k == OP
-            and self.toks[self.i + 1].t == ">"
-        ):
-            self.i += 2
-            return True
-        return self.fail("'->'")
-
-    def form_ahead(self, text: str) -> bool:
-        """Reports whether a keyword letter follows and it is not the from state of a transition: if `->` follows, it is a state name."""
-        if not self.peek(WORD, text):
-            return False
-        nxt = self.i + 1
-        if nxt < len(self.toks) and self.toks[nxt].k == OP and self.toks[nxt].t == "-":
-            return False
-        # The caller always takes the word as a form word, so it is a keyword here.
-        _mark(self.toks[self.i], "keyword")
-        return True
 
     def names(self):
         """Reads `( name, ... )`. None on failure."""
@@ -1831,17 +1781,15 @@ class DocumentParser:
                 lists=tuple(lists),
             )
         else:
-            return self._at("setting", kw, f"{kw.t} is not a setting")
+            return self._at("setting", kw, f'setting "{kw.t}" is unknown')
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
-        """Reads markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines as Go's settingsLine does.
+        """Reads markdown, store, title, body, order, and task_marker lines as Go's settingsLine does.
         Returns _Setting if the line matches, otherwise None (the error was reported)."""
         c = _Cursor(self, toks, line, self.lines[line - 1])
         kw = c.next()
         args = []
-        lists = []
-        form = ""
 
         def arg(what: str) -> bool:
             tok, ok = c.name(what)
@@ -1850,7 +1798,7 @@ class DocumentParser:
             return ok
 
         ok = True
-        if kw.t in ("markdown", "title", "body", "order"):
+        if kw.t in ("markdown", "title", "body", "order", "task_marker"):
             ok = arg("a column name")
         elif kw.t == "store":
             kind, ok = c.one_of(
@@ -1876,65 +1824,9 @@ class DocumentParser:
                     )
                     if ok:
                         args.append(period)
-        elif kw.t == "key_prefix":
-            prefix, ok = c.quoted("a key prefix in quotes")
-            if ok:
-                args.append(prefix)
-        elif kw.t == "checkbox":
-            ok = arg("the state column") and arg("a state name")
-            if ok:
-                glyph, ok = c.quoted("a glyph in quotes")
-                if ok:
-                    args.append(glyph)
-        else:
-            ok = arg("the state column")
-            if not ok:
-                pass
-            elif c.form_ahead("initial"):
-                c.next()
-                form = "initial"
-                ok = arg("a state name")
-            elif c.form_ahead("terminal"):
-                c.next()
-                form = "terminal"
-                ok = arg("a state name")
-            elif c.form_ahead("history"):
-                c.next()
-                form = "history"
-                ok = (
-                    arg("the history table")
-                    and c.keyword("row")
-                    and arg("the foreign key column")
-                    and c.keyword("from")
-                    and arg("the from column")
-                    and c.keyword("to")
-                    and arg("the to column")
-                    and c.keyword("at")
-                    and arg("the at column")
-                )
-            elif c.form_ahead("limit"):
-                c.next()
-                form = "limit"
-                ok = arg("a state name")
-                if ok:
-                    count, ok = c.value("a row count")
-                    if ok:
-                        args.append(count)
-            else:
-                form = "transition"
-                ok = arg("the from state") and c.arrow() and arg("the to state")
-            if ok and form in ("transition", "terminal") and c.peek(WORD, "require"):
-                require = c.next()
-                _mark(require, "keyword")
-                columns = c.names()
-                ok = columns is not None
-                if ok:
-                    lists.append((require, tuple(columns)))
         if not ok or not c.done():
             return None
-        return _Setting(
-            kw, comments, kw.t, args=tuple(args), form=form, lists=tuple(lists)
-        )
+        return _Setting(kw, comments, kw.t, args=tuple(args))
 
     def _lexed_table_line(self, table: _Table, toks, line: int, comments) -> str:
         """Handles a table line with a lex error (not }) as Go's tableLine does: the line fails and only the name remains. settings
@@ -2715,8 +2607,8 @@ class DocumentParser:
     def _settings(
         self, table: _Table, settings: _Settings, available, action_child: bool
     ) -> None:
-        """Checks the settings block (settings in engine/dbspec/settings.go). Only the lines accepted by repeated checks are checked, and
-        state_machine and checkbox agreement between lines is checked. Diagnostic positions are the setting keyword, column reference, and history table name."""
+        """Checks the settings block (settings in engine/dbspec/settings.go). Only the lines accepted by repeated checks are checked.
+        Diagnostic positions are the setting keyword, column reference, and history table name."""
         once = set()
         repeatable = {
             "codec": set(),
@@ -2741,7 +2633,7 @@ class DocumentParser:
                     self._at("setting", s.kw, f'{s.kw.t} repeats for "{key}"')
                     continue
                 repeatable[kind].add(key)
-            elif kind not in ("state_machine", "checkbox"):
+            else:
                 if kind in once:
                     self._at("setting", s.kw, f"setting {s.kw.t} repeats")
                     continue
@@ -2757,7 +2649,6 @@ class DocumentParser:
 
         for s in accepted:
             self._setting_check(table, s, aes_columns, available, action_child, lookup)
-        self._state_machine_consistency(table, settings.entries, available)
         aes_version = by_kind.get("aes_version")
         if aes_version is None:
             for s in aes_codecs:
@@ -2854,8 +2745,6 @@ class DocumentParser:
             if s.args[0].t == "block":
                 self._foreign_key_name(table, s.args[1])
             self._store_shard(table, s)
-        elif kind == "key_prefix":
-            self._key_prefix(table, s)
         elif kind in ("title", "body"):
             c = self._column_ref(table, s.args[0])
             if c is not None and (
@@ -2869,8 +2758,8 @@ class DocumentParser:
                 )
         elif kind == "order":
             self._order(table, s)
-        elif kind == "state_machine":
-            self._state_machine_line(table, s)
+        elif kind == "task_marker":
+            self._task_marker(table, s)
 
     def _ref(self, tok: Tk) -> bool:
         """Go's validator.ref: if the name has the right form it is true; otherwise it reports a name diagnostic and is false."""
@@ -2910,20 +2799,6 @@ class DocumentParser:
                 "setting",
                 tok,
                 f'foreign key "{tok.t}" is not a foreign key of the table',
-            )
-
-    def _key_prefix(self, table: _Table, s: _Setting) -> None:
-        if table.failed_primary:
-            return
-        if len(table.pks) != 1 or len(table.pks[0].cols) != 1:
-            self._at("setting", s.kw, "key_prefix needs a single-column primary key")
-            return
-        c = table.col_map.get(table.pks[0].cols[0].tok.t)
-        if c is not None and c.type is not None and c.type.kind != "varchar":
-            self._at(
-                "setting",
-                s.kw,
-                f"key_prefix needs a varchar primary key, not {type_text(c.type)}",
             )
 
     def _order(self, table: _Table, s: _Setting) -> None:
@@ -2989,277 +2864,22 @@ class DocumentParser:
                 return True
         return False
 
-    def _state_machine_line(self, table: _Table, s: _Setting) -> None:
-        """One state_machine line: the column is non-null varchar or text, and the require list is columns of the table."""
-        column = self._column_ref(table, s.args[0])
-        if column is not None and (
-            (column.type is not None and column.type.kind not in ("varchar", "text"))
-            or column.nullable
+    def _task_marker(self, table: _Table, s: _Setting) -> None:
+        """The column whose value a list row writes between the brackets of its task marker: a varchar(1) column,
+        written as its value, or a bool column, written as the unchecked and the checked task box of GFM
+        (docs/spec/dbspec.md "Settings")."""
+        c = self._column_ref(table, s.args[0])
+        if (
+            c is not None
+            and c.type is not None
+            and c.type.kind != "bool"
+            and not (c.type.kind == "varchar" and c.type.length == 1)
         ):
             self._at(
                 "setting",
                 s.args[0],
-                "state_machine needs a non-null varchar or text column",
+                f"task_marker needs a varchar(1) or bool column, not {type_text(c.type)}",
             )
-        for _, columns in s.lists:
-            for ref in columns:
-                self._column_ref(table, ref)
-
-    def _state_machine_consistency(self, table: _Table, entries, available) -> None:
-        """Checks the state_machine lines against each other: one column per table, one history, and agreement among transitions, terminal and initial states,
-        limit, the default of the state column, and checkbox (docs/spec/dbspec.md "Settings")."""
-        machine = [s for s in entries if s.kind == "state_machine"]
-        column = None
-        states = set()
-        initials = set()
-        terminals = set()
-        lines = []
-        limits = []
-        history = None
-        requires = []
-        # The identity of each initial, terminal and transition line: its form and states, never its require list.
-        seen = set()
-        for s in machine:
-            if column is None:
-                column = s.args[0].t
-            elif s.args[0].t != column:
-                self._at(
-                    "setting",
-                    s.args[0],
-                    f'state_machine repeats for "{s.args[0].t}"; a table holds one machine',
-                )
-            if s.form == "history":
-                if history is not None:
-                    self._at("setting", s.kw, "state_machine repeats history")
-                    continue
-                history = s
-            elif s.form == "limit":
-                limits.append(s)
-            else:
-                # A line of another column already reports that a table holds one machine; it is no line of this one.
-                if s.args[0].t == column:
-                    if s.form == "transition":
-                        key, what = (
-                            ("transition", s.args[1].t, s.args[2].t),
-                            f"{s.args[1].t} -> {s.args[2].t}",
-                        )
-                    else:
-                        key, what = (s.form, s.args[1].t), f"{s.form} {s.args[1].t}"
-                    if key in seen:
-                        self._at("setting", s.kw, f"state_machine repeats {what}")
-                        continue
-                    seen.add(key)
-                lines.append(s)
-                for _, columns in s.lists:
-                    requires.extend(columns)
-                if s.form == "initial":
-                    initials.add(s.args[1].t)
-                    states.add(s.args[1].t)
-                elif s.form == "terminal":
-                    terminals.add(s.args[1].t)
-                    states.add(s.args[1].t)
-                else:
-                    states.add(s.args[1].t)
-                    states.add(s.args[2].t)
-        for s in lines:
-            if s.form == "initial" and s.args[1].t in terminals:
-                self._at(
-                    "setting",
-                    s.kw,
-                    f'an initial state "{s.args[1].t}" is also terminal',
-                )
-            elif s.form == "transition" and s.args[1].t in terminals:
-                self._at(
-                    "setting",
-                    s.kw,
-                    f'a transition leaves the terminal state "{s.args[1].t}"',
-                )
-        self._limits(limits, states)
-        if history is not None:
-            self._history(
-                table, history, table.col_map.get(column), requires, available
-            )
-        state_column = table.col_map.get(column) if column is not None else None
-        if (
-            state_column is not None
-            and state_column.default_tok is not None
-            and state_column.value is not None
-        ):
-            default = state_column.default_tok
-            text = string_value(default) if default.k == STR else default.t
-            if text not in initials:
-                self._at(
-                    "setting",
-                    default,
-                    f'the default "{text}" of the state column is not an initial state',
-                )
-        self._checkboxes(table, column, states)
-
-    def _limits(self, lines, states) -> None:
-        """Checks each limit line: state belongs to the state set and appears once per state, and count is a positive int64."""
-        seen = set()
-        for s in lines:
-            state = s.args[1]
-            if state.t not in states:
-                self._at(
-                    "setting",
-                    state,
-                    f'limit names state "{state.t}" outside the state set',
-                )
-            elif state.t in seen:
-                self._at("setting", state, f'limit repeats for state "{state.t}"')
-            seen.add(state.t)
-            count = go_int64(s.args[2].t)
-            if count is None or count < 1:
-                self._at(
-                    "setting",
-                    s.args[2],
-                    f"limit needs a positive row count, not {s.args[2].t}",
-                )
-
-    def _history(self, table: _Table, s: _Setting, state, requires, available) -> None:
-        """Checks the history table of a state_machine history line (docs/spec/dbspec.md "Settings"): a foreign key pointing to this table,
-        from and to with the state column's type, datetime(6) at, a nullable column of the same type for each required column,
-        key, no title or body. All mismatches are reported at the name of the history table."""
-        name = s.args[1]
-        if not self._ref(name):
-            return
-        if name.t not in available:
-            self._at(
-                "setting",
-                name,
-                f'history table "{name.t}" is not a table of this document or a used table',
-            )
-            return
-        h = available[name.t]
-        if h is None:
-            return
-        if state is None or state.type is None:
-            return
-        row = s.args[2]
-        fk = any(
-            len(f.cols) == 1 and f.cols[0].t == row.t and f.table.t == table.name.t
-            for f in h.fks
-        )
-        if not fk:
-            self._at(
-                "setting",
-                name,
-                f'history table "{name.t}" has no foreign key of "{row.t}" to table "{table.name.t}"',
-            )
-        named = {row.t}
-
-        def typed(ref: Tk, want) -> None:
-            named.add(ref.t)
-            c = h.col_map.get(ref.t)
-            if c is None:
-                if ref.t not in h.failed:
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" has no column "{ref.t}"',
-                    )
-            elif c.type is not None and not same_type(c.type, want):
-                self._at(
-                    "setting",
-                    name,
-                    f'history column "{ref.t}" has type {type_text(c.type)}, not {type_text(want)}',
-                )
-
-        typed(s.args[3], state.type)
-        typed(s.args[4], state.type)
-        typed(s.args[5], DbspecType(kind="datetime", precision=6))
-        for r in requires:
-            named.add(r.t)
-            c = table.col_map.get(r.t)
-            hc = h.col_map.get(r.t)
-            if c is None or c.type is None:
-                continue
-            if hc is None:
-                if r.t not in h.failed:
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" has no column "{r.t}" of the required column',
-                    )
-            elif not hc.nullable or (
-                hc.type is not None and not same_type(hc.type, c.type)
-            ):
-                self._at(
-                    "setting",
-                    name,
-                    f'history column "{r.t}" is not a nullable {type_text(c.type)} column',
-                )
-        for k in h.pks:
-            for ct in k.cols:
-                named.add(ct.tok.t)
-        for c in h.columns:
-            if c.name.t not in named:
-                self._at(
-                    "setting",
-                    name,
-                    f'history table "{name.t}" has column "{c.name.t}", which the history line does not name',
-                )
-        if h.settings is not None:
-            for hs in h.settings.entries:
-                if hs.kind in ("title", "body"):
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" declares {hs.kind}, which a history table does not',
-                    )
-
-    def _checkboxes(self, table: _Table, column, states) -> None:
-        """Checks a checkbox line against the machine's state set: names the column of the machine, each state has one line with a distinct
-        glyph, and no line names a different state."""
-        boxes = (
-            [s for s in table.settings.entries if s.kind == "checkbox"]
-            if table.settings is not None
-            else []
-        )
-        if not boxes:
-            return
-        first = boxes[0]
-        if column is None:
-            self._at(
-                "setting",
-                first.args[0],
-                f'checkbox needs a state_machine on column "{first.args[0].t}"',
-            )
-            return
-        covered = set()
-        glyphs = set()
-        for b in boxes:
-            if self._column_ref(table, b.args[0]) is None:
-                continue
-            if b.args[0].t != column:
-                self._at(
-                    "setting",
-                    b.args[0],
-                    f'checkbox names column "{b.args[0].t}", but the state_machine column is "{column}"',
-                )
-                continue
-            state = b.args[1]
-            if state.t not in states:
-                self._at(
-                    "setting",
-                    state,
-                    f'checkbox names state "{state.t}" outside the state set',
-                )
-            elif state.t in covered:
-                self._at("setting", state, f'checkbox repeats for state "{state.t}"')
-            covered.add(state.t)
-            glyph = string_value(b.args[2])
-            if len(glyph) != 1:
-                self._at("setting", b.args[2], "a checkbox glyph is one character")
-            elif glyph in glyphs:
-                self._at("setting", b.args[2], f'checkbox glyph "{glyph}" repeats')
-            glyphs.add(glyph)
-        for state in sorted(states):
-            if state not in covered:
-                self._at(
-                    "setting", first.kw, f'checkbox does not cover state "{state}"'
-                )
 
     def _codec(self, table: _Table, s: _Setting) -> None:
         """The stage order, and the storage type the last stage requires (codec in engine/dbspec/settings.go)."""
@@ -3789,49 +3409,17 @@ class DocumentParser:
         )
 
     def _form_setting_of(self, s: _Setting) -> DbspecSetting:
-        a = [t.t if t.k != STR else string_value(t) for t in s.args]
+        a = [t.t for t in s.args]
         base = {"kind": s.kind, "comments": tuple(s.comments)}
-        if s.kind in ("markdown", "title", "body", "order"):
+        if s.kind in ("markdown", "title", "body", "order", "task_marker"):
             return DbspecSetting(column=a[0], **base)
-        if s.kind == "store":
-            at = STORE_ARGUMENTS[a[0]]
-            return DbspecSetting(
-                form=a[0],
-                foreign_key=a[1] if a[0] == "block" else "",
-                shape=a[at - 1] if a[0] != "files" else "",
-                shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
-                **base,
-            )
-        if s.kind == "key_prefix":
-            return DbspecSetting(prefix=a[0], **base)
-        if s.kind == "checkbox":
-            return DbspecSetting(column=a[0], state=a[1], glyph=a[2], **base)
-        requires = tuple(c.t for _, columns in s.lists for c in columns)
-        if s.form == "history":
-            return DbspecSetting(
-                column=a[0],
-                form="history",
-                history=a[1],
-                row=a[2],
-                from_column=a[3],
-                to_column=a[4],
-                at_column=a[5],
-                **base,
-            )
-        if s.form == "limit":
-            return DbspecSetting(
-                column=a[0], form="limit", state=a[1], count=str(int(a[2])), **base
-            )
-        if s.form in ("initial", "terminal"):
-            return DbspecSetting(
-                column=a[0], form=s.form, state=a[1], requires=requires, **base
-            )
+        # store
+        at = STORE_ARGUMENTS[a[0]]
         return DbspecSetting(
-            column=a[0],
-            form="transition",
-            from_state=a[1],
-            to_state=a[2],
-            requires=requires,
+            form=a[0],
+            foreign_key=a[1] if a[0] == "block" else "",
+            shape=a[at - 1] if a[0] != "files" else "",
+            shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
             **base,
         )
 

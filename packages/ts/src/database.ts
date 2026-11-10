@@ -584,8 +584,7 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    // A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
-    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name, this.corpus));
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name));
   }
 
   /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
@@ -1517,19 +1516,19 @@ export async function lookahead(ex: Executor, given: Request, givenParams: reado
 }
 
 /** A write's key, affected row count, and the request with its parameters as the request hook of the handle left them. */
-export interface Written extends Hooked { key: number | string | null; affected: number; }
+export interface Written extends Hooked { key: number | null; affected: number; }
 
 /**
  * Runs an insert, update, delete, or restore and returns the key of the inserted row and the affected row count:
- * the generated identity, or the key_prefix key that a corpus allocated on a markdown connection. It also returns the
- * request it ran, as the request hook left it.
+ * the generated identity, on a SQL database and on a markdown connection. It also returns the request it ran, as the
+ * request hook left it.
  */
 export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Written> {
   const { request, params } = hooked(ex, given, givenParams, afterHook);
   const db = ex.db;
   const step = mainStep((await db.plan(request)).plan);
   const settle = await db.auditFor(ex, step, request.kind !== 'insert');
-  let written: { key: number | string | null; affected: number };
+  let written: { key: number | null; affected: number };
   try {
     written = await writeStep(ex, request, params, step);
   } catch (error) {
@@ -1547,27 +1546,25 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
  * Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch insert and an
  * entity without an identity are not recorded, as in the other clients.
  */
-function recordInserted(ex: Executor, request: Request, key: number | string | null): void {
+function recordInserted(ex: Executor, request: Request, key: number | null): void {
   const frame = ex.frame;
   if (frame === undefined || request.kind !== 'insert' || request.rows || key === null) return;
-  const sequence = typeof key === 'number' ? key : /^\d+$/.test(key) ? Number(key) : Number.NaN;
-  if (!Number.isSafeInteger(sequence) || sequence <= 0) return;
+  if (!Number.isSafeInteger(key) || key <= 0) return;
   const entity = ex.db['engines'].get(request.manifest_hash)?.model.entities.get(request.entity);
   if (entity === undefined || entity.identity === '') return;
   const keys = frame.inserted.get(request.entity) ?? new Set<number>();
-  keys.add(sequence);
+  keys.add(key);
   frame.inserted.set(request.entity, keys);
 }
 
 /** Runs the write of request in ex: step is its main plan step. */
-async function writeStep(ex: Executor, request: Request, params: readonly unknown[], step: PlanStep): Promise<{ key: number | string | null; affected: number }> {
-  return guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
+async function writeStep(ex: Executor, request: Request, params: readonly unknown[], step: PlanStep): Promise<{ key: number | null; affected: number }> {
+  return guarded(ex, async (): Promise<{ key: number | null; affected: number }> => {
     const db = ex.db;
     const result = await db.runStep(ex, step.sql, step, params);
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) {
-      // The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
-      const returned = result.rows[0]?.[0];
-      return { key: typeof returned === 'string' ? returned : Number(returned), affected: 1 };
+      // The returned key is the identity, an integer.
+      return { key: Number(result.rows[0]?.[0]), affected: 1 };
     }
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;

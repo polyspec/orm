@@ -80,24 +80,12 @@ func (d *documentNode) positions() []Position {
 }
 
 // settingIdentity returns what the repeat rule of a setting makes unique (docs/spec/dbspec.md "Settings"): the column of
-// codec and markdown, the foreign key of navigation, the AES column of blind_index, the column and state of checkbox,
-// and the form and states of a state_machine line, whose column is left out since a table holds one machine. Every
-// other setting appears at most once and has no identity.
+// codec and markdown, the foreign key of navigation, and the AES column of blind_index. Every other setting
+// appears at most once and has no identity.
 func settingIdentity(s *settingNode) []string {
 	switch s.keyword.text {
 	case "codec", "markdown", "navigation", "blind_index":
 		return []string{s.args[0].text}
-	case "checkbox":
-		return []string{s.args[0].text, s.args[1].text}
-	case "state_machine":
-		switch s.form {
-		case "transition":
-			return []string{"transition", s.args[1].text, s.args[2].text}
-		case "history":
-			return []string{"history"}
-		default:
-			return []string{s.form, s.args[1].text}
-		}
 	}
 	return nil
 }

@@ -265,7 +265,9 @@
       ],
       "inputs": [
         "scripts/repo/**",
-        ".github/workflows/release.yml"
+        ".github/workflows/release.yml",
+        "AGENTS.md",
+        "AGENTS.ko.md"
       ],
       "lints": [
         "**"
@@ -3107,6 +3109,7 @@
       ],
       "inputs": [
         "scripts/features/**",
+        "docs/plans/kit-standard/checklist.md",
         "contracts/fixtures/**/*.json",
         "tests/codec/*.json",
         "tests/conformance/*.json",

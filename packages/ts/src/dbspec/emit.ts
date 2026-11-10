@@ -7,7 +7,6 @@ import type {
   DbspecForeignKey,
   DbspecIndex,
   DbspecSetting,
-  DbspecStateLine,
   DbspecTable,
   DbspecType,
 } from './model.js';
@@ -25,12 +24,10 @@ const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'navigation',
   'markdown',
   'store',
-  'key_prefix',
   'title',
   'body',
   'order',
-  'checkbox',
-  'state_machine',
+  'task_marker',
   'immutable',
   'audit',
 ];
@@ -73,37 +70,6 @@ function settingKey(setting: DbspecSetting): string {
   return '';
 }
 
-/** The order of the state_machine lines: the transitions, initial and terminal lines first, then history, then limits. */
-function formOrder(setting: DbspecSetting): number {
-  if (setting.kind !== 'state_machine') return 0;
-  if (setting.line.form === 'history') return 1;
-  return setting.line.form === 'limit' ? 2 : 0;
-}
-
-/** A string literal in canonical form: quoted, with each quote doubled. */
-function quoted(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`;
-}
-
-function requiresText(requires: readonly string[] | null): string {
-  return requires === null || requires.length === 0 ? '' : ` require (${requires.join(', ')})`;
-}
-
-function stateLineText(line: DbspecStateLine): string {
-  switch (line.form) {
-    case 'initial':
-      return `initial ${line.state}`;
-    case 'terminal':
-      return `terminal ${line.state}${requiresText(line.requires)}`;
-    case 'transition':
-      return `${line.from} -> ${line.to}${requiresText(line.requires)}`;
-    case 'history':
-      return `history ${line.table} row ${line.row} from ${line.from} to ${line.to} at ${line.at}`;
-    case 'limit':
-      return `limit ${line.state} ${line.count}`;
-  }
-}
-
 function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string {
   switch (setting.kind) {
     case 'entity':
@@ -130,16 +96,11 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
       if (setting.storage === 'document') return `store document ${setting.shape ?? ''}${shard}`;
       return `store block ${setting.foreignKey ?? ''} ${setting.shape ?? ''}${shard}`;
     }
-    case 'key_prefix':
-      return `key_prefix ${quoted(setting.prefix)}`;
     case 'title':
     case 'body':
     case 'order':
+    case 'task_marker':
       return `${setting.kind} ${setting.column}`;
-    case 'checkbox':
-      return `checkbox ${setting.column} ${setting.state} ${quoted(setting.glyph)}`;
-    case 'state_machine':
-      return `state_machine ${setting.column} ${stateLineText(setting.line)}`;
     case 'audit':
       // The schema text is decided by the database state, so the columns that are not recorded are written as an exclude list in column order.
       // Other views write the list as it is.
@@ -198,7 +159,6 @@ function table(out: string[], t: DbspecTable, view: View): void {
     const settings = [...written].sort(
       (a, b) =>
         SETTING_ORDER.indexOf(a.kind) - SETTING_ORDER.indexOf(b.kind) ||
-        formOrder(a) - formOrder(b) ||
         compareText(settingKey(a), settingKey(b)),
     );
     for (const s of settings) {

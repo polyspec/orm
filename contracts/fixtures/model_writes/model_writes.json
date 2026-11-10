@@ -12,7 +12,9 @@
     "DSL-109",
     "DSL-110",
     "PLN-26",
-    "DIA-154"
+    "DIA-154",
+    "DBS-79",
+    "DIA-159"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [
@@ -2955,6 +2957,79 @@
                   }
                 ]
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "create_without_order_column",
+      "requirements": [
+        "DBS-79",
+        "DIA-159"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "RankedTask",
+          "values": {
+            "title": {
+              "text": "unranked"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID",
+              "message_suffix": "required column ranked_task.position is not set"
+            },
+            "postgres": {
+              "error": "IR_INVALID",
+              "message_suffix": "required column ranked_task.position is not set"
+            },
+            "sqlite": {
+              "error": "IR_INVALID",
+              "message_suffix": "required column ranked_task.position is not set"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "RankedTask",
+          "values": {
+            "title": {
+              "text": "ranked"
+            },
+            "position": {
+              "int": "1"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "RankedTask",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
             }
           }
         }

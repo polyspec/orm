@@ -6,17 +6,22 @@ use std::sync::LazyLock;
 
 use polyspec_orm::{Db, Schema};
 
-/// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
-/// leaves out, so the document text itself is not the manifest text.
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
+/// The manifest of contracts/fixtures/bench/bench.dbs alone, with its text and its hash: the document carries comments, which
+/// its manifest text leaves out, so the document text itself is not the manifest text, and the hash is the one the manifest
+/// states, never a copy that a change of the fixture would leave behind.
+static MANIFEST: LazyLock<(String, String)> = LazyLock::new(|| {
     let text = include_str!("../../../../../../contracts/fixtures/bench/bench.dbs");
     let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
-    polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
+    let manifest = polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs");
+    (manifest.manifest_text, manifest.manifest_hash)
 });
 
+/// The manifest text of contracts/fixtures/bench/bench.dbs alone.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:43337b132ed06ed4fe341883b765adec1a559d9ef174f9bc4a82193fb88e0795"));
+pub static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| MANIFEST.0.clone());
+
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
+pub static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST.0, &MANIFEST.1));
 
 /// A new SQLite file with the schema installed, in a directory of its own for one test. The directory is removed
 /// when the value is dropped, also when the test fails an assertion and unwinds.

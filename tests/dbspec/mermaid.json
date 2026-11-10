@@ -883,6 +883,11 @@
                     "ip_hex_cell"
                   ],
                   [
+                    "settings",
+                    "ranked_task",
+                    "ranked_task"
+                  ],
+                  [
                     "index",
                     "service_member",
                     "ix_service_member_service"

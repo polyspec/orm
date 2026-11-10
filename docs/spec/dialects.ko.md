@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: bc923b6f0dab2a83ad5cb901243bc95ca6ed4b9f111097e39e948c9a8258e0b6 -->
+<!-- source-sha256: d8a3b725d6ce5e026080a2727b11eda21441396b14672766dd0a2359a3207c4e -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -374,7 +374,7 @@ markdown 연결은 flowmark server가 corpus에서 문에 답하는 SQLite 연�
 - **DIA-156** 정렬 — 결과: SQLite와 같다. 오름차순에서 NULL은 모든 값 앞, 내림차순에서는 모든 값 뒤다.
 - **DIA-157** `group_by` — 결과: SQLite와 같다. orm의 규칙을 따른다.
 - **DIA-158** `paginate`, `lookahead_paginate`, `group_lookahead_paginate` — 결과: SQLite와 같다. 문 하나는 일관된 corpus 하나를 읽는다.
-- **DIA-159** `insert`(단일 행과 여러 행) — 결과: SQLite와 같다. 규칙: `key_prefix` key와 `order` column은 corpus가 할당하므로 insert는 이를 생략할 수 있다(PRT-73).
+- **DIA-159** `insert`(단일 행과 여러 행) — 결과: SQLite와 같다. 규칙: corpus는 다른 database가 application에 맡기는 column을 할당하지 않으므로, 필수 column을 생략한 insert는 `IR_INVALID`다(DBS-79).
 - **DIA-160** `update` — 결과: SQLite와 같다. 규칙: transaction이 읽은 뒤 engine 밖에서 바뀐 파일을 찾은 `COMMIT`은 `WRITE_CONFLICT`이며, 클라이언트는 이를 다시 시도하지 않는다(PRT-71).
 - **DIA-161** `delete`, `restore` — 결과: SQLite와 같다. 규칙: foreign key는 SQLite의 것이고, corpus의 규칙도 모든 쓰기를 판정한다([constraints](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/50-constraints.md)).
 - **DIA-162** `optimistic` — 결과: SQLite와 같다.

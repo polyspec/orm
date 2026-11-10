@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 790619fdf9fd392b11faa0c3651f378c8d14815e29abbc1ec0fbf6a29c38d976 -->
+<!-- source-sha256: 96af01e19b7dda690489fb5c0987093dcbe40d0ba522a6d39b796b0f072254fa -->
 # dbspec
 
 [English](dbspec.md)
@@ -215,7 +215,7 @@ predicate는 다음 중 하나다.
 
 ## Settings
 
-- **DBS-63** `settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다, `markdown`은 column마다, `checkbox`는 state마다 한 번씩 반복하고 `state_machine`은 줄의 identity마다 한 번 쓴다: state마다 `initial` 줄 하나, state마다 `terminal` 줄 하나, `require` 목록과 상관없이 `<from> -> <to>` 쌍마다 전환 줄 하나, `history` 줄 하나, state마다 `limit` 줄 하나다. 나머지 setting은 최대 한 번 나오며, 반복은 뒤 줄에서 `setting` error다. 반복한 줄은 의미를 더하지 않고, `require` 목록이 다른 전환이나 terminal 줄의 반복은 앞 줄과 모순된다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
+- **DBS-63** `settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다, `markdown`은 column마다 한 번씩 반복한다. `task_marker`를 포함한 나머지 setting은 최대 한 번 나오며, 반복은 뒤 줄에서 `setting` error이고 message는 `setting <keyword> repeats`이고, 이름마다 한 번 나오는 setting이면 `<keyword> repeats for "<name>"`이다. 첫 word가 어떤 setting도 가리키지 않는 줄은 그 word에서 `setting` error이고 message는 `setting "<word>" is unknown`다. 모든 runtime은 이 message와 DBS-80의 message를 그대로 준다. 반복한 줄은 의미를 더하지 않는다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
 
 - **DBS-64** codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이고(`bytes` column은 index에 넣을 수 없다), AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
 
@@ -227,17 +227,12 @@ predicate는 다음 중 하나다.
 - **DBS-70** `aes_version <column>`: row의 AES key version을 저장하는 non-null 정수 column. `aes`를 쓰는 column이 있으면 필요하다 (Hash: manifest)
 - **DBS-71** `blind_index <aes column> <index column>`: executor가 AES column 평문의 HMAC을 index column에 쓰고 같음 조건에 쓴다 (Hash: manifest)
 - **DBS-72** `navigation <foreign key> <child name> <parent name>`: 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 (Hash: manifest)
-- **DBS-73** `state_machine <column> <from> -> <to> [require (<column>, ...)]`, `state_machine <column> terminal <state> [require (<column>, ...)]`: non-null varchar 또는 text column 하나의 row 상태 기계다. 각 줄은 하나의 전환이거나 하나의 terminal 상태이고, table마다 한 column에서 순서와 섞임에 제한 없이 쓴다. `require`는 전환이나 terminal이 기록하는 column을 명명하고, terminal 상태를 벗어나는 전환은 거부한다. database는 기계를 강제하지 않고 row를 소유한 executor가 강제한다 (Hash: manifest)
 - **DBS-74** `markdown <column>`: column이 markdown 산문을 담는다. column마다 반복 가능하고 임의의 nullability varchar 또는 text column에 쓴다. database는 이를 위해 아무것도 render하지 않고 문서를 소유한 도구가 읽는다 (Hash: manifest)
 - **DBS-75** `store files`, `store document list|table`, `store block <foreign key> list|table`: table의 markdown corpus 저장이다. `files`는 행마다 file 하나를, `document`는 모든 행을 문서 하나에, `block`은 지정한 foreign key가 가리키는 부모 행 안에 행을 쓴다. `list`나 `table`이 모양이다. table마다 정확히 하나를 쓴다 (Hash: manifest)
 - **DBS-76** `store files shard <column> <period>`, `store document list|table shard <column> <period>`: 저장의 시간 shard다. corpus는 column의 기간마다 행을 따로 둔다. column은 non-null `date` 또는 `datetime` column이고 기간은 `year`, `month` 또는 `day`다. `store block` table, self foreign key가 있는 table, `order`가 있는 table은 이를 거부한다. SQL backend는 이를 무시한다: 아무것도 render하지 않고 introspection도 복원하지 않는다 (Hash: manifest)
-- **DBS-77** `key_prefix '<p>'`: executor가 varchar primary key를 `<p><n + 1>`로 할당한다. n은 그 꼴 key 가운데 가장 큰 10진 suffix다. primary key는 varchar column 하나여야 한다 (Hash: manifest)
 - **DBS-78** `title <column>`, `body <column>`: 행의 제목과 본문이다. 각각 non-null varchar 또는 text column이다 (Hash: manifest)
-- **DBS-79** `order <column>`: 형제 행 사이의 위치이며 executor가 할당한다. default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 (Hash: manifest)
-- **DBS-80** `checkbox <column> <state> '<glyph>'`: state machine column의 한 state에 대한 list glyph다. 줄들은 state 집합을 정확히 덮고, 각 glyph는 한 글자이며 서로 달라야 한다 (Hash: manifest)
-- **DBS-81** `state_machine <column> initial <state>`: 기계의 초기 state이며 여러 줄 가능하다. 기계의 state는 initial, 전환과 terminal 줄이 이름 붙이는 state들이다. state column의 default는 초기 state여야 하며, 초기 state는 terminal일 수 없다 (Hash: manifest)
-- **DBS-82** `state_machine <column> history <table> row <foreign key column> from <column> to <column> at <column>`: 기계 전환의 history table이다. foreign key column은 이 table을 가리키고, `from`과 `to`는 state column의 type, `at`은 `datetime(6)`이며, 필요한 column마다 같은 type의 nullable column이 있고, key와 이것들 외의 column은 없다 (Hash: manifest)
-- **DBS-83** `state_machine <column> limit <state> <count>`: 그 state의 행은 `count`개를 넘을 수 없다. count는 양의 정수이고 state는 state 집합에 속한다 (Hash: manifest)
+- **DBS-79** `order <column>`: 형제 행 묶음의 행을 쓰는 순서다. markdown corpus는 그 column의 순서로 행을 쓴다. application은 그 column을 다른 정수처럼 쓰며, 아무것도 그 값을 할당하지 않는다: 그 column을 생략한 insert는 default 없는 다른 non-null column처럼 `IR_INVALID`다. column은 default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 (Hash: manifest)
+- **DBS-80** `task_marker <column>`: list 행이 task list item marker의 괄호 사이에 쓰는 column이다. `varchar(1)` column은 `[<value>]`로, `bool` column은 0이면 GFM의 체크하지 않은 checkbox `[ ]`, 1이면 체크한 checkbox `[x]`로 쓴다. column은 nullable이어도 된다. GFM은 task list item의 괄호 부분을 task list item marker라 부르고, 이 setting은 체크 여부만이 아니라 한 글자 값이면 무엇이든 그 괄호 사이에 보여 주므로 setting은 GFM의 이름을 쓴다: marker가 GFM의 checkbox인 경우는 `bool` column 하나뿐이다. 다른 type의 column은 그 column에서 `setting` error이고 message는 `task_marker needs a varchar(1) or bool column, not <type>`다. table마다 `task_marker` 줄은 하나이며, 둘째 줄은 DBS-63의 반복이다. state별 형태 `task_marker <column> <state> '<glyph>'`는 문법의 형태가 아니어서 그 state에서 `syntax` error이고 message는 `unexpected '<state>', expected the end of the line`다(그 자리의 string은 `string '<value>'`로 보인다). 예전 이름인 `checkbox` 줄과 `state_machine` 줄도 문법의 setting이 아니어서 각각 그 keyword에서 알 수 없는 setting(DBS-63)이며 message는 `setting "checkbox" is unknown`과 `setting "state_machine" is unknown`다: 흔한 database 어디도 state machine을 갖지 않는다 (Hash: manifest)
 - **DBS-84** `immutable`: database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 (Hash: schema)
 - **DBS-85** `audit into <history table> column <column> references <table> action <history column> previous <history column> [tables <table> (<record column>, <name column>)] [exclude (<column>, ...) | include (<column>, ...)]`: 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사하고, `tables`가 있으면 audit 기록마다 감사 대상 table을 기록한다. [Audit](#audit) 참조 (Hash: schema)
 
@@ -444,8 +439,6 @@ vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize
 | `codec`, `markdown` | column |
 | `navigation` | foreign key |
 | `blind_index` | AES column |
-| `checkbox` | column과 state |
-| `state_machine` | `transition <from> <to>`, `terminal <state>`, `initial <state>`, `history`, `limit <state>`. table마다 기계가 하나이므로 column은 빠진다 |
 | 그 밖의 모든 setting | 없음: 최대 한 번 나온다 |
 
 도구가 이 kind 너머의 참조(foreign key의 대상 table, key의 column, check의 피연산자)의 자리가 필요하면, 먼저 이 목록에 그 kind를 더하며 모든 구현과 vector에 함께 넣는다. vector는 `cases.json`의 `positions` case다.

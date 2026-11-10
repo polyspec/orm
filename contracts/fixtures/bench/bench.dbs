@@ -170,6 +170,16 @@ table task {
   check ck_task_state (state in ('open', 'done'))
 }
 
+table ranked_task {
+  seq i64 identity
+  title varchar(191)
+  position i32
+  primary key (seq)
+  settings {
+    order position
+  }
+}
+
 table hex_cell {
   seq i64 identity
   label varchar(32)

@@ -885,12 +885,8 @@ async function create(c: Core): Promise<Model> {
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
       : convert(type, s.value, ex.db.zone, field));
   }
-  // The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a primary key the
-  // request did not supply.
-  let assignedKey = schema.identity;
-  if (assignedKey === '' && typeof key === 'string' && schema.keyPrefix !== '' && !c.sets.some(s => s.column === schema.primaryKey[0])) {
-    assignedKey = present(schema.primaryKey[0], `the primary key of ${schema.name}`);
-  }
+  // The column that takes the key it is given is the identity.
+  const assignedKey = schema.identity;
   if (assignedKey !== '') {
     st.addName(assignedKey);
     m.values.set(assignedKey, key);

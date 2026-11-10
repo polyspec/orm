@@ -13,11 +13,10 @@ export { loadSet } from './model.js';
 export class Engine {
   private readonly planner: Planner;
 
-  /** assigns plans for a database that assigns the key_prefix keys and the order positions an insert leaves out, as a flowmark corpus does. */
-  public constructor(public readonly model: RuntimeModel, public readonly dialect: string, assigns = false) {
+  public constructor(public readonly model: RuntimeModel, public readonly dialect: string) {
     const d = dialectOf(dialect);
     if (d === undefined) throw new OrmError(codes.DIALECT_UNKNOWN, dialect);
-    this.planner = new Planner(model, d, assigns);
+    this.planner = new Planner(model, d);
   }
 
   public get manifestHash(): string { return this.model.manifestHash; }
