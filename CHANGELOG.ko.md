@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 94b6da5afe6e23cb1d56e035552735e354c1574ca1de7e64eacc583a3810b3ed -->
+<!-- source-sha256: 83650098d7fce722c4a9ee7658501169b8ec3e19f82b1f8fe587458c7fb2490b -->
 # 변경 이력
 
 ## Unreleased
@@ -13,6 +13,7 @@
 - dbspec의 MySQL introspection은 모든 runtime에서 MariaDB를 읽는다(DIA-203~DIA-205). `TABLE_CONSTRAINTS.ENFORCED`가 없는 MariaDB의 모든 CHECK는 적용되는 것으로 읽고, 그 `CHECK_CLAUSE`는 table과 CHECK 이름의 쌍을 key로 MySQL의 escape 형식에 맞춰 읽으며, `bigint(20)` 같은 정수 display width는 width가 없는 것으로 읽고, SQL text로 쓰인 MariaDB의 `COLUMN_DEFAULT`는 MySQL 형식으로 읽는다(`NULL`은 default 없음, 따옴표 literal은 그 값, `current_timestamp(p)`는 시계).
 - Breaking: `uuid`의 MySQL renderer CHECK는 MariaDB에 없는 `REGEXP_LIKE(c, '^…$', 'c')` 대신 `` `c` REGEXP '^…$' ``이고(DIA-48), plan은 MariaDB에 없는 `DROP CHECK` 대신 `DROP CONSTRAINT`로 CHECK를 지운다(DIA-206). 두 server는 각 형식을 같은 결과로 받는다. 이전 release가 만든 MySQL table은 `REGEXP_LIKE` CHECK를 그대로 가지며, plan이 그것을 다시 쓰기 전까지 introspection은 이를 renderer CHECK가 아닌 것으로 보고한다.
 - dbspec introspection vector는 server 자신이 다르게 답하는 곳에서 MariaDB의 답을 담는다(DIA-200, 규칙 4). `mysql-functional-index`는 MariaDB에서 functional index의 거부 1064를, `mysql-fk-set-default`는 MariaDB가 `ON UPDATE SET DEFAULT`에 기록하는 `RESTRICT`를 기대하고, `mysql-unsupported`는 MariaDB `json` column의 `JSON_VALID` CHECK를 목록에 올린다. `mysql-unsupported`는 이제 `ON UPDATE NO ACTION`을 쓰고, MariaDB가 거부하는 stored generated column의 `NOT NULL`을 쓰지 않는다.
+- Breaking: catalog은 MySQL `YEAR` 값을 모든 runtime에서 grid query, 일반 query, 기술된 읽기 모두 정수 cell로 읽으며, MySQL과 MariaDB에서 같다(INT-166). `SELECT YEAR('2020-01-02')`와 `YEAR` column은 `2020`으로, 영 연도 `0000`은 `0`으로 읽고, server가 `YEAR`를 unsigned로 표시해도 cell은 `int`다. 예전에는 `YEAR` 값이 `CATALOG_VALUE: column <n>: MySQL YEAR has no grid cell`로 실패했고, `YEAR()`의 결과를 `INT`로 알리는 MariaDB에서는 값을 돌려주었다. 그 NULL은 예전처럼 null cell이다. catalog descriptor는 MariaDB column의 native type을 MySQL 8.4 형식으로 알린다(DIA-204). 예를 들어 `bigint(20)`은 `bigint`다.
 
 ## 0.0.27
 
