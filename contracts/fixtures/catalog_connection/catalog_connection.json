@@ -15672,8 +15672,8 @@
           "only": [
             "mysql"
           ],
-          "reason": "its row",
-          "sql": "INSERT INTO value_rule_text VALUES (1, 'y', 'a,b', '{\"b\": 1, \"a\": 2}', b'101', ST_GeomFromText('POINT(1 2)'))"
+          "reason": "its row; the JSON object is written in the order of its keys that MySQL keeps, so MySQL, which stores JSON in its own form, and MariaDB, whose JSON is LONGTEXT that keeps the text as written, return one text",
+          "sql": "INSERT INTO value_rule_text VALUES (1, 'y', 'a,b', '{\"a\": 2, \"b\": 1}', b'101', ST_GeomFromText('POINT(1 2)'))"
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -15693,27 +15693,6 @@
                   },
                   {
                     "text": "{\"a\": 2, \"b\": 1}"
-                  },
-                  {
-                    "bytes_hex": "05"
-                  },
-                  {
-                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
-                  }
-                ]
-              ]
-            },
-            "mariadb": {
-              "rows": [
-                [
-                  {
-                    "text": "y"
-                  },
-                  {
-                    "text": "a,b"
-                  },
-                  {
-                    "text": "{\"b\": 1, \"a\": 2}"
                   },
                   {
                     "bytes_hex": "05"
@@ -15765,39 +15744,6 @@
                   },
                   {
                     "text": "{\"a\": 2, \"b\": 1}"
-                  },
-                  {
-                    "bytes_hex": "05"
-                  },
-                  {
-                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
-                  }
-                ]
-              ]
-            },
-            "mariadb": {
-              "columns": [
-                "id",
-                "e",
-                "s",
-                "j",
-                "bt",
-                "g"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "text": "y"
-                  },
-                  {
-                    "text": "a,b"
-                  },
-                  {
-                    "text": "{\"b\": 1, \"a\": 2}"
                   },
                   {
                     "bytes_hex": "05"
