@@ -42,7 +42,10 @@ const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment
 export function ciServerErrors(workflow: string, variables: readonly string[]): string[] {
   const errors: string[] = [];
   if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
-  const steps = workflowSteps(workflow);
+  // The servers start in the job that runs make orm-test-servers, so the order that counts is the order of that job's steps; another
+  // job, such as the preflight job that every other job needs, runs on a runner of its own.
+  const serverJob = readWorkflow(workflow).jobs.find(job => job.steps.some(startsServers));
+  const steps = serverJob ? serverJob.steps : workflowSteps(workflow);
   const defined = environment(workflow);
   const server = steps.findIndex(startsServers);
   if (server === -1) {
@@ -139,10 +142,11 @@ export function lockedCacheErrors(workflow: string): string[] {
   return errors;
 }
 
-// jobTargets names the CHECK_TARGETS that the docs and editor jobs of ci.yml run, outside the test groups. The docs job runs the
+// jobTargets names the CHECK_TARGETS that the preflight, docs and editor jobs of ci.yml run, outside the test groups. The preflight
+// job runs the targets that make preflight-ci names, before every other job; the docs job runs the
 // targets that make docs-ci names; the editor job runs the CHECK_TARGETS in the prerequisite chain of the target that make
 // ci-vscode-integration runs. A job reaches a target through prerequisites, so each target is counted once for the job that runs it.
-export function jobTargets(makefile: string): { docs: string[]; editor: string[] } {
+export function jobTargets(makefile: string): { preflight: string[]; docs: string[]; editor: string[] } {
   const check = checkTargets(makefile);
   const entries = makeTargets(makefile);
   const named = (name: string) => entries.filter(entry => entry.target === name);
@@ -157,7 +161,7 @@ export function jobTargets(makefile: string): { docs: string[]; editor: string[]
     return check.filter(target => seen.has(target));
   };
   const words = (name: string) => named(name).flatMap(entry => entry.commands).flatMap(command => command.split(/\s+/));
-  return { docs: reach(words('docs-ci')), editor: reach(words('ci-vscode-integration')) };
+  return { preflight: reach(words('preflight-ci')), docs: reach(words('docs-ci')), editor: reach(words('ci-vscode-integration')) };
 }
 
 // jobOverlapErrors returns one error for each CHECK_TARGETS target that two CI jobs run: a test group, the kit gates, the docs job or the
@@ -169,6 +173,7 @@ export function jobOverlapErrors(makefile: string): string[] {
   for (const group of groups) for (const target of targets[group] ?? []) add(`CI group ${group}`, target);
   for (const target of kitGates(makefile)) add('the kit gates', target);
   const jobs = jobTargets(makefile);
+  for (const target of jobs.preflight) add('the preflight job', target);
   for (const target of jobs.docs) add('the docs job', target);
   for (const target of jobs.editor) add('the editor job', target);
   return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
@@ -200,8 +205,9 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   for (const gate of gates) if (!all.includes(gate)) errors.push(`CI_KIT_GATES names ${gate}, which is not a target of CHECK_TARGETS`);
   const owners = new Map<string, string[]>();
   for (const group of groups) for (const target of targets[group] ?? []) owners.set(target, [...(owners.get(target) ?? []), group]);
-  // The docs and editor jobs run their own targets (jobTargets), so each CHECK_TARGETS target is run by one job.
+  // The preflight, docs and editor jobs run their own targets (jobTargets), so each CHECK_TARGETS target is run by one job.
   const own = jobTargets(makefile);
+  for (const target of own.preflight) owners.set(target, [...(owners.get(target) ?? []), 'preflight']);
   for (const target of own.docs) owners.set(target, [...(owners.get(target) ?? []), 'docs']);
   for (const target of own.editor) owners.set(target, [...(owners.get(target) ?? []), 'editor']);
   for (const [target, runs] of owners) if (gates.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);

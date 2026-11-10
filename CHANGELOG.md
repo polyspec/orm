@@ -5,6 +5,7 @@
 
 ## 0.0.29
 
+- T428: The first CI job, preflight, runs the structure checks that need only Node (repo-check, runner-check, docs-rules-check, comment-language-check) in seconds, and every other job needs it, so their failure ends the run before any suite starts.
 - T427: The cache keys of the CI jobs are the hashes of the tracked lock files, computed once after the checkout, where a `hashFiles` key was evaluated again after the last step over the workspace the job left and failed a job whose steps had passed.
 - orm takes ordered-json 0.0.24 and kit 0.0.103 (T424). Go reads a failure of the JSON parser through the interface `orderedjson.Error`, which 0.0.24 gives in place of `*orderedjson.ParseError`, and Rust compares the kind of its error with `ErrorKind::MaximumDepthExceeded`, now an enum, so a value nested past 256 levels stays `json: value nesting exceeds 256 levels` in both. PHP, the PHP extension, Python and TypeScript keep `ParseError` and its kinds, which 0.0.24 leaves as they were. The pins of every runtime (packages/go/go.mod and examples/go.mod, the Cargo manifest and both Cargo locks, composer.json and composer.lock, package.json and package-lock.json, packages/python/pyproject.toml and uv.lock) and docs/operations/packaging name the 0.0.24 release assets. Red: with the 0.0.24 pin, `packages/go/orm/codec.go:113: undefined: orderedjson.ParseError`, and Rust E0308, a kind compared with a `&str`.
 

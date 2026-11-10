@@ -6,6 +6,7 @@
 
 ## 0.0.29
 
+- T428: 첫 CI job인 preflight가 Node만 있으면 되는 구조 검사(repo-check, runner-check, docs-rules-check, comment-language-check)를 몇 초에 돌리고 다른 모든 job이 이것을 기다리므로, 그 실패는 어떤 suite도 시작하기 전에 run을 끝낸다.
 - T427: CI job의 cache key는 checkout 직후 한 번 계산한 추적 lock 파일의 hash이다. 전에는 `hashFiles` key가 마지막 단계 뒤에 job이 남긴 workspace에서 다시 계산되어, 단계가 모두 통과한 job을 실패시켰다.
 - orm은 ordered-json 0.0.24와 kit 0.0.103을 받는다 (T424). Go는 JSON parser의 실패를 0.0.24가 `*orderedjson.ParseError` 대신 주는 interface `orderedjson.Error`로 읽고, Rust는 그 error의 kind를 이제 enum인 `ErrorKind::MaximumDepthExceeded`와 비교한다. 그래서 256 level을 넘어 중첩된 값은 둘 다 그대로 `json: value nesting exceeds 256 levels`다. PHP, PHP extension, Python, TypeScript는 0.0.24가 바꾸지 않은 `ParseError`와 그 kind를 그대로 쓴다. 모든 runtime의 pin(packages/go/go.mod와 examples/go.mod, Cargo manifest와 두 Cargo lock, composer.json과 composer.lock, package.json과 package-lock.json, packages/python/pyproject.toml과 uv.lock)과 docs/operations/packaging은 0.0.24 release asset을 가리킨다. Red: 0.0.24 pin에서 `packages/go/orm/codec.go:113: undefined: orderedjson.ParseError`, Rust는 kind를 `&str`과 비교한 E0308.
 

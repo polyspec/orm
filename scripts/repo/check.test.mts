@@ -696,8 +696,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   const own = jobTargets(makefile);
-  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
+  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.preflight, ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
+  assert.deepEqual([...own.preflight].sort(byCodeUnit), ['comment-language-check', 'docs-rules-check', 'repo-check', 'runner-check'], 'the preflight job runs the four structure checks (T427)');
   assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'dialect-facts-check'],
@@ -734,8 +735,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
   const testJob = jobs.test;
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
-  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
-    'independent runtime and comparison jobs start alongside kit and install their own dependencies');
+  assert.deepEqual('needs' in testJob ? testJob.needs : undefined, ['preflight'],
+    'runtime and comparison jobs wait only for the preflight job (T427), start alongside kit and install their own dependencies');
   assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
     'CI passes the group setup needs to one Make target, not inline shell logic');
   const installTools = (group: string, php: string, python: string) => {
