@@ -1580,7 +1580,12 @@ RECIPE_RUST_TEST = cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --w
 # select (PHP_EXTENSION_NATIVE_CASES); the Python module <recipe>_mariadb, which no test_*.py discovery finds; and the module
 # <recipe>_mariadb of the Rust program mariadb, which a plain cargo test does not run (test = false). Each target fails when one
 # of its entries fails. They run their cases one at a time, as the recipe targets of every database do (RECIPE_TS_TEST).
-MARIADB_TS_ENTRIES = $(sort $(wildcard packages/ts/tests/*-mariadb.test.mjs))
+# The recipe list of a runtime is its entries of the database mysql, and its entries of mariadb are the same recipes on mariadb:
+# a recipe that runs on mysql runs on mariadb, a server of the MySQL dialect (DIA-200), so an entry of mysql without its
+# entry of mariadb fails the target rather than leaving the recipe out. node --test takes a path that matches no file as a
+# pattern that matches nothing and passes, so the TypeScript target looks for each entry before it runs them.
+MARIADB_TS_ENTRIES = $(patsubst %-mysql.test.mjs,%-mariadb.test.mjs,$(sort $(wildcard packages/ts/tests/*-mysql.test.mjs)))
+MARIADB_PY_ENTRIES = $(patsubst packages/python/tests/test_%_mysql.py,packages.python.tests.%_mariadb,$(sort $(wildcard packages/python/tests/test_*_mysql.py)))
 .PHONY: mariadb-recipes-check/go mariadb-recipes-check/rust mariadb-recipes-check/typescript mariadb-recipes-check/python mariadb-recipes-check/php mariadb-recipes-check/php-extension
 mariadb-recipes-check/go: lease-tool
 	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm ./packages/go/internal/testdb -run '^Test[A-Za-z]*Mariadb$$' -count=1
@@ -1588,40 +1593,10 @@ mariadb-recipes-check/rust: lease-tool
 	$(WITH_MARIADB_ENV) cd packages/rust && $(CARGO_TEST) mariadb-recipes-check -- $(RECIPE_RUST_TEST) --test mariadb
 mariadb-recipes-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
+	missing=0; for entry in $(MARIADB_TS_ENTRIES); do test -f $$entry || { echo "$$entry is missing: a recipe of mysql runs on mariadb (DIA-200)" >&2; missing=1; }; done; exit $$missing
 	$(WITH_MARIADB_ENV) $(RECIPE_TS_TEST) $(MARIADB_TS_ENTRIES)
 mariadb-recipes-check/python: lease-tool python-venv-check
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.aes_rotation_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.audit_triggers_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.case_database_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.catalog_connection_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.complex_query_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.composite_keys_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_verification_dynamic_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_verification_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.connection_pool_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.constraints_and_relations_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_introspect_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dsn_connection_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.external_audit_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.fulltext_search_recipe_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.immutable_write_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_queries_chain_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_queries_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_socket_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_writes_chain_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_writes_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.parameter_chunking_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.performance_gate_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.query_cancel_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.render_physical_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.request_hook_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_install_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.set_decimal_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_runner_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.transactions_mariadb
-	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.utils_recipe_mariadb
+	$(WITH_MARIADB_ENV) { status=0; for entry in $(MARIADB_PY_ENTRIES); do $(PYTHON_VENV)/bin/python -m $$entry || status=1; done; exit $$status; }
 mariadb-recipes-check/php: lease-tool php-vendor-check php-models
 	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '::testMariadb'
 mariadb-recipes-check/php-extension: lease-tool php-vendor-check build-php-ext
