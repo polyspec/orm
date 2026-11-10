@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
+import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
 import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
@@ -732,6 +733,12 @@ caseTest('the test-server environment writes the MySQL socket of the primary as 
 // The MariaDB servers (scripts/test-servers-mariadb.mts) write every variable of MARIADB_VARIABLES and read their ports back; the
 // replica refuses writes, the privilege probe server logs binary changes with trust-function-creators off and has no TLS files, and
 // every server keeps a TCP client at 127.0.0.1 the user of that host.
+caseTest('the MariaDB build leaves out the DTrace probes and records its options, so a build of other options is built again', COMPUTE, () => {
+  assert.ok(CMAKE_OPTIONS.includes('-DENABLE_DTRACE=OFF'), CMAKE_OPTIONS.join(' '));
+  assert.equal(buildOptionsText(['-DA=1', '-DB=2']), '-DA=1\n-DB=2\n');
+  assert.notEqual(buildOptionsText(CMAKE_OPTIONS), buildOptionsText(CMAKE_OPTIONS.filter(option => option !== '-DENABLE_DTRACE=OFF')));
+});
+
 caseTest('the MariaDB servers write their environment and give each role its settings', COMPUTE, () => {
   const p = paths('/checkout');
   const ports = { mariadb: 1, mariadbReplica: 2, mariadbPrivilege: 3, proxysql: 4 };
@@ -745,6 +752,10 @@ caseTest('the MariaDB servers write their environment and give each role its set
   const replica = mariadbdArguments(p, 'replica', 2);
   const privilege = mariadbdArguments(p, 'privilege', 3);
   for (const args of [primary, replica, privilege]) assert.ok(args.includes('--skip-name-resolve'), args.join(' '));
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--thread-stack=1048576') && args.includes('--event-scheduler=ON'), args.join(' '));
+  assert.ok(replica.includes('--slave-parallel-threads=4') && !primary.includes('--slave-parallel-threads=4'), replica.join(' '));
+  assert.deepEqual([primary, replica, privilege].map(args => args.find(arg => arg.startsWith('--tmpdir='))), ['mariadb', 'mariadb-replica', 'mariadb-privilege'].map(name => `--tmpdir=${p.dir}/${name}-tmp`));
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--performance-schema=ON') && args.includes('--performance-schema-instrument=transaction=ON') && args.includes('--performance-schema-instrument=wait/lock/metadata/sql/mdl=ON'), args.join(' '));
   assert.ok(replica.includes('--read-only=ON') && !primary.includes('--read-only=ON') && !privilege.includes('--read-only=ON'));
   assert.ok(privilege.includes('--log-bin-trust-function-creators=OFF') && primary.includes('--log-bin-trust-function-creators=ON'));
   assert.ok(!privilege.some(arg => arg.startsWith('--ssl-')) && primary.some(arg => arg.startsWith('--ssl-ca=')));

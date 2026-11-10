@@ -34,6 +34,11 @@ export const MARIADBD_BINLOG = ['--log-bin=binlog', '--binlog-expire-logs-second
 // changes the primary or the replica.
 export const MARIADBD_PRIVILEGE_BINLOG = ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF'];
 
+// MARIADBD_REPLICA is the replica of the primary: started without its replication, which the start sets up, read-only, and
+// applying with the 4 parallel workers that MySQL 8.4 uses by default (replica_parallel_workers), where MariaDB applies serially
+// (slave_parallel_threads=0), so the replica keeps up with the same primary load as the MySQL replica.
+export const MARIADBD_REPLICA = ['--skip-slave-start', '--read-only=ON', '--slave-parallel-threads=4'];
+
 /** The role of one mariadbd of the set. */
 export type MariadbRole = 'primary' | 'replica' | 'privilege';
 
@@ -41,6 +46,16 @@ export type MariadbRole = 'primary' | 'replica' | 'privilege';
 export const MARIADB_SERVERS: Record<MariadbRole, { name: string; id: number }> = {
   primary: { name: 'mariadb', id: 1 }, replica: { name: 'mariadb-replica', id: 2 }, privilege: { name: 'mariadb-privilege', id: 3 },
 };
+// MARIADBD_PERFORMANCE_SCHEMA is the Performance Schema of MySQL 8.4 by default, which MariaDB turns off: the schema on, the
+// transaction instrument and the consumer of the current transaction events, and the instrument of the metadata locks, which
+// the cases read on both servers (the threads of a session, its prepared statements, its transactions and the tables that its
+// transaction holds).
+export const MARIADBD_PERFORMANCE_SCHEMA = ['--performance-schema=ON', '--performance-schema-instrument=transaction=ON',
+  '--performance-schema-consumer-events-transactions-current=ON', '--performance-schema-instrument=wait/lock/metadata/sql/mdl=ON'];
+// MARIADBD_MYSQL_DEFAULTS are the defaults of MySQL 8.4 that MariaDB sets otherwise and that the cases meet: the 1 MiB thread
+// stack, which a deeply nested statement needs (MariaDB's 292 KiB stack refuses it with 1436), and the event scheduler, on in
+// MySQL and off in MariaDB, which runs the events a case creates.
+export const MARIADBD_MYSQL_DEFAULTS = ['--thread-stack=1048576', '--event-scheduler=ON'];
 // MARIADBD_STORAGE bounds the InnoDB redo log, which MariaDB sizes with innodb_log_file_size (MySQL: innodb_redo_log_capacity),
 // and the undo tablespaces, as MYSQLD_STORAGE does.
 export const MARIADBD_STORAGE = ['--innodb-log-file-size=16777216', '--innodb-max-undo-log-size=16777216'];
@@ -54,14 +69,18 @@ export const MARIADBD_STORAGE = ['--innodb-log-file-size=16777216', '--innodb-ma
 export function mariadbdArguments(p: Paths, role: MariadbRole, port: number): string[] {
   const { name, id } = MARIADB_SERVERS[role];
   const tls = join(p.dir, 'mariadb-tls');
-  return ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--secure-file-priv=${join(p.dir, 'mariadb-files')}`,
+  return ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, `--secure-file-priv=${join(p.dir, 'mariadb-files')}`,
     `--lower-case-table-names=${MYSQL_LOWER_CASE}`, '--bind-address=127.0.0.1', '--skip-name-resolve', `--port=${port}`,
     `--socket=${mariadbSocket(p, role)}`, `--pid-file=${join(p.dir, `${name}.server.pid`)}`,
-    ...(role === 'privilege' ? MARIADBD_PRIVILEGE_BINLOG : MARIADBD_BINLOG), ...MARIADBD_STORAGE, `--server-id=${id}`,
+    ...(role === 'privilege' ? MARIADBD_PRIVILEGE_BINLOG : MARIADBD_BINLOG), ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS, `--server-id=${id}`,
     ...(role === 'privilege' ? [] : [`--ssl-ca=${tls}/ca.pem`, `--ssl-cert=${tls}/${name}-cert.pem`, `--ssl-key=${tls}/${name}-key.pem`]),
-    ...(role === 'replica' ? ['--skip-slave-start', '--read-only=ON'] : [])];
+    ...(role === 'replica' ? MARIADBD_REPLICA : [])];
 }
 
+// mariadbTmpdir is the temporary folder of the mariadbd of <role>, its own: a starting mariadbd removes every #sql file of its
+// tmpdir, so in the shared TMPDIR of the machine the start of any other server, or of mariadb-install-db, removed the Aria files of
+// the internal temporary tables that a running server had open, and that server crashed (signal 11 in free_tmp_table).
+export const mariadbTmpdir = (p: Paths, role: MariadbRole): string => join(p.dir, `${MARIADB_SERVERS[role].name}-tmp`);
 const mariadbSocket = (p: Paths, role: MariadbRole): string =>
   ({ primary: p.sockets.mariadb, replica: p.sockets.mariadbReplica, privilege: p.sockets.mariadbPrivilege })[role];
 const mariadbPid = (p: Paths, role: MariadbRole): string =>
@@ -178,7 +197,8 @@ async function startServers(p: Paths, ports: MariadbPorts): Promise<void> {
   mariadbTls(p);
   for (const [role, port] of [['primary', ports.mariadb], ['replica', ports.mariadbReplica], ['privilege', ports.mariadbPrivilege]] as const) {
     const { name } = MARIADB_SERVERS[role];
-    run('mariadb-install-db', ['--no-defaults', `--datadir=${join(p.dir, name)}`, '--auth-root-authentication-method=normal', '--skip-test-db',
+    mkdirSync(mariadbTmpdir(p, role), { recursive: true });
+    run('mariadb-install-db', ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, '--auth-root-authentication-method=normal', '--skip-test-db',
       `--lower-case-table-names=${MYSQL_LOWER_CASE}`], { stdio: ['ignore', openSync(join(p.dir, `${name}-init.log`), 'w'), 'inherit'], env });
     await startLogged(p.dir, name, 'ready for connections', 'mariadbd', mariadbdArguments(p, role, port), env);
     run('mariadb', ['--no-defaults', `--socket=${mariadbSocket(p, role)}`, '-u', 'root', '-e', ROOT_TCP_SQL]);
@@ -270,7 +290,7 @@ export async function startMariadb(p: Paths): Promise<void> {
   mkdirSync(p.dir, { recursive: true });
   socketDir(p);
   stopMariadbProcesses(p);
-  for (const name of [...Object.values(MARIADB_SERVERS).map(server => server.name), 'mariadb-proxysql']) rmSync(join(p.dir, name), { recursive: true, force: true });
+  for (const name of [...Object.values(MARIADB_SERVERS).flatMap(server => [server.name, `${server.name}-tmp`]), 'mariadb-proxysql']) rmSync(join(p.dir, name), { recursive: true, force: true });
   rmSync(p.mariadbEnv, { force: true });
   try {
     await startServers(p, ports);

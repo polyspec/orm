@@ -11,7 +11,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpus } from 'node:os';
-import { existsSync, mkdirSync, openSync, closeSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, closeSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 /** MARIADB_VERSION is the MariaDB release of the test servers, locally built and installed on the CI runner. */
@@ -27,10 +27,14 @@ const ROOT = resolve(import.meta.dirname, '..');
 export const mariadbPrefix = (root = ROOT): string => join(root, 'var/mariadb', MARIADB_VERSION);
 
 // The plugins and parts the test servers do not start are left out: they need libraries the build does not use and would
-// only lengthen it. The server keeps InnoDB, Aria, MyISAM and the plugins compiled in by default.
+// only lengthen it. The server keeps InnoDB, Aria, MyISAM and the plugins compiled in by default. DTrace probes are left out:
+// MariaDB turns them on when the machine has dtrace, and on arm64 macOS the compiler moved the error path of my_net_write
+// (sql/net_serv.cc, MYSQL_NET_WRITE_DONE) into a shared stub that ends in a jump to the probe, which the linker then replaced
+// with a nop, so the stub ran on into the next function and the server crashed (signal 11 in find_named) whenever a client
+// went away while the server wrote to it.
 export const CMAKE_OPTIONS = [
   '-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DWITH_SSL=bundled', '-DWITH_ZLIB=bundled', '-DWITH_PCRE=system', '-DWITH_LIBFMT=system',
-  '-DWITH_UNIT_TESTS=OFF', '-DWITH_EMBEDDED_SERVER=OFF', '-DWITH_WSREP=OFF', '-DWITH_MARIABACKUP=OFF',
+  '-DWITH_UNIT_TESTS=OFF', '-DWITH_EMBEDDED_SERVER=OFF', '-DWITH_WSREP=OFF', '-DWITH_MARIABACKUP=OFF', '-DENABLE_DTRACE=OFF',
   ...['ROCKSDB', 'MROONGA', 'SPIDER', 'CONNECT', 'COLUMNSTORE', 'S3', 'OQGRAPH', 'SPHINX', 'HASHICORP_KEY_MANAGEMENT', 'AUTH_GSSAPI', 'AUTH_PAM']
     .map(plugin => `-DPLUGIN_${plugin}=NO`),
 ];
@@ -40,13 +44,22 @@ const fail = (message: string): never => {
   process.exit(1);
 };
 
-// installed reports whether prefix holds a mariadbd of MARIADB_VERSION.
+/** BUILD_OPTIONS_FILE is the file of the prefix that names the CMAKE_OPTIONS of its build, one per line. */
+export const BUILD_OPTIONS_FILE = 'build-options.txt';
+/** buildOptionsText is the text of BUILD_OPTIONS_FILE for the options of a build. */
+export const buildOptionsText = (options: readonly string[] = CMAKE_OPTIONS): string => `${options.join('\n')}\n`;
+
+// installed reports whether prefix holds a mariadbd of MARIADB_VERSION built with CMAKE_OPTIONS: a build of other options, or of
+// none recorded, is built again.
 function installed(prefix: string): boolean {
   const server = join(prefix, 'bin/mariadbd');
   if (!existsSync(server)) return false;
   const line = spawnSync(server, ['--version'], { encoding: 'utf8' }).stdout ?? '';
   if (!MARIADB_VERSION_LINE.test(line)) fail(`${server} prints ${JSON.stringify(line.trim())}, not MariaDB ${MARIADB_VERSION}; remove ${prefix} and run make orm-install-mariadb again`);
-  return true;
+  const recorded = join(prefix, BUILD_OPTIONS_FILE);
+  if (existsSync(recorded) && readFileSync(recorded, 'utf8') === buildOptionsText()) return true;
+  console.log(`mariadb-build: ${prefix} was built with other options than CMAKE_OPTIONS; building it again`);
+  return false;
 }
 
 // step runs one build step with its output in <log>, and fails naming the step and the log.
@@ -84,7 +97,10 @@ async function main(): Promise<void> {
   step('configure', join(work, 'configure.log'), 'cmake',
     [source, `-DCMAKE_INSTALL_PREFIX=${prefix}`, `-DLIBFMT_INCLUDE_DIR=${fmt.stdout.trim()}`, ...CMAKE_OPTIONS], build);
   step('build', join(work, 'build.log'), 'cmake', ['--build', '.', '--parallel', String(cpus().length)], build);
+  // The install replaces the whole prefix, so no file of another build stays in it.
+  rmSync(prefix, { recursive: true, force: true });
   step('install', join(work, 'install.log'), 'cmake', ['--install', '.'], build);
+  writeFileSync(join(prefix, BUILD_OPTIONS_FILE), buildOptionsText());
   if (!installed(prefix)) fail(`the install wrote no ${join(prefix, 'bin/mariadbd')}; see ${join(work, 'install.log')}`);
   rmSync(work, { recursive: true, force: true });
   console.log(`mariadb-build: MariaDB ${MARIADB_VERSION} installed in ${prefix}`);
