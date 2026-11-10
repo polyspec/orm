@@ -2,6 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
+import { isUtf8 } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import { chmodSync, appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -816,8 +817,9 @@ function bindWrapper(value) {
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'string') return { text: value };
   if (typeof value === 'boolean') return { bool: value };
-  // A vector writes the bytes of a bind as their text.
-  if (value instanceof Uint8Array) return { text: Buffer.from(value).toString() };
+  // A vector writes the bytes of a bind as their text, and bytes that are no UTF-8 text, such as the 16 bytes of a uuid, as their
+  // bytes_hex (DIA-27).
+  if (value instanceof Uint8Array) return isUtf8(value) ? { text: Buffer.from(value).toString() } : { bytes_hex: Buffer.from(value).toString('hex') };
   throw new Error(`no recipe wrapper for the bind ${JSON.stringify(value)}`);
 }
 

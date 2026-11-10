@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_check.js';
+import { bindSlotType, checkAssign, checkParam, transformParam, uuidBind } from './bind_check.js';
 import { CodecError, blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request, RequestQuery } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
@@ -1196,19 +1196,21 @@ export class Db {
           if (slot.host_styles.includes('blind_index')) {
             if (value !== null) value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
-          push(value);
+          push(uuidBind(value, slot.col_type, this.dialect === 'postgres'));
           break;
         }
         case 'audit':
-          push(auditValue(slot, audit));
+          push(uuidBind(auditValue(slot, audit), slot.col_type, this.dialect === 'postgres'));
           break;
         case 'config':
           if (slot.name !== 'aes_version') throw new OrmError(codes.CONFIG, `config value ${slot.name} is not configured`);
           push(this.aesVersion);
           break;
-        case 'parent':
-          for (const value of parents) push(value);
+        case 'parent': {
+          const types = slot.key_types ?? [];
+          for (const [i, value] of parents.entries()) push(types.length > 0 ? uuidBind(value, present(types[i % types.length], 'key type'), this.dialect === 'postgres') : value);
           break;
+        }
         case 'now':
           // One statement reads the clock once, so its clock columns are equal.
           clock ??= this.clockMicros();
@@ -1421,6 +1423,12 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
   }
   for (const column of assemble.columns) {
     let value = row[column.index];
+    if (value !== undefined && value !== null && column.styles.length === 0 && column.column !== '' && column.type === 'uuid') {
+      // A uuid cell becomes its canonical text (DIA-27).
+      const cell = value;
+      row[column.index] = decodedCell(assemble, column.name, () => uuidCell(cell, db.dialect === 'postgres'));
+      continue;
+    }
     if (value === undefined || column.styles.length === 0) continue;
     const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
     const client = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
@@ -1439,6 +1447,24 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
+}
+
+/**
+ * The lower-case canonical text of a uuid cell (DIA-27): on PostgreSQL, which reads it as CAST(col AS text), that text, and on MySQL,
+ * MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused with the message of the uuid type (COD-1).
+ */
+function uuidCell(value: unknown, postgres: boolean): string {
+  const canonical = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  if (!postgres && value instanceof Uint8Array && value.length === 16) {
+    const hex = Buffer.from(value).toString('hex');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  if (postgres && typeof value === 'string' && canonical.test(value)) return value;
+  if (postgres && value instanceof Uint8Array) {
+    const text = Buffer.from(value).toString('latin1');
+    if (canonical.test(text)) return text;
+  }
+  throw new CodecError(codes.CODEC_DECODE, 'uuid cell is not a uuid');
 }
 
 /** The stored version of a row that a read decodes with; its refusal names the entity and the version column (COD-41). */

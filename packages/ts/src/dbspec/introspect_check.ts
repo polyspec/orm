@@ -1,7 +1,7 @@
 // Reads a check expression of the dialect catalog as dbspec predicate text
 // (docs/spec/dialects.md "Introspection", "Checks").
 import { present } from '../present.js';
-import { quote } from './introspect_catalog.js';
+import { quote, uuidText } from './introspect_catalog.js';
 import type { DbspecType } from './model.js';
 import type { DbspecDialect } from './render.js';
 
@@ -76,7 +76,7 @@ function unescapeMySQLClause(text: string): string {
   return out;
 }
 
-type TokenKind = 'ident' | 'word' | 'number' | 'string' | 'op' | 'punct' | '';
+type TokenKind = 'ident' | 'word' | 'number' | 'string' | 'bytes' | 'op' | 'punct' | '';
 
 interface Token {
   readonly kind: TokenKind;
@@ -103,6 +103,18 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
       const [value, n] = readSQLString(dialect, text.slice(i));
       out.push({ kind: 'string', text: value });
       i += n;
+    } else if (text.startsWith('0x', i) || ((ch === 'X' || ch === 'x') && text[i + 1] === "'")) {
+      // A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123).
+      const quoted = ch !== '0';
+      let j = i + 2;
+      while (j < text.length && /[0-9a-fA-F]/.test(present(text[j], 'text[j]'))) j++;
+      const hex = text.slice(i + 2, j);
+      if (quoted) {
+        if (text[j] !== "'") throw new CheckDecodeError('unclosed binary literal');
+        j++;
+      }
+      out.push({ kind: 'bytes', text: hex.toLowerCase() });
+      i = j;
     } else if (isDigit(ch)) {
       let j = i;
       while (j < text.length && (isDigit(present(text[j], 'text[j]')) || text[j] === '.')) j++;
@@ -166,7 +178,7 @@ const MYSQL_ESCAPES: Readonly<Record<string, string>> = { '0': '\0', b: '\b', n:
 /** A column or a literal. */
 interface Operand {
   readonly kind: 'operand';
-  readonly type: 'column' | 'number' | 'string' | 'bool';
+  readonly type: 'column' | 'number' | 'string' | 'bytes' | 'bool';
   readonly text: string;
 }
 
@@ -310,6 +322,10 @@ class CheckDecoder {
       this.i++;
       return operand('string', t.text);
     }
+    if (t.kind === 'bytes') {
+      this.i++;
+      return operand('bytes', t.text);
+    }
     if (t.kind === 'op' && t.text === '-') {
       this.i++;
       if (this.punct('(')) {
@@ -415,6 +431,10 @@ class CheckDecoder {
         return quote(o.text);
       case 'bool':
         return o.text;
+      case 'bytes':
+        // The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has no other binary literal.
+        if (!/^(?:[0-9a-f]{2}){16}$/.test(o.text) || type?.kind !== 'uuid') throw new CheckDecodeError(`the binary literal ${o.text} is no uuid literal`);
+        return quote(uuidText(Buffer.from(o.text, 'hex')));
       case 'number':
         if (type?.kind === 'bool' && o.text === '1') return 'true';
         if (type?.kind === 'bool' && o.text === '0') return 'false';

@@ -32,6 +32,17 @@ const integerRanges: Record<string, readonly [bigint, bigint]> = {
   i64: [-9223372036854775808n, 9223372036854775807n],
 };
 
+/**
+ * The value v of a slot of type colType as it is bound: a uuid text is its 16 bytes on MySQL, MariaDB, SQLite and flowmark, the 32
+ * digits of the canonical text two to a byte in their order, and the text itself on PostgreSQL, which casts it (DIA-27, PRT-67).
+ * Another value is v.
+ */
+export function uuidBind(v: unknown, colType: string, postgres: boolean): unknown {
+  if (colType !== 'uuid' || typeof v !== 'string' || postgres) return v;
+  if (!canonicalUuid.test(v)) throw new OrmError(codes.CODEC_ENCODE, 'uuid value is not a lower-case canonical uuid');
+  return Buffer.from(v.replaceAll('-', ''), 'hex');
+}
+
 /** Refuses SQL NULL as parameter i when slot assigns a non-null column; it runs for every slot before any statement. */
 export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
   if ((value === null || value === undefined) && slot.notNull === true) {

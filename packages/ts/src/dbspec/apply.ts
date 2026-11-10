@@ -9,11 +9,13 @@ import { inspect } from 'node:util';
 import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
 import { dbspecManifest } from './index.js';
 import { checkServer, introspectCatalog, type DbspecServer } from './introspect.js';
-import { CatalogRow } from './introspect_catalog.js';
-import type { DbspecDocument } from './model.js';
+import { CatalogRow, TEXT_STORAGE_REASON } from './introspect_catalog.js';
+import type { DbspecColumn, DbspecDocument, DbspecForeignKey, DbspecTable } from './model.js';
+import { rendererName } from './names.js';
 import { chainPlans, type DbspecPlan } from './plan.js';
 import { effectText, planSteps, type DbspecEffect, type DbspecPlanStep } from './plan_steps.js';
 import { Renderer, type DbspecDialect } from './render.js';
+import { compareText, sortedBy } from './sort.js';
 
 /** A mysql2 promise connection or pool connection; apply runs its lock and statements on it. */
 export type DbspecApplyMySqlConnection = DbspecMySqlConnection;
@@ -23,15 +25,17 @@ export type DbspecApplyPostgresConnection = DbspecPostgresConnection;
 export type DbspecApplySqliteConnection = DbspecSqliteConnection;
 
 /** What apply, recover, rollback and finalize report (docs/spec/plans.md "Apply"). */
-export type DbspecApplyEventKind = 'plan' | 'rollback' | 'finalize' | 'irreversible' | 'statement' | 'applied' | 'verified' | 'done';
+export type DbspecApplyEventKind = 'plan' | 'rollback' | 'finalize' | 'irreversible' | 'statement' | 'applied' | 'verified' | 'convert' | 'done';
 
 /**
  * An occurrence of a command: `plan`, `rollback` or `finalize` when it starts
  * on a plan (with its number of steps), `irreversible` with the index and
  * statement of a step without rollback, `statement` before and `applied`
  * after each statement or rollback statement (with its step index and
- * text), `verified` and `done`. `step` is 0 and `statement` is '' for the
- * events of a whole plan.
+ * text), `verified` and `done`, and `convert` before each statement that
+ * converts the text storage of a uuid to 16 bytes (with no plan, its index
+ * and text; PLN-108). `step` is 0 and `statement` is '' for the events of a
+ * whole plan.
  */
 export interface DbspecApplyEvent {
   readonly kind: DbspecApplyEventKind;
@@ -45,12 +49,12 @@ export interface DbspecApplyEvent {
 export type DbspecApplyHandler = (event: DbspecApplyEvent) => void | Promise<void>;
 
 /** The kind of a command failure. */
-export type DbspecApplyErrorCode = 'locked' | 'session' | 'interrupted' | 'drift' | 'chain' | 'failed' | 'verify' | 'irreversible' | 'nulls';
+export type DbspecApplyErrorCode = 'locked' | 'session' | 'interrupted' | 'drift' | 'chain' | 'failed' | 'verify' | 'irreversible' | 'nulls' | 'convert';
 
 /**
  * A failure of apply, recover, rollback or finalize. `plan` is '' when no
  * plan is concerned, `step` is the step index of `failed`, `interrupted`,
- * `irreversible`, `nulls` and a `session` error before a step, `detail` the explanation and `cause` the
+ * `irreversible`, `nulls`, `convert` and a `session` error before a step, `detail` the explanation and `cause` the
  * database or verification error.
  */
 export class DbspecApplyError extends Error {
@@ -62,7 +66,7 @@ export class DbspecApplyError extends Error {
   constructor(code: DbspecApplyErrorCode, plan: string, step: number, detail: string, cause?: unknown) {
     let message: string = code;
     if (plan !== '') message += ` ${plan}`;
-    if (code === 'failed' || code === 'interrupted' || code === 'irreversible' || code === 'nulls' || (code === 'session' && plan !== '')) message += ` at step ${step}`;
+    if (code === 'failed' || code === 'interrupted' || code === 'irreversible' || code === 'nulls' || code === 'convert' || (code === 'session' && plan !== '')) message += ` at step ${step}`;
     if (detail !== '') message += `: ${detail}`;
     if (cause !== undefined) message += `: ${cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : inspect(cause)}`;
     super(message, cause === undefined ? undefined : { cause });
@@ -103,6 +107,11 @@ const APPLIED = 'applied';
 const FINALIZING = 'finalizing';
 const DONE = 'done';
 const ROLLING_BACK = 'rolling_back';
+
+/** The work table of a SQLite rebuild (docs/spec/plans.md "Steps"). */
+const REBUILD_TABLE = 'dbspec$rebuild';
+/** The savepoint of the SQLite rebuild of a table in the text storage of a uuid (PLN-110). */
+const CONVERT_SAVEPOINT = '"dbspec$convert"';
 
 /**
  * A query that reads the kind of effect for each dialect. The arguments are the table and name of the effect, of which the query
@@ -475,6 +484,7 @@ class Applier {
       }
       want = p.to;
     }
+    await this.convert(position);
     try {
       await this.verify(want);
     } catch (error) {
@@ -482,6 +492,194 @@ class Applier {
       throw new DbspecApplyError('verify', '', 0, '', error);
     }
     return position;
+  }
+
+  /**
+   * Converts the uuid columns in the text storage of a release up to 0.0.28 to 16 bytes, before the drift check and before any plan
+   * (PLN-108). It converts nothing on PostgreSQL, on a database with no recorded plan, and when an unsupported object other than such a
+   * column exists or the schema with such columns read as uuid is not the state; the drift check then reports the database.
+   */
+  async convert(position: number): Promise<void> {
+    if (this.dialect === 'postgres' || position === 0) return;
+    const state = present(this.chain[position - 1], 'this.chain[position - 1]');
+    let introspection: Awaited<ReturnType<typeof introspectCatalog>>;
+    try {
+      introspection = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, this.server, 'schema');
+    } catch (error) {
+      throw new DbspecApplyError('verify', '', 0, '', error);
+    }
+    const { document: live, unsupported } = introspection;
+    const text = new Map<string, string[]>();
+    for (const u of unsupported) {
+      if (u.kind !== 'column' || u.reason !== TEXT_STORAGE_REASON) return;
+      const columns = text.get(u.table) ?? [];
+      columns.push(u.name);
+      text.set(u.table, columns);
+    }
+    if (text.size === 0) return;
+    // A dropped foreign key is missing only while its table holds a column in text storage (PLN-109).
+    const missing = new Map<string, DbspecForeignKey[]>();
+    const tables = live.tables.map(t => {
+      const want = documentTable(state.schema, t.name);
+      if (!text.has(t.name) || want === null) return t;
+      const absent = want.foreignKeys.filter(f => !t.foreignKeys.some(g => g.name === f.name));
+      if (absent.length === 0) return t;
+      missing.set(t.name, absent);
+      return { ...t, foreignKeys: [...t.foreignKeys, ...absent] };
+    });
+    const { manifest, diagnostics } = dbspecManifest([{ ...live, tables }]);
+    if (diagnostics.length > 0 || manifest === null || manifest.schemaHash !== state.to) return;
+    let statements: string[];
+    try {
+      statements = this.dialect === 'mysql' ? await this.mysqlConversion(state.schema, text, missing) : this.sqliteConversion(state.schema, text);
+    } catch (error) {
+      throw new DbspecApplyError('convert', '', 0, '', error);
+    }
+    let open = false;
+    for (const [i, statement] of statements.entries()) {
+      try {
+        await this.emit('convert', '', i, 0, statement);
+      } catch (error) {
+        return this.endConversion(open, error);
+      }
+      try {
+        await this.s.exec(statement);
+      } catch (error) {
+        return this.endConversion(open, new DbspecApplyError('convert', '', i, statement, error));
+      }
+      if (statement.startsWith('SAVEPOINT ')) open = true;
+      else if (statement.startsWith('RELEASE ')) open = false;
+    }
+  }
+
+  /**
+   * Throws error after a stop or a failure of the conversion; inside the SQLite rebuild of a table it rolls the table back first, so that
+   * the table is kept as it was (PLN-110).
+   */
+  async endConversion(open: boolean, error: unknown): Promise<never> {
+    if (!open) throw error;
+    await finish(
+      () => Promise.reject(error),
+      () => this.s.exec(`ROLLBACK TO ${CONVERT_SAVEPOINT}`),
+      () => this.s.exec(`RELEASE ${CONVERT_SAVEPOINT}`),
+    );
+    throw error;
+  }
+
+  /**
+   * The statements of PLN-109 on MySQL and MariaDB, from the storage that the database has now: a command that stopped between two
+   * statements writes the statements that remain.
+   */
+  async mysqlConversion(state: DbspecDocument, stored: ReadonlyMap<string, readonly string[]>, missing: ReadonlyMap<string, readonly DbspecForeignKey[]>): Promise<string[]> {
+    const q = (n: string): string => this.q(n);
+    const tables = [...stored.keys()].sort(compareText);
+    const columnsOf = (t: string): readonly string[] => stored.get(t) ?? [];
+    const textColumn = (table: string, column: string): boolean => columnsOf(table).includes(column);
+    const stateTable = (t: string): DbspecTable => present(documentTable(state, t), `the state table ${t}`);
+    // The column types of the columns in text storage: char(36), or varbinary(36) of a conversion that stopped.
+    const types = new Map<string, string>();
+    for (const t of tables) {
+      for (const c of columnsOf(t)) {
+        const columnType = text(
+          await this.queryValue('SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [t, c]),
+          'COLUMN_TYPE',
+        );
+        types.set(`${t} ${c}`, columnType);
+      }
+    }
+    const out: string[] = [];
+    // 1. The foreign keys of the state that the database has and whose columns or referenced columns are in text storage.
+    const dropped = new Map<string, DbspecForeignKey[]>();
+    const drop = (t: string, f: DbspecForeignKey): void => {
+      const list = dropped.get(t) ?? [];
+      list.push(f);
+      dropped.set(t, list);
+    };
+    for (const st of sortedBy(state.tables, t => t.name)) {
+      for (const f of sortedBy(st.foreignKeys, f => f.name)) {
+        if ((missing.get(st.name) ?? []).some(g => g.name === f.name)) continue;
+        const uses = f.columns.some(c => textColumn(st.name, c)) || f.references.some(c => textColumn(f.table, c));
+        if (uses) {
+          out.push(`ALTER TABLE ${q(st.name)} DROP FOREIGN KEY ${q(f.name)}`);
+          drop(st.name, f);
+        }
+      }
+    }
+    for (const [t, fs] of missing) for (const f of fs) drop(t, f);
+    const column = (table: string, name: string): DbspecColumn => present(stateTable(table).columns.find(c => c.name === name), `the state column ${table}.${name}`);
+    const textDefinition = (c: DbspecColumn): string => {
+      let s = `${q(c.name)} VARBINARY(36) ${c.nullable ? 'NULL' : 'NOT NULL'}`;
+      if (c.default !== null) s += ` DEFAULT ${c.default.kind === 'literal' ? c.default.text : ''}`;
+      return s;
+    };
+    // 2. Each char(36) column becomes varbinary(36), which holds both forms.
+    for (const t of tables) {
+      for (const c of stateColumnOrder(stateTable(t), columnsOf(t))) {
+        if (types.get(`${t} ${c}`) !== 'char(36)') continue;
+        const check = q(rendererName(t, c));
+        out.push(`ALTER TABLE ${q(t)} DROP CONSTRAINT ${check}, MODIFY COLUMN ${textDefinition(column(t, c))}, ADD CONSTRAINT ${check} CHECK (length(${q(c)}) IN (16, 36))`);
+      }
+    }
+    // 3. The texts become their 16 bytes.
+    for (const t of tables) {
+      for (const c of stateColumnOrder(stateTable(t), columnsOf(t))) {
+        const n = integer(await this.queryValue(`SELECT COUNT(*) FROM (SELECT 1 FROM ${q(t)} WHERE length(${q(c)}) = 36 LIMIT 1) x`), 'text row count');
+        if (n > 0) out.push(`UPDATE ${q(t)} SET ${q(c)} = UNHEX(REPLACE(${q(c)}, '-', '')) WHERE length(${q(c)}) = 36`);
+      }
+    }
+    // 4. Each table gets its rendered form, a referenced table before the tables that reference it, with its dropped foreign keys whose
+    // referenced table has its rendered form.
+    const pending = new Set(tables);
+    const added = new Set<string>();
+    while (pending.size > 0) {
+      // A cycle of such tables takes the first of them by name; its foreign keys to a pending table are added last.
+      const waiting = tables.filter(t => pending.has(t));
+      const next = waiting.find(t => !stateTable(t).foreignKeys.some(f => f.table !== t && pending.has(f.table))) ?? present(waiting[0], 'waiting[0]');
+      pending.delete(next);
+      const parts: string[] = [];
+      for (const c of stateColumnOrder(stateTable(next), columnsOf(next))) {
+        const check = q(rendererName(next, c));
+        const col = column(next, c);
+        parts.push(`DROP CONSTRAINT ${check}`, `MODIFY COLUMN ${this.r.column(col)}`, `ADD CONSTRAINT ${check} CHECK (${this.r.typeCheck(col)})`);
+      }
+      for (const f of sortedBy(dropped.get(next) ?? [], f => f.name)) {
+        if (!pending.has(f.table)) {
+          parts.push(`ADD ${this.r.foreignKey(f)}`);
+          added.add(`${next}.${f.name}`);
+        }
+      }
+      out.push(`ALTER TABLE ${q(next)} ${parts.join(', ')}`);
+    }
+    // 5. A foreign key of a cycle, and one of a table without text storage, is added last.
+    for (const t of [...dropped.keys()].sort(compareText)) {
+      for (const f of sortedBy(dropped.get(t) ?? [], f => f.name)) {
+        if (!added.has(`${t}.${f.name}`)) out.push(`ALTER TABLE ${q(t)} ADD ${this.r.foreignKey(f)}`);
+      }
+    }
+    return out;
+  }
+
+  /** The statements of PLN-110: each table that holds a column in text storage, in name order, is rebuilt in its rendered form inside one savepoint. */
+  sqliteConversion(state: DbspecDocument, text: ReadonlyMap<string, readonly string[]>): string[] {
+    const q = (n: string): string => this.q(n);
+    const out: string[] = [];
+    for (const name of [...text.keys()].sort(compareText)) {
+      const t = present(documentTable(state, name), `the state table ${name}`);
+      const columns = text.get(name) ?? [];
+      out.push(`SAVEPOINT ${CONVERT_SAVEPOINT}`, this.r.createTable(t, REBUILD_TABLE, c => rendererName(t.name, c), []));
+      if (t.columns.some(c => c.identity)) {
+        out.push(`INSERT INTO sqlite_sequence (name, seq) SELECT '${REBUILD_TABLE}', seq FROM sqlite_sequence WHERE name = '${name}'`);
+      }
+      const into = t.columns.map(c => q(c.name));
+      const from = t.columns.map(c => (columns.includes(c.name) ? `unhex(replace(${q(c.name)}, '-', ''))` : q(c.name)));
+      out.push(
+        `INSERT INTO ${q(REBUILD_TABLE)} (${into.join(', ')}) SELECT ${from.join(', ')} FROM ${q(name)}`,
+        `DROP TABLE ${q(name)}`,
+        `ALTER TABLE ${q(REBUILD_TABLE)} RENAME TO ${q(name)}`,
+      );
+      out.push(...this.r.table(t).slice(1), ...this.r.triggers(t), `RELEASE ${CONVERT_SAVEPOINT}`);
+    }
+    return out;
   }
 
   /** Checks that the introspection of the database is the want schemaHash (an empty string means an empty database) and that there are no unsupported objects. */
@@ -693,6 +891,15 @@ class Applier {
   }
 }
 
+function documentTable(d: DbspecDocument | null, name: string): DbspecTable | null {
+  return d?.tables.find(t => t.name === name) ?? null;
+}
+
+/** The columns of table t among names, in the order of the state table. */
+function stateColumnOrder(t: DbspecTable, names: readonly string[]): string[] {
+  return t.columns.filter(c => names.includes(c.name)).map(c => c.name);
+}
+
 function sqliteLockResult(error: unknown): boolean {
   const code = sqliteResultCode(error);
   return code !== undefined && ((code & 0xff) === 5 || (code & 0xff) === 6);
@@ -830,6 +1037,7 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
     const applied = row.state === APPLIED || row.state === DONE;
     if (applied) {
       if (k < 0 || k > steps.length) throw new DbspecApplyError('chain', p.name, 0, `the recorded step ${k} is outside the plan's ${steps.length} steps`);
+      await a.convert(a.chain.indexOf(p) + 1);
       try {
         await a.verify(p.to);
       } catch (error) {

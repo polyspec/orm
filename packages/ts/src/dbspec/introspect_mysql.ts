@@ -1,11 +1,10 @@
 // Reads MySQL's current database as a catalog (docs/spec/dialects.md "Introspection").
 // Every query reads the whole current database at once.
 import { present } from '../present.js';
-import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
+import { actionName, Catalog, quote, tableTypes, TEXT_STORAGE_REASON, uuidText, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
 import { addCheck, CheckDecodeError, markChecked, readSQLString } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecType } from './model.js';
-import { UUID_PATTERN } from './render.js';
 import { renderedColumn } from './names.js';
 import type { DbspecServer } from './introspect.js';
 
@@ -44,7 +43,14 @@ const ROUTINES_QUERY = `SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHE
 const EVENTS_QUERY = `SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME`;
 
 const TYPE_PATTERN =
-  /^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/;
+  /^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|binary\(16\)|char\(36\)|varbinary\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/;
+
+/** A column of MySQL: textStorage marks a uuid column in the text storage of a release up to 0.0.28, or of a conversion that
+ * stopped (DIA-144, PLN-108), and columnType is its COLUMN_TYPE. */
+interface MySQLColumn extends IColumn {
+  textStorage: boolean;
+  columnType: string;
+}
 
 /** Reads the current database of a server of the mysql dialect; server is the server that the connection reached (DIA-203). */
 export async function readMySQL(query: CatalogQuery, server: DbspecServer): Promise<Catalog> {
@@ -59,7 +65,7 @@ export async function readMySQL(query: CatalogQuery, server: DbspecServer): Prom
       c.addTable(name);
     }
   }
-  const columns = new Map<string, Map<string, IColumn>>();
+  const columns = new Map<string, Map<string, MySQLColumn>>();
   // table: column: renderer CHECK candidate types that are determined only when a CHECK exists
   const pending = new Map<string, Map<string, string>>();
   for (const r of await query(COLUMNS_QUERY)) {
@@ -85,7 +91,15 @@ export async function readMySQL(query: CatalogQuery, server: DbspecServer): Prom
       c.report('column', table, name, `type ${columnType} ${charset} ${collation} has no dbspec type`);
       continue;
     }
-    const col: IColumn = { name, type: read.type, nullable: nullable === 'YES', identity: false, dflt: '' };
+    const col: MySQLColumn = {
+      name,
+      type: read.type,
+      nullable: nullable === 'YES',
+      identity: false,
+      dflt: '',
+      textStorage: read.type.kind === 'uuid' && read.needsCheck !== 'binary(16)',
+      columnType,
+    };
     extra = extra.trim();
     if (extra === 'auto_increment') {
       col.identity = true;
@@ -141,6 +155,7 @@ export async function readMySQL(query: CatalogQuery, server: DbspecServer): Prom
         c.report('check', table, name, `the check ${clause} is not the renderer CHECK`);
         continue;
       }
+      if (col.textStorage) c.report('column', table, column, TEXT_STORAGE_REASON);
       markChecked(checked, table, column);
       continue;
     }
@@ -197,8 +212,14 @@ function mysqlType(columnType: string, charset: string, collation: string): { ty
       return result({ kind: 'text' }, '', text);
     case 'longblob':
       return result({ kind: 'bytes' }, '', true);
+    case 'binary(16)':
+      return result({ kind: 'uuid' }, columnType, true);
     case 'char(36)':
+      // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
       return result({ kind: 'uuid' }, columnType, charset === 'ascii' && collation === 'ascii_bin');
+    case 'varbinary(36)':
+      // The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109).
+      return result({ kind: 'uuid' }, columnType, true);
     case 'date':
       return result({ kind: 'date' }, '', g(2) === '');
     case 'time':
@@ -279,16 +300,18 @@ export function createChecks(create: string): Map<string, string> {
 /**
  * The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it
  * without the outer parentheses and the introducers, in the escaped form that readMySQL gives its CHECK_CLAUSE (probes
- * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
+ * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_bytes, mariadb.render.time_of_day_check; DIA-203).
  */
-function rendererCheck(server: DbspecServer, col: IColumn): string {
+function rendererCheck(server: DbspecServer, col: MySQLColumn): string {
   const c = '`' + col.name + '`';
+  if (col.textStorage) return textStorageCheck(server, col);
   if (server === 'mariadb') {
     switch (col.type.kind) {
       case 'bool':
         return `${c} in (0,1)`;
       case 'uuid':
-        return `${c} regexp \\'${UUID_PATTERN}\\'`;
+        // MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes).
+        return `octet_length(${c}) = 16`;
       case 'time':
         return `${c} >= \\'00:00:00\\' and ${c} < \\'24:00:00\\'`;
     }
@@ -298,11 +321,26 @@ function rendererCheck(server: DbspecServer, col: IColumn): string {
     case 'bool':
       return `(${c} in (0,1))`;
     case 'uuid':
-      return `regexp_like(${c},_utf8mb4\\'${UUID_PATTERN}\\')`;
+      return `(length(${c}) = 16)`;
     case 'time':
       return `((${c} >= _utf8mb4\\'00:00:00\\') and (${c} < _utf8mb4\\'24:00:00\\'))`;
   }
   return '';
+}
+
+/** The pattern of the CHECK of the text storage of a uuid (DIA-144). */
+const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+
+/**
+ * The CHECK_CLAUSE of a uuid column in text storage (DIA-144): the pattern CHECK of a char(36) column that a release up to 0.0.28
+ * rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the CHECK of a varbinary(36) column whose conversion stopped
+ * (PLN-109).
+ */
+function textStorageCheck(server: DbspecServer, col: MySQLColumn): string {
+  const c = '`' + col.name + '`';
+  if (col.columnType === 'varbinary(36)') return server === 'mariadb' ? `octet_length(${c}) in (16,36)` : `(length(${c}) in (16,36))`;
+  if (server === 'mariadb') return `${c} regexp \\'${UUID_PATTERN}\\'`;
+  return `regexp_like(${c},_utf8mb4\\'${UUID_PATTERN}\\',_utf8mb4\\'c\\')`;
 }
 
 /** Escapes a CHECK_CLAUSE once more, as MySQL does: the inverse of the unescape of decodeCheck. */
@@ -323,6 +361,9 @@ const MYSQL_NUMBER = /^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$/;
 
 /** A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p). */
 const MARIADB_CLOCK = /^current_timestamp\(([1-6]?)\)$/;
+
+/** A binary default of MariaDB's COLUMN_DEFAULT. */
+const MARIADB_HEX_LITERAL = /^x'([0-9a-f]{2})*'$/;
 
 /**
  * Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL for a column
@@ -345,6 +386,9 @@ export function mariadbDefault(dflt: string | null, extra: string): { dflt: stri
     return { dflt: read[0], extra };
   }
   if (MYSQL_NUMBER.test(dflt)) return { dflt, extra };
+  // MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case hex (probe
+  // mariadb.render.uuid_bytes).
+  if (MARIADB_HEX_LITERAL.test(dflt)) return { dflt: '0x' + dflt.slice(2, -1).toUpperCase(), extra };
   const clock = MARIADB_CLOCK.exec(dflt);
   if (clock !== null) {
     const precision = clock[1] ?? '';
@@ -373,6 +417,15 @@ function mysqlDefault(value: string, type: DbspecType): string {
     case 'decimal':
     case 'f64':
       return value;
+    case 'uuid': {
+      // A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of the text of a
+      // varbinary(36) column whose conversion stopped (PLN-109).
+      if (!value.startsWith('0x')) break;
+      const hex = value.slice(2);
+      if (!/^([0-9a-fA-F]{2})*$/.test(hex)) break;
+      const b = Buffer.from(hex, 'hex');
+      return quote(b.length === 16 ? uuidText(b) : b.toString('utf8'));
+    }
   }
   return quote(value);
 }

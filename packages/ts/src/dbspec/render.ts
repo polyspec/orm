@@ -130,7 +130,7 @@ export class Renderer {
           case 'bytes':
             return 'LONGBLOB';
           case 'uuid':
-            return 'char(36) CHARACTER SET ascii COLLATE ascii_bin';
+            return 'BINARY(16)';
           case 'date':
             return 'DATE';
           case 'time':
@@ -184,9 +184,9 @@ export class Renderer {
           case 'varchar':
             return `varchar(${t.length})`;
           case 'text':
-          case 'uuid':
             return 'TEXT';
           case 'bytes':
+          case 'uuid':
             return 'BLOB';
           case 'date':
             return 'DATE';
@@ -220,6 +220,8 @@ export class Renderer {
       if (this.d === 'postgres') return text.toUpperCase();
       return text === 'true' ? '1' : '0';
     }
+    // A uuid default is the 16 bytes of its canonical text on MySQL and SQLite (DIA-123).
+    if (t !== null && t.kind === 'uuid' && this.d !== 'postgres') return `X'${text.replace(/^'+|'+$/g, '').replaceAll('-', '')}'`;
     if (text.startsWith("'")) return this.d === 'mysql' ? text.replaceAll('\\', '\\\\') : text;
     if (t !== null && t.kind === 'decimal' && this.d === 'sqlite') return scaledDecimal(text);
     return text;
@@ -242,9 +244,9 @@ export class Renderer {
         case 'bool':
           return `${q} IN (0, 1)`;
         case 'uuid':
-          // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
-          // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
-          return `${q} REGEXP '${UUID_PATTERN}'`;
+          // BINARY(16) pads a shorter value, so the CHECK holds every stored value and is the named marker that tells a
+          // uuid from a bytes column (probes mysql.render.uuid_bytes, mariadb.render.uuid_bytes; DIA-48, DIA-144).
+          return `length(${q}) = 16`;
         case 'time':
           return `${q} >= '00:00:00' AND ${q} < '24:00:00'`;
         default:
@@ -271,10 +273,10 @@ export class Renderer {
         return `typeof(${q}) IN ('real', 'null')`;
       case 'varchar':
         return `length(${q}) <= ${t.length}`;
-      case 'uuid': {
-        const hex = (n: number): string => '[0-9a-f]'.repeat(n);
-        return `${q} GLOB '${hex(8)}-${hex(4)}-${hex(4)}-${hex(4)}-${hex(12)}'`;
-      }
+      case 'uuid':
+        // A uuid is a BLOB of 16 bytes; the CHECK is the named marker that tells it from a bytes column (probe
+        // sqlite.render.uuid_bytes; DIA-48, DIA-144).
+        return `typeof(${q}) IN ('blob', 'null') AND length(${q}) = 16`;
       case 'date':
         return `${q} IS date(${q})`;
       case 'time': {
@@ -401,8 +403,6 @@ export class Renderer {
     return this.trigger(t, event, timing, body, false);
   }
 }
-
-export const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 
 function actionText(a: DbspecAction): string {
   switch (a) {
