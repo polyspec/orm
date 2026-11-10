@@ -76,4 +76,27 @@ class DbspecPlanApplyTest extends TestCase
             self::assertSame('drift ' . $plan->name . ': ' . $error->detail, $error->getMessage());
         }
     }
+
+    // Requirements: PLN-96a. The message of an ApplyError names the step of the codes that carry one, as every runtime
+    // writes it: failed, interrupted, irreversible and nulls always, session when it names a plan; the other codes name
+    // no step.
+    public function testApplyErrorMessageNamesTheStepOfItsCode(): void
+    {
+        foreach (
+            [
+                ['failed', 'p', 3, 'x', 'failed p at step 3: x'],
+                ['interrupted', 'p', 3, 'x', 'interrupted p at step 3: x'],
+                ['irreversible', 'p', 3, 'x', 'irreversible p at step 3: x'],
+                ['nulls', 'p', 3, 'x', 'nulls p at step 3: x'],
+                ['session', 'p', 3, 'x', 'session p at step 3: x'],
+                ['session', '', 0, 'x', 'session: x'],
+                ['drift', 'p', 3, 'x', 'drift p: x'],
+                ['chain', 'p', 3, 'x', 'chain p: x'],
+                ['verify', 'p', 0, '', 'verify p'],
+                ['locked', '', 0, 'x', 'locked: x'],
+            ] as [$code, $plan, $step, $detail, $want]
+        ) {
+            self::assertSame($want, (new ApplyError($code, $plan, $step, $detail))->getMessage(), $code);
+        }
+    }
 }
