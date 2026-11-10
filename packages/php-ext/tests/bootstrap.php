@@ -142,6 +142,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingSqliteTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingMarkdownTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesRotationMysqlTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesRotationMariadbTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/QueryCancellationMariadbTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesRotationPostgresTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesRotationSqliteTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesRotationMarkdownTest.php';

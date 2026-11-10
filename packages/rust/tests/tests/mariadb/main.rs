@@ -47,6 +47,7 @@ fn main() {
     polyspec_orm_testcase::run_groups(vec![
         polyspec_orm_testcase::Group::new("aes_rotation_mariadb", aes_rotation_mariadb::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_mariadb", audit_triggers_mariadb::trials),
+        polyspec_orm_testcase::Group::new("zone_mariadb", polyspec_orm_cases::zone::mariadb_trials),
         polyspec_orm_testcase::Group::new("catalog_connection_mariadb", catalog_connection_mariadb::trials),
         polyspec_orm_testcase::Group::new("complex_query_mariadb", complex_query_mariadb::trials),
         polyspec_orm_testcase::Group::new("composite_keys_mariadb", composite_keys_mariadb::trials),

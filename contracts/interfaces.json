@@ -87,6 +87,14 @@
             {
               "test": "packages/go/orm/cancel_test.go",
               "id": "TestWithContextCancelsInsideTransaction"
+            },
+            {
+              "test": "packages/go/orm/cancel_test.go",
+              "id": "TestWithContextCancelsMariadb"
+            },
+            {
+              "test": "packages/go/orm/cancel_test.go",
+              "id": "TestWithContextCancelsInsideTransactionMariadb"
             }
           ]
         },
@@ -124,8 +132,12 @@
               "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
             },
             {
-              "test": "packages/python/tests/test_query_cancel.py",
+              "test": "packages/python/tests/test_query_cancel_mysql.py",
               "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+            },
+            {
+              "test": "packages/python/tests/query_cancel_mariadb.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_mariadb"
             },
             {
               "test": "packages/python/tests/test_query_cancel.py",

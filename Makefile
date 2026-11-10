@@ -680,11 +680,11 @@ GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/proceven
 # go-test-check runs every go test of the check packages. The cross-runtime tests of packages/go/internal/dialects (apply clients,
 # introspect compare, dialect facts) need the runner binaries, the PHP extension, the Python runtime, the stress document and the
 # MySQL privilege fixture, which go-test-check builds or declares and exports (T334-3-6-3); without them those tests fail.
-# The MariaDB probes (TestDialectFactsMariadb) need the MariaDB servers, which a runner of the MySQL servers cannot hold;
-# dialect-facts-mariadb-check runs them.
+# The entries of mariadb, Test<Name>Mariadb, need the MariaDB servers, which a runner of the MySQL servers cannot hold:
+# dialect-facts-mariadb-check runs the MariaDB probes (TestDialectFactsMariadb), and mariadb-recipes-check/go the others.
 go-test-check: RUN_DIR = $(abspath .runtime/run)/go-test-check-$$PPID
 go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript flowmark-check go-test-check/cross-runtime
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -skip '^TestDialectFactsMariadb$$' $(GO_TEST_CHECK_PACKAGES)
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -skip '^Test[A-Za-z]*Mariadb$$' $(GO_TEST_CHECK_PACKAGES)
 	rm -rf $(RUN_DIR)
 
 go-test-check/cross-runtime: typescript-current python-venv-check php-vendor-check
@@ -1564,7 +1564,8 @@ orm-test-mariadb:
 # mariadb-recipes-check/<runtime> runs every recipe entry of the database mariadb of one runtime on the MariaDB servers of make
 # orm-test-mariadb (FCV-3, DIA-200), each the target of the CI group mariadb_<runtime>; a runner of the MySQL servers cannot hold
 # them (scripts/ci/server-programs.mts), so no target of those servers runs an entry of mariadb. An entry is a test of its own:
-# TestRecipe<Name>Mariadb, which the Go lane of client-db skips (GO_LANE_SKIP); <recipe>-mariadb.test.mjs and the PHP class
+# Test<Name>Mariadb of packages/go/orm, the recipe entries TestRecipe<Name>Mariadb among them, which the Go lane of client-db
+# (GO_LANE_SKIP) and go-test-check skip; <recipe>-mariadb.test.mjs and the PHP class
 # <Name>Mariadb..., which the suites leave to these targets (scripts/suite-test.mts) and the extension's unit run does not
 # select (PHP_EXTENSION_NATIVE_CASES); the Python module <recipe>_mariadb, which no test_*.py discovery finds; and the module
 # <recipe>_mariadb of the Rust program mariadb, which a plain cargo test does not run (test = false). Each target fails when one
@@ -1572,7 +1573,7 @@ orm-test-mariadb:
 MARIADB_TS_ENTRIES = $(sort $(wildcard packages/ts/tests/*-mariadb.test.mjs))
 .PHONY: mariadb-recipes-check/go mariadb-recipes-check/rust mariadb-recipes-check/typescript mariadb-recipes-check/python mariadb-recipes-check/php mariadb-recipes-check/php-extension
 mariadb-recipes-check/go: lease-tool
-	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe[A-Za-z]*Mariadb$$' -count=1
+	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm -run '^Test[A-Za-z]*Mariadb$$' -count=1
 mariadb-recipes-check/rust: lease-tool
 	$(WITH_MARIADB_ENV) cd packages/rust && $(CARGO_TEST) mariadb-recipes-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test mariadb
 mariadb-recipes-check/typescript: typescript-current
@@ -1601,6 +1602,7 @@ mariadb-recipes-check/python: lease-tool python-venv-check
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.model_writes_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.parameter_chunking_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.performance_gate_mariadb
+	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.query_cancel_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.render_physical_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.request_hook_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_install_mariadb

@@ -167,11 +167,20 @@ trait QueryCancellationDbCases
     // Requirements: CFG-9.
     public function testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot(): void
     {
+        self::lockEventCancelsActiveStatementRollsBackAndReconnectsRoot('mysql');
+    }
+
+    /**
+     * The lock event case on $driver, a server of the MySQL dialect: MySQL here, MariaDB in
+     * QueryCancellationMariadbTest (DIA-200).
+     */
+    private static function lockEventCancelsActiveStatementRollsBackAndReconnectsRoot(string $driver): void
+    {
         self::assertTrue(
             function_exists('pcntl_fork'),
             'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
         );
-        with_case_database('mysql', static function (): void {
+        with_case_database($driver, static function (): void {
         }, static function (string $dsn): void {
             $root = Orm::connect($dsn, new Config());
             $source = new Cancellation();
@@ -283,11 +292,20 @@ trait QueryCancellationDbCases
     // Requirements: CFG-9.
     public function testMysqlCancellationStopsEveryActiveRootAndReopensEachProcessRoot(): void
     {
+        self::cancellationStopsEveryActiveRootAndReopensEachProcessRoot('mysql');
+    }
+
+    /**
+     * The case of two active roots on $driver, a server of the MySQL dialect: MySQL here, MariaDB in
+     * QueryCancellationMariadbTest (DIA-200).
+     */
+    private static function cancellationStopsEveryActiveRootAndReopensEachProcessRoot(string $driver): void
+    {
         self::assertTrue(
             function_exists('pcntl_fork'),
             'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
         );
-        with_case_database('mysql', static function (): void {
+        with_case_database($driver, static function (): void {
         }, static function (string $dsn): void {
             $rootOne = Orm::connect($dsn, new Config());
             $rootTwo = Orm::connect($dsn, new Config());

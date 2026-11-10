@@ -127,10 +127,12 @@ caseTest('the Rust lane runs the recipe programs in its workspace run and leaves
   assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_performance_gate::coverage_hot_path_gate_')), skipped.join(' '));
 });
 
-// The recipe entries of mariadb need the MariaDB servers, which a runner of the MySQL servers cannot hold; mariadb-recipes-check
+// The entries of mariadb need the MariaDB servers, which a runner of the MySQL servers cannot hold; mariadb-recipes-check
 // runs them (DIA-200, FCV-3).
-caseTest('the Go lane leaves the recipe entries of mariadb to mariadb-recipes-check/go', COMPUTE, () => {
+caseTest('the Go lane leaves the entries of mariadb to mariadb-recipes-check/go', COMPUTE, () => {
   const skip = new RegExp(GO_LANE_SKIP);
-  assert.ok(skip.test('TestRecipeAesRotationMariadb'), 'a Go entry of mariadb');
-  assert.ok(!skip.test('TestRecipeAesRotationMysql'), 'a Go entry of mysql');
+  assert.ok(skip.test('TestRecipeAesRotationMariadb'), 'a Go recipe entry of mariadb');
+  assert.ok(skip.test('TestWithContextCancelsMariadb'), 'a Go entry of mariadb');
+  assert.ok(!skip.test('TestRecipeAesRotationMysql'), 'a Go recipe entry of mysql');
+  assert.ok(!skip.test('TestWithContextCancels'), 'a Go test of the MySQL servers');
 });

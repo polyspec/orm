@@ -2419,6 +2419,14 @@
         "packages/ts/tests/sqlite-row-lock-restore.mjs",
         "packages/ts/tests/was-inserted.mjs",
         "packages/python/tests/test_query_cancel.py",
+        "packages/python/tests/test_query_cancel_mysql.py",
+        "packages/python/tests/query_cancel_mariadb.py",
+        "packages/ts/tests/model-mysql.test.mjs",
+        "packages/ts/tests/model-mariadb.test.mjs",
+        "packages/ts/tests/coverage_transactions-mysql.test.mjs",
+        "packages/ts/tests/coverage_transactions-mariadb.test.mjs",
+        "packages/php/tests/QueryCancellationMariadbTest.php",
+        "packages/php-ext/tests/QueryCancellationMariadbNativeTest.php",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/python/tests/test_was_inserted.py",
         "packages/php/tests/CatalogCommitFailureTest.php",
@@ -2725,7 +2733,7 @@
         },
         {
           "id": "cancellation-handle-typescript",
-          "command": "node packages/ts/tests/coverage_transactions.mjs",
+          "command": "node packages/ts/tests/coverage_transactions.mjs && node --test packages/ts/tests/coverage_transactions-mysql.test.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/coverage_transactions.mjs"

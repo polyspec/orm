@@ -305,11 +305,24 @@ async fn postgres_float_round_trip() {
 /// Dropping the future of a statement cancels the statement, and the
 /// connection it ran on stays usable. The statement is an update of a row
 /// that another connection holds, so it waits until its future is dropped.
+/// `dropping_a_query_cancels_it_mariadb` is the case on MariaDB, a server of the
+/// MySQL dialect (DIA-200), which the program mariadb runs (mariadb_trials).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
 async fn dropping_a_query_cancels_it() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for driver in ["mysql", "postgres"] {
+    dropping_a_query_cancels_it_on(&["mysql", "postgres"]).await;
+}
+
+#[tokio::main(flavor = "current_thread")]
+// Requirements: CFG-9.
+async fn dropping_a_query_cancels_it_mariadb() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    dropping_a_query_cancels_it_on(&["mariadb"]).await;
+}
+
+async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
+    for &driver in drivers {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
@@ -341,13 +354,25 @@ async fn dropping_a_query_cancels_it() {
 }
 
 /// Dropping a transaction future closes its checked-out connection instead
-/// of waiting for SQLx's five-second close-on-drop path. On MySQL and
+/// of waiting for SQLx's five-second close-on-drop path. On MySQL, MariaDB and
 /// PostgreSQL the transaction waits for a row that another connection holds.
+/// `dropping_a_transaction_frees_a_single_connection_mariadb` is the case on MariaDB (DIA-200).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for driver in ["sqlite", "mysql", "postgres"] {
+    dropping_a_transaction_frees_a_single_connection_on(&["sqlite", "mysql", "postgres"]).await;
+}
+
+#[tokio::main(flavor = "current_thread")]
+// Requirements: INT-67.
+async fn dropping_a_transaction_frees_a_single_connection_mariadb() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    dropping_a_transaction_frees_a_single_connection_on(&["mariadb"]).await;
+}
+
+async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
+    for &driver in drivers {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
@@ -398,4 +423,9 @@ async fn dropping_a_transaction_frees_a_single_connection() {
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, mysql_dsn_without_ssl_mode_disables_tls, pool_size, pool_idle_size_and_lifetime, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+}
+
+/// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).
+pub fn mariadb_trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("zone_mariadb": dropping_a_query_cancels_it_mariadb, dropping_a_transaction_frees_a_single_connection_mariadb)
 }
