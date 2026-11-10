@@ -7001,6 +7001,7 @@
       "requirements": [
         "INT-149"
       ],
+      "not_through_pooler": "its probe counts the transactions of the server thread of the connection (CONNECTION_ID()), which a multiplexing pooler does not keep for a client session",
       "only": [
         "mysql"
       ],

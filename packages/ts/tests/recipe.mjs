@@ -2553,12 +2553,12 @@ Object.assign(OPS, {
     return { bind: subscription };
   },
   // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for the
-  // dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step of the plan with execute.
+  // dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs the first step of the plan
+  // with execute.
   async 'db.execute'(s, context) {
     const { model, hash } = validationModel(resolve(root, context.dir, s.schema));
     if (Object.hasOwn(s.request, 'manifest_hash')) throw new Error('db.execute: the request already holds manifest_hash');
-    const dialect = context.database === 'markdown' ? 'sqlite' : context.database;
-    const plan = new Engine(model, dialect).compile({ ...structuredClone(s.request), manifest_hash: hash });
+    const plan = new Engine(model, dialectOf(context)).compile({ ...structuredClone(s.request), manifest_hash: hash });
     await connectionOf(s, context).execute(plan.steps[0], (s.params ?? []).map(toValue));
     return {};
   },

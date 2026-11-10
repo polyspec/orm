@@ -4467,7 +4467,7 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
 
 def _op_db_execute(step: dict, context: dict) -> dict:
     """db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for
-    the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step of the plan with execute."""
+    the dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs the first step of the plan with execute."""
     model = _validation_model((context["dir"] / step["schema"]).resolve())
     if "manifest_hash" in step["request"]:
         raise AssertionError("db.execute: the request already holds manifest_hash")

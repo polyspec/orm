@@ -4208,7 +4208,8 @@ mod database {
             }
             "db.execute" => {
                 // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
-                // recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs its first step.
+                // recipe, for the dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs
+                // its first step.
                 let db = connection_db(step, context).map_err(fault)?;
                 let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default().to_owned();
                 let manifest = super::ir_request::schema(&context.dir.join(&schema).to_string_lossy());
@@ -4217,10 +4218,11 @@ mod database {
                     return Err(fault("db.execute: the request already holds manifest_hash".to_owned()));
                 }
                 let input = super::ir_request::request(&request, &manifest.manifest_hash);
-                let dialect = match context.database {
+                let dialect = match dialect_of(context.database) {
                     "mysql" => super::engine::Dialect::MySql,
                     "postgres" => super::engine::Dialect::Postgres,
-                    _ => super::engine::Dialect::Sqlite,
+                    "sqlite" => super::engine::Dialect::Sqlite,
+                    other => return Err(fault(format!("db.execute: the database {other} has no SQL dialect"))),
                 };
                 let plan = super::engine::compile(&manifest, dialect, &input).map_err(|error| fault(error.to_string()))?;
                 let mut params = Vec::new();

@@ -28,11 +28,7 @@ func executeRequest(s databaseStep, c *databaseContext) error {
 	if err != nil {
 		return err
 	}
-	dialect := c.database
-	if dialect == "markdown" {
-		dialect = "sqlite"
-	}
-	compiled, err := compiledPlan(m, dialect, request)
+	compiled, err := compiledPlan(m, c.dialect(), request)
 	if err != nil {
 		return err
 	}
