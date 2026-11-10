@@ -13,7 +13,11 @@
     "PLN-104",
     "PLN-105",
     "DIA-154",
-    "DIA-189"
+    "DIA-189",
+    "PLN-108",
+    "PLN-109",
+    "PLN-110",
+    "PLN-111"
   ],
   "fixture": "none",
   "cases": [
@@ -7113,6 +7117,3548 @@
             }
           }
         }
+      ]
+    },
+    {
+      "id": "uuid_text_storage_converts_to_16_bytes",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-110",
+        "PLN-111",
+        "DIA-27",
+        "DIA-48"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "9"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "15"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_0",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 0,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "9"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_1",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 1,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "8"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_2",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 2,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "3"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "7"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_3",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 3,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "4"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "6"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_4",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 4,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "5"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "5"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_5",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 5,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "6"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "4"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_6",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 6,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "7"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "3"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_7",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 7,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "8"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_continues_after_mysql_statement_8",
+      "requirements": [
+        "PLN-108",
+        "PLN-109",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 8,
+            "stop": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "9"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "uuid_text_storage_conversion_stopped_in_a_sqlite_table_keeps_the_table",
+      "requirements": [
+        "PLN-108",
+        "PLN-110",
+        "PLN-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 uuid_tables",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table owner {",
+            "  id uuid",
+            "  primary key (id)",
+            "}",
+            "",
+            "table token {",
+            "  seq i64 identity",
+            "  owner_id uuid null",
+            "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+            "  primary key (seq)",
+            "  unique uq_token_code (code)",
+            "  index ix_token_owner (owner_id)",
+            "  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "tables"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE token"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "DROP TABLE owner"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (REGEXP_LIKE(`id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `owner` (`id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `owner$id` CHECK (`id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"owner\" (\"id\" uuid NOT NULL, PRIMARY KEY (\"id\"))",
+            "sqlite": "CREATE TABLE \"owner\" (\"id\" TEXT NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"owner$id\" CHECK (\"id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (REGEXP_LIKE(`owner_id`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')), CONSTRAINT `token$code` CHECK (REGEXP_LIKE(`code`, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c'))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "mariadb": "CREATE TABLE `token` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `owner_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL, `code` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (`seq`), CONSTRAINT `uq_token_code` UNIQUE (`code`), CONSTRAINT `token$owner_id` CHECK (`owner_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), CONSTRAINT `token$code` CHECK (`code` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "postgres": "CREATE TABLE \"token\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"owner_id\" uuid NULL, \"code\" uuid NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_token_code\" UNIQUE (\"code\"))",
+            "sqlite": "CREATE TABLE \"token\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"owner_id\" TEXT NULL, \"code\" TEXT NOT NULL DEFAULT '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10', CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"token$owner_id\" CHECK (\"owner_id\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"token$code\" CHECK (\"code\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "CREATE INDEX `ix_token_owner` ON `token` (`owner_id`)",
+            "postgres": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")",
+            "sqlite": "CREATE UNIQUE INDEX \"uq_token_code\" ON \"token\" (\"code\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "ALTER TABLE `token` ADD CONSTRAINT `fk_token_owner` FOREIGN KEY (`owner_id`) REFERENCES `owner` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "postgres": "ALTER TABLE \"token\" ADD CONSTRAINT \"fk_token_owner\" FOREIGN KEY (\"owner_id\") REFERENCES \"owner\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+            "sqlite": "CREATE INDEX \"ix_token_owner\" ON \"token\" (\"owner_id\")"
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO owner (id) VALUES ('ffffffff-0000-4000-8000-000000000000'), ('00000000-0000-4000-8000-00000000000f')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id) VALUES ('ffffffff-0000-4000-8000-000000000000')"
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "INSERT INTO token (owner_id, code) VALUES (NULL, '7f000000-ffff-4fff-bfff-000000000001')"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "on": {
+            "event": "convert",
+            "step": 9,
+            "stop": true
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "10"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "tables"
+          ],
+          "count": [
+            "convert"
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "convert",
+                    {
+                      "int": "9"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable owner {\n  id uuid\n  primary key (id)\n}\n\ntable token {\n  seq i64 identity\n  owner_id uuid null\n  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'\n  primary key (seq)\n  unique uq_token_code (code)\n  index ix_token_owner (owner_id)\n  foreign key fk_token_owner (owner_id) references owner (id) on delete restrict on update restrict\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(id)) FROM owner ORDER BY id",
+            "postgres": "SELECT encode(uuid_send(id), 'hex') FROM owner ORDER BY id",
+            "sqlite": "SELECT lower(hex(id)) FROM owner ORDER BY id"
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0000000000004000800000000000000f"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT seq, LOWER(HEX(owner_id)), LOWER(HEX(code)) FROM token ORDER BY seq",
+            "postgres": "SELECT seq, encode(uuid_send(owner_id), 'hex'), encode(uuid_send(code), 'hex') FROM token ORDER BY seq",
+            "sqlite": "SELECT seq, lower(hex(owner_id)), lower(hex(code)) FROM token ORDER BY seq"
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "1"
+                      },
+                      {
+                        "text": "ffffffff000040008000000000000000"
+                      },
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "2"
+                      },
+                      {
+                        "null": true
+                      },
+                      {
+                        "text": "7f000000ffff4fffbfff000000000001"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT LOWER(HEX(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id",
+            "postgres": "SELECT encode(uuid_send(t.code), 'hex') FROM token t JOIN owner o ON o.id = t.owner_id",
+            "sqlite": "SELECT lower(hex(t.code)) FROM token t JOIN owner o ON o.id = t.owner_id"
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0e2b5e8c3b0f4c599a0f6a2f2c2e1b10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "only": [
+        "sqlite"
       ]
     },
     {
