@@ -14898,11 +14898,24 @@
           "only": [
             "mysql"
           ],
-          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month, set for the one statement by the form of each server (MySQL ignores SET STATEMENT, MariaDB the SET_VAR hint)",
-          "sql": {
-            "mysql": "INSERT /*+ SET_VAR(sql_mode = 'ALLOW_INVALID_DATES') */ INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')",
-            "mariadb": "SET STATEMENT sql_mode = 'ALLOW_INVALID_DATES' FOR INSERT INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')"
-          }
+          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month: the procedure sets it for its session and inserts, and the server restores the sql_mode of the caller when the procedure returns, a form that both servers accept with the same result",
+          "sql": "CREATE PROCEDURE value_rule_calendar_rows() BEGIN SET SESSION sql_mode = 'ALLOW_INVALID_DATES'; INSERT INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03'); END"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "the rows that are no calendar dates",
+          "sql": "CALL value_rule_calendar_rows()"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "the procedure has done its work",
+          "sql": "DROP PROCEDURE value_rule_calendar_rows"
         },
         {
           "op": "catalog.read_only_grid_query",
