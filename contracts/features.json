@@ -2370,6 +2370,7 @@
         "packages/go/orm/transaction_flow_overlap_test.go",
         "packages/go/orm/cancel_test.go",
         "packages/go/orm/cancel_waiter_internal_test.go",
+        "packages/go/orm/mariadb_server_internal_test.go",
         "packages/php/tests/QueryCancellationTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/TransactionFailureNativeTest.php",
@@ -2733,10 +2734,18 @@
         },
         {
           "id": "cancellation-handle-typescript",
-          "command": "node packages/ts/tests/coverage_transactions.mjs && node --test packages/ts/tests/coverage_transactions-mysql.test.mjs",
+          "command": "node packages/ts/tests/coverage_transactions.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/coverage_transactions.mjs"
+          ]
+        },
+        {
+          "id": "cancellation-handle-typescript-mysql",
+          "command": "node --test packages/ts/tests/coverage_transactions-mysql.test.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/coverage_transactions-mysql.test.mjs"
           ]
         }
       ],
@@ -3862,6 +3871,7 @@
         "packages/ts/tests/dbspec-stress.mjs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/go/engine/dbspec/apply_test.go",
+        "packages/go/engine/dbspec/mariadb_default_test.go",
         "packages/go/engine/dbspec/harness_test.go",
         "packages/go/engine/dbspec/literal_test.go",
         "packages/go/engine/dbspec/plan_test.go",
@@ -5068,6 +5078,8 @@
         "packages/go/engine/ir/fuzz_test.go",
         "packages/go/engine/ir/operators_test.go",
         "packages/go/engine/dialect/sqlite_test.go",
+        "packages/go/engine/dialect/mysql_test.go",
+        "packages/rust/orm/src/engine/dialect.rs",
         "packages/rust/tests/src/conformance.rs",
         "packages/rust/tests/src/conformance_values.rs",
         "packages/rust/tests/tests/all/conformance_runner.rs",

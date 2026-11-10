@@ -1596,7 +1596,7 @@ mariadb-recipes-check/typescript: typescript-current
 	missing=0; for entry in $(MARIADB_TS_ENTRIES); do test -f $$entry || { echo "$$entry is missing: a recipe of mysql runs on mariadb (DIA-200)" >&2; missing=1; }; done; exit $$missing
 	$(WITH_MARIADB_ENV) $(RECIPE_TS_TEST) $(MARIADB_TS_ENTRIES)
 mariadb-recipes-check/python: lease-tool python-venv-check
-	$(WITH_MARIADB_ENV) { status=0; for entry in $(MARIADB_PY_ENTRIES); do $(PYTHON_VENV)/bin/python -m $$entry || status=1; done; exit $$status; }
+	$(WITH_MARIADB_ENV) $(PYTHON_TESTS) -- $(MARIADB_PY_ENTRIES)
 mariadb-recipes-check/php: lease-tool php-vendor-check php-models
 	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '::testMariadb'
 mariadb-recipes-check/php-extension: lease-tool php-vendor-check build-php-ext

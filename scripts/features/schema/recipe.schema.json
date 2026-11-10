@@ -786,6 +786,25 @@
               "minLength": 1
             }
           }
+        },
+        {
+          "description": "The statement of a case or a step that runs on the mysql dialect alone (only: [\"mysql\"]), with the body of MariaDB where its answer differs and no common body exists (DIA-200, rule 2).",
+          "type": "object",
+          "required": [
+            "mysql",
+            "mariadb"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mysql": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mariadb": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       ]
     },
