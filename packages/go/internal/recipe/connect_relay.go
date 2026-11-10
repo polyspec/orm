@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sync"
 	"sync/atomic"
+	"syscall"
 )
 
 // connectRelay is the TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection
@@ -20,6 +21,7 @@ type connectRelay struct {
 	accepted atomic.Int64
 	mu       sync.Mutex
 	conns    []net.Conn
+	errs     []error
 	done     sync.WaitGroup
 }
 
@@ -52,7 +54,7 @@ func (r *connectRelay) serve() {
 		r.accepted.Add(1)
 		server, err := net.Dial("tcp", r.target)
 		if err != nil {
-			_ = client.Close()
+			r.fail(fmt.Errorf("relay to %s: %w", r.target, err), r.end(client))
 			continue
 		}
 		r.mu.Lock()
@@ -64,12 +66,38 @@ func (r *connectRelay) serve() {
 	}
 }
 
-// copy copies one direction and closes both ends when it ends, which ends the other direction.
+// copy copies one direction and closes both ends when it ends, which ends the other direction. A reset or a closed end is
+// how a connection ends, not an error; any other error of the copy or of a close is an error of the relay.
 func (r *connectRelay) copy(to, from net.Conn) {
 	defer r.done.Done()
-	_, _ = io.Copy(to, from)
-	_ = to.Close()
-	_ = from.Close()
+	_, err := io.Copy(to, from)
+	if ended(err) {
+		err = nil
+	}
+	r.fail(err, r.end(to), r.end(from))
+}
+
+// end closes conn; a connection that is already closed has ended.
+func (r *connectRelay) end(conn net.Conn) error {
+	if err := conn.Close(); !ended(err) {
+		return err
+	}
+	return nil
+}
+
+// fail records the errors that are not nil, which close returns.
+func (r *connectRelay) fail(errs ...error) {
+	if err := errors.Join(errs...); err != nil {
+		r.mu.Lock()
+		r.errs = append(r.errs, err)
+		r.mu.Unlock()
+	}
+}
+
+// ended reports whether err is no error or the end of a connection: closed here, reset, aborted or a broken pipe.
+func ended(err error) bool {
+	return err == nil || errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) ||
+		errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN)
 }
 
 // close stops the relay, closes every relayed connection and returns when no goroutine of it runs.
@@ -77,11 +105,11 @@ func (r *connectRelay) close() error {
 	err := r.listener.Close()
 	r.mu.Lock()
 	for _, conn := range r.conns {
-		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
-			err = errors.Join(err, closeErr)
-		}
+		err = errors.Join(err, r.end(conn))
 	}
 	r.mu.Unlock()
 	r.done.Wait()
-	return err
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return errors.Join(append([]error{err}, r.errs...)...)
 }

@@ -20,6 +20,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
+import { errorCode } from './errors.mts';
 import { runLong, stepLines, type Step } from './testcase.mts';
 import { cloneFile } from '../scripts/clone-file.mts';
 import { parseCargoMessage } from '../scripts/json/formats.mts';
@@ -39,7 +40,7 @@ export function removeEndedRuns(runs: string): string[] {
     const pid = Number(/^cargo-test-direct-([1-9]\d*)-[A-Za-z0-9]{6}$/.exec(name)?.[1]);
     if (!Number.isSafeInteger(pid) || pid === process.pid) continue;
     try { process.kill(pid, 0); continue; }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') continue; }
+    catch (error) { if (errorCode(error) !== 'ESRCH') continue; }
     rmSync(join(runs, name), { recursive: true, force: true });
     removed.push(name);
   }

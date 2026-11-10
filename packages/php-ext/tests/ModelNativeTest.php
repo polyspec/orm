@@ -622,7 +622,9 @@ final class ModelNativeTest extends TestCase
         self::assertSame('postgres', $postgres->server);
         $locks = [
             'mysql' => [$mysql, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' LOCK IN SHARE MODE', ' FOR SHARE NOWAIT'],
-            'mariadb' => [$mariadb, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' LOCK IN SHARE MODE', ' LOCK IN SHARE MODE NOWAIT'],
+            'mariadb' => [
+                $mariadb, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' LOCK IN SHARE MODE', ' LOCK IN SHARE MODE NOWAIT',
+            ],
             'postgres' => [$postgres, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' FOR SHARE', ' FOR SHARE NOWAIT'],
             'sqlite' => [$sqlite, '', '', '', ''],
         ];

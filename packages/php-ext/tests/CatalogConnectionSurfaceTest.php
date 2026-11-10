@@ -120,9 +120,10 @@ final class CatalogConnectionSurfaceTest extends TestCase
         coverageAssertColumnNameFailureIsPrevious($read);
     }
 
-    // Requirements: DIA-205. A MariaDB server writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the MySQL form:
-    // 'NULL' is no default, a quoted literal its value with its escapes undone, a number itself, and any other text an
-    // expression default, the clock as CURRENT_TIMESTAMP(p); on a MySQL server the same text is the default as it is.
+    // Requirements: DIA-205. A MariaDB server writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the
+    // MySQL form: 'NULL' is no default, a quoted literal its value with its escapes undone, a number itself, and any
+    // other text an expression default, the clock as CURRENT_TIMESTAMP(p); on a MySQL server the same text is the
+    // default as it is.
     public function testNativeMariadbColumnDefaultIsReadInTheMysqlForm(): void
     {
         require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
@@ -143,7 +144,8 @@ final class CatalogConnectionSurfaceTest extends TestCase
         foreach ($want as $server => $columns) {
             $db = new Db(new CatalogMariadbDefaultPdo($defaults), 'mysql', new Config(), new DateTimeZone('UTC'));
             $db->setServer($server);
-            $metadata = self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+            $metadata = self::catalogWith($db, 'mysql')
+                ->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
             $read = array_map(
                 static fn (CatalogColumn $column): array => [$column->defaultExpression, $column->expressionDefault],
                 array_slice($metadata->columns, 1),
@@ -152,7 +154,8 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
 
         // A quoted text that is not one whole literal is no default that the descriptor can state.
-        $db = new Db(new CatalogMariadbDefaultPdo([['broken', "'a' 'b'"]]), 'mysql', new Config(), new DateTimeZone('UTC'));
+        $broken = new CatalogMariadbDefaultPdo([['broken', "'a' 'b'"]]);
+        $db = new Db($broken, 'mysql', new Config(), new DateTimeZone('UTC'));
         $db->setServer('mariadb');
         try {
             self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
