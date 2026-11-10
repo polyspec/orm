@@ -1177,7 +1177,7 @@ static bool exec_stmt_args(zval *self, zval *st, zval *args)
     return true;
 }
 
-/* float_text is the shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+/* float_text is the shortest decimal text of a finite float that reads back as the same binary64 value (DIA-217). */
 static zend_string *float_text(double value)
 {
     char buf[64];
@@ -1190,7 +1190,7 @@ static zend_string *float_text(double value)
 
 /* sqlite_args writes into mapped the arguments as the database reads them and returns true, or returns false when args need
  * no change. PDO binds a float as its text, which PHP writes with the `precision` setting (14 digits by default) and so names
- * another binary64 value: a finite float binds as the shortest text that reads back as its own value (DIA-201). SQLite takes
+ * another binary64 value: a finite float binds as the shortest text that reads back as its own value (DIA-217). SQLite takes
  * a text as a number only in a numeric form, which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an
  * infinity that SQLite itself writes (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and
  * Db::fetch both bind through it, so a model write and a statement of Utils::run store the same value. */
@@ -3531,7 +3531,7 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
             }
         }
     } else {
-        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar
+        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other scalar
          * statement reads one cell. */
         zval *kind = aget(rd(r, "ir"), "kind");
         ok = scalar_of_step(self, step0, rd(r, "params"), is_str(kind, "avg") || is_str(kind, "sum"), out);

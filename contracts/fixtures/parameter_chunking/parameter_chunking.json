@@ -6,7 +6,7 @@
     "PRT-76",
     "CFG-28",
     "DIA-154",
-    "DIA-203"
+    "DIA-219"
   ],
   "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
   "cases": [
@@ -811,7 +811,7 @@
       "id": "model_decimal_text_parameter_after_schema_change",
       "requirements": [
         "CFG-28",
-        "DIA-203"
+        "DIA-219"
       ],
       "steps": [
         {
@@ -1007,7 +1007,7 @@
       "id": "model_numeric_text_parameter_refused_after_schema_change",
       "requirements": [
         "CFG-28",
-        "DIA-203"
+        "DIA-219"
       ],
       "steps": [
         {

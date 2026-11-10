@@ -2307,7 +2307,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 8,
-                  "column": 9
+                  "column": 9,
+                  "message": "index, unique key, foreign key or check name \"ck_a\" repeats in the schema"
                 }
               ]
             }

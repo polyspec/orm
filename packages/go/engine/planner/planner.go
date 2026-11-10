@@ -678,7 +678,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 			if sub.split {
-				// The sum and its cells are written; the column states them (DIA-202, PRT-84).
+				// The sum and its cells are written; the column states them (DIA-218, PRT-84).
 				sb.WriteString(sub.expr)
 				asm.Columns = append(asm.Columns, sub.col)
 				continue
@@ -1693,9 +1693,9 @@ func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func
 
 // aggregateSums renders the SUMs of the column of a sum or an average, and the cell that reports a value that is not an
 // integer, or "". MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL
-// refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past
+// refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-216). SQLite sums integers in i64 and refuses a sum past
 // it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its 16-bit parts,
-// which the executor combines, and the cell of DIA-202 reports a value that is not an integer (DIA-202).
+// which the executor combines, and the cell of DIA-218 reports a value that is not an integer (DIA-218).
 func (p *Planner) aggregateSums(root *scope, column string) ([]string, string) {
 	q := p.qcol(root, column)
 	f := root.ent.Field(column)
@@ -1712,13 +1712,13 @@ func (p *Planner) aggregateSums(root *scope, column string) ([]string, string) {
 	return []string{"SUM(" + q + ")"}, ""
 }
 
-// splitParts are the four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its
+// splitParts are the four 16-bit parts of an integer q, highest first (DIA-218): the high part, which >> shifts with its
 // sign, in [-2^15, 2^15), and the three others in [0, 2^16).
 func splitParts(q string) []string {
 	return []string{q + " >> 48", "(" + q + " >> 32) & 65535", "(" + q + " >> 16) & 65535", q + " & 65535"}
 }
 
-// nonIntegerCell is 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202).
+// nonIntegerCell is 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-218).
 func nonIntegerCell(q string) string {
 	return "MAX(typeof(" + q + ") NOT IN ('integer', 'null'))"
 }
@@ -1742,7 +1742,7 @@ type subPlan struct {
 
 // subColumn plans the scalar subquery column c at the cell *idx. SQLite refuses a SUM past the i64 range, so on SQLite, and
 // on markdown, the sum of an integer or decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the
-// cell that reports a value that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan
+// cell that reports a value that is not an integer, which the executor combines and checks (DIA-218, PRT-84); the plan
 // column states their cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it
 // sums, and a decimal column states its scale and, but for a sum, its precision (INT-160).
 func (p *Planner) subColumn(b *builder, s *scope, c outCol, idx *int, outNames *[]string) (subPlan, error) {

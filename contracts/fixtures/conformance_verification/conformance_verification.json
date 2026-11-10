@@ -4,9 +4,9 @@
   "INT-164",
   "PRT-84",
   "PRT-83",
-  "DIA-202",
-  "DIA-203",
-  "DIA-200",
+  "DIA-218",
+  "DIA-219",
+  "DIA-216",
   "DSL-161",
   "DSL-66",
   "PRT-69",
@@ -57096,7 +57096,7 @@
    "id": "added_sum_fractional",
    "requirements": [
     "INT-160",
-    "DIA-202",
+    "DIA-218",
     "DSL-161",
     "PRT-84"
    ],
@@ -88760,7 +88760,7 @@
    "requirements": [
     "DSL-66",
     "DSL-161",
-    "DIA-200",
+    "DIA-216",
     "COD-1"
    ],
    "steps": [
@@ -89075,7 +89075,7 @@
    "id": "aggregate_of_a_stored_nan_or_infinity_is_codec_decode",
    "requirements": [
     "DSL-66",
-    "DIA-200",
+    "DIA-216",
     "COD-1"
    ],
    "only": [
@@ -89226,7 +89226,7 @@
    "requirements": [
     "DSL-66",
     "DSL-161",
-    "DIA-202"
+    "DIA-218"
    ],
    "steps": [
     {
@@ -89662,7 +89662,7 @@
   {
    "id": "sum_parts_of_i64_boundary_values_are_exact",
    "requirements": [
-    "DIA-202",
+    "DIA-218",
     "PRT-84",
     "DSL-161",
     "INT-160"
@@ -90574,7 +90574,7 @@
    "requirements": [
     "DIA-25",
     "COD-1",
-    "DIA-203"
+    "DIA-219"
    ],
    "steps": [
     {

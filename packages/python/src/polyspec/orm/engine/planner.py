@@ -400,9 +400,9 @@ class Planner:
     def _aggregate_sums(self, root: _Scope, column: str) -> tuple[list, str]:
         """The SUMs of the column of a sum or an average, and the cell that reports a value that is not an integer, or "".
         MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with
-        1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past it,
+        1690 (SQLSTATE 22003) when the sum is not finite (DIA-216). SQLite sums integers in i64 and refuses a sum past it,
         so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its 16-bit parts,
-        which the executor combines, and the cell of DIA-202 reports a value that is not an integer (DIA-202)."""
+        which the executor combines, and the cell of DIA-218 reports a value that is not an integer (DIA-218)."""
         q = self._qcol(root, column)
         field = field_of(root.ent, column)
         kind = field.type if field is not None else ""
@@ -719,7 +719,7 @@ class Planner:
                     b, s, c["name"], c["sub"], idx, out_names
                 )
                 if split:
-                    # The sum and its cells are written; the column states them (DIA-202, PRT-84).
+                    # The sum and its cells are written; the column states them (DIA-218, PRT-84).
                     parts.append(expr)
                     asm["columns"].append(sub_col)
                     continue
@@ -1133,7 +1133,7 @@ class Planner:
         """The select expression of the scalar subquery column name at the cell idx["n"], its plan column, and whether it
         is split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
         column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
-        that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+        that is not an integer, which the executor combines and checks (DIA-218, PRT-84); the plan column states their
         cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
         decimal column states its scale and, but for a sum, its precision (INT-160)."""
         col: dict = {
@@ -1495,7 +1495,7 @@ class Planner:
 
 
 def _split_parts(q: str) -> list:
-    """The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+    """The four 16-bit parts of an integer q, highest first (DIA-218): the high part, which >> shifts with its sign, in
     [-2^15, 2^15), and the three others in [0, 2^16)."""
     return [
         f"{q} >> 48",
@@ -1506,5 +1506,5 @@ def _split_parts(q: str) -> list:
 
 
 def _non_integer_cell(q: str) -> str:
-    """1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202)."""
+    """1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-218)."""
     return f"MAX(typeof({q}) NOT IN ('integer', 'null'))"

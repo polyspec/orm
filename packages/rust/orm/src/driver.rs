@@ -264,7 +264,7 @@ impl sqlx::Encode<'_, Postgres> for PgUuid {
     }
 }
 
-/// A PostgreSQL `numeric` value in its binary form, from a text of any number of digits (DIA-203).
+/// A PostgreSQL `numeric` value in its binary form, from a text of any number of digits (DIA-219).
 struct PgNumeric(Vec<u8>);
 
 impl sqlx::Type<Postgres> for PgNumeric {
@@ -357,7 +357,7 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
         "i32" => int!(i32),
         "i64" => int!(i64),
         "f64" => float!(f64),
-        // The number that the text names, whatever its number of digits, as PostgreSQL reads that text (DIA-203).
+        // The number that the text names, whatever its number of digits, as PostgreSQL reads that text (DIA-219).
         "decimal" => {
             let text = match p {
                 Param::Null => return Ok(q.bind(Option::<PgNumeric>::None)),

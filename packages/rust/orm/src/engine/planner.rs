@@ -471,10 +471,10 @@ impl<'m> Planner<'m> {
     }
 
     /// The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
-    /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums
+    /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-216). SQLite sums
     /// integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column
-    /// is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is not
-    /// an integer; the second value is that cell, or None (DIA-202).
+    /// is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-218 reports a value that is not
+    /// an integer; the second value is that cell, or None (DIA-218).
     fn aggregate_sums(&self, root: &Scope<'_>, column: &str) -> (Vec<String>, Option<String>) {
         let q = self.qcol(root, column);
         let ty = root.ent.field(column).map(|f| &f.ty);
@@ -781,7 +781,7 @@ impl<'m> Planner<'m> {
                         // SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or
                         // decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell
                         // that reports a value that is not an integer, which the executor combines and checks; the plan column
-                        // states their cells (DIA-202, PRT-84).
+                        // states their cells (DIA-218, PRT-84).
                         for k in 0..=SPLIT_PARTS {
                             if k > 0 {
                                 sb.push_str(", ");
@@ -1167,7 +1167,7 @@ impl<'m> Planner<'m> {
 
     /// A subquery for an IN list or a scalar column; its root gets its own
     /// alias and resolves "^" against `outer`. A cell below SPLIT_PARTS selects the sum of that 16-bit part of the summed
-    /// column, SPLIT_PARTS the cell that reports a value that is not an integer (DIA-202, PRT-84), and None the subquery.
+    /// column, SPLIT_PARTS the cell that reports a value that is not an integer (DIA-218, PRT-84), and None the subquery.
     fn sub_select(&self, b: &mut Builder, outer: &Scope<'_>, sub: &ir::Sub, cell: Option<usize>) -> Result<String> {
         b.subs += 1;
         let mut root = self.scopes(&sub.query, format!("s{}", b.subs), false)?;
@@ -1575,16 +1575,16 @@ struct OutItem<'q> {
     kind: OutKind<'q>,
 }
 
-/// The number of parts of a split sum (DIA-202).
+/// The number of parts of a split sum (DIA-218).
 const SPLIT_PARTS: usize = 4;
 
-/// The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+/// The four 16-bit parts of an integer q, highest first (DIA-218): the high part, which >> shifts with its sign, in
 /// [-2^15, 2^15), and the three others in [0, 2^16).
 fn split_parts(q: &str) -> [String; SPLIT_PARTS] {
     [format!("{q} >> 48"), format!("({q} >> 32) & 65535"), format!("({q} >> 16) & 65535"), format!("{q} & 65535")]
 }
 
-/// 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202).
+/// 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-218).
 fn non_integer_cell(q: &str) -> String {
     format!("MAX(typeof({q}) NOT IN ('integer', 'null'))")
 }

@@ -2051,7 +2051,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     /**
      * The cell of an added column of the plan column $plan, from its cell $v of the row $vals: the sum of an integer
      * or decimal column is the exact integer of its split cells on SQLite and markdown, as its decimal text, and a sum
-     * of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84); a
+     * of a column that holds a value which its type does not hold is refused by that column (DIA-218, PRT-84); a
      * decimal is its exact text of its scale (INT-160), and any other cell is $v.
      *
      * @param array<string, mixed> $plan
@@ -2130,7 +2130,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     /**
      * The message of the CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value
-     * that is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+     * that is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-218, DSL-66).
      */
     private static function nonIntegerMessage(string $column, string $type, int $scale): string
     {
@@ -2142,7 +2142,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     /**
      * The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum as its decimal text, and
      * null when every part is SQL NULL, the sum of no value; $nonInteger is set when its last cell reports a value that
-     * is not an integer (DIA-202).
+     * is not an integer (DIA-218).
      *
      * @param list<mixed> $parts
      */
@@ -2188,12 +2188,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         return $negative && $digits !== '0' ? "-$digits" : $digits;
     }
 
-    /** The number of cells of a split sum: the four sums of the 16-bit parts and the cell of DIA-202. */
+    /** The number of cells of a split sum: the four sums of the 16-bit parts and the cell of DIA-218. */
     private const SPLIT_CELLS = 5;
 
     /**
      * The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum, as its
-     * decimal text (DIA-202); null is the sum of no value. A split sum of a column that holds a value which its type
+     * decimal text (DIA-218); null is the sum of no value. A split sum of a column that holds a value which its type
      * does not hold is refused by that column.
      *
      * @param list<mixed> $cells
@@ -2421,7 +2421,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     /**
      * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE
      * 22003, and MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other
-     * databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-200).
+     * databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-216).
      */
     private static function aggregateRangeError(OrmException $error): OrmException
     {

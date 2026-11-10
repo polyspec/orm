@@ -102,10 +102,10 @@ final class Planner
     /**
      * The SUMs of the column of a sum or an average, and the cell that reports a value that is not an integer, or ''.
      * MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses
-     * with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum
+     * with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-216). SQLite sums integers in i64 and refuses a sum
      * past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its
-     * 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is not an integer
-     * (DIA-202).
+     * 16-bit parts, which the executor combines, and the cell of DIA-218 reports a value that is not an integer
+     * (DIA-218).
      *
      * @return array{list<string>, string}
      */
@@ -121,7 +121,7 @@ final class Planner
     }
 
     /**
-     * The four 16-bit parts of an integer $q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+     * The four 16-bit parts of an integer $q, highest first (DIA-218): the high part, which >> shifts with its sign, in
      * [-2^15, 2^15), and the three others in [0, 2^16).
      *
      * @return list<string>
@@ -131,7 +131,7 @@ final class Planner
         return ["$q >> 48", "($q >> 32) & 65535", "($q >> 16) & 65535", "$q & 65535"];
     }
 
-    /** 1 when a value of $q is not an integer, which >> and & would read without its fraction (DIA-202). */
+    /** 1 when a value of $q is not an integer, which >> and & would read without its fraction (DIA-218). */
     private static function nonIntegerCell(string $q): string
     {
         return "MAX(typeof($q) NOT IN ('integer', 'null'))";
@@ -447,7 +447,7 @@ final class Planner
             } elseif (isset($c['sub'])) {
                 [$expr, $subCol, $split] = $this->subColumn($b, $s, $c['name'], $c['sub'], $idx, $outNames);
                 if ($split) {
-                    // The sum and its cells are written; the column states them (DIA-202, PRT-84).
+                    // The sum and its cells are written; the column states them (DIA-218, PRT-84).
                     $parts[] = $expr;
                     $asm->columns[] = $subCol;
                     continue;
@@ -1348,7 +1348,7 @@ final class Planner
      * The select expression of the scalar subquery column $name at the cell $idx, its plan column, and whether it is
      * split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
      * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
-     * that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+     * that is not an integer, which the executor combines and checks (DIA-218, PRT-84); the plan column states their
      * cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
      * decimal column states its scale and, but for a sum, its precision (INT-160).
      *

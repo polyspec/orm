@@ -1161,7 +1161,7 @@ static zend_string *qcol(pctx *c, pscope *s, zend_string *col)
     return fmt(c, "%s.%s", ZSTR_VAL(a), ZSTR_VAL(q));
 }
 
-/* The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+/* The four 16-bit parts of an integer q, highest first (DIA-218): the high part, which >> shifts with its sign, in
  * [-2^15, 2^15), and the three others in [0, 2^16). */
 static zend_string *split_part(pctx *c, const char *q, int k)
 {
@@ -1173,10 +1173,10 @@ static zend_string *split_part(pctx *c, const char *q, int k)
     }
 }
 
-/* The number of parts of a split sum (DIA-202). */
+/* The number of parts of a split sum (DIA-218). */
 #define SPLIT_PARTS 4
 
-/* 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202). */
+/* 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-218). */
 static zend_string *non_integer_cell(pctx *c, const char *q)
 {
     return fmt(c, "MAX(typeof(%s) NOT IN ('integer', 'null'))", q);
@@ -1184,10 +1184,10 @@ static zend_string *non_integer_cell(pctx *c, const char *q)
 
 /* The SUMs of the column of a sum or an average, joined by commas, each in COALESCE(..., 0) with coalesce, and the cell that
  * reports a value that is not an integer where the sum is split. MySQL writes an infinite double as 0 in its text protocol,
- * so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite
+ * so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-216). SQLite
  * sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact
- * column is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is
- * not an integer (DIA-202). */
+ * column is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-218 reports a value that is
+ * not an integer (DIA-218). */
 static zend_string *aggregate_sums(pctx *c, pscope *root, zend_string *column, bool coalesce)
 {
     zend_string *qc = qcol(c, root, column);
@@ -2102,7 +2102,7 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
             if (ZSTR_LEN(sumOf) > 0 && zend_string_equals_literal(dn, "sqlite")) {
                 /* SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
                  * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is
-                 * not an integer, which the executor combines and checks; the plan column states their cells (DIA-202,
+                 * not an integer, which the executor combines and checks; the plan column states their cells (DIA-218,
                  * PRT-84). */
                 zval *oc = out_col(c, *idx, name, cname, type, styles, false);
                 puts_(oc, "sum_of", sumOf);
@@ -2269,7 +2269,7 @@ static zend_string *sub_sum_of(pctx *c, HashTable *sub)
 
 /* Planner::subSelect: a subquery for an IN list or a scalar column; ^ references resolve against outer. A cell from 0 to
  * SPLIT_PARTS - 1 selects the sum of that 16-bit part of the summed column, SPLIT_PARTS the cell that reports a value that
- * is not an integer (DIA-202, PRT-84), and -1 the subquery itself. */
+ * is not an integer (DIA-218, PRT-84), and -1 the subquery itself. */
 static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub, int cell)
 {
     HashTable *q = ga(sub, "query");

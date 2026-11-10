@@ -46,21 +46,21 @@ func exactAggregate(field *runtimemodel.Field) bool {
 }
 
 // splitSum reports whether the planner splits the sum of the column into the sums of its four 16-bit parts and the cell
-// that reports a value that is not an integer: an exact column on SQLite and on markdown, which runs SQLite (DIA-202).
+// that reports a value that is not an integer: an exact column on SQLite and on markdown, which runs SQLite (DIA-218).
 func splitSum(driver string, field *runtimemodel.Field) bool {
 	return (driver == "sqlite" || driver == "markdown") && exactAggregate(field)
 }
 
 // splitCells is the number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that
-// is not an integer (DIA-202).
+// is not an integer (DIA-218).
 const splitCells = 5
 
-// nonInteger is the sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses
+// nonInteger is the sum of a column that holds a value that is not an integer (DIA-218), which the reader of the sum refuses
 // by the name and the type of its column.
 type nonInteger struct{}
 
 // nonIntegerRefusal is the CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that
-// is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+// is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-218, DSL-66).
 func nonIntegerRefusal(column, columnType string, scale int) error {
 	if columnType == "decimal" {
 		return &ir.Error{Code: CodeCodecDecode, Msg: "column " + column + " holds a value that is not a decimal of scale " + strconv.Itoa(scale)}
@@ -69,7 +69,7 @@ func nonIntegerRefusal(column, columnType string, scale int) error {
 }
 
 // splitSumValue is the exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, nonInteger when
-// its last cell reports a value that is not an integer, and nil when every part is SQL NULL, the sum of no value (DIA-202).
+// its last cell reports a value that is not an integer, and nil when every part is SQL NULL, the sum of no value (DIA-218).
 func splitSumValue(parts []any, flag any) (any, error) {
 	if flag != nil {
 		n, ok := flag.(int64)
@@ -101,7 +101,7 @@ func splitSumValue(parts []any, flag any) (any, error) {
 }
 
 // sumCell is the sum of a sum or an average statement: its one cell, or the exact integer of the cells of a split sum
-// (DIA-202); SQL NULL, the sum of no value, stays nil.
+// (DIA-218); SQL NULL, the sum of no value, stays nil.
 func sumCell(cells []cell) (any, error) {
 	if len(cells) == 1 {
 		return cells[0].v, nil
@@ -117,7 +117,7 @@ func sumCell(cells []cell) (any, error) {
 }
 
 // exactSum reads the sum cell of the exact column field as its sign and the digits of the sum times 10^scale: an integer
-// cell, or the integer of a split sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell
+// cell, or the integer of a split sum (DIA-218), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell
 // is a decimal of at most scale fraction digits. A sum that holds a value which the type of the column does not hold, which
 // the split sum reports and the text of MySQL and PostgreSQL shows by more fraction digits, is refused by its column.
 func exactSum(field *runtimemodel.Field, raw any) (bool, string, error) {
@@ -239,7 +239,7 @@ func avgValue(field *runtimemodel.Field, cells avgCells) (*float64, error) {
 
 // aggregateRangeErr is the error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with
 // SQLSTATE 22003, and MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other
-// databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-200).
+// databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-216).
 func aggregateRangeErr(err error) error {
 	var state interface{ SQLState() string }
 	var my *mysql.MySQLError

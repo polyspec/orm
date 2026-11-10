@@ -1201,7 +1201,7 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	// A sum reads its sums and an average its sums and the count of its values: the cells of a split sum where the planner
-	// splits the sum of an exact column (DIA-202), one sum otherwise (DSL-161); every other scalar statement reads one cell.
+	// splits the sum of an exact column (DIA-218), one sum otherwise (DSL-161); every other scalar statement reads one cell.
 	cells := make([]cell, 1)
 	if r.ir.Kind == "sum" || r.ir.Kind == "avg" {
 		cells = make([]cell, r.sumCells)

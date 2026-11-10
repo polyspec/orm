@@ -1324,7 +1324,7 @@ final class Db
             }
             return $total;
         }
-        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other
         // scalar statement reads one cell.
         return $this->scalar($plan['steps'][0], $r->params, in_array($r->ir['kind'], ['avg', 'sum'], true));
     }
@@ -1761,7 +1761,7 @@ final class Db
     /**
      * The arguments of a statement as the database reads them. PDO binds a float as its text, which PHP writes with the
      * `precision` setting (14 digits by default) and so names another binary64 value: a finite float binds as the
-     * shortest text that reads back as its own value (DIA-201). SQLite takes a text as a number only in a numeric form,
+     * shortest text that reads back as its own value (DIA-217). SQLite takes a text as a number only in a numeric form,
      * which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes
      * (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and Db::fetch both bind
      * through it, so a model write and a statement of Utils::run store the same value.
@@ -1783,7 +1783,7 @@ final class Db
         );
     }
 
-    /** The shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+    /** The shortest decimal text of a finite float that reads back as the same binary64 value (DIA-217). */
     private static function floatText(float $v): string
     {
         $precision = ini_set('precision', '-1');

@@ -1463,7 +1463,7 @@ function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T)
 
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
   const { request, params } = hooked(ex, given, givenParams);
-  // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar statement
+  // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other scalar statement
   // reads one cell.
   const cells = (rows: unknown[][]): unknown => request.kind === 'avg' || request.kind === 'sum'
     ? present(rows[0], `the row of a ${request.kind}`) : rows[0]?.[0] ?? null;
