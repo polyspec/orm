@@ -89,7 +89,8 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   when it lists a row. MySQL lists the setting when it is on; MariaDB has no partial revokes and no `partial_revokes`
   (1193), and lists no row, so the one form answers both servers with the same result (DIA-200, rule 1). The case
   `row_change_with_partial_revokes_enabled` of the catalog recipe states the MariaDB answer: its replica has no setting
-  to enable, and the row changes that MySQL refuses there are made.
+  to enable, so the check lets each row change through, and the read-only replica refuses it with 1290 (`READ_ONLY`), as
+  MySQL's `super_read_only` replica refuses a write that reaches it.
 
 - **DIA-208** The statement timeout — MySQL 8.4 / MariaDB 11.8 (probes `mysql.session.statement_timeout`,
   `mariadb.session.statement_timeout`): MySQL bounds a SELECT by `max_execution_time` in milliseconds (3024) and has no

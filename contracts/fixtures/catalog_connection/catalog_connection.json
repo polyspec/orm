@@ -10465,7 +10465,7 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the connects that the server has counted for that name until now, refused ones among them, which MySQL and MariaDB both count in performance_schema.users (MariaDB has no error summary by user); the held connection and one refused reconnect make two more",
+          "reason": "the connects that the server has counted for that name until now in performance_schema.users, which both servers have (MariaDB has no error summary by user): MySQL counts a refused connect there, so the held connection and the one refused reconnect make two more; MariaDB counts only the connections that it admits, and no table of MariaDB counts a refusal of max_user_connections by user, so its answer is one more, the held connection",
           "sql": "CREATE TABLE connects_before AS SELECT COALESCE(SUM(TOTAL_CONNECTIONS), 0) AS n FROM performance_schema.users WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28))"
         },
         {
@@ -10490,6 +10490,15 @@
                 [
                   {
                     "text": "2"
+                  }
+                ]
+              ]
+            },
+            "mariadb": {
+              "rows": [
+                [
+                  {
+                    "text": "1"
                   }
                 ]
               ]
@@ -20725,19 +20734,8 @@
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "2"
-                  },
-                  {
-                    "text": "refused"
-                  }
-                ]
-              ]
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },
@@ -20760,19 +20758,8 @@
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "refused"
-                  }
-                ]
-              ]
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },
@@ -20787,7 +20774,8 @@
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "error": "ROW_CONFLICT"
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },
@@ -20823,42 +20811,6 @@
                   },
                   {
                     "text": "kept"
-                  }
-                ]
-              ]
-            },
-            "mariadb": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "refused"
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "2"
-                  },
-                  {
-                    "text": "refused"
                   }
                 ]
               ]
