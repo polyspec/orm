@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: f57c7ef9318c9ee4f0d70ee4ea4ba411d1b91c81a510338190534f2441fca72e -->
+<!-- source-sha256: bc83d5fcca2228dc2b4b1e60694c7597527e88d9570d1dd8b0d7de150414098b -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -55,7 +55,13 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   `mariadb.int.display_width_dropped`): MySQL은 `smallint`, `int`, `bigint`의 `COLUMN_TYPE`을 display width 없이 쓰고
   MariaDB는 width와 함께 쓴다(`smallint(6)`, `int(11)`, `bigint(20)`). width는 값을 바꾸지 않으므로 두 server의
   introspection은 width가 있든 없든 정수 type을 같은 type으로 읽는다(DIA-200, 규칙 1). `tinyint(1)`은 두 server에서 모두
-  `bool`이다.
+  `bool`이다. catalog 연결의 테이블 descriptor(`describeTable`)의 네이티브 타입은 두 server에서 MySQL 8.4 형식의
+  `COLUMN_TYPE`이며, 모든 runtime에서 query 하나다(DIA-200, 규칙 1). MySQL 8.0.17부터 정수의 display width는 그 type의
+  일부가 아니기 때문이다: 정수 type(`tinyint`, `smallint`, `mediumint`, `int`, `bigint`)은 width가 없고 `unsigned`는
+  남는다(MariaDB `int(10) unsigned`는 `int unsigned`). 다만 MySQL 8.4도 width를 남기는 `tinyint(1)`과 `zerofill` type은
+  예외다(`tinyint(1)`, `int(5) unsigned zerofill`). `tinyint(1) unsigned`는 두 server에서 `tinyint unsigned`이고, MariaDB
+  `year(4)`는 `year`다. MariaDB `year(2)`는 MySQL 8.4 형식이 없으므로 그대로 둔다. 사례 `catalog_describe_integer_width`가
+  두 server에서 이를 확인한다.
 
 - **DIA-205** catalog의 column default — MySQL 8.4 / MariaDB 11.8 (probe `mysql.default.catalog_text`,
   `mariadb.default.catalog_text`): MySQL은 `COLUMN_DEFAULT`에 literal을 따옴표 없이, `NULL` default를 SQL `NULL`로 주고,

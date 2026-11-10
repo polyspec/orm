@@ -5116,31 +5116,67 @@
                 false,
                 false
               ]
-            },
-            "mariadb": {
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_describe_integer_width",
+      "requirements": [
+        "DIA-204"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "integer types with and without a display width, unsigned and zerofill, and a YEAR",
+          "sql": "CREATE TABLE catalog_integer_width (id BIGINT NOT NULL PRIMARY KEY, a TINYINT, b TINYINT(1), c TINYINT(1) UNSIGNED, d SMALLINT(3), e INT(5) UNSIGNED ZEROFILL, f BIGINT UNSIGNED, g YEAR)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "only": [
+            "mysql"
+          ],
+          "table": "catalog_integer_width",
+          "expect": {
+            "mysql": {
               "namespace": {
                 "ref": "database"
               },
               "columns": [
+                "id",
                 "a",
                 "b",
-                "note",
+                "c",
+                "d",
+                "e",
+                "f",
                 "g"
               ],
               "primary_key": [
-                "b",
-                "a"
+                "id"
               ],
               "reliable_row_identity": true,
               "native_types": [
-                "bigint(20)",
-                "bigint(20)",
-                "varchar(50)",
-                "bigint(20)"
+                "bigint",
+                "tinyint",
+                "tinyint(1)",
+                "tinyint unsigned",
+                "smallint",
+                "int(5) unsigned zerofill",
+                "bigint unsigned",
+                "year"
               ],
               "nullable": [
                 false,
-                false,
+                true,
+                true,
+                true,
+                true,
+                true,
                 true,
                 true
               ],
@@ -5148,15 +5184,27 @@
                 false,
                 false,
                 false,
-                true
+                false,
+                false,
+                false,
+                false,
+                false
               ],
               "automatic_keys": [
+                false,
+                false,
+                false,
+                false,
                 false,
                 false,
                 false,
                 false
               ],
               "defaults": [
+                false,
+                false,
+                false,
+                false,
                 false,
                 false,
                 false,

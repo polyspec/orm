@@ -181,7 +181,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
 
                 public function answer(string $query): array
                 {
-                    if (str_starts_with($query, 'SELECT c.COLUMN_NAME,c.COLUMN_TYPE')) {
+                    if (str_starts_with($query, 'SELECT c.COLUMN_NAME,')) {
                         throw $this->failure;
                     }
                     return parent::answer($query);

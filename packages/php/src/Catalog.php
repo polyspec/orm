@@ -88,8 +88,13 @@ final class Catalog
     private const COLUMNS_SQL = [
         // The key ordinal is a subquery that names the table by constants, which neither server reads by opening
         // every table of every database, as MariaDB reads a join of KEY_COLUMN_USAGE (DIA-210). It takes the
-        // namespace and the name twice.
-        'mysql' => "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND "
+        // namespace and the name twice. The native type is COLUMN_TYPE in the form of MySQL 8.4, which MariaDB
+        // writes with an integer display width (DIA-204).
+        'mysql' => "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint',"
+            . "'smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE "
+            . "'%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,"
+            . "LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',"
+            . "(c.GENERATION_EXPRESSION IS NOT NULL AND "
             . "c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM "
             . "information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND "
             . "k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),"

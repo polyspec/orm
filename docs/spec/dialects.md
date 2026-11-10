@@ -61,7 +61,13 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   `mariadb.int.display_width_dropped`): MySQL writes `COLUMN_TYPE` of `smallint`, `int` and `bigint` without a display
   width and MariaDB with one (`smallint(6)`, `int(11)`, `bigint(20)`). The width changes no value, so the introspection
   of both servers reads an integer type with or without a width as the same type (DIA-200, rule 1); `tinyint(1)` stays
-  `bool` on both.
+  `bool` on both. The native type of the table descriptor of the catalog connection (`describeTable`) is `COLUMN_TYPE` in
+  the form of MySQL 8.4 on both servers, one query in every runtime (DIA-200, rule 1), since the display width of an
+  integer is no part of its type since MySQL 8.0.17: an integer type (`tinyint`, `smallint`, `mediumint`, `int`,
+  `bigint`) has no width, `unsigned` kept (`int unsigned` for MariaDB `int(10) unsigned`), except `tinyint(1)` and a
+  `zerofill` type, whose width MySQL 8.4 keeps too (`tinyint(1)`, `int(5) unsigned zerofill`); `tinyint(1) unsigned` is
+  `tinyint unsigned` on both; and MariaDB `year(4)` is `year`. MariaDB `year(2)` has no MySQL 8.4 form and stays as it is.
+  The case `catalog_describe_integer_width` holds it on both servers.
 
 - **DIA-205** The column default in the catalog — MySQL 8.4 / MariaDB 11.8 (probes `mysql.default.catalog_text`,
   `mariadb.default.catalog_text`): MySQL gives `COLUMN_DEFAULT` a literal without quotes, a `NULL` default as SQL

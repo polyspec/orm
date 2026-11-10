@@ -24,8 +24,8 @@ class CatalogMariadbDefaultPdo extends CatalogAnswerPdo
         if (str_starts_with($query, 'SELECT TABLE_TYPE FROM information_schema.TABLES')) {
             return [[['BASE TABLE']], ['TABLE_TYPE'], ['VAR_STRING']];
         }
-        if (str_starts_with($query, 'SELECT c.COLUMN_NAME,c.COLUMN_TYPE')) {
-            $rows = [['id', 'bigint(20)', 0, 0, 1, 1, null, 0]];
+        if (str_starts_with($query, 'SELECT c.COLUMN_NAME,')) {
+            $rows = [['id', 'bigint', 0, 0, 1, 1, null, 0]];
             foreach ($this->defaults as [$name, $default]) {
                 $rows[] = [$name, 'varchar(20)', 1, 0, 0, 0, $default, 0];
             }
