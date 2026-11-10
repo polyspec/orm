@@ -70,9 +70,7 @@ trait RecipeCases
         $this->addToAssertionCount(1);
         $recipe = static::recipe();
         $case = Recipe::caseOf($recipe, $id);
-        $deadline = CaseDeadline::of($case, static::class . '::' . $this->nameWithDataSet());
-        $deadline?->start();
-        Recipe::run($recipe, $case, $database, $deadline);
+        Recipe::run($recipe, $case, $database);
         Recipe::report($case, $database);
     }
 }

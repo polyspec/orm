@@ -75,8 +75,7 @@ const PHP_EXTENSION_LIBRARY = join(PHP_EXTENSION_RUN, 'php-extension/polyspec_or
 const KIT_RUN_TESTS = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 // make php-ext-build is the one build of the extension: it writes the sources that build.sh reads first (Makefile).
 const PHP_EXTENSION_BUILD: Command = { program: process.env.MAKE ?? 'make', args: ['--no-print-directory', 'php-ext-build', `PHP_EXT_OUT=${PHP_EXTENSION_LIBRARY}`, 'PHP_EXT_MODE=release'], cwd: root };
-// Each file is one run, and each test keeps the time limit of its PHPUnit size (phpunit.xml.dist), which kit's run-tests applies
-// when no --timeout is given.
+// Each file is one run.
 const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   program: 'node',
   args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],

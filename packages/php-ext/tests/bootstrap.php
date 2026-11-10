@@ -29,7 +29,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RecipeKeysTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CaseDeadlineTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ComplexQueryMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ComplexQueryMariadbRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ComplexQueryPostgresRecipeTest.php';

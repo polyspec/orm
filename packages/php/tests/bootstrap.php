@@ -42,7 +42,6 @@ require_once __DIR__ . '/RecipeKeys.php';
 require_once __DIR__ . '/RecipeGenerator.php';
 require_once __DIR__ . '/CaseCorpus.php';
 require_once __DIR__ . '/ConnectRelay.php';
-require_once __DIR__ . '/CaseDeadline.php';
 require_once __DIR__ . '/Recipe.php';
 require_once __DIR__ . '/RecipeRecording.php';
 require_once __DIR__ . '/RecipeSubscription.php';

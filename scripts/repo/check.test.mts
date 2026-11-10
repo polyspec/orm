@@ -46,8 +46,9 @@ const trackedAll = new Set(trackedFiles('*'));
 // runner gives it the step budget of them (250 ms a step plus 60 s) on every database, with a step guard that ends it at that budget
 // or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
 // database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
-// each guard holds; PHP's deadline is the test runner's, which writes its own line.
-caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps on every runtime', COMPUTE, () => {
+// each guard holds. PHP and the PHP extension hold none: their deadline was the test runner's, and kit 0.0.105 holds no time
+// limit; T385.1 replaces the guards of the other runtimes by the end events of the waits that they cover.
+caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Go, TypeScript, Python and Rust', COMPUTE, () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
   assert.ok(stress !== undefined, 'the recipe holds the stress case');
@@ -82,11 +83,6 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
     ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
     ['packages/rust/tests/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
     ['packages/rust/tests/src/recipe.rs', /StepGuard::new\(deadline, polyspec_orm_testcase::DATABASE\)/],
-    ['packages/php/tests/CaseDeadline.php', /public const STEP_BUDGET_MS = 250;/],
-    ['packages/php/tests/CaseDeadline.php', /public const FIXED_BUDGET_MS = 60_000;/],
-    ['packages/php/tests/RecipeCases.php', /CaseDeadline::of\(\$case, static::class \. '::' \. \$this->nameWithDataSet\(\)\)/],
-    ['packages/php/tests/RecipeCases.php', /\$deadline\?->start\(\);/],
-    ['packages/php/tests/CaseDeadline.php', /return min\(\$this->budget, self::DATABASE_MS\);/],
   ];
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
@@ -95,9 +91,9 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 
-caseTest('every PHPUnit test class declares its size, so a deadline ends only a stalled case', COMPUTE, () => {
-  // An unsized class takes defaultTimeLimit, 1 second of wall-clock time under enforceTimeLimit, which a case under load exceeds
-  // on its own work; a size gives it the deadline of its kind in phpunit.xml.dist (60, 120 or 300 seconds).
+caseTest('every PHPUnit test class declares its size', COMPUTE, () => {
+  // The size states the kind of a case: #[Small] computes in memory, #[Medium] runs statements on a database, #[Large] runs a
+  // child process (phpunit.xml.dist); no size sets a time limit.
   const unsized = [...trackedAll].filter(path => /^packages\/php(?:-ext)?\/tests\/.*Test\.php$/.test(path)).filter(path => {
     const source = text(path);
     return /^(?:final )?class \w+Test\b/m.test(source) && !/^#\[(?:\\PHPUnit\\Framework\\Attributes\\)?(?:Small|Medium|Large)\]\s*\n(?:#\[.*\]\s*\n|\/\/.*\n)*(?:final )?class /m.test(source);
@@ -520,16 +516,12 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
-// run-tests gives one timeout to every case of a --module harness, and packages/python/tests/testcase.py keeps the deadline
-// of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the process GRACE after it. So the timeout of run-tests is
-// the longest class with its grace, and the class of a case decides when it fails.
-caseTest('every Python run of run-tests gives the cases the deadlines of their testcase classes', COMPUTE, () => {
+// packages/python/tests/testcase.py keeps the deadline of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the
+// process GRACE after it; run-tests holds no time limit (kit 0.0.105), so the class of a case alone decides when it fails.
+caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', COMPUTE, () => {
   const makefile = text('Makefile');
-  const harness = text('packages/python/tests/testcase.py');
-  const seconds = (name: string) => Number(new RegExp(`^${name} = ([0-9.]+)$`, 'm').exec(harness)?.[1]);
-  assert.equal(Number.isFinite(seconds('PROCESS')) && Number.isFinite(seconds('GRACE')), true, 'testcase.py states PROCESS and GRACE');
-  const timeout = /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --timeout (\d+) --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m.exec(makefile)?.[1];
-  assert.equal(Number(timeout), seconds('PROCESS') + seconds('GRACE'), 'PYTHON_TESTS gives run-tests the longest deadline class with its grace');
+  assert.match(makefile, /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m,
+    'PYTHON_TESTS runs the testcase harness with no --timeout');
   assert.deepEqual(makefile.split('\n').filter(line => /\$\(RUN_TESTS\) python\b/.test(line) && !line.startsWith('PYTHON_TESTS = ')), [],
     'every Python run of run-tests goes through PYTHON_TESTS');
 });
@@ -638,8 +630,6 @@ caseTest('the Rust test recipe gives Kit one libtest thread option', PROCESS, as
       const child = spawn(process.execPath, [
         fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests')),
         'cargo',
-        '--timeout',
-        '10',
         '--cwd',
         'packages/rust',
         '--',

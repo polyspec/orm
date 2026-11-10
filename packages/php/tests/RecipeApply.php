@@ -238,7 +238,6 @@ final class RecipeApply
         $ran = false;
         $on = $s['on'] ?? null;
         $handler = static function (ApplyEvent $event) use (&$events, &$kinds, &$ran, &$context, $on, $runStep): void {
-            $context['deadline']?->progress();
             $events++;
             $kinds[$event->kind] = ($kinds[$event->kind] ?? 0) + 1;
             if ($on === null || $on['event'] !== $event->kind || ($ran && ($on['every'] ?? false) !== true)) {

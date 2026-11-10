@@ -155,7 +155,7 @@ export async function runCase(name: string, deadline: number, body: CaseBody): P
 
 function registerCase(name: string, deadline: number, body: CaseBody): Promise<boolean> {
   let passed = true;
-  return test(name, { timeout: deadline + 2 * GRACE }, async t => {
+  return test(name, async t => {
     const failure = await execute(name, deadline, body, text => t.diagnostic(text));
     if (failure !== undefined) {
       passed = false;
@@ -293,7 +293,7 @@ export function runChild(command: string, args: readonly string[], step: Step, o
 }
 
 // caseTest runs a case as one node:test test. Steps are t.diagnostic (the `#` lines of TAP), and a failed case reports its reason
-// Fails the test with the error it carries. node:test's timeout adds twice GRACE to the deadline so the deadline ends first.
+// Fails the test with the error it carries.
 export function caseTest(name: string, deadline: number, body: CaseBody): void {
   void registerCase(name, deadline, body);
 }

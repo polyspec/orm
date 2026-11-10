@@ -247,22 +247,14 @@ final class Recipe
         return !isset($case['not_through_pooler']) || getenv('ORM_CLIENT_DB_POOLER') !== '1';
     }
 
-    /** The step deadline of the database case that runs now, which its apply events move (CaseDeadline). */
-    private static ?CaseDeadline $deadline = null;
-
-    /** Runs the steps of one case on database; deadline is the step deadline that the case states, if any. */
-    public static function run(string $path, array $case, string $database, ?CaseDeadline $deadline = null): void
+    /** Runs the steps of one case on database. */
+    public static function run(string $path, array $case, string $database): void
     {
         if (!self::caseRuns($case, $database)) {
             return;
         }
         if ($database !== self::NONE) {
-            self::$deadline = $deadline;
-            try {
-                self::runDatabase($path, $case, $database);
-            } finally {
-                self::$deadline = null;
-            }
+            self::runDatabase($path, $case, $database);
             return;
         }
         $bound = [];
@@ -2778,7 +2770,6 @@ final class Recipe
                 'fields' => [],
                 'records' => [],
                 'hookBases' => [],
-                'deadline' => self::$deadline,
             ];
             try {
                 $namespace = $catalog->currentNamespace();

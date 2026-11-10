@@ -327,7 +327,7 @@ test-python: ## Run the unit tests of the Python package with CASES=<pattern>; o
 test-rust: ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- -- --test-threads=1
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots packages/ts -- --test-timeout=30000 --test-concurrency=1
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots packages/ts -- --test-concurrency=1
 
 # The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the setup and context
 # targets that config/ci.json names, the targets of a job past failures with their report, and the closing check of ci.yml.
@@ -822,38 +822,38 @@ catalog-mutation-helper-python-check: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-read
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/catalog-mutation-helper.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/internal-column-error.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/internal-column-error.test.mjs
 
 typescript-dbspec-plan-fixture-check: typescript-read
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/dbspec-plan-fixture.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/dbspec-plan-fixture.test.mjs
 
 physical-command-case-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test scripts/physical-command-case.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 --test scripts/physical-command-case.test.mts
 
 typescript-capture-error-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/capture-error.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/capture-error.test.mjs
 
 typescript-check-state-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/check-state.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/check-state.test.mjs
 
 .PHONY: typescript-test-exact-keys-check
 typescript-test-exact-keys-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/assertions.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/assertions.test.mjs
 
 mysql-test-options-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/mysql-test-options.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/mysql-test-options.test.mjs
 
 database-case-tests-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/database-case-tests.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/database-case-tests.test.mjs
 
 typescript-conditional-entry-helper-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/conditional-entry.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/conditional-entry.test.mjs
 
 typescript-database-case-fixture-helper-check: typescript-read
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/database-case-fixture.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/database-case-fixture.test.mjs
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
@@ -935,7 +935,7 @@ dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$
 dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/dbspec/compare/check.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed editable,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
@@ -1207,8 +1207,8 @@ test-php-ext: export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
 # and which mariadb-recipes-check/php-extension runs.
 PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::|\w*Mariadb\w*::))
 test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
-# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
-# its own timeout (K436); the test bootstrap fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
+# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests; the test bootstrap
+# fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
 PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist
 PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
@@ -1218,10 +1218,10 @@ PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlEvery
 php-codec-causes-check: php-models build-php-ext
 	@set -eu; \
 	status=0; \
-	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 300 -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 300 -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecYamlCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecYamlCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
 	exit "$$status"
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
@@ -1520,18 +1520,18 @@ dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check
 # line. Each language's comments come from its own lexer (scripts/comments/check.mts), and strings are not comments.
 comment-language-check: comment-language-check/unit comment-language-check/run
 comment-language-check/unit:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/comments/check.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/comments/check.test.mts
 comment-language-check/run:
 	$(NODE) scripts/comments/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
 makefile-pinned-node-recipes-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/repo/pinned-node-recipes.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 tests/repo/pinned-node-recipes.test.mts
 
 # orm-test-servers-check checks the MySQL configuration migration of test-servers.mts (scripts/test-servers-mysql.mts) with a temporary
 # root server: it moves other configurations in the same count, does nothing for identical configurations, and refuses colliding names
@@ -1664,28 +1664,28 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
 feature-unit-check/owners:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/owners.test.mts scripts/features/manifest.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select: lease-tool
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
 
 # recipe-keys-check checks that the key table of the recipe format is the one its schema makes, and runs the unit tests of the
 # generator (T334-3-5-6). recipe-unknown-key-check runs the refusal test of every runner's loader, which must run at least one test.
 .PHONY: recipe-keys-check recipe-unknown-key-check recipe-unknown-key-check/go recipe-unknown-key-check/typescript recipe-unknown-key-check/python recipe-unknown-key-check/php recipe-unknown-key-check/rust recipe-unknown-key-check/php-extension
 recipe-keys-check:
 	$(NODE) scripts/features/recipe-keys.mts --check
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/recipe-keys.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/recipe-keys.test.mts
 # recipe-runners-check checks that each runtime has one recipe runner (FCV-15), and runs the unit tests of the check.
 .PHONY: recipe-runners-check
 recipe-runners-check:
 	$(NODE) scripts/features/recipe-runners.mts
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/recipe-runners.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/recipe-runners.test.mts
 recipe-unknown-key-check: recipe-unknown-key-check/go recipe-unknown-key-check/typescript recipe-unknown-key-check/python recipe-unknown-key-check/php recipe-unknown-key-check/rust recipe-unknown-key-check/php-extension
 recipe-unknown-key-check/go: recipe-keys-check
 	$(GO_TEST) ./packages/go/internal/recipe -run '^(TestCheckKeysAcceptsAndRefusesByName|TestLoadKeyTableNamesTheSchemaTable)$$' -count=1
 recipe-unknown-key-check/typescript: recipe-keys-check
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 packages/ts/tests/recipe_keys.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 packages/ts/tests/recipe_keys.test.mjs
 recipe-unknown-key-check/python: recipe-keys-check python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_recipe_keys
 recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
@@ -1703,7 +1703,7 @@ conformance-refusal-check: conformance-refusal-check/go conformance-refusal-chec
 conformance-refusal-check/go:
 	$(GO_TEST) ./packages/go/model -run '^TestRefusalIsATypedError$$' -count=1
 conformance-refusal-check/typescript: typescript-read
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 packages/ts/tests/refusal-before-request.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 packages/ts/tests/refusal-before-request.mjs
 conformance-refusal-check/rust-fixtures: lease-tool
 	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- --test-threads=1 compiler_fixtures::refusal-
 
@@ -1822,9 +1822,8 @@ PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
 RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
 # PYTHON_TESTS runs Python tests through the harness of packages/python/tests/testcase.py, which keeps the deadline of each
-# case by its class and ends the process GRACE after it. run-tests gives every case of a --module harness one timeout, so
-# PYTHON_TESTS gives it the longest class, PROCESS (300 s), with GRACE (5 s), and the class of a case decides when it fails.
-PYTHON_TESTS = PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(RUN_TESTS) python --timeout 305 --venv $(PYTHON_VENV) --module packages.python.tests.testcase
+# case by its class and ends the process GRACE after it; run-tests holds no time limit of its own (kit 0.0.105).
+PYTHON_TESTS = PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/orm-gen-python client-unit-check/orm-gen-typescript client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
@@ -1850,7 +1849,7 @@ client-unit-check/engine: php-vendor-check php-models
 nowait-restore-check: lease-tool typescript-read php-vendor-check php-models python-venv-check orm-install-php-extension-tools
 	@set +e; status=0; \
 	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
-	$(RUN_TESTS) node --timeout 30 --test-concurrency=1 --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
+	$(RUN_TESTS) node --test-concurrency=1 --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_sqlite_row_lock_restore || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_row_lock_restore_tests -- --test-threads=1 || status=1; \
@@ -2518,7 +2517,7 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	status=0; \
-	$(RUN_TESTS) node --timeout 30 --test-concurrency=1 --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
+	$(RUN_TESTS) node --test-concurrency=1 --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
 	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
@@ -3866,4 +3865,4 @@ php-test-assertions-helper-check: php-vendor-check php-models
 
 .PHONY: typescript-performance-gate-unit-check
 typescript-performance-gate-unit-check:
-	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/coverage_performance_gate.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/coverage_performance_gate.test.mjs

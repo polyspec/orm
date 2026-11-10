@@ -477,7 +477,7 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
       process.env.PATH = previous;
     }
     assert.match(errorMessage(failure), /make --no-print-directory -k repo-check exited with 2/);
-    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), [kitRunTests + ' node --timeout 30 -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts', 'scripts/repo/check.mts']);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), [kitRunTests + ' node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts', 'scripts/repo/check.mts']);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
