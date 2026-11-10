@@ -354,3 +354,69 @@ pub(crate) fn added_cell(column_type: &str, value: Val) -> Result<Val> {
         _ => value,
     })
 }
+
+/// Whether the decimal text, which `decimal_number` accepts, is exactly the finite f64 value, whatever its number of digits
+/// (INT-141): the text and the value are compared as their digits and their power of ten, which every finite f64 has exactly,
+/// since m × 2^e is m × 5^-e × 10^e for e < 0.
+pub(crate) fn decimal_is_f64(text: &str, value: f64) -> bool {
+    let (negative, digits, exponent) = match decimal_digits(text) {
+        Some(parts) => parts,
+        None => return false,
+    };
+    let (value_negative, value_digits, value_exponent) = f64_digits(value);
+    digits == value_digits && (digits.is_empty() || (negative == value_negative && exponent == value_exponent))
+}
+
+/// The sign, the digits without leading or trailing zeros, and the power of ten of a decimal text; None past the exponents
+/// that an i64 holds.
+fn decimal_digits(text: &str) -> Option<(bool, Vec<u8>, i64)> {
+    let (negative, body) = text.strip_prefix('-').map_or((false, text), |rest| (true, rest));
+    let (mantissa, exponent) = match body.find(['e', 'E']) {
+        // An exponent past i64 has a text whose value no finite f64 is exactly.
+        Some(at) => match body[at + 1..].parse::<i64>() {
+            Ok(exponent) => (&body[..at], exponent),
+            Err(_overflow) => return None,
+        },
+        None => (body, 0),
+    };
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    // A text is shorter than i64::MAX bytes, so its fraction length is an i64.
+    let exponent = exponent.checked_sub(fraction.len() as i64)?;
+    let digits: Vec<u8> = whole.bytes().chain(fraction.bytes()).map(|b| b - b'0').collect();
+    Some(normalized(negative, digits, exponent))
+}
+
+/// The sign, the digits without leading or trailing zeros, and the power of ten of a finite f64.
+fn f64_digits(value: f64) -> (bool, Vec<u8>, i64) {
+    let bits = value.to_bits();
+    let negative = bits >> 63 == 1;
+    // The biased exponent has 11 bits.
+    let biased = ((bits >> 52) & 0x7ff) as i64;
+    let fraction = bits & ((1 << 52) - 1);
+    let (mantissa, exponent) = if biased == 0 { (fraction, -1074) } else { (fraction | (1 << 52), biased - 1075) };
+    // The digits of the mantissa, least significant first, multiplied by 2^exponent or by 5^-exponent.
+    let mut digits: Vec<u8> = mantissa.to_string().bytes().rev().map(|b| b - b'0').collect();
+    let (factor, times) = if exponent >= 0 { (2, exponent) } else { (5, -exponent) };
+    for _ in 0..times {
+        let mut carry = 0;
+        for digit in &mut digits {
+            let product = *digit * factor + carry;
+            *digit = product % 10;
+            carry = product / 10;
+        }
+        if carry > 0 {
+            digits.push(carry);
+        }
+    }
+    digits.reverse();
+    normalized(negative, digits, exponent.min(0))
+}
+
+/// The digits without leading or trailing zeros, the power of ten raised by the trailing zeros taken off.
+fn normalized(negative: bool, digits: Vec<u8>, exponent: i64) -> (bool, Vec<u8>, i64) {
+    let start = digits.iter().position(|d| *d != 0).unwrap_or(digits.len());
+    let end = digits.iter().rposition(|d| *d != 0).map_or(start, |at| at + 1);
+    // The digits are those of a text or of an f64, shorter than i64::MAX.
+    let trailing = (digits.len() - end) as i64;
+    (negative, digits[start..end].to_vec(), exponent + trailing)
+}

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0790a68ea1dd0adaa512c079b6ce7807dacee505a938a10fbc6c4158c286f6f5 -->
+<!-- source-sha256: 26ba2a0e11a0dd17c6a24b55aaf6a7458a91668faa77ba0f91a951e388210113 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust `Val::as_f64`는 값이 f64와 정확히 같은 decimal text를 자릿수와 관계없이 읽는다(T400-1, INT-141): 이전에는 유효 숫자 28자리를 담는 rust_decimal의 128비트 decimal로 text를 비교했으므로, 2^100의 31자리나 가장 작은 subnormal의 소수 1074자리 같은 정확한 text를 손실이 있는 것처럼 거부했다. 이제 text의 숫자와 10의 거듭제곱을, 유한한 모든 f64가 정확히 가지는 f64의 그것과 비교하며, `0.1`처럼 어떤 f64도 아닌 text는 여전히 거부한다. INT-141은 이 동작을 Rust에만 적으므로 value.rs의 native 시험 decimal_texts_read_exactly_whatever_their_digits가 invalid_or_lossy_values_report_decode_errors 곁에서 이를 지킨다.
 - Go는 256 단계를 넘어 중첩된 `jsontext.Value`, `json.RawMessage`나 `json.Marshaler`의 text를 `CODEC_ENCODE: json: value nesting exceeds 256 levels`로 거부한다(T400-1, COD-70 `json-depth`): 이전에는 그 text를 깊이 한계 전체로 parse하고 parser의 거부를 `json-text`, 곧 `json: the value has no JSON text`로 보고했는데, 그만큼 깊이 중첩된 다른 모든 값과 Rust에서 ordered-json library의 깊이 거부는 `json-depth`이다. 이제 parser는 text가 놓인 자리에서 남은 단계만 읽는다. codec_test.go의 시험 TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit이 이를 지킨다. 다른 runtime에는 codec이 깊이를 검사하기 전에 그 JSON text를 parse하는 host 값이 없다.
 - Rust는 MySQL `DECIMAL`과 PostgreSQL `NUMERIC` 셀을 자릿수와 관계없이 정확한 text로 읽고, 128비트 decimal이 담을 수 없는 decimal text 매개변수를 `CODEC_ENCODE`로 거부한다(T400-1, DIA-203): 이전에는 유효 숫자 28자리를 담는 rust_decimal로 읽어, DSL-161의 합이나 raw statement의 셀처럼 더 긴 값을 조용히 반올림했다. recipe conformance_verification의 case decimal_text_past_28_digits_reads_exactly가 MySQL과 PostgreSQL에서 40자리 decimal과 소수 30자리 decimal을 읽는다. catalog decimal은 많아야 18자리(DIA-25)이므로 모든 catalog 값은 이전에도 맞았다.
 - relation 자식이 아닌 모델, 즉 요청의 root, join 자식이나 subquery 모델의 `possible<Col>()`은 모든 런타임에서 요청을 만들 때 `CONFIG: possible applies only to a relation child`이다(T400-1, DSL-85): 이전에는 무시되었다. possible이 이미 부모를 고른 외부 relation 자식의 statement에는 possible이 없다. 모든 recipe runner의 model.query가 `possible`을 받으며, recipe conformance_verification의 case possible_outside_a_relation_is_refused가 이를 지킨다.

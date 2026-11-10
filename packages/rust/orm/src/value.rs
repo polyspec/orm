@@ -48,6 +48,43 @@ mod checked_value_tests {
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
 
+    /// A text reads as an f64 when its decimal value is the f64 exactly, whatever its number of digits (INT-141): the 31
+    /// digits of 2^100, the 1074 fraction digits of the least subnormal and a long tail of zeros, and not the nearest f64 of a
+    /// text that no f64 is.
+    #[test]
+    fn decimal_texts_read_exactly_whatever_their_digits() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let least = format!("0.{}", {
+            let mut digits = vec![0u8; 1074];
+            digits[1073] = 1;
+            for _ in 0..1074 {
+                let mut carry = 0;
+                for digit in digits.iter_mut().rev() {
+                    let product = *digit * 5 + carry;
+                    *digit = product % 10;
+                    carry = product / 10;
+                }
+            }
+            digits.iter().map(|d| char::from(b'0' + d)).collect::<String>()
+        });
+        let exact = [
+            ("1267650600228229401496703205376", 2f64.powi(100)),
+            ("-1267650600228229401496703205376.000000000000", -(2f64.powi(100))),
+            ("0.50000000000000000000000000000000000000", 0.5),
+            ("1.2676506002282294014967032053760e30", 2f64.powi(100)),
+            (least.as_str(), f64::from_bits(1)),
+        ];
+        for (text, value) in exact {
+            match Val::Str(text.into()).as_f64() {
+                Ok(read) => assert_eq!(read.to_bits(), value.to_bits(), "{text}"),
+                Err(error) => panic!("{text}: {error}"),
+            }
+        }
+        for text in ["1267650600228229401496703205377", "0.1000000000000000000000000000000000001", "1e-400"] {
+            assert_eq!(Val::Str(text.into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{text}");
+        }
+    }
+
     #[test]
     fn styled_text_decodes_as_a_json_string_value() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -262,13 +299,10 @@ impl Val {
         match self {
             Val::F64(x) if x.is_finite() => Ok(*x),
             Val::I64(x) if x.unsigned_abs() <= (1u64 << 53) => Ok(*x as f64),
-            // A text reads only when its decimal value is the f64 exactly (INT-141).
+            // A text reads only when its decimal value is the f64 exactly, whatever its number of digits (INT-141).
             Val::Str(s) => {
                 let value = crate::cell::f64_cell(self).ok_or_else(|| crate::cell::cell_refusal("f64"))?;
-                let exact =
-                    if s.contains('e') || s.contains('E') { rust_decimal::Decimal::from_scientific(s) } else { rust_decimal::Decimal::from_str_exact(s) }
-                        .map_err(|error| crate::cell::cell_refusal_by("f64", error))?;
-                if rust_decimal::Decimal::from_f64_retain(value) != Some(exact) {
+                if !crate::cell::decimal_is_f64(s, value) {
                     return Err(crate::cell::cell_refusal("f64"));
                 }
                 Ok(value)
