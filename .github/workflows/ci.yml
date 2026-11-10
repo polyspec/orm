@@ -86,6 +86,20 @@ jobs:
         id: checkout
         with:
           fetch-depth: 0
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: |
+          locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }
+          {
+            echo "npm=$(locks '*package-lock.json')"
+            echo "tools=$(locks mise.toml '.mise/locks/**' config/toolchain.json)"
+            echo "go=$(locks '*go.sum')"
+            echo "composer=$(locks '*composer.lock')"
+            echo "uv=$(locks '*uv.lock')"
+          } >> "$GITHUB_OUTPUT"
       # mise.toml declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
@@ -102,7 +116,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -110,7 +124,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The Go modules are restored by the hash of every go.sum (B3-4).
       - name: cache of the Go modules
         id: cache-go
@@ -118,7 +132,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
       # The composer packages are restored by the hash of every composer.lock (B3-4).
       - name: cache of the composer packages
         id: cache-composer
@@ -126,7 +140,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/composer
-          key: composer-packages-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          key: composer-packages-${{ runner.os }}-${{ steps.locks.outputs.composer }}
       # The uv packages are restored by the hash of every uv.lock (B3-4).
       - name: cache of the uv packages
         id: cache-uv
@@ -134,7 +148,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+          key: uv-packages-${{ runner.os }}-${{ steps.locks.outputs.uv }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -302,6 +316,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         id: checkout
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: |
+          locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }
+          {
+            echo "npm=$(locks '*package-lock.json')"
+            echo "tools=$(locks mise.toml '.mise/locks/**' config/toolchain.json)"
+            echo "go=$(locks '*go.sum')"
+            echo "composer=$(locks '*composer.lock')"
+            echo "uv=$(locks '*uv.lock')"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}
@@ -315,7 +343,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -323,7 +351,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -361,6 +389,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         id: checkout
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: |
+          locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }
+          {
+            echo "npm=$(locks '*package-lock.json')"
+            echo "tools=$(locks mise.toml '.mise/locks/**' config/toolchain.json)"
+            echo "go=$(locks '*go.sum')"
+            echo "composer=$(locks '*composer.lock')"
+            echo "uv=$(locks '*uv.lock')"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}
@@ -374,7 +416,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -382,7 +424,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -399,7 +441,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
       - name: Go lease module of the check runner
         id: go-lease-modules
         if: ${{ !cancelled() }}
@@ -424,6 +466,20 @@ jobs:
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: |
+          locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }
+          {
+            echo "npm=$(locks '*package-lock.json')"
+            echo "tools=$(locks mise.toml '.mise/locks/**' config/toolchain.json)"
+            echo "go=$(locks '*go.sum')"
+            echo "composer=$(locks '*composer.lock')"
+            echo "uv=$(locks '*uv.lock')"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         with:
           node-version-file: mise.toml
@@ -435,7 +491,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -443,7 +499,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap

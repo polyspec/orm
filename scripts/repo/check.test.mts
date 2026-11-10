@@ -993,7 +993,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
   ]);
   assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'echo passed')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of \[\{"uses":"actions\/checkout@v5"\}/);
   // A job without the checkout runs make where the repository is not, and make finds no Makefile.
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"uses":"actions\/setup-node@v7"/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"name":"hashes of the lock files","id":"locks"/);
 });
 
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
@@ -2562,6 +2562,11 @@ caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
 // package-lock.json files, and the composer, uv, Go module and mise tool installs each follow a cache keyed by their lock file.
 caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
+  // A hashFiles key is evaluated again after the last step, over the workspace as the job left it (CI run 42784034583).
+  const cache = (key: string) => ['jobs:', '  test:', '    steps:', '      - uses: actions/cache@v4', '        with:', '          path: ~/.cache/uv', `          key: ${key}`, '      - run: make orm-install-python', ''].join('\n');
+  const refused = ['ci.yml job test step run: make orm-install-python installs the uv packages with no cache before it, keyed by steps.locks.outputs.uv of the step locks (~/.cache/uv)'];
+  assert.deepEqual(lockedCacheErrors(cache("uv-${{ hashFiles('**/uv.lock') }}")), refused);
+  assert.deepEqual(lockedCacheErrors(cache('uv-${{ steps.locks.outputs.uv }}')), refused, 'a key of the step locks with no step locks before it');
 });
 
 // The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,

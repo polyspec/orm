@@ -108,27 +108,30 @@ export function kitGates(makefile: string): string[] {
 
 // lockedCacheErrors returns one error for each place where a CI job does not restore the caches of its locked installs (B3-4).
 // A job that installs the npm packages, the composer packages, the uv packages, the Go modules or the tools of mise.toml must restore,
-// before that install, a cache whose key is the hash of the lock file the install reads. setup-node keeps its own npm cache off
-// (scripts/repo/node.mts), so the npm cache is the one this check reads.
+// before that install, a cache whose key is the hash of the lock file the install reads. The key is the output of the step `locks`
+// (LOCKS_STEP), which hashes the tracked lock files once after the checkout: actions/cache evaluates its key again after the last
+// step, and a hashFiles key would then read the workspace as the job left it (CI run 42784034583). setup-node keeps its own npm
+// cache off (scripts/repo/node.mts), so the npm cache is the one this check reads.
 export function lockedCacheErrors(workflow: string): string[] {
   const errors: string[] = [];
   const installs: [RegExp, string, string, string][] = [
-    [/\bnpm\b/, '~/.npm', 'package-lock.json', 'the npm packages'],
-    [/\borm-install-php\b/, '~/.cache/composer', 'composer.lock', 'the composer packages'],
-    [/\borm-install-python\b/, '~/.cache/uv', 'uv.lock', 'the uv packages'],
-    [/\borm-install-go\b/, '~/go/pkg/mod', 'go.sum', 'the Go modules'],
-    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'mise.toml', 'the tools of mise.toml'],
+    [/\bnpm\b/, '~/.npm', 'npm', 'the npm packages'],
+    [/\borm-install-php\b/, '~/.cache/composer', 'composer', 'the composer packages'],
+    [/\borm-install-python\b/, '~/.cache/uv', 'uv', 'the uv packages'],
+    [/\borm-install-go\b/, '~/go/pkg/mod', 'go', 'the Go modules'],
+    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'tools', 'the tools of mise.toml'],
   ];
   // text reads a workflow value that is a string, and is empty otherwise.
   const text = (value: unknown): string => (typeof value === 'string' ? value : '');
   for (const job of readWorkflow(workflow).jobs) {
     job.steps.forEach((step, index) => {
       for (const [pattern, path, lock, what] of installs) {
-        if (!pattern.test(step.run)) continue;
-        const restored = job.steps.slice(0, index).some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
-          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`hashFiles(`) &&
-          text(earlier.with['key']).includes(lock));
-        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by the hash of ${lock} (${path})`);
+        if (step.id === LOCKS_STEP['id'] || !pattern.test(step.run)) continue;
+        const before = job.steps.slice(0, index);
+        const hashed = before.some(earlier => earlier.id === LOCKS_STEP['id'] && earlier.run === LOCKS_STEP['run']);
+        const restored = hashed && before.some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
+          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`\${{ steps.locks.outputs.${lock} }}`));
+        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by steps.locks.outputs.${lock} of the step locks (${path})`);
       }
     });
   }
@@ -873,11 +876,27 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 // make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
 // checkout, the node of mise.toml and the install of the package come before it.
 export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed FAIL_SKIPPED=1' };
+// LOCKS_STEP hashes the tracked lock files of each cache once, after the checkout of a job (lockedCacheErrors).
+export const LOCKS_STEP: Record<string, unknown> = {
+  name: 'hashes of the lock files', id: 'locks', if: NOT_CANCELLED,
+  run: [
+    'locks() { git ls-files -z -- "$@" | xargs -0 -r sha256sum | sha256sum | cut -c1-64; }',
+    '{',
+    '  echo "npm=$(locks \'*package-lock.json\')"',
+    '  echo "tools=$(locks mise.toml \'.mise/locks/**\' config/toolchain.json)"',
+    '  echo "go=$(locks \'*go.sum\')"',
+    '  echo "composer=$(locks \'*composer.lock\')"',
+    '  echo "uv=$(locks \'*uv.lock\')"',
+    '} >> "$GITHUB_OUTPUT"',
+    '',
+  ].join('\n'),
+};
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
+  LOCKS_STEP,
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
-  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ hashFiles(\'**/package-lock.json\') }}' } },
-  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ hashFiles(\'mise.toml\', \'.mise/locks/**\', \'config/toolchain.json\') }}' } },
+  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}' } },
+  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}' } },
   { uses: './.github/actions/kit-bootstrap', id: 'kit-bootstrap', if: NOT_CANCELLED },
   CI_PASSED_STEP,
 ];
