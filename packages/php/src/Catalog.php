@@ -1283,6 +1283,7 @@ final class Catalog
         if (!is_string($value)) {
             throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
+        $value = self::unpadded($value);
         $n = filter_var($value, FILTER_VALIDATE_INT);
         if ($n !== false && !$unsigned) {
             return new CatalogGridCell('integer', $n);
@@ -1292,6 +1293,15 @@ final class Catalog
             return new CatalogGridCell('unsigned', $value);
         }
         throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+    }
+
+    /**
+     * The digits of a MySQL integer text without the leading zeros that the server pads a ZEROFILL value with to its
+     * display width (00042 is 42); any other text is unchanged.
+     */
+    private static function unpadded(string $text): string
+    {
+        return preg_match('/^\d+$/D', $text) === 1 ? (ltrim($text, '0') === '' ? '0' : ltrim($text, '0')) : $text;
     }
 
     /**
@@ -2873,7 +2883,11 @@ final class Catalog
         if (!self::isUtf8($value)) {
             return $value;
         }
-        return match (self::typeClass($nativeType)) {
+        $class = self::typeClass($nativeType);
+        if ($class === 'int' && $dialect === 'mysql') {
+            $value = self::unpadded($value);
+        }
+        return match ($class) {
             // A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column.
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false ? (int) $value
                 : ($dialect === 'sqlite' || self::isUnsignedDigits($value) ? $value

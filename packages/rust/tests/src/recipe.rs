@@ -4895,9 +4895,11 @@ mod database {
 
     /// The recipe wrapper of a page or mutation cell: a text cell takes the wrapper of the native type of its column when
     /// that type is decimal, or temporal and the text has the form of its kind, as the stored text of a SQLite `TIMESTAMP`
-    /// column does; a SQLite column keeps any other text as a text (INT-184), and every other cell maps by its kind.
+    /// column does; a SQLite column keeps any other text as a text (INT-184); an unsigned integer is a value, whose wrapper
+    /// is `int` (FCV-4), as in `plain_val`; and every other cell maps by its kind.
     fn plain_cell(cell: &GridCell, native_type: Option<&str>) -> Result<Value, String> {
         match cell {
+            GridCell::Unsigned(n) => Ok(json!({ "int": n.to_string() })),
             GridCell::Text(text) => {
                 let kind = temporal_kind(native_type).filter(|kind| *kind == "decimal" || has_temporal_form(kind, text, usize::MAX));
                 Ok(json!({ kind.unwrap_or("text"): text }))

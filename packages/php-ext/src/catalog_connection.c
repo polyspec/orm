@@ -2692,6 +2692,17 @@ static bool cat_float_cell(zval *v, bool single, zval *cell)
     return cat_grid_made(true, "float64", &value, cell);
 }
 
+/* Drops the leading zeros that the server pads a MySQL ZEROFILL value with to its display width from a text of digits (00042
+ * is 42), keeping one digit (Catalog::unpadded); any other text is unchanged. */
+static void cat_unpadded(const char **s, size_t *n)
+{
+    if (*n == 0 || cat_digits(*s, *n) != *n) return;
+    while (*n > 1 && **s == '0') {
+        (*s)++;
+        (*n)--;
+    }
+}
+
 /* An integer cell (Catalog::integerCell): a PHP integer, or text that holds one. An UNSIGNED column is decimal digits, exact over
  * the whole range; text that is not the digits of a 64-bit integer is INT-171. */
 static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
@@ -2708,6 +2719,7 @@ static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
     if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     const char *p = Z_STRVAL_P(v);
     size_t n = Z_STRLEN_P(v);
+    cat_unpadded(&p, &n);
     zend_long n64 = 0;
     if (!unsigned_ && n > 0 && is_numeric_string(p, n, &n64, NULL, 0) == IS_LONG) {
         ZVAL_LONG(&value, n64);
@@ -3109,6 +3121,7 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
     bool sqlite = strcmp(dialect, "sqlite") == 0;
     char class_ = cat_type_class(native);
     if (class_ == 'i') {
+        if (strcmp(dialect, "mysql") == 0) cat_unpadded(&s, &n);
         zend_long integer;
         if (cat_filter_int(s, n, &integer)) {
             ZVAL_LONG(out, integer);
@@ -3116,6 +3129,10 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
         }
         /* A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column. */
         if (!sqlite && !cat_unsigned_digits(s, n)) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+        if (!sqlite) {
+            ZVAL_STRINGL(out, s, n);
+            return true;
+        }
     } else if (class_ == 'f') {
         zend_long l;
         double d;

@@ -14968,6 +14968,114 @@
       ]
     },
     {
+      "id": "catalog_value_zerofill",
+      "requirements": [
+        "INT-102",
+        "INT-153",
+        "INT-165"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a ZEROFILL column, which is UNSIGNED and which the server writes padded to its display width",
+          "sql": "CREATE TABLE value_rule_zerofill (id BIGINT NOT NULL PRIMARY KEY, z INT(5) ZEROFILL NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a value shorter than the width and a NULL",
+          "sql": "INSERT INTO value_rule_zerofill VALUES (1, 42), (2, NULL)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT z FROM value_rule_zerofill ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "uint": "42"
+                  }
+                ],
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT z FROM value_rule_zerofill ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  }
+                ],
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_zerofill",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "z"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "z"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  }
+                ],
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "catalog_value_calendar_date",
       "requirements": [
         "INT-165",
