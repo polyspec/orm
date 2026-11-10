@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 123991a7519185adc1eb928f0d6dce70217f6cfd2c3a5d6a2be1c77217ee0ea2 -->
+<!-- source-sha256: 198d385beba3cb2bd21214ef931c631289f47f8db19371306c418599c639df06 -->
 # 변경 이력
 
 ## Unreleased
@@ -62,6 +62,9 @@
 - T428: 첫 CI job인 preflight가 Node만 있으면 되는 구조 검사(repo-check, runner-check, docs-rules-check, comment-language-check)를 몇 초에 돌리고 다른 모든 job이 이것을 기다리므로, 그 실패는 어떤 suite도 시작하기 전에 run을 끝낸다.
 - T427: CI job의 cache key는 checkout 직후 한 번 계산한 추적 lock 파일의 hash이다. 전에는 `hashFiles` key가 마지막 단계 뒤에 job이 남긴 workspace에서 다시 계산되어, 단계가 모두 통과한 job을 실패시켰다.
 - orm은 ordered-json 0.0.24와 kit 0.0.103을 받는다 (T424). Go는 JSON parser의 실패를 0.0.24가 `*orderedjson.ParseError` 대신 주는 interface `orderedjson.Error`로 읽고, Rust는 그 error의 kind를 이제 enum인 `ErrorKind::MaximumDepthExceeded`와 비교한다. 그래서 256 level을 넘어 중첩된 값은 둘 다 그대로 `json: value nesting exceeds 256 levels`다. PHP, PHP extension, Python, TypeScript는 0.0.24가 바꾸지 않은 `ParseError`와 그 kind를 그대로 쓴다. 모든 runtime의 pin(packages/go/go.mod와 examples/go.mod, Cargo manifest와 두 Cargo lock, composer.json과 composer.lock, package.json과 package-lock.json, packages/python/pyproject.toml과 uv.lock)과 docs/operations/packaging은 0.0.24 release asset을 가리킨다. Red: 0.0.24 pin에서 `packages/go/orm/codec.go:113: undefined: orderedjson.ParseError`, Rust는 kind를 `&str`과 비교한 E0308.
+- Breaking: `uuid` column은 모든 database에서 16 byte를 담는다(DIA-27, DIA-48). MySQL과 MariaDB는 renderer CHECK `length(c) = 16`의 `BINARY(16)`, SQLite는 renderer CHECK `typeof(c) IN ('blob', 'null') AND length(c) = 16`의 `BLOB`, PostgreSQL은 전과 같이 `uuid`이다. `char(36)`과 `TEXT` 저장, 그리고 위 MariaDB 항목의 `REGEXP` CHECK를 포함한 pattern CHECK는 없어지고, `<table>$<column>` 이름의 CHECK가 uuid를 `bytes` column과 가르는 표지이다(DIA-144). interface의 값은 여섯 runtime 모두에서 소문자 정규 text 그대로이다. client는 32 숫자가 차례로 쓰는 16 byte를 bind하고 16 byte를 그 text로 읽으며, server 함수는 쓰지 않는다. 16 byte가 아닌 cell은 `CODEC_DECODE` `uuid cell is not a uuid`이고(COD-1), 다른 형태의 text는 PostgreSQL을 포함한 모든 database에서 statement 전에 `CODEC_ENCODE` `parameter <i> is not a lower-case canonical uuid`로 거부된다. MySQL과 SQLite에서 uuid default는 `X'<32 hex 숫자>'`이다(DIA-123).
+- `uuid` column은 `gt`, `gte`, `lt`, `lte`, `between`을 받고, 이들은 모든 database에서 byte 순서, 곧 정규 text의 순서로 비교한다(PRT-22, DIA-27).
+- Breaking: dbspec apply, rollback, finalize는 모든 runtime에서 0.0.28까지의 release가 text로 저장한 `uuid` column을 drift 검사와 모든 plan 전에 16 byte로 변환한다(PLN-108부터 PLN-111). introspection은 그런 column을 `uuid`로 읽고 사유 `uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes`의 unsupported로 보고하며, 모든 unsupported object가 그런 column이고 schema가 state이면 명령은 각 statement 전에 `convert` event를 보고하고, 실패한 statement는 `convert` error이다. MySQL과 MariaDB는 그런 column의 foreign key를 지우고, 각 column을 `VARBINARY(36)`을 거쳐 그 숫자의 `UNHEX`로 쓰고, 각 table에 foreign key와 함께 rendered 형태를 주므로, 멈춘 명령은 멈춘 곳에서 이어진다. SQLite는 그런 table을 savepoint `dbspec$convert` 안에서 다시 만들고, 멈추면 그 savepoint가 되돌린다.
 
 ## 0.0.28
 
