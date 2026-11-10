@@ -1630,7 +1630,7 @@ orm-test-servers-tls:
 orm-test-servers-stop:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
 # worktree-remove WORKTREE=<path> removes a worktree of this repository: it first stops the servers that run from the
 # .runtime/servers of that worktree (its make orm-test-servers-stop, which knows them by their pid files), since a server

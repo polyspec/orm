@@ -297,43 +297,41 @@ export function stopPid(file: string, signal = 'TERM'): void {
   run(program('STOP_PROCESS'), [signal, String(readPid(file))]);
 }
 
+// stopServerProcess stops the server that the pid file <file> names, <name> in what it prints, by the same rule for every
+// server. No pid file: nothing was started, or the server ended and removed it. A pid file whose process has exited: a
+// server that died (a full disk, a crash) and left it; this is reported and is no failure. A running process: TERM, the
+// normal shutdown of mysqld, mariadbd and the poolers, and the return on its exit event (stopPid). The stop names no client
+// program, so the PATH cannot hand MySQL the mysqladmin of MariaDB, whose COM_SHUTDOWN MySQL 8.4 answers with Unknown
+// command. Any other failure, an unreadable pid file or a failed stop, is thrown with its output.
+export function stopServerProcess(file: string, name: string): void {
+  if (!existsSync(file)) return;
+  if (!pidRunning(file)) {
+    console.log(`test-servers: ${name} is not running: process ${readPid(file)} of ${file} has exited`);
+    return;
+  }
+  stopPid(file);
+  console.log(`test-servers: stopped ${name}`);
+}
+
 function stopMysql(p: Paths): void {
-  // Through the server socket, shutdown returns after the server removes its pid file; through TCP it returns at once.
   const errors: unknown[] = [];
-  for (const [pid, socket, name] of [[p.mysqlReplicaPid, p.sockets.mysqlReplica, 'the MySQL replica'], [p.mysqlPid, p.sockets.mysql, 'MySQL']] as const) {
-    try {
-      if (!pidRunning(pid)) continue;
-      run('mysqladmin', ['--no-defaults', `--socket=${socket}`, '-u', 'root', 'shutdown']);
-      console.log(`test-servers: stopped ${name}`);
-    } catch (error) { errors.push(error); }
+  for (const [pid, name] of [[p.mysqlReplicaPid, 'the MySQL replica'], [p.mysqlPid, 'MySQL']] as const) {
+    try { stopServerProcess(pid, name); } catch (error) { errors.push(error); }
   }
   if (errors.length) throw shutdownError('test-servers: MySQL shutdown failed', errors);
 }
 
-function stopMysqlPrivilegeProcess(p: Paths): void {
-  if (!pidRunning(p.mysqlPrivilegePid)) return;
-  try { run('mysqladmin', ['--no-defaults', `--socket=${p.sockets.mysqlPrivilege}`, '-u', 'root', 'shutdown']); }
-  catch (error) {
-    if (!pidRunning(p.mysqlPrivilegePid)) throw error;
-    stopPid(p.mysqlPrivilegePid);
-  }
-}
+const stopMysqlPrivilegeProcess = (p: Paths): void => stopServerProcess(p.mysqlPrivilegePid, 'the MySQL privilege probe server');
 
 function stopMysqlPrivilege(p: Paths): void {
   holdExclusiveLease(p.mysqlPrivilegeLeases);
-  if (!pidRunning(p.mysqlPrivilegePid)) return;
   stopMysqlPrivilegeProcess(p);
-  console.log('test-servers: stopped the MySQL privilege probe server');
 }
 
 function stopServers(p: Paths): void {
   const errors: unknown[] = [];
   for (const [pid, name] of [[p.pgbouncerPid, 'PgBouncer'], [p.proxysqlPid, 'ProxySQL']] as const) {
-    try {
-      if (!pidRunning(pid)) continue;
-      stopPid(pid);
-      console.log(`test-servers: stopped ${name}`);
-    } catch (error) { errors.push(error); }
+    try { stopServerProcess(pid, name); } catch (error) { errors.push(error); }
   }
   try { stopMysqlPrivilege(p); } catch (error) { errors.push(error); }
   try { stopMariadb(p); } catch (error) { errors.push(error); }

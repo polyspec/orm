@@ -10,7 +10,7 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
-import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, type Paths } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -143,6 +143,99 @@ read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// The stop cases of the database servers (MySQL and MariaDB, each with its replica and privilege probe server) run
+// `test-servers.mts stop` on a temporary root whose pid files name fake servers, shells that end on TERM. The rule is
+// the same for the six: a server whose pid file names a process that has exited is reported not running and the stop
+// succeeds; a running one is stopped by its process, whatever client the PATH holds; any other failure shows its
+// output and fails the stop. No database starts.
+const DATABASE_SERVERS = (p: Paths): [string, string][] => [[p.mysqlPid, 'MySQL'], [p.mysqlReplicaPid, 'the MySQL replica'],
+  [p.mysqlPrivilegePid, 'the MySQL privilege probe server'], [p.mariadbPid, 'MariaDB'], [p.mariadbReplicaPid, 'the MariaDB replica'],
+  [p.mariadbPrivilegePid, 'the MariaDB privilege probe server']];
+
+// fakeServer starts a shell that ends on TERM and writes its pid into <pidFile>; it returns after the shell set its trap.
+function fakeServer(pidFile: string): number {
+  const ready = `${pidFile}.ready`;
+  const server = spawnSync('sh', ['-c', `mkfifo ${ready}
+sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
+echo $! > ${pidFile}
+read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
+  assert.equal(server.status, 0, String(server.stderr));
+  return Number(readFileSync(pidFile, 'utf8').trim());
+}
+
+// stopFixture runs main(['stop']) on a fresh root with <PATH> and <STOP_PROCESS> in the environment and returns what it
+// printed and the error it threw; the fake servers that still run afterwards are stopped by the real STOP_PROCESS.
+async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stopProcess?: (bin: string) => string } = {}): Promise<{ lines: string[]; error: unknown; pids: number[] }> {
+  const { LEASE: lease, STOP_PROCESS: stopProcess, PATH: path } = process.env;
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-stop-db-')));
+  const p = paths(root, join(root, 'sockets'));
+  const bin = join(root, 'bin');
+  const lines: string[] = [];
+  const log = console.log;
+  let error: unknown;
+  const pids: number[] = [];
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    mkdirSync(p.socketDir, { recursive: true });
+    mkdirSync(bin);
+    // The clients that the MariaDB bin folder puts first on the PATH of make orm-test-servers-stop: its mysqladmin is
+    // mariadb-admin, whose COM_SHUTDOWN MySQL 8.4 answers with Unknown command.
+    for (const client of ['mysqladmin', 'mariadb-admin']) {
+      writeFileSync(join(bin, client), `#!/bin/sh\necho "${client}: shutdown failed; error: 'Unknown command'" >&2\nexit 1\n`);
+      chmodSync(join(bin, client), 0o755);
+    }
+    prepare(p, bin);
+    for (const [file] of DATABASE_SERVERS(p)) if (existsSync(file)) pids.push(Number(readFileSync(file, 'utf8').trim()));
+    process.env.PATH = `${bin}:${path ?? ''}`;
+    if (env.stopProcess) process.env.STOP_PROCESS = env.stopProcess(bin);
+    console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
+    try { await servers.main(['stop'], p); } catch (thrown) { error = thrown; }
+  } finally {
+    console.log = log;
+    process.env.PATH = path;
+    process.env.STOP_PROCESS = stopProcess;
+    for (const pid of pids) if (!exited(pid)) spawnSync(stopProcess, ['TERM', String(pid)], { env: isolatedEnvironment() });
+    rmSync(root, { recursive: true, force: true });
+  }
+  return { lines, error, pids };
+}
+
+caseTest('stop stops each running database server by its process, whatever mysqladmin the PATH holds', COMPUTE, async () => {
+  let names: [string, string][] = [];
+  const { lines, error, pids } = await stopFixture(p => { names = DATABASE_SERVERS(p); for (const [file] of names) fakeServer(file); });
+  assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
+  for (const pid of pids) assert.ok(exited(pid), `the fake server ${pid} still runs after stop (state ${processState(pid)})`);
+  for (const [, name] of names) assert.ok(lines.includes(`test-servers: stopped ${name}`), `stop did not report stopping ${name}: ${lines.join(' | ')}`);
+});
+
+caseTest('stop reports a database server whose pid file names an exited process and succeeds', COMPUTE, async () => {
+  // A process that has exited and been reaped: spawnSync returns after the wait.
+  const dead = spawnSync('true').pid;
+  assert.ok(dead !== undefined && exited(dead), 'the dead process fixture still runs');
+  let names: [string, string][] = [];
+  const { lines, error } = await stopFixture(p => { names = DATABASE_SERVERS(p); for (const [file] of names) writeFileSync(file, `${dead}\n`); });
+  assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
+  for (const [file, name] of names)
+    assert.ok(lines.includes(`test-servers: ${name} is not running: process ${dead} of ${file} has exited`), `stop did not report ${name} as not running: ${lines.join(' | ')}`);
+});
+
+caseTest('stop fails with the output of a failed stop of a running database server', COMPUTE, async () => {
+  const { error } = await stopFixture(p => { fakeServer(p.mysqlPid); fakeServer(p.mariadbPid); }, {
+    stopProcess: bin => {
+      const refusing = join(bin, 'stop-process');
+      writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
+      chmodSync(refusing, 0o755);
+      return refusing;
+    },
+  });
+  assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
+  assert.match(error.message, /MySQL shutdown failed: test-servers: .*stop-process TERM exited with 7/);
+  assert.match(error.message, /MariaDB shutdown failed: test-servers: .*stop-process TERM exited with 7/);
+});
+
+const errorText = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 caseTest('only ESRCH means a server is gone and other kill errors keep its data directory', COMPUTE, () => {
   for (const code of ['EPERM', 'EINVAL']) {

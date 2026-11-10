@@ -18,14 +18,15 @@ import { join } from 'node:path';
 import { MARIADB_VERSION, MARIADB_VERSION_LINE } from './mariadb-build.mts';
 import {
   checkedPort, holdExclusiveLease, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
-  type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopPid, TestServerError,
+  type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopServerProcess, TestServerError,
 } from './test-servers.mts';
 
 /** The ports of the MariaDB primary, its replica, the privilege probe server and the ProxySQL of the primary. */
 export type MariadbPorts = { mariadb: number; mariadbReplica: number; mariadbPrivilege: number; proxysql: number };
 
-// MARIADB_TOOLS are the programs that start, set up and stop the servers; a missing one fails the start by name.
-const MARIADB_TOOLS = ['mariadbd', 'mariadb-install-db', 'mariadb', 'mariadb-admin', 'mariadb-tzinfo-to-sql', 'openssl', 'proxysql'];
+// MARIADB_TOOLS are the programs that start and set up the servers, which stop by their process (stopServerProcess); a missing one
+// fails the start by name.
+const MARIADB_TOOLS = ['mariadbd', 'mariadb-install-db', 'mariadb', 'mariadb-tzinfo-to-sql', 'openssl', 'proxysql'];
 
 // MARIADBD_BINLOG is the binary log of both servers, as MYSQLD_BINLOG states it for MySQL; MariaDB logs only with --log-bin.
 export const MARIADBD_BINLOG = ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=ON'];
@@ -238,33 +239,21 @@ function writeMariadbEnvironment(p: Paths, ports: MariadbPorts): void {
   renameSync(`${p.mariadbEnv}.tmp`, p.mariadbEnv);
 }
 
-// stopMariadbProcesses stops the ProxySQL by its process, then the privilege probe server, the replica and the primary that their
-// pid files name: mariadb-admin shutdown through the socket returns after the server ends, and a server that does not answer it is
-// stopped by its process.
+// stopMariadbProcesses stops the ProxySQL, then the privilege probe server, the replica and the primary that their pid files
+// name, by the rule of the MySQL servers (stopServerProcess): TERM and the exit event for a running one, a report for one whose
+// process has exited.
 function stopMariadbProcesses(p: Paths): void {
   const errors: unknown[] = [];
-  try {
-    if (pidRunning(p.mariadbProxysqlPid)) {
-      stopPid(p.mariadbProxysqlPid);
-      console.log('test-servers: stopped the ProxySQL of MariaDB');
-    }
-  } catch (error) { errors.push(error); }
+  try { stopServerProcess(p.mariadbProxysqlPid, 'the ProxySQL of MariaDB'); } catch (error) { errors.push(error); }
   for (const [role, name] of [['privilege', 'the MariaDB privilege probe server'], ['replica', 'the MariaDB replica'], ['primary', 'MariaDB']] as const) {
-    const [pid, socket] = [mariadbPid(p, role), mariadbSocket(p, role)];
-    try {
-      if (!pidRunning(pid)) continue;
-      try { run('mariadb-admin', ['--no-defaults', `--socket=${socket}`, '-u', 'root', 'shutdown']); }
-      catch (error) { if (!pidRunning(pid)) throw error; }
-      if (pidRunning(pid)) stopPid(pid);
-      console.log(`test-servers: stopped ${name}`);
-    } catch (error) { errors.push(error); }
+    try { stopServerProcess(mariadbPid(p, role), name); } catch (error) { errors.push(error); }
   }
   if (errors.length) throw shutdownError('test-servers: MariaDB shutdown failed', errors);
 }
 
 /** stopMariadb stops the MariaDB servers under the exclusive lease of their lease directory. */
 export function stopMariadb(p: Paths): void {
-  if (![p.mariadbPid, p.mariadbReplicaPid, p.mariadbPrivilegePid, p.mariadbProxysqlPid].some(pidRunning)) return;
+  if (![p.mariadbPid, p.mariadbReplicaPid, p.mariadbPrivilegePid, p.mariadbProxysqlPid].some(file => existsSync(file))) return;
   holdExclusiveLease(p.mariadbLeases);
   stopMariadbProcesses(p);
 }
