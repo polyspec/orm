@@ -248,6 +248,34 @@ final class CatalogConnectionSurfaceTest extends TestCase
         });
     }
 
+    public function testNativeInsertCommitFailurePassesARollbackThrowableThatIsNoDriverErrorThrough(): void
+    {
+        // The library catches only \PDOException around the cleanup ROLLBACK of an unknown commit outcome: any other
+        // throwable of it, such as the interrupt of a time limit, reaches the caller as it is.
+        require_once __DIR__ . '/CatalogCommitFaultPdo.php';
+        $pdo = new CatalogCommitFaultPdo();
+        $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
+        $interrupt = new RuntimeException('interrupted');
+        $pdo->rollbackFailure = $interrupt;
+        $catalog = null;
+        try {
+            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'sample');
+            $pdo->failCommit = true;
+            $pdo->failRollback = true;
+            try {
+                $catalog->insertRow($metadata, ['id' => 1, 'payload' => 'inserted']);
+                self::fail('an unconfirmed native insert commit returned success');
+            } catch (\Throwable $thrown) {
+                self::assertSame($interrupt, $thrown);
+            }
+        } finally {
+            if ($pdo->inTransaction()) {
+                $pdo->exec('ROLLBACK');
+            }
+            $catalog?->close();
+        }
+    }
+
     /**
      * Inserts a sample row through the native SQLite catalog while its COMMIT fails, and its cleanup ROLLBACK too when
      * $failRollback: the insert reports ROW_COMMIT_INDETERMINATE whose cause is the DRIVER error of the commit failure.

@@ -4086,7 +4086,15 @@ static bool cat_commit(zval *db, zval *pdo)
     zval rollback;
     ZVAL_NULL(&rollback);
     zend_string *text = zend_strpprintf(0, "commit outcome unknown; do not retry: %s", Z_STRVAL(message));
-    if (!cat_try_rollback(pdo)) {
+    if (!cat_try_rollback(pdo) && !cat_pdo_pending()) {
+        /* A throwable of the ROLLBACK that is no driver error reaches the caller as it is (Catalog::write catches only
+         * \PDOException). */
+        zend_string_release(text);
+        zval_ptr_dtor(&cause);
+        zval_ptr_dtor(&message);
+        return false;
+    }
+    if (EG(exception) != NULL) {
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;
