@@ -44,7 +44,7 @@ The server ends a connection when an administrator ends its session (`pg_termina
 - **CFG-39** Go: a transaction whose context is canceled during its callback returns `CANCELED` alone, and the connection keeps no named lock, user variable or SQLite mode of that transaction.
 - **CFG-40** Go: `DriverFromDSN` names the database of a DSN URI by its scheme and returns `CONFIG` for a DSN that is no URI.
 - **CFG-41** A catalog session through a server connection of a transaction pooler reads a table whose column type changed while another client of that connection still holds the prepared statement of the same text.
-- **CFG-42** Go and PHP and PHP extension and TypeScript and Python and Rust: several processes that open one SQLite file commit every write of their read-then-write transactions without transaction retries, since the lock between them is the file lock that CFG-12 waits for.
+- **CFG-42** Go and PHP and PHP extension and TypeScript and Python and Rust: several processes that open one SQLite file commit every write of their read-then-write transactions without transaction retries, since the lock between them is the file lock that CFG-12 waits for. Each write waits as long as the busy timeout of CFG-12; SQLite grants the lock to no waiter in turn, so the tests of this requirement open the file with `_pragma=busy_timeout(60000)`, and the load of the runner does not end a wait.
 - **CFG-43** The `github.com/polyspec/orm/packages/go` module: a process that ends inside a write transaction on a SQLite file leaves no holder of the lock: the operating system releases the lock with the process, a connection that does not wait for a lock writes at once, and the uncommitted write is rolled back.
 
 ## DSN parameters and MySQL TLS

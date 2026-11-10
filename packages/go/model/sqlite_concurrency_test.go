@@ -99,7 +99,8 @@ func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
 		}
 		return
 	}
-	dsn := "sqlite://" + filepath.Join(t.TempDir(), "processes.sqlite")
+	// The writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+	dsn := "sqlite://" + filepath.Join(t.TempDir(), "processes.sqlite") + "?_pragma=busy_timeout(60000)"
 	dbs := openSQLite(t, dsn, 1, true)
 	var wg sync.WaitGroup
 	outputs := make([][]byte, 3)

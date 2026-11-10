@@ -1068,8 +1068,10 @@ const OPS = {
   // Node runs one thread, so each writer of transaction.writers is a process (CFG-12).
   async 'transaction.writers'(s, context) {
     const child = fileURLToPath(new URL('./sqlite_writer_child.mjs', import.meta.url));
+    // As FCV-4 states, the writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+    const dsn = `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}_pragma=busy_timeout(60000)`;
     const run = index => new Promise(resolve => {
-      const writer = spawn(process.execPath, [child, context.dsn, `w${index}`, String(s.writes)]);
+      const writer = spawn(process.execPath, [child, dsn, `w${index}`, String(s.writes)]);
       let output = '';
       writer.stdout.on('data', chunk => { output += chunk; });
       writer.stderr.on('data', chunk => { output += chunk; });

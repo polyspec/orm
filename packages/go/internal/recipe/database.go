@@ -1559,12 +1559,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 func transactionWriters(s databaseStep, c *databaseContext) (outcome, error) {
 	errs := make([]error, s.k("writers").Writers)
 	writes := s.k("writes").Writes
+	// As FCV-4 states, the writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+	dsn := c.dsn + "?_pragma=busy_timeout(60000)"
+	if strings.Contains(c.dsn, "?") {
+		dsn = c.dsn + "&_pragma=busy_timeout(60000)"
+	}
 	var running sync.WaitGroup
 	for i := range s.Writers {
 		running.Add(1)
 		go func() {
 			defer running.Done()
-			db, err := model.Connect(c.dsn, orm.Config{})
+			db, err := model.Connect(dsn, orm.Config{})
 			if err != nil {
 				errs[i] = err
 				return

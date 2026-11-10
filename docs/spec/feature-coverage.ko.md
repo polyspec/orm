@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 894bbeb646d73434ebbf43fc73d671865cf67a3933fe8a9c5cfe20654c1e36c0 -->
+<!-- source-sha256: 8a16cbd35efd8d4e8cb32a4b9e9434809406c01bd4ba691b5acf36b2000b7893 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -369,7 +369,7 @@
   - `catalog.insert_row {metadata, values}`는 묶인 metadata와 column 이름의 object인 `values`의 값으로 행을 넣는다(`insert_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
-  - `transaction.writers {writers, writes}`는 그 수의 writer를 동시에 실행하고, 각 writer는 public API의 `transaction`으로 `Service` count를 읽고 `Service` 하나를 넣는 transaction을 재시도 없이 `writes`번 commit하며, 값은 `Service` count이다. writer는 Go, Python, Rust에서 connection이고 thread가 하나인 TypeScript, PHP, PHP extension에서 process이다.
+  - `transaction.writers {writers, writes}`는 그 수의 writer를 동시에 실행하고, 각 writer는 public API의 `transaction`으로 `Service` count를 읽고 `Service` 하나를 넣는 transaction을 재시도 없이 `writes`번 commit하며, 값은 `Service` count이다. writer는 Go, Python, Rust에서 connection이고 thread가 하나인 TypeScript, PHP, PHP extension에서 process이다. 각 writer는 case database를 `_pragma=busy_timeout(60000)`으로 연다(CFG-12). 그래서 runner의 부하가 잠금 대기를 끝내지 않는다(CFG-42).
   - `replica.await`는 case 데이터베이스의 replica가 그 step 이전에 primary가 commit한 모든 변경을 적용한 뒤 돌아온다(CFG-23). harness 안에서 실행되며 public API를 호출하지 않는다. `row.connect {connection, row}`는 묶인 행의 `connect`를 호출해 그 행의 다음 쓰기가 그 연결에서 실행되게 한다(CFG-21). `expect`는 없다. `model.connect`의 DSN `case-replica`는 `ORM_TEST_<DATABASE>_REPLICA_DSN`이 이름한 replica의 case 데이터베이스다.
   - `database.read_only`는 case 데이터베이스의 SQLite 파일을 process가 읽기만 할 수 있게 만든다(CFG-24). harness 안에서 실행되며 public API를 호출하지 않는다. 그 뒤의 step이 그 파일에 연 연결은 파일을 읽고, 그 쓰기는 `READ_ONLY`를 돌려준다.
   - `wait.start`는 시각을 기록하고 `wait.at_least {ms}`는 그 뒤로 `ms` 밀리초가 지나지 않았으면 step을 실패시킨다. 둘 다 harness 안에서 실행되며 public API를 호출하지 않는다.

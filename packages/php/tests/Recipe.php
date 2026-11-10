@@ -3548,13 +3548,17 @@ final class Recipe
             case 'transaction.writers':
                 // PHP runs one thread, so each writer is a process (CFG-12). A process inherits the PHP_INI_SCAN_DIR
                 // through which run-tests of kit loads the extension, so it runs the implementation of this one.
+                // As FCV-4 states, the writers wait up to 60 seconds for the file lock (CFG-12), so the load of the
+                // runner does not end a wait (CFG-42).
+                $separator = str_contains($context['dsn'], '?') ? '&' : '?';
+                $dsn = "{$context['dsn']}{$separator}_pragma=busy_timeout(60000)";
                 $writers = [];
                 for ($i = 0; $i < $s['writers']; $i++) {
                     $process = proc_open(
                         [
                             PHP_BINARY,
                             __DIR__ . '/sqlite_concurrency_writer.php',
-                            $context['dsn'],
+                            $dsn,
                             "w$i",
                             (string) $s['writes'],
                         ],

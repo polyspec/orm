@@ -74,7 +74,8 @@ async fn writers_in_several_processes() {
         return;
     }
     let file = database("processes").await;
-    let dsn = file.dsn.clone();
+    // The writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+    let dsn = format!("{}?_pragma=busy_timeout(60000)", file.dsn);
     let exe = std::env::current_exe().unwrap();
     let children: Vec<_> = (0..3)
         .map(|i| {

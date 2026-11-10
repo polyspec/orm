@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fd1d7300d676cd393554ed04d53b77585aca299fcc8ab87a0a002345ee97d4e8 -->
+<!-- source-sha256: c35e4dc2dbc72d81449d7a2f10f5ddc7ebaafc52699ac7b3a558395e1874060e -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.29
 
+- CFG-42는 여러 SQLite process의 각 쓰기가 CFG-12의 busy timeout만큼 기다린다고 적고, 여섯 runtime의 시험은 파일을 `_pragma=busy_timeout(60000)`으로 연다. 그래서 runner의 부하가 대기를 끝내지 않는다(T385.11).
 - Go markdown 연결은 SQL 연결과 TypeScript의 순서로 pool option을 검사한다: pool size, idle size, 그다음 lifetime(T385.10, CFG-5a). 이전에는 idle size보다 lifetime을 먼저 검사해서, idle size가 pool size보다 크고 lifetime이 음수이면 lifetime 오류를 냈다.
 - PHP library는 extension처럼 `Dialect::$name`을 `$server`보다 먼저 선언한다. 그래서 둘 다 `Dialect`의 property를 같은 순서로 나열한다(T385.9).
 - markdown 시험은 flowmark v0.0.15를 고정한다. 이 버전은 SQLite처럼 `uuid`를 16 byte로 저장하고, 열린 transaction이 없을 때 SAVEPOINT에서 transaction을 시작하며, schema 문장을 그 transaction 안에 둔다. 그래서 uuid의 text 저장 변환(PLN-110)이 SQLite에서처럼 flowmark에서도 실행된다(T421).

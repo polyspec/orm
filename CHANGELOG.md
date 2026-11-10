@@ -5,6 +5,7 @@
 
 ## 0.0.29
 
+- CFG-42 states that each write of several SQLite processes waits as long as the busy timeout of CFG-12, and its tests in the six runtimes open the file with `_pragma=busy_timeout(60000)`, so the load of the runner ends no wait (T385.11).
 - A Go markdown connection checks its pool options in the order of a SQL connection and of TypeScript: the pool size, the idle size, then the lifetime (T385.10, CFG-5a). It checked the lifetime before the idle size, so an idle size above the pool size with a negative lifetime gave the lifetime error.
 - The PHP library declares `Dialect::$name` before `$server`, as the extension does, so both list the properties of a `Dialect` in one order (T385.9).
 - The markdown tests pin flowmark v0.0.15, which stores a `uuid` in 16 bytes as SQLite does, begins a transaction at a SAVEPOINT with none open and keeps a schema statement inside its transaction, so the conversion of the text storage of a uuid (PLN-110) runs on flowmark as on SQLite (T421).

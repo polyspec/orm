@@ -3197,9 +3197,16 @@ def _op_transaction_writers(step: dict, context: dict) -> dict:
     from .models import models
 
     errors: list[BaseException] = []
+    # As FCV-4 states, the writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does
+    # not end a wait (CFG-42).
+    dsn = (
+        context["dsn"]
+        + ("&" if "?" in context["dsn"] else "?")
+        + "_pragma=busy_timeout(60000)"
+    )
 
     def write(index: int) -> None:
-        db = models.connect(context["dsn"])
+        db = models.connect(dsn)
         try:
             for number in range(step["writes"]):
 

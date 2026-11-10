@@ -2928,10 +2928,12 @@ mod database {
     /// Runs `writers` writers at the same time, each on its own connection, each committing `writes` transactions that read
     /// the Service count and insert one Service with no retry, and returns the Service count (CFG-12).
     async fn transaction_writers(dsn: &str, writers: u64, writes: u64) -> Result<i64, String> {
+        // As FCV-4 states, the writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+        let writer_dsn = format!("{dsn}{}_pragma=busy_timeout(60000)", if dsn.contains('?') { '&' } else { '?' });
         // A transaction future is not Send, so each writer runs on a thread of its own with its own runtime.
         let threads: Vec<_> = (0..writers)
             .map(|index| {
-                let dsn = dsn.to_owned();
+                let dsn = writer_dsn.clone();
                 std::thread::spawn(move || -> Result<(), String> {
                     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| e.to_string())?;
                     runtime.block_on(async move {

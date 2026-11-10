@@ -266,7 +266,8 @@ class ConnectionPoolTest(unittest.TestCase):
     # Requirements: CFG-42. A recipe case runs on the connections of one test process in Python, so this test starts the processes.
     def test_sqlite_several_process_writers_commit_every_row(self):
         with tempfile.TemporaryDirectory(prefix="orm-sqlite-processes-") as directory:
-            dsn = f"sqlite://{directory}/processes.sqlite3"
+            # The writers wait up to 60 seconds for the file lock (CFG-12), so the load of the runner does not end a wait (CFG-42).
+            dsn = f"sqlite://{directory}/processes.sqlite3?_pragma=busy_timeout(60000)"
             setup = models.connect(dsn)
             install_bench(setup)
             setup.close()
