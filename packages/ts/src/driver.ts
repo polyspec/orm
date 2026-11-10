@@ -205,14 +205,14 @@ export function sqliteBusy(name: DriverName, error: unknown): boolean {
  * the connection cannot be used any more, and a fatal error that failed to open the connection (ECONNREFUSED, authentication failure) has a different code.
  * A fatal error without a code is a statement sent to a connection that was already closed. MySQL 4031 means the server ended a connection that was idle.
  * PostgreSQL treats class 08 (connection exception) and the codes sent when the server ends a session
- * 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) as lost connections.
+ * 57P01 (admin_shutdown), 57P02 (crash_shutdown), 57P05 (idle_session_timeout) and 25P03 (idle_in_transaction_session_timeout) as lost connections.
  */
 function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean }, server: MySqlServer): boolean {
   if (name === 'mysql') {
     // 4031 is MySQL's ER_CLIENT_INTERACTION_TIMEOUT; MariaDB's 4031 is a trigger error (DIA-201).
     return (server === 'mysql' && source.errno === 4031) || (source.fatal === true && (source.code === undefined || source.code === 'PROTOCOL_CONNECTION_LOST' || source.code === 'ECONNRESET' || source.code === 'EPIPE'));
   }
-  return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
+  return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '25P03' || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
 }
 
 export type { MySqlServer } from './engine/dialect.js';

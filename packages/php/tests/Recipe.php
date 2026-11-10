@@ -2871,6 +2871,10 @@ final class Recipe
      */
     private static function databaseStep(array $raw, array &$context): void
     {
+        // A step runs on the databases that its only names, a nested step of a transaction too, as in every runtime.
+        if (!self::onDatabase($raw['only'] ?? null, $context['database'])) {
+            return;
+        }
         // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28,
         // FCV-4).
         if (isset($raw['expect_unnamed'])) {

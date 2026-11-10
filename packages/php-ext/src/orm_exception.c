@@ -220,7 +220,8 @@ static zend_string *postgres_code(zend_string *state)
     else if (zend_string_equals_literal(state, "25006")) code = "READ_ONLY";
     else if (zend_string_equals_literal(state, "23514")) code = "CONSTRAINT";
     else if (ZSTR_LEN(state) >= 2 && ZSTR_VAL(state)[0] == '0' && ZSTR_VAL(state)[1] == '8') code = "CONNECTION_LOST";
-    else if (zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02") || zend_string_equals_literal(state, "57P05")) code = "CONNECTION_LOST";
+    else if (zend_string_equals_literal(state, "25P03") || zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02")
+             || zend_string_equals_literal(state, "57P05")) code = "CONNECTION_LOST";
     return zend_string_init(code, strlen(code), 0);
 }
 
@@ -339,8 +340,8 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
     zend_string *code = NULL;
     if (zend_string_equals_literal(driver, "postgres")) {
         bool connection_lost = (ZSTR_LEN(state) >= 2 && ZSTR_VAL(state)[0] == '0' && ZSTR_VAL(state)[1] == '8')
-            || zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02")
-            || zend_string_equals_literal(state, "57P05");
+            || zend_string_equals_literal(state, "25P03") || zend_string_equals_literal(state, "57P01")
+            || zend_string_equals_literal(state, "57P02") || zend_string_equals_literal(state, "57P05");
         if (!connection_lost && zend_string_equals_literal(state, "HY000")) {
             zend_class_entry *pgsql = lookup_class_literal("Pdo\\Pgsql");
             if (pgsql != NULL && instanceof_function(Z_OBJCE_P(pdo_value), pgsql)) {

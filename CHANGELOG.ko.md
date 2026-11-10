@@ -56,6 +56,7 @@
 - orm은 kit 0.0.105를 채택한다(T385). 그 run-tests에는 자체 시간 한도가 없다(K1175). test마다의 watchdog, test 사이의 간격 감시, node의 종료 기한, PHPUnit deadline extension, `--timeout` option이 모두 없고, run은 tool이 끝날 때 끝난다.
 - Python은 catalog, utils, markdown 연결, dialect의 message에서 column, table, key, 권한, DSN 부분, server를 다른 runtime처럼 `"<name>"`로 적는다. 전에는 repr `'<name>'`로 적었다(T385.5). Python의 dbspec introspection message도 같다(DIA-205). 하나의 문자열 literal이 아닌 MariaDB default는 모든 runtime에서 `TABLE_METADATA_INVALID: column "<name>": default <text> is not one string literal`이다. 전에는 TypeScript가 `default of column`, Python이 `default expression of column`으로 적었다. text가 아닌 type의 default는 Python에서도 Go와 PHP처럼 `default expression of column "<name>" is not text`이다. Rust는 Go처럼 `TABLE_METADATA_INVALID: duplicate column`에 column 이름을 적는다.
 - apply error는 code, plan, failed·interrupted·irreversible·nulls error와 plan이 있는 session error의 ` at step <n>`, 그다음 `: <text>`와 `: <cause>`를 적는다(PLN-96b, T385.5). recipe dbspec_apply는 `with_message`와 `message_holds`로 각 error case의 정확한 message를 확인하고, case `a_broken_chain_is_refused_and_named`는 빈 상태에서 시작하는 plan이 없는 chain과 hash가 다른 기록된 plan을 담는다. catalog describe recipe는 모든 database에서 모든 column의 default text와 expression 표시를 확인한다(`default_texts`, `expression_defaults`, DIA-205, INT-101, INT-123).
+- PostgreSQL SQLSTATE 25P03은 transaction 안에서 `idle_in_transaction_session_timeout`보다 오래 유휴였던 session을 server가 끝낼 때 보내며, MySQL의 idle 한도처럼 모든 runtime에서 `CONNECTION_LOST`이다(CFG-15, T385.6). 전에는 `DRIVER`였다. idle 한도의 transactions case는 다섯 database 모두에서 실행된다.
 
 
 ## 0.0.29

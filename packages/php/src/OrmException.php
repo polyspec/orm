@@ -61,10 +61,10 @@ final class OrmException extends \RuntimeException
         $code = match ($driver) {
             'postgres' => match (true) {
                 // Class 08 is connection exception. 57P01 (admin_shutdown) and 57P02 (crash_shutdown),
-                // and 57P05 (idle_session_timeout), are sent by the server when it ends the session. When libpq
-                // loses the connection, it arrives as HY000 with no SQLSTATE from the server, and libpq reports the
-                // backend pid of a closed connection as 0.
-                str_starts_with($state, '08'), in_array($state, ['57P01', '57P02', '57P05'], true),
+                // 57P05 (idle_session_timeout) and 25P03 (idle_in_transaction_session_timeout), are sent by the
+                // server when it ends the session. When libpq loses the connection, it arrives as HY000 with no
+                // SQLSTATE from the server, and libpq reports the backend pid of a closed connection as 0.
+                str_starts_with($state, '08'), in_array($state, ['25P03', '57P01', '57P02', '57P05'], true),
                 $state === 'HY000' && $pdo instanceof \Pdo\Pgsql && $pdo->getPid() === 0 => Code::CONNECTION_LOST,
                 default => self::postgresCode($state),
             },

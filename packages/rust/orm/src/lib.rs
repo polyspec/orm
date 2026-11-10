@@ -216,7 +216,7 @@ impl Error {
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
 /// MySQL 1290 / 1792, PostgreSQL 25006, SQLite READONLY (8, primary code of any extended form) — maps
 /// to READ_ONLY. A connection the server ended or that broke — MySQL 4031, PostgreSQL SQLSTATE class 08 and
-/// 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
+/// 25P03 / 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
 /// broken pipe, not connected) — maps to CONNECTION_LOST. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
 /// driver message. Each keeps the driver error as its source.
 impl From<sqlx::Error> for Error {
@@ -252,8 +252,8 @@ impl From<sqlx::Error> for Error {
                     "25006" => Some((codes::READ_ONLY, msg())),
                     "23514" => Some((codes::CONSTRAINT, msg())),
                     // Class 08 is connection exception. 57P01 (admin_shutdown), 57P02 (crash_shutdown),
-                    // and 57P05 (idle_session_timeout) are sent when the server ends a session.
-                    c if c.starts_with("08") || matches!(c, "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
+                    // 57P05 (idle_session_timeout) and 25P03 (idle_in_transaction_session_timeout) are sent when the server ends a session.
+                    c if c.starts_with("08") || matches!(c, "25P03" | "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
                     _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {

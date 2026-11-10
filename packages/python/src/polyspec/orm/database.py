@@ -689,8 +689,10 @@ _MYSQL_CODES = {
     },
 }
 _POSTGRES_CODES = {
-    # 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) are sent when the server ends a session.
+    # 57P01 (admin_shutdown), 57P02 (crash_shutdown), 57P05 (idle_session_timeout) and 25P03
+    # (idle_in_transaction_session_timeout) are sent when the server ends a session.
     # Class 08 (connection exception) is chosen by _postgres_code.
+    "25P03": codes.CONNECTION_LOST,
     "57P01": codes.CONNECTION_LOST,
     "57P02": codes.CONNECTION_LOST,
     "57P05": codes.CONNECTION_LOST,
