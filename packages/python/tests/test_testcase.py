@@ -1,5 +1,6 @@
 # The unit test of the Python case harness (testcase.py): unittest's own report of each case, the step lines, the
 # deadline that ends a stalled case, and that every test of the package runs through it.
+import os
 import re
 import subprocess
 import sys
@@ -58,10 +59,21 @@ SAMPLE = textwrap.dedent("""
             while True:
                 guard.progress()
                 time.sleep(0.005)
+
+
+    class Cleaned(unittest.TestCase):
+        def test_ended_inside(self):
+            import os, time
+            mark = os.environ["CLEANUP_MARK"]
+            with testcase.ending("withdrawn", lambda: open(mark + ".withdrawn", "w").close()):
+                pass
+            with testcase.ending("mark", lambda: open(mark, "w").close()):
+                testcase.StepGuard(self.id(), 3600, 0.5)
+                time.sleep(60)
 """)
 
 
-def run_sample(*names: str) -> subprocess.CompletedProcess:
+def run_sample(*names: str, env: dict | None = None) -> subprocess.CompletedProcess:
     """Runs the sample through the discovery entry point of python-unit-check."""
     with tempfile.TemporaryDirectory() as directory:
         (Path(directory) / "sample.py").write_text(SAMPLE)
@@ -83,6 +95,7 @@ def run_sample(*names: str) -> subprocess.CompletedProcess:
             capture_output=True,
             text=True,
             timeout=testcase.PROCESS,
+            env=None if env is None else {**os.environ, **env},
         )
 
 
@@ -163,6 +176,23 @@ class StepGuardTest(unittest.TestCase):
         self.assertIn(
             "sample.Guarded.test_past_budget: step budget 0.25s exceeded", result.stderr
         )
+
+    def test_a_case_that_the_guard_ends_runs_its_cleanups(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            mark = Path(directory) / "mark"
+            result = run_sample("Cleaned", env={"CLEANUP_MARK": str(mark)})
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn(
+                "sample.Cleaned.test_ended_inside: no step was applied within 0.5s",
+                result.stderr,
+            )
+            self.assertTrue(
+                mark.exists(), "the cleanup of the block that the guard ended ran"
+            )
+            self.assertFalse(
+                Path(str(mark) + ".withdrawn").exists(),
+                "the cleanup of a block that ended by itself did not run",
+            )
 
 
 class EveryTestTest(unittest.TestCase):

@@ -12,6 +12,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
+from . import testcase
 from .server_database import server_database
 from .statement_fault import required_dsn
 
@@ -25,12 +26,21 @@ def case_database(dialect: str, directory: str, prefix: str):
             yield dsn
         return
     if dialect == "sqlite":
-        yield f"sqlite://{os.path.join(directory, f'{prefix}_{uuid.uuid4().hex}.sqlite3')}"
+        path = os.path.join(directory, f"{prefix}_{uuid.uuid4().hex}.sqlite3")
+        with testcase.ending(f"removal of {path}", lambda: _remove_sqlite(path)):
+            yield f"sqlite://{path}"
         return
     dsn = required_dsn(dialect)
     name = f"{prefix}_{uuid.uuid4().hex[:12]}"
     with server_database(dialect, dsn, name) as case_dsn:
         yield case_dsn
+
+
+def _remove_sqlite(path: str) -> None:
+    """Removes the SQLite case database at path and the files beside it that SQLite keeps while it is open."""
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(path + suffix)
 
 
 def case_server(database: str) -> str:
@@ -87,23 +97,33 @@ def case_corpus(set_path: Path | None):
             stderr=stderr,
             text=True,
         )
-        try:
-            line = server.stdout.readline().rstrip("\n")
-            match = LISTENING.match(line)
-            if match is None or match.group(2) != CORPUS:
-                stderr.seek(0)
-                raise AssertionError(
-                    f"flowmark serve printed {line!r}, not its listening line; stderr:\n{stderr.read()}"
-                )
-            token = json.loads(
-                (directory / ".flowmark" / "server.json").read_text(encoding="utf-8")
-            )["token"]
-            yield (
-                f"markdown://127.0.0.1:{match.group(1)}/{CORPUS}?token={token}",
-                directory,
-            )
-        finally:
-            server.send_signal(signal.SIGINT)
+
+        def stop() -> None:
+            server.kill()
             server.wait()
-            server.stdout.close()
-            stderr.close()
+            shutil.rmtree(parent, ignore_errors=True)
+
+        # A case that the harness ends (testcase.ending) runs no finally block: the server is ended and the corpus removed.
+        with testcase.ending(f"stop of the corpus server {server.pid}", stop):
+            try:
+                line = server.stdout.readline().rstrip("\n")
+                match = LISTENING.match(line)
+                if match is None or match.group(2) != CORPUS:
+                    stderr.seek(0)
+                    raise AssertionError(
+                        f"flowmark serve printed {line!r}, not its listening line; stderr:\n{stderr.read()}"
+                    )
+                token = json.loads(
+                    (directory / ".flowmark" / "server.json").read_text(
+                        encoding="utf-8"
+                    )
+                )["token"]
+                yield (
+                    f"markdown://127.0.0.1:{match.group(1)}/{CORPUS}?token={token}",
+                    directory,
+                )
+            finally:
+                server.send_signal(signal.SIGINT)
+                server.wait()
+                server.stdout.close()
+                stderr.close()
