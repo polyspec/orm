@@ -706,6 +706,8 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     await runCaseSteps({ name, recipeCase, database, context, step });
   } finally {
     for (const close of closers) await close();
+    // A case that failed before its sql.release_connection still holds that native connection, which would keep the process open.
+    if (context?.held !== undefined) await context.held.close();
     if (context === undefined) await catalog.close();
     else if (!context.closed) await context.catalog.close();
   }
@@ -775,8 +777,6 @@ function userFromDatabaseDsn(dsn, prefix) {
   return dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${prefix}${database.slice(-28)}@`);
 }
 
-const OPS = {
-  // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
 
 // connectRelay is the TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection it
 // accepts to the host and port of the DSN, copying the bytes both ways, and counts the connections it accepted. A client learns
@@ -808,6 +808,8 @@ async function connectRelay(dsn) {
   return relay;
 }
 
+const OPS = {
+  // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
     if (s.dsn.startsWith('env:')) {
       const variable = serverVariable(s.dsn.slice(4), context.database);
@@ -895,7 +897,9 @@ async function connectRelay(dsn) {
     return { value: { int: String(rows[0][0]) } };
   },
   async 'sql.release_connection'(_, context) {
-    await context.held.close();
+    const held = context.held;
+    context.held = undefined;
+    await held.close();
     return {};
   },
   async 'catalog.revision'(s, context) {
