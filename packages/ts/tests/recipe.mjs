@@ -1061,7 +1061,7 @@ const OPS = {
     // cache that stays stale while other connections keep reading it.
     const [rows] = await nativeQuery(dialectOf(context), session, [postgres
       ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
-      : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
     await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);

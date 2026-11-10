@@ -1669,7 +1669,7 @@ func endSession(table string, c *databaseContext) error {
 
 // mysqlLockHolder is the session whose transaction holds the table %s of the case database, the session that session.end ends
 // on MySQL and MariaDB.
-const mysqlLockHolder = `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '%s' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`
+const mysqlLockHolder = `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '%s' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`
 
 // awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
 // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits

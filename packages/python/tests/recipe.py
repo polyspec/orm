@@ -3237,7 +3237,7 @@ def _op_session_end(step: dict, context: dict) -> dict:
         # One form on MySQL and MariaDB, which has no performance_schema.data_locks: the session other than this one
         # whose transaction holds a granted metadata lock on the table; the metadata lock view is live, where
         # information_schema.INNODB_TRX is a cache that can miss a transaction that has just begun.
-        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1"
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1"
     )
     rows = native_query(database, session, [query])[0]
     if len(rows) != 1:

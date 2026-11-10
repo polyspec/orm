@@ -5573,7 +5573,7 @@ mod database {
             // The session, other than this one, that holds a transaction metadata lock on the table: the one form that MySQL and
             // MariaDB read alike and live, since MariaDB has no performance_schema.data_locks (DIA-200, rule 1).
             Pool::MySql(pool) => {
-                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1");
+                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1");
                 match sqlx::query_scalar::<_, u64>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
                     Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
                     Err(error) => Err(error),
