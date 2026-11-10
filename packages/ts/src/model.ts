@@ -77,7 +77,7 @@ function cellText(type: string, value: unknown): string {
     if (!isUtf8(value)) throw new OrmError(codes.CODEC_DECODE, 'text is not valid UTF-8');
     return Buffer.from(value).toString('utf8');
   }
-  throw new OrmError(codes.CODEC_DECODE, `${type} cell is not text`);
+  throw new OrmError(codes.CODEC_DECODE, type === 'uuid' ? 'uuid cell is not a uuid' : `${type} cell is not text`);
 }
 
 const decimalNumberText = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/;

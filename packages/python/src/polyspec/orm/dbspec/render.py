@@ -18,6 +18,7 @@ __all__ = ["UUID_PATTERN", "Renderer", "render_dbspec", "render_dbspec_statement
 
 DIALECTS = frozenset(("mysql", "postgres", "sqlite"))
 
+# The pattern of the CHECK of the text storage of a uuid by a release up to 0.0.28 (DIA-144).
 UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 
 _ACTIONS = {"restrict": "RESTRICT", "cascade": "CASCADE", "set_null": "SET NULL"}
@@ -133,7 +134,7 @@ class Renderer:
                 f"COLLATE utf8mb4_0900_bin",
                 "text": "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
                 "bytes": "LONGBLOB",
-                "uuid": "char(36) CHARACTER SET ascii COLLATE ascii_bin",
+                "uuid": "BINARY(16)",
                 "date": "DATE",
                 "time": f"TIME({t.precision})",
                 "datetime": f"DATETIME({t.precision})",
@@ -163,7 +164,7 @@ class Renderer:
             "f64": "REAL",
             "varchar": f"varchar({t.length})",
             "text": "TEXT",
-            "uuid": "TEXT",
+            "uuid": "BLOB",
             "bytes": "BLOB",
             "date": "DATE",
             "time": "TIME",
@@ -192,6 +193,9 @@ class Renderer:
             if self.d == "postgres":
                 return text.upper()
             return "1" if text == "true" else "0"
+        if t is not None and t.kind == "uuid" and self.d != "postgres":
+            # A uuid default is the 16 bytes of its canonical text on MySQL and SQLite (DIA-123).
+            return "X'" + text.strip("'").replace("-", "") + "'"
         if text.startswith("'"):
             return text.replace("\\", "\\\\") if self.d == "mysql" else text
         if t is not None and t.kind == "decimal" and self.d == "sqlite":
@@ -216,9 +220,9 @@ class Renderer:
             if t.kind == "bool":
                 return f"{q} IN (0, 1)"
             if t.kind == "uuid":
-                # REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
-                # mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
-                return f"{q} REGEXP '{UUID_PATTERN}'"
+                # BINARY(16) pads a shorter value, so the CHECK holds every stored value and is the named marker that tells a
+                # uuid from a bytes column (probes mysql.render.uuid_bytes, mariadb.render.uuid_bytes; DIA-48, DIA-144).
+                return f"length({q}) = 16"
             if t.kind == "time":
                 return f"{q} >= '00:00:00' AND {q} < '24:00:00'"
             return ""
@@ -241,8 +245,9 @@ class Renderer:
         if t.kind == "varchar":
             return f"length({q}) <= {t.length}"
         if t.kind == "uuid":
-            hexa = "[0-9a-f]" * 4
-            return f"{q} GLOB '{'[0-9a-f]' * 8}-{hexa}-{hexa}-{hexa}-{'[0-9a-f]' * 12}'"
+            # A uuid is a BLOB of 16 bytes; the CHECK is the named marker that tells it from a bytes column (probe
+            # sqlite.render.uuid_bytes; DIA-48, DIA-144).
+            return f"typeof({q}) IN ('blob', 'null') AND length({q}) = 16"
         if t.kind == "date":
             return f"{q} IS date({q})"
         if t.kind == "time":

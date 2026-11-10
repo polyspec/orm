@@ -130,6 +130,7 @@ class _Assembler:
                         _stored_version(cell) if version_at else cell,
                         self.db.zone,
                         declared,
+                        self.db.sql_driver == "postgres",
                     ),
                 )
             else:
@@ -710,7 +711,8 @@ def create(c: Core):
                 StyledValue.sql_null() if type_ == "styled" else None
             )
         else:
-            core.values[s.column] = convert(type_, s.value, ex.db.zone, field)
+            # A set value is the value of the API, so a uuid is its text (DIA-27).
+            core.values[s.column] = convert(type_, s.value, ex.db.zone, field, True)
     # The column that takes the key it is given is the identity.
     assigned_key = schema.identity
     if assigned_key != "":
@@ -1284,7 +1286,13 @@ def _group_value(db, column: dict, raw, schema: Entity):
         lambda: (
             _added_column_value({**column, "type": type_}, raw, (), db.zone)
             if type_ in ("i16", "i32", "i64")
-            else convert("text" if type_ == "string" else type_, raw, db.zone, declared)
+            else convert(
+                "text" if type_ == "string" else type_,
+                raw,
+                db.zone,
+                declared,
+                db.sql_driver == "postgres",
+            )
         ),
     )
 

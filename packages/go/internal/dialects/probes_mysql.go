@@ -675,10 +675,17 @@ func mysqlProbes() []Probe {
 				utc, "ALTER TABLE t MODIFY d datetime(6) NULL")
 			e.Want("SELECT CONCAT(COLUMN_TYPE, ' ', (SELECT d FROM t)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "datetime(6) 2020-01-01 00:00:00.000000")
 		}),
-		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP CHECK, which CHECK_CLAUSE writes as regexp_like, accepts only lower-case canonical UUID text (3819)", func(e *Env) {
-			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (u REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))",
-				"INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
-			e.Fails("INSERT INTO t VALUES ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')", "3819")
+		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as (length(`u`) = 16), orders its values by their bytes, and its default is 0x and the upper-case hex of its bytes", func(e *Env) {
+			e.Exec("CREATE TABLE t (u BINARY(16) NOT NULL DEFAULT X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10', CONSTRAINT `t$u` CHECK (length(u) = 16))",
+				"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001')")
+			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(length(`u`) = 16)")
+			e.Want("SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "0x0E2B5E8C3B0F4C599A0F6A2F2C2E1B10")
+			e.WantRows("SELECT LOWER(HEX(u)) FROM t ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
+		}),
+		p("uuid.binary_pads", "BINARY(16) pads a shorter value with zero bytes and refuses a longer one (1406)", func(e *Env) {
+			e.Exec("CREATE TABLE t (u BINARY(16))", "INSERT INTO t VALUES (X'a0')")
+			e.Want("SELECT CONCAT(LENGTH(u), ' ', LOWER(HEX(u))) FROM t", "16 a0000000000000000000000000000000")
+			e.Fails("INSERT INTO t VALUES (X'000000000000000000000000000000000000')", "1406")
 		}),
 		// Views and sequences.
 		p("sequence.unsupported", "MySQL has no CREATE SEQUENCE (1064)", func(e *Env) {

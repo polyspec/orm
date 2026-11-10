@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 )
 
@@ -405,6 +406,8 @@ func cellMessage(columnType string) string {
 		return columnType + " cell is not a " + columnType
 	case "bytes":
 		return "bytes cell is not bytes"
+	case "uuid":
+		return "uuid cell is not a uuid"
 	}
 	return columnType + " cell is not text"
 }
@@ -613,6 +616,46 @@ func textCell(columnType string, v any) (string, error) {
 		return "", codecErr(CodeCodecDecode, "text is not valid UTF-8")
 	}
 	return s, nil
+}
+
+// uuidCell reads a uuid cell as its lower-case canonical text (DIA-27): on PostgreSQL, which reads it as
+// CAST(col AS text), that text, and on MySQL, MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused
+// with the message of the uuid type (COD-1).
+func uuidCell(v any, text bool) (string, error) {
+	switch x := v.(type) {
+	case []byte:
+		if x == nil {
+			return "", ErrNullColumn
+		}
+		if !text {
+			if len(x) != 16 {
+				return "", cellRefusal("uuid")
+			}
+			return dbspec.UUIDText(x), nil
+		}
+		if canonicalUUID.Match(x) {
+			return string(x), nil
+		}
+	case string:
+		// The executor scans every byte cell as a string (cell.Scan).
+		if !text && len(x) == 16 {
+			return dbspec.UUIDText([]byte(x)), nil
+		}
+		if text && canonicalUUID.MatchString(x) {
+			return x, nil
+		}
+	}
+	return "", cellRefusal("uuid")
+}
+
+// uuidBytes is the 16 bytes that the 32 digits of the canonical text s of a uuid write in their order, two digits to
+// a byte (DIA-27); s is checked before (PRT-67).
+func uuidBytes(s string) ([]byte, error) {
+	b, err := hex.DecodeString(strings.ReplaceAll(s, "-", ""))
+	if err != nil || len(b) != 16 || !canonicalUUID.MatchString(s) {
+		return nil, codecErr(CodeCodecEncode, "uuid value is not a lower-case canonical uuid")
+	}
+	return b, nil
 }
 
 // AsBytes converts a bytes cell to an owned byte slice; a stored text is its UTF-8 bytes, as in every client.

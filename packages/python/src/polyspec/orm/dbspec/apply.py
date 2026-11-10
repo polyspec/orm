@@ -4,10 +4,18 @@
 # produce the same bytes. Execution is synchronous.
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import re
 from typing import Callable
 
+from polyspec.orm.dbspec.apply_convert import (
+    CONVERT_SAVEPOINT,
+    document_table,
+    mysql_conversion,
+    sqlite_conversion,
+)
+from polyspec.orm.dbspec.introspect_catalog import TEXT_STORAGE_REASON
 from polyspec.orm.dbspec.introspect import (
     Connection,
     _check_server,
@@ -138,7 +146,7 @@ class DbspecApplyError(Exception):
         message = code
         if plan != "":
             message += f" {plan}"
-        if code in ("failed", "interrupted", "irreversible", "nulls") or (
+        if code in ("failed", "interrupted", "irreversible", "nulls", "convert") or (
             code == "session" and plan != ""
         ):
             message += f" at step {step}"
@@ -523,6 +531,7 @@ class _Applier:
                     f"the plan is {row['state']}; run recover or rollback",
                 )
             want = p["to"]
+        self.convert(position)
         try:
             self.verify(want)
         except _SchemaMismatchError as error:
@@ -530,6 +539,79 @@ class _Applier:
         except Exception as error:  # noqa: BLE001 - introspection errors retain their identity as a verify cause
             raise DbspecApplyError("verify", "", 0, "", error) from None
         return position
+
+    def convert(self, position: int) -> None:
+        """Converts the uuid columns in the text storage of a release up to 0.0.28 to 16 bytes, before the drift check and
+        before any plan (PLN-108). It converts nothing on PostgreSQL, on a database with no recorded plan, and when an
+        unsupported object other than such a column exists or the schema with such columns read as uuid is not the
+        state; the drift check then reports the database."""
+        if self.dialect == "postgres" or position == 0:
+            return
+        state = self.chain[position - 1]
+        try:
+            introspected = introspect_dbspec(
+                self.connection, self.dialect, self.server, "schema"
+            )
+        except Exception as error:  # noqa: BLE001 - introspection errors retain their identity as a verify cause
+            raise DbspecApplyError("verify", "", 0, "", error) from None
+        text: dict = {}
+        for u in introspected["unsupported"]:
+            if u["kind"] != "column" or u["reason"] != TEXT_STORAGE_REASON:
+                return
+            text.setdefault(u["table"], []).append(u["name"])
+        if not text:
+            return
+        # A dropped foreign key is missing only while its table holds a column in text storage (PLN-109).
+        missing: dict = {}
+        live = introspected["document"]
+        tables = []
+        for t in live.tables:
+            want = document_table(state["schema"], t.name)
+            if t.name in text and want is not None:
+                names = {g.name for g in t.foreign_keys}
+                lacking = [f for f in want.foreign_keys if f.name not in names]
+                if lacking:
+                    missing[t.name] = lacking
+                    t = dataclasses.replace(t, foreign_keys=(*t.foreign_keys, *lacking))
+            tables.append(t)
+        live = dataclasses.replace(live, tables=tuple(tables))
+        manifest, diagnostics = dbspec_manifest([live])
+        if diagnostics or manifest is None or manifest.schema_hash != state["to"]:
+            return
+        try:
+            if self.dialect == "mysql":
+                statements = mysql_conversion(
+                    self.r, self._query_value, state["schema"], text, missing
+                )
+            else:
+                statements = sqlite_conversion(self.r, state["schema"], text)
+        except Exception as error:  # noqa: BLE001 - a failure to read the storage is the convert error
+            raise DbspecApplyError("convert", "", 0, "", error) from None
+        opened = False
+        for i, statement in enumerate(statements):
+            try:
+                self._emit("convert", "", i, 0, statement)
+                try:
+                    self._exec(statement)
+                except Exception as error:  # noqa: BLE001 - a failed statement is the convert error at its step
+                    raise DbspecApplyError("convert", "", i, statement, error) from None
+            except Exception as failure:
+                if opened:
+                    # Inside the SQLite rebuild of a table the table is rolled back first, so that it is kept as it was
+                    # (PLN-110).
+                    for end in (
+                        f"ROLLBACK TO {CONVERT_SAVEPOINT}",
+                        f"RELEASE {CONVERT_SAVEPOINT}",
+                    ):
+                        try:
+                            self._exec(end)
+                        except Exception as error:  # noqa: BLE001 - a cleanup failure is kept with the first failure
+                            failure.add_note(f"cleanup failed: {error}")
+                raise
+            if statement.startswith("SAVEPOINT "):
+                opened = True
+            elif statement.startswith("RELEASE "):
+                opened = False
 
     def verify(self, want: str) -> None:
         """Checks that the database's introspection matches the wanted schemaHash (an empty string means an empty database)
@@ -960,6 +1042,7 @@ def rollback_plans(
                     0,
                     f"the recorded step {k} is outside the plan's {len(steps)} steps",
                 )
+            a.convert(a.chain.index(p) + 1)
             try:
                 a.verify(p["to"])
             except _SchemaMismatchError as error:

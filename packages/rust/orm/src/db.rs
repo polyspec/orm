@@ -911,6 +911,16 @@ impl Db {
         bound_time_value(v, col_type, precision, &self.inner.zone)
     }
 
+    /// The value `v` of a slot of type `col_type` as the driver binds it: a uuid text is its 16 bytes on MySQL, MariaDB,
+    /// SQLite and flowmark, and the text itself on PostgreSQL, which binds it by the slot type (DIA-27, DIA-31). Another
+    /// value is `v`.
+    fn uuid_bind(&self, v: Param, col_type: &str) -> Result<Param> {
+        match v {
+            Param::Str(text) if col_type == "uuid" && self.sql_driver() != "postgres" => Ok(Param::Bytes(crate::cell::uuid_bytes(&text)?)),
+            other => Ok(other),
+        }
+    }
+
     /// Sets the bind slot values of the step. `audit` is the audit record of the transaction in which the step runs.
     pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], audit: Option<&AuditKey>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
@@ -919,7 +929,15 @@ impl Db {
         let mut clock: Option<String> = None;
         for b in &st.bind_slots {
             match b.from.as_str() {
-                "parent" => out.extend(parent_vals.iter().cloned()),
+                "parent" => {
+                    for (i, v) in parent_vals.iter().enumerate() {
+                        let v = v.clone();
+                        out.push(match b.key_types.len() {
+                            0 => v,
+                            n => self.uuid_bind(v, &b.key_types[i % n])?,
+                        });
+                    }
+                }
                 "param" => {
                     // A transformed value is the text of its operator, and a host-styled value is the input of its
                     // first stage, which host_encode checks. A statement of utils().run binds its parameters as the
@@ -964,7 +982,7 @@ impl Db {
                             }
                         };
                     }
-                    out.push(if b.host_styles.is_empty() {
+                    let v = if b.host_styles.is_empty() {
                         v
                     } else if b.host_styles.iter().any(|s| s == "blind_index") {
                         if matches!(v, Param::Null) {
@@ -974,7 +992,8 @@ impl Db {
                         }
                     } else {
                         crate::codec::host_encode(&v, &b.host_styles, &cfg.aes_key)?
-                    });
+                    };
+                    out.push(self.uuid_bind(v, &b.col_type)?);
                 }
                 "config" => match b.name.as_str() {
                     "aes_version" => out.push(Param::I64(cfg.aes_version as i64)),
@@ -988,7 +1007,7 @@ impl Db {
                 // The audit slot is the primary key of the audit record the transaction inserted. If there is no audit, or the audit table
                 // records audit for another entity, it is CONFIG.
                 "audit" => out.push(match audit {
-                    Some(a) if a.table == b.name => a.key.clone(),
+                    Some(a) if a.table == b.name => self.uuid_bind(a.key.clone(), &b.col_type)?,
                     Some(a) => {
                         return Err(Error::Config(format!(
                             "the audited table records its audits in {}, but the audit of the transaction is a row of {}",

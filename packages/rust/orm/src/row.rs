@@ -695,6 +695,28 @@ pub(crate) fn decode_boolean_columns(asm: &crate::plan::Assemble, data: &mut [Ve
     Ok(())
 }
 
+/// Reads the cell of each declared uuid column as its canonical text (DIA-27): a 16-byte cell, or on PostgreSQL (`text`)
+/// the text that the planner casts it to. Another cell is CODEC_DECODE `<entity>.<column>: uuid cell is not a uuid`
+/// (COD-1); a styled column, an added column and SQL NULL are not read here.
+pub(crate) fn decode_uuid_columns(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], text: bool) -> Result<()> {
+    for column in asm.columns.iter().filter(|column| column.typ == "uuid" && column.styles.is_empty() && !column.column.is_empty()) {
+        for row in data.iter_mut() {
+            let value = row.get_mut(column.index).ok_or_else(|| Error::internal(format!("uuid column {} has no value", column.name)))?;
+            if !value.is_null() {
+                *value = Val::Str(crate::cell::uuid_cell(value, text).map_err(|error| crate::model::column_decode_error(&asm.entity, &column.name, error))?);
+            }
+        }
+    }
+    for child in &asm.children {
+        if child.kind == "join" {
+            if let Some(assemble) = &child.assemble {
+                decode_uuid_columns(assemble, data, text)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod declared_boolean_tests {
     use super::{decode_boolean_columns, Val};

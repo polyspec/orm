@@ -113,6 +113,11 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 $column['identity'] = true;
             } else {
                 $type = self::type($declared, $name, $check, $hasCheck);
+                if ($type === null && $declared === 'TEXT' && $hasCheck && $check === self::textStorageCheck($name)) {
+                    // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
+                    $type = new ColumnType('uuid');
+                    $c->report('column', $table, $name, Catalog::TEXT_STORAGE_REASON);
+                }
                 if ($type === null) {
                     $c->report(
                         'column',
@@ -206,8 +211,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 'bigint' => [new ColumnType('i64')],
                 'BOOLEAN' => [new ColumnType('bool')],
                 'REAL' => [new ColumnType('f64')],
-                'TEXT' => [new ColumnType('text'), new ColumnType('uuid')],
-                'BLOB' => [new ColumnType('bytes')],
+                'TEXT' => [new ColumnType('text')],
+                'BLOB' => [new ColumnType('bytes'), new ColumnType('uuid')],
                 'DATE' => [new ColumnType('date')],
                 'TIME', 'DATETIME' => array_map(static fn(int $p): ColumnType =>
                     new ColumnType($g(1) === 'TIME' ? 'time' : 'datetime', [$p]), range(0, 6)),
@@ -222,6 +227,13 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return null;
     }
 
+    /** The GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144). */
+    private static function textStorageCheck(string $column): string
+    {
+        $hex = static fn(int $n): string => str_repeat('[0-9a-f]', $n);
+        return "\"$column\" GLOB '" . $hex(8) . '-' . $hex(4) . '-' . $hex(4) . '-' . $hex(4) . '-' . $hex(12) . "'";
+    }
+
     /** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale;
      * a bool is 1 or 0. Otherwise null. */
     private static function defaultLiteral(string $text, ColumnType $type): ?string
@@ -231,6 +243,10 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         }
         if ($type->name === 'bool' && ($text === '1' || $text === '0')) {
             return $text === '1' ? 'true' : 'false';
+        }
+        // A uuid default as the renderer writes it, X' and the 32 hex digits of its 16 bytes (DIA-123).
+        if ($type->name === 'uuid' && preg_match("/^X'([0-9a-f]{32})'$/D", $text, $m) === 1) {
+            return Literal::quote(Literal::uuidText((string) hex2bin($m[1])));
         }
         if (preg_match(self::NUMBER_DEFAULT, $text)) {
             return $type->name === 'decimal' ? Catalog::unscaledDecimal($text, $type->parameters[1]) : $text;

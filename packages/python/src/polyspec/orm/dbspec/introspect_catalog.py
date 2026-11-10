@@ -9,7 +9,27 @@ class _CatalogDocumentBuildError(ValueError):
     """An expected failure while converting catalog data into a dbspec document."""
 
 
-__all__ = ["Catalog", "CatalogRow", "action_name", "quote", "table_types"]
+__all__ = [
+    "TEXT_STORAGE_REASON",
+    "Catalog",
+    "CatalogRow",
+    "action_name",
+    "quote",
+    "table_types",
+    "uuid_text",
+]
+
+# The reason of the unsupported column of a uuid in text storage (DIA-144), which dbspec apply converts to 16 bytes
+# (PLN-108).
+TEXT_STORAGE_REASON = (
+    "uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes"
+)
+
+
+def uuid_text(b: bytes) -> str:
+    """The lower-case canonical text of the 16 bytes b of a uuid (DIA-27)."""
+    h = b.hex()
+    return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
 
 
 def _byte_key(value: str) -> bytes:

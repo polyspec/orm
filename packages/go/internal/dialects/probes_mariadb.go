@@ -145,10 +145,12 @@ func mariadbFacts() []Probe {
 			e.Fails("INSERT INTO t VALUES ('0000-00-00')", "1292")
 		}),
 		// UUID and JSON.
-		p("uuid.no_type", "MariaDB has a UUID type, reported as DATA_TYPE uuid", func(e *Env) {
+		p("uuid.no_type", "MariaDB has a UUID type, reported as DATA_TYPE uuid, whose ORDER BY is not the order of its text", func(e *Env) {
 			e.Exec("CREATE TABLE t (u uuid)", "INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
 			e.Want("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "uuid")
 			e.Want("SELECT u FROM t", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+			e.Exec("CREATE TABLE o (u uuid)", "INSERT INTO o VALUES ('ffffffff-0000-4000-8000-000000000000'), ('0000000f-0000-4000-8000-000000000000'), ('7f000000-ffff-4fff-bfff-000000000001'), ('00000000-0000-4000-8000-00000000000f')")
+			e.WantRows("SELECT u FROM o ORDER BY u", "0000000f-0000-4000-8000-000000000000,ffffffff-0000-4000-8000-000000000000,7f000000-ffff-4fff-bfff-000000000001,00000000-0000-4000-8000-00000000000f")
 		}),
 		p("json.normalizes", "JSON is LONGTEXT with a JSON_VALID CHECK: the text is kept as written, duplicate keys and member order included", func(e *Env) {
 			e.Exec("CREATE TABLE t (j json)", `INSERT INTO t VALUES ('{"b":1,"a":1,"a":2}')`)
@@ -308,11 +310,17 @@ func mariadbFacts() []Probe {
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "4025")
 			e.Fails("INSERT INTO t VALUES ('-00:00:01')", "4025")
 		}),
-		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP CHECK accepts only lower-case canonical UUID text (4025); REGEXP_LIKE is refused (1901)", func(e *Env) {
-			e.Fails("CREATE TABLE u (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT u_u_uuid CHECK (REGEXP_LIKE(u, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')))", "1901")
-			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (u REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))",
-				"INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
-			e.Fails("INSERT INTO t VALUES ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')", "4025")
+		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as octet_length(`u`) = 16, orders its values by their bytes, and its default is x' and the lower-case hex of its bytes", func(e *Env) {
+			e.Exec("CREATE TABLE t (u BINARY(16) NULL DEFAULT X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10', CONSTRAINT `t$u` CHECK (length(u) = 16))",
+				"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001')")
+			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "octet_length(`u`) = 16")
+			e.Want("SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "x'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10'")
+			e.WantRows("SELECT LOWER(HEX(u)) FROM t ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
+		}),
+		p("uuid.binary_pads", "BINARY(16) pads a shorter value with zero bytes and refuses a longer one (1406)", func(e *Env) {
+			e.Exec("CREATE TABLE t (u BINARY(16))", "INSERT INTO t VALUES (X'a0')")
+			e.Want("SELECT CONCAT(LENGTH(u), ' ', LOWER(HEX(u))) FROM t", "16 a0000000000000000000000000000000")
+			e.Fails("INSERT INTO t VALUES (X'000000000000000000000000000000000000')", "1406")
 		}),
 		// Views and sequences.
 		p("sequence.unsupported", "MariaDB has CREATE SEQUENCE, a table of its own kind", func(e *Env) {

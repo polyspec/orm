@@ -1,6 +1,7 @@
 //! A parameter is checked against the logical type of each slot it fills before any statement (docs/spec/protocol.md §5
 //! "Parameters"): the bind path reads the slot of the plan step, and `param_uses` lists the slots of each parameter.
 
+use crate::cell::is_canonical_uuid;
 use crate::db::{bound_time_value, time_value, Zone};
 use crate::plan::BindSlot;
 use crate::value::Param;
@@ -35,12 +36,6 @@ fn refused(error: Error, text: Error) -> Error {
     } else {
         error
     }
-}
-
-fn is_canonical_uuid(text: &str) -> bool {
-    let b = text.as_bytes();
-    b.len() == 36
-        && b.iter().enumerate().all(|(k, &c)| if matches!(k, 8 | 13 | 18 | 23) { c == b'-' } else { c.is_ascii_digit() || (b'a'..=b'f').contains(&c) })
 }
 
 /// Refuses SQL NULL as parameter `i` when `s` assigns a non-null column; it runs for every slot before any statement.

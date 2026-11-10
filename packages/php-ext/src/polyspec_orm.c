@@ -1255,6 +1255,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyError, __construct)
     }
     if (zend_string_equals_literal(code, "failed") || zend_string_equals_literal(code, "interrupted")
         || zend_string_equals_literal(code, "irreversible") || zend_string_equals_literal(code, "nulls")
+        || zend_string_equals_literal(code, "convert")
         || (zend_string_equals_literal(code, "session") && ZSTR_LEN(plan) > 0)) {
         smart_str_appends(&b, " at step ");
         smart_str_append_long(&b, step);

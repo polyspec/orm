@@ -14,6 +14,8 @@ final class Db
     public const NOW = '$NOW';
     /** A table that stands in for the SQLite row lock. The row lock statement points at it. */
     private const ROW_LOCK_TABLE = 'orm__row_lock';
+    /** The lower-case canonical text of a uuid (DIA-27). */
+    private const CANONICAL_UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D';
     /**
      * The placeholders the statement cache may retain in all, the bound of Engine's plan cache (KSTD-7-3-5): a cached
      * statement keeps its last bound values, about 550 bytes per placeholder, so the cache stays near 4.3 MiB.
@@ -1684,8 +1686,9 @@ final class Db
         foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
                 case 'parent':
-                    foreach ($parentVals as $v) {
-                        $out[] = $v;
+                    $keyTypes = $b['key_types'] ?? [];
+                    foreach ($parentVals as $i => $v) {
+                        $out[] = $keyTypes === [] ? $v : $this->uuidBind($v, $keyTypes[$i % count($keyTypes)]);
                     }
                     break;
                 case 'param':
@@ -1727,7 +1730,7 @@ final class Db
                     } elseif (is_bool($v) || $v instanceof Bytes) {
                         $this->typed = true;
                     }
-                    $out[] = $v;
+                    $out[] = $this->uuidBind($v, $colType);
                     break;
                 case 'config':
                     if (($b['name'] ?? '') !== 'aes_version') {
@@ -1749,13 +1752,90 @@ final class Db
                     throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but "
                         . "the audit of the transaction is a row of {$audit['table']}");
                 }
-                    $out[] = $audit['key'];
+                    $out[] = $this->uuidBind($audit['key'], $b['col_type'] ?? '');
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
             }
         }
         return $out;
+    }
+
+    /**
+     * The value $v of a slot of type $colType: a uuid text is its 16 bytes on MySQL, MariaDB, SQLite and flowmark, and
+     * the text itself on PostgreSQL, which casts it (DIA-27). Another value is $v.
+     */
+    private function uuidBind(mixed $v, string $colType): mixed
+    {
+        if ($colType !== 'uuid' || !is_string($v) || $this->driver === 'postgres') {
+            return $v;
+        }
+        $this->typed = true;
+        return new Bytes(self::uuidBytes($v));
+    }
+
+    /**
+     * The 16 bytes that the 32 digits of the canonical text $s of a uuid write in their order, two digits to a byte
+     * (DIA-27); $s is checked before (PRT-67).
+     */
+    private static function uuidBytes(string $s): string
+    {
+        $bytes = preg_match(self::CANONICAL_UUID, $s) === 1
+            ? hex2bin(str_replace('-', '', $s)) : false;
+        return $bytes === false
+            ? throw new OrmException(Code::CODEC_ENCODE, 'uuid value is not a lower-case canonical uuid')
+            : $bytes;
+    }
+
+    /**
+     * Reads each uuid cell of the declared columns of $asm and of its join children in $rows as its lower-case
+     * canonical text (DIA-27): on PostgreSQL, which reads it as CAST(col AS text), that text, and on MySQL, MariaDB,
+     * SQLite and flowmark its 16 bytes. Any other cell is CODEC_DECODE with the message of the uuid type (COD-1).
+     *
+     * @param list<list<mixed>> $rows
+     */
+    private static function uuidCells(array &$rows, array $asm, bool $text): void
+    {
+        $indexes = [];
+        self::uuidColumns($asm, $indexes);
+        if ($indexes === []) {
+            return;
+        }
+        foreach ($rows as &$vals) {
+            foreach ($indexes as [$index, $entity, $name]) {
+                $v = $vals[$index] ?? null;
+                if ($v === null) {
+                    continue;
+                }
+                if (is_resource($v)) {
+                    $v = stream_get_contents($v);
+                }
+                if (is_string($v) && !$text && strlen($v) === 16) {
+                    $vals[$index] = Dbspec\Literal::uuidText($v);
+                } elseif (!is_string($v) || !$text || preg_match(self::CANONICAL_UUID, $v) !== 1) {
+                    throw new OrmException(Code::CODEC_DECODE, "$entity.$name: uuid cell is not a uuid");
+                }
+            }
+        }
+    }
+
+    /**
+     * The index, entity and name of each declared uuid column without a style of $asm and of its join children.
+     *
+     * @param list<array{0: int, 1: string, 2: string}> $out
+     */
+    private static function uuidColumns(array $asm, array &$out): void
+    {
+        foreach ($asm['columns'] ?? [] as $col) {
+            if ($col['type'] === 'uuid' && ($col['column'] ?? '') !== '' && ($col['styles'] ?? []) === []) {
+                $out[] = [$col['index'], $asm['entity'] ?? '', $col['name']];
+            }
+        }
+        foreach ($asm['children'] ?? [] as $child) {
+            if ($child['kind'] === 'join' && isset($child['assemble'])) {
+                self::uuidColumns($child['assemble'], $out);
+            }
+        }
     }
 
     /**
@@ -1967,6 +2047,9 @@ final class Db
         // after the event.
         if ($step['decode'] !== []) {
             Codec::decodeRows($rows, $step['decode'], $this->config);
+        }
+        if (isset($step['assemble'])) {
+            self::uuidCells($rows, $step['assemble'], $this->driver === 'postgres');
         }
         return $rows;
     }

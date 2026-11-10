@@ -369,10 +369,13 @@ func sqliteProbes() []Probe {
 			e.Fails("INSERT INTO t VALUES ('2020-01-01T00:00:00.000000')", "CHECK constraint failed")
 			e.Want("SELECT length(strftime('%Y-%m-%d %H:%M:%f', 'now') || '000')", "26")
 		}),
-		p("render.uuid_check", "a GLOB CHECK accepts only lower-case canonical UUID text", func(e *Env) {
-			e.Exec("CREATE TABLE t (u TEXT, CONSTRAINT t_u_uuid CHECK (u GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))", "INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
-			e.Fails("INSERT INTO t VALUES ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')", "CHECK constraint failed")
-			e.Fails("INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a111')", "CHECK constraint failed")
+		p("render.uuid_bytes", "a BLOB with the CHECK typeof(u) IN ('blob', 'null') AND length(u) = 16 accepts only 16 bytes and orders them by their bytes", func(e *Env) {
+			e.Exec(`CREATE TABLE t (u BLOB NULL, CONSTRAINT "t$u" CHECK (typeof("u") IN ('blob', 'null') AND length("u") = 16))`,
+				"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001'), (NULL)")
+			e.Fails("INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')", "CHECK constraint failed")
+			e.Fails("INSERT INTO t VALUES (X'a0')", "CHECK constraint failed")
+			e.Fails("INSERT INTO t VALUES ('0123456789abcdef')", "CHECK constraint failed")
+			e.WantRows("SELECT lower(hex(u)) FROM t WHERE u IS NOT NULL ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
 		}),
 		// Views and sequences.
 		p("sequence.unsupported", "SQLite has no CREATE SEQUENCE", func(e *Env) {

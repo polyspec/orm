@@ -60,7 +60,7 @@ func TestSelectedByteKeyPreservesByteType(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	values := []any{"\xff\x00"}
 	step := &plan.Step{Assemble: &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "payload", Type: "bytes"}}}}
-	if err := decodeSelectedRow(values, &scanInfo{}, step, AESKeyring{}); err != nil {
+	if err := decodeSelectedRow(values, &scanInfo{}, step, AESKeyring{}, false); err != nil {
 		t.Fatal(err)
 	}
 	key, present, err := keyFromRow(values, []plan.KeyRef{{Index: 0}})

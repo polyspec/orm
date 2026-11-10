@@ -16,6 +16,7 @@ pub(crate) fn cell_message(column_type: &str) -> String {
         "decimal" => "decimal cell is not a decimal of its precision and scale".into(),
         "date" | "datetime" | "time" => format!("{column_type} cell is not a {column_type}"),
         "bytes" => "bytes cell is not bytes".into(),
+        "uuid" => "uuid cell is not a uuid".into(),
         other => format!("{other} cell is not text"),
     }
 }
@@ -276,6 +277,38 @@ pub(crate) fn datetime_cell(value: &Val, precision: u8) -> Option<NaiveDateTime>
     wall.checked_sub_signed(chrono::Duration::seconds(offset_seconds(zone)?))
 }
 
+/// Whether `text` is the lower-case canonical text of a uuid: 32 lower-case hex digits in the groups 8-4-4-4-12 (DIA-27).
+pub(crate) fn is_canonical_uuid(text: &str) -> bool {
+    let b = text.as_bytes();
+    b.len() == 36
+        && b.iter().enumerate().all(|(k, &c)| if matches!(k, 8 | 13 | 18 | 23) { c == b'-' } else { c.is_ascii_digit() || (b'a'..=b'f').contains(&c) })
+}
+
+/// A uuid cell as its lower-case canonical text (DIA-27): on PostgreSQL, which reads it as `CAST(col AS text)`, that
+/// text (`text` is true), and on MySQL, MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused with the
+/// message of the uuid type (COD-1).
+pub(crate) fn uuid_cell(value: &Val, text: bool) -> Result<String> {
+    match value {
+        Val::Bytes(bytes) if !text && bytes.len() == 16 => Ok(polyspec_orm_schema::dbspec::uuid_text(bytes)),
+        Val::Bytes(bytes) if text => match std::str::from_utf8(bytes) {
+            Ok(s) if is_canonical_uuid(s) => Ok(s.to_owned()),
+            _ => Err(cell_refusal("uuid")),
+        },
+        Val::Str(s) if text && is_canonical_uuid(s) => Ok(s.clone()),
+        _ => Err(cell_refusal("uuid")),
+    }
+}
+
+/// The 16 bytes that the 32 digits of the canonical text `text` of a uuid write in their order, two digits to a byte
+/// (DIA-27); the text is checked before (PRT-67), so another text is CODEC_ENCODE.
+pub(crate) fn uuid_bytes(text: &str) -> Result<Vec<u8>> {
+    let refused = || Error::Engine { code: codes::CODEC_ENCODE.into(), msg: "uuid value is not a lower-case canonical uuid".into(), source: None };
+    if !is_canonical_uuid(text) {
+        return Err(refused());
+    }
+    polyspec_orm_schema::dbspec::hex_bytes(&text.replace('-', "")).ok_or_else(refused)
+}
+
 /// The cell of a declared model column as the value its column type holds, or the refusal of its type (COD-1, COD-69).
 /// A declared integer column refuses a stored text, which only a text protocol's bytes may carry.
 pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
@@ -294,7 +327,13 @@ pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
         Type::Date => Val::Date(date_cell(&value).ok_or_else(refused)?),
         Type::DateTime(p) => Val::DateTime(datetime_cell(&value, *p).ok_or_else(refused)?),
         Type::Time(p) => Val::Str(time_cell(&value, *p).ok_or_else(refused)?),
-        Type::Varchar(_) | Type::Text | Type::Uuid => match value {
+        // A uuid cell of a selected row is its text already (uuid_cell); a 16-byte cell is read as that text (DIA-27).
+        Type::Uuid => match value {
+            Val::Str(s) if is_canonical_uuid(&s) => Val::Str(s),
+            Val::Bytes(bytes) if bytes.len() == 16 => Val::Str(polyspec_orm_schema::dbspec::uuid_text(&bytes)),
+            _ => return Err(refused()),
+        },
+        Type::Varchar(_) | Type::Text => match value {
             Val::Str(s) => Val::Str(s),
             Val::Bytes(bytes) => Val::Str(String::from_utf8(bytes).map_err(invalid_utf8)?),
             _ => return Err(refused()),

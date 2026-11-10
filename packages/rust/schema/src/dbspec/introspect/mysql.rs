@@ -3,11 +3,11 @@
 use super::super::literal::quote;
 use super::super::model::Type;
 use super::super::names::rendered_column;
-use super::super::render::{Dialect, UUID_PATTERN};
+use super::super::render::Dialect;
 use super::check::{decode_check, escape_mysql_clause, read_sql_string};
 use super::number;
 use super::trigger::ITrigger;
-use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Server};
+use super::{action_name, group, hex_bytes, uuid_text, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Server, TEXT_STORAGE_REASON};
 use regex::Regex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
@@ -78,7 +78,7 @@ pub(super) fn queries(server: Server) -> &'static [&'static str] {
 }
 
 static TYPE_PATTERN: LazyLock<Regex> = super::lazy_pattern!(
-    r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
+    r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|binary\(16\)|char\(36\)|varbinary\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
     "MySQL type pattern"
 );
 
@@ -96,8 +96,9 @@ pub(super) fn read(results: &Results, server: Server) -> Result<Catalog, String>
         }
         c.tables.push(ITable::new(&name));
     }
-    // table: column: type. Used when comparing renderer CHECKs.
-    let mut columns: BTreeMap<String, BTreeMap<String, Type>> = BTreeMap::new();
+    // table: column: type and, for a uuid column in text storage, its COLUMN_TYPE (DIA-144). Used when comparing renderer
+    // CHECKs.
+    let mut columns: BTreeMap<String, BTreeMap<String, (Type, Option<String>)>> = BTreeMap::new();
     // table: column: the catalog type of a type that is determined only when a renderer CHECK exists.
     let mut pending: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for row in results.rows(COLUMNS) {
@@ -137,7 +138,8 @@ pub(super) fn read(results: &Results, server: Server) -> Result<Catalog, String>
             }
         }
         c.table(&table).expect("table read above").columns.push(col);
-        columns.entry(table.clone()).or_default().insert(name.clone(), typ);
+        let text_storage = (typ == Type::Uuid && needs_check != "binary(16)").then(|| column_type.clone());
+        columns.entry(table.clone()).or_default().insert(name.clone(), (typ, text_storage));
         if !needs_check.is_empty() {
             pending.entry(table).or_default().insert(name, needs_check);
         }
@@ -169,13 +171,17 @@ pub(super) fn read(results: &Results, server: Server) -> Result<Catalog, String>
         if name.contains('$') {
             let found = columns.get(&table).and_then(|cols| {
                 let column = rendered_column(&table, &name, cols.keys().map(String::as_str))?;
-                Some((column, cols[column]))
+                Some((column, &cols[column]))
             });
-            let Some((column, _)) = found.filter(|&(column, typ)| without_introducers(&clause) == without_introducers(&renderer_check(server, column, typ)))
-            else {
+            let Some((column, (_, text_storage))) = found.filter(|&(column, (typ, text_storage))| {
+                without_introducers(&clause) == without_introducers(&renderer_check(server, column, *typ, text_storage.as_deref()))
+            }) else {
                 c.report("check", &table, &name, format!("the check {clause} is not the renderer CHECK"));
                 continue;
             };
+            if text_storage.is_some() {
+                c.report("column", &table, column, TEXT_STORAGE_REASON);
+            }
             checked.entry(table.clone()).or_default().insert(column.to_owned(), true);
             continue;
         }
@@ -239,7 +245,11 @@ fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Result<Optio
         "double" => plain(Type::F64, width.is_empty()),
         "longtext" => plain(Type::Text, text),
         "longblob" => plain(Type::Bytes, true),
+        "binary(16)" => Some((Type::Uuid, column_type.to_owned())),
+        // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
         "char(36)" => (charset == "ascii" && collation == "ascii_bin").then(|| (Type::Uuid, column_type.to_owned())),
+        // The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109).
+        "varbinary(36)" => Some((Type::Uuid, column_type.to_owned())),
         "date" => plain(Type::Date, width.is_empty()),
         "time" => match &fractional {
             Ok(precision) => Some((Type::Time(*precision), column_type.to_owned())),
@@ -332,22 +342,42 @@ fn without_introducers(clause: &str) -> String {
 /// The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection",
 /// "Checks"). A type without a renderer CHECK is an empty string. MariaDB writes it without the outer parentheses and the
 /// introducers, in the escaped form that [`read`] gives its CHECK_CLAUSE (probes mariadb.check.catalog_text,
-/// mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
-fn renderer_check(server: Server, column: &str, typ: Type) -> String {
+/// mariadb.render.bool_check, mariadb.render.uuid_bytes, mariadb.render.time_of_day_check; DIA-203). `text_storage` is the
+/// COLUMN_TYPE of a uuid column in text storage, whose CHECK is [`text_storage_check`].
+fn renderer_check(server: Server, column: &str, typ: Type, text_storage: Option<&str>) -> String {
     let c = format!("`{column}`");
+    if let Some(column_type) = text_storage {
+        return text_storage_check(server, &c, column_type);
+    }
     if server == Server::MariaDb {
         return match typ {
             Type::Bool => format!("{c} in (0,1)"),
-            Type::Uuid => format!("{c} regexp \\'{UUID_PATTERN}\\'"),
+            // MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes).
+            Type::Uuid => format!("octet_length({c}) = 16"),
             Type::Time(_) => format!("{c} >= \\'00:00:00\\' and {c} < \\'24:00:00\\'"),
             _ => String::new(),
         };
     }
     match typ {
         Type::Bool => format!("({c} in (0,1))"),
-        Type::Uuid => format!("regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\')"),
+        Type::Uuid => format!("(length({c}) = 16)"),
         Type::Time(_) => format!("(({c} >= _utf8mb4\\'00:00:00\\') and ({c} < _utf8mb4\\'24:00:00\\'))"),
         _ => String::new(),
+    }
+}
+
+/// The pattern of the CHECK of the text storage of a uuid (DIA-144).
+const UUID_PATTERN: &str = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+
+/// The CHECK_CLAUSE of a uuid column `c` (quoted) in text storage (DIA-144): the pattern CHECK of a char(36) column that a
+/// release up to 0.0.28 rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the CHECK of a varbinary(36)
+/// column whose conversion stopped (PLN-109).
+fn text_storage_check(server: Server, c: &str, column_type: &str) -> String {
+    match (column_type, server) {
+        ("varbinary(36)", Server::MariaDb) => format!("octet_length({c}) in (16,36)"),
+        ("varbinary(36)", _) => format!("(length({c}) in (16,36))"),
+        (_, Server::MariaDb) => format!("{c} regexp \\'{UUID_PATTERN}\\'"),
+        _ => format!("regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\',_utf8mb4\\'c\\')"),
     }
 }
 
@@ -393,6 +423,9 @@ static NUMBER: LazyLock<Regex> = super::lazy_pattern!(r"^-?[0-9]+(\.[0-9]+)?(e[-
 /// A clock default of MariaDB's COLUMN_DEFAULT, `current_timestamp()` or `current_timestamp(p)`.
 static MARIADB_CLOCK: LazyLock<Regex> = super::lazy_pattern!(r"^current_timestamp\(([1-6]?)\)$", "MariaDB clock default pattern");
 
+/// A binary default of MariaDB's COLUMN_DEFAULT.
+static MARIADB_HEX_LITERAL: LazyLock<Regex> = super::lazy_pattern!(r"^x'([0-9a-f]{2})*'$", "MariaDB hex literal pattern");
+
 /// Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL
 /// for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as written, and an
 /// expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe mariadb.default.catalog_text). MySQL gives a
@@ -415,6 +448,11 @@ fn mariadb_default(dflt: Option<String>, extra: String) -> Result<(Option<String
     }
     if NUMBER.is_match(&text) {
         return Ok((Some(text), extra));
+    }
+    if MARIADB_HEX_LITERAL.is_match(&text) {
+        // MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case hex
+        // (probe mariadb.render.uuid_bytes).
+        return Ok((Some(format!("0x{}", text[2..text.len() - 1].to_uppercase())), extra));
     }
     let generated = "DEFAULT_GENERATED".to_owned();
     if let Some(m) = MARIADB_CLOCK.captures(&text) {
@@ -440,6 +478,13 @@ fn mysql_default(value: &str, typ: Type) -> String {
         Type::Bool if value == "1" => "true".to_owned(),
         Type::Bool if value == "0" => "false".to_owned(),
         Type::I16 | Type::I32 | Type::I64 | Type::Decimal(..) | Type::F64 => value.to_owned(),
+        // A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of the text of
+        // a varbinary(36) column whose conversion stopped (PLN-109).
+        Type::Uuid => match value.strip_prefix("0x").and_then(hex_bytes) {
+            Some(b) if b.len() == 16 => quote(&uuid_text(&b)),
+            Some(b) => String::from_utf8(b).map_or_else(|_| quote(value), |text| quote(&text)),
+            None => quote(value),
+        },
         _ => quote(value),
     }
 }

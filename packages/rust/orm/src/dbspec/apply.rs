@@ -6,7 +6,10 @@
 //! its recorded one; [`rollback`] undoes the last plan with its rollback
 //! statements; [`finalize`] drops what the applied plans hid.
 
-use super::{chain, check_server, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep, Server};
+use super::{
+    chain, check_server, introspect, manifest, mysql_uuid_conversion, plan_steps, sqlite_uuid_conversion, CatalogQuerier, CatalogValue, Dialect, Effect,
+    IntrospectError, MySqlTextStorage, Plan, PlanStep, Server, TextStorage, CONVERT_SAVEPOINT, TEXT_STORAGE_REASON,
+};
 use chrono::{DateTime, Utc};
 use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
@@ -43,6 +46,9 @@ pub enum ApplyEventKind {
     Verified,
     /// The plan reached its state.
     Done,
+    /// Statement `step` of the conversion of the uuid columns in text storage to 16 bytes is about to run (PLN-108);
+    /// it names no plan.
+    Convert,
 }
 
 impl ApplyEventKind {
@@ -57,6 +63,7 @@ impl ApplyEventKind {
             ApplyEventKind::Applied => "applied",
             ApplyEventKind::Verified => "verified",
             ApplyEventKind::Done => "done",
+            ApplyEventKind::Convert => "convert",
         }
     }
 }
@@ -79,7 +86,7 @@ pub type ApplyEventError = Box<dyn std::error::Error + Send + Sync>;
 /// The failure of [`apply`], [`recover`], [`rollback`] and [`finalize`]. The
 /// coded failures of docs/spec/plans.md carry their code through
 /// [`ApplyError::code`]: locked, session, interrupted, drift, chain, failed, verify,
-/// irreversible and nulls.
+/// irreversible, nulls and convert.
 #[derive(Debug)]
 pub enum ApplyError {
     /// Another session holds the lock; nothing changed.
@@ -106,6 +113,9 @@ pub enum ApplyError {
     /// A column that the rollback of step `step` makes non-null has NULL rows
     /// and no default; nothing changed.
     Nulls { plan: String, step: usize, message: String },
+    /// Statement `step` of the conversion of the uuid columns in text storage to 16 bytes failed, or a read that the
+    /// conversion needs failed with an empty `statement` (PLN-108).
+    Convert { step: usize, statement: String, source: sqlx::Error },
     /// A history, lock or setting statement failed.
     Database(sqlx::Error),
     /// An event handler stopped the command.
@@ -134,6 +144,7 @@ impl ApplyError {
             ApplyError::Verify { .. } => Some("verify"),
             ApplyError::Irreversible { .. } => Some("irreversible"),
             ApplyError::Nulls { .. } => Some("nulls"),
+            ApplyError::Convert { .. } => Some("convert"),
             ApplyError::Database(_) | ApplyError::Event(_) | ApplyError::LockNotHeld { .. } => None,
             ApplyError::Cleanup { error, .. } => error.code(),
         }
@@ -156,6 +167,8 @@ impl std::fmt::Display for ApplyError {
             ApplyError::Verify { plan, message, .. } => write!(f, "verify {plan}: {message}"),
             ApplyError::Irreversible { plan, step, message } => write!(f, "irreversible {plan} at step {step}: {message}"),
             ApplyError::Nulls { plan, step, message } => write!(f, "nulls {plan} at step {step}: {message}"),
+            ApplyError::Convert { step, statement, source } if statement.is_empty() => write!(f, "convert at step {step}: {source}"),
+            ApplyError::Convert { step, statement, source } => write!(f, "convert at step {step}: {statement}: {source}"),
             ApplyError::Database(e) => write!(f, "{e}"),
             ApplyError::Event(e) => write!(f, "{e}"),
             ApplyError::LockNotHeld { message } => write!(f, "{message}"),
@@ -167,7 +180,10 @@ impl std::fmt::Display for ApplyError {
 impl std::error::Error for ApplyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ApplyError::Locked { source: Some(e), .. } | ApplyError::Failed { source: e, .. } | ApplyError::Database(e) => Some(e),
+            ApplyError::Locked { source: Some(e), .. }
+            | ApplyError::Failed { source: e, .. }
+            | ApplyError::Convert { source: e, .. }
+            | ApplyError::Database(e) => Some(e),
             ApplyError::Verify { source: Some(e), .. } => Some(e),
             ApplyError::Event(e) => Some(e.as_ref()),
             ApplyError::Cleanup { error, .. } => Some(error.as_ref()),
@@ -751,6 +767,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     message: format!("the recorded step {step} is outside the plan's {} steps", steps.len()),
                 });
             }
+            let position = self.chain.iter().position(|c| std::ptr::eq(*c, p)).expect("the last recorded plan is a plan of the chain") + 1;
+            self.convert(position).await?;
             self.verify(Some(p.to())).await.map_err(|error| drift_or_verification_error(Some(p.name().to_owned()), error))?;
             step
         } else {
@@ -900,8 +918,124 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             }
             want = Some(p.to());
         }
+        self.convert(position).await?;
         self.verify(want).await.map_err(|error| drift_or_verification_error(None, error))?;
         Ok(position)
+    }
+
+    /// Converts the uuid columns in the text storage of a release up to 0.0.28 to 16 bytes, before the drift check and
+    /// before any plan (PLN-108). It converts nothing on PostgreSQL, on a database with no recorded plan, and when an
+    /// unsupported object other than such a column exists or the schema with such columns read as uuid is not the state;
+    /// the drift check then reports the database.
+    async fn convert(&mut self, position: usize) -> Result<(), ApplyError> {
+        if self.d == Dialect::Postgres || position == 0 {
+            return Ok(());
+        }
+        let state = self.chain[position - 1];
+        let introspection = introspect(&mut *self.c, self.d, self.server, "schema")
+            .await
+            .map_err(|error| verification_error(String::new(), VerifyError::Introspection(error)))?;
+        let mut text = TextStorage::new();
+        for u in &introspection.unsupported {
+            if u.kind != "column" || u.reason != TEXT_STORAGE_REASON {
+                return Ok(());
+            }
+            text.entry(u.table.clone()).or_default().push(u.name.clone());
+        }
+        if text.is_empty() {
+            return Ok(());
+        }
+        // A dropped foreign key is missing only while its table holds a column in text storage (PLN-109).
+        let mut live = introspection.document;
+        let mut read = MySqlTextStorage::default();
+        for t in &mut live.tables {
+            let Some(want) = state.schema().tables.iter().find(|w| w.name.text == t.name.text) else { continue };
+            if !text.contains_key(&t.name.text) {
+                continue;
+            }
+            for f in &want.foreign_keys {
+                if !t.foreign_keys.iter().any(|g| g.name.text == f.name.text) {
+                    t.foreign_keys.push(f.clone());
+                    read.missing.entry(t.name.text.clone()).or_default().push(f.clone());
+                }
+            }
+        }
+        match manifest(&[&live]) {
+            Ok(m) if m.schema_hash == state.to() => {}
+            _ => return Ok(()),
+        }
+        let statements = if self.d == Dialect::MySql {
+            self.mysql_text_storage(&text, &mut read).await?;
+            mysql_uuid_conversion(state.schema(), &text, &read)
+        } else {
+            sqlite_uuid_conversion(state.schema(), &text)
+        };
+        let mut open = false;
+        for (i, statement) in statements.iter().enumerate() {
+            let event = ApplyEvent { kind: ApplyEventKind::Convert, plan: String::new(), step: i, steps: 0, statement: statement.clone() };
+            if let Err(error) = (self.events)(&event) {
+                return Err(self.end_conversion(open, ApplyError::Event(error)).await);
+            }
+            if let Err(source) = self.c.execute(statement).await {
+                return Err(self.end_conversion(open, ApplyError::Convert { step: i, statement: statement.clone(), source }).await);
+            }
+            if statement.starts_with("SAVEPOINT ") {
+                open = true;
+            } else if statement.starts_with("RELEASE ") {
+                open = false;
+            }
+        }
+        Ok(())
+    }
+
+    /// Reads what the MySQL conversion depends on (PLN-109): the COLUMN_TYPE of each column in text storage, and whether
+    /// it holds a 36-byte text.
+    async fn mysql_text_storage(&mut self, text: &TextStorage, read: &mut MySqlTextStorage) -> Result<(), ApplyError> {
+        let failed = |source: sqlx::Error| ApplyError::Convert { step: 0, statement: String::new(), source };
+        for (t, columns) in text {
+            for c in columns {
+                let query = "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+                let rows = self.c.query_bound(query, &[CatalogValue::Text(t.clone()), CatalogValue::Text(c.clone())]).await.map_err(failed)?;
+                let column_type = match rows.as_slice() {
+                    [row, ..] => match row.as_slice() {
+                        [CatalogValue::Text(column_type)] => column_type.clone(),
+                        other => return Err(failed(protocol(format!("{query} returned {other:?}")))),
+                    },
+                    [] => return Err(failed(protocol(format!("{query} returned no row")))),
+                };
+                read.column_types.entry(t.clone()).or_default().insert(c.clone(), column_type);
+            }
+        }
+        for (t, columns) in text {
+            for c in columns {
+                let (table, column) = (quote(self.d, t), quote(self.d, c));
+                let query = format!("SELECT COUNT(*) FROM (SELECT 1 FROM {table} WHERE length({column}) = 36 LIMIT 1) x");
+                let rows = self.c.query_bound(&query, &[]).await.map_err(failed)?;
+                let n = match rows.as_slice() {
+                    [row, ..] => match row.as_slice() {
+                        [CatalogValue::Int(n)] => *n,
+                        other => return Err(failed(protocol(format!("{query} returned {other:?}")))),
+                    },
+                    [] => return Err(failed(protocol(format!("{query} returned no row")))),
+                };
+                if n > 0 {
+                    read.texts.insert((t.clone(), c.clone()));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns `error` after a stop or a failure of the conversion; inside the SQLite rebuild of a table it rolls the
+    /// table back first, so that the table is kept as it was (PLN-110).
+    async fn end_conversion(&mut self, open: bool, error: ApplyError) -> ApplyError {
+        if !open {
+            return error;
+        }
+        let back = self.exec(&format!("ROLLBACK TO {CONVERT_SAVEPOINT}")).await;
+        let result = settle(Err(error), back);
+        let release = self.exec(&format!("RELEASE {CONVERT_SAVEPOINT}")).await;
+        settle(result, release).expect_err("a failure stays a failure")
     }
 
     /// The database's introspection has the `want` schemaHash (None means an empty database), and

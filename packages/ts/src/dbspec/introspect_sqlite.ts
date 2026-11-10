@@ -1,7 +1,7 @@
 // Reads SQLite's main database as a catalog (docs/spec/dialects.md "Introspection").
 // Joins sqlite_master and the table-valued pragmas to read all tables at once.
 import { present } from '../present.js';
-import { actionName, Catalog, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
+import { actionName, Catalog, quote, tableTypes, TEXT_STORAGE_REASON, uuidText, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck, unscaledDecimal } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecType } from './model.js';
@@ -99,11 +99,16 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
       identity = true;
     } else {
       const read = sqliteType(renderer, declared, name, check);
-      if (read === null) {
+      if (read === null && declared === 'TEXT' && check !== undefined && check === textStorageCheck(name)) {
+        // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
+        type = { kind: 'uuid' };
+        c.report('column', table, name, TEXT_STORAGE_REASON);
+      } else if (read === null) {
         c.report('column', table, name, `declared type ${declared} with CHECK ${JSON.stringify(check ?? '')} has no dbspec type`);
         continue;
+      } else {
+        type = read;
       }
-      type = read;
     }
     st.checks.delete(checkName);
     let value = '';
@@ -187,10 +192,10 @@ function sqliteType(r: Renderer, declared: string, column: string, check: string
         candidates = [{ kind: 'f64' }];
         break;
       case 'TEXT':
-        candidates = [{ kind: 'text' }, { kind: 'uuid' }];
+        candidates = [{ kind: 'text' }];
         break;
       case 'BLOB':
-        candidates = [{ kind: 'bytes' }];
+        candidates = [{ kind: 'bytes' }, { kind: 'uuid' }];
         break;
       case 'DATE':
         candidates = [{ kind: 'date' }];
@@ -210,10 +215,21 @@ function sqliteType(r: Renderer, declared: string, column: string, check: string
   return null;
 }
 
+/** The GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144). */
+function textStorageCheck(column: string): string {
+  const hex = (n: number): string => '[0-9a-f]'.repeat(n);
+  return `"${column}" GLOB '${hex(8)}-${hex(4)}-${hex(4)}-${hex(4)}-${hex(12)}'`;
+}
+
+/** A uuid default as the renderer writes it on SQLite, X' and the 32 hex digits of its 16 bytes (DIA-123). */
+const UUID_DEFAULT = /^X'([0-9a-f]{32})'$/;
+
 /** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale, and bool is 1 or 0. Returns null if it cannot be read. */
 function sqliteDefault(r: Renderer, text: string, type: DbspecType): string | null {
   if (type.kind === 'datetime' && `(${text})` === r.defaultText(type, { kind: 'now' })) return 'now';
   if (type.kind === 'bool' && (text === '1' || text === '0')) return text === '1' ? 'true' : 'false';
+  const uuid = type.kind === 'uuid' ? UUID_DEFAULT.exec(text) : null;
+  if (uuid !== null) return quote(uuidText(Buffer.from(present(uuid[1], 'uuid[1]'), 'hex')));
   if (type.kind === 'decimal' && NUMBER_DEFAULT.test(text)) return unscaledDecimal(text, type.scale);
   if (NUMBER_DEFAULT.test(text)) return text;
   if (text.startsWith("'") && text.endsWith("'")) return text;

@@ -779,7 +779,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
                 catalog_report(c, SL("column"), e->name, a->name, fmt("type %S is not a dbspec type", a->type));
                 continue;
             }
-            icolumn col = {a->name, type, false, false, SL("")};
+            icolumn col = {a->name, type, false, false, SL(""), false, SL("")};
             if (a->comment.n > 0 && !column_suffix(a->comment, &col)) {
                 catalog_report(c, SL("comment"), e->name, a->name, fmt("the comment %S is not a dbspec column suffix", quoted(a->comment)));
             }

@@ -18,6 +18,17 @@ export interface DbspecUnsupported {
   readonly reason: string;
 }
 
+/**
+ * The reason of the unsupported column of a uuid in text storage (DIA-144), which dbspec apply converts to 16 bytes (PLN-108).
+ */
+export const TEXT_STORAGE_REASON = 'uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes';
+
+/** The lower-case canonical text of the 16 bytes b of a uuid (DIA-27). */
+export function uuidText(b: Uint8Array): string {
+  const hex = Buffer.from(b).toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 /** An expected failure while converting catalog data into a dbspec document. */
 export class CatalogDocumentBuildError extends Error {}
 

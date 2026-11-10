@@ -2716,7 +2716,7 @@
                 },
                 {
                   "effect": "absent constraint flags flags$ref",
-                  "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$ref` CHECK (`ref` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')",
+                  "rollback": "ALTER TABLE `flags` ADD CONSTRAINT `flags$ref` CHECK (length(`ref`) = 16)",
                   "statement": "ALTER TABLE `flags` DROP CONSTRAINT `flags$ref`"
                 },
                 {
@@ -2742,7 +2742,7 @@
                 {
                   "effect": "present constraint switches switches$ref",
                   "rollback": "ALTER TABLE `switches` DROP CONSTRAINT `switches$ref`",
-                  "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$ref` CHECK (`ref` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')"
+                  "statement": "ALTER TABLE `switches` ADD CONSTRAINT `switches$ref` CHECK (length(`ref`) = 16)"
                 }
               ]
             }
@@ -2809,7 +2809,7 @@
                 {
                   "effect": "present table dbspec$rebuild",
                   "rollback": "DROP TABLE \"dbspec$rebuild\"",
-                  "statement": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" TEXT NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (\"ref\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))"
+                  "statement": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" BLOB NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (typeof(\"ref\") IN ('blob', 'null') AND length(\"ref\") = 16), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))"
                 },
                 {
                   "effect": "present sequence dbspec$rebuild",
@@ -2833,13 +2833,13 @@
                 },
                 {
                   "effect": "absent table switches",
-                  "rollback": "CREATE TABLE \"switches\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" TEXT NULL, \"at\" TIME NULL, CONSTRAINT \"flags$active\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"flags$ref\" CHECK (\"ref\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"flags$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))",
+                  "rollback": "CREATE TABLE \"switches\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" BLOB NULL, \"at\" TIME NULL, CONSTRAINT \"flags$active\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"flags$ref\" CHECK (typeof(\"ref\") IN ('blob', 'null') AND length(\"ref\") = 16), CONSTRAINT \"flags$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))",
                   "statement": "DROP TABLE \"switches\""
                 },
                 {
                   "effect": "present table switches",
                   "rollback": "DROP TABLE \"switches\"",
-                  "statement": "CREATE TABLE \"switches\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" TEXT NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (\"ref\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))"
+                  "statement": "CREATE TABLE \"switches\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" BLOB NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (typeof(\"ref\") IN ('blob', 'null') AND length(\"ref\") = 16), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))"
                 },
                 {
                   "effect": "present sequence switches",
@@ -2863,7 +2863,7 @@
                 },
                 {
                   "effect": "absent table dbspec$rebuild",
-                  "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" TEXT NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (\"ref\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))",
+                  "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" BLOB NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (typeof(\"ref\") IN ('blob', 'null') AND length(\"ref\") = 16), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))",
                   "statement": "DROP TABLE \"dbspec$rebuild\""
                 }
               ]

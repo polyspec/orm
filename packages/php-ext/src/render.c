@@ -8,8 +8,6 @@
 
 const char *const dbs_dialect_names[3] = {"mysql", "postgres", "sqlite"};
 
-#define UUID_PATTERN "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-
 bool dbs_dialect(str name, dialect *out)
 {
     for (int i = 0; i < 3; i++) {
@@ -90,7 +88,7 @@ str r_type_text(renderer *r, const ctype *t)
             if (IS("varchar")) return fmt("varchar(%d) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin", p0);
             if (IS("text")) return SL("LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin");
             if (IS("bytes")) return SL("LONGBLOB");
-            if (IS("uuid")) return SL("char(36) CHARACTER SET ascii COLLATE ascii_bin");
+            if (IS("uuid")) return SL("BINARY(16)");
             if (IS("date")) return SL("DATE");
             if (IS("time")) return fmt("TIME(%d)", p0);
             if (IS("datetime")) return fmt("DATETIME(%d)", p0);
@@ -118,8 +116,8 @@ str r_type_text(renderer *r, const ctype *t)
             if (IS("decimal")) return fmt("DECIMALINT(%d,%d)", p0, p1);
             if (IS("f64")) return SL("REAL");
             if (IS("varchar")) return fmt("varchar(%d)", p0);
-            if (IS("text") || IS("uuid")) return SL("TEXT");
-            if (IS("bytes")) return SL("BLOB");
+            if (IS("text")) return SL("TEXT");
+            if (IS("bytes") || IS("uuid")) return SL("BLOB");
             if (IS("date")) return SL("DATE");
             if (IS("time")) return SL("TIME");
             if (IS("datetime")) return SL("DATETIME");
@@ -155,6 +153,10 @@ static str r_literal(renderer *r, const ctype *t, str text)
             return str_upper(text);
         }
         return str_eqc(text, "true") ? SL("1") : SL("0");
+    }
+    if (str_eqc(t->name, "uuid") && r->d != D_POSTGRES) {
+        /* A uuid default is the 16 bytes of its canonical text on MySQL and SQLite (DIA-123). */
+        return fmt("X'%S'", str_replace(str_trim_set(text, "'"), "-", ""));
     }
     if (str_starts(text, "'")) {
         return r->d == D_MYSQL ? str_replace(text, "\\", "\\\\") : text;
@@ -226,9 +228,9 @@ str r_type_check(renderer *r, const column *c)
 #define IS(x) str_eqc(t->name, x)
     if (r->d == D_MYSQL) {
         if (IS("bool")) return fmt("%S IN (0, 1)", q);
-        /* REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
-         * mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48). */
-        if (IS("uuid")) return fmt("%S REGEXP '" UUID_PATTERN "'", q);
+        /* BINARY(16) pads a shorter value, so the CHECK holds every stored value and is the named marker that tells a uuid
+         * from a bytes column (probes mysql.render.uuid_bytes, mariadb.render.uuid_bytes; DIA-48, DIA-144). */
+        if (IS("uuid")) return fmt("length(%S) = 16", q);
         if (IS("time")) return fmt("%S >= '00:00:00' AND %S < '24:00:00'", q, q);
         return SL("");
     }
@@ -246,10 +248,9 @@ str r_type_check(renderer *r, const column *c)
     }
     if (IS("f64")) return fmt("typeof(%S) IN ('real', 'null')", q);
     if (IS("varchar")) return fmt("length(%S) <= %d", q, t->p[0]);
-    if (IS("uuid")) {
-        str h8 = str_repeat("[0-9a-f]", 8), h4 = str_repeat("[0-9a-f]", 4), h12 = str_repeat("[0-9a-f]", 12);
-        return fmt("%S GLOB '%S-%S-%S-%S-%S'", q, h8, h4, h4, h4, h12);
-    }
+    /* A uuid is a BLOB of 16 bytes; the CHECK is the named marker that tells it from a bytes column (probe
+     * sqlite.render.uuid_bytes; DIA-48, DIA-144). */
+    if (IS("uuid")) return fmt("typeof(%S) IN ('blob', 'null') AND length(%S) = 16", q, q);
     if (IS("date")) return fmt("%S IS date(%S)", q, q);
     if (IS("time")) {
         zend_long p = t->p[0];

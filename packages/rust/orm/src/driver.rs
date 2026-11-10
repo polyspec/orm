@@ -807,6 +807,7 @@ pub(crate) fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<
         decode_declared_text_columns(asm, &mut data)?;
     }
     decode_boolean_columns(asm, &mut data)?;
+    crate::row::decode_uuid_columns(asm, &mut data, matches!(raw.first(), Some(DriverRow::Postgres(_))))?;
     Ok(data)
 }
 

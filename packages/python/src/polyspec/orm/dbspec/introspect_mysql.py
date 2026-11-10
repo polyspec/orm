@@ -3,10 +3,12 @@
 import re
 
 from polyspec.orm.dbspec.introspect_catalog import (
+    TEXT_STORAGE_REASON,
     Catalog,
     action_name,
     quote,
     table_types,
+    uuid_text,
 )
 from polyspec.orm.dbspec.names import rendered_column
 from polyspec.orm.dbspec.introspect_check import (
@@ -62,8 +64,8 @@ _EVENTS_QUERY = (
 )
 
 _TYPE_PATTERN = re.compile(
-    r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|"
-    r"time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$"
+    r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|binary\(16\)|"
+    r"char\(36\)|varbinary\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$"
 )
 
 _INTRODUCER = re.compile(r"_[a-z0-9]+\\\'")
@@ -126,6 +128,11 @@ def read_mysql(query, server: str) -> Catalog:
             "nullable": nullable == "YES",
             "identity": False,
             "dflt": "",
+            # A uuid column in the text storage of a release up to 0.0.28, or of a conversion that stopped (DIA-144,
+            # PLN-108); column_type is its COLUMN_TYPE.
+            "text_storage": read["type"].kind == "uuid"
+            and read["needs_check"] != "binary(16)",
+            "column_type": column_type,
         }
         extra = extra.strip()
         if extra == "auto_increment":
@@ -196,6 +203,8 @@ def read_mysql(query, server: str) -> Catalog:
                     f"the check {clause} is not the renderer CHECK",
                 )
                 continue
+            if col["text_storage"]:
+                c.report("column", table, column, TEXT_STORAGE_REASON)
             checked.setdefault(table, set()).add(column)
             continue
         try:
@@ -265,7 +274,13 @@ def _mysql_type(column_type: str, charset: str, collation: str):
         return result(DbspecType("text"), "", text)
     if word == "longblob":
         return result(DbspecType("bytes"), "", True)
+    if word == "binary(16)":
+        return result(DbspecType("uuid"), column_type, True)
+    if word == "varbinary(36)":
+        # The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109).
+        return result(DbspecType("uuid"), column_type, True)
     if word == "char(36)":
+        # The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
         return result(
             DbspecType("uuid"),
             column_type,
@@ -358,6 +373,10 @@ def _check_key(server: str, table: str, name: str) -> str:
 _MYSQL_NUMBER = re.compile(r"^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?\Z")
 # A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p).
 _MARIADB_CLOCK = re.compile(r"^current_timestamp\(([1-6]?)\)\Z")
+# The hex digits of a binary default of MySQL's COLUMN_DEFAULT after its 0x.
+_HEX_DIGITS = re.compile(r"^[0-9A-Fa-f]*\Z")
+# A binary default of MariaDB's COLUMN_DEFAULT.
+_MARIADB_HEX_LITERAL = re.compile(r"^x'([0-9a-f]{2})*'\Z")
 
 
 def _mariadb_default(dflt, extra: str):
@@ -381,6 +400,10 @@ def _mariadb_default(dflt, extra: str):
         return value, extra
     if _MYSQL_NUMBER.match(dflt):
         return dflt, extra
+    if _MARIADB_HEX_LITERAL.match(dflt):
+        # MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case hex
+        # (probe mariadb.render.uuid_bytes).
+        return "0x" + dflt[2:-1].upper(), extra
     m = _MARIADB_CLOCK.match(dflt)
     if m is not None:
         if m.group(1) == "":
@@ -402,24 +425,41 @@ def _renderer_check(server: str, col: dict) -> str:
     """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md
     "Introspection", "Checks"). MariaDB writes it without the outer parentheses and the introducers, in the escaped
     form that read_mysql gives its CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check,
-    mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203)."""
+    mariadb.render.uuid_bytes, mariadb.render.time_of_day_check; DIA-203)."""
     c = f"`{col['name']}`"
+    if col["text_storage"]:
+        return _text_storage_check(server, col)
     kind = col["type"].kind
     if server == "mariadb":
         if kind == "bool":
             return f"{c} in (0,1)"
         if kind == "uuid":
-            return f"{c} regexp \\'{UUID_PATTERN}\\'"
+            # MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes).
+            return f"octet_length({c}) = 16"
         if kind == "time":
             return f"{c} >= \\'00:00:00\\' and {c} < \\'24:00:00\\'"
         return ""
     if kind == "bool":
         return f"({c} in (0,1))"
     if kind == "uuid":
-        return f"regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\')"
+        return f"(length({c}) = 16)"
     if kind == "time":
         return f"(({c} >= _utf8mb4\\'00:00:00\\') and ({c} < _utf8mb4\\'24:00:00\\'))"
     return ""
+
+
+def _text_storage_check(server: str, col: dict) -> str:
+    """The CHECK_CLAUSE of a uuid column in text storage (DIA-144): the pattern CHECK of a char(36) column that a release
+    up to 0.0.28 rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the CHECK of a varbinary(36)
+    column whose conversion stopped (PLN-109)."""
+    c = f"`{col['name']}`"
+    if col["column_type"] == "varbinary(36)" and server == "mariadb":
+        return f"octet_length({c}) in (16,36)"
+    if col["column_type"] == "varbinary(36)":
+        return f"(length({c}) in (16,36))"
+    if server == "mariadb":
+        return f"{c} regexp \\'{UUID_PATTERN}\\'"
+    return f"regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\',_utf8mb4\\'c\\')"
 
 
 def _mysql_now(text: str, type_: DbspecType) -> bool:
@@ -443,6 +483,16 @@ def _mysql_default(value: str, type_: DbspecType) -> str:
         return quote(value)
     if type_.kind in ("i16", "i32", "i64", "decimal", "f64"):
         return value
+    if type_.kind == "uuid" and value.startswith("0x"):
+        # A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of the
+        # text of a varbinary(36) column whose conversion stopped (PLN-109).
+        digits = value[2:]
+        if len(digits) % 2 != 0 or _HEX_DIGITS.match(digits) is None:
+            return quote(value)
+        b = bytes.fromhex(digits)
+        if len(b) == 16:
+            return quote(uuid_text(b))
+        return quote(b.decode("utf-8", "surrogateescape"))
     return quote(value)
 
 

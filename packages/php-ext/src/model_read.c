@@ -1,5 +1,6 @@
 /* Native result assembly and read terminals for Polyspec\Orm\Model. */
 #include "model_read.h"
+#include "uuid_text.h"
 #include "model_output.h"
 #include "codec.h"
 #include "model_state.h"
@@ -20,7 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, zval *zone,
+static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, bool text_uuid, zval *zone,
     zval *out);
 static bool cell_refuse(zend_string *entity, zend_string *name, const char *type, zend_object *previous);
 static bool split_sum_value(zval **parts, zval *flag, bool *non_integer, zval *out);
@@ -380,6 +381,8 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
     zend_string *entity = Z_STR_P(entity_value);
     if (!read_call(db, "dialect", &driver, 0, NULL)) { zval_ptr_dtor(&meta); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
     bool sqlite = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "sqlite");
+    /* PostgreSQL reads a uuid cell as its text, CAST(col AS text), and every other database as its 16 bytes (DIA-27). */
+    bool text_uuid = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "postgres");
     zval_ptr_dtor(&driver);
     zval values; array_init(&values);
     const char *convert_groups[] = {"int", "float", "decimal", "bool", "date", "string", "codec"};
@@ -416,7 +419,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                         zend_string_release(message);
                     }
                 } else {
-                    converted_ok = cell_value(entity, Z_STR_P(column_name), column, raw, sqlite, !sqlite, zone, &converted);
+                    converted_ok = cell_value(entity, Z_STR_P(column_name), column, raw, sqlite, !sqlite, text_uuid, zone, &converted);
                 }
                 if (!converted_ok) {
                     zval_ptr_dtor(&meta); zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();
@@ -453,7 +456,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                 ZVAL_LONG(&precision, 6);
                 zend_hash_str_update(Z_ARRVAL(column), "type", sizeof("type") - 1, &kind_copy);
                 zend_hash_str_update(Z_ARRVAL(column), "precision", sizeof("precision") - 1, &precision);
-                bool ok = cell_value(entity, Z_STR_P(name), &column, raw, sqlite, true, zone, &cell);
+                bool ok = cell_value(entity, Z_STR_P(name), &column, raw, sqlite, true, text_uuid, zone, &cell);
                 zval_ptr_dtor(&column);
                 if (ok && Z_TYPE(cell) == IS_OBJECT && Z_OBJCE(cell) == polyspec_pending_time_ce) {
                     zval *text = zend_read_property(polyspec_pending_time_ce, Z_OBJ(cell), ZEND_STRL("text"), 1, NULL);
@@ -805,13 +808,13 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     zval *type=declared!=NULL?read_array(declared,"type"):read_array(column,"type");if(type==NULL||Z_TYPE_P(type)!=IS_STRING){zval_ptr_dtor(&meta);read_throw("INTERNAL","group column has no type");RETURN_THROWS();}
     if(read_string_is(type,"decimal")&&declared==NULL){zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"decimal group column %s has no declaration",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}
     zval *entity=read_array(&meta,"entity");if(entity==NULL||Z_TYPE_P(entity)!=IS_STRING){zval_ptr_dtor(&meta);read_throw("INTERNAL","the model metadata names no entity");RETURN_THROWS();}
-    zval driver,zone;if(!read_call(db,"dialect",&driver,0,NULL)){zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");zval_ptr_dtor(&driver);
+    zval driver,zone;if(!read_call(db,"dialect",&driver,0,NULL)){zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");bool text_uuid=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"postgres");zval_ptr_dtor(&driver);
     if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&meta);RETURN_THROWS();}
     /* A group column is refused as a model column is, by its entity and name (COD-1), and reads an integer from its exact
      * digits on every database; a datetime of an expression has the precision 6. */
     zval fallback,cell;bool use_fallback=declared==NULL;
     if(use_fallback){zval type_copy,precision;array_init(&fallback);ZVAL_COPY(&type_copy,type);ZVAL_LONG(&precision,6);zend_hash_str_update(Z_ARRVAL(fallback),"type",sizeof("type")-1,&type_copy);zend_hash_str_update(Z_ARRVAL(fallback),"precision",sizeof("precision")-1,&precision);}
-    bool ok=cell_value(Z_STR_P(entity),Z_STR_P(name),use_fallback?&fallback:declared,raw,sqlite,true,&zone,&cell);
+    bool ok=cell_value(Z_STR_P(entity),Z_STR_P(name),use_fallback?&fallback:declared,raw,sqlite,true,text_uuid,&zone,&cell);
     if(use_fallback)zval_ptr_dtor(&fallback);
     if(ok&&Z_TYPE(cell)==IS_OBJECT&&Z_OBJCE(cell)==polyspec_pending_time_ce){zval *text=zend_read_property(polyspec_pending_time_ce,Z_OBJ(cell),ZEND_STRL("text"),1,NULL);ok=text!=NULL&&model_time_value_in_zone(text,&zone,Z_STRVAL_P(type),return_value);zval_ptr_dtor(&cell);}
     else if(ok)ZVAL_COPY_VALUE(return_value,&cell);
@@ -1026,6 +1029,7 @@ static zend_string *cell_message(const char *type)
         return strpprintf(0, "%s cell is not a %s", type, type);
     }
     if (!strcmp(type, "bytes")) return zend_string_init(ZEND_STRL("bytes cell is not bytes"), 0);
+    if (!strcmp(type, "uuid")) return zend_string_init(ZEND_STRL("uuid cell is not a uuid"), 0);
     return strpprintf(0, "%s cell is not text", type);
 }
 
@@ -1173,7 +1177,7 @@ static zend_string *cell_time_text(const char *type, const char *s, size_t n, ze
 
 /* The value of a read cell of a column type, as Model::cellValue of the PHP library (COD-1): out is the value, or the
  * refusal is thrown. */
-static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, zval *zone,
+static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, bool text_uuid, zval *zone,
     zval *out)
 {
     zval *type_value = read_array(col, "type");
@@ -1294,6 +1298,24 @@ static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *
         return true;
     }
     if (Z_TYPE(v) != IS_STRING) { zval_ptr_dtor(&v); return cell_refuse(entity, name, type, NULL); }
+    if (!strcmp(type, "uuid")) {
+        /* A uuid cell is its lower-case canonical text (DIA-27): on PostgreSQL, which reads it as CAST(col AS text), that text,
+         * and on MySQL, MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused with the message of the uuid type
+         * (COD-1). */
+        if (text_uuid ? !orm_uuid_canonical(Z_STRVAL(v), Z_STRLEN(v)) : Z_STRLEN(v) != 16) {
+            zval_ptr_dtor(&v);
+            return cell_refuse(entity, name, type, NULL);
+        }
+        if (!text_uuid) {
+            zend_string *text = zend_string_alloc(36, 0);
+            orm_uuid_text((const unsigned char *)Z_STRVAL(v), ZSTR_VAL(text));
+            ZSTR_VAL(text)[36] = '\0';
+            zval_ptr_dtor(&v);
+            ZVAL_STR(&v, text);
+        }
+        ZVAL_COPY_VALUE(out, &v);
+        return true;
+    }
     /* COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes. */
     if (strcmp(type, "bytes") && !codec_valid_utf8(Z_STRVAL(v), Z_STRLEN(v))) {
         zval_ptr_dtor(&v);
@@ -1343,7 +1365,8 @@ ZEND_METHOD(Polyspec_Orm_Model, cellValue)
         Z_PARAM_BOOL(integer_text)
         Z_PARAM_OBJECT_OF_CLASS(zone, php_date_get_timezone_ce())
     ZEND_PARSE_PARAMETERS_END();
-    if (!cell_value(entity, name, col, v, sqlite, integer_text, zone, return_value)) RETURN_THROWS();
+    /* The library signature names no database: a uuid cell is read in the form of every database but PostgreSQL, its 16 bytes. */
+    if (!cell_value(entity, name, col, v, sqlite, integer_text, false, zone, return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, timeText)

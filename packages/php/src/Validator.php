@@ -22,7 +22,7 @@ final class Validator
         'varchar' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary',
             'is_null', 'is_not_null'],
         'text' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
-        'uuid' => self::EQUALITY,
+        'uuid' => self::ORDERED,
         'bool' => ['eq', 'not_eq', 'is_null', 'is_not_null'],
         'bytes' => self::EQUALITY,
     ];

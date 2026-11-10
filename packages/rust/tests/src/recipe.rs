@@ -5997,12 +5997,16 @@ mod statement {
         }
     }
 
-    /// The wrapper of one bind of an event: a byte bind (a value a codec encoded) compares as its text.
+    /// The wrapper of one bind of an event, in the one form of every runtime: UTF-8 bytes (a value a codec encoded) are
+    /// their text, and other bytes, the 16 bytes of a uuid among them, are their bytes_hex (DIA-27).
     pub(super) fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
-            Param::Bytes(bytes) => json!({ "text": String::from_utf8_lossy(bytes) }),
+            Param::Bytes(bytes) => match std::str::from_utf8(bytes) {
+                Ok(text) => json!({ "text": text }),
+                Err(_) => json!({ "bytes_hex": super::hex_text(bytes) }),
+            },
             Param::I64(n) => json!({ "int": n.to_string() }),
             Param::Bool(b) => json!({ "bool": b }),
             other => panic!("the statement recipe has no wrapper for the bind {other:?}"),

@@ -4,6 +4,7 @@
  * subclasses' overridden methods and the meaning of PDOException are the same as in the PHP client.
  */
 #include "dbspec.h"
+#include "uuid_text.h"
 #include "literal_match.h"
 #include "value_export.h"
 
@@ -460,7 +461,7 @@ static bool ascii_ieq(const char *a, const char *b, size_t n)
 
 /* ---------------------------------------------------------- check decoder */
 
-enum { T_IDENT, T_WORD, T_NUMBER, T_STRING, T_OP, T_PUNCT };
+enum { T_IDENT, T_WORD, T_NUMBER, T_STRING, T_BYTES, T_OP, T_PUNCT };
 
 typedef struct {
     int kind;
@@ -577,6 +578,26 @@ static bool ctokenize(cdecoder *c, str text)
             }
             PUSH(c->tokens, ((ctoken){T_STRING, value}));
             i += length;
+        } else if ((ch == '0' && i + 1 < n && text.s[i + 1] == 'x') || ((ch == 'X' || ch == 'x') && i + 1 < n && text.s[i + 1] == '\'')) {
+            /* A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123). */
+            bool quoted = ch != '0';
+            size_t j = i + 2;
+            while (j < n && orm_uuid_hex_digit(text.s[j]) >= 0) {
+                j++;
+            }
+            sbuf hex = {0};
+            for (size_t k = i + 2; k < j; k++) {
+                sb_ch(&hex, (char)(text.s[k] >= 'A' && text.s[k] <= 'F' ? text.s[k] - 'A' + 'a' : text.s[k]));
+            }
+            if (quoted) {
+                if (j >= n || text.s[j] != '\'') {
+                    cfail(c, SL("unclosed binary literal"));
+                    return false;
+                }
+                j++;
+            }
+            PUSH(c->tokens, ((ctoken){T_BYTES, sb_str(&hex)}));
+            i = j;
         } else if (cdigit(ch)) {
             size_t j = i;
             while (j < n && (cdigit(text.s[j]) || text.s[j] == '.')) {
@@ -670,6 +691,10 @@ static cnode *coperand(cdecoder *c)
     if (t.kind == T_NUMBER || t.kind == T_STRING) {
         c->i++;
         return operand_node(t.kind == T_NUMBER ? "number" : "string", t.text);
+    }
+    if (t.kind == T_BYTES) {
+        c->i++;
+        return operand_node("bytes", t.text);
     }
     if (t.kind == T_OP && str_eqc(t.text, "-")) {
         c->i++;
@@ -930,6 +955,22 @@ static str operand_text(cdecoder *c, const cnode *o, const ctype *type)
     }
     if (str_eqc(o->kind, "bool")) {
         return o->text;
+    }
+    if (str_eqc(o->kind, "bytes")) {
+        /* The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has no other
+         * binary literal. */
+        unsigned char b[16];
+        bool uuid = o->text.n == 32 && type != NULL && str_eqc(type->name, "uuid");
+        for (size_t i = 0; uuid && i < 16; i++) {
+            b[i] = (unsigned char)(orm_uuid_hex_digit(o->text.s[2 * i]) << 4 | orm_uuid_hex_digit(o->text.s[2 * i + 1]));
+        }
+        if (!uuid) {
+            cfail(c, fmt("the binary literal %S is no uuid literal", o->text));
+            return SL("");
+        }
+        char canonical[36];
+        orm_uuid_text(b, canonical);
+        return literal_quote((str){canonical, 36});
     }
     if (type != NULL && str_eqc(type->name, "bool") && str_eqc(o->text, "1")) {
         return SL("true");
@@ -1358,7 +1399,8 @@ static const char MYSQL_EVENTS[] = "SELECT EVENT_NAME FROM information_schema.EV
 static ctype *mysql_type(str column_type, str charset, str collation, str *needs)
 {
     *needs = SL("");
-    static const char *const words[] = {"smallint", "int", "bigint", "tinyint(1)", "double", "longtext", "longblob", "date", "char(36)", "time", "datetime", NULL};
+    static const char *const words[] = {"smallint", "int", "bigint", "tinyint(1)", "double", "longtext", "longblob", "date", "binary(16)", "char(36)", "varbinary(36)", "time",
+        "datetime", NULL};
     bool text = str_eqc(charset, "utf8mb4") && str_eqc(collation, "utf8mb4_0900_bin");
     str word = SNULL, digits = SL("");
     bool matched = false;
@@ -1424,9 +1466,19 @@ static ctype *mysql_type(str column_type, str charset, str collation, str *needs
     if (str_eqc(word, "double")) return none ? simple_type("f64") : NULL;
     if (str_eqc(word, "longtext")) return text ? simple_type("text") : NULL;
     if (str_eqc(word, "longblob")) return simple_type("bytes");
+    if (str_eqc(word, "binary(16)")) {
+        *needs = column_type;
+        return simple_type("uuid");
+    }
     if (str_eqc(word, "char(36)")) {
+        /* The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108). */
         *needs = column_type;
         return str_eqc(charset, "ascii") && str_eqc(collation, "ascii_bin") ? simple_type("uuid") : NULL;
+    }
+    if (str_eqc(word, "varbinary(36)")) {
+        /* The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109). */
+        *needs = column_type;
+        return simple_type("uuid");
     }
     if (str_eqc(word, "date")) return none ? simple_type("date") : NULL;
     if (str_eqc(word, "time")) {
@@ -1585,22 +1637,42 @@ static str without_introducers(str clause)
     return sb_str(&c);
 }
 
+/* The pattern of the CHECK of the text storage of a uuid (DIA-144). */
 #define MYSQL_UUID_PATTERN "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+/* The CHECK_CLAUSE of a uuid column in text storage (DIA-144): the pattern CHECK of a char(36) column that a release up to 0.0.28
+ * rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the CHECK of a varbinary(36) column whose conversion stopped
+ * (PLN-109). */
+static str mysql_text_storage_check(bool mariadb, const icolumn *column)
+{
+    str c = fmt("`%S`", column->name);
+    if (str_eqc(column->column_type, "varbinary(36)")) {
+        return mariadb ? fmt("octet_length(%S) in (16,36)", c) : fmt("(length(%S) in (16,36))", c);
+    }
+    if (mariadb) {
+        return fmt("%S regexp \\'" MYSQL_UUID_PATTERN "\\'", c);
+    }
+    return fmt("regexp_like(%S,_utf8mb4\\'" MYSQL_UUID_PATTERN "\\',_utf8mb4\\'c\\')", c);
+}
 
 /* Format in which the renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it
  * without the outer parentheses and the introducers, in the escaped form that mysql_read gives its CHECK_CLAUSE (probes
- * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203). */
+ * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_bytes, mariadb.render.time_of_day_check; DIA-203). */
 static str mysql_renderer_check(bool mariadb, const icolumn *column)
 {
     str c = fmt("`%S`", column->name);
+    if (column->text_storage) {
+        return mysql_text_storage_check(mariadb, column);
+    }
     if (mariadb) {
         if (str_eqc(column->type->name, "bool")) return fmt("%S in (0,1)", c);
-        if (str_eqc(column->type->name, "uuid")) return fmt("%S regexp \\'" MYSQL_UUID_PATTERN "\\'", c);
+        /* MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes). */
+        if (str_eqc(column->type->name, "uuid")) return fmt("octet_length(%S) = 16", c);
         if (str_eqc(column->type->name, "time")) return fmt("%S >= \\'00:00:00\\' and %S < \\'24:00:00\\'", c, c);
         return SL("");
     }
     if (str_eqc(column->type->name, "bool")) return fmt("(%S in (0,1))", c);
-    if (str_eqc(column->type->name, "uuid")) return fmt("regexp_like(%S,_utf8mb4\\'" MYSQL_UUID_PATTERN "\\')", c);
+    if (str_eqc(column->type->name, "uuid")) return fmt("(length(%S) = 16)", c);
     if (str_eqc(column->type->name, "time")) return fmt("((%S >= _utf8mb4\\'00:00:00\\') and (%S < _utf8mb4\\'24:00:00\\'))", c, c);
     return SL("");
 }
@@ -1642,6 +1714,20 @@ static bool mysql_number(str s)
     return i == s.n;
 }
 
+/* A binary default of MariaDB's COLUMN_DEFAULT: ^x'([0-9a-f]{2})*'$ */
+static bool mariadb_hex_literal(str s)
+{
+    if (s.n < 3 || s.s[0] != 'x' || s.s[1] != '\'' || s.s[s.n - 1] != '\'' || (s.n - 3) % 2 != 0) {
+        return false;
+    }
+    for (size_t i = 2; i < s.n - 1; i++) {
+        if (!((s.s[i] >= '0' && s.s[i] <= '9') || (s.s[i] >= 'a' && s.s[i] <= 'f'))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL for a
  * column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as written, and an expression
  * default as its text, and its EXTRA has no DEFAULT_GENERATED (probe mariadb.default.catalog_text). MySQL gives a NULL default as
@@ -1672,6 +1758,12 @@ static bool mariadb_default_read(bool *def_null, str *def, str *extra)
         return true;
     }
     if (mysql_number(text)) {
+        return true;
+    }
+    if (mariadb_hex_literal(text)) {
+        /* MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case hex (probe
+         * mariadb.render.uuid_bytes). */
+        *def = fmt("0x%S", str_upper(str_sub(text, 2, text.n - 3)));
         return true;
     }
     /* ^current_timestamp\(([1-6]?)\)$ */
@@ -1729,6 +1821,27 @@ static str mysql_default_literal(str value, const ctype *type)
     for (int i = 0; i < 5; i++) {
         if (str_eqc(type->name, numeric[i])) {
             return value;
+        }
+    }
+    if (str_eqc(type->name, "uuid") && str_starts(value, "0x")) {
+        /* A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of the text of a
+         * varbinary(36) column whose conversion stopped (PLN-109). */
+        str digits = str_sub(value, 2, value.n - 2);
+        size_t n = digits.n / 2;
+        bool hex = digits.n % 2 == 0;
+        unsigned char *bytes = dbs_alloc(n + 1);
+        for (size_t i = 0; hex && i < n; i++) {
+            int high = orm_uuid_hex_digit(digits.s[2 * i]), low = orm_uuid_hex_digit(digits.s[2 * i + 1]);
+            hex = high >= 0 && low >= 0;
+            bytes[i] = (unsigned char)(high << 4 | low);
+        }
+        if (hex && n == 16) {
+            char text[36];
+            orm_uuid_text(bytes, text);
+            return literal_quote(str_of(text, 36));
+        }
+        if (hex) {
+            return literal_quote(str_of((const char *)bytes, n));
         }
     }
     return literal_quote(value);
@@ -1977,7 +2090,9 @@ static catalog *mysql_read(zval *pdo, bool mariadb)
                 catalog_report(c, SL("column"), table, name, fmt("type %S %S %S has no dbspec type", column_type, charset, collation));
                 continue;
             }
-            icolumn col = {name, type, str_eqc(nullable, "YES"), false, SL("")};
+            icolumn col = {name, type, str_eqc(nullable, "YES"), false, SL(""), false, SL("")};
+            col.text_storage = str_eqc(type->name, "uuid") && !str_eqc(needs, "binary(16)");
+            col.column_type = column_type;
             extra = str_trim_set(extra, " \t\n\r\v\f");
             if (str_eqc(extra, "auto_increment")) {
                 col.identity = true;
@@ -2077,6 +2192,9 @@ static catalog *mysql_read(zval *pdo, bool mariadb)
                 icolumn *known = rendered_column(table, name, m, &column_name) ? smap_get(m, column_name) : NULL;
                 bool renderer_check = known != NULL
                     && str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(mariadb, known)));
+                if (renderer_check && known->text_storage) {
+                    catalog_report(c, SL("column"), table, column_name, SL(DBS_TEXT_STORAGE_REASON));
+                }
                 if (!catalog_record_renderer_check(c, &checked, table, name, column_name, *clause, renderer_check)) {
                     continue;
                 }
@@ -2413,7 +2531,7 @@ static catalog *pg_read(zval *pdo)
                 catalog_report(c, SL("column"), table, name, fmt("type %S with collation \"%S\" has no dbspec type", formatted, collation));
                 continue;
             }
-            icolumn col = {name, type, !not_null, false, SL("")};
+            icolumn col = {name, type, !not_null, false, SL(""), false, SL("")};
             if (str_eqc(identity, "d")) {
                 col.identity = true;
             } else if (str_eqc(identity, "a")) {
@@ -2850,10 +2968,11 @@ static ctype *sqlite_type(str declared, str column_name, str check, bool has_che
             else if (str_eqc(w, "bigint")) PUSH(candidates, simple_type("i64"));
             else if (str_eqc(w, "BOOLEAN")) PUSH(candidates, simple_type("bool"));
             else if (str_eqc(w, "REAL")) PUSH(candidates, simple_type("f64"));
-            else if (str_eqc(w, "TEXT")) {
-                PUSH(candidates, simple_type("text"));
+            else if (str_eqc(w, "TEXT")) PUSH(candidates, simple_type("text"));
+            else if (str_eqc(w, "BLOB")) {
+                PUSH(candidates, simple_type("bytes"));
                 PUSH(candidates, simple_type("uuid"));
-            } else if (str_eqc(w, "BLOB")) PUSH(candidates, simple_type("bytes"));
+            }
             else if (str_eqc(w, "DATE")) PUSH(candidates, simple_type("date"));
             else {
                 for (zend_long p = 0; p <= 6; p++) {
@@ -2907,6 +3026,30 @@ static ctype *sqlite_type(str declared, str column_name, str check, bool has_che
     return NULL;
 }
 
+/* The GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144). */
+static str sqlite_text_storage_check(str column_name)
+{
+    str h8 = str_repeat("[0-9a-f]", 8), h4 = str_repeat("[0-9a-f]", 4), h12 = str_repeat("[0-9a-f]", 12);
+    return fmt("\"%S\" GLOB '%S-%S-%S-%S-%S'", column_name, h8, h4, h4, h4, h12);
+}
+
+/* A uuid default as the renderer writes it on SQLite, X' and the 32 hex digits of its 16 bytes (DIA-123): ^X'([0-9a-f]{32})'$ */
+static bool sqlite_uuid_default(str text, unsigned char *bytes)
+{
+    if (text.n != 35 || text.s[0] != 'X' || text.s[1] != '\'' || text.s[34] != '\'') {
+        return false;
+    }
+    for (size_t i = 0; i < 16; i++) {
+        char high = text.s[2 + 2 * i], low = text.s[3 + 2 * i];
+        bool lower = ((high >= '0' && high <= '9') || (high >= 'a' && high <= 'f')) && ((low >= '0' && low <= '9') || (low >= 'a' && low <= 'f'));
+        if (!lower) {
+            return false;
+        }
+        bytes[i] = (unsigned char)(orm_uuid_hex_digit(high) << 4 | orm_uuid_hex_digit(low));
+    }
+    return true;
+}
+
 /* Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by scale, and a bool is 1 or 0. */
 static bool sqlite_default_literal(str text, const ctype *type, str *out)
 {
@@ -2920,6 +3063,13 @@ static bool sqlite_default_literal(str text, const ctype *type, str *out)
     }
     if (str_eqc(type->name, "bool") && (str_eqc(text, "1") || str_eqc(text, "0"))) {
         *out = str_eqc(text, "1") ? SL("true") : SL("false");
+        return true;
+    }
+    unsigned char bytes[16];
+    if (str_eqc(type->name, "uuid") && sqlite_uuid_default(text, bytes)) {
+        char uuid[36];
+        orm_uuid_text(bytes, uuid);
+        *out = literal_quote(str_of(uuid, 36));
         return true;
     }
     if (number_default(text)) {
@@ -3012,7 +3162,7 @@ static catalog *sqlite_read(zval *pdo)
                 catalog_report(c, SL("column"), table, name, fmt("the column definition \"%S\" has clauses that dbspec does not read", item_text));
                 continue;
             }
-            icolumn col = {name, NULL, not_null == 0, false, SL("")};
+            icolumn col = {name, NULL, not_null == 0, false, SL(""), false, SL("")};
             str check_name = dbs_renderer_name(table, name);
             str *checkp = smap_get(&st->checks, check_name);
             bool has_check = checkp != NULL;
@@ -3022,6 +3172,12 @@ static catalog *sqlite_read(zval *pdo)
                 col.identity = true;
             } else {
                 ctype *type = sqlite_type(declared, name, check, has_check);
+                if (type == NULL && str_eqc(declared, "TEXT") && has_check && str_eq(check, sqlite_text_storage_check(name))) {
+                    /* The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108). */
+                    type = simple_type("uuid");
+                    col.text_storage = true;
+                    catalog_report(c, SL("column"), table, name, SL(DBS_TEXT_STORAGE_REASON));
+                }
                 if (type == NULL) {
                     catalog_report(c, SL("column"), table, name, fmt("declared type %S with CHECK \"%S\" has no dbspec type", declared, check));
                     continue;

@@ -14,6 +14,7 @@
 #include "engine_native.h"
 #include "markdown_native.h"
 #include "parent_slot_sql.h"
+#include "uuid_text.h"
 #include "php.h"
 #include "ext/pdo/php_pdo_driver.h"
 #include "Zend/zend_exceptions.h"
@@ -2001,6 +2002,30 @@ static bool list_has(zval *list, const char *s)
     return false;
 }
 
+/* Db::uuidBind: binds the value v of a slot of type col_type into out: a uuid text is its 16 bytes, as Bytes, on MySQL, MariaDB,
+ * SQLite and flowmark, and the text itself on PostgreSQL, which casts it (DIA-27). Another value is v. A text that is not the
+ * lower-case canonical text of a uuid is CODEC_ENCODE; the parameter check refuses it before (PRT-67). stored admits the 16
+ * bytes of a uuid cell as they were read: a parent key is the cell of its parent row, which the assembly decodes later. */
+static bool uuid_bind(zval *driver, zval *v, const char *col_type, bool stored, zval *out)
+{
+    if (strcmp(col_type, "uuid") != 0 || Z_TYPE_P(v) != IS_STRING || is_str(driver, "postgres")) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
+    unsigned char bytes[16];
+    if (stored && Z_STRLEN_P(v) == 16) {
+        memcpy(bytes, Z_STRVAL_P(v), 16);
+    } else if (!orm_uuid_bytes(Z_STRVAL_P(v), Z_STRLEN_P(v), bytes)) {
+        db_throw_orm("CODEC_ENCODE", "uuid value is not a lower-case canonical uuid");
+        return false;
+    }
+    zval raw;
+    ZVAL_STRINGL(&raw, (const char *)bytes, 16);
+    bool ok = newobj(BYTES_CLASS, out, 1, &raw);
+    zval_ptr_dtor(&raw);
+    return ok;
+}
+
 /* Db::args: the bind values of a plan step, resolved from the parent values, the request parameters, the connection's
  * configuration, its clock and the audit of the frame. */
 static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *frame, zval *out)
@@ -2023,10 +2048,23 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
             zval *from = aget(b, "from");
             if (is_str(from, "parent")) {
                 if (parents != NULL && Z_TYPE_P(parents) == IS_ARRAY) {
+                    /* Each parent value binds in the type of its key column, key_types in key column order (DIA-27). */
+                    zval *key_types = aget(b, "key_types");
+                    zend_long width = acount(key_types);
+                    zend_long i = 0;
                     zval *pv;
                     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(parents), pv)
                     {
-                        push(out, pv);
+                        ZVAL_DEREF(pv);
+                        zval *kt = width > 0 ? aidx(key_types, i % width) : NULL;
+                        zval bound;
+                        if (!uuid_bind(driver, pv, kt != NULL && Z_TYPE_P(kt) == IS_STRING ? Z_STRVAL_P(kt) : "", true, &bound)) {
+                            goto fail;
+                        }
+                        typed = typed || is_instance(&bound, BYTES_CLASS);
+                        push(out, &bound);
+                        zval_ptr_dtor(&bound);
+                        i++;
                     }
                     ZEND_HASH_FOREACH_END();
                 }
@@ -2180,6 +2218,14 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                 } else if (Z_TYPE(v) == IS_TRUE || Z_TYPE(v) == IS_FALSE || is_instance(&v, BYTES_CLASS)) {
                     typed = true;
                 }
+                zval ub;
+                bool uok = uuid_bind(driver, &v, col, false, &ub);
+                zval_ptr_dtor(&v);
+                if (!uok) {
+                    goto fail;
+                }
+                ZVAL_COPY_VALUE(&v, &ub);
+                typed = typed || is_instance(&v, BYTES_CLASS);
                 push(out, &v);
                 zval_ptr_dtor(&v);
                 (void)hs;
@@ -2220,7 +2266,14 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                         aname != NULL && Z_TYPE_P(aname) == IS_STRING ? Z_STRVAL_P(aname) : "");
                     goto fail;
                 }
-                push(out, aget(audit, "key"));
+                zval *ct = aget(b, "col_type");
+                zval key;
+                if (!uuid_bind(driver, aget(audit, "key"), ct != NULL && Z_TYPE_P(ct) == IS_STRING ? Z_STRVAL_P(ct) : "", false, &key)) {
+                    goto fail;
+                }
+                typed = typed || is_instance(&key, BYTES_CLASS);
+                push(out, &key);
+                zval_ptr_dtor(&key);
             } else {
                 db_throw_orm("INTERNAL", "bind from %s", from != NULL && Z_TYPE_P(from) == IS_STRING ? Z_STRVAL_P(from) : "");
                 goto fail;

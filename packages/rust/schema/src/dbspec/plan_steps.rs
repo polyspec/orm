@@ -68,7 +68,7 @@ pub struct PlanStep {
 /// The reason a step cannot be reversed (docs/spec/plans.md "Irreversible steps").
 const IRREVERSIBLE_PRECISION: &str = "narrowing the precision rounds the values written since";
 /// The working table of a SQLite rebuild.
-const REBUILD_TABLE: &str = "dbspec$rebuild";
+pub(crate) const REBUILD_TABLE: &str = "dbspec$rebuild";
 
 /// Writes the steps of `plan` in `dialect`. `source` is the schema the plan
 /// starts from, `None` for the empty database. The diagnostics are those of

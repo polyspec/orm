@@ -41,6 +41,8 @@ final class PlanApply
             . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND "
             . "objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
     ];
+    // The savepoint of the SQLite rebuild of a table in the text storage of a uuid (PLN-110).
+    private const CONVERT_SAVEPOINT = '"dbspec$convert"';
     // The maximum time a statement waits for another session's lock (the lock wait in docs/spec/plans.md "Apply").
     private const LOCK_WAIT_SECONDS = 5;
 
@@ -233,6 +235,7 @@ final class PlanApply
                         sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
                     );
                 }
+                $a->convert((int) array_search($plan, $a->chain, true) + 1);
                 try {
                     $drift = $a->mismatch($plan->to);
                 } catch (\RuntimeException $e) {
@@ -655,6 +658,7 @@ final class PlanApply
             }
             $want = $plan->to;
         }
+        $this->convert($position);
         try {
             $drift = $this->mismatch($want);
         } catch (\RuntimeException $e) {
@@ -664,6 +668,355 @@ final class PlanApply
             throw new ApplyError('drift', '', 0, $drift);
         }
         return $position;
+    }
+
+    /**
+     * Converts the uuid columns in the text storage of a release up to 0.0.28 to 16 bytes, before the drift check and
+     * before any plan (PLN-108). It converts nothing on PostgreSQL, on a database with no recorded plan, and when an
+     * unsupported object other than such a column exists or the schema with such columns read as uuid is not the state;
+     * the drift check then reports the database.
+     */
+    private function convert(int $position): void
+    {
+        if ($this->r->dialect === 'postgres' || $position === 0) {
+            return;
+        }
+        $state = $this->chain[$position - 1];
+        try {
+            $result = Dbspec::introspect($this->c, $this->r->dialect, $this->server, 'schema');
+        } catch (\RuntimeException $e) {
+            throw new ApplyError('verify', '', 0, '', $e);
+        }
+        /** @var array<string, list<string>> $text */
+        $text = [];
+        foreach ($result->unsupported as $u) {
+            if ($u->kind !== 'column' || $u->reason !== Catalog::TEXT_STORAGE_REASON) {
+                return;
+            }
+            $text[$u->table][] = $u->name;
+        }
+        if ($text === []) {
+            return;
+        }
+        // A dropped foreign key is missing only while its table holds a column in text storage (PLN-109).
+        /** @var array<string, list<ForeignKey>> $missing */
+        $missing = [];
+        foreach ($result->document->tables as $t) {
+            $want = self::documentTable($state->schema, $t->name);
+            if (!isset($text[$t->name]) || $want === null) {
+                continue;
+            }
+            foreach ($want->foreignKeys as $f) {
+                if (!self::hasForeignKey($t->foreignKeys, $f->name)) {
+                    $t->foreignKeys[] = $f;
+                    $missing[$t->name][] = $f;
+                }
+            }
+        }
+        $manifest = Dbspec::manifest([$result->document]);
+        if ($manifest->manifest === null || $manifest->manifest->schemaHash !== $state->to) {
+            return;
+        }
+        try {
+            $statements = $this->r->dialect === 'mysql'
+                ? $this->mysqlConversion($state->schema, $text, $missing)
+                : $this->sqliteConversion($state->schema, $text);
+        } catch (\PDOException | \RuntimeException $e) {
+            throw new ApplyError('convert', '', 0, '', $e);
+        }
+        $open = false;
+        foreach ($statements as $i => $statement) {
+            try {
+                $this->emit(new ApplyEvent('convert', '', $i, 0, $statement));
+            } catch (\Throwable $e) {
+                $this->endConversion($open, $e);
+            }
+            try {
+                $this->c->exec($statement);
+            } catch (\PDOException $e) {
+                $this->endConversion($open, new ApplyError('convert', '', $i, $statement, $e));
+            }
+            if (str_starts_with($statement, 'SAVEPOINT ')) {
+                $open = true;
+            } elseif (str_starts_with($statement, 'RELEASE ')) {
+                $open = false;
+            }
+        }
+    }
+
+    /**
+     * Throws $e after a stop or a failure of the conversion; inside the SQLite rebuild of a table it rolls the table
+     * back first, so that the table is kept as it was (PLN-110).
+     */
+    private function endConversion(bool $open, \Throwable $e): never
+    {
+        if (!$open) {
+            throw $e;
+        }
+        $cleanup = [];
+        foreach (['ROLLBACK TO ', 'RELEASE '] as $verb) {
+            try {
+                $this->c->exec($verb . self::CONVERT_SAVEPOINT);
+            } catch (\Throwable $error) {
+                $cleanup[] = $error;
+            }
+        }
+        throw $cleanup === [] ? $e : new ApplyCleanupError($e, $cleanup);
+    }
+
+    private static function documentTable(Document $d, string $name): ?Table
+    {
+        foreach ($d->tables as $t) {
+            if ($t->name === $name) {
+                return $t;
+            }
+        }
+        return null;
+    }
+
+    private static function stateTable(Document $state, string $name): Table
+    {
+        return self::documentTable($state, $name) ?? throw new \LogicException("the state has no table $name");
+    }
+
+    /** @param list<ForeignKey> $keys */
+    private static function hasForeignKey(array $keys, string $name): bool
+    {
+        foreach ($keys as $f) {
+            if ($f->name === $name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function stateColumn(Document $state, string $table, string $name): Column
+    {
+        foreach (self::stateTable($state, $table)->columns as $c) {
+            if ($c->name === $name) {
+                return $c;
+            }
+        }
+        throw new \LogicException("the state has no column $table.$name");
+    }
+
+    /**
+     * The columns of table $t among $names, in the order of the state table.
+     *
+     * @param list<string> $names
+     * @return list<string>
+     */
+    private static function stateColumnOrder(Document $state, string $t, array $names): array
+    {
+        $out = [];
+        foreach (self::stateTable($state, $t)->columns as $c) {
+            if (in_array($c->name, $names, true)) {
+                $out[] = $c->name;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * $items sorted by their name in byte order, keeping the order of equal names.
+     *
+     * @template T of Table|ForeignKey
+     * @param list<T> $items
+     * @return list<T>
+     */
+    private static function sortedByName(array $items): array
+    {
+        usort($items, static fn(Table|ForeignKey $a, Table|ForeignKey $b): int => strcmp($a->name, $b->name));
+        return $items;
+    }
+
+    /**
+     * The statements of PLN-109 on MySQL and MariaDB, from the storage that the database has now: a command that
+     * stopped between two statements writes the statements that remain.
+     *
+     * @param array<string, list<string>> $text
+     * @param array<string, list<ForeignKey>> $missing
+     * @return list<string>
+     */
+    private function mysqlConversion(Document $state, array $text, array $missing): array
+    {
+        $q = $this->r->q(...);
+        $tables = array_map('strval', array_keys($text));
+        sort($tables, SORT_STRING);
+        $textColumn = static fn(string $table, string $column): bool => in_array($column, $text[$table] ?? [], true);
+        // The column types of the columns in text storage: char(36), or varbinary(36) of a conversion that stopped.
+        $types = [];
+        foreach ($tables as $t) {
+            foreach ($text[$t] as $c) {
+                $types[$t][$c] = (string) $this->queryValue(
+                    'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND '
+                        . 'TABLE_NAME = ? AND COLUMN_NAME = ?',
+                    [$t, $c]
+                );
+            }
+        }
+        $out = [];
+        // 1. The foreign keys of the state that the database has and whose columns or referenced columns are in text
+        // storage.
+        $dropped = [];
+        foreach (self::sortedByName($state->tables) as $st) {
+            foreach (self::sortedByName($st->foreignKeys) as $f) {
+                if (self::hasForeignKey($missing[$st->name] ?? [], $f->name)) {
+                    continue;
+                }
+                $uses = false;
+                foreach ($f->columns as $c) {
+                    $uses = $uses || $textColumn($st->name, $c);
+                }
+                foreach ($f->referencedColumns as $c) {
+                    $uses = $uses || $textColumn($f->table, $c);
+                }
+                if ($uses) {
+                    $out[] = 'ALTER TABLE ' . $q($st->name) . ' DROP FOREIGN KEY ' . $q($f->name);
+                    $dropped[$st->name][] = $f;
+                }
+            }
+        }
+        foreach ($missing as $t => $fs) {
+            $dropped[$t] = array_merge($dropped[$t] ?? [], $fs);
+        }
+        $textDefinition = static function (Column $c) use ($q): string {
+            $s = $q($c->name) . ' VARBINARY(36)' . ($c->nullable ? ' NULL' : ' NOT NULL');
+            if ($c->default !== null) {
+                $s .= ' DEFAULT ' . $c->default;
+            }
+            return $s;
+        };
+        // 2. Each char(36) column becomes varbinary(36), which holds both forms.
+        foreach ($tables as $t) {
+            foreach (self::stateColumnOrder($state, $t, $text[$t]) as $c) {
+                if ($types[$t][$c] !== 'char(36)') {
+                    continue;
+                }
+                $check = $q(Names::render($t, $c));
+                $out[] = 'ALTER TABLE ' . $q($t) . " DROP CONSTRAINT $check, MODIFY COLUMN "
+                    . $textDefinition(self::stateColumn($state, $t, $c))
+                    . ", ADD CONSTRAINT $check CHECK (length(" . $q($c) . ') IN (16, 36))';
+            }
+        }
+        // 3. The texts become their 16 bytes.
+        foreach ($tables as $t) {
+            foreach (self::stateColumnOrder($state, $t, $text[$t]) as $c) {
+                $query = 'SELECT COUNT(*) FROM (SELECT 1 FROM ' . $q($t) . ' WHERE length(' . $q($c)
+                    . ') = 36 LIMIT 1) x';
+                if (CatalogRows::integer([$this->queryValue($query)], 0, $query) > 0) {
+                    $out[] = 'UPDATE ' . $q($t) . ' SET ' . $q($c) . ' = UNHEX(REPLACE(' . $q($c) . ", '-', '')) WHERE "
+                        . 'length(' . $q($c) . ') = 36';
+                }
+            }
+        }
+        // 4. Each table gets its rendered form, a referenced table before the tables that reference it, with its
+        // dropped foreign keys whose referenced table has its rendered form.
+        $pending = array_fill_keys($tables, true);
+        $added = [];
+        while ($pending !== []) {
+            $next = null;
+            $first = null;
+            foreach ($tables as $t) {
+                if (!isset($pending[$t])) {
+                    continue;
+                }
+                $ready = true;
+                foreach (self::stateTable($state, $t)->foreignKeys as $f) {
+                    if ($f->table !== $t && isset($pending[$f->table])) {
+                        $ready = false;
+                    }
+                }
+                if ($ready) {
+                    $next = $t;
+                    break;
+                }
+                $first ??= $t;
+            }
+            // A cycle of such tables takes the first of them by name; its foreign keys to a pending table are added
+            // last.
+            $next ??= (string) $first;
+            unset($pending[$next]);
+            $parts = [];
+            foreach (self::stateColumnOrder($state, $next, $text[$next]) as $c) {
+                $check = $q(Names::render($next, $c));
+                $col = self::stateColumn($state, $next, $c);
+                array_push(
+                    $parts,
+                    "DROP CONSTRAINT $check",
+                    'MODIFY COLUMN ' . $this->r->column($col),
+                    "ADD CONSTRAINT $check CHECK (" . $this->r->typeCheck($col) . ')'
+                );
+            }
+            foreach (self::sortedByName($dropped[$next] ?? []) as $f) {
+                if (!isset($pending[$f->table])) {
+                    $parts[] = 'ADD ' . $this->r->foreignKey($f);
+                    $added[$next . '.' . $f->name] = true;
+                }
+            }
+            $out[] = 'ALTER TABLE ' . $q($next) . ' ' . implode(', ', $parts);
+        }
+        // 5. A foreign key of a cycle, and one of a table without text storage, is added last.
+        $owners = array_map('strval', array_keys($dropped));
+        sort($owners, SORT_STRING);
+        foreach ($owners as $t) {
+            foreach (self::sortedByName($dropped[$t]) as $f) {
+                if (!isset($added[$t . '.' . $f->name])) {
+                    $out[] = 'ALTER TABLE ' . $q($t) . ' ADD ' . $this->r->foreignKey($f);
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The statements of PLN-110: each table that holds a column in text storage, in name order, is rebuilt in its
+     * rendered form inside one savepoint.
+     *
+     * @param array<string, list<string>> $text
+     * @return list<string>
+     */
+    private function sqliteConversion(Document $state, array $text): array
+    {
+        $q = $this->r->q(...);
+        $tables = array_map('strval', array_keys($text));
+        sort($tables, SORT_STRING);
+        $rebuild = PlanSteps::REBUILD_TABLE;
+        $out = [];
+        foreach ($tables as $name) {
+            $t = self::stateTable($state, $name);
+            $out[] = 'SAVEPOINT ' . self::CONVERT_SAVEPOINT;
+            $out[] = $this->r->createTable(
+                $t,
+                $rebuild,
+                static fn(string $c): string => Names::render($t->name, $c),
+                []
+            );
+            $identity = false;
+            foreach ($t->columns as $c) {
+                $identity = $identity || $c->identity;
+            }
+            if ($identity) {
+                $out[] = "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence "
+                    . "WHERE name = '$name'";
+            }
+            $into = [];
+            $from = [];
+            foreach ($t->columns as $c) {
+                $into[] = $q($c->name);
+                $from[] = in_array($c->name, $text[$name], true)
+                    ? 'unhex(replace(' . $q($c->name) . ", '-', ''))"
+                    : $q($c->name);
+            }
+            $out[] = 'INSERT INTO ' . $q($rebuild) . ' (' . implode(', ', $into) . ') SELECT ' . implode(', ', $from)
+                . ' FROM ' . $q($name);
+            $out[] = 'DROP TABLE ' . $q($name);
+            $out[] = 'ALTER TABLE ' . $q($rebuild) . ' RENAME TO ' . $q($name);
+            array_push($out, ...array_slice($this->r->table($t), 1));
+            array_push($out, ...$this->r->triggers($t));
+            $out[] = 'RELEASE ' . self::CONVERT_SAVEPOINT;
+        }
+        return $out;
     }
 
     /** @param \Closure(Plan, array{from: string, to: string, state: string, step: int}): void $operation */

@@ -1036,6 +1036,69 @@
       ]
     },
     {
+      "id": "mysql_uuid_check_literal",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-uuid-check-literal",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_uuid_check_literal",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-uuid-check-literal",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_uuid_check_literal",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-uuid-check-literal",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "mysql_generated_column",
       "requirements": [
         "DIA-133"

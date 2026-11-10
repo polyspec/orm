@@ -1,6 +1,7 @@
 package dbspec
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -80,6 +81,23 @@ func checkTokens(dialect Dialect, text string) ([]cToken, error) {
 			}
 			out = append(out, cToken{"string", value})
 			i += n
+		case strings.HasPrefix(text[i:], "0x") || (ch == 'X' || ch == 'x') && strings.HasPrefix(text[i+1:], "'"):
+			// A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123).
+			j, end := i+2, ""
+			if ch != '0' {
+				end = "'"
+			}
+			for j < len(text) && strings.IndexByte("0123456789abcdefABCDEF", text[j]) >= 0 {
+				j++
+			}
+			if end != "" {
+				if j >= len(text) || text[j] != '\'' {
+					return nil, fmt.Errorf("unclosed binary literal")
+				}
+				j++
+			}
+			out = append(out, cToken{"bytes", strings.ToLower(strings.TrimSuffix(text[i+2:j], end))})
+			i = j
 		case ch >= '0' && ch <= '9':
 			j := i
 			for j < len(text) && (text[j] >= '0' && text[j] <= '9' || text[j] == '.') {
@@ -366,6 +384,9 @@ func (d *checkDecoder) operand() (cOperand, error) {
 	case t.kind == "string":
 		d.i++
 		return cOperand{"string", t.text}, nil
+	case t.kind == "bytes":
+		d.i++
+		return cOperand{"bytes", t.text}, nil
 	case t.kind == "op" && t.text == "-":
 		d.i++
 		if d.punct("(") {
@@ -566,6 +587,14 @@ func (d *checkDecoder) operandText(o cOperand, typ Type) (string, error) {
 		return quote(o.text), nil
 	case "bool":
 		return o.text, nil
+	case "bytes":
+		// The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has no other
+		// binary literal.
+		b, err := hex.DecodeString(o.text)
+		if err != nil || len(b) != 16 || typ.Kind != TypeUUID {
+			return "", fmt.Errorf("the binary literal %s is no uuid literal", o.text)
+		}
+		return quote(UUIDText(b)), nil
 	}
 	switch {
 	case typ.Kind == TypeBool && o.text == "1":

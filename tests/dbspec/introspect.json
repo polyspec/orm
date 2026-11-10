@@ -936,6 +936,96 @@
       "unsupported": []
     },
     {
+      "id": "mysql-uuid-check-literal",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table tokens {",
+          "  id i64 identity",
+          "  token uuid null",
+          "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+          "  primary key (id)",
+          "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+          "}"
+        ]
+      },
+      "statements": [],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table tokens {",
+        "  id i64 identity",
+        "  token uuid null",
+        "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+        "  primary key (id)",
+        "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+        "}"
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "postgres-uuid-check-literal",
+      "dialect": "postgres",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table tokens {",
+          "  id i64 identity",
+          "  token uuid null",
+          "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+          "  primary key (id)",
+          "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+          "}"
+        ]
+      },
+      "statements": [],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table tokens {",
+        "  id i64 identity",
+        "  token uuid null",
+        "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+        "  primary key (id)",
+        "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+        "}"
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "sqlite-uuid-check-literal",
+      "dialect": "sqlite",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table tokens {",
+          "  id i64 identity",
+          "  token uuid null",
+          "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+          "  primary key (id)",
+          "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+          "}"
+        ]
+      },
+      "statements": [],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table tokens {",
+        "  id i64 identity",
+        "  token uuid null",
+        "  code uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+        "  primary key (id)",
+        "  check ck_token (token <> '00000000-0000-4000-8000-00000000000f')",
+        "}"
+      ],
+      "unsupported": []
+    },
+    {
       "id": "mysql-generated-column",
       "dialect": "mysql",
       "documents": {},

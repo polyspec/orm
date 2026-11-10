@@ -14,6 +14,7 @@ mod analyze;
 mod check;
 mod check_type;
 mod compare;
+mod convert;
 mod emit;
 mod file;
 mod introspect;
@@ -36,9 +37,11 @@ mod validate;
 
 pub use add_tables_and_columns::{add_tables_and_columns_steps, installed_differences, AddTablesAndColumnsSteps};
 pub use compare::{compare_schemas, Difference, RULE_COMPARE};
+pub use convert::{mysql_uuid_conversion, sqlite_uuid_conversion, MySqlTextStorage, TextStorage, CONVERT_SAVEPOINT};
 pub use file::{read_bytes, read_file, ReadError, SIGNATURE};
 pub use introspect::{
-    catalog_followups, catalog_queries, check_server, mariadb_catalog_default, read_catalog, CatalogValue, Introspection, Server, Unsupported,
+    catalog_followups, catalog_queries, check_server, hex_bytes, mariadb_catalog_default, read_catalog, uuid_text, CatalogValue, Introspection, Server,
+    Unsupported, TEXT_STORAGE_REASON,
 };
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
@@ -57,10 +60,11 @@ pub use set::{
 pub fn operator_allowed_for_type(typ: &str, op: &str) -> bool {
     const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
     let ops: &[&str] = match typ {
-        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
+        // A uuid compares by the order of its 16 bytes, which is the order of its text (DIA-27, PRT-22).
+        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" | "uuid" => COMPARE,
         "varchar" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
         "text" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"],
-        "uuid" | "bytes" => EQUALITY_OPERATORS,
+        "bytes" => EQUALITY_OPERATORS,
         "bool" => &["eq", "not_eq", "is_null", "is_not_null"],
         _ => &["is_null", "is_not_null"],
     };
@@ -114,7 +118,9 @@ mod operator_tests {
             ("i64", "between", true),
             ("varchar", "contains_binary", true),
             ("text", "in", false),
-            ("uuid", "gt", false),
+            ("uuid", "gt", true),
+            ("uuid", "between", true),
+            ("uuid", "contains", false),
             ("bool", "is_null", true),
             ("unknown", "eq", false),
             ("varchar", "gt", true),

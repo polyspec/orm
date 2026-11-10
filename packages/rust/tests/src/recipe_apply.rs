@@ -292,9 +292,12 @@ async fn through_pooler(dsn: &str) -> Result<Conn, String> {
 }
 
 /// The text of a step field that holds SQL: the string itself, or the entry of the database.
-fn sql_of(step: &Value, database: &str, event_step: usize) -> Result<String, String> {
+/// The statement of a step for the case database: MariaDB reads its own entry when the step states one, else the entry of
+/// its dialect (DIA-200, FCV-3).
+fn sql_of(step: &Value, database: &str, mariadb: bool, event_step: usize) -> Result<String, String> {
     let field = &crate::recipe_reads::read(step, "sql")["sql"];
-    let text = field.as_str().or_else(|| field[database].as_str()).ok_or_else(|| format!("no statement for {database}: {step}"))?;
+    let own = if mariadb { field["mariadb"].as_str() } else { None };
+    let text = field.as_str().or(own).or_else(|| field[database].as_str()).ok_or_else(|| format!("no statement for {database}: {step}"))?;
     Ok(text.replace("{step}", &event_step.to_string()))
 }
 
@@ -355,7 +358,7 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             Ok(json!({}))
         }
         "dbspec.exec" => {
-            let text = sql_of(step, database, state.step)?;
+            let text = sql_of(step, database, state.mariadb, state.step)?;
             let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
             exec_on(session, step, &text).await
@@ -484,7 +487,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                     continue;
                 }
                 if nested["op"] == "dbspec.exec" && nested["connection"].as_str() == Some(target.as_str()) {
-                    let text = sql_of(nested, database, state.step)?;
+                    let text = sql_of(nested, database, state.mariadb, state.step)?;
                     let got = tokio::task::block_in_place(|| {
                         Handle::current().block_on(async {
                             let mut session = nested_session.lock().await;

@@ -569,6 +569,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             'decimal' => 'decimal cell is not a decimal of its precision and scale',
             'date', 'datetime', 'time' => "$type cell is not a $type",
             'bytes' => 'bytes cell is not bytes',
+            'uuid' => 'uuid cell is not a uuid',
             default => "$type cell is not text",
         };
     }

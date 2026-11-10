@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -18,7 +19,7 @@ type Execer interface {
 
 // ApplyEvent is what apply, recover, rollback, and finalize report (docs/spec/plans.md
 // "Apply"). Kind is one of plan, rollback, finalize, irreversible, statement, applied,
-// verified, or done.
+// verified, convert, or done.
 type ApplyEvent struct {
 	Kind      string
 	Plan      string
@@ -28,7 +29,7 @@ type ApplyEvent struct {
 }
 
 // ApplyError is a failure of the command. Code is one of locked, session, interrupted, drift, chain, failed,
-// verify, irreversible, or nulls.
+// verify, irreversible, nulls, or convert.
 type ApplyError struct {
 	Code    string
 	Plan    string
@@ -43,7 +44,7 @@ func (e *ApplyError) Error() string {
 		s += " " + e.Plan
 	}
 	switch e.Code {
-	case "failed", "interrupted", "irreversible", "nulls":
+	case "failed", "interrupted", "irreversible", "nulls", "convert":
 		s += fmt.Sprintf(" at step %d", e.Step)
 	case "session":
 		if e.Plan != "" {
@@ -248,6 +249,9 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, server Server, pla
 		if applied {
 			if k < 0 || k > len(steps) {
 				return &ApplyError{Code: "chain", Plan: p.Name, Message: fmt.Sprintf("the recorded step %d is outside the plan's %d steps", k, len(steps))}
+			}
+			if err := a.convert(slices.Index(a.chain, p) + 1); err != nil {
+				return err
 			}
 			if err := a.verify(p.To); err != nil {
 				var mismatch *schemaMismatchError
@@ -677,6 +681,9 @@ func (a *applier) settled() (int, error) {
 			return 0, &ApplyError{Code: "interrupted", Plan: p.Name, Step: row.step, Message: "the plan is " + row.state + "; run recover or rollback"}
 		}
 		want = p.To
+	}
+	if err := a.convert(position); err != nil {
+		return 0, err
 	}
 	if err := a.verify(want); err != nil {
 		var mismatch *schemaMismatchError

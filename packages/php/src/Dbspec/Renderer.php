@@ -271,7 +271,7 @@ final class Renderer
                 'varchar' => "varchar($p[0]) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
                 'text' => 'LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin',
                 'bytes' => 'LONGBLOB',
-                'uuid' => 'char(36) CHARACTER SET ascii COLLATE ascii_bin',
+                'uuid' => 'BINARY(16)',
                 'date' => 'DATE',
                 'time' => "TIME($p[0])",
                 'datetime' => "DATETIME($p[0])",
@@ -301,8 +301,8 @@ final class Renderer
                 'decimal' => "DECIMALINT($p[0],$p[1])",
                 'f64' => 'REAL',
                 'varchar' => "varchar($p[0])",
-                'text', 'uuid' => 'TEXT',
-                'bytes' => 'BLOB',
+                'text' => 'TEXT',
+                'bytes', 'uuid' => 'BLOB',
                 'date' => 'DATE',
                 'time' => 'TIME',
                 'datetime' => 'DATETIME',
@@ -335,6 +335,10 @@ final class Renderer
                 return strtoupper($text);
             }
             return $text === 'true' ? '1' : '0';
+        }
+        if ($t->name === 'uuid' && $this->dialect !== 'postgres') {
+            // A uuid default is the 16 bytes of its canonical text on MySQL and SQLite (DIA-123).
+            return "X'" . str_replace('-', '', trim($text, "'")) . "'";
         }
         if (str_starts_with($text, "'")) {
             return $this->dialect === 'mysql' ? str_replace('\\', '\\\\', $text) : $text;
@@ -385,9 +389,10 @@ final class Renderer
         if ($this->dialect === 'mysql') {
             return match ($t->name) {
                 'bool' => "$q IN (0, 1)",
-                // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
-                // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
-                'uuid' => "$q REGEXP '" . self::UUID_PATTERN . "'",
+                // BINARY(16) pads a shorter value, so the CHECK holds every stored value and is the named marker that
+                // tells a uuid from a bytes column (probes mysql.render.uuid_bytes, mariadb.render.uuid_bytes; DIA-48,
+                // DIA-144).
+                'uuid' => "length($q) = 16",
                 'time' => "$q >= '00:00:00' AND $q < '24:00:00'",
                 default => '',
             };
@@ -414,8 +419,9 @@ final class Renderer
             case 'varchar':
                 return "length($q) <= {$t->parameters[0]}";
             case 'uuid':
-                $hex = static fn(int $n): string => str_repeat('[0-9a-f]', $n);
-                return "$q GLOB '" . $hex(8) . '-' . $hex(4) . '-' . $hex(4) . '-' . $hex(4) . '-' . $hex(12) . "'";
+                // A uuid is a BLOB of 16 bytes; the CHECK is the named marker that tells it from a bytes column (probe
+                // sqlite.render.uuid_bytes; DIA-48, DIA-144).
+                return "typeof($q) IN ('blob', 'null') AND length($q) = 16";
             case 'date':
                 return "$q IS date($q)";
             case 'time':

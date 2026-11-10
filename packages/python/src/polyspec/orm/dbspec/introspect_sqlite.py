@@ -4,9 +4,11 @@ import re
 
 from polyspec.orm.dbspec.parse import goq
 from polyspec.orm.dbspec.introspect_catalog import (
+    TEXT_STORAGE_REASON,
     Catalog,
     action_name,
     table_types,
+    uuid_text,
 )
 from polyspec.orm.dbspec.names import renderer_name
 from polyspec.orm.dbspec.introspect_check import (
@@ -156,7 +158,16 @@ def read_sqlite(query) -> Catalog:
             identity = True
         else:
             read = _sqlite_type(renderer, declared, name, check)
-            if read is None:
+            if (
+                read is None
+                and declared == "TEXT"
+                and check is not None
+                and check == _text_storage_check(name)
+            ):
+                # The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
+                read = DbspecType("uuid")
+                c.report("column", table, name, TEXT_STORAGE_REASON)
+            elif read is None:
                 c.report(
                     "column",
                     table,
@@ -271,9 +282,9 @@ def _sqlite_type(r: Renderer, declared: str, column: str, check):
         elif word == "REAL":
             candidates = [DbspecType("f64")]
         elif word == "TEXT":
-            candidates = [DbspecType("text"), DbspecType("uuid")]
+            candidates = [DbspecType("text")]
         elif word == "BLOB":
-            candidates = [DbspecType("bytes")]
+            candidates = [DbspecType("bytes"), DbspecType("uuid")]
         elif word == "DATE":
             candidates = [DbspecType("date")]
         elif word in ("TIME", "DATETIME"):
@@ -288,6 +299,18 @@ def _sqlite_type(r: Renderer, declared: str, column: str, check):
     return None
 
 
+def _text_storage_check(column: str) -> str:
+    """The GLOB CHECK of a uuid column in the text storage of a release up to 0.0.28 (DIA-144)."""
+    hexa = "[0-9a-f]" * 4
+    return (
+        f"\"{column}\" GLOB '{'[0-9a-f]' * 8}-{hexa}-{hexa}-{hexa}-{'[0-9a-f]' * 12}'"
+    )
+
+
+# A uuid default as the renderer writes it on SQLite, X' and the 32 hex digits of its 16 bytes (DIA-123).
+_UUID_DEFAULT = re.compile(r"^X'([0-9a-f]{32})'\Z")
+
+
 def _sqlite_default(r: Renderer, text: str, type_: DbspecType):
     """Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale,
     and a bool is 1 or 0. If it cannot be read, it is None."""
@@ -297,6 +320,10 @@ def _sqlite_default(r: Renderer, text: str, type_: DbspecType):
         return "now"
     if type_.kind == "bool" and text in ("1", "0"):
         return "true" if text == "1" else "false"
+    if type_.kind == "uuid":
+        m = _UUID_DEFAULT.match(text)
+        if m is not None:
+            return f"'{uuid_text(bytes.fromhex(m.group(1)))}'"
     if type_.kind == "decimal" and _NUMBER_DEFAULT.match(text):
         return unscaled_decimal(text, type_.scale)
     if _NUMBER_DEFAULT.match(text):
