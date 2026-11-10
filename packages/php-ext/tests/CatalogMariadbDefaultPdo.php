@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-
 /**
- * A MySQL connection without a server that answers the catalog reads of one described table, default_probe, as a MariaDB server
- * writes them (DIA-205): its COLUMN_DEFAULT is SQL text, and its EXTRA marks no expression default.
+ * A MySQL connection without a server that answers the catalog reads of one described table, default_probe, as a
+ * MariaDB server writes them (DIA-205): its COLUMN_DEFAULT is SQL text, and its EXTRA marks no expression default.
  */
 class CatalogMariadbDefaultPdo extends CatalogAnswerPdo
 {
@@ -32,7 +31,10 @@ class CatalogMariadbDefaultPdo extends CatalogAnswerPdo
             }
             return [
                 $rows,
-                ['COLUMN_NAME', 'COLUMN_TYPE', 'nullable', 'generated', 'ord', 'automatic', 'COLUMN_DEFAULT', 'generated_default'],
+                [
+                    'COLUMN_NAME', 'COLUMN_TYPE', 'nullable', 'generated', 'ord', 'automatic', 'COLUMN_DEFAULT',
+                    'generated_default',
+                ],
                 ['VAR_STRING', 'BLOB', 'LONGLONG', 'LONGLONG', 'LONGLONG', 'LONGLONG', 'BLOB', 'LONGLONG'],
             ];
         }

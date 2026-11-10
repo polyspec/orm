@@ -56,7 +56,7 @@ final class OrmExceptionLockWaitTest extends TestCase
     // Requirements: DIA-209. MariaDB fails a NOWAIT lock that it cannot take at once with 1205: a statement of a
     // *_nowait lock that fails with 1205 on MariaDB is LOCK_NOT_AVAILABLE, and 1205 of a statement without a nowait
     // lock, or on MySQL, whose NOWAIT failure is 3572, is no lock error (it stays CANCELED by the table of its server).
-    public function testMariadb1205OfANowaitLockIsLockNotAvailable(): void
+    public function testA1205OfANowaitLockOnMariadbIsLockNotAvailable(): void
     {
         $map = new \ReflectionMethod(\Polyspec\Orm\Db::class, 'nowaitLockError');
         $cases = [

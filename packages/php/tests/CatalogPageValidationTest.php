@@ -83,7 +83,7 @@ final class CatalogPageValidationTest extends TestCase
     // Requirements: DIA-205. The descriptor reads a MariaDB COLUMN_DEFAULT in the MySQL form: 'NULL' is no default, a
     // quoted literal its value with its escapes undone, a number itself, the clock and any other text an expression;
     // a quoted text that is not one whole literal is TABLE_METADATA_INVALID.
-    public function testMariadbColumnDefaultIsReadInTheMysqlForm(): void
+    public function testAMariadbColumnDefaultIsReadInTheMysqlForm(): void
     {
         $read = new \ReflectionMethod(Catalog::class, 'mariadbColumn');
         $column = static fn (?string $default): CatalogColumn
