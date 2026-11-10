@@ -155,7 +155,7 @@ vector('each file takes its set from resolveSet', () => inDir({
   assert.deepEqual(run(['--check', 'app/billing.dbs', 'app/shop.dbs'], dir), { status: 0, stdout: '', stderr: '' });
   const alone = run(['--check', 'alone/billing.dbs'], dir);
   assert.equal(alone.status, 2);
-  assert.equal(alone.stderr, 'alone/billing.dbs:3:5: use: document shop is not in the declared document set\n');
+  assert.equal(alone.stderr, 'alone/billing.dbs:3:5: use: document "shop" is not in the declared document set\n');
 }));
 
 // Requirements: ORE-9.

@@ -1476,10 +1476,18 @@ final class Recipe
      * Checks that parse refuses text with exactly the diagnostics of want, and that format returns no text and the same
      * diagnostics (the Go twin is checkRefusal).
      *
-     * @param list<array{rule: string, line: int, column: int}> $want
+     * @param list<array{rule: string, line: int, column: int, message: string}> $want
      */
     private static function checkRefusal(string $text, array $set, array $want): void
     {
+        foreach ($want as $i => $w) {
+            if (!isset($w['message']) || $w['message'] === '') {
+                Assert::fail(
+                    "expected diagnostic {$i} ({$w['rule']} {$w['line']} {$w['column']}) states no message;"
+                    . ' every refused text states the message of each diagnostic'
+                );
+            }
+        }
         $parsed = Dbspec::parse($text, $set);
         if ($parsed->document !== null) {
             Assert::fail('Parse returned a document for an invalid source');
@@ -1489,18 +1497,22 @@ final class Recipe
             Assert::fail("a document with a diagnostic was rewritten: {$formatted->text}");
         }
         foreach ([$parsed->diagnostics, $formatted->diagnostics] as $got) {
-            // The message is compared where the expected diagnostic states it.
-            $rows = [];
-            foreach (array_values($got) as $i => $d) {
-                $row = ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column];
-                if (isset($want[$i]['message'])) {
-                    $row['message'] = $d->message;
-                }
-                $rows[] = $row;
-            }
+            $rows = array_map(
+                static fn(object $d): array => [
+                    'rule' => $d->rule,
+                    'line' => $d->line,
+                    'column' => $d->column,
+                    'message' => $d->message,
+                ],
+                array_values($got)
+            );
             $expect = array_map(
-                static fn(array $d): array => ['rule' => $d['rule'], 'line' => $d['line'], 'column' => $d['column']]
-                    + (isset($d['message']) ? ['message' => $d['message']] : []),
+                static fn(array $d): array => [
+                    'rule' => $d['rule'],
+                    'line' => $d['line'],
+                    'column' => $d['column'],
+                    'message' => $d['message'],
+                ],
                 $want
             );
             if ($expect === [] || $rows !== $expect) {

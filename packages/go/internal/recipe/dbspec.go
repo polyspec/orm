@@ -529,8 +529,8 @@ func emitStable(text string, set map[string]string) (string, error) {
 
 // checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
 // and the same diagnostics.
-// refusalDiagnostic is one expected diagnostic of a refused dbspec.format text: its rule and position, and its message where the
-// vector states it, which every runtime gives exactly.
+// refusalDiagnostic is one expected diagnostic of a refused dbspec.format text: its rule, its position and its message, which
+// every runtime gives exactly (DBS-144); a vector that states no message fails.
 type refusalDiagnostic struct {
 	Rule    string  `json:"rule"`
 	Line    int     `json:"line"`
@@ -539,6 +539,11 @@ type refusalDiagnostic struct {
 }
 
 func checkRefusal(text string, set map[string]string, want []refusalDiagnostic) error {
+	for i, w := range want {
+		if w.Message == nil || *w.Message == "" {
+			return fmt.Errorf("expected diagnostic %d (%s %d %d) states no message; every refused text states the message of each diagnostic", i, w.Rule, w.Line, w.Column)
+		}
+	}
 	document, _, parsed := dbspec.Parse(text, set)
 	if document != nil {
 		return errors.New("Parse returned a document for an invalid source")
@@ -559,7 +564,7 @@ func checkRefusal(text string, set map[string]string, want []refusalDiagnostic) 
 			if string(d.Rule) != w.Rule || d.Line != w.Line || d.Column != w.Column {
 				return fmt.Errorf("diagnostic %d = %s %d %d, want %+v", i, d.Rule, d.Line, d.Column, w)
 			}
-			if w.Message != nil && d.Message != *w.Message {
+			if d.Message != *w.Message {
 				return fmt.Errorf("diagnostic %d message = %q, want %q", i, d.Message, *w.Message)
 			}
 		}

@@ -921,7 +921,8 @@
                 {
                   "rule": "type",
                   "line": 4,
-                  "column": 8
+                  "column": 8,
+                  "message": "type \"i65\" is not a dbspec type"
                 }
               ]
             }

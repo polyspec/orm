@@ -124,24 +124,22 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
 /// column takes the `varchar` form without a length limit and `now` is not a
 /// literal.
 pub(crate) fn check_literal(ty: Type, value: &Value) -> Result<String, String> {
-    let fits = match (ty, value) {
+    let unfit = || format!("{} is not a {} value", value.describe(), ty.render());
+    match (ty, value) {
         (Type::Text, Value::Str(text)) if !text.contains('\0') => Ok(quote(text)),
-        (Type::Text, _) | (Type::DateTime(_), Value::Word(_)) => Err(None),
-        _ => default_literal(ty, value).map_err(Some),
-    };
-    fits.map_err(|detail| match detail {
-        Some(message) => format!("literal {} does not fit {}: {message}", value.written(), ty.render()),
-        None => format!("literal {} does not fit {}", value.written(), ty.render()),
-    })
+        (Type::Text, _) | (Type::DateTime(_), Value::Word(_)) => Err(unfit()),
+        _ => default_literal(ty, value).map_err(|_unfit| unfit()),
+    }
 }
 
 impl Value {
-    /// The literal as written, for messages.
-    pub fn written(&self) -> String {
+    /// The literal as a diagnostic shows its token (Go's token.describe): a string by its value, `string '<value>'`,
+    /// and a number or a word by its text, with the `-` of a negative number, in single quotes.
+    pub fn describe(&self) -> String {
         match self {
-            Value::Number { negative, text } => format!("{}{text}", if *negative { "-" } else { "" }),
-            Value::Word(word) => word.clone(),
-            Value::Str(text) => quote(text),
+            Value::Number { negative, text } => format!("'{}{text}'", if *negative { "-" } else { "" }),
+            Value::Word(word) => format!("'{word}'"),
+            Value::Str(text) => format!("string '{text}'"),
         }
     }
 }

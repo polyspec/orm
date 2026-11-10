@@ -2,9 +2,10 @@
 //! settings, `use` and diagrams.
 
 use super::check_type::{type_check, CheckLiterals};
+use super::lexer::go_quote;
 use super::model::*;
 use super::names::renderer_name;
-use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax};
+use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax, CODEC_STAGES};
 use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -102,7 +103,7 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
         if !seen_documents.insert(line.document.text.as_str()) {
-            diags.push(err(line.document.pos, "name.duplicate", format!("document '{}' is used twice", line.document.text)));
+            diags.push(err(line.document.pos, "name.duplicate", format!("document {} is used twice", go_quote(&line.document.text))));
             continue;
         }
         let Some(other) = found else {
@@ -110,24 +111,32 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
             continue;
         };
         used_documents.push((&line.document, other));
+        let mut listed = HashSet::new();
         for name in &line.tables {
             if !well_formed(&name.text) {
                 scope.unresolved.insert(name.text.as_str());
                 continue;
             }
+            if !listed.insert(name.text.as_str()) {
+                diags.push(err(name.pos, "name.duplicate", format!("table {} is listed twice", go_quote(&name.text))));
+                continue;
+            }
             match other.tables.iter().find(|t| t.name.text == name.text) {
                 None => {
                     scope.unresolved.insert(name.text.as_str());
-                    diags.push(err(name.pos, "use", format!("document '{}' does not define table '{}'", line.document.text, name.text)));
+                    diags.push(err(name.pos, "use", format!("document {} does not define table {}", go_quote(&line.document.text), go_quote(&name.text))));
                 }
                 Some(table) => {
-                    if scope.used.insert(name.text.as_str(), table).is_some() {
-                        diags.push(err(name.pos, "name.duplicate", format!("table '{}' is used twice", name.text)));
+                    if scope.used.contains_key(name.text.as_str()) {
+                        diags.push(err(name.pos, "name.duplicate", format!("table {} is already used from another document", go_quote(&name.text))));
+                    } else {
+                        scope.used.insert(name.text.as_str(), table);
                     }
                 }
             }
         }
     }
+    let used_constraints = used_constraint_names(&used_documents, diags);
     for (index, table) in document.tables.iter().enumerate() {
         if table.name.text.is_empty() {
             continue;
@@ -135,13 +144,21 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
         if scope.tables.contains_key(table.name.text.as_str()) || scope.used.contains_key(table.name.text.as_str()) {
             // Go does not report duplicate names of tables whose table line failed (failed table in validate.go).
             if !header_failed.get(index).copied().unwrap_or(false) {
-                diags.push(err(table.name.pos, "name.duplicate", format!("table '{}' is defined twice", table.name.text)));
+                let message = if scope.tables.contains_key(table.name.text.as_str()) { "is defined twice" } else { "is also a used table" };
+                diags.push(err(table.name.pos, "name.duplicate", format!("table {} {message}", go_quote(&table.name.text))));
             }
             continue;
         }
+        if let (Some(owner), false) = (used_constraints.get(table.name.text.as_str()), header_failed.get(index).copied().unwrap_or(false)) {
+            diags.push(err(
+                table.name.pos,
+                "name.duplicate",
+                format!("table {} is named like a constraint of document {}", go_quote(&table.name.text), go_quote(owner)),
+            ));
+        }
         scope.tables.insert(table.name.text.as_str(), index);
     }
-    constraint_names(document, &used_documents, diags);
+    constraint_names(document, &used_documents, &used_constraints, diags);
     generated_names_unique(document, &scope, diags);
     for index in 0..document.tables.len() {
         let defaults = defaults.get(index).map_or(&[][..], Vec::as_slice);
@@ -193,7 +210,7 @@ fn generated_names_unique(document: &Document, scope: &Scope<'_>, diags: &mut Ve
         }
         for (name, pos, source) in generated_names_of(table) {
             if let Some(first) = seen.get(&name) {
-                diags.push(err(pos, "name.duplicate", format!("generated name '{name}' of {source} repeats the generated name of {first}")));
+                diags.push(err(pos, "name.duplicate", format!("generated name {name} of {source} repeats the generated name of {first}")));
             } else {
                 seen.insert(name, source);
             }
@@ -209,39 +226,62 @@ fn constraint_names_of(table: &Table) -> impl Iterator<Item = &Name> {
     uniques.chain(indexes).chain(keys).chain(checks)
 }
 
-/// Index, unique key, foreign key and check names are unique across the
-/// document and the documents it uses directly, and differ from every table
-/// name. Two used documents that repeat a name report it at the later
-/// document name.
-fn constraint_names(document: &Document, used: &[(&Name, &Document)], diags: &mut Vec<Diag>) {
-    let mut tables: HashSet<&str> = document.tables.iter().map(|t| t.name.text.as_str()).collect();
-    let mut seen: HashSet<&str> = HashSet::new();
+/// The constraint names of `document` in source order.
+fn constraint_names_in_order(document: &Document) -> Vec<&Name> {
+    let mut names: Vec<&Name> = document.tables.iter().flat_map(constraint_names_of).collect();
+    names.sort_by_key(|n| n.pos);
+    names
+}
+
+/// The index, unique key, foreign key and check names of the documents used directly, each with the first
+/// document that declares it. A used document that repeats a name of an earlier used document reports it at the
+/// later document name.
+fn used_constraint_names<'d>(used: &[(&'d Name, &'d Document)], diags: &mut Vec<Diag>) -> HashMap<&'d str, &'d str> {
+    let mut owners: HashMap<&str, &str> = HashMap::new();
     let mut documents = HashSet::new();
     for (name, other) in used {
         if !documents.insert(name.text.as_str()) {
             continue;
         }
-        tables.extend(other.tables.iter().map(|t| t.name.text.as_str()));
-        let mut repeated = None;
-        for table in &other.tables {
-            for constraint in constraint_names_of(table) {
-                if !seen.insert(constraint.text.as_str()) && repeated.is_none() {
-                    repeated = Some(constraint.text.as_str());
+        let mut repeated = false;
+        for constraint in constraint_names_in_order(other) {
+            match owners.get(constraint.text.as_str()) {
+                Some(owner) if *owner != name.text && !repeated => {
+                    diags.push(err(
+                        name.pos,
+                        "name.duplicate",
+                        format!("document {} repeats constraint name {} of document {}", go_quote(&name.text), go_quote(&constraint.text), go_quote(owner)),
+                    ));
+                    repeated = true;
+                }
+                Some(_) => {}
+                None => {
+                    owners.insert(constraint.text.as_str(), name.text.as_str());
                 }
             }
         }
-        if let Some(repeated) = repeated {
-            diags.push(err(name.pos, "name.duplicate", format!("document '{}' repeats the constraint name '{repeated}' of another used document", name.text)));
-        }
     }
-    let mut own: Vec<&Name> = document.tables.iter().flat_map(constraint_names_of).collect();
-    own.sort_by_key(|n| n.pos);
-    for name in own {
-        if tables.contains(name.text.as_str()) {
-            diags.push(err(name.pos, "name.duplicate", format!("constraint name '{}' is a table name", name.text)));
-        } else if !seen.insert(name.text.as_str()) {
-            diags.push(err(name.pos, "name.duplicate", format!("constraint name '{}' is already used in the schema", name.text)));
+    owners
+}
+
+/// Index, unique key, foreign key and check names are unique across the document and the documents it uses
+/// directly, and differ from every table name.
+fn constraint_names(document: &Document, used: &[(&Name, &Document)], used_constraints: &HashMap<&str, &str>, diags: &mut Vec<Diag>) {
+    let mut tables: HashSet<&str> = document.tables.iter().map(|t| t.name.text.as_str()).collect();
+    for (_, other) in used {
+        tables.extend(other.tables.iter().map(|t| t.name.text.as_str()));
+    }
+    let mut seen: HashSet<&str> = HashSet::new();
+    for name in constraint_names_in_order(document) {
+        let quoted = go_quote(&name.text);
+        if seen.contains(name.text.as_str()) {
+            diags.push(err(name.pos, "name.duplicate", format!("index, unique key, foreign key or check name {quoted} repeats in the schema")));
+        } else if let Some(owner) = used_constraints.get(name.text.as_str()) {
+            diags.push(err(name.pos, "name.duplicate", format!("name {quoted} is a constraint name of used document {}", go_quote(owner))));
+        } else if tables.contains(name.text.as_str()) {
+            diags.push(err(name.pos, "name.duplicate", format!("name {quoted} is also a table name")));
         }
+        seen.insert(name.text.as_str());
     }
 }
 
@@ -262,15 +302,15 @@ fn diagrams(document: &Document, scope: &Scope, diags: &mut Vec<Diag>) {
     let mut names = HashSet::new();
     for diagram in &document.diagrams {
         if !diagram.name.text.is_empty() && !names.insert(diagram.name.text.as_str()) {
-            diags.push(err(diagram.name.pos, "name.duplicate", format!("diagram '{}' is defined twice", diagram.name.text)));
+            diags.push(err(diagram.name.pos, "name.duplicate", format!("diagram {} is defined twice", go_quote(&diagram.name.text))));
         }
         let mut placed = HashSet::new();
         for placement in &diagram.placements {
             let name = placement.table.text.as_str();
             if scope.table(name).is_none() && !scope.unresolved(name) {
-                diags.push(err(placement.table.pos, "diagram", format!("diagram places unknown table '{name}'")));
+                diags.push(err(placement.table.pos, "diagram", format!("table {} is not a table of this document or a used table", go_quote(name))));
             } else if !placed.insert(name) {
-                diags.push(err(placement.table.pos, "diagram", format!("diagram places table '{name}' twice")));
+                diags.push(err(placement.table.pos, "diagram", format!("table {} appears twice in the diagram", go_quote(name))));
             }
         }
     }
@@ -306,11 +346,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let mut names = HashSet::new();
         for column in &table.columns {
             if !names.insert(column.name.text.as_str()) {
-                self.report(column.name.pos, "name.duplicate", format!("column '{}' is defined twice", column.name.text));
+                self.report(column.name.pos, "name.duplicate", format!("column {} repeats in the table", go_quote(&column.name.text)));
             }
         }
         if table.columns.is_empty() && self.own.unresolved.is_none_or(HashSet::is_empty) {
-            self.report(table.name.pos, "column", format!("table '{}' has no column", table.name.text));
+            self.report(table.name.pos, "column", format!("table {} has no column", go_quote(&table.name.text)));
         }
         let mut identities = 0;
         for column in &table.columns {
@@ -322,10 +362,13 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 .primary
                 .first()
                 .is_none_or(|key| key.columns.iter().all(|c| well_formed(&c.text) && !self.own.unresolved.is_some_and(|u| u.contains(c.text.as_str()))));
+            // Go's identity diagnostics are one per column: null, then the type, then a second identity column.
             if identities > 1 {
-                self.report(pos, "column", "a table has at most one identity column");
+                if !column.nullable && column.ty == Type::I64 {
+                    self.report(pos, "column", "a table has at most one identity column");
+                }
             } else if resolved && !sole_key && !self.own.failed_keys.primary {
-                self.report(pos, "column", "an identity column is the only primary key column");
+                self.report(pos, "column", "the identity column must be the only primary key column");
             }
         }
     }
@@ -334,12 +377,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let table = self.own.table;
         match table.primary.split_first() {
             None if self.own.failed_keys.primary => {}
-            None => self.report(table.name.pos, "key", format!("table '{}' has no primary key", table.name.text)),
+            None => self.report(table.name.pos, "key", format!("table {} has no primary key", go_quote(&table.name.text))),
             Some((first, rest)) => {
-                self.key_columns(first.columns.iter().map(|n| (n, false)), first.pos, true);
                 for extra in rest {
-                    self.report(extra.pos, "key", "a table has exactly one primary key");
+                    self.report(extra.pos, "key", "table has more than one primary key");
                 }
+                self.key_columns(first.columns.iter().map(|n| (n, false)), first.pos, true);
             }
         }
         for unique in &table.uniques {
@@ -351,29 +394,38 @@ impl<'s, 'd> TableRules<'s, 'd> {
     }
 
     fn key_columns<'n>(&mut self, columns: impl Iterator<Item = (&'n Name, bool)>, at: Pos, primary: bool) {
+        let columns: Vec<(&Name, bool)> = columns.collect();
+        if columns.len() > MAX_KEY_COLUMNS {
+            self.report(at, "key", format!("a key or index lists {} columns, more than {MAX_KEY_COLUMNS}", columns.len()));
+        }
         let mut seen = HashSet::new();
         let mut varchar = 0u32;
-        for (index, (name, _)) in columns.enumerate() {
-            if index == MAX_KEY_COLUMNS {
-                self.report(at, "key", format!("a key or index lists at most {MAX_KEY_COLUMNS} columns"));
-            }
+        for (name, _) in columns {
+            let column = match self.own.column(&name.text) {
+                Lookup::Missing => {
+                    let message = format!("column {} is not a column of table {}", go_quote(&name.text), go_quote(&self.own.table.name.text));
+                    self.report(name.pos, "key", message);
+                    continue;
+                }
+                Lookup::Unresolved => continue,
+                Lookup::Found(column) => column,
+            };
             if !seen.insert(name.text.as_str()) {
-                self.report(name.pos, "key", format!("column '{}' is repeated", name.text));
+                self.report(name.pos, "key", format!("column {} repeats in the key", go_quote(&name.text)));
                 continue;
             }
-            match self.own.column(&name.text) {
-                Lookup::Missing => self.report(name.pos, "key", format!("unknown column '{}'", name.text)),
-                Lookup::Unresolved => {}
-                Lookup::Found(column) => match column.ty {
-                    Type::Text | Type::Bytes => self.report(name.pos, "key", format!("a {} column cannot be part of a key or index", column.ty.render())),
-                    _ if primary && column.nullable => self.report(name.pos, "key", format!("primary key column '{}' is null", name.text)),
-                    Type::Varchar(n) => varchar += n as u32,
-                    _ => {}
-                },
+            if matches!(column.ty, Type::Text | Type::Bytes) {
+                self.report(name.pos, "key", format!("a {} column cannot be part of a key or index", column.ty.render()));
+            }
+            if primary && column.nullable {
+                self.report(name.pos, "key", format!("primary key column {} is nullable", go_quote(&name.text)));
+            }
+            if let Type::Varchar(n) = column.ty {
+                varchar += n as u32;
             }
         }
         if varchar > MAX_KEY_VARCHAR {
-            self.report(at, "key", format!("varchar columns total {varchar} characters; the limit is {MAX_KEY_VARCHAR}"));
+            self.report(at, "key", format!("the varchar columns of the key total {varchar} characters, more than {MAX_KEY_VARCHAR}"));
         }
     }
 
@@ -391,7 +443,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             match self.own.column(&name.text) {
                 Lookup::Found(column) => {
                     if repeated {
-                        self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
+                        self.report(name.pos, "foreign_key", format!("column {} repeats in the foreign key", go_quote(&name.text)));
                         children_known = false;
                     }
                     children.push(Some(column));
@@ -400,7 +452,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 // Go's columnRef finds columns with a wrong type. The index check treats this column as known and skips the type check.
                 Lookup::Unresolved if typeless.is_some() => {
                     if repeated {
-                        self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
+                        self.report(name.pos, "foreign_key", format!("column {} repeats in the foreign key", go_quote(&name.text)));
                         children_known = false;
                     }
                     children.push(None);
@@ -412,7 +464,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     nullable.push(None);
                 }
                 Lookup::Missing => {
-                    self.report(name.pos, "foreign_key", format!("unknown column '{}'", name.text));
+                    let message = format!("column {} is not a column of table {}", go_quote(&name.text), go_quote(&self.own.table.name.text));
+                    self.report(name.pos, "foreign_key", message);
                     children_known = false;
                     nullable.push(None);
                     children.push(None);
@@ -428,7 +481,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         match &target {
             None => {
                 if !self.scope.unresolved(&key.table.text) {
-                    self.report(key.table.pos, "foreign_key", format!("unknown table '{}'", key.table.text));
+                    self.report(key.table.pos, "foreign_key", format!("table {} is not a table of this document or a used table", go_quote(&key.table.text)));
                 }
                 references_known = false;
             }
@@ -442,7 +495,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
                             parents.push(None);
                         }
                         Lookup::Missing => {
-                            self.report(name.pos, "foreign_key", format!("table '{}' has no column '{}'", key.table.text, name.text));
+                            let message = format!("column {} is not a column of table {}", go_quote(&name.text), go_quote(&key.table.text));
+                            self.report(name.pos, "foreign_key", message);
                             references_known = false;
                             parents.push(None);
                         }
@@ -454,7 +508,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
         // Go checks the count only when the target is defined and did not fail (`target != nil && !target.failed`).
         let target_checked = target.is_some() && !failed_target;
         if target_checked && !same_length {
-            self.report(key.name.pos, "foreign_key", "the foreign key lists a different number of columns and referenced columns");
+            self.report(
+                key.name.pos,
+                "foreign_key",
+                format!("foreign key lists {} columns and {} referenced columns", key.columns.len(), key.references.len()),
+            );
         }
         // Same as Go's foreignKey: pair and type checks are done only when the counts match and all referenced columns are known.
         if let (true, true, Some(target), false) = (same_length, references_known, &target, failed_target) {
@@ -462,15 +520,21 @@ impl<'s, 'd> TableRules<'s, 'd> {
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
             let keyed = target.table.primary.first().is_some_and(|p| same(&p.columns)) || target.table.uniques.iter().any(|u| same(&u.columns));
             if !keyed && !target.failed_keys.any && !target.failed_keys.primary {
-                self.report(key.name.pos, "foreign_key", format!("the referenced columns are not the primary key or a unique key of '{}'", key.table.text));
+                self.report(
+                    key.name.pos,
+                    "foreign_key",
+                    format!("the referenced columns are not the primary key or a unique key of table {}", go_quote(&key.table.text)),
+                );
             }
             // Only known child columns have their type checked. The referenced columns were confirmed above to be all known.
-            if children.iter().zip(&parents).any(|(c, p)| matches!((c, p), (Some(c), Some(p)) if c.ty != p.ty)) {
-                self.report(key.name.pos, "foreign_key", "a column type differs from its referenced column type");
+            let differs = children.iter().zip(&parents).find_map(|(c, p)| match (c, p) {
+                (Some(c), Some(p)) if c.ty != p.ty => Some((*c, *p)),
+                _ => None,
+            });
+            if let Some((child, parent)) = differs {
+                let message = format!("column {} has type {}, the referenced column has {}", go_quote(&child.name.text), child.ty.render(), parent.ty.render());
+                self.report(key.name.pos, "foreign_key", message);
             }
-        }
-        if (key.on_delete == Action::SetNull || key.on_update == Action::SetNull) && nullable.iter().flatten().any(|null| !null) {
-            self.report(key.name.pos, "foreign_key", "set_null requires every column to be null");
         }
         let names: Vec<&str> = key.columns.iter().map(|n| n.text.as_str()).collect();
         let leads = |columns: &mut dyn Iterator<Item = &str>| {
@@ -482,7 +546,13 @@ impl<'s, 'd> TableRules<'s, 'd> {
             || table.uniques.iter().any(|u| leads(&mut u.columns.iter().map(|n| n.text.as_str())))
             || table.indexes.iter().any(|i| leads(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
         if children_known && !indexed && !self.own.failed_keys.any && !self.own.failed_keys.primary {
-            self.report(key.name.pos, "foreign_key", "no index or key of the table leads with the foreign key's columns");
+            self.report(key.name.pos, "foreign_key", "the table declares no index or key whose leading columns are the foreign key columns");
+        }
+        if key.on_delete == Action::SetNull || key.on_update == Action::SetNull {
+            if let Some((name, _)) = key.columns.iter().zip(&nullable).find(|(_, null)| **null == Some(false)) {
+                let message = format!("set_null requires every foreign key column to be null; {} is not", go_quote(&name.text));
+                self.report(key.name.pos, "foreign_key", message);
+            }
         }
     }
 
@@ -499,9 +569,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
             for name in columns {
                 let problem = match (name_problem(&name.text), own.column(&name.text)) {
                     (Some(problem), _) => Some(problem),
-                    (None, Lookup::Missing) => Some(("check", format!("unknown column '{}'", name.text))),
+                    (None, Lookup::Missing) => {
+                        Some(("check", format!("column {} is not a column of table {}", go_quote(&name.text), go_quote(&table.name.text))))
+                    }
                     (None, Lookup::Found(_)) if changed.contains(name.text.as_str()) => {
-                        Some(("check", format!("column '{}' belongs to a cascade or set_null foreign key", name.text)))
+                        Some(("check", format!("column {} belongs to a foreign key with cascade or set_null", go_quote(&name.text))))
                     }
                     _ => None,
                 };
@@ -531,7 +603,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
             Lookup::Found(column) => Some(column),
             Lookup::Unresolved => None,
             Lookup::Missing => {
-                self.report(name.pos, "setting", format!("unknown column '{}'", name.text));
+                let message = format!("column {} is not a column of table {}", go_quote(&name.text), go_quote(&self.own.table.name.text));
+                self.report(name.pos, "setting", message);
                 None
             }
         }
@@ -560,7 +633,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 // A repeated line is not checked, as the reference does. A setting that appears once names its keyword.
                 let message = match &line.setting {
                     Setting::Codec(name, _) | Setting::BlindIndex(name, _) | Setting::Markdown(name) | Setting::Navigation(name, _, _) => {
-                        format!("{} repeats for \"{}\"", line.setting.keyword(), name.text)
+                        format!("{} repeats for {}", line.setting.keyword(), go_quote(&name.text))
                     }
                     other => format!("setting {} repeats", other.keyword()),
                 };
@@ -572,14 +645,14 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 Setting::Updated(name) => {
                     if let Some(column) = self.setting_column(name) {
                         if !matches!(column.ty, Type::DateTime(_)) {
-                            self.report(name.pos, "setting", "updated names a datetime column");
+                            self.report(name.pos, "setting", format!("updated needs a datetime column, not {}", column.ty.render()));
                         }
                     }
                 }
                 Setting::SoftDelete(name) => {
                     if let Some(column) = self.setting_column(name) {
                         if !matches!(column.ty, Type::DateTime(_)) || !column.nullable {
-                            self.report(name.pos, "setting", "soft_delete names a nullable datetime column");
+                            self.report(name.pos, "setting", "soft_delete needs a nullable datetime column");
                         }
                     }
                 }
@@ -587,50 +660,46 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     let mut seen = HashSet::new();
                     for name in names {
                         if !seen.insert(name.text.as_str()) {
-                            self.report(name.pos, "setting", format!("column '{}' is repeated", name.text));
+                            self.report(name.pos, "setting", format!("column {} repeats in select explicit", go_quote(&name.text)));
                         } else {
                             self.setting_column(name);
                         }
                     }
                 }
                 Setting::Codec(name, stages) => {
-                    // The storage type follows the last stage.
+                    // The storage type follows the last stage; a codec with an unknown stage has none.
                     let last = stages.last().map_or("", |s| s.text.as_str());
-                    let storage = match last {
-                        "hex" | "base64" | "ordered_json" | "yaml" | "serialize" => Some("text, in a varchar or text column"),
-                        "aes" | "gz" | "ip" => Some("bytes, in a bytes column"),
-                        _ => None,
-                    };
-                    if let (Some(column), Some(storage)) = (self.setting_column(name), storage) {
+                    let known = stages.iter().all(|s| CODEC_STAGES.contains(&s.text.as_str()));
+                    let bytes = matches!(last, "aes" | "gz" | "ip");
+                    if let (Some(column), true) = (self.setting_column(name), known) {
                         let text = matches!(column.ty, Type::Varchar(_) | Type::Text);
-                        if text != storage.starts_with("text") || (!text && column.ty != Type::Bytes) {
-                            self.report(name.pos, "setting", format!("codec stage '{last}' stores {storage}"));
+                        let ty = column.ty.render();
+                        if bytes && column.ty != Type::Bytes {
+                            self.report(name.pos, "setting", format!("the last codec stage {last} stores bytes and needs a bytes column, not {ty}"));
+                        } else if !bytes && !text {
+                            self.report(name.pos, "setting", format!("the last codec stage {last} stores text and needs a varchar or text column, not {ty}"));
                         }
                     }
                     if stages.iter().any(|s| s.text == "aes") && !has_aes_version {
-                        self.report(line.pos, "setting", "a codec with aes requires the aes_version setting");
+                        self.report(line.pos, "setting", "a column with the aes stage requires an aes_version setting");
                     }
                 }
                 Setting::AesVersion(name) => {
                     if !has_aes {
-                        self.report(line.pos, "setting", "aes_version requires a column with the aes codec stage");
+                        self.report(line.pos, "setting", "aes_version without a column that uses aes");
                     }
                     if let Some(column) = self.setting_column(name) {
                         if !matches!(column.ty, Type::I16 | Type::I32 | Type::I64) || column.nullable {
-                            self.report(name.pos, "setting", "aes_version names a non-null integer column");
+                            self.report(name.pos, "setting", "aes_version needs a non-null integer column");
                         }
                     }
                 }
                 Setting::BlindIndex(aes, target) => self.blind_index(settings, line.pos, aes, target),
-                Setting::Navigation(key, _, _) => {
-                    if !table.foreign_keys.iter().any(|k| k.name.text == key.text) && !self.own.unresolved.is_some_and(|u| u.contains(key.text.as_str())) {
-                        self.report(key.pos, "setting", format!("table has no foreign key '{}'", key.text));
-                    }
-                }
+                Setting::Navigation(key, _, _) => self.foreign_key_name(key),
                 Setting::Markdown(name) => {
                     if let Some(column) = self.setting_column(name) {
                         if !matches!(column.ty, Type::Varchar(_) | Type::Text) {
-                            self.report(name.pos, "setting", "markdown needs a varchar or text column");
+                            self.report(name.pos, "setting", format!("markdown needs a varchar or text column, not {}", column.ty.render()));
                         }
                     }
                 }
@@ -643,7 +712,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         self.store_shard(kind, shard, order);
                     }
                 }
-                Setting::Title(name) | Setting::Body(name) => self.text_column(name),
+                Setting::Title(name) | Setting::Body(name) => self.text_column(line.setting.keyword(), name),
                 Setting::Order(name) => self.order(name),
                 Setting::TaskMarker(name) => self.task_marker(name),
                 Setting::Immutable => {
@@ -673,15 +742,15 @@ impl<'s, 'd> TableRules<'s, 'd> {
             && !self.own.table.foreign_keys.iter().any(|k| k.name.text == name.text)
             && !self.own.unresolved.is_some_and(|u| u.contains(name.text.as_str()))
         {
-            self.report(name.pos, "setting", format!("foreign key '{}' is not a foreign key of the table", name.text));
+            self.report(name.pos, "setting", format!("foreign key {} is not a foreign key of the table", go_quote(&name.text)));
         }
     }
 
     /// `title` and `body` name a non-null varchar or text column.
-    fn text_column(&mut self, name: &Name) {
+    fn text_column(&mut self, keyword: &str, name: &Name) {
         if let Some(column) = self.setting_column(name) {
             if !matches!(column.ty, Type::Varchar(_) | Type::Text) || column.nullable {
-                self.report(name.pos, "setting", "needs a non-null varchar or text column");
+                self.report(name.pos, "setting", format!("{keyword} needs a non-null varchar or text column"));
             }
         }
     }
@@ -712,7 +781,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         if !matches!(column.ty, Type::I32 | Type::I64) || column.nullable || self.default_of(&name.text).is_some() {
             self.report(name.pos, "setting", "order needs a non-null i32 or i64 column with no default");
         } else if in_key_or_check(self.own.table, &name.text) {
-            self.report(name.pos, "setting", format!("order column '{}' is in a key, index or check", name.text));
+            self.report(name.pos, "setting", format!("order column {} is in a key, index or check", go_quote(&name.text)));
         }
     }
 
@@ -732,7 +801,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         };
         let aes_column = self.setting_column(aes);
         if aes_column.is_some() && !encrypted(&aes.text) {
-            self.report(keyword, "setting", format!("column '{}' has no codec with aes", aes.text));
+            self.report(keyword, "setting", format!("blind_index names column {}, which has no codec with the aes stage", go_quote(&aes.text)));
         }
         let Some(column) = self.setting_column(target) else { return };
         let table = self.own.table;
@@ -744,14 +813,15 @@ impl<'s, 'd> TableRules<'s, 'd> {
             || table.indexes.iter().any(|i| only(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
         let storage = matches!(column.ty, Type::Varchar(n) if n >= BLIND_INDEX_LENGTH);
         let nullability = aes_column.is_none_or(|a| a.nullable == column.nullable);
-        if !storage || (!indexed && !self.own.failed_keys.any) || !nullability || encrypted(&target.text) {
-            self.report(
-                target.pos,
-                "setting",
-                format!(
-                    "the blind_index column is varchar({BLIND_INDEX_LENGTH}) or longer, has the nullability of the aes column, is not aes-encoded and is the only column of an index or unique key"
-                ),
-            );
+        if encrypted(&target.text) {
+            self.report(target.pos, "setting", "the blind index column is not AES-encoded");
+        } else if !storage {
+            self.report(target.pos, "setting", format!("the blind index column is varchar(n) with n >= {BLIND_INDEX_LENGTH}, not {}", column.ty.render()));
+        } else if !nullability {
+            self.report(target.pos, "setting", "the blind index column has the nullability of the AES column");
+        } else if !indexed && !self.own.failed_keys.any {
+            let message = format!("column {} is not the only column of a declared index or unique key", go_quote(&target.text));
+            self.report(target.pos, "setting", message);
         }
     }
 
@@ -785,7 +855,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         let Some(history) = self.scope.table(&into.text) else {
             if !self.scope.unresolved(&into.text) {
-                self.report(into.pos, "setting", format!("unknown history table '{}'", into.text));
+                self.report(into.pos, "setting", format!("history table {} is not a table of this document or a used table", go_quote(&into.text)));
             }
             return;
         };
@@ -793,14 +863,15 @@ impl<'s, 'd> TableRules<'s, 'd> {
         if history.header_failed {
             return;
         }
+        let history_failed_primary = history.failed_keys.primary;
         let history = history.table;
         if history.name.text == table.name.text {
-            self.report(into.pos, "setting", "a table is not its own history table");
+            self.report(into.pos, "setting", "a table cannot be its own history table");
             return;
         }
         let audited = history.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Audit { .. })));
         if audited {
-            self.report(into.pos, "setting", format!("history table '{}' is audited itself", into.text));
+            self.report(into.pos, "setting", format!("history table {} is audited itself", go_quote(&into.text)));
         }
         let identity = history.primary.first().and_then(|key| match key.columns.as_slice() {
             [only] => history.column(&only.text).filter(|c| c.identity.is_some() && c.ty == Type::I64),
@@ -811,11 +882,14 @@ impl<'s, 'd> TableRules<'s, 'd> {
             Some(column) => {
                 reserved.insert(&column.name.text);
             }
-            None => self.report(into.pos, "setting", format!("history table '{}' needs an i64 identity primary key", into.text)),
+            None if history_failed_primary => {}
+            None => self.report(into.pos, "setting", format!("history table {} needs an i64 identity primary key", go_quote(&into.text))),
         }
         if well_formed(&action.text) {
             match history.column(&action.text) {
-                None => self.report(action.pos, "setting", format!("column '{}' is not a column of history table '{}'", action.text, into.text)),
+                None => {
+                    self.report(action.pos, "setting", format!("column {} is not a column of history table {}", go_quote(&action.text), go_quote(&into.text)))
+                }
                 Some(_) if reserved.contains(action.text.as_str()) => {
                     self.report(action.pos, "setting", "the action column is a separate column of the history table")
                 }
@@ -828,13 +902,18 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         if well_formed(&previous.text) {
             match history.column(&previous.text) {
-                None => self.report(previous.pos, "setting", format!("column '{}' is not a column of history table '{}'", previous.text, into.text)),
+                None => self.report(
+                    previous.pos,
+                    "setting",
+                    format!("column {} is not a column of history table {}", go_quote(&previous.text), go_quote(&into.text)),
+                ),
                 Some(_) if reserved.contains(previous.text.as_str()) => {
                     self.report(previous.pos, "setting", "the previous column is a separate column of the history table")
                 }
                 Some(column) if !column.nullable => self.report(previous.pos, "setting", "the previous column is nullable"),
                 Some(column) if audit_column.is_some_and(|o| o.ty != column.ty) => {
-                    self.report(previous.pos, "setting", "the previous column has the audit column type")
+                    let audit = audit_column.map_or_else(String::new, |o| o.ty.render());
+                    self.report(previous.pos, "setting", format!("the previous column has the audit column type {audit}, not {}", column.ty.render()))
                 }
                 Some(_) => {}
             }
@@ -851,14 +930,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
             match history.column(&column.name.text) {
                 Some(copy) if !reserved.contains(column.name.text.as_str()) => {
                     if copy.ty != column.ty {
-                        self.report(
-                            into.pos,
-                            "setting",
-                            format!("history column '{}' has another type than the column of '{}'", column.name.text, table.name.text),
-                        );
+                        let message = format!("history column {} has type {}, not {}", go_quote(&column.name.text), copy.ty.render(), column.ty.render());
+                        self.report(into.pos, "setting", message);
                     }
                 }
-                _ => self.report(into.pos, "setting", format!("history table '{}' has no copy of column '{}'", into.text, column.name.text)),
+                _ => self.report(into.pos, "setting", format!("history table {} has no copy of column {}", go_quote(&into.text), go_quote(&column.name.text))),
             }
         }
         for column in &history.columns {
@@ -867,9 +943,17 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 continue;
             }
             if table.column(name).is_none() {
-                self.report(into.pos, "setting", format!("history table '{}' has column '{name}', which is not a column of '{}'", into.text, table.name.text));
+                let message = format!(
+                    "history table {} has column {}, which is not a column of table {}",
+                    go_quote(&into.text),
+                    go_quote(name),
+                    go_quote(&table.name.text)
+                );
+                self.report(into.pos, "setting", message);
             } else if !setting.records(name) {
-                self.report(into.pos, "setting", format!("history table '{}' has column '{name}', which '{}' does not record", into.text, table.name.text));
+                let message =
+                    format!("history table {} has column {}, which table {} does not record", go_quote(&into.text), go_quote(name), go_quote(&table.name.text));
+                self.report(into.pos, "setting", message);
             }
         }
     }
@@ -890,7 +974,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         let Some(tables) = self.scope.table(&r.text) else {
             if !self.scope.unresolved(&r.text) {
-                self.report(r.pos, "setting", format!("tables table '{}' is not a table of this document or a used table", r.text));
+                self.report(r.pos, "setting", format!("tables table {} is not a table of this document or a used table", go_quote(&r.text)));
             }
             return;
         };
@@ -902,13 +986,13 @@ impl<'s, 'd> TableRules<'s, 'd> {
             return;
         }
         if tables.table.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Audit { .. }))) {
-            self.report(r.pos, "setting", format!("tables table '{}' is audited itself", r.text));
+            self.report(r.pos, "setting", format!("tables table {} is audited itself", go_quote(&r.text)));
             return;
         }
         let mut known = true;
         for tok in [&c.record, &c.name] {
             if well_formed(&tok.text) && tables.table.column(&tok.text).is_none() {
-                self.report(tok.pos, "setting", format!("column '{}' is not a column of tables table '{}'", tok.text, r.text));
+                self.report(tok.pos, "setting", format!("column {} is not a column of tables table {}", go_quote(&tok.text), go_quote(&r.text)));
                 known = false;
             }
         }
@@ -922,12 +1006,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         for col in &tables.table.columns {
             if col.name.text != c.record.text && col.name.text != c.name.text {
-                self.report(r.pos, "setting", format!("tables table '{}' has the extra column '{}'", r.text, col.name.text));
+                self.report(r.pos, "setting", format!("tables table {} has the extra column {}", go_quote(&r.text), go_quote(&col.name.text)));
             }
         }
         let pk_ok = matches!(tables.table.primary.as_slice(), [only] if only.columns.len() == 2 && only.columns[0].text == c.record.text && only.columns[1].text == c.name.text);
         if !pk_ok && !tables.failed_keys.primary {
-            self.report(r.pos, "setting", format!("the primary key of tables table '{}' is ({}, {})", r.text, c.record.text, c.name.text));
+            self.report(r.pos, "setting", format!("the primary key of tables table {} is ({}, {})", go_quote(&r.text), c.record.text, c.name.text));
         }
         let Some(record) = self.scope.table(&references.text) else { return };
         let key = match record.table.primary.as_slice() {
@@ -949,8 +1033,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 r.pos,
                 "setting",
                 format!(
-                    "tables table '{}' needs the foreign key ({}) references {} ({key}) on delete restrict on update restrict",
-                    r.text, c.record.text, references.text
+                    "tables table {} needs the foreign key ({}) references {} ({key}) on delete restrict on update restrict",
+                    go_quote(&r.text),
+                    c.record.text,
+                    references.text
                 ),
             );
         }
@@ -963,7 +1049,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let table = self.own.table;
         let Some(record) = self.scope.table(&references.text) else {
             if !self.scope.unresolved(&references.text) {
-                self.report(references.pos, "setting", format!("audit record table '{}' is not a table of this document or a used table", references.text));
+                self.report(
+                    references.pos,
+                    "setting",
+                    format!("audit record table {} is not a table of this document or a used table", go_quote(&references.text)),
+                );
             }
             return;
         };
@@ -980,13 +1070,13 @@ impl<'s, 'd> TableRules<'s, 'd> {
             return;
         }
         if record.table.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Audit { .. }))) {
-            self.report(references.pos, "setting", format!("audit record table '{}' is audited itself", references.text));
+            self.report(references.pos, "setting", format!("audit record table {} is audited itself", go_quote(&references.text)));
         }
         let key = match record.table.primary.as_slice() {
             [only] if only.columns.len() == 1 => &only.columns[0].text,
             _ => {
                 if !record.failed_keys.primary {
-                    self.report(references.pos, "setting", format!("audit record table '{}' needs a primary key of one column", references.text));
+                    self.report(references.pos, "setting", format!("audit record table {} needs a primary key of one column", go_quote(&references.text)));
                 }
                 return;
             }
@@ -996,7 +1086,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
             self.report(
                 column.pos,
                 "setting",
-                format!("the audit column has type {}, not the type {} of the primary key of '{}'", audit_column.ty.render(), pk.ty.render(), references.text),
+                format!(
+                    "the audit column has type {}, not the type {} of the primary key of {}",
+                    audit_column.ty.render(),
+                    pk.ty.render(),
+                    go_quote(&references.text)
+                ),
             );
             return;
         }
@@ -1032,12 +1127,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
         for list in lists {
             for column in &list.columns {
                 if !listed.insert(column.text.as_str()) {
-                    self.report(column.pos, "setting", format!("column '{}' repeats in audit {}", column.text, list.keyword.text));
+                    self.report(column.pos, "setting", format!("column {} repeats in audit {}", go_quote(&column.text), list.keyword.text));
                 } else if column.text == audited.text {
                     self.report(
                         column.pos,
                         "setting",
-                        format!("the audit column '{}' is always recorded and is not listed in exclude or include", column.text),
+                        format!("the audit column {} is always recorded and is not listed in exclude or include", go_quote(&column.text)),
                     );
                 } else {
                     self.setting_column(column);

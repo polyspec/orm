@@ -3,31 +3,31 @@
     "cases": {
         "bytes/invalid-byte": [
             [
-                "encoding 3 8 the document is not valid UTF-8"
+                "encoding 3 8 text is not valid UTF-8"
             ],
             null
         ],
         "bytes/invalid-byte-after-a-lone-carriage-return": [
             [
-                "encoding 2 7 the document has a carriage return without a line feed"
+                "encoding 2 7 carriage return without a following line feed"
             ],
             null
         ],
         "bytes/byte-order-mark-and-an-invalid-byte": [
             [
-                "encoding 1 1 the document starts with a byte order mark"
+                "encoding 1 1 document starts with a byte order mark"
             ],
             null
         ],
         "bytes/invalid-byte-in-the-header": [
             [
-                "encoding 1 12 the document is not valid UTF-8"
+                "encoding 1 12 text is not valid UTF-8"
             ],
             null
         ],
         "bytes/truncated-sequence-at-the-end": [
             [
-                "encoding 2 6 the document is not valid UTF-8"
+                "encoding 2 6 text is not valid UTF-8"
             ],
             null
         ],
@@ -37,7 +37,7 @@
         ],
         "bytes/used-document-not-utf8": [
             [
-                "use 3 5 used document `core` is invalid: 1:14 encoding the document is not valid UTF-8"
+                "use 3 5 used document \"core\" is invalid: line 1 column 14 encoding: text is not valid UTF-8"
             ],
             null
         ],
