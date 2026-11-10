@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 36d65c67963ba6de28d43f97b2a39d4ae2a7117ada51a8d03d55603964edc4d8 -->
+<!-- source-sha256: a01007320664f7274cacd1a30c1ee85096e7dea9dbf4e26b703bd26d0d5722b9 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -58,7 +58,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   없으므로 공통 query가 없고(DIA-200, 규칙 2) MariaDB의 모든 CHECK는 적용되는 것으로 읽는다. MariaDB는 CHECK 이름의 범위를
   table로 정하므로 그 `CHECK_CLAUSE`는 table과 CHECK 이름의 쌍을 key로 읽는다. 또 `CHECK_CLAUSE`를 바깥 괄호와 introducer 없이, string
   literal에 escape를 한 번 붙인 SQL text로 쓴다. 그 text에 MySQL `CHECK_CLAUSE`의 두 번째 escape를 붙이면 한 reader가 두
-  server의 clause를 읽는다(DIA-146). MariaDB의 renderer CHECK는 `` `c` in (0,1) ``, `` length(`c`) = 16 ``,
+  server의 clause를 읽는다(DIA-146). MariaDB의 renderer CHECK는 `` `c` in (0,1) ``, renderer의 `length`를 MariaDB가 쓰는 대로 `` octet_length(`c`) = 16 ``,
   `` `c` >= '00:00:00' and `c` < '24:00:00' ``이다(probe `mariadb.render.bool_check`, `mariadb.render.uuid_bytes`,
   `mariadb.render.time_of_day_check`; DIA-144).
 
@@ -552,7 +552,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ### Check
 
-- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` (length(`c`) = 16) ``(`mysql.render.uuid_bytes`), `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``이고 MariaDB에서는 DIA-203의 형식이며, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다. MySQL과 SQLite에서 `uuid`의 renderer CHECK는 그 type의 이름을 가진 표시이며, `bytes` column은 그것을 갖지 않으므로 uuid를 `bytes` column과 구별한다. 0.0.28까지의 release가 만든 uuid의 text 저장 column, 곧 CHECK `` regexp_like(`c`,_utf8mb4\'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\',_utf8mb4\'c\') ``를 가진 `ascii_bin`의 MySQL `char(36)`과 문자 class 36개의 CHECK `c GLOB`을 가진 SQLite `TEXT`, 그리고 멈춘 변환(PLN-108)의 CHECK `` (length(`c`) in (16,36)) ``을 가진 MySQL `varbinary(36)` column은 `uuid` column으로 읽고, 이유 `uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes`를 가진 미지원 column으로 보고한다.
+- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` (length(`c`) = 16) ``(`mysql.render.uuid_bytes`), `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``이고 MariaDB에서는 DIA-203의 형식이며, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다. MySQL과 SQLite에서 `uuid`의 renderer CHECK는 그 type의 이름을 가진 표시이며, `bytes` column은 그것을 갖지 않으므로 uuid를 `bytes` column과 구별한다. 0.0.28까지의 release가 만든 uuid의 text 저장 column, 곧 CHECK `` regexp_like(`c`,_utf8mb4\'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\',_utf8mb4\'c\') ``를 가진 `ascii_bin`의 MySQL `char(36)`과 문자 class 36개의 CHECK `c GLOB`을 가진 SQLite `TEXT`, 그리고 멈춘 변환(PLN-108)의 CHECK `` (length(`c`) in (16,36)) ``을 가진 MySQL `varbinary(36)` column, MariaDB에서는 DIA-203의 `` c regexp '…' ``과 `` octet_length(`c`) in (16,36) ``은 `uuid` column으로 읽고, 이유 `uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes`를 가진 미지원 column으로 보고한다.
 
 - **DIA-145** 그 밖의 check는 [dbspec](dbspec.md#checks)의 predicate로 읽어 canonical form으로 쓴다.
 
@@ -684,7 +684,7 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.render.datetime_utc_session` | MySQL의 fact가 성립한다 |
 | `mariadb.render.time_of_day_check` | CHECK (v >= '00:00:00' AND v < '24:00:00')를 가진 TIME(6)은 하루 안의 시각만 받는다(4025) |
 | `mariadb.render.timestamp_conversion` | MySQL의 fact가 성립한다 |
-| `mariadb.render.uuid_bytes` | CHECK (length(u) = 16)을 가진 BINARY(16)은 CHECK_CLAUSE가 length(`u`) = 16이고, uuid의 16 byte를 저장해 text의 순서로 정렬한다 |
+| `mariadb.render.uuid_bytes` | CHECK (length(u) = 16)을 가진 BINARY(16)은 CHECK_CLAUSE가 octet_length(`u`) = 16이고, uuid의 16 byte를 저장해 text의 순서로 정렬하며, COLUMN_DEFAULT는 binary default를 x'와 그 byte의 소문자 hex로 쓴다 |
 | `mariadb.sequence.unsupported` | MariaDB에는 CREATE SEQUENCE가 있고, sequence는 그 자체 종류의 table이다 |
 | `mariadb.session.partial_revokes_listed` | MariaDB에는 partial_revokes가 없고(1193), SHOW GLOBAL VARIABLES는 그 row를 내놓지 않는다 |
 | `mariadb.session.sql_mode_set` | MySQL의 fact가 성립한다 |
