@@ -3206,8 +3206,23 @@ mod database {
                 }
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
-                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models).await;
+                // A case that states its steps gets their step budget instead of DATABASE: its step guard ends it at that budget,
+                // or when no apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply::progressed).
+                let steps = case["deadline"]["steps"].as_u64().map(|steps| usize::try_from(steps).expect("the step count fits usize"));
+                let deadline = steps.map_or(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget);
+                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), deadline, move || async move {
+                    let work = run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models);
+                    if steps.is_some() {
+                        let guard = std::sync::Arc::new(polyspec_orm_testcase::StepGuard::new(deadline, polyspec_orm_testcase::DATABASE));
+                        crate::recipe_apply::guard_case(Some(std::sync::Arc::clone(&guard)));
+                        let ran = guard.run(work).await;
+                        crate::recipe_apply::guard_case(None);
+                        if let Err(limit) = ran {
+                            panic!("recipe {path}, case {id}, database {database}: {limit}");
+                        }
+                    } else {
+                        work.await;
+                    }
                     super::report_case(&id, &database);
                 })
             })
@@ -5671,9 +5686,9 @@ mod database {
                     shut(stream).map_err(|e| e.to_string())?;
                 }
             }
-            let copies = self.accept.join().map_err(|_| "the accept thread of the relay panicked".to_owned())?;
+            let copies = self.accept.join().map_err(|panic| format!("the accept thread of the relay panicked: {panic:?}"))?;
             for copy in copies {
-                copy.join().map_err(|_| "a thread of the relay panicked".to_owned())?.map_err(|e| e.to_string())?;
+                copy.join().map_err(|panic| format!("a thread of the relay panicked: {panic:?}"))?.map_err(|e| e.to_string())?;
             }
             drop(woke?);
             Ok(accepted)
@@ -5691,7 +5706,7 @@ mod database {
         let (client_reader, server_reader) = (client.try_clone()?, server.try_clone()?);
         let upstream = std::thread::spawn(move || relay_copy(client_reader, server));
         let downstream = relay_copy(server_reader, client);
-        upstream.join().map_err(|_| std::io::Error::other("a copy of the relay panicked"))??;
+        upstream.join().map_err(|panic| std::io::Error::other(format!("a copy of the relay panicked: {panic:?}")))??;
         downstream
     }
 

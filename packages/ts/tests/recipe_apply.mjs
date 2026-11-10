@@ -30,14 +30,33 @@ const dialectOf = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[databas
 // server.
 const serverOf = database => (database === 'markdown' ? 'sqlite' : database);
 
-/** A driver connection with the form of statement each driver has: run returns the rows as arrays, close ends it. */
+/** f called at most once: each later call returns the result of the first. */
+function once(f) {
+  let result;
+  let called = false;
+  return () => {
+    if (!called) {
+      called = true;
+      result = f();
+    }
+    return result;
+  };
+}
+
+/**
+ * A driver connection with the form of statement each driver has: run returns the rows as arrays, close ends it after its
+ * statement, and destroy ends it at once, so that a statement that a step guard ended does not hold the case's cleanup.
+ */
 async function open(database, target) {
   if (database === 'markdown') {
     // A corpus is reached through one session of its flowmark server, which answers SQLite's statements (DIA-185).
     const corpus = await markdownSqlite(target.dsn);
+    // A statement of the corpus session runs synchronously, so no statement is running when destroy is called.
+    const close = once(() => corpus.close());
     return {
       connection: corpus,
-      close: () => corpus.close(),
+      close,
+      destroy: close,
       run: async text => {
         const statement = corpus.prepare(text);
         statement.setReturnArrays(true);
@@ -47,9 +66,12 @@ async function open(database, target) {
   }
   if (database === 'sqlite') {
     const db = new DatabaseSync(target.path);
+    // node:sqlite runs a statement synchronously, so no statement is running when destroy is called.
+    const close = once(async () => db.close());
     return {
       connection: db,
-      close: async () => db.close(),
+      close,
+      destroy: close,
       run: async text => {
         const statement = db.prepare(text);
         statement.setReturnArrays(true);
@@ -60,9 +82,17 @@ async function open(database, target) {
   const dsn = relatedDsn(required(SERVER_ENV[database]), target.name);
   if (dialectOf(database) === 'mysql') {
     const connection = await mysql.createConnection(mysqlTestOptions(dsn, target.name));
+    let destroyed = false;
     return {
       connection,
-      close: () => connection.end(),
+      // end waits for the running statement; a destroyed connection has nothing to end.
+      close: async () => {
+        if (!destroyed) await connection.end();
+      },
+      destroy: () => {
+        destroyed = true;
+        connection.destroy();
+      },
       run: async text => {
         const [rows] = await connection.query({ sql: text, rowsAsArray: true });
         return Array.isArray(rows) ? rows : [];
@@ -75,9 +105,12 @@ async function open(database, target) {
 async function openPostgres(dsn) {
   const client = new pg.Client({ connectionString: dsn });
   await client.connect();
+  // end disconnects at once when a statement is running (node-postgres), so destroy is end; the client is ended once.
+  const end = once(() => client.end());
   return {
     connection: client,
-    close: () => client.end(),
+    close: end,
+    destroy: end,
     run: async text => (await client.query({ text, rowMode: 'array' })).rows ?? [],
   };
 }
@@ -109,6 +142,7 @@ async function command(s, context, runStep) {
   let events = 0;
   let ran = false;
   const handler = async event => {
+    context.guard?.progress();
     events++;
     kinds.set(event.kind, (kinds.get(event.kind) ?? 0) + 1);
     const on = s.on;
@@ -157,6 +191,8 @@ export function applyOps({ sql, runStep }) {
       if (s.through === 'pooler') session = await openPostgres(relatedDsn(required('ORM_TEST_PGBOUNCER_DSN'), target.name));
       else session = await direct(context, target);
       context.closers.push(() => session.close());
+      // A step guard that ends the case ends its sessions at once, which ends the statement that it waited for (FCV-4).
+      context.guard?.ended.then(() => session.destroy());
       return { bind: session };
     },
     'dbspec.exec': async (s, context) => {
@@ -171,6 +207,7 @@ export function applyOps({ sql, runStep }) {
     },
     'dbspec.other_database': (s, context) => withCaseDatabase(context.database, context.step, async other => {
       const session = await direct(context, { name: other.name, path: other.path, dsn: other.dsn });
+      context.guard?.ended.then(() => session.destroy());
       try {
         context.bound.set(s.as, session);
         for (const nested of s.steps) await runStep(nested, context);

@@ -392,6 +392,7 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/CaseDeadline.php",
         "packages/php/tests/RecipeStep.php",
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",

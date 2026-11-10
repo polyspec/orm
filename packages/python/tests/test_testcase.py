@@ -44,6 +44,20 @@ SAMPLE = textwrap.dedent("""
         def test_stall(self):
             import time
             time.sleep(60)
+
+
+    class Guarded(unittest.TestCase):
+        def test_no_step(self):
+            import time
+            testcase.StepGuard(self.id(), 3600, 0.5)
+            time.sleep(60)
+
+        def test_past_budget(self):
+            import time
+            guard = testcase.StepGuard(self.id(), 0.25, 3600)
+            while True:
+                guard.progress()
+                time.sleep(0.005)
 """)
 
 
@@ -121,6 +135,33 @@ class ReportTest(unittest.TestCase):
         self.assertIn(
             "sample.Stalled.test_stall: deadline 100ms exceeded and the case did not stop",
             result.stderr,
+        )
+
+
+class StepGuardTest(unittest.TestCase):
+    deadline = testcase.PROCESS
+
+    def test_texts_name_the_limits_in_seconds(self) -> None:
+        self.assertEqual(
+            testcase.stall_text(testcase.DATABASE), "no step was applied within 120s"
+        )
+        self.assertEqual(
+            testcase.budget_text(testcase.step_budget(1)), "step budget 60.25s exceeded"
+        )
+
+    def test_a_case_without_a_step_ends_the_process(self) -> None:
+        result = run_sample("Guarded.test_no_step")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(
+            "sample.Guarded.test_no_step: no step was applied within 0.5s",
+            result.stderr,
+        )
+
+    def test_a_case_past_its_budget_ends_the_process(self) -> None:
+        result = run_sample("Guarded.test_past_budget")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(
+            "sample.Guarded.test_past_budget: step budget 0.25s exceeded", result.stderr
         )
 
 

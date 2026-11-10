@@ -236,6 +236,21 @@
           "description": "Why the case needs a direct server. The pooler lane (client-pooler-check) leaves it out; the direct lanes run it.",
           "type": "string",
           "minLength": 1
+        },
+        "deadline": {
+          "description": "The step deadline of a case that applies more steps, one after another, than a database case runs statements. Every runner gives the case the step budget of steps (250 ms a step plus 60 s, the testcase step budget) instead of the database deadline, on every database, and fails it when no apply event comes within the database deadline.",
+          "type": "object",
+          "required": [
+            "steps"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "steps": {
+              "description": "The most steps that the case applies on any database.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         }
       }
     },

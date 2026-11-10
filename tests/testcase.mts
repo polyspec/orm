@@ -39,6 +39,48 @@ export const PROCESS = 300_000;
 // GRACE: the time to wait after the deadline passes before failing the case. A case that follows its signal can
 // fail on the deadline with its own error and finish its cleanup.
 export const GRACE = 5_000;
+// STEP_BUDGET and FIXED_BUDGET: the deadline of a case that applies its steps one after another is STEP_BUDGET for each step plus
+// FIXED_BUDGET for the work around them (the Go testcase package's StepBudget). The MySQL stress plan applies its steps at 28 to
+// 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: an upper bound, and a stuck step is found
+// by stepGuard long before.
+export const STEP_BUDGET = 250;
+export const FIXED_BUDGET = 60_000;
+
+// stepBudget is the deadline of a case that applies `steps` steps one after another.
+export function stepBudget(steps: number): number {
+  return steps * STEP_BUDGET + FIXED_BUDGET;
+}
+
+// seconds writes ms as seconds with the digits it needs (120s, 60.25s), the form of the texts of the step guard.
+function seconds(ms: number): string {
+  return `${ms / 1000}s`;
+}
+
+// stallText is the failure text of a case whose step guard saw no step within `limit` ms; every runtime writes the same text.
+export function stallText(limit: number): string {
+  return `no step was applied within ${seconds(limit)}`;
+}
+
+// budgetText is the failure text of a case that kept applying steps past its step `budget` ms; every runtime writes the same text.
+export function budgetText(budget: number): string {
+  return `step budget ${seconds(budget)} exceeded`;
+}
+
+// stepGuard ends a case with a step deadline (the Go testcase package's StepGuard): `ended` resolves with the error of budgetText when
+// `budget` ms have passed, and with the error of stallText when progress is not called within `stall` ms. Each progress restarts the stall limit, so a long
+// case that keeps applying steps is ended only by its budget, while a stuck step is ended by the stall limit. stop releases the guard.
+export function stepGuard(budget: number, stall: number): { ended: Promise<Error>; progress: () => void; stop: () => void } {
+  let fail: (error: Error) => void = () => {};
+  const ended = new Promise<Error>(resolve => { fail = resolve; });
+  const spent = setTimeout(() => fail(new Error(budgetText(budget))), budget);
+  let stalled: ReturnType<typeof setTimeout> | undefined;
+  const progress = () => {
+    clearTimeout(stalled);
+    stalled = setTimeout(() => fail(new Error(stallText(stall))), stall);
+  };
+  progress();
+  return { ended, progress, stop: () => { clearTimeout(spent); clearTimeout(stalled); } };
+}
 
 // duration writes ms in Go time.Duration's String format (1m0s, 1.5s, 12ms). The report lines of the three
 // languages share this format.

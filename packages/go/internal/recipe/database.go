@@ -61,6 +61,22 @@ type databaseCase struct {
 	NotThroughPooler string            `json:"not_through_pooler"`
 	Seed             *seed             `json:"seed"`
 	Steps            []json.RawMessage `json:"steps"`
+	// Deadline is the step deadline of a case that applies more steps than a database case runs statements (FCV-4).
+	Deadline *caseDeadline `json:"deadline"`
+}
+
+// caseDeadline states the steps that a case applies one after another. The case's deadline is testcase.StepBudget of them
+// instead of testcase.Database, and a stall guard fails the case when no apply event comes within testcase.Database.
+type caseDeadline struct {
+	Steps int `json:"steps"`
+}
+
+// caseDeadlineOf is the deadline of c: testcase.Database, or the step budget that c states.
+func caseDeadlineOf(c databaseCase) time.Duration {
+	if c.Deadline == nil {
+		return testcase.Database
+	}
+	return testcase.StepBudget(c.Deadline.Steps)
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -270,6 +286,8 @@ type databaseContext struct {
 	corpusDir string
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
 	applyStep int
+	// progress restarts the stall limit of the step guard of a case with a step deadline at each apply event; it does nothing otherwise.
+	progress func()
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
 }
@@ -309,7 +327,7 @@ func runDatabase(t *testing.T, path, database string) {
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {
-			testcase.Start(t, testcase.Database)
+			testcase.Start(t, caseDeadlineOf(c))
 			runCase(t, path, f, c, database, schema, external)
 			reportCase(t, c.ID, database)
 		})
@@ -506,6 +524,14 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
+	progress := func() {}
+	if c.Deadline != nil {
+		// The step guard ends the case at its step budget, or when no apply event comes within the Database tier; its
+		// cause names the limit with the text of every runtime (FCV-4).
+		var stop func()
+		ctx, progress, stop = testcase.StepGuard(ctx, caseDeadlineOf(c), testcase.Database)
+		defer stop()
+	}
 	markdown := database == "markdown"
 	var dsn, corpusDir string
 	if markdown {
@@ -559,7 +585,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
+		t: t, ctx: ctx, progress: progress, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -594,6 +620,10 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	for index, raw := range c.Steps {
 		op, err := runRawStep(raw, state)
 		if err != nil {
+			if cause := context.Cause(ctx); cause != nil && !errors.Is(cause, context.Canceled) {
+				// The step guard ended the case: its cause names the limit.
+				err = fmt.Errorf("%w (%w)", err, cause)
+			}
 			t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, op, database, err)
 		}
 		step.Step("step %d %s", index, op)

@@ -25,7 +25,7 @@ caseTest('a key is refused on an op that does not hold it, though another op doe
 });
 
 caseTest('a case and a file hold the keys of their schema definitions', COMPUTE, () => {
-  assert.deepEqual(table.case, ['id', 'install', 'not_through_pooler', 'only', 'requirements', 'seed', 'steps']);
+  assert.deepEqual(table.case, ['deadline', 'id', 'install', 'not_through_pooler', 'only', 'requirements', 'seed', 'steps']);
   assert.ok(table.file.includes('cases'));
   assert.ok(!table.file.includes('steps'));
 });

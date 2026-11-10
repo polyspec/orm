@@ -42,24 +42,57 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
+// The stress case applies 1100 steps, more than the few hundred statements of a database case, so it states its steps and every
+// runner gives it the step budget of them (250 ms a step plus 60 s) on every database, with a step guard that ends it at that budget
+// or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
+// database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
+// each guard holds; PHP's deadline is the test runner's, which writes its own line.
+caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps on every runtime', COMPUTE, () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
-  assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');
+  const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
+  assert.ok(stress !== undefined, 'the recipe holds the stress case');
+  // The applied count of an apply step is the int of its member "applied": {"value": {"object": [["applied", {"int": "<n>"}], ...]}}.
+  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+  const appliedOf = (expect: unknown): number => {
+    const value = isRecord(expect) ? expect.value : undefined;
+    const members: unknown = isRecord(value) ? value.object : undefined;
+    if (!Array.isArray(members)) return Number.NaN;
+    for (const entry of members as unknown[]) {
+      if (Array.isArray(entry) && entry[0] === 'applied' && isRecord(entry[1])) return Number(entry[1].int);
+    }
+    return Number.NaN;
+  };
+  const applied = (stress.steps ?? []).filter(step => step.op === 'dbspec.apply').flatMap(step => Object.values(step.expect ?? {})).map(appliedOf);
+  assert.equal(stress.deadline?.steps, Math.max(...applied), 'the stress case states the most steps it applies on any database');
   const holds: [string, RegExp][] = [
-    ['packages/go/testcase/testcase.go', /\bDatabase = 2 \* time\.Minute\b/],
-    ['packages/go/internal/recipe/database.go', /testcase\.Start\(t, testcase\.Database\)/],
-    ['tests/testcase.mts', /export const DATABASE = 120_000;/],
-    ['packages/ts/tests/recipe.mjs', /registerRecipeCase\(recipeCase, database, DATABASE,/],
-    ['packages/python/tests/testcase.py', /^DATABASE = 120\.0$/m],
-    ['packages/python/tests/recipe.py', /class DatabaseRecipeCase\(VectorCase\):[^]*?deadline = testcase\.DATABASE/],
-    ['packages/rust/testcase/src/lib.rs', /pub const DATABASE: Duration = Duration::from_secs\(120\);/],
-    ['packages/rust/tests/src/recipe.rs', /async_trial\(format!\("\{entry\}::\{id\}"\), polyspec_orm_testcase::DATABASE,/],
-    ['packages/php/phpunit.xml.dist', /timeoutForMediumTests="120"/],
-    ['packages/php-ext/phpunit.xml.dist', /timeoutForMediumTests="120"/],
-    ['packages/php/tests/DbspecApplyRecipeTest.php', /#\[Medium\]\nclass DbspecApplyRecipeTest\b/],
-    ['packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php', /#\[Medium\]\s*\n(?:.*\n)*?.*class DbspecApplyRecipeTestExtensionTest\b/],
+    ['packages/go/testcase/stall.go', /const stepBudget = 250 \* time\.Millisecond/],
+    ['packages/go/testcase/stall.go', /const fixedBudget = time\.Minute/],
+    ['packages/go/internal/recipe/database.go', /return testcase\.StepBudget\(c\.Deadline\.Steps\)/],
+    ['packages/go/internal/recipe/database.go', /testcase\.Start\(t, caseDeadlineOf\(c\)\)/],
+    ['packages/go/internal/recipe/database.go', /testcase\.StepGuard\(ctx, caseDeadlineOf\(c\), testcase\.Database\)/],
+    ['tests/testcase.mts', /export const STEP_BUDGET = 250;/],
+    ['tests/testcase.mts', /export const FIXED_BUDGET = 60_000;/],
+    ['packages/ts/tests/recipe.mjs', /stepBudget\(recipeCase\.deadline\.steps\)/],
+    ['packages/ts/tests/recipe.mjs', /stepGuard\(caseDeadline\(recipeCase\), DATABASE\)/],
+    ['packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
+    ['packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
+    ['packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
+    ['packages/python/tests/recipe.py', /testcase\.StepGuard\(test\.id\(\), test\.deadline, testcase\.DATABASE\)/],
+    ['packages/rust/testcase/src/lib.rs', /pub const STEP_BUDGET: Duration = Duration::from_millis\(250\);/],
+    ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
+    ['packages/rust/tests/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
+    ['packages/rust/tests/src/recipe.rs', /StepGuard::new\(deadline, polyspec_orm_testcase::DATABASE\)/],
+    ['packages/php/tests/CaseDeadline.php', /public const STEP_BUDGET_MS = 250;/],
+    ['packages/php/tests/CaseDeadline.php', /public const FIXED_BUDGET_MS = 60_000;/],
+    ['packages/php/tests/RecipeCases.php', /CaseDeadline::of\(\$case, static::class \. '::' \. \$this->nameWithDataSet\(\)\)/],
+    ['packages/php/tests/RecipeCases.php', /\$deadline\?->start\(\);/],
+    ['packages/php/tests/CaseDeadline.php', /return min\(\$this->budget, self::DATABASE_MS\);/],
   ];
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
+  // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
+  const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
+  const guardTests = ['packages/go/testcase/stall_test.go', 'scripts/harness/testcase.test.mts', 'packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
+  for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 
 caseTest('every PHPUnit test class declares its size, so a deadline ends only a stalled case', COMPUTE, () => {

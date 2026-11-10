@@ -11,6 +11,7 @@
     "version"
   ],
   "case": [
+    "deadline",
     "id",
     "install",
     "not_through_pooler",

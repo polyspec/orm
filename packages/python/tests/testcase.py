@@ -27,6 +27,18 @@ DATABASE = 120.0
 PROCESS = 300.0
 # GRACE: how long after its deadline a case still running is failed and the process ended.
 GRACE = 5.0
+# STEP_BUDGET and FIXED_BUDGET: the deadline of a case that applies its steps one after another is STEP_BUDGET for each step
+# plus FIXED_BUDGET for the work around them (the Go testcase package's StepBudget). The MySQL stress plan applies its steps at
+# 28 to 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: an upper bound, and a stuck step
+# is found by StepGuard long before.
+STEP_BUDGET = 0.25
+FIXED_BUDGET = 60.0
+
+
+def step_budget(steps: int) -> float:
+    """The deadline of a case that applies `steps` steps one after another."""
+    return steps * STEP_BUDGET + FIXED_BUDGET
+
 
 _output = threading.Lock()
 
@@ -80,6 +92,63 @@ class _Running:
 
 
 _current: Optional[_Running] = None
+
+
+def stall_text(limit: float) -> str:
+    """The failure text of a case whose StepGuard saw no step within `limit` seconds; every runtime writes the same text."""
+    return f"no step was applied within {_trim(limit)}s"
+
+
+def budget_text(budget: float) -> str:
+    """The failure text of a case that kept applying steps past its step `budget` seconds (StepGuard); every runtime
+    writes the same text."""
+    return f"step budget {_trim(budget)}s exceeded"
+
+
+class StepGuard:
+    """Ends a case with a step deadline (the Go testcase package's StepGuard): at its step `budget` seconds, and when
+    progress is not called within `stall` seconds. Each progress restarts the stall limit, so a long case that keeps applying
+    steps is ended only by its budget, while a stuck step is ended by the stall limit. Python cannot interrupt the running
+    thread, so the guard writes `<name>: <text>` on stderr and ends the process, as a case past its deadline ends; stop
+    releases the guard."""
+
+    def __init__(self, name: str, budget: float, stall: float) -> None:
+        self.name = name
+        self.stall = stall
+        self._lock = threading.Lock()
+        self._stalled: Optional[threading.Timer] = None
+        self._spent: Optional[threading.Timer] = threading.Timer(
+            budget, self._expire, (budget_text(budget),)
+        )
+        self._spent.daemon = True
+        self._spent.start()
+        self.progress()
+
+    def _expire(self, text: str) -> None:
+        with _output:
+            sys.stderr.write(f"{self.name}: {text}\n")
+            sys.stderr.flush()
+        os._exit(1)
+
+    def progress(self) -> None:
+        with self._lock:
+            if self._spent is None:
+                return
+            if self._stalled is not None:
+                self._stalled.cancel()
+            self._stalled = threading.Timer(
+                self.stall, self._expire, (stall_text(self.stall),)
+            )
+            self._stalled.daemon = True
+            self._stalled.start()
+
+    def stop(self) -> None:
+        with self._lock:
+            for timer in (self._stalled, self._spent):
+                if timer is not None:
+                    timer.cancel()
+            self._stalled = None
+            self._spent = None
 
 
 def step(text: str) -> None:

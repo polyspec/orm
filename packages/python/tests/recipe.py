@@ -2597,6 +2597,12 @@ class DatabaseRecipeCase(VectorCase):
 
     deadline = testcase.DATABASE
 
+    def __init__(self, case_id, check, case) -> None:
+        super().__init__(case_id, check, case)
+        # A case that states its steps gets their step budget instead of DATABASE (FCV-4).
+        if "deadline" in case:
+            self.deadline = testcase.step_budget(case["deadline"]["steps"])
+
 
 def _database_recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry of a recipe with a fixture: one test for each case on the database."""
@@ -2615,20 +2621,44 @@ def _database_recipe_tests(path: str, database: str):
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
+        # A case with a step deadline gets its step guard at its start: it ends the case at the step budget, or when no
+        # apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply).
+        guard = (
+            testcase.StepGuard(test.id(), test.deadline, testcase.DATABASE)
+            if "deadline" in case
+            else None
+        )
+        try:
+            _check_case(test, case, guard)
+        finally:
+            if guard is not None:
+                guard.stop()
+
+    def _check_case(test: unittest.TestCase, case: dict, guard) -> None:
         if markdown:
             # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
             # corpus of no table.
             installed = fixture != NONE and case.get("install", True) is not False
             with case_corpus(ROOT / fixture if installed else None) as (dsn, corpus):
                 _run_case(
-                    path, recipe, case, database, schema, dsn, install_first, corpus
+                    path,
+                    recipe,
+                    case,
+                    database,
+                    schema,
+                    dsn,
+                    install_first,
+                    corpus,
+                    guard,
                 )
             return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
         ):
-            _run_case(path, recipe, case, database, schema, dsn, install_first)
+            _run_case(
+                path, recipe, case, database, schema, dsn, install_first, guard=guard
+            )
 
     cases = [
         case
@@ -2689,6 +2719,7 @@ def _run_case(
     dsn: str,
     install_first: list,
     corpus: Path | None = None,
+    guard: testcase.StepGuard | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
@@ -2699,7 +2730,7 @@ def _run_case(
             else:
                 for shared in [*install_first, schema]:
                     db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
+        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus, guard)
     finally:
         db.close()
 
@@ -2724,6 +2755,7 @@ def _run_case_on(
     dsn: str,
     db: Db,
     corpus: Path | None = None,
+    guard: testcase.StepGuard | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2744,6 +2776,8 @@ def _run_case_on(
         "fields": {},
         "records": [],
         "hook_bases": {},
+        # The step guard of a case with a step deadline, which each apply event restarts (recipe_apply).
+        "guard": guard,
     }
     try:
         namespace = catalog.current_namespace()

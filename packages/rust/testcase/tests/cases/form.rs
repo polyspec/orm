@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::time::Duration;
 
-use polyspec_orm_testcase::{case, duration, start, COMPUTE, PROCESS};
+use polyspec_orm_testcase::{budget_text, case, duration, stall_text, start, step_budget, StepGuard, COMPUTE, DATABASE, PROCESS};
 
 const FIXTURE: &str = "TESTCASE_FIXTURE";
 
@@ -57,6 +57,48 @@ fn fixture_deadline() {
     }
     let _case = case!(Duration::from_millis(200));
     std::thread::sleep(Duration::from_secs(60));
+}
+
+/// The step guard ends work that reports no step within its stall limit, with the stall text of every runtime, and lets work that
+/// keeps reporting steps run on.
+#[tokio::main(flavor = "current_thread")]
+async fn step_guard_ends_a_stalled_case() {
+    let _case = case!(COMPUTE);
+    let guard = StepGuard::new(Duration::from_secs(3600), Duration::from_millis(500));
+    let steps = guard
+        .run(async {
+            for _ in 0..10 {
+                guard.progressed();
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await;
+    assert_eq!(steps, Ok(()), "the guard ended work that reported its steps");
+    let stalled = guard.run(tokio::time::sleep(Duration::from_secs(60))).await;
+    assert_eq!(stalled, Err("no step was applied within 0.5s".to_owned()));
+}
+
+/// The step guard ends work that keeps reporting steps at its step budget, with the budget text of every runtime.
+#[tokio::main(flavor = "current_thread")]
+async fn step_guard_ends_a_case_past_its_budget() {
+    let _case = case!(COMPUTE);
+    let guard = StepGuard::new(Duration::from_millis(250), Duration::from_secs(3600));
+    let spent = guard
+        .run(async {
+            loop {
+                guard.progressed();
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await;
+    assert_eq!(spent, Err::<(), _>("step budget 0.25s exceeded".to_owned()));
+}
+
+/// The texts name the limits of a recipe case in seconds: the 120 second stall limit and the step budget of one step.
+fn step_guard_names_its_limits_in_seconds() {
+    let _case = case!(COMPUTE);
+    assert_eq!(stall_text(DATABASE), "no step was applied within 120s");
+    assert_eq!(budget_text(step_budget(1)), "step budget 60.25s exceeded");
 }
 
 /// Runs this test binary with the fixture name and returns the exit status and output (stdout and stderr). Stages are visible with `--nocapture`.
@@ -114,5 +156,5 @@ fn report_form() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, fixture_deadline, report_form)
+    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, fixture_deadline, report_form, step_guard_ends_a_stalled_case, step_guard_ends_a_case_past_its_budget, step_guard_names_its_limits_in_seconds)
 }
