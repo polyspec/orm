@@ -2,7 +2,7 @@
 // The check of one recipe runner per runtime: each rule of FCV-15 has an accepting tree and a refused one.
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { findings, READERS, readTree, recipeBindings, stepOps, type Tree } from './recipe-runners.mts';
+import { CASE_RUNNERS, findings, READERS, readTree, recipeBindings, stepOps, VECTOR_RUNNERS, type Tree } from './recipe-runners.mts';
 
 const RUNNER_SOURCES: [string, string][] = [
   ['packages/go/internal/recipe/recipe.go', 'OP_UNKNOWN'],
@@ -10,6 +10,8 @@ const RUNNER_SOURCES: [string, string][] = [
   ['packages/ts/tests/recipe.mjs', 'OP_UNKNOWN'],
   ['packages/python/tests/recipe.py', 'OP_UNKNOWN'],
   ['packages/rust/tests/src/recipe.rs', 'OP_UNKNOWN'],
+  ...Object.values(VECTOR_RUNNERS).flat().map((file): [string, string] => [file, '']),
+  ...Object.entries(CASE_RUNNERS).flatMap(([cases, runners]) => Object.values(runners).map(({ file }): [string, string] => [file, `reads ${cases}`])),
 ];
 
 function tree(overrides: Partial<Tree> & { extra?: [string, string][] } = {}): Tree {
@@ -96,4 +98,27 @@ caseTest('a reader that names no recipe is a finding', COMPUTE, () => {
 
 caseTest('the tree of this checkout has no finding', COMPUTE, () => {
   assert.deepEqual(findings(readTree()), []);
+});
+
+// The conformance bodies run through the vector runner of each runtime (FCV-15), so a declared runner program that is not a source
+// is a finding.
+caseTest('a vector runner that is no source is a finding', COMPUTE, () => {
+  const [gone] = VECTOR_RUNNERS.go ?? [];
+  assert.ok(gone !== undefined, 'Go declares a vector runner');
+  const sources = new Map(tree().sources);
+  sources.delete(gone);
+  assert.match(findings(tree({ sources })).join('\n'), /the vector runner packages\/go\/internal\/conformance\/main\.go does not exist/);
+});
+
+// The bodies of a case file run through the case runner of each runtime (FCV-15), so a runner that is no source, or that names no
+// case file, is a finding.
+caseTest('a case runner that is no source or names no case file is a finding', COMPUTE, () => {
+  const runner = CASE_RUNNERS['tests/markdown/cases.json']?.go?.file;
+  assert.ok(runner !== undefined, 'Go declares a case runner of tests/markdown/cases.json');
+  const gone = new Map(tree().sources);
+  gone.delete(runner);
+  assert.match(findings(tree({ sources: gone })).join('\n'), /go: the case runner packages\/go\/markdownmodel\/conformance_test\.go does not exist/);
+  const silent = new Map(tree().sources);
+  silent.set(runner, 'package markdownmodel');
+  assert.match(findings(tree({ sources: silent })).join('\n'), /go: the case runner packages\/go\/markdownmodel\/conformance_test\.go names no tests\/markdown\/cases\.json/);
 });

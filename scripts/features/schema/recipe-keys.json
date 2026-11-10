@@ -228,8 +228,22 @@
       "ms",
       "op"
     ],
+    "db.execute": [
+      "connection",
+      "expect",
+      "op",
+      "params",
+      "request",
+      "schema"
+    ],
     "fault.next_rollback": [
       "connection",
+      "op"
+    ],
+    "fault.next_statement": [
+      "code",
+      "connection",
+      "message",
       "op"
     ],
     "query.search": [
@@ -500,6 +514,7 @@
       "connection",
       "expect",
       "from",
+      "get",
       "group_by",
       "joins",
       "json_output",
@@ -547,6 +562,7 @@
       "plan_count",
       "plan_page",
       "plan_sql",
+      "possible",
       "relation",
       "relations",
       "remove_columns",

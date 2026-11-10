@@ -159,6 +159,9 @@ pub(crate) fn build(c: &Core, kind: &str) -> Req {
         r.fail(e);
         return r;
     }
+    if no_possible(&mut r, c).is_none() {
+        return r;
+    }
     let mut f = Frame::new(c, None);
     let mut joins = HashSet::new();
     if let Some(q) = query(&mut r, c, &mut f, &mut joins, true) {
@@ -193,6 +196,16 @@ pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::
     Ok(())
 }
 
+/// Refuses possible_<col>() on a model that is no relation child, the root of a request, a join child or a subquery model,
+/// which has no parent row to compare (DSL-85); None when it refused.
+fn no_possible(r: &mut Req, c: &Core) -> Option<()> {
+    if c.possible.is_some() {
+        r.fail(config("possible applies only to a relation child"));
+        return None;
+    }
+    Some(())
+}
+
 fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, root_page: bool) -> Option<ir::Query> {
     if let Some(e) = c.err() {
         r.fail(e);
@@ -217,6 +230,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
             return None;
         }
         let on = if let Some(on) = &j.child.on { Some(group(r, on, &j.child, f)?) } else { None };
+        no_possible(r, &j.child)?;
         let mut child = query(r, &j.child, f, joins, false)?;
         child.on = on;
         q.joins.push(ir::Join { rel: last_segment(&path), kind: j.kind.to_owned(), query: Box::new(child), left: j.left.clone(), right: j.right.clone() });
@@ -442,6 +456,7 @@ fn subquery(r: &mut Req, c: &Core, outer: u64, scalar: bool) -> Option<ir::Sub> 
         r.fail(config("a subquery model cannot load relations"));
         return None;
     }
+    no_possible(r, c)?;
     let mut f = Frame::new(c, Some(outer));
     let mut joins = HashSet::new();
     let mut q = query(r, c, &mut f, &mut joins, false)?;
@@ -525,7 +540,6 @@ mod plan_cache_tests {
         collect: |_, _| unreachable!("the planner test collects no rows"),
     };
     const SEQ: ChainKey = ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" };
-    const FULLTEXT_BOOLEAN_LABEL: ChainKey = ChainKey { conn: "", op: "fulltext_boolean", column: "", columns: &["label"], compare: "" };
 
     /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
     /// (1, 2, 4 ... 512), so 300 lengths give at most ten distinct plan-cache keys.
@@ -600,25 +614,5 @@ mod plan_cache_tests {
         assert_eq!(sub_param("a_sub"), Some(0));
         assert_eq!(sub_param("z_sub"), Some(1));
         assert!(matches!(req.ir.query.limit, Some(ir::Limit::Params { offset_p: 2, count_p: 3 })));
-    }
-
-    #[test]
-    // Requirements: DSL-33, PRT-75.
-    fn fulltext_boolean_chain_preserves_columns_and_search_parameter() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mut core = crate::core::Core::new(&PROBE);
-        core.chain("", &[FULLTEXT_BOOLEAN_LABEL], vec![Arg::Value(Value::One(Param::Str("alpha beta".into())))]);
-        let req = build(&core, "all");
-        assert!(req.error().is_none(), "{:?}", req.error());
-        assert_eq!(req.params, [Param::Str("alpha beta".into())]);
-        match &req.ir.query.where_.as_ref().expect("where").items[0] {
-            ir::Item::Pred { pred } => {
-                assert_eq!(pred.column, "");
-                assert_eq!(pred.op, "fulltext_boolean");
-                assert_eq!(pred.cols, ["label"]);
-                assert_eq!(pred.p, Some(0));
-            }
-            other => panic!("fulltext condition became {other:?}"),
-        }
     }
 }

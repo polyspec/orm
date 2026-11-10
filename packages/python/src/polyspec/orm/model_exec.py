@@ -138,7 +138,7 @@ class _Assembler:
                     schema.name,
                     col["name"],
                     lambda: _added_column_value(
-                        col["type"], row[col["index"]], self.db.zone
+                        col, row[col["index"]], row, self.db.zone
                     ),
                 )
         for key in asm["key"]:
@@ -365,6 +365,8 @@ def _attach_external(parents: list, rel: dict) -> None:
         q = ch.clone()
         q.matches = []
         q.alias = ""
+        # The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+        q.possible = None
         # A composite key filters the child key columns as a whole tuple.
         rights = [k["right"] for k in ch.matches]
         keys = (
@@ -418,6 +420,16 @@ def execute_query(runner_core: Core, kind: str):
 _NUMBER_TEXT = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
 
 
+# The text of every refused sum or average scalar in every client (DSL-66).
+_AGGREGATE_REFUSED = "aggregate scalar is not a finite number"
+
+# The decimal places that the average of an exact column keeps beyond the scale of the column (DSL-161).
+_AVG_SCALE_EXTRA = 16
+
+# The text of an exact sum: a sign, digits and at most the scale of the column in fraction digits.
+_EXACT_TEXT = re.compile(r"(-?)([0-9]+)(?:\.([0-9]+))?")
+
+
 def _aggregate_number(value) -> float:
     """The binary64 value of the scalar of a sum or an average (contracts/fixtures/aggregate_numeric.json): an int, a
     float, a Decimal or the text of a decimal number, rounded to the nearest binary64. Any other value, and a value
@@ -426,16 +438,181 @@ def _aggregate_number(value) -> float:
         isinstance(value, (int, float, Decimal))
         or (isinstance(value, str) and _NUMBER_TEXT.fullmatch(value))
     ):
-        raise OrmError(codes.CODEC_DECODE, "aggregate scalar is not a finite number")
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
     try:
         number = float(value)
     except OverflowError:
         number = math.inf
     if not math.isfinite(number):
-        raise OrmError(
-            codes.CODEC_DECODE, "aggregate scalar is outside finite binary64 range"
-        )
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
     return number
+
+
+def _exact_aggregate(field) -> bool:
+    """Whether the sum and the average of the column are exact (DSL-161): an integer or a decimal column."""
+    return field.type in ("i16", "i32", "i64", "decimal")
+
+
+# The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
+# integer (DIA-202).
+_SPLIT_CELLS = 5
+
+
+class _NonInteger:
+    """The sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses by
+    the name and the type of its column."""
+
+
+_NON_INTEGER = _NonInteger()
+
+
+def _non_integer_refusal(column: str, type_: str, scale: int) -> OrmError:
+    """The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an
+    integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66)."""
+    if type_ == "decimal":
+        return OrmError(
+            codes.CODEC_DECODE,
+            f"column {column} holds a value that is not a decimal of scale {scale}",
+        )
+    return OrmError(
+        codes.CODEC_DECODE, f"column {column} holds a value that is not an integer"
+    )
+
+
+def _split_sum_value(parts, flag):
+    """The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, _NON_INTEGER when its
+    last cell reports a value that is not an integer, and None when every part is SQL NULL, the sum of no value
+    (DIA-202)."""
+    for cell in (flag, *parts):
+        if cell is not None and (isinstance(cell, bool) or not isinstance(cell, int)):
+            raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if flag is not None and flag != 0:
+        return _NON_INTEGER
+    total = 0
+    none = True
+    for part in parts:
+        total <<= 16
+        if part is None:
+            continue
+        none = False
+        total += part
+    return None if none else total
+
+
+def _exact_sum(field, value) -> int:
+    """The sum cell of the exact column field as the integer sum × 10^scale: an integer cell, or the integer of a split
+    sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a Decimal or a text cell is a
+    decimal of at most scale fraction digits. A sum that holds a value which the type of the column does not hold, which
+    the split sum reports and the text of MySQL and PostgreSQL shows by more fraction digits, is refused by its
+    column."""
+    scale = field.scale
+    if value is _NON_INTEGER:
+        raise _non_integer_refusal(field.name, field.type, scale)
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, Decimal) and value.is_finite():
+        value = format(value, "f")
+    match = _EXACT_TEXT.fullmatch(value) if isinstance(value, str) else None
+    if match is None:
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if len(match.group(3) or "") > scale:
+        raise _non_integer_refusal(field.name, field.type, scale)
+    digits = int(match.group(2) + (match.group(3) or "").ljust(scale, "0"))
+    return -digits if match.group(1) == "-" else digits
+
+
+def _nearest_binary64(n: int, scale: int) -> float:
+    """The nearest binary64 value of n × 10^-scale, ties to even; a value beyond the finite range is CODEC_DECODE
+    (DSL-66)."""
+    try:
+        number = float(f"{n}e-{scale}")
+    except OverflowError:
+        number = math.inf
+    if not math.isfinite(number):
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    return number
+
+
+def _sum_value(field, value) -> float:
+    """The result of get_sum for the sum cell of the column field (DSL-66, DSL-161)."""
+    if not _exact_aggregate(field):
+        return _aggregate_number(value)
+    return _nearest_binary64(_exact_sum(field, value), field.scale)
+
+
+def _avg_value(field, cells) -> float | None:
+    """The result of get_avg for the sum and the count of the values of the column field: None for no value; for an
+    exact column the exact sum divided by the count, rounded half away from zero to _AVG_SCALE_EXTRA places beyond the
+    scale of the column and then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the
+    count, which is the AVG of every database."""
+    total, count = cells
+    if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if count == 0:
+        return None
+    if total is None:
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if not _exact_aggregate(field):
+        return _aggregate_number(total) / count
+    n = _exact_sum(field, total)
+    # The quotient with one place more than the stated scale: its last digit decides the rounding half away from zero.
+    longer = abs(n) * 10 ** (_AVG_SCALE_EXTRA + 1) // count
+    rounded = longer // 10 + (1 if longer % 10 >= 5 else 0)
+    return _nearest_binary64(
+        -rounded if n < 0 else rounded, field.scale + _AVG_SCALE_EXTRA
+    )
+
+
+def aggregate_of(c: Core, kind: str) -> float | None:
+    """Runs the sum or the average of the column selected with sum_<col>() or avg_<col>() (DSL-66, DSL-161)."""
+    try:
+        value = scalar_of(c, kind, c.agg)
+    except OrmError as error:
+        mapped = _aggregate_range_error(error)
+        if mapped is error:
+            raise
+        raise mapped from error
+    # The planner has checked the column, so the field of the model is there.
+    field = field_of(c.ent.entity, c.agg)
+    if field is None:
+        raise OrmError(
+            codes.INTERNAL,
+            f"{c.ent.entity.name}.{c.agg} is missing from a planned aggregate",
+        )
+    if kind == "sum":
+        total = _sum_of(value)
+        return 0.0 if total is None else _sum_value(field, total)
+    return _avg_value(field, (_sum_of(value[:-1]), value[-1]))
+
+
+def _sum_of(cells):
+    """The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-202);
+    None is the sum of no value."""
+    if len(cells) == 1:
+        return cells[0]
+    if len(cells) != _SPLIT_CELLS:
+        raise OrmError(
+            codes.INTERNAL, f"a split sum reads {len(cells)} cells, not {_SPLIT_CELLS}"
+        )
+    return _split_sum_value(cells[: _SPLIT_CELLS - 1], cells[_SPLIT_CELLS - 1])
+
+
+def _aggregate_range_error(error: OrmError) -> OrmError:
+    """The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003,
+    and MySQL refuses it so through the planned addition of 0 (1690, which PyMySQL reports by its number), which is the
+    nonfinite scalar that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver
+    error as its cause (DIA-200)."""
+    cause = error.cause
+    mysql_range = (
+        type(cause).__module__.startswith("pymysql")
+        and bool(cause.args)
+        and cause.args[0] == 1690
+    )
+    if error.code == codes.DRIVER and (
+        getattr(cause, "sqlstate", None) == "22003" or mysql_range
+    ):
+        return OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED, error)
+    return error
 
 
 def scalar_of(c: Core, kind: str, agg: str = ""):
@@ -986,8 +1163,35 @@ def _group_rows(ex, c: Core, result: dict):
     return GroupRows(rows)
 
 
-def _added_column_value(type_: str, raw, zone: str):
-    """An added column by the type its plan column states (INT-160); other types keep the driver value."""
+def _added_column_value(col: dict, raw, row, zone: str):
+    """An added column by the type its plan column states (INT-160), from its cell raw of the row; other types keep the
+    driver value. The sum of an integer column is the exact integer of its split cells on SQLite and markdown, and a sum
+    of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84)."""
+    type_ = col["type"]
+    scale = col.get("scale", 0)
+    if col.get("sum_parts"):
+        if col.get("non_integer") is None:
+            raise OrmError(
+                codes.INTERNAL,
+                f"the split sum {col['name']} states no cell of a value that is not an integer",
+            )
+        try:
+            raw = _split_sum_value(
+                [row[i] for i in col["sum_parts"]], row[col["non_integer"]]
+            )
+        except OrmError as error:
+            raise OrmError(
+                codes.CODEC_DECODE, f"{type_} cell is not an exact integer in its range"
+            ) from error
+        if raw is _NON_INTEGER:
+            raise _non_integer_refusal(col["sum_of"], type_, scale)
+    if raw is None:
+        return None
+    # The sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds such a value.
+    if col.get("sum_of") and _fraction_digits(raw) > scale:
+        raise _non_integer_refusal(col["sum_of"], type_, scale)
+    if type_ == "decimal":
+        return _added_decimal(raw, col.get("precision", 0), scale)
     if type_ in ("i16", "i32", "i64") and isinstance(raw, str):
         # A text is an integer only exactly.
         if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", raw) is None:
@@ -998,6 +1202,53 @@ def _added_column_value(type_: str, raw, zone: str):
     if type_ in ("i16", "i32", "i64", "f64", "bool", "date", "datetime"):
         return convert(type_, raw, zone)
     return raw
+
+
+def _fraction_digits(raw) -> int:
+    """The number of fraction digits of a text or Decimal sum cell, 0 for any other cell."""
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    if isinstance(raw, str):
+        return len(raw.split(".", 1)[1]) if "." in raw else 0
+    if isinstance(raw, Decimal) and raw.is_finite():
+        exponent = raw.as_tuple().exponent
+        return -exponent if isinstance(exponent, int) and exponent < 0 else 0
+    return 0
+
+
+def _added_decimal(raw, precision: int, scale: int) -> str:
+    """The exact decimal text of scale fraction digits of a decimal added column: SQLite and markdown store a decimal as
+    its integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text or Decimal, of at most scale fraction
+    digits, which is padded to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its
+    digits."""
+    refusal = OrmError(
+        codes.CODEC_DECODE, "decimal cell is not a decimal of its precision and scale"
+    )
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        negative, digits = raw < 0, str(abs(raw))
+    elif isinstance(raw, Decimal) and raw.is_finite():
+        sign, numerals, exponent = raw.as_tuple()
+        if not isinstance(exponent, int) or -exponent > scale:
+            raise refusal
+        negative = sign == 1
+        digits = "".join(map(str, numerals)) + "0" * (exponent + scale)
+    elif isinstance(raw, str):
+        match = re.fullmatch(r"(-?)([0-9]+)(?:\.([0-9]+))?", raw)
+        if match is None or len(match.group(3) or "") > scale:
+            raise refusal
+        negative = match.group(1) == "-"
+        fraction = match.group(3) or ""
+        digits = match.group(2) + fraction + "0" * (scale - len(fraction))
+    else:
+        raise refusal
+    digits = digits.lstrip("0")
+    if precision > 0 and len(digits) > precision:
+        raise refusal
+    digits = digits.rjust(scale + 1, "0")
+    text = f"{digits[:-scale]}.{digits[-scale:]}" if scale > 0 else digits
+    return f"-{text}" if negative and digits.strip("0") else text
 
 
 def _group_value(db, column: dict, raw, schema: Entity):
@@ -1031,7 +1282,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
         schema.name,
         column["name"],
         lambda: (
-            _added_column_value(type_, raw, db.zone)
+            _added_column_value({**column, "type": type_}, raw, (), db.zone)
             if type_ in ("i16", "i32", "i64")
             else convert("text" if type_ == "string" else type_, raw, db.zone, declared)
         ),

@@ -76,3 +76,32 @@ fn yaml_parse_keeps_the_position_of_the_reader() {
         assert_eq!(cause.as_deref(), Some(format!("the stream leaves the YAML grammar at line {line}, column {column}").as_str()), "{stream:?}");
     }
 }
+
+/// `?` on an error of the ordered-json library gives the rule of COD-70 of its fact, with the library error as its source
+/// (COD-81): one input of each kind that a caller can meet.
+#[test]
+fn ordered_json_errors_state_the_rule_of_their_fact() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let deep = format!("{}{}", "[".repeat(257), "]".repeat(257));
+    let cases: Vec<(strict_json::Error, &str)> = vec![
+        (strict_json::parse(&deep).unwrap_err(), "CODEC_ENCODE: json: value nesting exceeds 256 levels"),
+        (strict_json::parse_with_max_depth("1", 257).unwrap_err(), "CODEC_ENCODE: json: value nesting exceeds 256 levels"),
+        (
+            strict_json::OrderedMap::new().insert(strict_json::Value::null(), strict_json::Value::null()).unwrap_err(),
+            "CODEC_ENCODE: json: member keys must be strings",
+        ),
+        (strict_json::Value::null().string_value().unwrap_err(), "CODEC_DECODE: json: the value is not a string"),
+        (strict_json::parse("").unwrap_err(), "CODEC_ENCODE: json: the value has no JSON text"),
+        (strict_json::parse("[1 2]").unwrap_err(), "CODEC_ENCODE: json: the value has no JSON text"),
+        (strict_json::parse_bytes(&[0xff]).unwrap_err(), "CODEC_ENCODE: json: the value has no JSON text"),
+        (strict_json::parse_bytes_reject_duplicates(br#"{"a":1,"a":2}"#).unwrap_err(), "CODEC_ENCODE: json: the value has no JSON text"),
+        (strict_json::Value::number("\"1\"").unwrap_err(), "CODEC_ENCODE: json: the value has no JSON text"),
+    ];
+    for (library, want) in cases {
+        let kind = library.kind();
+        let error = Error::from(library.clone());
+        assert_eq!(error.to_string(), want, "{kind}");
+        let source = std::error::Error::source(&error).and_then(|source| source.downcast_ref::<strict_json::Error>());
+        assert_eq!(source, Some(&library), "{kind}");
+    }
+}

@@ -1406,7 +1406,10 @@ static bool sub(vctx *c, HashTable *s, bool scalar, zval *outer)
         if (*column == '\0') {
             return fail(IR_INVALID, "subquery needs a column");
         }
-    } else if (streq(agg, "sum") || streq(agg, "avg")) {
+    } else if (streq(agg, "avg")) {
+        /* No executor divides the average of a subquery, which would be the AVG of the database (PRT-83). */
+        return fail(IR_INVALID, "avg subquery is not one value on every database");
+    } else if (streq(agg, "sum")) {
         if (!scalar) {
             return fail(IR_INVALID, "%s subquery is only valid as a column", agg);
         }

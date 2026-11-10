@@ -97,9 +97,10 @@
   process에 닿지 않는다(`make repo-check`).
   Enforced by: `make repo-check`
 - Own: 둘 이상의 runtime이 가진 동작은 recipe의 case이며(docs/spec/feature-coverage.md의 FCV-2), 그런 동작의 native test는
-  FCV-2가 콜론 뒤에 이유를 밝힌 곳에만 남는다. 이 규칙의 검사는 kit 0.0.100이 지운 config/parity.json의 feature unit을 읽었다.
-  contracts/implementations.json의 시험을 읽는 그 검사는 보류된 row T400-1이다.
-  Enforced by: none, 그 검사는 보류된 row T400-1이다
+  FCV-2의 한 줄이 그 파일과 시험을 이름 짓고 콜론 뒤에 이유를 밝힌 곳에만 남는다. native test는 contracts/implementations.json
+  inventory의 시험 중 contracts/features.json의 기능이 나열하고 recipe를 실행하지 않는 것이다(scripts/features/recipe-runners.mts).
+  그 기능이 둘 이상의 구현의 시험을 나열하면 그 동작은 공유된다. 이유와 함께 선언한 internal 시험은 native test가 아니다.
+  Enforced by: `make repo-check`, scripts/repo/native-tests.mts를 실행한다
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만

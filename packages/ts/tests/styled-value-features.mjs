@@ -1,13 +1,10 @@
 // The styled-value feature cases of the TypeScript client: the model states, lost output and the json
-// column getter. The vector suite of contracts/fixtures/styled_column_states.json is styled-value.mjs.
-import { readFile } from 'node:fs/promises';
+// column getter. The styled column states at the setter and the getter are a case of the recipe conformance_verification.
 import { decode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
 import { cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
 
-const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
 const suite = caseRunner();
-const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
 const probeText = 'dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n';
 const { manifest } = orm.dbspecManifest([orm.parseDbspec(probeText, {}).document]);
 const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
@@ -15,11 +12,11 @@ const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
 await suite.run('styled-value/model-states', COMPUTE, () => {
   const probe = new orm.Core({ model, entity: model.entities.get('styled_probe'), create: () => { throw new Error('not used'); } });
   try { probe.column('payload'); throw new Error('unselected getter was accepted'); }
-  catch (error) { if (error.code !== cases.unselected.getter_error) throw error; }
+  catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
   try { probe.setValue('payload', orm.StyledValue.sqlNull()); throw new Error('non-null column accepted SQL NULL'); }
-  catch (error) { if (error.code !== cases.nonnull_sql_null.error) throw error; }
+  catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
   probe.setValue('payload', orm.StyledValue.value(null));
-  if (JSON.stringify(probe.column('payload')) !== JSON.stringify(cases.nonnull_value_null.getter)) {
+  if (JSON.stringify(probe.column('payload')) !== JSON.stringify({ kind: 'value', value: null })) {
     throw new Error('non-null column rejected JSON literal null');
   }
 });

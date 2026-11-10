@@ -20,7 +20,7 @@ fn postgres_bind_preserves_native_parse_cause_message() {
         ("i64", Param::Str("9223372036854775808".into())),
         ("f64", Param::Str("not-a-float".into())),
         ("decimal", Param::Str("not-a-decimal".into())),
-        ("decimal", Param::F64(f64::INFINITY)),
+        ("decimal", Param::Str("1e131072".into())),
         ("date", Param::Str("not-a-date".into())),
         ("time", Param::Str("not-a-time".into())),
     ] {

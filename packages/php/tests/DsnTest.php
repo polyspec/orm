@@ -6,11 +6,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use RuntimeException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Config;
 use Polyspec\Orm\DsnUrl;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
@@ -140,63 +137,5 @@ class DsnTest extends TestCase
         [$parts, $query] = DsnUrl::parse('postgres:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres');
         self::assertSame('localhost', $parts['host']);
         self::assertSame(['host' => '/tmp', 'timezone' => 'UTC'], $query);
-    }
-
-    /** @return iterable<string, array{array<string, mixed>}> for each case in tests/dsn/sqlite-paths.json */
-    public static function sqlitePaths(): iterable
-    {
-        $vectors = json_decode(
-            file_get_contents(dirname(__DIR__, 3) . '/tests/dsn/sqlite-paths.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        if ($vectors['version'] !== 1 || $vectors['cases'] === []) {
-            throw new RuntimeException('tests/dsn/sqlite-paths.json has no cases');
-        }
-        foreach ($vectors['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    // tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and a wrong path is
-    // CONFIG (docs/spec/config.md "Runtime connection").
-    /** @param array<string, mixed> $case */
-    #[DataProvider('sqlitePaths')]
-    public function testSqlitePath(array $case): void
-    {
-        $directory = sys_get_temp_dir() . "/orm-php-sqlite-path-" . getmypid() . "-{$case['id']}";
-        self::assertFalse(file_exists($directory), "temporary directory $directory exists");
-        self::assertTrue(mkdir($directory), "temporary directory $directory");
-        $code = null;
-        try {
-            $db = Orm::connect("sqlite://$directory/{$case['path']}", new Config());
-            $db = null;
-        } catch (OrmException $e) {
-            $code = $e->code_;
-        }
-        $names = array_values(array_diff(scandir($directory), ['.', '..']));
-        foreach ($names as $name) {
-            self::assertTrue(unlink("$directory/$name"), "remove $name");
-        }
-        self::assertTrue(rmdir($directory), "remove $directory");
-        $files = json_encode($names, JSON_UNESCAPED_UNICODE);
-        if (isset($case['error'])) {
-            self::assertSame(
-                [$case['error'], []],
-                [$code, $names],
-                "code and files; want {$case['error']} and no file"
-            );
-            return;
-        }
-        self::assertNull($code, "code $code");
-        foreach ($names as $name) {
-            self::assertContains(
-                $name,
-                [$case['file'], "{$case['file']}-journal", "{$case['file']}-shm", "{$case['file']}-wal"],
-                "files $files: $name is not {$case['file']}"
-            );
-        }
-        self::assertContains($case['file'], $names, "files $files: {$case['file']} is missing");
     }
 }

@@ -15,6 +15,7 @@ import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
+import { nativeLines, nativeTestErrors } from './native-tests.mts';
 import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
@@ -2593,4 +2594,92 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// The native test case (T400-1) checks the rule of FCV-2 over a fixture of the inventory of contracts/implementations.json, of the
+// features of contracts/features.json and of the spec. The check of `make repo-check` runs the same rule on the tree itself
+// (scripts/repo/check.mts), which names the native tests that wait for their recipe, so this case holds the rule and not the tree.
+const nativeFiles: Record<string, string> = {
+  'packages/go/orm/a_test.go': 'package orm\n\nfunc TestShared(t *testing.T) {}\n\nfunc TestStated(t *testing.T) {}\n',
+  'packages/php/tests/ATest.php': '<?php\nfinal class ATest extends TestCase\n{\n    use ACases;\n\n    public function testOwn(): void {}\n}\n',
+  'packages/php/tests/ACases.php': '<?php\ntrait ACases\n{\n    public function testFromTrait(): void {}\n}\n',
+  'packages/go/orm/recipe_a_test.go': 'package orm\n\nfunc TestRecipeANone(t *testing.T) { recipe.Run(t) }\n',
+  'packages/go/orm/only_test.go': 'package orm\n\nfunc TestGoOnly(t *testing.T) {}\n',
+  'packages/rust/orm/tests/cases/a.rs': '#[tokio::main]\n// Requirements: X.\nasync fn a_trial() {}\n\npub fn trials() -> Vec<Trial> {\n    native_trials!("a": a_trial)\n}\n#[test]\n// a comment\nfn an_attributed_test() {}\n',
+};
+const nativeInputs = (lines: string[], files: Record<string, string> = nativeFiles) => ({
+  // The internal test of Go is not in the inventory: contracts/implementations.json declares it in `internal`, which the inventory leaves out.
+  tests: { go: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/go/orm/only_test.go'], php: ['packages/php/tests/ATest.php'], rust: ['packages/rust/orm/tests/cases/a.rs'] },
+  features: [
+    { id: 'shared', files: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/php/tests/ATest.php', 'packages/rust/orm/tests/cases/a.rs', 'packages/go/orm/internal_test.go'] },
+    { id: 'go-alone', files: ['packages/go/orm/only_test.go'] },
+  ],
+  recipeTests: new Set(['packages/go/orm/recipe_a_test.go']),
+  caseRunnerTests: new Set<string>(),
+  spec: ['- **FCV-1** Each feature declares its coverage.', '- **FCV-2** One spec holds every orm test.', ...lines,
+    '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
+  files: Object.keys(files),
+  read: (file: string) => {
+    const content = files[file];
+    if (content === undefined) throw new Error(`no file ${file} in this fixture`);
+    return content;
+  },
+});
+const unstated = (file: string, name: string) => `${file}: the native test ${name} of the shared feature shared runs no recipe, and no line of FCV-2 names it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md as in \`${file}\`, \`${name}\``;
+const statedAll = [
+  '  - In `packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
+  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/orm/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
+];
+caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', COMPUTE, () => {
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('packages/go/orm/a_test.go', 'TestShared'), unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  // A test that a PHP class takes from a trait of a support file, a Rust trial and a Rust test under a comment are native tests too.
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('packages/php/tests/ATest.php', 'testOwn'), unstated('packages/php/tests/ATest.php', 'testFromTrait'),
+    unstated('packages/rust/orm/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/orm/tests/cases/a.rs', 'a_trial')]);
+});
+
+// A Rust file of cases without native_trials! makes its trials in the harness function `trials`, which is its native test (T400-1).
+// Requirements: FCV-2.
+caseTest('the harness function trials of a Rust file of cases is its native test', COMPUTE, () => {
+  const harness = 'packages/rust/orm/tests/cases/b.rs';
+  const files = { ...nativeFiles, [harness]: 'pub fn trials() -> Vec<Trial> {\n    cases().map(|c| Trial::test(c.id, run)).collect()\n}\n' };
+  const inputs = nativeInputs(statedAll, files);
+  const [shared, ...others] = inputs.features;
+  assert.ok(shared !== undefined, 'the fixture has the shared feature');
+  const widened = { ...inputs, tests: { ...inputs.tests, rust: [...inputs.tests.rust, harness] }, features: [{ ...shared, files: [...shared.files, harness] }, ...others] };
+  assert.deepEqual(nativeTestErrors(widened), [unstated(harness, 'trials')]);
+  assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-3**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-3**`) }), []);
+});
+caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', COMPUTE, () => {
+  // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
+  assert.deepEqual(nativeLines(nativeInputs(statedAll).spec).map(line => line.tests.length), [2, 4]);
+  // A list of paths after `in` names files and no test.
+  assert.deepEqual(nativeLines(nativeInputs(['  - `a-unit` stays native: its measurement stays in `packages/go/orm/a_test.go`, `packages/php/tests/ATest.php` and `b.mjs`. In `packages/go/orm/a_test.go`, `TestShared` is one.']).spec)
+    .map(line => line.tests), [[{ file: 'packages/go/orm/a_test.go', name: 'TestShared' }]]);
+  // A line may name the test of one runtime, which needs no line, as long as the test is there.
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
+});
+// A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
+// file still are (T400-1).
+// Requirements: FCV-2, FCV-15.
+caseTest('a case runner test is no native test, and the other tests of its file are', COMPUTE, () => {
+  const inputs = nativeInputs(statedAll.slice(1));
+  assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }), [unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  // A line that names the case runner test names no native test of that file.
+  assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }),
+    ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
+});
+caseTest('a line of FCV-2 that names no native test is a finding', COMPUTE, () => {
+  const spec = 'docs/spec/feature-coverage.md FCV-2';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/a_test.go`, `TestGone` stays as a native test: a reason.'])),
+    [`${spec} keeps the native test TestGone of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line`]);
+  for (const file of ['packages/go/orm/recipe_a_test.go', 'packages/go/orm/internal_test.go', 'packages/php/tests/ACases.php']) {
+    assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, `  - In \`${file}\`, \`TestX\` stays as a native test: a reason.`])),
+      [`${spec} keeps native tests of ${file}, which is no native test file (a recipe test, a support file, an internal test, a file that no feature lists or no test file); remove the name from the line`]);
+  }
+  const unnamed = '  - `gone-unit` (X-1) stays native in every runtime: a reason that names no test.';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, unnamed])),
+    [`${spec} line "${unnamed.trim()}" names no native test; name each test it keeps as in \`file\`, \`test\`, or remove the line`]);
+  const reasonless = '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test.';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, reasonless])), [`${spec} line "${reasonless.trim()}" states no reason after a colon; state why its tests stay native`]);
 });

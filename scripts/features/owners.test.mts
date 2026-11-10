@@ -25,7 +25,7 @@ const helperIds = async (paths: string[]) => (await selectHelpers(manifest, root
 // Each case reads only repository files, so its deadline is 5 s.
 // Requirements: FCV-7.
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/sqlite_path_test.go'])), ['dsn_connection/sqlite-path-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/sqlite_crashed_holder_test.go'])), ['dsn_connection/connection-sqlite-crashed-holder-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/register_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DsnConnectionRecipeTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
   assert.ok(selected(await selectOwners(manifest, root, ['contracts/fixtures/secret_config.dbs'])).includes('authenticated_encryption/encryption-python'));
@@ -95,7 +95,7 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     assert.deepEqual(await selectOwners(manifest, root, [path]), [], path);
     assert.deepEqual(await helperIds([path]), [helper], path);
   }
-  assert.deepEqual(await helperIds(['packages/go/orm/sqlite_path_test.go']), []);
+  assert.deepEqual(await helperIds(['packages/go/orm/sqlite_crashed_holder_test.go']), []);
 });
 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {

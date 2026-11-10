@@ -1288,7 +1288,9 @@ final class Db
             }
             return $total;
         }
-        return $this->scalar($plan['steps'][0], $r->params);
+        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        // scalar statement reads one cell.
+        return $this->scalar($plan['steps'][0], $r->params, in_array($r->ir['kind'], ['avg', 'sum'], true));
     }
 
     /** @internal @return array{0: array, 1: array, 2: int} */
@@ -1721,23 +1723,41 @@ final class Db
     }
 
     /**
-     * The arguments of a statement as SQLite reads them: PDO binds a float as its text, and SQLite takes a text as a
-     * number only in a numeric form, which INF is not, so an infinity binds as 9.0e+999, the form of an infinity that
-     * SQLite itself writes (quote()). Db::exec and Db::fetch both bind through it, so a model write and a statement of
-     * Utils::run store the same value.
+     * The arguments of a statement as the database reads them. PDO binds a float as its text, which PHP writes with the
+     * `precision` setting (14 digits by default) and so names another binary64 value: a finite float binds as the
+     * shortest text that reads back as its own value (DIA-201). SQLite takes a text as a number only in a numeric form,
+     * which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes
+     * (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and Db::fetch both bind
+     * through it, so a model write and a statement of Utils::run store the same value.
      *
      * @param list<mixed> $args
      * @return list<mixed>
      */
     private function sqliteArgs(array $args): array
     {
-        if ($this->driver !== 'sqlite' || $this->corpus) {
+        if ($this->corpus) {
             return $args;
         }
+        $sqlite = $this->driver === 'sqlite';
         return array_map(
-            static fn(mixed $v): mixed => is_float($v) && is_infinite($v) ? ($v > 0 ? '9.0e+999' : '-9.0e+999') : $v,
+            static fn(mixed $v): mixed => !is_float($v) ? $v
+                : (is_finite($v) ? self::floatText($v)
+                    : ($sqlite && is_infinite($v) ? ($v > 0 ? '9.0e+999' : '-9.0e+999') : $v)),
             $args
         );
+    }
+
+    /** The shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+    private static function floatText(float $v): string
+    {
+        $precision = ini_set('precision', '-1');
+        try {
+            return (string) $v;
+        } finally {
+            if ($precision !== false) {
+                ini_set('precision', $precision);
+            }
+        }
     }
 
     /**
@@ -1914,14 +1934,14 @@ final class Db
         return $rows;
     }
 
-    private function scalar(array $step, array $params): mixed
+    private function scalar(array $step, array $params, bool $row = false): mixed
     {
         $args = $this->args($step, $params);
-        $v = $this->send(function () use ($step, $args): mixed {
+        $v = $this->send(function () use ($step, $args, $row): mixed {
             $st = $this->stmt($step['sql'], count($args));
-            return $this->withStatement($st, function (\PDOStatement $st) use ($args): mixed {
+            return $this->withStatement($st, function (\PDOStatement $st) use ($args, $row): mixed {
                 $this->exec($st, $args);
-                $v = $st->fetchColumn();
+                $v = $row ? $st->fetch(\PDO::FETCH_NUM) : $st->fetchColumn();
                 $st->closeCursor();
                 return $v;
             });

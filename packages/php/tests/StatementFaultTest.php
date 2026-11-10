@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The test statement fault of the PHP client (docs/spec/protocol.md 3.2) on SQLite,
-// MySQL and PostgreSQL. A test arms the fault through
-// Polyspec\Orm\Testing\Faults::failNextStatement; the next statement of the
-// connection is not sent and the client reports it as an OrmException with
-// the armed code and message, at the statement end of a driver error. The
+// The refusal of an empty argument of the test statement fault of the PHP client (docs/spec/protocol.md 3.2) on
+// SQLite, MySQL and PostgreSQL: Polyspec\Orm\Testing\Faults::failNextStatement refuses an empty code or message
+// with an InvalidArgumentException, the programmer-error signal of the client, and arms nothing. The refused
+// statement, its event and its consumption are the cases a_statement_fault_* of the recipe transactions. The
 // cases and the code and message come from contracts/fixtures/statement_fault.json;
 // the guard fails when a case of the fixture did not run on every driver.
 // Each case runs in a case database of its own (case_database.php) created
@@ -77,78 +76,6 @@ class StatementFaultTest extends TestCase
         return $db;
     }
 
-    /** Checks an OrmException with the armed code, whose message names the armed message. */
-    private static function checkFault(?Throwable $e, string $subject, array $fault): void
-    {
-        $e = self::checkedOrmException($e, $subject);
-        if ($e === null) {
-            return;
-        }
-        self::check($e->code_ === $fault['code'], "$subject code {$e->code_}: {$e->getMessage()}");
-        self::check(
-            str_contains($e->getMessage(), $fault['message']),
-            "$subject message names the armed message: {$e->getMessage()}"
-        );
-    }
-
-    /**
-     * The armed statement is refused: the insert is not sent, the database keeps
-     * no row, and the statement event of the insert carries the armed error.
-     */
-    private static function refusedInsert(string $dsn, array $fault): void
-    {
-        $db = self::connect($dsn);
-        $events = [];
-        $db->subscribe(function ($event) use (&$events): void {
-            $events[] = [$event->kind, $event->error?->code_];
-        });
-        Faults::failNextStatement($db, $fault['code'], $fault['message']);
-        $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
-        self::checkFault($e, 'insert', $fault);
-        self::check((new StatementProbe())($db)->getCount() === 0, 'the refused insert leaves no row');
-        self::check(
-            in_array(['insert', $fault['code']], $events, true),
-            'the statement event of the insert carries ' . $fault['code'] . ': ' . json_encode($events)
-        );
-        $db->close();
-    }
-
-    /** The fault is consumed by the one statement it refuses: the next insert is sent and writes its row. */
-    private static function consumedByOneStatement(string $dsn, array $fault): void
-    {
-        $db = self::connect($dsn);
-        Faults::failNextStatement($db, $fault['code'], $fault['message']);
-        $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
-        self::checkFault($e, 'first insert', $fault);
-        $second = self::raised(fn() => (new StatementProbe())($db)->setLabel('sent')->create());
-        self::check(
-            $second === null,
-            'the second insert runs after the consumed fault: ' . ($second === null ? '' : $second->getMessage())
-        );
-        self::check((new StatementProbe())($db)->getCount() === 1, 'only the second insert writes a row');
-        $db->close();
-    }
-
-    /**
-     * The first statement in a transaction is the armed insert, so the fault
-     * survives the transaction's BEGIN. The transaction ends by its callback error,
-     * which is the armed error and not a ROLLBACK error, and the row is not written.
-     */
-    private static function refusedInTransaction(string $dsn, array $fault): void
-    {
-        $db = self::connect($dsn);
-        Faults::failNextStatement($db, $fault['code'], $fault['message']);
-        $e = self::raised(fn() => $db->transaction(function () use ($db): void {
-            (new StatementProbe())($db)->setLabel('in transaction')->create();
-        }, retry: 0));
-        self::checkFault($e, 'transaction', $fault);
-        self::check(
-            (new StatementProbe())($db)->getCount() === 0,
-            'the transaction with the refused insert writes no row'
-        );
-        $db->close();
-    }
-
     /**
      * An empty code or an empty message is refused with the usage error of the
      * client (\InvalidArgumentException in the PHP client) and arms nothing: the
@@ -177,9 +104,6 @@ class StatementFaultTest extends TestCase
     }
 
     private const CASES = [
-        'refused_insert' => 'refusedInsert',
-        'consumed_by_one_statement' => 'consumedByOneStatement',
-        'refused_in_transaction' => 'refusedInTransaction',
         'empty_argument_refused' => 'emptyArgumentRefused',
     ];
 

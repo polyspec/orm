@@ -1,7 +1,7 @@
 // Turns a validated request into a plan: SELECT statements for the root and
 // its joins, a separate statement per relation bound to the parent step's
 // rows, and INSERT, UPDATE, and DELETE statements.
-import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
+import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, OutputColumn, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { sameList } from '../list.js';
 import { present } from '../present.js';
@@ -303,6 +303,22 @@ export class Planner {
 
   private qcol(s: Scope, col: string): string { return `${this.d.quote(s.alias)}.${this.d.quote(col)}`; }
 
+  /**
+   * The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
+   * f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers
+   * in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four
+   * sums of its 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is not an integer;
+   * nonInteger is that cell, or '' (DIA-202).
+   */
+  private aggregateSums(root: Scope, column: string): { sums: string[]; nonInteger: string } {
+    const q = this.qcol(root, column);
+    const type = columnOf(root.ent, column)?.type;
+    if (this.d.name === 'sqlite' && (type === 'i16' || type === 'i32' || type === 'i64' || type === 'decimal')) {
+      return { sums: splitParts(q).map(part => `SUM(${part})`), nonInteger: nonIntegerCell(q) };
+    }
+    return { sums: [this.d.name === 'mysql' && type === 'f64' ? `SUM(${q}) + 0` : `SUM(${q})`], nonInteger: '' };
+  }
+
   private qualified(s: Scope, columns: readonly string[]): string[] { return columns.map(c => this.qcol(s, c)); }
 
   /**
@@ -333,11 +349,18 @@ export class Planner {
         sql += groupCount ? '1' : 'COUNT(*)';
         break;
       case 'sum':
-        sql += `COALESCE(SUM(${this.qcol(root, agg)}), 0)`;
+      {
+        const { sums, nonInteger } = this.aggregateSums(root, agg);
+        sql += [...sums.map(sum => `COALESCE(${sum}, 0)`), ...(nonInteger === '' ? [] : [nonInteger])].join(', ');
         break;
+      }
       case 'avg':
-        sql += `AVG(${this.qcol(root, agg)})`;
+        // The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
+      {
+        const { sums, nonInteger } = this.aggregateSums(root, agg);
+        sql += `${[...sums, ...(nonInteger === '' ? [] : [nonInteger])].join(', ')}, COUNT(${this.qcol(root, agg)})`;
         break;
+      }
       case 'group_count': {
         sql += this.selectGroupCountList(b, root, asm, idx, outNames);
         asm.key = keyRefs(asm, [...q.group_by ?? []]);
@@ -518,8 +541,19 @@ export class Planner {
         type = functionType(c.fn.name, col, s.ent.name, c.column);
         col = undefined;
       } else if (c.sub) {
-        expr = `(${this.subSelect(b, s, c.sub)})`;
-        type = this.subType(c.sub);
+        const sub = this.subColumn(b, s, c.name, c.sub, idx, outNames);
+        if (sub.split) {
+          // The sum and its cells are written; the column states them (DIA-202, PRT-84).
+          parts.push(sub.expr);
+          asm.columns.push(sub.col);
+          continue;
+        }
+        const out = `${s.alias}__${c.name}`;
+        parts.push(`${sub.expr} AS ${this.d.quote(out)}`);
+        outNames.push(out);
+        idx.n++;
+        asm.columns.push(sub.col);
+        continue;
       } else {
         const own = present(col, `column ${s.ent.name}.${c.column}`);
         expr = this.readColumn(this.qcol(s, c.column), own);
@@ -770,16 +804,55 @@ export class Planner {
     return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail(codes.CAPABILITY_UNSUPPORTED, `${f.name} is not available on ${this.d.name}`);
   }
 
+  /**
+   * The scalar subquery column name at the cell idx.n. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
+   * the sum of an integer or decimal column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that
+   * reports a value that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states
+   * their cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+   * decimal column states its scale and, but for a sum, its precision (INT-160).
+   */
+  private subColumn(b: Builder, s: Scope, name: string, sub: Subquery, idx: { n: number }, outNames: string[]): { expr: string; col: OutputColumn; split: boolean } {
+    const col: OutputColumn = { index: idx.n, name, column: '', type: this.subType(sub), styles: [], hidden: false };
+    const field = this.subField(sub);
+    if (field?.type === 'decimal') {
+      col.scale = field.scale;
+      if (sub.agg !== 'sum') col.precision = field.precision;
+    }
+    if (sub.agg === 'sum' && field && ['i16', 'i32', 'i64', 'decimal'].includes(field.type)) col.sum_of = field.name;
+    if (col.sum_of === undefined || this.d.name !== 'sqlite') return { expr: `(${this.subSelect(b, s, sub)})`, col, split: false };
+    const selects: ((q: string) => string)[] = [0, 1, 2, 3].map(k => (q: string) => `COALESCE(SUM(${splitParts(q)[k]}), 0)`);
+    selects.push(nonIntegerCell);
+    const parts: string[] = [];
+    const sumParts: number[] = [];
+    selects.forEach((sel, k) => {
+      const out = k === 0 ? `${s.alias}__${name}` : `${s.alias}__${name}__${k}`;
+      parts.push(`(${this.subSelect(b, s, sub, sel)}) AS ${this.d.quote(out)}`);
+      outNames.push(out);
+      if (k < selects.length - 1) sumParts.push(idx.n);
+      else col.non_integer = idx.n;
+      idx.n++;
+    });
+    col.sum_parts = sumParts;
+    return { expr: parts.join(', '), col, split: true };
+  }
+
+  /** The summed or selected column of a scalar subquery, or undefined for a count. */
+  private subField(sub: Subquery): Column | undefined {
+    if (sub.agg === 'count') return undefined;
+    const entity = this.m.entities.get(sub.query.entity);
+    return entity ? columnOf(entity, sub.column ?? '') : undefined;
+  }
+
   /** A subquery for an IN list or a scalar column; "^" refers to outer. */
-  private subSelect(b: Builder, outer: Scope, sub: Subquery): string {
+  private subSelect(b: Builder, outer: Scope, sub: Subquery, sel?: (q: string) => string): string {
     b.subs++;
     const root = this.buildScopes(sub.query, `s${b.subs}`, undefined);
     root.outer = outer;
     let sql = 'SELECT ';
     const column = (): string => present(sub.column, `the column of a subquery of ${sub.query.entity}`);
-    switch (sub.agg ?? '') {
+    switch (sel ? 'sel' : sub.agg ?? '') {
+      case 'sel': sql += present(sel, 'the select of a split sum')(this.qcol(root, column())); break;
       case 'sum': sql += `COALESCE(SUM(${this.qcol(root, column())}), 0)`; break;
-      case 'avg': sql += `AVG(${this.qcol(root, column())})`; break;
       case 'count': sql += 'COUNT(*)'; break;
       default: sql += this.qcol(root, column());
     }
@@ -801,7 +874,6 @@ export class Planner {
   private subType(sub: Subquery): string {
     switch (sub.agg) {
       case 'count': return 'i64';
-      case 'avg': return 'f64';
     }
     const entity = this.m.entities.get(sub.query.entity);
     if (!entity) fail(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
@@ -996,3 +1068,15 @@ export class Planner {
   }
 }
 
+/**
+ * The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+ * [-2^15, 2^15), and the three others in [0, 2^16).
+ */
+function splitParts(q: string): string[] {
+  return [`${q} >> 48`, `(${q} >> 32) & 65535`, `(${q} >> 16) & 65535`, `${q} & 65535`];
+}
+
+/** 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202). */
+function nonIntegerCell(q: string): string {
+  return `MAX(typeof(${q}) NOT IN ('integer', 'null'))`;
+}

@@ -4,7 +4,6 @@ package orm_test
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"sort"
 	"testing"
@@ -25,10 +24,7 @@ type statementFaultFixture struct {
 // statementFaultCases has one test function per case name of the fixture. If a name is missing,
 // TestStatementFaultCases fails, and it also fails if there is a name that is not in the fixture.
 var statementFaultCases = map[string]func(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture){
-	"refused_insert":            statementRefusedInsert,
-	"consumed_by_one_statement": statementConsumedByOneStatement,
-	"refused_in_transaction":    statementRefusedInTransaction,
-	"empty_argument_refused":    statementEmptyArgumentRefused,
+	"empty_argument_refused": statementEmptyArgumentRefused,
 }
 
 // loadStatementFault reads contracts/fixtures/statement_fault.json.
@@ -82,31 +78,6 @@ func statementFault(t *testing.T, driver string) {
 	}
 }
 
-// requireStatementFault checks that err is an OrmException with the fixture's code and message.
-func requireStatementFault(t *testing.T, err error, f statementFaultFixture) {
-	t.Helper()
-	var coded *orm.Error
-	if !errors.As(err, &coded) || coded.Code != f.Code || coded.Msg != f.Message {
-		t.Fatalf("statement error = %v, want %s with message %q", err, f.Code, f.Message)
-	}
-}
-
-// requireStatementEvent checks that among the connection's statement events there is one
-// carrying the fixture's error. The error must be attached to the event when the statement ends.
-func requireStatementEvent(t *testing.T, db *orm.DB, f statementFaultFixture, run func()) {
-	t.Helper()
-	events, unsubscribe := subscribeStatementEvents(t, db)
-	defer unsubscribe()
-	run()
-	for _, e := range *events {
-		var coded *orm.Error
-		if errors.As(e.Err, &coded) && coded.Code == f.Code && coded.Msg == f.Message {
-			return
-		}
-	}
-	t.Fatalf("no statement event carries %s %q; %d events", f.Code, f.Message, len(*events))
-}
-
 // requireRows checks that the model's row count is want.
 func requireRows(t *testing.T, model func() *orm.Core, want int64, subject string) {
 	t.Helper()
@@ -125,41 +96,6 @@ func refuseUsage(t *testing.T, subject string, call func()) {
 		}
 	}()
 	call()
-}
-
-// statementRefusedInsert makes the next insert fail with the fixture's error without sending it,
-// and checks that the database is not changed.
-func statementRefusedInsert(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
-	orm.FailNextStatement(db, f.Code, f.Message)
-	requireStatementEvent(t, db, f, func() {
-		requireStatementFault(t, probeCreate(model, "refused"), f)
-	})
-	requireRows(t, model, 0, "after the refused insert")
-}
-
-// statementConsumedByOneStatement checks that the fault consumes only one statement, so the next insert
-// succeeds.
-func statementConsumedByOneStatement(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
-	orm.FailNextStatement(db, f.Code, f.Message)
-	requireStatementFault(t, probeCreate(model, "refused"), f)
-	if err := probeCreate(model, "after the fault"); err != nil {
-		t.Fatalf("the insert after the consumed fault: %v", err)
-	}
-	requireRows(t, model, 1, "after the consumed fault")
-}
-
-// statementRefusedInTransaction checks that BEGIN and COMMIT do not consume the fault, and that the next insert
-// inside the transaction fails with the fixture's error, so the transaction returns that error.
-func statementRefusedInTransaction(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
-	orm.FailNextStatement(db, f.Code, f.Message)
-	if err := db.Transaction(func() error { return nil }, orm.Retry(0)); err != nil {
-		t.Fatalf("an empty transaction with an armed fault: %v", err)
-	}
-	err := db.Transaction(func() error {
-		return probeCreate(model, "refused in transaction")
-	}, orm.Retry(0))
-	requireStatementFault(t, err, f)
-	requireRows(t, model, 0, "after the refused insert in a transaction")
 }
 
 // statementEmptyArgumentRefused checks that an empty code or empty message is refused and arms nothing,

@@ -271,11 +271,17 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
     }
 }
 
-/// The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4, CFG-26).
-async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<String, String> {
-    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
-    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
+/// The names in a new directory, other than the journals of a file of it, after a connection to a file of it with the query, if
+/// any (dsn.sqlite_file, FCV-4, CFG-11, CFG-26). The directory is named by the process and a count, so its path needs no escape.
+async fn sqlite_file_names(name: &str, query: Option<&str>, config: &Value) -> Result<String, String> {
+    static DIRECTORIES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let count = DIRECTORIES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{count}", std::process::id()));
+    std::fs::create_dir(&directory).map_err(|error| error.to_string())?;
+    let dsn = match query {
+        Some(query) => format!("sqlite://{}/{name}?{query}", directory.display()),
+        None => format!("sqlite://{}/{name}", directory.display()),
+    };
     let connected = connect_driver(&dsn, config).await.map_err(|(_, message)| message);
     let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
         let mut names = Vec::new();
@@ -291,8 +297,9 @@ async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<St
             left => Err(format!("a refused DSN left the files {left:?}")),
         };
     }
-    let journals = [format!("{name}-journal"), format!("{name}-shm"), format!("{name}-wal")];
-    let mut names: Vec<String> = listed?.into_iter().filter(|file| !journals.contains(file)).collect();
+    let listed = listed?;
+    let journal_of = |file: &str| ["-journal", "-shm", "-wal"].iter().find_map(|suffix| file.strip_suffix(suffix)).map(str::to_owned);
+    let mut names: Vec<String> = listed.iter().filter(|file| journal_of(file).is_none_or(|stem| !listed.contains(&stem))).cloned().collect();
     names.sort();
     Ok(names.join(","))
 }
@@ -2626,15 +2633,18 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
         return Ok(codec::encode(&stages, StyledValue::SqlNull));
     }
     // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+    // The text is parsed as a caller parses one, so `?` states a refusal of the library as its orm error (COD-81).
+    let ordered = |text: &str| -> polyspec_orm::Result<Param> {
+        let value = ordered_json::parse(text)?;
+        codec::encode_ordered(&stages, StyledValue::Value(&value))
+    };
     if let Some(inner) = raw.get("ordered_json") {
-        let value = ordered_json::parse(&json_text(inner)?).map_err(|e| e.to_string())?;
-        return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
+        return Ok(ordered(&json_text(inner)?));
     }
     // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
     // one Rust value that holds it (COD-70 `json-depth`).
     if styles.iter().any(|s| s == "ordered_json") && depth(raw) <= ordered_json::MAX_DEPTH {
-        let value = ordered_json::parse(&json_text(raw)?).map_err(|e| e.to_string())?;
-        return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
+        return Ok(ordered(&json_text(raw)?));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
 }
@@ -3125,21 +3135,94 @@ mod database {
             .collect()
     }
 
-    /// The recipe as serde values, and the same text as ordered JSON, whose objects keep the order of the document.
-    fn read_recipe(path: &Path, text: &str) -> (Value, polyspec_orm::ordered_json::Value) {
-        let value = match serde_json::from_str(text) {
+    /// The order of the members of each object of a recipe document, which serde_json sorts. It reads every level of the
+    /// document, as parse_recipe does: a recipe value may nest deeper than the 256 levels of an ordered-json value (COD-70).
+    enum Written {
+        Object(Vec<(String, Written)>),
+        Array(Vec<Written>),
+        Scalar,
+    }
+
+    impl Written {
+        fn members(&self) -> Option<&[(String, Written)]> {
+            match self {
+                Written::Object(members) => Some(members),
+                _ => None,
+            }
+        }
+
+        fn items(&self) -> Option<&[Written]> {
+            match self {
+                Written::Array(items) => Some(items),
+                _ => None,
+            }
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for Written {
+        fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            struct Visitor;
+            impl<'de> serde::de::Visitor<'de> for Visitor {
+                type Value = Written;
+                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    f.write_str("a JSON value")
+                }
+                fn visit_bool<E>(self, _: bool) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_i64<E>(self, _: i64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_u64<E>(self, _: u64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_f64<E>(self, _: f64) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_str<E>(self, _: &str) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_unit<E>(self) -> Result<Written, E> {
+                    Ok(Written::Scalar)
+                }
+                fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Written, A::Error> {
+                    let mut items = Vec::new();
+                    while let Some(item) = seq.next_element()? {
+                        items.push(item);
+                    }
+                    Ok(Written::Array(items))
+                }
+                fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Written, A::Error> {
+                    let mut members = Vec::new();
+                    while let Some((key, value)) = map.next_entry::<String, Written>()? {
+                        members.push((key, value));
+                    }
+                    Ok(Written::Object(members))
+                }
+            }
+            deserializer.deserialize_any(Visitor)
+        }
+    }
+
+    /// The recipe as serde values, and the order of its objects as the document writes them.
+    fn read_recipe(path: &Path, text: &str) -> (Value, Written) {
+        use serde::Deserialize as _;
+        // A recipe may nest deeper than the 128 levels that serde_json reads by default (COD-70 json-depth).
+        let value = match crate::recipe_keys::parse_recipe(text) {
             Ok(value) => value,
             Err(error) => panic!("{}: {error}", path.display()),
         };
-        match polyspec_orm::ordered_json::parse(text) {
-            Ok(ordered) => (value, ordered),
+        let mut reader = serde_json::Deserializer::from_str(text);
+        reader.disable_recursion_limit();
+        match Written::deserialize(&mut reader).and_then(|written| reader.end().map(|()| written)) {
+            Ok(written) => (value, written),
             Err(error) => panic!("{}: {error}", path.display()),
         }
     }
 
     /// Records the written order of each object of a step that serde_json would sort: a step and its expect are read by
     /// name, so they stay as they are.
-    fn mark_written_order(value: &mut Value, ordered: &polyspec_orm::ordered_json::Value) {
+    fn mark_written_order(value: &mut Value, ordered: &Written) {
         if let Some(items) = ordered.items() {
             for (item, written) in value.as_array_mut().into_iter().flatten().zip(items) {
                 mark_written_order(item, written);
@@ -3148,34 +3231,28 @@ mod database {
         }
         let (Some(map), Some(written)) = (value.as_object_mut(), ordered.members()) else { return };
         let mut names = Vec::new();
-        for (key, child) in written.iter() {
-            let name = String::from_utf8(key.string_value().expect("a member name is a JSON string")).expect("a member name is UTF-8");
+        for (name, child) in written {
             if name != "expect" {
-                if let Some(item) = map.get_mut(&name) {
+                if let Some(item) = map.get_mut(name) {
                     mark_written_order(item, child);
                 }
             }
-            names.push(name);
+            names.push(name.clone());
         }
         if !map.contains_key("op") && !names.is_sorted() {
             map.insert(super::WRITTEN_ORDER.to_owned(), json!(names));
         }
     }
 
-    /// The member of an ordered JSON object whose key is `name`.
-    fn member<'a>(object: &'a polyspec_orm::ordered_json::Value, name: &str) -> Option<&'a polyspec_orm::ordered_json::Value> {
-        object.members()?.iter().find(|(key, _)| key.string_value().is_ok_and(|bytes| bytes == name.as_bytes())).map(|(_, value)| value)
+    /// The member of an object of the document whose key is `name`.
+    fn member<'a>(object: &'a Written, name: &str) -> Option<&'a Written> {
+        object.members()?.iter().find(|(key, _)| key == name).map(|(_, value)| value)
     }
 
     /// The table names of the `rows` of a seed object, in the order the document writes them.
-    fn seed_order(seed: Option<&polyspec_orm::ordered_json::Value>) -> Vec<String> {
-        let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(|rows| rows.members()) else { return Vec::new() };
-        rows.iter()
-            .map(|(key, _)| {
-                let bytes = key.string_value().expect("a seed table name is a JSON string");
-                String::from_utf8(bytes).expect("a seed table name is UTF-8")
-            })
-            .collect()
+    fn seed_order(seed: Option<&Written>) -> Vec<String> {
+        let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(Written::members) else { return Vec::new() };
+        rows.iter().map(|(key, _)| key.clone()).collect()
     }
 
     /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
@@ -3654,7 +3731,9 @@ mod database {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
-                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{message}")) };
+                // A failure without an expected error ends the step with the error as its call returned it, its Display
+                // (`text`), so that a transaction around the step returns that error and not the code before it again.
+                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{}", text.unwrap_or(message.as_str()))) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
                 let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
@@ -3938,9 +4017,40 @@ mod database {
                 context.subscriptions.insert(name, subscription);
                 Output::fields(json!({}))
             }
+            "db.execute" => {
+                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
+                // recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs its first step.
+                let db = connection_db(step, context).map_err(fault)?;
+                let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default().to_owned();
+                let manifest = super::ir_request::schema(&context.dir.join(&schema).to_string_lossy());
+                let request = crate::recipe_reads::read(step, "request")["request"].clone();
+                if request.get("manifest_hash").is_some() {
+                    return Err(fault("db.execute: the request already holds manifest_hash".to_owned()));
+                }
+                let input = super::ir_request::request(&request, &manifest.manifest_hash);
+                let dialect = match context.database {
+                    "mysql" => super::engine::Dialect::MySql,
+                    "postgres" => super::engine::Dialect::Postgres,
+                    _ => super::engine::Dialect::Sqlite,
+                };
+                let plan = super::engine::compile(&manifest, dialect, &input).map_err(|error| fault(error.to_string()))?;
+                let mut params = Vec::new();
+                for raw in crate::recipe_reads::read(step, "params")["params"].as_array().map(Vec::as_slice).unwrap_or_default() {
+                    params.push(super::tables::param(raw).map_err(fault)?);
+                }
+                db.execute(&plan.steps[0], &params).await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
             "fault.next_rollback" => {
                 let db = connection_db(step, context).map_err(fault)?;
                 polyspec_orm::testing::fail_next_rollback(&db);
+                Output::fields(json!({}))
+            }
+            "fault.next_statement" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let code = crate::recipe_reads::read(step, "code")["code"].as_str().unwrap_or_default().to_owned();
+                let message = crate::recipe_reads::read(step, "message")["message"].as_str().unwrap_or_default().to_owned();
+                polyspec_orm::testing::fail_next_statement(&db, &code, &message);
                 Output::fields(json!({}))
             }
             "events.fail_subscriber" => {
@@ -4461,7 +4571,7 @@ mod database {
             }
             "dsn.sqlite_file" => {
                 let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
-                let query = crate::recipe_reads::read(step, "query")["query"].as_str().unwrap_or_default();
+                let query = crate::recipe_reads::read(step, "query")["query"].as_str();
                 let names = crate::recipe::sqlite_file_names(name, query, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(Failure::call)?;
                 Output::fields(json!({ "value": { "text": names } }))
             }
@@ -4866,7 +4976,9 @@ mod database {
             }
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
             // JSON holds one number type: a sum read as 17540.0 is the 17540 of the recipe.
-            Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9e15) => json!(n.as_f64().map_or(0, |f| f as i64)),
+            Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9_223_372_036_854_775_808.0) => {
+                json!(n.as_f64().map_or(0, |f| f as i64))
+            }
             other => other.clone(),
         }
     }
@@ -5575,6 +5687,7 @@ mod tables {
         create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_count_lookahead_page,
         gets_lookahead_page, gets_page, restore, restore_or_create, save, to_array, update,
     };
+    use polyspec_orm::ordered_json;
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
 
@@ -6106,6 +6219,10 @@ mod tables {
             if let Some(column) = crate::recipe_reads::read(q, "key_by")["key_by"].as_str() {
                 core.key_name(column);
             }
+            // possible outside a relation is refused at the build of its request (DSL-85).
+            for (column, value) in members(&crate::recipe_reads::read(q, "possible")["possible"]) {
+                core.possible(column, param(value)?);
+            }
             Ok(())
         }
 
@@ -6130,9 +6247,6 @@ mod tables {
             }
             if let Some(alias) = relation["alias"].as_str() {
                 child.set_alias(alias);
-            }
-            for (column, value) in members(&relation["possible"]) {
-                child.possible(column, param(value)?);
             }
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
@@ -6258,6 +6372,58 @@ mod tables {
         Ok(())
     }
 
+    /// A recipe value read as the parts of an ordered-json value, so that the runner refuses a malformed wrapper before the
+    /// value is built.
+    enum OrderedParts {
+        Null,
+        Bool(bool),
+        Number(String),
+        Text(String),
+        Array(Vec<OrderedParts>),
+        Object(Vec<(String, OrderedParts)>),
+    }
+
+    /// The parts of a recipe value; a wrapper that is no ordered-json value is the runner's error.
+    fn ordered_parts(inner: &Value) -> Result<OrderedParts, String> {
+        let (kind, body) = super::kind(inner)?;
+        Ok(match kind {
+            "null" | "nil" => OrderedParts::Null,
+            "bool" => OrderedParts::Bool(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?),
+            "int" | "float" => OrderedParts::Number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?.to_owned()),
+            "text" => OrderedParts::Text(body.as_str().ok_or_else(|| format!("{inner} has no text"))?.to_owned()),
+            "array" => OrderedParts::Array(body.as_array().into_iter().flatten().map(ordered_parts).collect::<Result<_, _>>()?),
+            "object" => {
+                let mut members = Vec::new();
+                for pair in body.as_array().into_iter().flatten() {
+                    let key = pair[0].as_str().ok_or_else(|| format!("{pair} has no member name"))?;
+                    members.push((key.to_owned(), ordered_parts(&pair[1])?));
+                }
+                OrderedParts::Object(members)
+            }
+            other => return Err(format!("a {other} wrapper is not an ordered-json value")),
+        })
+    }
+
+    /// The ordered-json value of the parts, built level by level by the builders of the library (Value::array,
+    /// Value::object and the scalar constructors), not by parsing a text, as a caller does: a builder that refuses a value
+    /// returns its error, which `?` states as the orm error of its rule (COD-81).
+    fn ordered_of(parts: &OrderedParts) -> polyspec_orm::Result<ordered_json::Value> {
+        Ok(match parts {
+            OrderedParts::Null => ordered_json::Value::null(),
+            OrderedParts::Bool(value) => ordered_json::Value::boolean(*value),
+            OrderedParts::Number(literal) => ordered_json::Value::number(literal)?,
+            OrderedParts::Text(text) => ordered_json::Value::string(text),
+            OrderedParts::Array(items) => ordered_json::Value::array(&items.iter().map(ordered_of).collect::<polyspec_orm::Result<Vec<_>>>()?)?,
+            OrderedParts::Object(pairs) => {
+                let mut members = ordered_json::OrderedMap::new();
+                for (key, value) in pairs {
+                    members.insert(ordered_json::Value::string(key), ordered_of(value)?)?;
+                }
+                ordered_json::Value::object(&members)?
+            }
+        })
+    }
+
     /// Sets one column as the setter of a generated model does: the decimal is validated, a styled value goes through its
     /// codec, and the field holds what a read would.
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
@@ -6267,7 +6433,18 @@ mod tables {
         // The setter of a column with codec stages encodes the value by them and fails at the call (COD-73).
         let check = |value: &Value| if styles.is_empty() { Ok(()) } else { polyspec_orm::codec::check_setter(&styles, value).map_err(orm) };
         if let Some(inner) = raw.get("styled") {
-            let value = bind_json(&param(inner)?);
+            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
+                // The generated setter of an ordered_json column takes an ordered-json value, which the runner builds
+                // from the recipe value by the builders of the library, as a caller of the setter does (COD-73).
+                let ordered = ordered_of(&ordered_parts(inner)?).map_err(orm)?;
+                polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
+                row.core.set_ordered(column, ordered.clone());
+                row.values.insert(column.to_owned(), Val::Ordered(ordered));
+                row.core.mark_field_ready(column);
+                return Ok(());
+            }
+            // An array is a value of the common value model (COD-16), which a table parameter does not hold.
+            let value = if inner.get("array").is_some() { super::to_value(inner)? } else { bind_json(&param(inner)?) };
             check(&value)?;
             row.core.set_json(column, value.clone());
             row.values.insert(column.to_owned(), Val::Json(value));
@@ -6277,7 +6454,8 @@ mod tables {
         if raw.get("object").is_some() {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
-                let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
+                let parsed = |text: &str| -> polyspec_orm::Result<polyspec_orm::ordered_json::Value> { Ok(polyspec_orm::ordered_json::parse(text)?) };
+                let ordered = parsed(&super::json_text(raw)?).map_err(orm)?;
                 polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
@@ -6289,6 +6467,15 @@ mod tables {
             }
             row.core.mark_field_ready(column);
             return Ok(());
+        }
+        if raw.get("null").is_some() && field.is_some_and(|field| field.styled_value() && !field.nullable) {
+            // The generated setter of a non-null styled column refuses StyledValue::SqlNull with the name of the column
+            // (COD-20, COD-73), before it changes the model.
+            return Err(orm(polyspec_orm::Error::Engine {
+                code: polyspec_orm::codes::CODEC_ENCODE.into(),
+                msg: format!("{column} does not accept SQL NULL"),
+                source: None,
+            }));
         }
         let mut value = param(raw)?;
         if let (Some(Type::Decimal(precision, scale)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
@@ -6503,6 +6690,9 @@ mod tables {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
+            if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) {
+                return Ok(json!({ "json": rows.to_json().map_err(orm)? }));
+            }
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
                 list.push(row_json(row, &crate::recipe_reads::read(step, "pick")["pick"])?);
@@ -6996,6 +7186,12 @@ mod tables {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
                             _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
                         };
+                    }
+                    if let Some(column) = crate::recipe_reads::read(step, "get")["get"].as_str() {
+                        // The generated getter (DBS-112) checks require_field, which is COLUMN_UNSELECTED for a column
+                        // neither loaded nor assigned.
+                        row.core.require_field(column).map_err(orm)?;
+                        return Ok(json!({ "json": row_json(&row, &json!([column]))?[column].clone() }));
                     }
                     let fields = json!({ "json": row_json(&row, &crate::recipe_reads::read(step, "pick")["pick"])? });
                     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {

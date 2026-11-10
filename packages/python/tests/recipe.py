@@ -50,7 +50,7 @@ from polyspec.orm import (
 from polyspec.orm.catalog import GridCell
 from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
-from polyspec.orm.testing import fail_next_rollback, last_affected
+from polyspec.orm.testing import fail_next_rollback, fail_next_statement, last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -3317,21 +3317,27 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
 
 
 def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
-    """dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a
-    file of it."""
+    """dsn.sqlite_file (FCV-4, CFG-11, CFG-26): the names in a new directory, other than the journals of a file of it,
+    after a connection to a file of it with the query, if any."""
     name = step["name"]
+    query = "" if step.get("query") is None else f"?{step['query']}"
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
         try:
-            _connect_driver(
-                f"sqlite://{directory}/{name}?{step['query']}", step.get("config")
-            )
+            _connect_driver(f"sqlite://{directory}/{name}{query}", step.get("config"))
         except OrmError:
             left = os.listdir(directory)
             if left:
                 raise AssertionError(f"a refused DSN left the files {left}") from None
             raise
-        journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
-        names = sorted(set(os.listdir(directory)) - journals)
+        listed = set(os.listdir(directory))
+        names = sorted(
+            entry
+            for entry in listed
+            if not any(
+                entry.endswith(suffix) and entry[: -len(suffix)] in listed
+                for suffix in ("-journal", "-shm", "-wal")
+            )
+        )
     return {"value": {"text": ",".join(names)}}
 
 
@@ -3665,6 +3671,12 @@ class _ChainBuild:
             model.core.index = q["force_index"]
         if "key_by" in q:
             model.core.key_name = q["key_by"]
+        # possible outside a relation is refused at the build of its request (DSL-85).
+        for column, value in q.get("possible", {}).items():
+            model.core.possible = {
+                "column": column,
+                "value": _chain_value(value, self.context),
+            }
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -3675,11 +3687,6 @@ class _ChainBuild:
             child.core.matches.append({"left": left, "right": right})
         if "alias" in relation:
             child.core.alias = _snake_of(relation["alias"])
-        for column, value in relation.get("possible", {}).items():
-            child.core.possible = {
-                "column": column,
-                "value": _chain_value(value, self.context),
-            }
         if relation.get("parent_node") is True:
             child.parent_node()
         _ChainBuild(self.context, self.outer).query(child, relation)
@@ -3982,6 +3989,8 @@ def _table_model_query(step: dict, context: dict) -> dict:
             fields["rows"] = _chain_cells(list(page["items"].values()), step)
         return fields
     rows = model.gets()
+    if step.get("json_output") is True:
+        return {"json": rows.to_json_text()}
     fields = {
         "bind": rows,
         "json": [_row_json(row, pick) for row in rows.values()],
@@ -4009,6 +4018,11 @@ def _table_model_get_by(step: dict, context: dict) -> dict:
         return {"json": document.compact()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
+    if "get" in step and row is not None:
+        # The generated getter (DBS-112) reads Core.column, which is COLUMN_UNSELECTED for a column neither selected nor
+        # assigned.
+        row.core.column(step["get"])
+        return {"json": _row_json(row, [step["get"]])[step["get"]]}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row
@@ -4267,8 +4281,29 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
     return {"bind": _Subscription(stop, recording)}
 
 
+def _op_db_execute(step: dict, context: dict) -> dict:
+    """db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for
+    the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step of the plan with execute."""
+    model = _validation_model((context["dir"] / step["schema"]).resolve())
+    if "manifest_hash" in step["request"]:
+        raise AssertionError("db.execute: the request already holds manifest_hash")
+    request = dict(
+        json.loads(json.dumps(step["request"])), manifest_hash=model.manifest_hash
+    )
+    plan = Engine(model, _dialect_of(context)).compile(request)
+    _connection_of(step, context).execute(
+        plan["steps"][0], [_to_value(raw) for raw in step.get("params", [])]
+    )
+    return {}
+
+
 def _op_fault_next_rollback(step: dict, context: dict) -> dict:
     fail_next_rollback(_connection_of(step, context))
+    return {}
+
+
+def _op_fault_next_statement(step: dict, context: dict) -> dict:
+    fail_next_statement(_connection_of(step, context), step["code"], step["message"])
     return {}
 
 
@@ -4676,7 +4711,11 @@ _DATABASE_OPS = {
     "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
+    "db.execute": lambda step, context: _op_db_execute(step, context),
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
+    "fault.next_statement": lambda step, context: _op_fault_next_statement(
+        step, context
+    ),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,

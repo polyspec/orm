@@ -113,7 +113,7 @@ class Canonicalizer {
     const v: Predicate = { ...p };
     if (p.p !== undefined) v.p = this.index(p.p);
     if (p.ps !== undefined) v.ps = (p.op === 'in' || p.op === 'not_in') && p.sub === undefined ? this.list(p.ps) : this.ints(p.ps);
-    if (p.fn !== undefined) v.fn = this.fn(p.fn);
+    // A column function takes no parameter (columnFunctionArity of dialect.ts), so of the functions only a value function holds slots.
     if (p.value !== undefined) v.value = this.fn(p.value);
     if (p.sub !== undefined) v.sub = this.subquery(p.sub);
     if (p.ref !== undefined) v.ref = { ...p.ref };
@@ -127,10 +127,7 @@ class Canonicalizer {
       const cols = { ...q.columns };
       if (q.columns.add !== undefined) cols.add = [...q.columns.add];
       if (q.columns.remove !== undefined) cols.remove = [...q.columns.remove];
-      if (q.columns.fn !== undefined) {
-        cols.fn = {};
-        for (const [k, column] of Object.entries(q.columns.fn).sort(byKey)) cols.fn[k] = { ...column, fn: this.fn(column.fn) };
-      }
+      if (q.columns.fn !== undefined) cols.fn = { ...q.columns.fn };
       if (q.columns.sub !== undefined) {
         cols.sub = {};
         for (const [k, sub] of Object.entries(q.columns.sub).sort(byKey)) cols.sub[k] = this.subquery(sub);
@@ -147,7 +144,7 @@ class Canonicalizer {
         return v;
       });
     }
-    if (q.order !== undefined) out.order = q.order.map((o: Order) => (o.fn === undefined ? { ...o } : { ...o, fn: this.fn(o.fn) }));
+    if (q.order !== undefined) out.order = q.order.map((o: Order) => ({ ...o }));
     if (q.group_by !== undefined) out.group_by = [...q.group_by];
     if (q.limit !== undefined) {
       if (q.limit === null || typeof q.limit !== 'object') throw new OrmError(codes.IR_INVALID, 'limit must be an object');

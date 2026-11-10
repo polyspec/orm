@@ -4,9 +4,6 @@
 #[path = "common/audit_rows.rs"]
 pub mod audit_rows;
 #[macro_use]
-#[path = "common/json_trials.rs"]
-pub mod json_trials;
-#[macro_use]
 #[path = "common/map_rows.rs"]
 pub mod map_rows;
 #[macro_use]
@@ -23,9 +20,6 @@ pub mod clock_test_support;
 pub mod code_catalog;
 pub mod collection_identity;
 pub mod compiler_fixtures;
-pub mod coverage_dsn;
-pub mod decimal_model;
-pub mod identity_load;
 pub mod mysql_tls;
 #[path = "common/or_panic.rs"]
 pub mod or_panic;
@@ -40,9 +34,7 @@ pub mod service_model;
 #[path = "common/sqlite_case.rs"]
 pub mod sqlite_case;
 pub mod sqlite_concurrency;
-pub mod sqlite_file_name;
 pub mod statement_fault;
-pub mod styled_column_states;
 pub mod transaction_flow;
 pub mod value_types;
 pub mod was_inserted;

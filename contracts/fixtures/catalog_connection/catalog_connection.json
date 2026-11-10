@@ -15391,6 +15391,244 @@
               "message": "CATALOG_VALUE: column 3: unsupported native type"
             }
           }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, 'after'",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "after"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "committed_mutations_share_one_connection",
+      "requirements": [
+        "INT-106b",
+        "INT-106c",
+        "INT-157"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a column whose default is the id of the server connection that writes the row, which no dbspec type declares",
+          "sql": "CREATE TABLE mutation_writer (id BIGINT NOT NULL PRIMARY KEY, backend BIGINT NOT NULL DEFAULT (CONNECTION_ID())) ENGINE=InnoDB"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a column whose default is the id of the server connection that writes the row, which no dbspec type declares",
+          "sql": "CREATE TABLE mutation_writer (id BIGINT NOT NULL PRIMARY KEY, backend INTEGER NOT NULL DEFAULT pg_backend_pid())"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "mutation_writer",
+          "as": "writer",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "backend"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "backend"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "1"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "2"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "3"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "5"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "1"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "writer"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "7"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*), COUNT(DISTINCT backend) FROM mutation_writer WHERE id < 7",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM mutation_writer",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     },

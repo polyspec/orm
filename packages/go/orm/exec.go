@@ -1125,7 +1125,10 @@ func assembleHasAES(asm *plan.Assemble) bool {
 }
 
 func countCols(a *plan.Assemble) int {
-	n := len(a.Columns)
+	n := 0
+	for _, col := range a.Columns {
+		n += col.Cells()
+	}
 	for _, c := range a.Children {
 		if c.Kind == "join" {
 			n += countCols(c.Assemble)
@@ -1197,16 +1200,38 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	var v cell
+	// A sum reads its sums and an average its sums and the count of its values: the cells of a split sum where the planner
+	// splits the sum of an exact column (DIA-202), one sum otherwise (DSL-161); every other scalar statement reads one cell.
+	cells := make([]cell, 1)
+	if r.ir.Kind == "sum" || r.ir.Kind == "avg" {
+		cells = make([]cell, r.sumCells)
+		if r.ir.Kind == "avg" {
+			cells = append(cells, cell{})
+		}
+	}
+	dest := make([]any, len(cells))
+	for i := range cells {
+		dest[i] = &cells[i]
+	}
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
-	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &v), ctx)
+	err = stmt.QueryRowContext(ctx, args...).Scan(dest...)
+	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, dest...), ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
-	return v.v, nil
+	switch r.ir.Kind {
+	case "sum":
+		return sumCell(cells)
+	case "avg":
+		sum, err := sumCell(cells[:len(cells)-1])
+		if err != nil {
+			return nil, err
+		}
+		return avgCells{sum: sum, count: cells[len(cells)-1].v}, nil
+	}
+	return cells[0].v, nil
 }
 
 // paginate runs the page statement with its relations and the count statement.

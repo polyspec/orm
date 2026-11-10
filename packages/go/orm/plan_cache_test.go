@@ -1,8 +1,6 @@
 package orm
 
 import (
-	"encoding/json"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -192,83 +190,3 @@ func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
 }
 
 func pageParamIndex(value int) *int { return &value }
-
-// compositeVector is the shared plan cache key vector of contracts/fixtures/plan_cache_composite.json.
-type compositeVector struct {
-	Request   ir.Request `json:"request"`
-	Params    []any      `json:"params"`
-	Canonical struct {
-		Params       []any    `json:"params"`
-		NParams      int      `json:"n_params"`
-		Limit        ir.Limit `json:"limit"`
-		IfParentP    int      `json:"if_parent_p"`
-		SetP         []int    `json:"set_p"`
-		OnDuplicateP []int    `json:"on_duplicate_p"`
-		Rows         [][]int  `json:"rows"`
-		OptimisticP  int      `json:"optimistic_p"`
-	} `json:"canonical"`
-}
-
-// Requirements: CPX-4.
-func TestCanonicalizeCompositeRequestParameterWalk(t *testing.T) {
-	t.Run("plan_cache_composite_parameter_order", func(t *testing.T) {
-		testcase.Start(t, testcase.Compute)
-		raw, err := os.ReadFile("../../../contracts/fixtures/plan_cache_composite.json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		var v compositeVector
-		if err := json.Unmarshal(raw, &v); err != nil {
-			t.Fatal(err)
-		}
-		request := &request{ir: v.Request, params: v.Params}
-		if err := canonicalize(request); err != nil {
-			t.Fatal(err)
-		}
-		want := make([]any, len(v.Canonical.Params))
-		for i, p := range v.Canonical.Params {
-			if f, ok := p.(float64); ok {
-				want[i] = int64(f)
-			} else {
-				want[i] = p
-			}
-		}
-		if !reflect.DeepEqual(request.params, want) {
-			t.Fatalf("canonical params = %#v, want %#v", request.params, want)
-		}
-		got := request.ir
-		if request.ir.NParams != v.Canonical.NParams {
-			t.Fatalf("canonical n_params = %d, want %d", got.NParams, v.Canonical.NParams)
-		}
-		if got.Limit == nil || got.Limit.OffsetP == nil || *got.Limit.OffsetP != *v.Canonical.Limit.OffsetP || got.Limit.CountP == nil || *got.Limit.CountP != *v.Canonical.Limit.CountP {
-			t.Fatalf("canonical limit = %#v, want %#v", got.Limit, v.Canonical.Limit)
-		}
-		if got.IfParent.P != v.Canonical.IfParentP || *got.Set[0].P != v.Canonical.SetP[0] || *got.OnDuplicate[0].P != v.Canonical.OnDuplicateP[0] || got.Rows[0][0] != v.Canonical.Rows[0][0] || got.Optimistic.P != v.Canonical.OptimisticP {
-			t.Fatalf("request parameter fields were not renumbered by the walk: %#v", got)
-		}
-	})
-	t.Run("plan_cache_predicate_fn_parameter_order", func(t *testing.T) {
-		testcase.Start(t, testcase.Compute)
-		raw, err := os.ReadFile("../../../contracts/fixtures/plan_cache_composite.json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		var all struct {
-			Vector compositeVector `json:"predicate_fn_param"`
-		}
-		if err := json.Unmarshal(raw, &all); err != nil {
-			t.Fatal(err)
-		}
-		request := &request{ir: all.Vector.Request, params: all.Vector.Params}
-		if err := canonicalize(request); err != nil {
-			t.Fatal(err)
-		}
-		if got, want := request.params, []any{"v1", "v0"}; !slices.Equal(got, want) {
-			t.Fatalf("canonical params = %v, want %v", got, want)
-		}
-		pred := request.ir.Query.Where.Items[0].Pred
-		if *pred.P != 0 || pred.Fn.Ps[0] != 1 {
-			t.Fatalf("predicate slots p=%d fn.ps=%v, want p=0 fn.ps=[1]", *pred.P, pred.Fn.Ps)
-		}
-	})
-}

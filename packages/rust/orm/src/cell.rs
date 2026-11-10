@@ -25,11 +25,6 @@ pub(crate) fn cell_refusal(column_type: &str) -> Error {
     Error::Engine { code: codes::CODEC_DECODE.into(), msg: cell_message(column_type), source: None }
 }
 
-/// The CODEC_DECODE of a cell that its column type does not hold, keeping the failure that found it (COD-1).
-pub(crate) fn cell_refusal_by(column_type: &str, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg: cell_message(column_type), source: Some(Box::new(cause)) }
-}
-
 /// The refusal of a text cell whose bytes are not UTF-8 (COD-69), which keeps the failure of the UTF-8 read.
 pub(crate) fn invalid_utf8(cause: impl std::error::Error + Send + Sync + 'static) -> Error {
     Error::Engine { code: codes::CODEC_DECODE.into(), msg: "text is not valid UTF-8".into(), source: Some(Box::new(cause)) }
@@ -311,6 +306,94 @@ pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
         },
         Type::Decimal(..) => value,
     })
+}
+
+/// The cell of the added column col from its cell value of the row (INT-160): the sum of an integer or decimal column is the
+/// exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not
+/// hold is refused by that column (DIA-202, PRT-84); a decimal is its exact text of its scale, and another cell is read as
+/// `added_cell` reads it.
+pub(crate) fn added_column(col: &crate::plan::OutCol, value: Val, row: &[Val]) -> Result<Val> {
+    use crate::aggregate::{non_integer_refusal, split_sum, Split};
+    let mut value = value;
+    let decimal = col.typ == "decimal";
+    let scale = col.scale.unwrap_or(0);
+    let precision = col.precision.unwrap_or(0);
+    let ty = if decimal { Type::Decimal(precision, scale) } else { Type::I64 };
+    let summed = || col.sum_of.as_deref().ok_or_else(|| Error::internal(format!("the split sum {} states no summed column", col.name)));
+    if !col.sum_parts.is_empty() {
+        let flag = col.non_integer.ok_or_else(|| Error::internal(format!("the split sum {} states no cell of a value that is not an integer", col.name)))?;
+        let parts: Vec<Val> = col.sum_parts.iter().map(|i| row[*i].clone()).collect();
+        match split_sum(&parts, &row[flag]).map_err(|_error| cell_refusal(&col.typ))? {
+            Split::None => value = Val::Null,
+            Split::NonInteger => return Err(non_integer_refusal(summed()?, &ty)),
+            Split::Sum(sum) if decimal => {
+                let text = decimal_of_digits(sum < 0, &sum.unsigned_abs().to_string(), 0, scale).ok_or_else(|| cell_refusal("decimal"))?;
+                return Ok(Val::Str(text));
+            }
+            Split::Sum(sum) => value = Val::I64(i64::try_from(sum).map_err(|_error| cell_refusal(&col.typ))?),
+        }
+    }
+    // The text of a sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds such a value.
+    let fraction = match &value {
+        Val::Str(text) => text.split_once('.').map_or(0, |(_, fraction)| fraction.len()),
+        Val::Bytes(bytes) => bytes.iter().position(|b| *b == b'.').map_or(0, |at| bytes.len() - at - 1),
+        _ => 0,
+    };
+    if col.sum_of.is_some() && fraction > usize::from(scale) {
+        return Err(non_integer_refusal(summed()?, &ty));
+    }
+    if decimal && !matches!(value, Val::Null) {
+        return added_decimal(&value, precision, scale).map(Val::Str).ok_or_else(|| cell_refusal("decimal"));
+    }
+    added_cell(&col.typ, value)
+}
+
+/// The exact decimal text of scale fraction digits of a decimal added column cell: SQLite and markdown store a decimal as its
+/// integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of at most scale fraction digits, which is padded
+/// to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its digits.
+fn added_decimal(value: &Val, precision: u8, scale: u8) -> Option<String> {
+    match value {
+        Val::I64(n) => decimal_of_digits(*n < 0, &n.unsigned_abs().to_string(), precision, scale),
+        Val::Str(text) => decimal_of_text(text, precision, scale),
+        Val::Bytes(bytes) => match std::str::from_utf8(bytes) {
+            Ok(text) => decimal_of_text(text, precision, scale),
+            Err(_) => None,
+        },
+        _ => None,
+    }
+}
+
+/// The exact decimal text of scale fraction digits of the decimal text `-?[0-9]+(\.[0-9]+)?` of at most scale fraction digits.
+fn decimal_of_text(text: &str, precision: u8, scale: u8) -> Option<String> {
+    let (negative, unsigned) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text),
+    };
+    let (whole, fraction) = match unsigned.split_once('.') {
+        Some((whole, fraction)) if !fraction.is_empty() => (whole, fraction),
+        Some(_) => return None,
+        None => (unsigned, ""),
+    };
+    let digits = |part: &str| part.bytes().all(|b| b.is_ascii_digit());
+    if whole.is_empty() || !digits(whole) || !digits(fraction) || fraction.len() > usize::from(scale) {
+        return None;
+    }
+    let padded = format!("{whole}{fraction}{}", "0".repeat(usize::from(scale) - fraction.len()));
+    decimal_of_digits(negative, &padded, precision, scale)
+}
+
+/// The decimal text of scale fraction digits of the value whose sign is negative and whose digits are those of the value
+/// times 10^scale; None past a precision other than 0.
+fn decimal_of_digits(negative: bool, digits: &str, precision: u8, scale: u8) -> Option<String> {
+    let digits = digits.trim_start_matches('0');
+    if precision > 0 && digits.len() > usize::from(precision) {
+        return None;
+    }
+    let scale = usize::from(scale);
+    let digits = format!("{digits:0>width$}", width = scale + 1);
+    let (whole, fraction) = digits.split_at(digits.len() - scale);
+    let sign = if negative && digits.bytes().any(|b| b != b'0') { "-" } else { "" };
+    Some(if scale > 0 { format!("{sign}{whole}.{fraction}") } else { format!("{sign}{whole}") })
 }
 
 /// The cell of an added column by the type its plan column states (INT-160): an integer takes the exact digits of a

@@ -1152,6 +1152,10 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function build(string $kind, Db $db): Request
     {
         $r = new Request($kind, static::manifestHash());
+        // possible<Col>() applies only to a relation child, which has a parent row to compare (DSL-85).
+        if ($this->possible !== null) {
+            throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
+        }
         $frame = new Frame($this, null);
         $r->ir += $this->query($r, $frame);
         return $r;
@@ -1188,6 +1192,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CONFIG, "join result name $name is used twice; use alias<Name>()");
             }
             $r->names[$path] = true;
+            if ($child->possible !== null) {
+                throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
+            }
             $childQuery = $child->query($r, $f);
             if ($child->on !== null) {
                 $childQuery['on'] = $child->groupIr($child->on, $r, $f);
@@ -1312,6 +1319,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         }
         if ($this->relations !== []) {
             throw new OrmException(Code::CONFIG, 'a subquery model cannot load relations');
+        }
+        if ($this->possible !== null) {
+            throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
         }
         $q = $this->query($r, new Frame($this, $outer));
         unset($q['columns']);
@@ -1484,7 +1494,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 };
                 $shape[$group][] = [$col['index'], $name, $kind];
             } else {
-                $shape['extra'][] = [$col['index'], $name, $col['type'] ?? ''];
+                $shape['extra'][] = [$col['index'], $name, $col['type'] ?? '', $col];
             }
         }
         foreach ($asm['key'] ?? [] as $k) {
@@ -1549,11 +1559,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $values[$name] = $vals[$index];
         }
         $m->values = $values;
-        foreach ($shape['extra'] as [$index, $name, $kind]) {
+        foreach ($shape['extra'] as [$index, $name, $kind, $plan]) {
             $v = $vals[$index];
             if (is_resource($v)) {
                 $v = stream_get_contents($v);
             }
+            $v = self::addedSum($entity, $name, $kind, $plan, $v, $vals);
             // INT-160: an added column is decoded by the type of its plan column; an integer may be its exact digits as
             // text, and a datetime has the precision 6 of an expression.
             $st['extra'][$name] = $v === null ? null : match ($kind) {
@@ -1764,6 +1775,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $q = clone $this;
             $q->matches = [];
             $q->alias = '';
+            // The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+            $q->possible = null;
             $rights = array_column($this->matches, 'right');
             // A composite key filters the whole child key column as a tuple.
             $match = count($rights) === 1
@@ -2012,9 +2025,250 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         [$db, $frame] = $this->executor();
         $r = $this->build($fn, $db);
         $r->ir['agg'] = $this->agg;
-        $value = $db->scalarOf($frame, $r);
-        return $value === null ? null : self::aggregateNumber($value);
+        try {
+            $value = $db->scalarOf($frame, $r);
+        } catch (OrmException $error) {
+            throw self::aggregateRangeError($error);
+        }
+        // The planner has checked the column, so the column of the model is there.
+        $col = static::meta()['columns'][$this->agg]
+            ?? throw new OrmException(Code::INTERNAL, "{$this->agg} is missing from a planned aggregate");
+        // SQLite and markdown hold a decimal as the integer value × 10^scale, and so its sum (DIA-25).
+        $scaled = $db->dialect() === 'sqlite';
+        if (!is_array($value) || !array_is_list($value) || $value === []) {
+            throw new OrmException(Code::INTERNAL, "a $fn statement read no row of sums");
+        }
+        $column = $this->agg;
+        $scale = $col['scale'] ?? 0;
+        if ($fn === 'sum') {
+            $sum = self::sumOf($value, $column, $col['type'], $scale);
+            return $sum === null ? null : self::sumValue($col, $column, $sum, $scaled);
+        }
+        $count = array_pop($value);
+        return self::avgValue($col, $column, self::sumOf($value, $column, $col['type'], $scale), $count, $scaled);
     }
+
+    /**
+     * The cell of an added column of the plan column $plan, from its cell $v of the row $vals: the sum of an integer
+     * or decimal column is the exact integer of its split cells on SQLite and markdown, as its decimal text, and a sum
+     * of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84); a
+     * decimal is its exact text of its scale (INT-160), and any other cell is $v.
+     *
+     * @param array<string, mixed> $plan
+     * @param list<mixed> $vals
+     */
+    private static function addedSum(
+        string $entity,
+        string $name,
+        string $kind,
+        array $plan,
+        mixed $v,
+        array $vals,
+    ): mixed {
+        $sumOf = $plan['sum_of'] ?? '';
+        $scale = $plan['scale'] ?? 0;
+        $split = ($plan['sum_parts'] ?? []) !== [];
+        if ($split) {
+            $flag = $plan['non_integer']
+                ?? throw new OrmException(
+                    Code::INTERNAL,
+                    "the split sum $name states no cell of a value that is not an integer",
+                );
+            $parts = array_map(static fn(int $i): mixed => $vals[$i], $plan['sum_parts']);
+            $nonInteger = false;
+            try {
+                $v = self::splitSumValue($parts, $vals[$flag], $nonInteger);
+            } catch (OrmException $error) {
+                throw self::cellRefusal($entity, $name, self::cellMessage($kind), $error);
+            }
+            if ($nonInteger) {
+                throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, $scale));
+            }
+        }
+        // The text of a sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds one.
+        if ($sumOf !== '' && is_string($v) && strlen(explode('.', $v, 2)[1] ?? '') > $scale) {
+            throw self::cellRefusal($entity, $name, self::nonIntegerMessage($sumOf, $kind, $scale));
+        }
+        if ($kind === 'decimal' && $v !== null) {
+            return self::addedDecimal($v, $plan['precision'] ?? 0, $scale, $split)
+                ?? throw self::cellRefusal($entity, $name, self::cellMessage('decimal'));
+        }
+        return $v;
+    }
+
+    /**
+     * The exact decimal text of $scale fraction digits of a decimal added column, or null when $v is none: SQLite
+     * and markdown store a decimal as its integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of
+     * at most $scale fraction digits, which is padded to them (INT-160). A precision other than 0, that of a column
+     * that is not a sum, bounds its digits. A $scaled cell, the exact sum of a split sum, is the digits of that
+     * integer.
+     */
+    private static function addedDecimal(mixed $v, int $precision, int $scale, bool $scaled): ?string
+    {
+        if (is_int($v) || ($scaled && is_string($v) && preg_match('/^-?[0-9]+$/D', $v) === 1)) {
+            $negative = str_starts_with((string) $v, '-');
+            // |v| as digits: the magnitude of PHP_INT_MIN is not an int.
+            $digits = ltrim((string) $v, '-');
+        } elseif (is_string($v) && preg_match('/^(-?)([0-9]+)(?:\.([0-9]+))?$/D', $v, $m) === 1) {
+            $fraction = $m[3] ?? '';
+            if (strlen($fraction) > $scale) {
+                return null;
+            }
+            $negative = $m[1] === '-';
+            $digits = $m[2] . str_pad($fraction, $scale, '0');
+        } else {
+            return null;
+        }
+        $digits = ltrim($digits, '0');
+        if ($precision > 0 && strlen($digits) > $precision) {
+            return null;
+        }
+        $digits = str_pad($digits, $scale + 1, '0', STR_PAD_LEFT);
+        $text = $scale > 0 ? substr($digits, 0, -$scale) . '.' . substr($digits, -$scale) : $digits;
+        return $negative && trim($digits, '0') !== '' ? "-$text" : $text;
+    }
+
+    /**
+     * The message of the CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value
+     * that is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+     */
+    private static function nonIntegerMessage(string $column, string $type, int $scale): string
+    {
+        return $type === 'decimal'
+            ? "column $column holds a value that is not a decimal of scale $scale"
+            : "column $column holds a value that is not an integer";
+    }
+
+    /**
+     * The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum as its decimal text, and
+     * null when every part is SQL NULL, the sum of no value; $nonInteger is set when its last cell reports a value that
+     * is not an integer (DIA-202).
+     *
+     * @param list<mixed> $parts
+     */
+    private static function splitSumValue(array $parts, mixed $flag, bool &$nonInteger): ?string
+    {
+        $integer = static function (mixed $cell): int {
+            if (is_string($cell) && preg_match('/^-?[0-9]+$/D', $cell) === 1 && (string) (int) $cell === $cell) {
+                return (int) $cell;
+            }
+            return is_int($cell) ? $cell : throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        };
+        if ($flag !== null && $integer($flag) !== 0) {
+            $nonInteger = true;
+            return null;
+        }
+        $negative = false;
+        $digits = '0';
+        $none = true;
+        foreach ($parts as $part) {
+            $digits = self::scaleDigits($digits, 65536);
+            if ($part === null) {
+                continue;
+            }
+            $none = false;
+            $n = $integer($part);
+            // |n| as digits: the magnitude of PHP_INT_MIN is not an int.
+            $magnitude = $n < 0 ? ltrim((string) $n, '-') : (string) $n;
+            if ($negative === ($n < 0)) {
+                $digits = self::addDigits($digits, $magnitude);
+                continue;
+            }
+            $difference = self::subtractDigits($digits, $magnitude);
+            if ($difference === null) {
+                $digits = self::subtractDigits($magnitude, $digits) ?? '0';
+                $negative = $n < 0;
+            } else {
+                $digits = $difference;
+            }
+        }
+        if ($none) {
+            return null;
+        }
+        return $negative && $digits !== '0' ? "-$digits" : $digits;
+    }
+
+    /** The number of cells of a split sum: the four sums of the 16-bit parts and the cell of DIA-202. */
+    private const SPLIT_CELLS = 5;
+
+    /**
+     * The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum, as its
+     * decimal text (DIA-202); null is the sum of no value. A split sum of a column that holds a value which its type
+     * does not hold is refused by that column.
+     *
+     * @param list<mixed> $cells
+     */
+    private static function sumOf(array $cells, string $column, string $type, int $scale): mixed
+    {
+        if (count($cells) === 1) {
+            return $cells[0];
+        }
+        if (count($cells) !== self::SPLIT_CELLS) {
+            $read = count($cells);
+            throw new OrmException(Code::INTERNAL, "a split sum reads $read cells, not " . self::SPLIT_CELLS);
+        }
+        $nonInteger = false;
+        $parts = array_slice($cells, 0, self::SPLIT_CELLS - 1);
+        $sum = self::splitSumValue($parts, $cells[self::SPLIT_CELLS - 1], $nonInteger);
+        if ($nonInteger) {
+            throw new OrmException(Code::CODEC_DECODE, self::nonIntegerMessage($column, $type, $scale));
+        }
+        return $sum;
+    }
+
+    /** The decimal digits times a factor below 2^31. */
+    private static function scaleDigits(string $digits, int $factor): string
+    {
+        $out = '';
+        $carry = 0;
+        for ($i = strlen($digits) - 1; $i >= 0; $i--) {
+            $product = (ord($digits[$i]) - 48) * $factor + $carry;
+            $out = (string) ($product % 10) . $out;
+            $carry = intdiv($product, 10);
+        }
+        $out = ($carry > 0 ? (string) $carry : '') . $out;
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
+    }
+
+    /** The sum of two decimal digit strings. */
+    private static function addDigits(string $a, string $b): string
+    {
+        $out = '';
+        $carry = 0;
+        for ($i = strlen($a) - 1, $j = strlen($b) - 1; $i >= 0 || $j >= 0 || $carry > 0; $i--, $j--) {
+            $digit = ($i >= 0 ? ord($a[$i]) - 48 : 0) + ($j >= 0 ? ord($b[$j]) - 48 : 0) + $carry;
+            $out = (string) ($digit % 10) . $out;
+            $carry = intdiv($digit, 10);
+        }
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
+    }
+
+    /** The difference a - b of two decimal digit strings, or null when b is greater than a. */
+    private static function subtractDigits(string $a, string $b): ?string
+    {
+        $a = ltrim($a, '0');
+        $b = ltrim($b, '0');
+        if (strlen($a) < strlen($b) || (strlen($a) === strlen($b) && strcmp($a, $b) < 0)) {
+            return null;
+        }
+        $out = '';
+        $borrow = 0;
+        for ($i = strlen($a) - 1, $j = strlen($b) - 1; $i >= 0; $i--, $j--) {
+            $digit = ord($a[$i]) - 48 - ($j >= 0 ? ord($b[$j]) - 48 : 0) - $borrow;
+            $borrow = $digit < 0 ? 1 : 0;
+            $out = (string) ($digit + 10 * $borrow) . $out;
+        }
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
+    }
+
+    /** The text of every refused sum or average scalar in every client (DSL-66). */
+    private const AGGREGATE_REFUSED = 'aggregate scalar is not a finite number';
+
+    /** The decimal places that the average of an exact column keeps beyond the scale of the column (DSL-161). */
+    private const AVG_SCALE_EXTRA = 16;
 
     private static function aggregateNumber(mixed $value): float
     {
@@ -2023,13 +2277,160 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?'
                 . '(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)
         ) {
-            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is not a finite number');
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
         }
         $number = (float) $value;
         if (!is_finite($number)) {
-            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
         }
         return $number;
+    }
+
+    /** Whether the sum and the average of the column are exact (DSL-161): an integer or a decimal column. */
+    private static function exactAggregate(array $col): bool
+    {
+        return in_array($col['type'], ['i16', 'i32', 'i64', 'decimal'], true);
+    }
+
+    /**
+     * The sum cell of an exact column as its sign and the digits of the sum × 10^scale: on SQLite and markdown
+     * (scaled) the cell is that integer (DIA-25), on MySQL and PostgreSQL a decimal of at most scale fraction digits.
+     *
+     * @return array{0: bool, 1: string}
+     */
+    private static function exactSum(mixed $value, string $column, string $type, int $scale, bool $scaled): array
+    {
+        if (is_int($value)) {
+            $value = (string) $value;
+        }
+        if (!is_string($value) || preg_match('/^(-?)([0-9]+)(?:\.([0-9]+))?$/D', $value, $m) !== 1) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        $fraction = $m[3] ?? '';
+        if ($scaled) {
+            if ($fraction !== '') {
+                throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+            }
+            $scale = 0;
+        }
+        // A sum of more fraction digits than the scale holds a value that the type of the column does not hold.
+        if (strlen($fraction) > $scale) {
+            throw new OrmException(Code::CODEC_DECODE, self::nonIntegerMessage($column, $type, $scale));
+        }
+        $digits = ltrim($m[2] . str_pad($fraction, $scale, '0'), '0');
+        return [$m[1] === '-' && $digits !== '', $digits === '' ? '0' : $digits];
+    }
+
+    /** The nearest binary64 value of the digits × 10^-scale, ties to even; beyond the finite range CODEC_DECODE (DSL-66). */
+    private static function nearestBinary64(bool $negative, string $digits, int $scale): float
+    {
+        $number = (float) (($negative ? '-' : '') . $digits . 'e-' . $scale);
+        if (!is_finite($number)) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        return $number;
+    }
+
+    /** The result of getSum for the sum cell of the column (DSL-66, DSL-161). */
+    private static function sumValue(array $col, string $column, mixed $value, bool $scaled): float
+    {
+        if (!self::exactAggregate($col)) {
+            return self::aggregateNumber($value);
+        }
+        [$negative, $digits] = self::exactSum($value, $column, $col['type'], $col['scale'] ?? 0, $scaled);
+        return self::nearestBinary64($negative, $digits, $col['scale'] ?? 0);
+    }
+
+    /**
+     * The result of getAvg for the sum and the count of the values of the column: null for no value; for an exact
+     * column the exact sum divided by the count, rounded half away from zero to AVG_SCALE_EXTRA places beyond the scale
+     * of the column and then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count,
+     * which is the AVG of every database.
+     */
+    private static function avgValue(array $col, string $column, mixed $sum, mixed $count, bool $scaled): ?float
+    {
+        if (is_string($count) && preg_match('/^[0-9]+$/D', $count) === 1 && (string) (int) $count === $count) {
+            $count = (int) $count;
+        }
+        if (!is_int($count) || $count < 0) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        if ($count === 0) {
+            return null;
+        }
+        if ($sum === null) {
+            throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        }
+        if (!self::exactAggregate($col)) {
+            return self::aggregateNumber($sum) / $count;
+        }
+        $scale = $col['scale'] ?? 0;
+        [$negative, $digits] = self::exactSum($sum, $column, $col['type'], $scale, $scaled);
+        // The quotient with one place more than the stated scale: its last digit decides the rounding half away from
+        // zero.
+        $longer = self::quotient($digits . str_repeat('0', self::AVG_SCALE_EXTRA + 1), $count);
+        $rounded = substr($longer, 0, -1);
+        if ((int) substr($longer, -1) >= 5) {
+            $rounded = self::increment($rounded);
+        }
+        $rounded = ltrim($rounded, '0');
+        return self::nearestBinary64(
+            $negative && $rounded !== '',
+            $rounded === '' ? '0' : $rounded,
+            $scale + self::AVG_SCALE_EXTRA,
+        );
+    }
+
+    /**
+     * The digits of the integer quotient of the decimal digits by divisor, by long division whose remainder stays below
+     * the divisor: ten additions of the remainder modulo the divisor never leave the integer range.
+     */
+    private static function quotient(string $digits, int $divisor): string
+    {
+        $out = '';
+        $rest = 0;
+        for ($i = 0, $n = strlen($digits); $i < $n; $i++) {
+            $digit = ord($digits[$i]) - 48;
+            $acc = $digit % $divisor;
+            $q = intdiv($digit, $divisor);
+            for ($k = 0; $k < 10; $k++) {
+                if ($acc >= $divisor - $rest) {
+                    $acc -= $divisor - $rest;
+                    $q++;
+                } else {
+                    $acc += $rest;
+                }
+            }
+            $rest = $acc;
+            $out .= (string) $q;
+        }
+        return $out;
+    }
+
+    /** The decimal digits plus one. */
+    private static function increment(string $digits): string
+    {
+        for ($i = strlen($digits) - 1; $i >= 0; $i--) {
+            if ($digits[$i] !== '9') {
+                return substr($digits, 0, $i) . chr(ord($digits[$i]) + 1) . str_repeat('0', strlen($digits) - $i - 1);
+            }
+        }
+        return '1' . str_repeat('0', strlen($digits));
+    }
+
+    /**
+     * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE
+     * 22003, and MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other
+     * databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-200).
+     */
+    private static function aggregateRangeError(OrmException $error): OrmException
+    {
+        $cause = $error->getPrevious();
+        $outOfRange = $cause instanceof \PDOException && ($cause->errorInfo[0] ?? null) === '22003';
+        if ($error->code_ === Code::DRIVER && $outOfRange) {
+            return new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED, $error);
+        }
+        return $error;
     }
 
     /**

@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -130,7 +131,9 @@ type chainStep struct {
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
+	Possible        json.RawMessage            `json:"possible"`
 	OrderedText     string                     `json:"ordered_text"`
+	Get             string                     `json:"get"`
 	ArrayText       string                     `json:"array_text"`
 	BytesHexOf      string                     `json:"bytes_hex_of"`
 	JSONOutput      bool                       `json:"json_output"`
@@ -210,6 +213,25 @@ func chainCore(model string, c *databaseContext) *orm.Core {
 
 // chainValue is the native argument of a value wrapper: orm.Null for SQL NULL, the list of an array, and an object as the
 // styled value of a column.
+// possible calls possible<Col>() on the model for each member of raw, {<column>: <value>}, in its order.
+func possible(core *orm.Core, raw json.RawMessage, c *databaseContext) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	members, err := orderedMembers(raw)
+	if err != nil {
+		return err
+	}
+	for _, member := range members {
+		value, err := chainValue(member.value, c)
+		if err != nil {
+			return err
+		}
+		core.Possible(member.key, value)
+	}
+	return nil
+}
+
 func chainValue(raw json.RawMessage, c *databaseContext) (any, error) {
 	var entries map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &entries); err == nil {
@@ -864,18 +886,8 @@ func (b *chainBuild) relation(r chainRelation) (*orm.Core, error) {
 	if r.Alias != "" {
 		child.Alias(r.Alias)
 	}
-	if len(r.Possible) > 0 {
-		members, err := orderedMembers(r.Possible)
-		if err != nil {
-			return nil, err
-		}
-		for _, member := range members {
-			value, err := chainValue(member.value, b.c)
-			if err != nil {
-				return nil, err
-			}
-			child.Possible(member.key, value)
-		}
+	if err := possible(child, r.Possible, b.c); err != nil {
+		return nil, err
 	}
 	if r.ParentNode {
 		child.ParentNode()
@@ -1069,6 +1081,22 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 			}
 			return jsonOutcome(text), nil
 		}
+		if column := s.k("get").Get; column != "" && row != nil {
+			// The generated getter of a column (DBS-112) fails with COLUMN_UNSELECTED when the row neither selected nor
+			// assigned it, as GetJsonSetting of the generated Author does.
+			if !row.m.Selected(column) {
+				return outcome{}, orm.ColumnUnselected(column)
+			}
+			value, err := chainRow(row, []string{column})
+			if err != nil {
+				return outcome{}, err
+			}
+			fields, ok := value.(map[string]any)
+			if !ok {
+				return outcome{}, fmt.Errorf("get: the row of %s is a %T", column, value)
+			}
+			return jsonOutcome(fields[column]), nil
+		}
 		value, err := chainRow(row, s.k("pick").Pick)
 		if err != nil {
 			return outcome{}, err
@@ -1120,6 +1148,10 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	}
 	if s.k("key_by").KeyBy != "" {
 		core.KeyName(s.k("key_by").KeyBy)
+	}
+	// possible of the root is refused at the build of its request (DSL-85).
+	if err := possible(core, s.k("possible").Possible, c); err != nil {
+		return nil, err
 	}
 	if len(s.k("relation").Relation) > 0 {
 		var r chainRelation
@@ -1251,6 +1283,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	rows, err := orm.Gets[*tableRow](core)
 	if err != nil {
 		return outcome{}, err
+	}
+	if s.k("json_output").JSONOutput {
+		return jsonOutputOutcome(rows)
 	}
 	value, err := chainRows(rows.Slice(), s.k("pick").Pick)
 	if err != nil {
@@ -1506,6 +1541,22 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 		if err != nil {
 			return err
 		}
+		if field := columnField(core, member.key, c); field != nil && styledField(field) {
+			// A generated setter of a styled column takes a StyledValue, SQL NULL as SqlNull, through NormalizeStyled and
+			// returns its refusal (COD-73), before the model changes.
+			styled, ok := value.(orm.StyledValue)
+			if value == orm.Null {
+				styled, ok = orm.SqlNull(), true
+			}
+			if ok {
+				normalized, err := orm.NormalizeStyled(member.key, valueStages(field), field.Null, styled)
+				if err != nil {
+					return err
+				}
+				core.Set(member.key, normalized)
+				continue
+			}
+		}
 		if value == orm.Null {
 			core.SetNull(member.key)
 			continue
@@ -1515,6 +1566,17 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			core.SetTimeText(member.key, text)
 			continue
 		}
+		if text, ok := value.(string); ok {
+			if field := columnField(core, member.key, c); field != nil && field.Type == "decimal" {
+				// A generated setter of a decimal column takes its text through NormalizeDecimal and returns its refusal
+				// (COD-2), before the model changes.
+				normalized, err := orm.NormalizeDecimal(text, field.Precision, field.Scale)
+				if err != nil {
+					return err
+				}
+				value = normalized
+			}
+		}
 		core.Set(member.key, value)
 	}
 	return nil
@@ -1523,19 +1585,46 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 // temporalColumn reports whether column of the model of core is a date, a time or a datetime, whose generated setter takes
 // its text and records a text the column does not hold.
 func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
+	field := columnField(core, column, c)
+	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
+}
+
+// valueStages are the codec stages of field that the setter of its styled value runs, without the host stages, as the
+// generator passes them to NormalizeStyled.
+func valueStages(field *runtimemodel.Field) []string {
+	var stages []string
+	for _, stage := range field.Codec {
+		if stage != "aes" && stage != "hex" && stage != "ip" {
+			stages = append(stages, stage)
+		}
+	}
+	return stages
+}
+
+// styledField reports whether field holds a styled value, whose generated setter takes a StyledValue.
+func styledField(field *runtimemodel.Field) bool {
+	for _, stage := range field.Codec {
+		if styledCodecs[stage] {
+			return true
+		}
+	}
+	return false
+}
+
+// columnField is the field of column in the runtime model of the fixture, or nil for a name that is no field.
+func columnField(core *orm.Core, column string, c *databaseContext) *runtimemodel.Field {
 	if c.schema == nil {
-		return false
+		return nil
 	}
 	model, err := c.schema.Model()
 	if err != nil {
-		return false
+		return nil
 	}
 	entity := model.Entities[core.Entity().Name]
 	if entity == nil {
-		return false
+		return nil
 	}
-	field := entity.Field(column)
-	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
+	return entity.Field(column)
 }
 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its

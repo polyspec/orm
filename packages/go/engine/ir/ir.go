@@ -1146,7 +1146,10 @@ func (v *validator) sub(s *Sub, scalar bool, outer *scope) error {
 		if s.Column == "" {
 			return errf("IR_INVALID", "subquery needs a column")
 		}
-	case "sum", "avg":
+	case "avg":
+		// No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+		return errf("IR_INVALID", "avg subquery is not one value on every database")
+	case "sum":
 		if !scalar {
 			return errf("IR_INVALID", "%s subquery is only valid as a column", s.Agg)
 		}

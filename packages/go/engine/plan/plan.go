@@ -97,6 +97,28 @@ type OutCol struct {
 	Type   string   `json:"type"`
 	Styles []string `json:"styles,omitempty"` // remaining client-side decode stages
 	Hidden bool     `json:"hidden,omitempty"` // selected for writing only (the AES key version): left out of array/JSON forms
+	// SumOf names the integer or decimal column that a scalar subquery sums (PRT-84).
+	SumOf string `json:"sum_of,omitempty"`
+	// Precision and Scale are those of the decimal column of a scalar subquery, whose value is its exact decimal text of
+	// that scale (INT-160); a sum states no precision, since it leaves the precision of its column.
+	Precision int  `json:"precision,omitempty"`
+	Scale     *int `json:"scale,omitempty"`
+	// SumParts are the cells of the sums of the four 16-bit parts of that column, highest first, and NonInteger the cell
+	// that reports a value that is not an integer, on SQLite and markdown (DIA-202, PRT-84).
+	SumParts   []int `json:"sum_parts,omitempty"`
+	NonInteger *int  `json:"non_integer,omitempty"`
+}
+
+// Cells is the number of cells of the row that the column reads: one, or the cells of a split sum (DIA-202).
+func (c OutCol) Cells() int {
+	if len(c.SumParts) == 0 {
+		return 1
+	}
+	n := len(c.SumParts)
+	if c.NonInteger != nil {
+		n++
+	}
+	return n
 }
 
 // Child is a joined entity's slice of the same row (kind join, Assemble set)

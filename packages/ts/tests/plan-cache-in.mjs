@@ -70,8 +70,8 @@ caseTest('composite request parameters follow the specified recursive walk', COM
     ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'root', n_params: 18,
     columns: {
       fn: {
-        z_fn: { column: 'seq', fn: { name: 'year', ps: [0] } },
-        a_fn: { column: 'seq', fn: { name: 'year', ps: [1] } },
+        z_fn: { column: 'seq', fn: { name: 'year' } },
+        a_fn: { column: 'seq', fn: { name: 'year' } },
       },
       sub: {
         z_sub: { column: 'seq', query: { entity: 'inner', where: pred(2) } },
@@ -84,19 +84,19 @@ caseTest('composite request parameters follow the specified recursive walk', COM
       { rel: 'r1', query: { entity: 'related', where: pred(8), if_parent: { column: 'seq', p: 9 } } },
       { rel: 'r2', query: { entity: 'related', where: pred(10) } },
     ],
-    order: [{ column: 'seq', fn: { name: 'year', ps: [11] } }],
+    order: [{ column: 'seq', fn: { name: 'year' } }],
     limit: { offset: 0, count: 20 }, if_parent: { column: 'seq', p: 12 },
     set: [{ column: 'seq', p: 13 }], on_duplicate: [{ column: 'seq', p: 14 }],
     rows: [[15]], optimistic: { column: 'seq', p: 16 },
   };
   const result = canonicalize(request, Array.from({ length: 18 }, (_, i) => `v${i}`));
-  assert.deepEqual(result.params, ['v1', 'v0', 'v3', 'v2', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 0, 20, 'v12', 'v13', 'v14', 'v15', 'v16', 'v17']);
-  assert.deepEqual(result.request.limit, { offset_p: 12, count_p: 13 });
-  assert.equal(result.request.if_parent.p, 14);
-  assert.equal(result.request.set[0].p, 15);
-  assert.equal(result.request.on_duplicate[0].p, 16);
-  assert.deepEqual(result.request.rows, [[17]]);
-  assert.equal(result.request.optimistic.p, 18);
+  assert.deepEqual(result.params, ['v3', 'v2', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 0, 20, 'v12', 'v13', 'v14', 'v15', 'v16', 'v0', 'v1', 'v11', 'v17']);
+  assert.deepEqual(result.request.limit, { offset_p: 9, count_p: 10 });
+  assert.equal(result.request.if_parent.p, 11);
+  assert.equal(result.request.set[0].p, 12);
+  assert.equal(result.request.on_duplicate[0].p, 13);
+  assert.deepEqual(result.request.rows, [[14]]);
+  assert.equal(result.request.optimistic.p, 15);
 });
 
 // Requirements: T236.

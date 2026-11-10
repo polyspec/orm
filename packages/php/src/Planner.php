@@ -99,6 +99,44 @@ final class Planner
         return $this->d->quote($s->alias) . '.' . $this->d->quote($col);
     }
 
+    /**
+     * The SUMs of the column of a sum or an average, and the cell that reports a value that is not an integer, or ''.
+     * MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses
+     * with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum
+     * past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its
+     * 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is not an integer
+     * (DIA-202).
+     *
+     * @return array{list<string>, string}
+     */
+    private function aggregateSums(PlanScope $root, string $column): array
+    {
+        $q = $this->qcol($root, $column);
+        $type = RuntimeModel::column($root->ent, $column)['type'] ?? '';
+        if ($this->d->name === 'sqlite' && in_array($type, ['i16', 'i32', 'i64', 'decimal'], true)) {
+            $sums = array_map(static fn(string $part): string => "SUM($part)", self::splitParts($q));
+            return [$sums, self::nonIntegerCell($q)];
+        }
+        return [[$this->d->name === 'mysql' && $type === 'f64' ? "SUM($q) + 0" : "SUM($q)"], ''];
+    }
+
+    /**
+     * The four 16-bit parts of an integer $q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+     * [-2^15, 2^15), and the three others in [0, 2^16).
+     *
+     * @return list<string>
+     */
+    private static function splitParts(string $q): array
+    {
+        return ["$q >> 48", "($q >> 32) & 65535", "($q >> 16) & 65535", "$q & 65535"];
+    }
+
+    /** 1 when a value of $q is not an integer, which >> and & would read without its fraction (DIA-202). */
+    private static function nonIntegerCell(string $q): string
+    {
+        return "MAX(typeof($q) NOT IN ('integer', 'null'))";
+    }
+
     /** @param list<string> $cols @return list<string> */
     private function qualified(PlanScope $s, array $cols): array
     {
@@ -133,10 +171,16 @@ final class Planner
                 $sql .= $groupCount ? '1' : 'COUNT(*)';
                 break;
             case 'sum':
-                $sql .= 'COALESCE(SUM(' . $this->qcol($root, $agg) . '), 0)';
+                [$sums, $nonInteger] = $this->aggregateSums($root, $agg);
+                $cells = array_map(static fn(string $sum): string => "COALESCE($sum, 0)", $sums);
+                $sql .= implode(', ', $nonInteger === '' ? $cells : [...$cells, $nonInteger]);
                 break;
             case 'avg':
-                $sql .= 'AVG(' . $this->qcol($root, $agg) . ')';
+                // The executor divides the sum by the count of values, so the average is exact before its one
+                // conversion (DSL-161).
+                [$sums, $nonInteger] = $this->aggregateSums($root, $agg);
+                $cells = $nonInteger === '' ? $sums : [...$sums, $nonInteger];
+                $sql .= implode(', ', $cells) . ', COUNT(' . $this->qcol($root, $agg) . ')';
                 break;
             case 'group_count':
                 $sql .= $this->groupCountList($root, $asm, $idx, $outNames);
@@ -401,8 +445,18 @@ final class Planner
                 $type = Validator::functionType($c['fn']['name'], $col);
                 $col = null;
             } elseif (isset($c['sub'])) {
-                $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
-                $type = $this->subType($c['sub']);
+                [$expr, $subCol, $split] = $this->subColumn($b, $s, $c['name'], $c['sub'], $idx, $outNames);
+                if ($split) {
+                    // The sum and its cells are written; the column states them (DIA-202, PRT-84).
+                    $parts[] = $expr;
+                    $asm->columns[] = $subCol;
+                    continue;
+                }
+                $parts[] = $expr . ' AS ' . $this->d->quote($s->alias . '__' . $c['name']);
+                $outNames[] = $s->alias . '__' . $c['name'];
+                $idx++;
+                $asm->columns[] = $subCol;
+                continue;
             } else {
                 $expr = $this->readColumn($this->qcol($s, $c['column']), $col);
                 $styles = $this->clientStyles($col);
@@ -1257,15 +1311,15 @@ final class Planner
     }
 
     /** A subquery for an IN list or a scalar column; `^` refs resolve against $outer. */
-    private function subSelect(PlanBinds $b, PlanScope $outer, array $sub): string
+    private function subSelect(PlanBinds $b, PlanScope $outer, array $sub, ?\Closure $sel = null): string
     {
         $q = $sub['query'];
         $root = $this->scopes($q, 's' . (++$b->subs), null);
         $root->outer = $outer;
         $column = $sub['column'] ?? '';
-        $sql = 'SELECT ' . match ($sub['agg'] ?? '') {
+        $sql = 'SELECT ' . match ($sel !== null ? 'sel' : $sub['agg'] ?? '') {
+            'sel' => $sel($this->qcol($root, $column)),
             'sum' => 'COALESCE(SUM(' . $this->qcol($root, $column) . '), 0)',
-            'avg' => 'AVG(' . $this->qcol($root, $column) . ')',
             'count' => 'COUNT(*)',
             default => $this->qcol($root, $column),
         };
@@ -1290,13 +1344,74 @@ final class Planner
         return $sql;
     }
 
+    /**
+     * The select expression of the scalar subquery column $name at the cell $idx, its plan column, and whether it is
+     * split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+     * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
+     * that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+     * cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+     * decimal column states its scale and, but for a sum, its precision (INT-160).
+     *
+     * @param list<string> $outNames
+     * @return array{string, array<string, mixed>, bool}
+     */
+    private function subColumn(PlanBinds $b, PlanScope $s, string $name, array $sub, int &$idx, array &$outNames): array
+    {
+        $col = self::outCol($idx, $name, '', $this->subType($sub), []);
+        $field = $this->subField($sub);
+        $sum = ($sub['agg'] ?? '') === 'sum';
+        if ($field !== null && $field['type'] === 'decimal') {
+            $col['scale'] = $field['scale'];
+            if (!$sum) {
+                $col['precision'] = $field['precision'];
+            }
+        }
+        if ($sum && $field !== null && in_array($field['type'], ['i16', 'i32', 'i64', 'decimal'], true)) {
+            $col['sum_of'] = $field['name'];
+        }
+        if (!isset($col['sum_of']) || $this->d->name !== 'sqlite') {
+            return ['(' . $this->subSelect($b, $s, $sub) . ')', $col, false];
+        }
+        $selects = [];
+        foreach ([0, 1, 2, 3] as $k) {
+            $selects[] = static fn(string $q): string => 'COALESCE(SUM(' . self::splitParts($q)[$k] . '), 0)';
+        }
+        $selects[] = static fn(string $q): string => self::nonIntegerCell($q);
+        $parts = [];
+        $sumParts = [];
+        foreach ($selects as $k => $sel) {
+            $out = $k === 0 ? "{$s->alias}__$name" : "{$s->alias}__{$name}__$k";
+            $parts[] = '(' . $this->subSelect($b, $s, $sub, $sel) . ') AS ' . $this->d->quote($out);
+            $outNames[] = $out;
+            if ($k < count($selects) - 1) {
+                $sumParts[] = $idx;
+            } else {
+                $col['non_integer'] = $idx;
+            }
+            $idx++;
+        }
+        $col['sum_parts'] = $sumParts;
+        return [implode(', ', $parts), $col, true];
+    }
+
+    /**
+     * The summed or selected column of a scalar subquery, or null for a count.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function subField(array $sub): ?array
+    {
+        if (($sub['agg'] ?? '') === 'count') {
+            return null;
+        }
+        $entity = $this->m->entities[$sub['query']['entity']] ?? null;
+        return $entity === null ? null : RuntimeModel::column($entity, $sub['column'] ?? '');
+    }
+
     private function subType(array $sub): string
     {
         if (($sub['agg'] ?? '') === 'count') {
             return 'i64';
-        }
-        if (($sub['agg'] ?? '') === 'avg') {
-            return 'f64';
         }
         $entityName = $sub['query']['entity'];
         $entity = $this->m->entities[$entityName] ?? null;

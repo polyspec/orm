@@ -837,10 +837,10 @@ final class Recipe
     }
 
     /**
-     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file,
-     * FCV-4, CFG-26).
+     * The names in a new directory, other than the journals of a file of it, after a connection to a file of it with
+     * the query, if any (dsn.sqlite_file, FCV-4, CFG-11, CFG-26).
      */
-    private static function sqliteFileNames(string $name, string $query, array $config = []): string
+    private static function sqliteFileNames(string $name, ?string $query, array $config = []): string
     {
         $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
         if (!mkdir($directory, 0o700)) {
@@ -848,14 +848,16 @@ final class Recipe
         }
         try {
             try {
-                self::connectDriver("sqlite://$directory/$name?$query", $config);
+                self::connectDriver("sqlite://$directory/$name" . ($query === null ? '' : "?$query"), $config);
             } catch (OrmException $refused) {
                 Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
                 throw $refused;
             }
-            $names = array_diff(
-                scandir($directory),
-                ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
+            $listed = array_values(array_diff(scandir($directory), ['.', '..']));
+            $names = array_filter(
+                $listed,
+                static fn(string $entry): bool => preg_match('/^(.*)-(?:journal|shm|wal)$/s', $entry, $m) !== 1
+                    || !in_array($m[1], $listed, true),
             );
             return implode(',', $names);
         } finally {
@@ -3292,9 +3294,36 @@ final class Recipe
                 $recording = new RecipeRecording();
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'db.execute':
+                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to
+                // the recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the
+                // first step.
+                $schema = realpath($context['dir'] . '/' . $s['schema']);
+                if ($schema === false) {
+                    Assert::fail("db.execute: the schema {$s['schema']} is missing");
+                }
+                if (array_key_exists('manifest_hash', $s['request'])) {
+                    Assert::fail('db.execute: the request already holds manifest_hash');
+                }
+                $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+                $plan = (new Engine($model, self::dialectOf($context), 8))
+                    ->compile($s['request'] + ['manifest_hash' => $model->manifestHash]);
+                self::connectionOf($s, $context)->execute(
+                    $plan['steps'][0],
+                    array_map(static fn(array $raw): mixed => self::toValue($raw), $s['params'] ?? []),
+                );
+                return [];
             case 'fault.next_rollback':
                 require_once dirname(__DIR__) . '/testing/Faults.php';
                 \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
+                return [];
+            case 'fault.next_statement':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                \Polyspec\Orm\Testing\Faults::failNextStatement(
+                    self::connectionOf($s, $context),
+                    $s['code'],
+                    $s['message'],
+                );
                 return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
@@ -3695,7 +3724,9 @@ final class Recipe
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
             case 'dsn.sqlite_file':
-                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'], $s['config'] ?? [])]];
+                return [
+                    'value' => ['text' => self::sqliteFileNames($s['name'], $s['query'] ?? null, $s['config'] ?? [])],
+                ];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
@@ -4519,6 +4550,10 @@ final class Recipe
         if (isset($q['key_by'])) {
             $model->{'keyName' . self::pascal($q['key_by'])}();
         }
+        // possible outside a relation is refused at the build of its request (DSL-85).
+        foreach ($q['possible'] ?? [] as $column => $value) {
+            $model->{'possible' . self::pascal((string) $column)}(self::chainValue($value, $context));
+        }
         if (isset($q['lock'])) {
             $model->{match ($q['lock']) {
                 'update' => 'forUpdate',
@@ -4541,9 +4576,6 @@ final class Recipe
         }
         if (isset($relation['alias'])) {
             $child->{'alias' . self::pascal($relation['alias'])}();
-        }
-        foreach ($relation['possible'] ?? [] as $column => $value) {
-            $child->{'possible' . self::pascal((string) $column)}(self::chainValue($value, $context));
         }
         if (($relation['parent_node'] ?? false) === true) {
             $child->parentNode();
@@ -4824,6 +4856,12 @@ final class Recipe
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
                 }
+                if (isset($s['get']) && $row !== null) {
+                    // The generated getter (DBS-112), which is COLUMN_UNSELECTED for a column neither selected nor
+                    // assigned.
+                    $row->{'get' . self::pascal($s['get'])}();
+                    return ['json' => self::chainRow($row, [$s['get']])[$s['get']]];
+                }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;
             case 'model.create':
@@ -5086,6 +5124,9 @@ final class Recipe
             $rows = $model->{'getsBy' . $name}(...$args);
         } else {
             $rows = $model->gets();
+        }
+        if (($s['json_output'] ?? false) === true) {
+            return ['json' => $rows->toJson()];
         }
         $list = [];
         foreach ($rows as $row) {

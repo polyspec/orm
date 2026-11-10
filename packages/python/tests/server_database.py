@@ -1,5 +1,5 @@
 # The databases that a test case creates on the MySQL or PostgreSQL server of its dialect and drops when the case ends:
-# server_database is the one create-and-drop that case_database, statement_fault, identity_load and schema_inspection
+# server_database is the one create-and-drop that case_database, statement_fault and schema_inspection
 # use. A caller gives the DSN of the server (ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN, checked by the caller).
 import contextlib
 from urllib.parse import urlsplit, urlunsplit
