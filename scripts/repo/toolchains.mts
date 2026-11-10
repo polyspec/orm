@@ -11,7 +11,7 @@ import semver from 'semver';
 import { parseComposer, parseComposerPackages } from '../json/formats.mts';
 import { commands, type SimpleCommand } from './shell.mts';
 import { makeRecipes } from './testcases.mts';
-import { actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
+import { readWorkflow, actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
 
 // MINIMUM_SCRIPT is the script that prints the lowest release of composer.json's require.php.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
@@ -52,13 +52,17 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
   if (exact && lowest && below(declared.trim(), lowest))
     errors.push(`.php-version ${declared.trim()} is below packages/php/composer.json require.php ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
-    const steps = actionSteps(workflow, 'shivammathur/setup-php');
-    if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && steps.length === 0)
+    if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && actionSteps(workflow, 'shivammathur/setup-php').length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
+    // Each job runs on a runner of its own, so each job that sets up PHP is checked alone: the job preflight runs the steps of
+    // the job test (T428).
+    for (const job of readWorkflow(workflow, path).jobs) {
+    const steps = job.steps.filter(step => step.uses?.split('@')[0] === 'shivammathur/setup-php');
+    if (steps.length === 0) continue;
     // The php-min step writes composer.json's lowest release as the output version, and the setup-php step that
     // installs that release reads only that output.
     // That step runs make ci-php-min-version (the target that writes ${MINIMUM_SCRIPT} --version as version=x.y).
-    const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
+    const minimumStep = job.steps.some(step => step.id === 'php-min' &&
       step.run === MINIMUM_STEP);
     const readsFile = (step: WorkflowStep) => step.with['php-version-file'] === '.php-version';
     const readsMinimum = (step: WorkflowStep) => {
@@ -81,6 +85,7 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     const last = steps.at(-1);
     if (last && !readsFile(last))
       errors.push(`${path} must set up the PHP of .php-version last, so that it is php on PATH`);
+    }
   }
   return errors;
 }

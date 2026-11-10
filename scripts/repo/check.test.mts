@@ -696,9 +696,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   const own = jobTargets(makefile);
-  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.preflight, ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
+  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
-  assert.deepEqual([...own.preflight].sort(byCodeUnit), ['comment-language-check', 'docs-rules-check', 'repo-check', 'runner-check'], 'the preflight job runs the four structure checks (T427)');
+  assert.deepEqual(targets.preflight, ['repo-check', 'runner-check', 'docs-rules-check', 'comment-language-check'], 'the group preflight runs the four structure checks (T428)');
   assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'dialect-facts-check'],
@@ -861,8 +861,8 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   ]);
   assert.deepEqual(ciCheckTargetErrors(grouped('[one, three, three]'), good), [
     'ci.yml job test lists the matrix group three twice',
-    'ci.yml job test has no matrix group two of CI_GROUPS, so no job runs its targets',
     'ci.yml job test has the matrix group three, which is not in CI_GROUPS',
+    'ci.yml has no matrix group two of CI_GROUPS, so no job runs its targets',
   ]);
   assert.deepEqual(ciCheckTargetErrors(grouped(), make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check b-check c-check', 'CI_TARGETS_three = b-check'])), [
     'Makefile CI group two declares no CI_TARGETS_two',
@@ -883,7 +883,7 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
 caseTest('every CI group uploads the report directory that the runner writes', COMPUTE, () => {
   assert.deepEqual(ciReportPathErrors(workflow, text('Makefile')), []);
   const make = text('Makefile').replace(/^CI_GROUPS = (.*)$/m, 'CI_GROUPS = $1 stress-x').concat('\nCI_TARGETS_stress-x = feature-stress-mysql-check\n');
-  assert.deepEqual(ciReportPathErrors(workflow, make), [
+  assert.deepEqual(ciReportPathErrors(workflow.replace('group: [static, ', 'group: [static, stress-x, '), make), [
     'ci.yml job test group stress-x uploads .runtime/check/ci_1_1_stress-x/report/, but the runner writes the report of ORM_CHECK_RUN_ID 1-1-stress-x to .runtime/check/ci_1_1_stress_x/report/; name the group with lowercase letters, digits and _ only',
   ]);
 });

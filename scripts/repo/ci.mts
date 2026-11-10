@@ -142,11 +142,10 @@ export function lockedCacheErrors(workflow: string): string[] {
   return errors;
 }
 
-// jobTargets names the CHECK_TARGETS that the preflight, docs and editor jobs of ci.yml run, outside the test groups. The preflight
-// job runs the targets that make preflight-ci names, before every other job; the docs job runs the
+// jobTargets names the CHECK_TARGETS that the docs and editor jobs of ci.yml run, outside the test groups. The docs job runs the
 // targets that make docs-ci names; the editor job runs the CHECK_TARGETS in the prerequisite chain of the target that make
 // ci-vscode-integration runs. A job reaches a target through prerequisites, so each target is counted once for the job that runs it.
-export function jobTargets(makefile: string): { preflight: string[]; docs: string[]; editor: string[] } {
+export function jobTargets(makefile: string): { docs: string[]; editor: string[] } {
   const check = checkTargets(makefile);
   const entries = makeTargets(makefile);
   const named = (name: string) => entries.filter(entry => entry.target === name);
@@ -161,7 +160,7 @@ export function jobTargets(makefile: string): { preflight: string[]; docs: strin
     return check.filter(target => seen.has(target));
   };
   const words = (name: string) => named(name).flatMap(entry => entry.commands).flatMap(command => command.split(/\s+/));
-  return { preflight: reach(words('preflight-ci')), docs: reach(words('docs-ci')), editor: reach(words('ci-vscode-integration')) };
+  return { docs: reach(words('docs-ci')), editor: reach(words('ci-vscode-integration')) };
 }
 
 // jobOverlapErrors returns one error for each CHECK_TARGETS target that two CI jobs run: a test group, the kit gates, the docs job or the
@@ -173,7 +172,6 @@ export function jobOverlapErrors(makefile: string): string[] {
   for (const group of groups) for (const target of targets[group] ?? []) add(`CI group ${group}`, target);
   for (const target of kitGates(makefile)) add('the kit gates', target);
   const jobs = jobTargets(makefile);
-  for (const target of jobs.preflight) add('the preflight job', target);
   for (const target of jobs.docs) add('the docs job', target);
   for (const target of jobs.editor) add('the editor job', target);
   return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
@@ -190,24 +188,28 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const gates = kitGates(makefile);
   const checks = all.filter(target => !gates.includes(target));
   if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
+  // The jobs that run GROUP_CHECK together list every group once: the job preflight runs the group preflight, which every
+  // other job needs (T428), and the job test the other groups.
+  const listed: string[] = [];
   for (const job of readWorkflow(workflow).jobs) {
     const { id } = job;
     if (!job.steps.some(groupStep)) continue;
     const matrix = matrixGroups(job);
     if (!matrix) { errors.push(`ci.yml job ${id} runs ${GROUP_CHECK} without a matrix group: [...] of CI_GROUPS`); continue; }
     for (const group of new Set(matrix.filter((group, index) => matrix.indexOf(group) !== index))) errors.push(`ci.yml job ${id} lists the matrix group ${group} twice`);
-    for (const group of groups) if (!matrix.includes(group)) errors.push(`ci.yml job ${id} has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
     for (const group of new Set(matrix)) if (!groups.includes(group)) errors.push(`ci.yml job ${id} has the matrix group ${group}, which is not in CI_GROUPS`);
+    for (const group of new Set(matrix)) if (listed.includes(group)) errors.push(`ci.yml lists the matrix group ${group} in two jobs`);
+    listed.push(...new Set(matrix));
   }
+  if (listed.length > 0) for (const group of groups) if (!listed.includes(group)) errors.push(`ci.yml has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
   for (const group of new Set(groups.filter((group, index) => groups.indexOf(group) !== index))) errors.push(`Makefile CI_GROUPS lists ${group} twice`);
   for (const group of groups) if (!((targets[group]?.length ?? 0) > 0)) errors.push(`Makefile CI group ${group} declares no CI_TARGETS_${group}`);
   for (const group of Object.keys(targets)) if (!groups.includes(group)) errors.push(`Makefile declares CI_TARGETS_${group}, but ${group} is not in CI_GROUPS`);
   for (const gate of gates) if (!all.includes(gate)) errors.push(`CI_KIT_GATES names ${gate}, which is not a target of CHECK_TARGETS`);
   const owners = new Map<string, string[]>();
   for (const group of groups) for (const target of targets[group] ?? []) owners.set(target, [...(owners.get(target) ?? []), group]);
-  // The preflight, docs and editor jobs run their own targets (jobTargets), so each CHECK_TARGETS target is run by one job.
+  // The docs and editor jobs run their own targets (jobTargets), so each CHECK_TARGETS target is run by one job.
   const own = jobTargets(makefile);
-  for (const target of own.preflight) owners.set(target, [...(owners.get(target) ?? []), 'preflight']);
   for (const target of own.docs) owners.set(target, [...(owners.get(target) ?? []), 'docs']);
   for (const target of own.editor) owners.set(target, [...(owners.get(target) ?? []), 'editor']);
   for (const [target, runs] of owners) if (gates.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);
@@ -227,13 +229,15 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
 export function ciReportPathErrors(workflow: string, makefile: string): string[] {
   const { groups } = ciGroups(makefile);
   const errors: string[] = [];
-  for (const { id, steps } of readWorkflow(workflow).jobs) {
+  for (const job of readWorkflow(workflow).jobs) {
+    const { id, steps } = job;
     const runId = steps.map(step => step.env['ORM_CHECK_RUN_ID']).find((value): value is string => typeof value === 'string');
     const path = steps.map(step => step.with['path']).find((value): value is string => typeof value === 'string' && value.startsWith('.runtime/check/'));
     if (!runId || !path) continue;
     // The matrix group fills ${{ matrix.group }} with its name.
     const fill = (text: string, group: string) => text.replaceAll('${{ matrix.group }}', group).replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1');
-    for (const group of runId.includes('matrix.group') ? groups : ['']) {
+    // A job uploads the reports of the groups of its own matrix.
+    for (const group of runId.includes('matrix.group') ? (matrixGroups(job) ?? groups) : ['']) {
       const want = `.runtime/check/${runName(fill(runId, group))}/report/`;
       const have = fill(path, group);
       if (have !== want) errors.push(`ci.yml job ${id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, group)} to ${want}; name the group with lowercase letters, digits and _ only`);

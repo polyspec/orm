@@ -1,5 +1,5 @@
-# CI: every check of the repository. The first job, preflight, runs the structure checks that need only Node (make
-# preflight-ci) in seconds, and every other job needs it, so their failure ends the run before any suite starts (T427).
+# CI: every check of the repository. The job preflight runs the CI group preflight, the checks of the structure of the
+# repository, and every other job needs it, so their failure ends the run before any suite starts (T428).
 # The job test runs make orm-check, the targets
 # of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
 # interfaces and the hot-path regression check of the feature verification, the decoder
@@ -52,62 +52,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight:
-    runs-on: ubuntu-26.04-arm
-    # The checks of the structure of the repository that need only Node (make preflight-ci): every other job needs this one,
-    # so a defect they find fails the run here, in seconds, before any suite starts (T427). Every step has an id and runs
-    # whatever the earlier steps did (if: !cancelled()), and the report is uploaded under !cancelled().
-    steps:
-      - uses: actions/checkout@v5
-        id: checkout
-      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
-      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
-      - name: hashes of the lock files
-        id: locks
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
-      - name: cache of the npm packages
-        id: cache-npm
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
-      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
-      - name: cache of the tools of mise.toml
-        id: cache-tools
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: var/tools
-          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
-      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
-      - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
-        if: ${{ !cancelled() }}
-      - name: structure checks
-        id: preflight
-        if: ${{ !cancelled() }}
-        env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-preflight
-          ORM_CI_SETUP: ${{ toJSON(steps) }}
-        run: make preflight-ci
-      - name: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: preflight-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_preflight/report/
-          if-no-files-found: error
-
-
   # The gates of orm: ci-pipeline.yml, which orm took from kit and owns (T391), plans and runs the shared and runtime
   # gates with the targets of the Makefile. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
   kit:
@@ -139,7 +83,7 @@ jobs:
     # failed or skipped step installs is recorded as not-run with that step,
     # and every other target runs. A failed step fails the job. The checkout
     # and Node are what the runner itself needs.
-    steps:
+    steps: &group-steps
       # The kit tools read the commit graph, so the checkout carries the full
       # commit graph.
       - uses: actions/checkout@v5
@@ -356,6 +300,17 @@ jobs:
           name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/
           if-no-files-found: error
+
+  # The group preflight of the Makefile (CI_TARGETS_preflight): the checks of the structure of the repository, which every other
+  # job needs, so a defect they find ends the run in this job before any suite starts (T428). It runs the steps of the job test
+  # (the anchor group-steps), so group-needs installs only what its targets declare (contracts/check-inputs.json).
+  preflight:
+    runs-on: ubuntu-26.04-arm
+    strategy:
+      matrix:
+        group: [preflight]
+    steps: *group-steps
+
 
   docs:
     needs: [preflight]

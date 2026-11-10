@@ -215,7 +215,9 @@
     },
     "comment-language-check": {
       "scope": "owner",
-      "needs": [],
+      "needs": [
+        "interfaces-typescript"
+      ],
       "inputs": [
         "scripts/comments/**",
         "**/*.go",
