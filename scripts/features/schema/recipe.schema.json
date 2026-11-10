@@ -2080,7 +2080,7 @@
               "aes_version": { "type": "integer" },
               "aes_keys": { "type": "object", "additionalProperties": { "type": "string" } },
               "session_read": {
-                "description": "The connection also runs this statement, whose only row must read as these texts, cell by cell (CFG-3).",
+                "description": "The connection also runs this statement, whose only row must read as these texts, cell by cell (CFG-3). A statement that names its text by database is read by the key of the case database, MariaDB reading the mysql entry unless it has its own (FCV-3, DIA-208).",
                 "type": "object",
                 "required": [
                   "sql",
@@ -2089,8 +2089,29 @@
                 "additionalProperties": false,
                 "properties": {
                   "sql": {
-                    "type": "string",
-                    "minLength": 1
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "mysql"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "mysql": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "mariadb": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ]
                   },
                   "row": {
                     "type": "array",

@@ -787,7 +787,7 @@ final class Recipe
      * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
      * driver: the one implementation of dsn.connect (FCV-4).
      */
-    private static function connectDriver(string $dsn, array $config = []): string
+    private static function connectDriver(string $dsn, array $config = [], string $database = ''): string
     {
         $db = Orm::connect($dsn, new Config(
             poolSize: $config['pool_size'] ?? 0,
@@ -810,17 +810,21 @@ final class Recipe
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             if (isset($config['session_read'])) {
+                // The query of the session may name its text by database (FCV-3), as the settings of MySQL and MariaDB
+                // differ (DIA-208).
+                $sql = $config['session_read']['sql'];
+                $sql = is_array($sql) ? $sql[self::dialectKey($database, $sql)] : $sql;
                 $read = $db->utils()->run(
                     static fn (TxFrame $frame): array => $frame->run(
                         StatementEvent::UTILITY,
                         [],
-                        $config['session_read']['sql'],
+                        $sql,
                     ),
                 );
                 Assert::assertSame(
                     [$config['session_read']['row']],
                     array_map(static fn (array $row): array => array_map('strval', $row), $read),
-                    $config['session_read']['sql'],
+                    $sql,
                 );
             }
             if ($config['tls_version'] ?? false) {
@@ -957,7 +961,7 @@ final class Recipe
         $message = '';
         $driver = null;
         try {
-            $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
+            $driver = self::connectDriver($step['dsn'], $step['config'] ?? [], $database);
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
@@ -3582,15 +3586,14 @@ final class Recipe
                     ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT "
                         . "oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' "
                         . "AND l.pid <> pg_backend_pid() LIMIT 1"
-                    // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other
-                    // than this one, whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
-                    : ($context['database'] === 'mariadb'
-                    ? 'SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN '
-                        . 'information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() '
-                        . 'AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1'
-                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t "
-                        . "ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = "
-                        . "'{$s['table']}' LIMIT 1"))->fetchColumn();
+                    // The session, other than this one, whose transaction holds a metadata lock on the table: one
+                    // form that MySQL and MariaDB answer alike, as MariaDB has no performance_schema.data_locks
+                    // (DIA-200, rule 1).
+                    : 'SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN '
+                        . 'performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE '
+                        . "m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = "
+                        . "'{$s['table']}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND "
+                        . 't.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1')->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
@@ -3717,7 +3720,7 @@ final class Recipe
                     $dsn = (string) getenv($name);
                     Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
                 }
-                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
+                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [], $context['database'])]];
             case 'dsn.sqlite_file':
                 return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'], $s['config'] ?? [])]];
         }

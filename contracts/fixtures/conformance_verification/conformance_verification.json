@@ -72345,7 +72345,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) FOR SHARE"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) LOCK IN SHARE MODE"
             }
            ],
            [

@@ -7022,7 +7022,7 @@
             {
               "kind": "utility",
               "tables": [],
-              "sql": "SELECT CAST((SELECT COUNT(*) FROM performance_schema.setup_instruments WHERE NAME = 'transaction' AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.setup_consumers WHERE NAME IN ('global_instrumentation', 'thread_instrumentation', 'events_transactions_current') AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.threads WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND INSTRUMENTED = 'YES') AS SIGNED)"
+              "sql": "SELECT CAST((SELECT COUNT(*) FROM performance_schema.setup_instruments WHERE NAME = 'transaction' AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.setup_consumers WHERE NAME IN ('global_instrumentation', 'thread_instrumentation', 'events_transactions_current') AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.threads WHERE THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID()) AND INSTRUMENTED = 'YES') AS SIGNED)"
             }
           ],
           "expect": {
@@ -7044,7 +7044,7 @@
         {
           "op": "events.server_transactions",
           "connection": "conn",
-          "probe": "SELECT CAST(COALESCE(SUM(COUNT_STAR), 0) AS SIGNED) FROM performance_schema.events_transactions_summary_by_thread_by_event_name WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND EVENT_NAME = 'transaction'",
+          "probe": "SELECT CAST(COALESCE(SUM(COUNT_STAR), 0) AS SIGNED) FROM performance_schema.events_transactions_summary_by_thread_by_event_name WHERE THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID()) AND EVENT_NAME = 'transaction'",
           "first_run_prepare_clients": [],
           "steps": [
             {

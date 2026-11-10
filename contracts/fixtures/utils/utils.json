@@ -1501,7 +1501,7 @@
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = PS_CURRENT_THREAD_ID()",
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
                 "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
                 "sqlite": "SELECT 0"
               }
@@ -1544,7 +1544,7 @@
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = PS_CURRENT_THREAD_ID()",
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
                 "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
                 "sqlite": "SELECT 0"
               }

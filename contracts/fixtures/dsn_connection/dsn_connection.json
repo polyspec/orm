@@ -248,7 +248,8 @@
     {
       "id": "mysql_session_settings",
       "requirements": [
-        "CFG-3"
+        "CFG-3",
+        "DIA-208"
       ],
       "only": [
         "mysql"
@@ -260,7 +261,10 @@
           "config": {
             "statement_timeout_ms": 237,
             "session_read": {
-              "sql": "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time",
+              "sql": {
+                "mysql": "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time",
+                "mariadb": "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, CAST(@@SESSION.max_statement_time * 1000 AS SIGNED)"
+              },
               "row": [
                 "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
                 "+00:00",

@@ -341,6 +341,11 @@
               "error": "FOREIGN_KEY",
               "message": "FOREIGN_KEY: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
+            },
+            "mariadb": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`))",
+              "driver_cause": true
             }
           }
         },

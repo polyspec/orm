@@ -121,7 +121,7 @@ export function runRecipe(path, database) {
 
 // connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
 // driver: the one implementation of dsn.connect (FCV-4).
-async function connectDriver(dsn, config = {}) {
+async function connectDriver(dsn, config = {}, database = NONE) {
   const db = await Db.connect(dsn, {
     ...(config.pool_size === undefined ? {} : { poolSize: config.pool_size }),
     ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
@@ -137,8 +137,12 @@ async function connectDriver(dsn, config = {}) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
     if (config.session_read !== undefined) {
-      const read = await db.utils().run(async frame => frame.run('utility', [], config.session_read.sql));
-      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], config.session_read.sql);
+      // The statement of the read is one text, or an object keyed by database that the case database reads by its key (DIA-208).
+      const given = config.session_read.sql;
+      const sql = typeof given === 'string' ? given : given[dialectKey(database, given)];
+      if (typeof sql !== 'string') throw new Error(`session_read names no statement for ${database}`);
+      const read = await db.utils().run(async frame => frame.run('utility', [], sql));
+      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], sql);
     }
     if (config.tls_version === true) {
       const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
@@ -231,7 +235,7 @@ async function checkDsnConnect(step, database) {
   let code = '';
   let message = '';
   try {
-    driver = await connectDriver(step.dsn, step.config);
+    driver = await connectDriver(step.dsn, step.config, database);
   } catch (error) {
     code = error?.code ?? '';
     message = error?.message ?? '';
@@ -778,11 +782,11 @@ const OPS = {
       const variable = serverVariable(s.dsn.slice(4), context.database);
       const dsn = process.env[variable];
       if (!dsn) throw new Error(`dsn.connect: ${variable} is unset; run make orm-test-servers`);
-      return { value: { text: await connectDriver(dsn, s.config) } };
+      return { value: { text: await connectDriver(dsn, s.config, context.database) } };
     }
-    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
+    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config, context.database) } };
     const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
-    return { value: { text: await connectDriver(dsn, s.config) } };
+    return { value: { text: await connectDriver(dsn, s.config, context.database) } };
   },
   // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
   async 'dsn.sqlite_file'(s) {
@@ -1052,13 +1056,12 @@ const OPS = {
     if (!server) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
     const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
     const postgres = context.database === 'postgres';
-    // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one, whose InnoDB
-    // transaction holds a table lock (information_schema.INNODB_TRX).
+    // On MySQL and MariaDB alike, the session is the one, other than this one, that holds a granted transaction metadata lock on the
+    // table (performance_schema.metadata_locks): MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is a
+    // cache that stays stale while other connections keep reading it.
     const [rows] = await nativeQuery(dialectOf(context), session, [postgres
       ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
-      : context.database === 'mariadb'
-        ? 'SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1'
-        : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
     await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);

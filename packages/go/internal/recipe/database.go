@@ -1460,7 +1460,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
 			}
 		}
-		driver, err := connectDriver(dsn, s.k("config").Config)
+		driver, err := connectDriver(dsn, c.database, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1657,24 +1657,19 @@ func endSession(table string, c *databaseContext) error {
 		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
 		return err
 	}
-	if c.database == "mariadb" {
-		// MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one, whose
-		// InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
-		if err := raw.QueryRow(mariadbLockHolder).Scan(&id); err != nil {
-			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
-		}
-		_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
-		return err
-	}
-	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
+	// The session is the one, other than this one, whose transaction holds the table: a metadata lock of the transaction, which
+	// MySQL and MariaDB both list live (MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is a
+	// cache that concurrent readers keep from refreshing).
+	if err := raw.QueryRow(fmt.Sprintf(mysqlLockHolder, table)).Scan(&id); err != nil {
 		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
 	}
 	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
 	return err
 }
 
-// mariadbLockHolder is the session of the case database that holds a lock, the session that session.end ends on MariaDB.
-const mariadbLockHolder = `SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1`
+// mysqlLockHolder is the session whose transaction holds the table %s of the case database, the session that session.end ends
+// on MySQL and MariaDB.
+const mysqlLockHolder = `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '%s' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`
 
 // awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
 // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits

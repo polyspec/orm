@@ -387,7 +387,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		r.cell, r.err = orm.BlindIndex(value, key(s))
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
-		r.cell, r.err = connectDriver(s.k("dsn").DSN, s.k("config").Config)
+		r.cell, r.err = connectDriver(s.k("dsn").DSN, "", s.k("config").Config)
 	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
 	case "markdown.connect":
 		r.err = markdownConnect(s)
@@ -422,9 +422,40 @@ type dsnConfig struct {
 	AESVersion         int32            `json:"aes_version"`
 	AESKeys            map[int32]string `json:"aes_keys"`
 	SessionRead        *struct {
-		SQL string   `json:"sql"`
-		Row []string `json:"row"`
+		SQL databaseSQL `json:"sql"`
+		Row []string    `json:"row"`
 	} `json:"session_read"`
+}
+
+// databaseSQL is a statement text, one for every database or one per database by the dialect-key rule (dialectKey): the
+// session_read of a MariaDB connection reads the variable of its server (DIA-208).
+type databaseSQL map[string]string
+
+// UnmarshalJSON reads a text, which every database runs, or an object of texts keyed by database.
+func (d *databaseSQL) UnmarshalJSON(raw []byte) error {
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		*d = databaseSQL{"": text}
+		return nil
+	}
+	var entries map[string]string
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return err
+	}
+	*d = entries
+	return nil
+}
+
+// of is the text that database runs.
+func (d databaseSQL) of(database string) (string, error) {
+	if text, every := d[""]; every {
+		return text, nil
+	}
+	text, ok := d[dialectKey(database, d)]
+	if !ok {
+		return "", fmt.Errorf("the statement names no text for %s", database)
+	}
+	return text, nil
 }
 
 // sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
@@ -435,7 +466,7 @@ func sqliteFileName(name, query string, config dsnConfig) (_ string, err error) 
 		return "", err
 	}
 	defer removeTemp(directory, &err)
-	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, config)
+	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, "sqlite", config)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return "", err
@@ -472,7 +503,7 @@ func markdownConnect(s step) (err error) {
 		return err
 	}
 	defer func() { err = closeFirst(err, listener.Close()) }()
-	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), dsnConfig{})
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), "markdown", dsnConfig{})
 	if err := <-listener.served; err != nil {
 		return err
 	}
@@ -586,7 +617,7 @@ func listenOnce(serve func(conn net.Conn) error) (*onceListener, error) {
 
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
 // and returns its driver: the one implementation of dsn.connect (FCV-4).
-func connectDriver(dsn string, config dsnConfig) (string, error) {
+func connectDriver(dsn, database string, config dsnConfig) (string, error) {
 	db, err := orm.Connect(dsn, orm.Config{
 		PoolSize:           config.PoolSize,
 		PoolIdleSize:       config.PoolIdleSize,
@@ -616,12 +647,16 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
 		}
 		if config.SessionRead != nil {
-			read, err := f.Run(orm.KindUtility, nil, config.SessionRead.SQL)
+			text, err := config.SessionRead.SQL.of(database)
+			if err != nil {
+				return err
+			}
+			read, err := f.Run(orm.KindUtility, nil, text)
 			if err != nil {
 				return err
 			}
 			if len(read.Rows) != 1 || len(read.Rows[0]) != len(config.SessionRead.Row) {
-				return fmt.Errorf("%s returned %v, want %v", config.SessionRead.SQL, read.Rows, config.SessionRead.Row)
+				return fmt.Errorf("%s returned %v, want %v", text, read.Rows, config.SessionRead.Row)
 			}
 			for i, want := range config.SessionRead.Row {
 				cell := read.Rows[0][i]
@@ -629,7 +664,7 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 					cell = string(text)
 				}
 				if fmt.Sprint(cell) != want {
-					return fmt.Errorf("%s cell %d is %v, want %s", config.SessionRead.SQL, i, cell, want)
+					return fmt.Errorf("%s cell %d is %v, want %s", text, i, cell, want)
 				}
 			}
 		}

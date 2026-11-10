@@ -5115,6 +5115,52 @@
                 false,
                 false
               ]
+            },
+            "mariadb": {
+              "namespace": {
+                "ref": "database"
+              },
+              "columns": [
+                "a",
+                "b",
+                "note",
+                "g"
+              ],
+              "primary_key": [
+                "b",
+                "a"
+              ],
+              "reliable_row_identity": true,
+              "native_types": [
+                "bigint(20)",
+                "bigint(20)",
+                "varchar(50)",
+                "bigint(20)"
+              ],
+              "nullable": [
+                false,
+                false,
+                true,
+                true
+              ],
+              "generated": [
+                false,
+                false,
+                false,
+                true
+              ],
+              "automatic_keys": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "defaults": [
+                false,
+                false,
+                false,
+                false
+              ]
             }
           }
         }
@@ -5561,6 +5607,15 @@
             "mysql": {
               "error": "CATALOG_VALUE",
               "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
+            },
+            "mariadb": {
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -10410,8 +10465,8 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the refusals that the server has counted for that name until now",
-          "sql": "CREATE TABLE refusals_before AS SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226"
+          "reason": "the connects that the server has counted for that name until now, refused ones among them, which MySQL and MariaDB both count in performance_schema.users (MariaDB has no error summary by user); the held connection and one refused reconnect make two more",
+          "sql": "CREATE TABLE connects_before AS SELECT COALESCE(SUM(TOTAL_CONNECTIONS), 0) AS n FROM performance_schema.users WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28))"
         },
         {
           "op": "sql.hold_connection",
@@ -10428,13 +10483,13 @@
         },
         {
           "op": "catalog.read_only_query",
-          "sql": "SELECT CAST(refused.n - before_it.n AS CHAR) AS refusals FROM (SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226) refused CROSS JOIN refusals_before before_it",
+          "sql": "SELECT CAST(counted.n - before_it.n AS CHAR) AS connects FROM (SELECT COALESCE(SUM(TOTAL_CONNECTIONS), 0) AS n FROM performance_schema.users WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28))) counted CROSS JOIN connects_before before_it",
           "expect": {
             "mysql": {
               "rows": [
                 [
                   {
-                    "text": "1"
+                    "text": "2"
                   }
                 ]
               ]
@@ -14812,8 +14867,11 @@
           "only": [
             "mysql"
           ],
-          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month",
-          "sql": "INSERT /*+ SET_VAR(sql_mode = 'ALLOW_INVALID_DATES') */ INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')"
+          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month, set for the one statement by the form of each server (MySQL ignores SET STATEMENT, MariaDB the SET_VAR hint)",
+          "sql": {
+            "mysql": "INSERT /*+ SET_VAR(sql_mode = 'ALLOW_INVALID_DATES') */ INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')",
+            "mariadb": "SET STATEMENT sql_mode = 'ALLOW_INVALID_DATES' FOR INSERT INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')"
+          }
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -15600,6 +15658,27 @@
                   }
                 ]
               ]
+            },
+            "mariadb": {
+              "rows": [
+                [
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "a,b"
+                  },
+                  {
+                    "text": "{\"b\": 1, \"a\": 2}"
+                  },
+                  {
+                    "bytes_hex": "05"
+                  },
+                  {
+                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -15642,6 +15721,39 @@
                   },
                   {
                     "text": "{\"a\": 2, \"b\": 1}"
+                  },
+                  {
+                    "bytes_hex": "05"
+                  },
+                  {
+                    "bytes_hex": "000000000101000000000000000000f03f0000000000000040"
+                  }
+                ]
+              ]
+            },
+            "mariadb": {
+              "columns": [
+                "id",
+                "e",
+                "s",
+                "j",
+                "bt",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "a,b"
+                  },
+                  {
+                    "text": "{\"b\": 1, \"a\": 2}"
                   },
                   {
                     "bytes_hex": "05"
@@ -20277,8 +20389,11 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts",
-          "sql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts; a MySQL role is a locked account that the user is granted, a MariaDB role a role of its own with no host, made the default by SET DEFAULT ROLE",
+          "sql": {
+            "mysql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END",
+            "mariadb": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP ROLE IF EXISTS `', grouped, '`'); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE ROLE `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT `', grouped, '` TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('SET DEFAULT ROLE `', grouped, '` FOR ''', account, '''@''%'''); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+          }
         },
         {
           "op": "sql.exec",
@@ -20525,6 +20640,10 @@
                   }
                 ]
               ]
+            },
+            "mariadb": {
+              "error": "DRIVER",
+              "message_holds": "partial_revokes"
             }
           }
         },
@@ -20604,6 +20723,21 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "refused"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -20624,6 +20758,21 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "refused"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -20636,6 +20785,9 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "error": "ROW_CONFLICT"
             }
           }
         },
@@ -20671,6 +20823,42 @@
                   },
                   {
                     "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "mariadb": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "refused"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "refused"
                   }
                 ]
               ]

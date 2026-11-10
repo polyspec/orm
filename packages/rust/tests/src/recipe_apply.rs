@@ -383,7 +383,8 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             result.map(|()| json!({}))
         }
         "dbspec.other_database" => {
-            let other = CaseDatabase::create(database).await;
+            // The other database is on the server of the case, which direct connects to: MariaDB's own on MariaDB (DIA-200).
+            let other = CaseDatabase::create(if state.mariadb { "mariadb" } else { database }).await;
             let result = other_steps(state, step, database, other.dsn()).await;
             other.drop().await;
             result.map(|()| json!({}))

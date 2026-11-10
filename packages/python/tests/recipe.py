@@ -2024,9 +2024,10 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
-def _connect_driver(dsn: str, config: dict | None = None) -> str:
+def _connect_driver(dsn: str, config: dict | None = None, database: str = "") -> str:
     """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
-    driver: the one implementation of dsn.connect (FCV-4)."""
+    driver: the one implementation of dsn.connect (FCV-4). database is the case database, which reads a session_read
+    SQL keyed by database."""
     names = {
         "pool_size": "poolSize",
         "pool_idle_size": "poolIdleSize",
@@ -2056,12 +2057,18 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
             )
         session_read = (config or {}).get("session_read")
         if session_read is not None:
-            read = db.utils().run(
-                lambda frame: frame.run(session_read["sql"], [], "utility")
-            )["rows"]
+            # The SQL is one text, or an object keyed by database that a server reads by the dialect-key rule.
+            sql = session_read["sql"]
+            if isinstance(sql, dict):
+                if not database:
+                    raise AssertionError(
+                        "dsn.connect: a session_read SQL keyed by database needs the case database"
+                    )
+                sql = sql[_dialect_key(database, sql)]
+            read = db.utils().run(lambda frame: frame.run(sql, [], "utility"))["rows"]
             if [[str(cell) for cell in row] for row in read] != [session_read["row"]]:
                 raise AssertionError(
-                    f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}"
+                    f"{sql} returned {read!r}, want {session_read['row']!r}"
                 )
         if (config or {}).get("tls_version"):
             status = db.utils().run(
@@ -2199,7 +2206,7 @@ def _dsn_connect(step: dict, database: str) -> None:
     message = ""
     driver = None
     try:
-        driver = _connect_driver(step["dsn"], step.get("config"))
+        driver = _connect_driver(step["dsn"], step.get("config"), database)
     except OrmError as error:
         got = error.code
         message = str(error)
@@ -3227,11 +3234,10 @@ def _op_session_end(step: dict, context: dict) -> dict:
     query = (
         f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
         if database == "postgres"
-        # MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one,
-        # whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
-        else "SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1"
-        if database == "mariadb"
-        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
+        # One form on MySQL and MariaDB, which has no performance_schema.data_locks: the session other than this one
+        # whose transaction holds a granted metadata lock on the table; the metadata lock view is live, where
+        # information_schema.INNODB_TRX is a cache that can miss a transaction that has just begun.
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1"
     )
     rows = native_query(database, session, [query])[0]
     if len(rows) != 1:
@@ -3338,7 +3344,9 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
             raise AssertionError(
                 f"dsn.connect: {name} is unset; run make orm-test-servers"
             )
-    return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
+    return {
+        "value": {"text": _connect_driver(dsn, step.get("config"), context["database"])}
+    }
 
 
 def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:

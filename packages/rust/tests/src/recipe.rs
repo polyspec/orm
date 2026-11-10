@@ -214,7 +214,8 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
 
 /// Opens a DSN with Db::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its driver:
 /// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
-async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, String)> {
+/// `database` is the database of the case, whose entry a database-keyed `session_read.sql` gives.
+async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<String, (String, String)> {
     let field = |name: &str| config[name].as_u64().unwrap_or(0) as u32;
     let aes_keys = config["aes_keys"]
         .as_object()
@@ -238,7 +239,11 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
-            let session_read = match config["session_read"]["sql"].as_str() {
+            // A statement keyed by database is read by the dialect-key rule: the entry of the database, else the entry of its
+            // dialect, which MariaDB, a server of the mysql dialect, reads when it has none of its own (DIA-200).
+            let sql = &config["session_read"]["sql"];
+            let dialect = if database == "mariadb" { "mysql" } else { database };
+            let session_read = match sql.as_str().or_else(|| sql.get(database).or_else(|| sql.get(dialect)).and_then(Value::as_str)) {
                 Some(sql) => Some(db.utils().run(async |frame| frame.run("utility", &[], sql, &[]).await).await),
                 None => None,
             };
@@ -294,7 +299,7 @@ async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<St
     let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
     std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
-    let connected = connect_driver(&dsn, config).await.map_err(|(_, message)| message);
+    let connected = connect_driver(&dsn, config, "sqlite").await.map_err(|(_, message)| message);
     let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
         let mut names = Vec::new();
         for entry in entries {
@@ -334,7 +339,7 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     });
     let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome = runtime.block_on(connect_driver(&dsn, &Value::Null));
+    let outcome = runtime.block_on(connect_driver(&dsn, &Value::Null, "markdown"));
     let received = server.join().map_err(|panic| panicked("the listener", &*panic))??;
     if received != text("received") {
         return Err(format!("the listener received {received:?}, want {:?}", text("received")));
@@ -429,7 +434,7 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     let dsn = crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default();
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome = runtime.block_on(connect_driver(dsn, &crate::recipe_reads::read(step, "config")["config"]));
+    let outcome = runtime.block_on(connect_driver(dsn, &crate::recipe_reads::read(step, "config")["config"], database));
     match (outcome, expect["error"].as_str()) {
         (Err((got, message)), Some(code)) if got == code => {
             let holds = expect["message_holds"].as_str().unwrap_or_default();
@@ -4539,7 +4544,7 @@ mod database {
                         None => text.to_owned(),
                     },
                 };
-                let driver = crate::recipe::connect_driver(&dsn, &crate::recipe_reads::read(step, "config")["config"])
+                let driver = crate::recipe::connect_driver(&dsn, &crate::recipe_reads::read(step, "config")["config"], context.database)
                     .await
                     .map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
@@ -5565,17 +5570,10 @@ mod database {
                     Err(error) => Err(error),
                 }
             }
-            // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one,
-            // whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
-            Pool::MySql(pool) if context.database == MARIADB => {
-                let query = "SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1";
-                match sqlx::query_scalar::<_, u64>(query).fetch_one(pool).await {
-                    Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
-                    Err(error) => Err(error),
-                }
-            }
+            // The session, other than this one, that holds a transaction metadata lock on the table: the one form that MySQL and
+            // MariaDB read alike and live, since MariaDB has no performance_schema.data_locks (DIA-200, rule 1).
             Pool::MySql(pool) => {
-                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1");
+                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1");
                 match sqlx::query_scalar::<_, u64>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
                     Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
                     Err(error) => Err(error),
