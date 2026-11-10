@@ -134,7 +134,9 @@ export async function introspectStep(step, context) {
     for (const [i, sql] of statements.entries()) {
       const refused = await session.query(sql.replaceAll('{schema}', schema)).then(() => null, error => error);
       if (refused === null) continue;
-      if (refuses && i >= statements.length - extra.length && database === 'mysql' && Number.isInteger(refused.errno)) return { refused: refused.errno };
+      // A refusal is an error packet of a server of the MySQL protocol, which mysql2 gives with its SQLSTATE and error number;
+      // the error decides it, not the name of the database, as in every runtime (DIA-200, rule 1).
+      if (refuses && i >= statements.length - extra.length && typeof refused.sqlState === 'string' && Number.isInteger(refused.errno)) return { refused: refused.errno };
       throw refused;
     }
     if (refuses) throw new Error(`the statements of vector ${step.case} ran on ${native}, whose expect names their refusal`);

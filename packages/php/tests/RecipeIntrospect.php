@@ -73,9 +73,11 @@ final class RecipeIntrospect
             try {
                 $pdo->exec(str_replace('{schema}', $schema, $statement));
             } catch (\PDOException $error) {
-                // A MySQL error number of the server, which the driver gives as the second field of errorInfo.
+                // A refusal is an error of a server of the MySQL protocol, which pdo_mysql gives as the second field of
+                // errorInfo; the driver of the connection decides it, not the name of the database, as in every runtime
+                // (DIA-200, rule 1).
                 $number = $error->errorInfo[1] ?? null;
-                if ($refusable && $database === 'mysql' && is_int($number)) {
+                if ($refusable && $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' && is_int($number)) {
                     return ['refused' => $number];
                 }
                 throw $error;
