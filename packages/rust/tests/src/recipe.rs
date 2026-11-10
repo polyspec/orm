@@ -329,7 +329,7 @@ async fn sqlite_file_names(name: &str, query: Option<&str>, config: &Value) -> R
 
 /// The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an array is
 /// its texts; an empty array or any other value is a recipe error, as it would check nothing.
-fn message_holds(value: &Value) -> Result<Vec<&str>, String> {
+pub(crate) fn message_holds(value: &Value) -> Result<Vec<&str>, String> {
     match value {
         Value::Null => Ok(Vec::new()),
         Value::String(text) => Ok(vec![text.as_str()]),
@@ -340,7 +340,7 @@ fn message_holds(value: &Value) -> Result<Vec<&str>, String> {
 }
 
 /// The first text of holds that message does not hold, if any.
-fn missing_hold<'a>(message: &str, holds: &[&'a str]) -> Option<&'a str> {
+pub(crate) fn missing_hold<'a>(message: &str, holds: &[&'a str]) -> Option<&'a str> {
     holds.iter().copied().find(|text| !message.contains(text))
 }
 
@@ -2886,7 +2886,7 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture, CASE_CONNECTION};
+pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelError, ModelFuture, CASE_CONNECTION};
 
 /// The member in which a step of the table path keeps the written order of an object, since serde_json sorts the keys of
 /// its objects and a column list is written in the order of the recipe (FCV-4).
@@ -3015,6 +3015,8 @@ mod database {
     /// which has no code and always fails the case.
     enum Failure {
         Call(String),
+        /// The error of an orm call as it returned it, so that a transaction around the step returns that same error.
+        Orm(polyspec_orm::Error),
         Step(String),
     }
 
@@ -3041,7 +3043,51 @@ mod database {
     /// The name under which a dispatcher holds the case connection for the model ops that name no connection.
     pub const CASE_CONNECTION: &str = "case";
 
-    pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
+    pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, ModelError>> + 'a>>;
+
+    /// Why a model op has no fields: the error of the client as its call returned it, which a transaction callback around
+    /// the op returns unchanged (INT-118), or the text of a refusal of the dispatcher, which begins with its code.
+    #[derive(Debug)]
+    pub enum ModelError {
+        Orm(polyspec_orm::Error),
+        Text(String),
+    }
+
+    impl From<String> for ModelError {
+        fn from(text: String) -> Self {
+            Self::Text(text)
+        }
+    }
+
+    impl From<&str> for ModelError {
+        fn from(text: &str) -> Self {
+            Self::Text(text.to_owned())
+        }
+    }
+
+    impl From<polyspec_orm::Error> for ModelError {
+        fn from(error: polyspec_orm::Error) -> Self {
+            Self::Orm(error)
+        }
+    }
+
+    impl std::fmt::Display for ModelError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Orm(error) => f.write_str(&crate::recipe::failure_text(error)),
+                Self::Text(text) => f.write_str(text),
+            }
+        }
+    }
+
+    impl From<ModelError> for Failure {
+        fn from(error: ModelError) -> Self {
+            match error {
+                ModelError::Orm(error) => Self::Orm(error),
+                ModelError::Text(text) => Self::Call(text),
+            }
+        }
+    }
 
     /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
     /// each model op calls the generated model that its step names, on the connection that its `connection` field names; a
@@ -3070,15 +3116,15 @@ mod database {
         /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
         fn connect_audited<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _source: &'a Value) -> ModelFuture<'a> {
             let refusal = format!("model.connect {name}: this recipe binds no audited models");
-            Box::pin(async move { Err(refusal) })
+            Box::pin(async move { Err(refusal.into()) })
         }
         /// model.connect with statement_timeout_ms (FCV-4, CFG-6); a dispatcher on generated models refuses it by name.
         fn connect_bounded<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _ms: u32) -> ModelFuture<'a> {
             let refusal = format!("model.connect {name}: this recipe binds no bounded connection");
-            Box::pin(async move { Err(refusal) })
+            Box::pin(async move { Err(refusal.into()) })
         }
         fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
-            Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models")) })
+            Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models").into()) })
         }
     }
 
@@ -3087,11 +3133,11 @@ mod database {
 
     impl ModelDispatcher for NoModels {
         fn connect<'a>(&'a mut self, _name: &'a str, _dsn: &'a str, _pool_size: u32) -> ModelFuture<'a> {
-            Box::pin(async { Err("model.connect: this recipe binds no generated models".to_owned()) })
+            Box::pin(async { Err("model.connect: this recipe binds no generated models".to_owned().into()) })
         }
 
         fn call<'a>(&'a mut self, op: &'a str, _connection: &'a str, _step: &'a Value) -> ModelFuture<'a> {
-            Box::pin(async move { Err(format!("OP_UNKNOWN {op}: this recipe binds no generated models")) })
+            Box::pin(async move { Err(format!("OP_UNKNOWN {op}: this recipe binds no generated models").into()) })
         }
 
         fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
@@ -3130,6 +3176,8 @@ mod database {
         wait_start: Option<std::time::Instant>,
         /// The directory of the corpus of a case of the markdown suite.
         corpus: Option<std::path::PathBuf>,
+        /// The error of the last step that failed without an expected error, as its call returned it.
+        unexpected: Option<polyspec_orm::Error>,
     }
 
     impl<'a> Context<'a> {
@@ -3162,6 +3210,7 @@ mod database {
                 attempts: 0,
                 wait_start: None,
                 corpus: None,
+                unexpected: None,
             }
         }
     }
@@ -3628,7 +3677,9 @@ mod database {
             let mut guard = state.lock().await;
             let (catalog, context) = &mut *guard;
             for nested in steps {
-                Box::pin(run_step(catalog, nested, context)).await.map_err(polyspec_orm::Error::Config)?;
+                if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                    return Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::Config(message)));
+                }
             }
             if fail {
                 return Err(polyspec_orm::Error::Config(CALLBACK_FAILED.to_owned()));
@@ -3723,7 +3774,7 @@ mod database {
 
     /// An ORM error of a schema or statement op: its message starts with its code, which an expect may name.
     fn orm(error: polyspec_orm::Error) -> Failure {
-        Failure::Call(crate::recipe::failure_text(&error))
+        Failure::Orm(error)
     }
 
     /// The Schema argument of a schema op (FCV-4): the documents of the set and its external documents, read from the recipe's
@@ -3843,10 +3894,23 @@ mod database {
         } else {
             call(catalog, step, context).await
         };
+        let dispatched = match dispatched {
+            // A failure without an expected error ends the step and keeps the error, which a transaction callback around
+            // the step returns as the call returned it (INT-118).
+            Err(Failure::Orm(error)) if want_error.is_none() => {
+                let text = crate::recipe::failure_text(&error);
+                let shown = text.split(ERROR_DETAIL).nth(1).map_or_else(|| text.clone(), str::to_owned);
+                context.unexpected = Some(error);
+                return Err(format!("{UNEXPECTED_ERROR}{shown}"));
+            }
+            Err(Failure::Orm(error)) => Err(crate::recipe::failure_text(&error)),
+            Err(Failure::Call(message)) => Err(message),
+            Err(Failure::Step(message)) => return Err(message),
+            Ok(output) => Ok(output),
+        };
         let output = match dispatched {
             Ok(output) => output,
-            Err(Failure::Step(message)) => return Err(message),
-            Err(Failure::Call(message)) => {
+            Err(message) => {
                 let mut parts = message.split(ERROR_DETAIL);
                 let (message, text, cause) = (parts.next().unwrap_or_default().to_owned(), parts.next(), parts.next());
                 let (message, driver_cause) = match message.strip_suffix(super::DRIVER_CAUSE) {
@@ -4396,6 +4460,8 @@ mod database {
                     "generated": columns.iter().map(|c| c.generated).collect::<Vec<_>>(),
                     "automatic_keys": columns.iter().map(|c| c.automatic_key).collect::<Vec<_>>(),
                     "defaults": columns.iter().map(|c| c.default_expression.is_some()).collect::<Vec<_>>(),
+                    "default_texts": columns.iter().map(|c| c.default_expression.as_deref()).collect::<Vec<_>>(),
+                    "expression_defaults": columns.iter().map(|c| c.expression_default).collect::<Vec<_>>(),
                 });
                 Output { fields, bind: Some(Bound::Metadata(metadata)) }
             }
@@ -4739,7 +4805,7 @@ mod database {
             .map_err(Failure::Step)?;
             if let Some(ms) = crate::recipe_reads::read(step, "statement_timeout_ms")["statement_timeout_ms"].as_u64() {
                 let ms = u32::try_from(ms).map_err(|error| Failure::Step(format!("statement_timeout_ms {ms} is out of range: {error}")))?;
-                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::call)?;
+                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::from)?;
                 return Ok(Output::fields(json!({})));
             }
             let idle = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64();
@@ -4753,12 +4819,12 @@ mod database {
                 return Ok(Output::fields(json!({})));
             }
             match (crate::recipe_reads::read(step, "aes_keyring").get("aes_keyring"), crate::recipe_reads::read(step, "audit_source").get("audit_source")) {
-                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::call)?,
+                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::from)?,
                 (None, Some(source)) => {
                     let resolved = resolve_audit_source(source, context).map_err(Failure::Step)?;
-                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::call)?
+                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::from)?
                 }
-                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::call)?,
+                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::from)?,
             };
             return Ok(Output::fields(json!({})));
         }
@@ -4798,7 +4864,7 @@ mod database {
         crate::recipe_reads::copy_of(&resolved, step);
         let fields = context.models.call(op, connection, &resolved).await;
         crate::recipe_reads::forget_copy(&resolved);
-        Ok(Output::fields(fields.map_err(Failure::call)?))
+        Ok(Output::fields(fields.map_err(Failure::from)?))
     }
 
     /// The audit_source of a model.connect with its values resolved.
@@ -5995,7 +6061,7 @@ mod tables {
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
 
-    use super::{database_trials_written_order, ModelDispatcher, WRITTEN_ORDER};
+    use super::{database_trials_written_order, ModelDispatcher, ModelError, WRITTEN_ORDER};
     use crate::bench_models::{bench_config, CaseModels, Connections};
     use crate::plain::Plain;
 
@@ -6121,8 +6187,8 @@ mod tables {
 
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it. After it
     /// come the text of the error and of its cause, each after ERROR_DETAIL, which an expect with `message` or `cause` reads.
-    fn orm(error: OrmError) -> String {
-        crate::recipe::failure_text(&error)
+    fn orm(error: OrmError) -> ModelError {
+        ModelError::Orm(error)
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
@@ -6612,7 +6678,7 @@ mod tables {
     }
 
     /// The toArray of a row, narrowed to pick when it is named.
-    fn row_json(row: &TableRow, pick: &Value) -> Result<Value, String> {
+    fn row_json(row: &TableRow, pick: &Value) -> Result<Value, ModelError> {
         let values = to_array(row).and_then(|values| values.plain()).map_err(orm)?;
         let wanted = names(pick);
         if wanted.is_empty() {
@@ -6633,7 +6699,7 @@ mod tables {
 
     /// The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation; a
     /// parent without a child gives no row.
-    fn cells_of<'a>(parents: impl Iterator<Item = &'a TableRow>, step: &Value) -> Result<Value, String> {
+    fn cells_of<'a>(parents: impl Iterator<Item = &'a TableRow>, step: &Value) -> Result<Value, ModelError> {
         let columns = names(&crate::recipe_reads::read(step, "columns")["columns"]);
         let relation = &crate::recipe_reads::read(step, "relation")["relation"];
         let mut rows = Vec::new();
@@ -6660,7 +6726,7 @@ mod tables {
 
     /// Sets the members of an object of values on a row, in the written order: a null wrapper stores NULL, and an arith entry
     /// is plus or minus.
-    fn assign_values(row: &mut TableRow, raw: &Value) -> Result<(), String> {
+    fn assign_values(row: &mut TableRow, raw: &Value) -> Result<(), ModelError> {
         for (column, value) in members(raw) {
             if let Some(arith) = value.get("arith") {
                 let amount = param(&arith["amount"])?;
@@ -6730,7 +6796,7 @@ mod tables {
 
     /// Sets one column as the setter of a generated model does: the decimal is validated, a styled value goes through its
     /// codec, and the field holds what a read would.
-    fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
+    fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), ModelError> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         let field = entity.field(column);
         let styles: Vec<&str> = field.map(|field| field.codec.iter().map(String::as_str).collect()).unwrap_or_default();
@@ -6848,7 +6914,7 @@ mod tables {
 
     impl Tables {
         /// A new row of a model, connected to db, with the values of an object set in the written order.
-        fn row(&self, model: &str, db: &Db, values: &Value) -> Result<TableRow, String> {
+        fn row(&self, model: &str, db: &Db, values: &Value) -> Result<TableRow, ModelError> {
             let mut core = core_of(model)?;
             core.connect(db);
             let mut row = TableRow::from_core(core);
@@ -6920,14 +6986,14 @@ mod tables {
         }
 
         /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
-        async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, String> {
+        async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, ModelError> {
             let core = self.built(step, db)?;
             if let Some(column) = crate::recipe_reads::read(step, "bytes_hex_of")["bytes_hex_of"].as_str() {
                 let rows = gets(&TableRow::from_core(core)).await.map_err(orm)?;
                 let mut hexes = Vec::new();
                 for row in rows.models() {
                     let Some(Val::Bytes(cell)) = row.value(column) else {
-                        return Err(format!("bytes_hex_of: the column {column} holds no bytes"));
+                        return Err(format!("bytes_hex_of: the column {column} holds no bytes").into());
                     };
                     hexes.push(cell.iter().map(|byte| format!("{byte:02x}")).collect::<String>());
                 }
@@ -7013,7 +7079,7 @@ mod tables {
 
         /// gets_lookahead_page, or gets_count_lookahead_page with an aggregate of count, on the page of the limit of the step:
         /// the keys of the models or the group rows, the page, its size and whether a next page exists (INT-164).
-        async fn lookahead(step: &Value, root: &TableRow) -> Result<Value, String> {
+        async fn lookahead(step: &Value, root: &TableRow) -> Result<Value, ModelError> {
             let limit = &crate::recipe_reads::read(step, "limit")["limit"];
             let part = |name: &str| limit.get(name).and_then(Value::as_u64).map(u32::try_from).transpose().map_err(|e| e.to_string());
             let (Some(offset), Some(count)) = (part("offset")?, part("count")?) else {
@@ -7034,7 +7100,7 @@ mod tables {
         }
 
         /// gets_page: the keys and the counts of the page, and the rows and total of a rows expect.
-        async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
+        async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, ModelError> {
             let (offset, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
             let offset = offset + u32::try_from(crate::recipe_reads::read(step, "offset")["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
             let (number, size) = if crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
@@ -7083,7 +7149,7 @@ mod tables {
 
         /// model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its terminal.
         /// The written model is bound with as, and its toArray is the result.
-        async fn write(&mut self, op: &str, step: &Value, db: Option<&Db>) -> Result<Value, String> {
+        async fn write(&mut self, op: &str, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
             let mut row = if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
                 let mut row = TableRow::from_core(core_of(model)?);
@@ -7099,7 +7165,7 @@ mod tables {
                     Param::Bool(b) => json!(b),
                     Param::I64(n) => json!(n),
                     Param::Str(text) => json!(text),
-                    other => return Err(format!("attached {name} holds {other:?}")),
+                    other => return Err(format!("attached {name} holds {other:?}").into()),
                 };
                 row.core.attach(name, plain);
             }
@@ -7127,7 +7193,7 @@ mod tables {
         }
 
         /// model.creates on the rows of rows or rows_sequence.
-        async fn creates(&self, step: &Value, db: &Db) -> Result<Value, String> {
+        async fn creates(&self, step: &Value, db: &Db) -> Result<Value, ModelError> {
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.creates names no model".to_owned())?;
             let mut rows = Vec::new();
             let sequence = &crate::recipe_reads::read(step, "rows_sequence")["rows_sequence"];
@@ -7154,7 +7220,7 @@ mod tables {
         }
 
         /// model.update on the bound row, or on a new model set from values, which writes with no read.
-        async fn update_row(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
+        async fn update_row(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
             let optimistic = crate::recipe_reads::read(step, "optimistic")["optimistic"].as_bool() == Some(true);
             let revision = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])?;
             let bound = crate::recipe_reads::read(step, "row").get("row").is_some();
@@ -7180,7 +7246,7 @@ mod tables {
         }
 
         /// model.delete on a bound row, a bound collection, the rows of a where, or a new model set from values.
-        async fn delete_rows(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
+        async fn delete_rows(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
             let recursive = crate::recipe_reads::read(step, "recursive")["recursive"].as_bool() == Some(true);
             if crate::recipe_reads::read(step, "row").get("row").is_some() {
                 let name = row_name(step)?;
@@ -7246,25 +7312,32 @@ mod tables {
     impl CaseModels for Tables {
         const TABLE_PATH: bool = true;
 
-        async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, String> {
+        async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, ModelError> {
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, bench_config()).await.map_err(orm)
         }
 
-        async fn connect_bounded(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, ms: u32) -> Result<Value, String> {
+        async fn connect_bounded(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, ms: u32) -> Result<Value, ModelError> {
             let config = Config { statement_timeout_ms: ms, ..bench_config() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
-        async fn connect_keyring(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, keyring: &Value) -> Result<Value, String> {
+        async fn connect_keyring(
+            &mut self,
+            connections: &mut Connections,
+            name: &str,
+            dsn: &str,
+            pool_size: u32,
+            keyring: &Value,
+        ) -> Result<Value, ModelError> {
             let (keys, current) = keyring_spec(keyring)?;
             let config = Config { aes_version: current, aes_keys: keys, ..Config::default() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
-        async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, String> {
+        async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, ModelError> {
             let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
                 Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into(), source: None }))
             } else {
@@ -7276,7 +7349,7 @@ mod tables {
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
-        async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+        async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, ModelError> {
             if op == "hook.records" {
                 return Ok(self.records());
             }
@@ -7286,7 +7359,7 @@ mod tables {
                     "model.update" => self.update_row(step, None).await,
                     "model.delete" => self.delete_rows(step, None).await,
                     "model.create" => self.write(op, step, None).await,
-                    other => Err(format!("{other} names no connection")),
+                    other => Err(format!("{other} names no connection").into()),
                 };
             }
             self.handles = connections.all();
@@ -7384,7 +7457,7 @@ mod tables {
                                 .map_err(orm)?;
                             Ok(json!({ "value": { "bool": true } }))
                         }
-                        other => Err(format!("utils.privilege has no call {other}")),
+                        other => Err(format!("utils.privilege has no call {other}").into()),
                     }
                 }
                 "utils.was_inserted" => {
@@ -7439,7 +7512,7 @@ mod tables {
                                 match task.await {
                                     Ok(Ok(_)) => {}
                                     Ok(Err(error)) => failure = Some(orm(error)),
-                                    Err(error) => failure = Some(format!("a pool transaction ended: {error}")),
+                                    Err(error) => failure = Some(format!("a pool transaction ended: {error}").into()),
                                 }
                             }
                         })
@@ -7482,13 +7555,13 @@ mod tables {
                         let values = to_array(&row).map_err(orm)?;
                         return match &values[column]["value"] {
                             polyspec_orm::ArrayValue::Ordered(document) => Ok(json!({ "json": document.compact() })),
-                            other => Err(format!("array_text: the array form of {column} holds {other:?}")),
+                            other => Err(format!("array_text: the array form of {column} holds {other:?}").into()),
                         };
                     }
                     if let Some(column) = crate::recipe_reads::read(step, "ordered_text")["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
-                            _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
+                            _ => Err(format!("ordered_text: the column {column} holds no ordered-json value").into()),
                         };
                     }
                     if let Some(column) = crate::recipe_reads::read(step, "get")["get"].as_str() {
@@ -7505,7 +7578,7 @@ mod tables {
                 }
                 "model.count" => Ok(count_fields(get_count(&self.built(step, &db)?).await.map_err(orm)?)),
                 "model.query" => self.query(step, &db).await,
-                other => Err(format!("OP_UNKNOWN {other}: the table models bind no such op")),
+                other => Err(format!("OP_UNKNOWN {other}: the table models bind no such op").into()),
             }
         }
 
@@ -7552,7 +7625,7 @@ mod tables {
     }
 
     /// The cells of the columns of a row, each the recipe wrapper of its value.
-    fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, String> {
+    fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, ModelError> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         columns
             .iter()
@@ -7568,14 +7641,14 @@ mod tables {
                     Val::I64(n) => json!({ "int": n.to_string() }),
                     Val::Bool(b) => json!({ "bool": b }),
                     Val::Null => json!({ "null": true }),
-                    _ => return Err(format!("the value of {column} has no recipe wrapper")),
+                    _ => return Err(format!("the value of {column} has no recipe wrapper").into()),
                 })
             })
             .collect()
     }
 
     /// The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation.
-    fn related<'a>(parent: &'a TableRow, table: &str, many: bool) -> Result<Vec<&'a TableRow>, String> {
+    fn related<'a>(parent: &'a TableRow, table: &str, many: bool) -> Result<Vec<&'a TableRow>, ModelError> {
         if many {
             let children = parent.core().related_many::<TableRow>(&format!("{table}_models")).map_err(orm)?;
             let children = children.ok_or_else(|| format!("the rows of {table} were not loaded"))?;
@@ -7716,7 +7789,7 @@ mod tables {
     }
 
     /// The public keyring of a recipe step, which validates it as the API does.
-    fn keyring_of(raw: &Value) -> Result<AesKeyring, String> {
+    fn keyring_of(raw: &Value) -> Result<AesKeyring, ModelError> {
         let (keys, current) = keyring_spec(raw)?;
         AesKeyring::new(keys, current).map_err(orm)
     }

@@ -378,6 +378,7 @@
         "packages/php/tests/FiberTransaction.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
+        "packages/php/tests/QueryCancellationServerCases.php",
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
@@ -394,6 +395,9 @@
         "packages/php/tests/connect-relay.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/CatalogUnreadableStream.php",
+        "packages/php/tests/CatalogMariadbDefaultPdo.php",
+        "packages/php/tests/CatalogCommitFaultPdo.php",
+        "packages/php/tests/CatalogThrowableCases.php",
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/RecipeGenerator.php"
@@ -580,7 +584,6 @@
         "packages/php-ext/tests/AuditLazyFakePdo.php",
         "packages/php-ext/tests/AuditLazyFakeStatement.php",
         "packages/php-ext/tests/CatalogMetadataFailurePdo.php",
-        "packages/php-ext/tests/CatalogMariadbDefaultPdo.php",
         "packages/php-ext/tests/CatalogMetadataFailureStatement.php",
         "packages/php-ext/tests/ChainNativeRegistryFixture.php",
         "packages/php-ext/tests/CollectionFakePdo.php",
@@ -608,7 +611,6 @@
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php-ext/tests/model-weak-caller.php",
         "packages/php-ext/tests/silent_paths.php",
-        "packages/php-ext/tests/CatalogCommitFaultPdo.php",
         "packages/php-ext/tests/CatalogPageMutationPdo.php",
         "packages/php-ext/tests/CatalogPageMutationStatement.php"
       ],

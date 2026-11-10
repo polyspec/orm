@@ -468,23 +468,11 @@ function describedDefaultsCatalog(server, columns) {
   return new CatalogConnection('mysql', { ...catalogFixturePool(session), server });
 }
 
-// Requirements: DIA-205. On a MariaDB server the descriptor reads COLUMN_DEFAULT in MySQL's form: 'NULL' is no default, a quoted
-// literal its value without its escapes, a number as written, and any other text an expression default with the clock as
-// CURRENT_TIMESTAMP(p); a MySQL server keeps the text and the DEFAULT_GENERATED flag as they are.
-caseTest('catalog/describe/mariadb-default-text', COMPUTE, async () => {
-  const table = { namespace: 'app', name: 'defaults' };
-  const columns = [['id', null, 0], ['none', 'NULL', 0], ['quoted', "'it''s'", 0], ['number', '-1.5', 0], ['clock', 'current_timestamp(3)', 0], ['clock0', 'current_timestamp()', 0], ['expression', 'uuid()', 0]];
-  const read = (await describedDefaultsCatalog('mariadb', columns).describeTable(table)).columns.map(column => [column.name, column.defaultExpression, column.expressionDefault]);
-  assert.deepEqual(read, [
-    ['id', null, false], ['none', null, false], ['quoted', "it's", false], ['number', '-1.5', false],
-    ['clock', 'CURRENT_TIMESTAMP(3)', true], ['clock0', 'CURRENT_TIMESTAMP', true], ['expression', 'uuid()', true],
-  ]);
-  const mysql = (await describedDefaultsCatalog('mysql', [['id', null, 0], ['none', 'NULL', 0], ['clock', 'CURRENT_TIMESTAMP(3)', 1]]).describeTable(table)).columns.map(column => [column.name, column.defaultExpression, column.expressionDefault]);
-  assert.deepEqual(mysql, [['id', null, false], ['none', 'NULL', false], ['clock', 'CURRENT_TIMESTAMP(3)', true]]);
-});
-
-// Requirements: DIA-205. A MariaDB default that opens a quote but is not one whole string literal is a metadata error.
+// Requirements: DIA-205. A MariaDB default that opens a quote but is not one whole string literal is a metadata error; no
+// server writes one, so the recipes cannot hold it (FCV-2).
 caseTest('catalog/describe/mariadb-default-not-one-literal', COMPUTE, async () => {
-  const catalog = describedDefaultsCatalog('mariadb', [['id', null, 0], ['broken', "'a' 'b'", 0]]);
-  await assert.rejects(catalog.describeTable({ namespace: 'app', name: 'defaults' }), error => error instanceof OrmError && error.code === 'TABLE_METADATA_INVALID' && /default of column "broken"/.test(error.message));
+  for (const text of ["'a' 'b'", "'unterminated", "'a'x"]) {
+    const catalog = describedDefaultsCatalog('mariadb', [['id', null, 0], ['broken', text, 0]]);
+    await assert.rejects(catalog.describeTable({ namespace: 'app', name: 'defaults' }), error => error instanceof OrmError && error.code === 'TABLE_METADATA_INVALID' && error.message === `TABLE_METADATA_INVALID: column "broken": default ${text} is not one string literal`, text);
+  }
 });

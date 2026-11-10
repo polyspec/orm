@@ -5216,6 +5216,227 @@
       ]
     },
     {
+      "id": "catalog_describe_column_defaults",
+      "requirements": [
+        "DIA-205",
+        "INT-101"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a column of each default form that the server writes: none, NULL, a quoted literal with an escaped quote and a backslash, the text NULL, a decimal, a negative number, the clock with and without a precision, and an expression; MySQL writes an expression with the character set of each literal and its quotes escaped, MariaDB as written without spaces, and the introspection keeps the text of its server (DIA-205)",
+          "sql": "CREATE TABLE catalog_column_default (id BIGINT NOT NULL PRIMARY KEY, a VARCHAR(10) NULL DEFAULT NULL, b VARCHAR(10) NOT NULL DEFAULT 'it''s', c VARCHAR(10) NOT NULL DEFAULT 'NULL', d DECIMAL(5,2) NOT NULL DEFAULT 0.00, e INT NOT NULL DEFAULT -3, f DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), g DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, h VARCHAR(10) NOT NULL DEFAULT (concat('a', 'b')), i VARCHAR(10) NOT NULL DEFAULT 'a\\\\b')"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_column_default",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "default_texts": [
+                null,
+                null,
+                "it's",
+                "NULL",
+                "0.00",
+                "-3",
+                "CURRENT_TIMESTAMP(6)",
+                "CURRENT_TIMESTAMP",
+                "concat(_utf8mb4\\'a\\',_utf8mb4\\'b\\')",
+                "a\\b"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                true,
+                false
+              ]
+            },
+            "mariadb": {
+              "columns": [
+                "id",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "default_texts": [
+                null,
+                null,
+                "it's",
+                "NULL",
+                "0.00",
+                "-3",
+                "CURRENT_TIMESTAMP(6)",
+                "CURRENT_TIMESTAMP",
+                "concat('a','b')",
+                "a\\b"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                true,
+                false
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_describe_default_text_and_expression_flag",
+      "requirements": [
+        "INT-101",
+        "INT-123"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "an automatic key, a text literal default, a number default and an expression default, as each database writes them; the descriptor marks only an expression default on MySQL, whose literal default keys insert by DEFAULT(column), and every default on PostgreSQL and SQLite, which insert by RETURNING (INT-123)",
+          "sql": {
+            "mysql": "CREATE TABLE described_default (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token VARCHAR(36) NOT NULL DEFAULT (uuid())) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE described_default (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token TEXT NOT NULL DEFAULT (gen_random_uuid()::text))",
+            "sqlite": "CREATE TABLE described_default (id INTEGER PRIMARY KEY AUTOINCREMENT, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))))"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "described_default",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "generated",
+                "7",
+                "uuid()"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                true
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "'generated'::character varying",
+                "7",
+                "(gen_random_uuid())::text"
+              ],
+              "expression_defaults": [
+                false,
+                true,
+                true,
+                true
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "'generated'",
+                "7",
+                "lower(hex(randomblob(16)))"
+              ],
+              "expression_defaults": [
+                false,
+                true,
+                true,
+                true
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "catalog_read_binds",
       "requirements": [
         "INT-104"

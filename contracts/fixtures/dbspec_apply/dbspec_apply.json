@@ -6315,7 +6315,8 @@
     {
       "id": "pooler_lock_shared_with_another_client",
       "requirements": [
-        "PLN-105"
+        "PLN-105",
+        "PLN-96b"
       ],
       "only": [
         "postgres"
@@ -6420,11 +6421,18 @@
                     {
                       "int": "0"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "session: this server session already holds the dbspec$plans lock, so another client shares it; apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         }
       ]
     },
@@ -6563,10 +6571,285 @@
       ]
     },
     {
+      "id": "a_broken_chain_is_refused_and_named",
+      "requirements": [
+        "PLN-96b"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "first"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "second"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i64 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "other_first"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "second"
+          ],
+          "count": [],
+          "with_message": true,
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain: no plan starts from empty"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain: no plan starts from empty"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain: no plan starts from empty"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "other_first"
+          ],
+          "count": [],
+          "with_message": true,
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain create_from_empty: the recorded plan has other hashes than the chain's plan"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain create_from_empty: the recorded plan has other hashes than the chain's plan"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "chain"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "chain create_from_empty: the recorded plan has other hashes than the chain's plan"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "drift_after_a_change_outside_the_plans",
       "requirements": [
         "PLN-92",
-        "PLN-93"
+        "PLN-93",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -6699,6 +6982,12 @@
                     {
                       "text": "drift"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "drift: the database is at sha256:b1ef6ebb3f46d10f109654a49b8a3be8a1afadaf5835542e37c99868647c4800, not sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239"
+                    }
                   ]
                 ]
               }
@@ -6710,6 +6999,12 @@
                     "code",
                     {
                       "text": "drift"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "drift: the database is at sha256:b1ef6ebb3f46d10f109654a49b8a3be8a1afadaf5835542e37c99868647c4800, not sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239"
                     }
                   ]
                 ]
@@ -6723,11 +7018,18 @@
                     {
                       "text": "drift"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "drift: the database has 2 objects that dbspec cannot express, first column extra id: the column definition \"id integer PRIMARY KEY\" has clauses that dbspec does not read"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         }
       ]
     },
@@ -8801,7 +9103,8 @@
     {
       "id": "lock_held_by_another_session",
       "requirements": [
-        "PLN-89"
+        "PLN-89",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -8924,7 +9227,11 @@
                 ]
               }
             }
-          }
+          },
+          "message_holds": [
+            "locked: another ",
+            " holds the "
+          ]
         },
         {
           "op": "dbspec.exec",
@@ -8939,7 +9246,8 @@
     {
       "id": "statement_lock_wait_is_bounded",
       "requirements": [
-        "PLN-90"
+        "PLN-90",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -9175,7 +9483,11 @@
                 ]
               }
             }
-          }
+          },
+          "message_holds": [
+            "failed representative at step 0: DROP TRIGGER ",
+            "archive$immutable_update"
+          ]
         },
         {
           "op": "dbspec.exec",
@@ -9216,7 +9528,8 @@
                 ]
               }
             }
-          }
+          },
+          "message_holds": "locked: another connection holds the SQLite database: "
         },
         {
           "op": "dbspec.exec",
@@ -9342,7 +9655,8 @@
     {
       "id": "verify_failure_keeps_the_row_applying",
       "requirements": [
-        "PLN-93"
+        "PLN-93",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -9427,6 +9741,12 @@
                     {
                       "text": "verify"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "verify create_from_empty: the database is at sha256:f47de976c63ef94635eec5990c8e7fef6c523aec610e935e49c199f611835cf8, not sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239"
+                    }
                   ]
                 ]
               }
@@ -9443,7 +9763,8 @@
                 "sql": "CREATE TABLE sneak (id integer PRIMARY KEY)"
               }
             ]
-          }
+          },
+          "with_message": true
         },
         {
           "op": "dbspec.apply",
@@ -9596,7 +9917,8 @@
       "requirements": [
         "PLN-93",
         "PLN-94",
-        "PLN-96"
+        "PLN-96",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -10543,6 +10865,12 @@
                     {
                       "text": "irreversible"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "irreversible representative at step 27: a finalize step has no rollback"
+                    }
                   ]
                 ]
               }
@@ -10554,6 +10882,12 @@
                     "code",
                     {
                       "text": "irreversible"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "irreversible representative at step 33: a finalize step has no rollback"
                     }
                   ]
                 ]
@@ -10567,11 +10901,18 @@
                     {
                       "text": "irreversible"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "irreversible representative at step 40: a finalize step has no rollback"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         },
         {
           "op": "dbspec.schema",
@@ -10958,7 +11299,8 @@
     {
       "id": "rollback_refused_by_null_rows",
       "requirements": [
-        "PLN-96"
+        "PLN-96",
+        "PLN-96b"
       ],
       "steps": [
         {
@@ -11068,6 +11410,12 @@
                     {
                       "text": "nulls"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "nulls drop_required_column at step 0: column t.dbspec$hold$ab9d29323fb3$1 has 1 NULL rows and no default to restore NOT NULL"
+                    }
                   ]
                 ]
               }
@@ -11079,6 +11427,12 @@
                     "code",
                     {
                       "text": "nulls"
+                    }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "nulls drop_required_column at step 0: column t.dbspec$hold$ab9d29323fb3$1 has 1 NULL rows and no default to restore NOT NULL"
                     }
                   ]
                 ]
@@ -11092,12 +11446,19 @@
                     {
                       "text": "nulls"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "nulls drop_required_column at step 3: column t.dbspec$hold$ab9d29323fb3$1 has 1 NULL rows and no default to restore NOT NULL"
+                    }
                   ]
                 ]
               }
             }
           },
-          "detail": "has 1 NULL rows"
+          "detail": "has 1 NULL rows",
+          "with_message": true
         },
         {
           "op": "dbspec.schema",
@@ -11234,7 +11595,8 @@
       "requirements": [
         "PLN-92",
         "PLN-95",
-        "PLN-96"
+        "PLN-96",
+        "PLN-96b"
       ],
       "only": [
         "mysql"
@@ -11454,11 +11816,18 @@
                     {
                       "text": "interrupted"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "interrupted representative at step 0: the plan is applying; run recover or rollback"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         },
         {
           "op": "dbspec.rollback",
@@ -25209,7 +25578,8 @@
       "requirements": [
         "PLN-92",
         "PLN-95",
-        "PLN-96"
+        "PLN-96",
+        "PLN-96b"
       ],
       "only": [
         "postgres"
@@ -25429,11 +25799,18 @@
                     {
                       "text": "interrupted"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "interrupted representative at step 0: the plan is applying; run recover or rollback"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         },
         {
           "op": "dbspec.rollback",
@@ -42538,7 +42915,8 @@
       "requirements": [
         "PLN-92",
         "PLN-95",
-        "PLN-96"
+        "PLN-96",
+        "PLN-96b"
       ],
       "only": [
         "sqlite"
@@ -42758,11 +43136,18 @@
                     {
                       "text": "interrupted"
                     }
+                  ],
+                  [
+                    "message",
+                    {
+                      "text": "interrupted representative at step 0: the plan is applying; run recover or rollback"
+                    }
                   ]
                 ]
               }
             }
-          }
+          },
+          "with_message": true
         },
         {
           "op": "dbspec.rollback",

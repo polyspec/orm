@@ -260,6 +260,7 @@ final class RecipeApply
         $command = substr($s['op'], strlen('dbspec.'));
         $started = hrtime(true);
         $code = 'ok';
+        $message = null;
         try {
             Dbspec::$command(
                 $session,
@@ -271,6 +272,7 @@ final class RecipeApply
             );
         } catch (Throwable $error) {
             $failure = $error instanceof ApplyCleanupError ? ($error->getPrevious() ?? $error) : $error;
+            $message = $failure->getMessage();
             if ($failure instanceof Stop) {
                 $code = 'stopped';
             } elseif ($failure instanceof ApplyError) {
@@ -283,6 +285,7 @@ final class RecipeApply
             if (isset($s['detail']) && stripos($failure->getMessage(), $s['detail']) === false) {
                 Assert::fail("the message {$failure->getMessage()} does not hold {$s['detail']}");
             }
+            Recipe::assertMessageHolds($s['message_holds'] ?? null, $failure->getMessage());
         }
         $elapsed = (hrtime(true) - $started) / 1_000_000;
         if (
@@ -300,6 +303,9 @@ final class RecipeApply
         }
         foreach ($s['count'] ?? [] as $kind) {
             $members[] = [$kind, ['int' => (string) ($kinds[$kind] ?? 0)]];
+        }
+        if (($s['with_message'] ?? false) === true && $message !== null) {
+            $members[] = ['message', ['text' => $message]];
         }
         return ['value' => ['object' => $members]];
     }

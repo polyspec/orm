@@ -16,6 +16,7 @@ __all__ = [
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
+from polyspec.orm.dbspec.parse import goq
 
 # Column type that each column function takes.
 column_function_types = {
@@ -249,7 +250,7 @@ class MysqlDialect(Dialect):
     def __init__(self, server: str = "mysql"):
         if server not in _MYSQL_LOCKS:
             raise OrmError(
-                codes.INTERNAL, f"mysql server {server!r} is not mysql or mariadb"
+                codes.INTERNAL, f"mysql server {goq(server)} is not mysql or mariadb"
             )
         self.server = server
 

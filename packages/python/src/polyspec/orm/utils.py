@@ -14,6 +14,7 @@ from polyspec.orm.codec import CodecError
 from polyspec.orm.errors import OrmError, transaction_conflict
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
+from polyspec.orm.dbspec.parse import goq
 
 if TYPE_CHECKING:
     from polyspec.orm.database import DbStats
@@ -92,7 +93,7 @@ class Utils:
     def lock(self, key: str) -> None:
         frame = _active(self.db, "lock")
         if not valid_key(key):
-            raise OrmError(codes.CONFIG, f"lock key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"lock key {goq(key)} is invalid")
         driver = self.db.sql_driver
         if driver == "mysql":
             rows = frame.run("SELECT GET_LOCK(?, 50)", [key], "utility")["rows"]
@@ -107,7 +108,7 @@ class Utils:
     def set_local(self, key: str, value: str) -> None:
         frame = _active(self.db, "setLocal")
         if not valid_key(key):
-            raise OrmError(codes.CONFIG, f"local key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"local key {goq(key)} is invalid")
         if self.db.sql_driver == "postgres":
             frame.run(POSTGRES_SET_LOCAL, [key, value], "utility")
         elif self.db.sql_driver == "mysql":
@@ -419,7 +420,9 @@ class PrivilegeUtils:
         r = self._role(role)
         upper = privilege.strip().upper()
         if upper not in _TABLE_PRIVILEGES:
-            raise OrmError(codes.CONFIG, f"unsupported table privilege {privilege!r}")
+            raise OrmError(
+                codes.CONFIG, f"unsupported table privilege {goq(privilege)}"
+            )
         self.utils._run(
             lambda: _frame_of(self.utils.db).run(
                 f"REVOKE {upper} ON {qualified} FROM {r}",

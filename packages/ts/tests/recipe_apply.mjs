@@ -7,6 +7,7 @@ import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspect
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { mysqlTestOptions } from './mysql-test-options.mjs';
 import { markdownSqlite } from './markdown_sqlite.mjs';
+import { checkMessageHolds } from './recipe.mjs';
 
 // The fixed clock of the commands in microseconds, 2023-11-14T22:13:20Z.
 const NOW = () => 1_700_000_000_000_000;
@@ -155,10 +156,12 @@ async function command(s, context, runStep) {
   };
   const started = Date.now();
   let code = 'ok';
+  let message;
   try {
     await COMMANDS[s.op](session.connection, dialectOf(context.database), serverOf(context.database), plans, NOW, handler);
   } catch (error) {
     const failure = error instanceof AggregateError ? error.errors[0] : error;
+    message = failure.message;
     if (failure === STOP) code = 'stopped';
     else if (failure instanceof DbspecApplyError) code = failure.code;
     else if (s.message !== undefined && failure.message === s.message) code = 'message';
@@ -166,6 +169,7 @@ async function command(s, context, runStep) {
     if (s.detail !== undefined && !failure.message.toLowerCase().includes(s.detail.toLowerCase())) {
       throw new Error(`the message ${JSON.stringify(failure.message)} does not hold ${JSON.stringify(s.detail)}`, { cause: error });
     }
+    checkMessageHolds(failure.message, s.message_holds);
   }
   const elapsed = Date.now() - started;
   if (s.elapsed !== undefined && (elapsed < s.elapsed.at_least_ms || elapsed >= s.elapsed.below_ms)) {
@@ -174,6 +178,7 @@ async function command(s, context, runStep) {
   const members = [['code', { text: code }]];
   if (s.count === undefined) members.push(['events', { int: String(events) }]);
   for (const kind of s.count ?? []) members.push([kind, { int: String(kinds.get(kind) ?? 0) }]);
+  if (s.with_message === true && message !== undefined) members.push(['message', { text: message }]);
   return { value: { object: members } };
 }
 

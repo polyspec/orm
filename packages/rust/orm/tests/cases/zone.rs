@@ -74,21 +74,6 @@ fn driver_parameters_reach_sqlx() {
     assert_eq!(options.get_charset(), "utf8mb4", "charset is fixed to utf8mb4");
 }
 
-/// A MySQL DSN without ssl-mode connects without TLS, and a named ssl-mode reaches sqlx unchanged.
-// Requirements: CFG-44, CFG-20.
-fn mysql_dsn_without_ssl_mode_disables_tls() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let mode = |dsn: &str| {
-        let parsed = polyspec_orm::db::parse_dsn(dsn).expect("mysql DSN");
-        let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
-        options.get_ssl_mode()
-    };
-    assert!(matches!(mode("mysql://orm@db.local/orm_example"), sqlx::mysql::MySqlSslMode::Disabled), "no ssl-mode is DISABLED");
-    assert!(matches!(mode("mysql://orm@db.local/orm_example?timezone=UTC"), sqlx::mysql::MySqlSslMode::Disabled), "timezone alone is DISABLED");
-    assert!(matches!(mode("mysql://orm@db.local/orm_example?ssl-mode=required"), sqlx::mysql::MySqlSslMode::Required), "a named ssl-mode is kept");
-    assert!(matches!(mode("mysql://orm@db.local/orm_example?ssl-mode=preferred"), sqlx::mysql::MySqlSslMode::Preferred), "PREFERRED is kept when named");
-}
-
 /// A Rust pool opened without `pool_lifetime_ms` keeps the 30-minute lifetime of its pool (CFG-5), which no other client has.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-5.
@@ -365,7 +350,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, mysql_dsn_without_ssl_mode_disables_tls, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }
 
 /// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).

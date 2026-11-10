@@ -28,6 +28,8 @@ use RuntimeException;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
+    use CatalogThrowableCases;
+
     // Requirements: INT-103, INT-117.
     public function testNativeDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
     {
@@ -120,88 +122,23 @@ final class CatalogConnectionSurfaceTest extends TestCase
         coverageAssertColumnNameFailureIsPrevious($read);
     }
 
-    // Requirements: DIA-205. A MariaDB server writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the
-    // MySQL form: 'NULL' is no default, a quoted literal its value with its escapes undone, a number itself, and any
-    // other text an expression default, the clock as CURRENT_TIMESTAMP(p); on a MySQL server the same text is the
-    // default as it is.
-    public function testNativeMariadbColumnDefaultIsReadInTheMysqlForm(): void
+    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
+    // server writes one, so the recipes cannot hold it (FCV-2).
+    public function testNativeMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
     {
-        require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
-        $defaults = [
-            ['none', null], ['null_text', 'NULL'], ['quoted', "'it''s'"], ['number', '-1.5e3'],
-            ['clock', 'current_timestamp(3)'], ['clock0', 'current_timestamp()'], ['expression', 'uuid()'],
-        ];
-        $want = [
-            'mariadb' => [
-                [null, false], [null, false], ["it's", false], ['-1.5e3', false],
-                ['CURRENT_TIMESTAMP(3)', true], ['CURRENT_TIMESTAMP', true], ['uuid()', true],
-            ],
-            'mysql' => [
-                [null, false], ['NULL', false], ["'it''s'", false], ['-1.5e3', false],
-                ['current_timestamp(3)', false], ['current_timestamp()', false], ['uuid()', false],
-            ],
-        ];
-        foreach ($want as $server => $columns) {
-            $db = new Db(new CatalogMariadbDefaultPdo($defaults), 'mysql', new Config(), new DateTimeZone('UTC'));
-            $db->setServer($server);
-            $metadata = self::catalogWith($db, 'mysql')
-                ->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
-            $read = array_map(
-                static fn (CatalogColumn $column): array => [$column->defaultExpression, $column->expressionDefault],
-                array_slice($metadata->columns, 1),
-            );
-            self::assertSame($columns, $read, $server);
-        }
-
-        // A quoted text that is not one whole literal is no default that the descriptor can state.
-        $broken = new CatalogMariadbDefaultPdo([['broken', "'a' 'b'"]]);
-        $db = new Db($broken, 'mysql', new Config(), new DateTimeZone('UTC'));
-        $db->setServer('mariadb');
-        try {
-            self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
-            self::fail('a default that is not one string literal was described');
-        } catch (OrmException $error) {
-            self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_);
-            self::assertSame(
-                "TABLE_METADATA_INVALID: column \"broken\": default 'a' 'b' is not one string literal",
-                $error->getMessage(),
-            );
-        }
-    }
-
-    public function testNativeCatalogPassesAThrowableThatIsNoDriverErrorThrough(): void
-    {
-        // The library catches only \PDOException around a driver call: any other throwable of the call, such as the
-        // interrupt of a time limit, reaches the caller as it is, and a PDOException is still mapped.
-        require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
-        $interrupt = new \RuntimeException('interrupted');
-        foreach ([$interrupt, new \PDOException('no such table')] as $failure) {
-            $pdo = new class ([], $failure) extends CatalogMariadbDefaultPdo {
-                public function __construct(array $defaults, private readonly \Throwable $failure)
-                {
-                    parent::__construct($defaults);
-                }
-
-                public function answer(string $query): array
-                {
-                    if (str_starts_with($query, 'SELECT c.COLUMN_NAME,')) {
-                        throw $this->failure;
-                    }
-                    return parent::answer($query);
-                }
-            };
+        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
+            $pdo = new CatalogMariadbDefaultPdo([['broken', $text]]);
             $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
             $db->setServer('mariadb');
             try {
                 self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
-                self::fail('a failed columns read was described');
-            } catch (\Throwable $thrown) {
-                if ($failure === $interrupt) {
-                    self::assertSame($interrupt, $thrown);
-                } else {
-                    self::assertInstanceOf(OrmException::class, $thrown);
-                    self::assertSame($failure, $thrown->getPrevious());
-                }
+                self::fail("the default {$text} was described");
+            } catch (OrmException $error) {
+                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
+                self::assertSame(
+                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
+                    $error->getMessage(),
+                );
             }
         }
     }
@@ -251,34 +188,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         });
     }
 
-    public function testNativeInsertCommitFailurePassesARollbackThrowableThatIsNoDriverErrorThrough(): void
-    {
-        // The library catches only \PDOException around the cleanup ROLLBACK of an unknown commit outcome: any other
-        // throwable of it, such as the interrupt of a time limit, reaches the caller as it is.
-        require_once __DIR__ . '/CatalogCommitFaultPdo.php';
-        $pdo = new CatalogCommitFaultPdo();
-        $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
-        $interrupt = new RuntimeException('interrupted');
-        $pdo->rollbackFailure = $interrupt;
-        $catalog = null;
-        try {
-            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'sample');
-            $pdo->failCommit = true;
-            $pdo->failRollback = true;
-            try {
-                $catalog->insertRow($metadata, ['id' => 1, 'payload' => 'inserted']);
-                self::fail('an unconfirmed native insert commit returned success');
-            } catch (\Throwable $thrown) {
-                self::assertSame($interrupt, $thrown);
-            }
-        } finally {
-            if ($pdo->inTransaction()) {
-                $pdo->exec('ROLLBACK');
-            }
-            $catalog?->close();
-        }
-    }
-
     /**
      * Inserts a sample row through the native SQLite catalog while its COMMIT fails, and its cleanup ROLLBACK too when
      * $failRollback: the insert reports ROW_COMMIT_INDETERMINATE whose cause is the DRIVER error of the commit failure.
@@ -291,7 +200,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
         self::assertTrue((new ReflectionClass(Catalog::class))->getMethod('insertRow')->isInternal());
 
-        require_once __DIR__ . '/CatalogCommitFaultPdo.php';
         $pdo = new CatalogCommitFaultPdo();
         $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
         $catalog = null;
@@ -333,42 +241,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $catalog = self::catalogWith($db, 'sqlite');
         return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
-    }
-
-    // The recipes hold the rows of these inserts and the key `defaults` of a description; the text of a default and
-    // the flag of an expression default have no recipe key (generated_identity_sqlite, generated_key_lifecycle).
-    public function testNativeDescribedDefaultsKeepTheirExpressionText(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-native-');
-        self::assertNotFalse($path);
-        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
-        $setup->exec(
-            "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
-            . 'n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))'
-        );
-        $setup->exec(
-            'CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), '
-            . 'n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)'
-        );
-        $setup = null;
-
-        $catalog = null;
-        try {
-            $catalog = Catalog::connect('sqlite://' . $path);
-            $generated = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated']);
-            self::assertTrue($generated->columns[0]->automaticKey);
-            self::assertNull($generated->columns[0]->defaultExpression);
-            self::assertFalse($generated->columns[0]->expressionDefault);
-            $default = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_default']);
-            self::assertSame("'generated'", $default->columns[1]->defaultExpression);
-            self::assertFalse($default->columns[1]->automaticKey);
-            $expression = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_expression']);
-            self::assertTrue($expression->columns[0]->expressionDefault);
-        } finally {
-            $catalog?->close();
-            unlink($path);
-        }
     }
 
     public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void

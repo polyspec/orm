@@ -52,6 +52,7 @@ from polyspec.orm.schema import Schema
 from typing import Callable, TypeVar
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
+from polyspec.orm.dbspec.parse import goq
 
 T = TypeVar("T")
 
@@ -937,7 +938,9 @@ def _mysql_statement_timeout(server: str, timeout_ms: int) -> str:
         return (
             f"SESSION max_statement_time = {timeout_ms // 1000}.{timeout_ms % 1000:03d}"
         )
-    raise OrmError(codes.INTERNAL, f"mysql server {server!r} has no statement timeout")
+    raise OrmError(
+        codes.INTERNAL, f"mysql server {goq(server)} has no statement timeout"
+    )
 
 
 class _MysqlConnection:

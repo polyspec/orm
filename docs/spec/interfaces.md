@@ -450,7 +450,8 @@ MySQL uses the executing statement's insert acknowledgement for an omitted
 AUTO_INCREMENT key and rereads the row on that same transaction. Literal default
 keys use server-side `DEFAULT(column)` predicates and declared composite-key
 ordering, without frontend default evaluation. `expression_default` distinguishes
-MySQL expression defaults from literal defaults. For omitted expression keys,
+MySQL expression defaults from literal defaults; on PostgreSQL and SQLite, which
+insert by `RETURNING`, it is set for every default. For omitted expression keys,
 select a bounded transactional input locator before writing. It must match no
 existing rows under a target-table lock, then match exactly one row whose supplied
 values are exact after inserting. Return that row's actual primary keys and

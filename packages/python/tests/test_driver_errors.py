@@ -9,20 +9,15 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import psycopg
 import pymysql
 from polyspec.orm.database import (
-    MYSQL_SET_NAMES,
     Db,
     Subscription,
-    _lock_error,
     _MysqlConnection,
     _PostgresConnection,
     _sqlite_code,
-    _mysql_statement_timeout,
-    parse_dsn,
 )
 from polyspec.orm.errors import OrmError
 
@@ -200,36 +195,6 @@ class _Connection:
         return _Cursor(self.error)
 
 
-class _RecordingCursor:
-    def __init__(self, sent, version):
-        self.sent = sent
-        self.version = version
-        self.rows = []
-        self.lastrowid = None
-        self.rowcount = 0
-
-    def execute(self, sql, *_):
-        self.sent.append(sql)
-        self.rows = [(self.version,)] if sql == "SELECT VERSION()" else []
-
-    def fetchall(self):
-        return self.rows
-
-    def close(self):
-        pass
-
-
-class _RecordingConnection:
-    """Driver connection that records each statement and answers SELECT VERSION() with version."""
-
-    def __init__(self, sent, version):
-        self.sent = sent
-        self.version = version
-
-    def cursor(self):
-        return _RecordingCursor(self.sent, self.version)
-
-
 def mysql_error(cls, number: int, message: str):
     return cls(number, message)
 
@@ -393,127 +358,6 @@ class ServerDriverErrorTest(unittest.TestCase):
                 self.assertEqual(error.code, code)
                 self.assertIs(error.cause, driver_error)
                 self.assertEqual(str(error), f"{code}: mysql: {message}")
-
-    # Requirements: DIA-201. A mysql error number is read by the table of its server: MySQL's 4025 is an InnoDB option error
-    # and MariaDB's a failed CHECK, and MySQL's 3572, 3819, 3024 and 4031 name no MariaDB condition.
-    def test_a_mysql_error_number_is_read_by_the_table_of_its_server(self):
-        for number, mysql, mariadb in [
-            (4025, "DRIVER", "CONSTRAINT"),
-            (3819, "CONSTRAINT", "DRIVER"),
-            (3572, "LOCK_NOT_AVAILABLE", "DRIVER"),
-            (3024, "CANCELED", "DRIVER"),
-            (4031, "CONNECTION_LOST", "DRIVER"),
-            (1969, "DRIVER", "CANCELED"),
-            (1062, "DUPLICATE_KEY", "DUPLICATE_KEY"),
-            (1452, "FOREIGN_KEY", "FOREIGN_KEY"),
-            (1213, "DEADLOCK", "DEADLOCK"),
-            (1290, "READ_ONLY", "READ_ONLY"),
-            (1205, "CANCELED", "CANCELED"),
-        ]:
-            for server, code in (("mysql", mysql), ("mariadb", mariadb)):
-                with self.subTest(number=number, server=server):
-                    driver_error = mysql_error(
-                        pymysql.err.OperationalError, number, "m"
-                    )
-                    self.assertEqual(self.run_mysql(driver_error, server).code, code)
-
-    # Requirements: DIA-209. MariaDB fails a NOWAIT lock that it cannot take with 1205: the 1205 of a statement of a
-    # *_nowait lock on MariaDB is LOCK_NOT_AVAILABLE, and the 1205 of any other statement, or of MySQL, stays CANCELED.
-    def test_a_mariadb_lock_wait_of_a_nowait_lock_is_lock_not_available(self):
-        for server, lock, number, code in [
-            ("mariadb", "update_nowait", 1205, "LOCK_NOT_AVAILABLE"),
-            ("mariadb", "share_nowait", 1205, "LOCK_NOT_AVAILABLE"),
-            ("mariadb", "update", 1205, "CANCELED"),
-            ("mariadb", "share", 1205, "CANCELED"),
-            ("mariadb", "", 1205, "CANCELED"),
-            ("mariadb", "update_nowait", 1317, "CANCELED"),
-            ("mariadb", "update_nowait", 1969, "CANCELED"),
-            ("mariadb", "update_nowait", 1213, "DEADLOCK"),
-            ("mysql", "update_nowait", 1205, "CANCELED"),
-            ("mysql", "share_nowait", 3572, "LOCK_NOT_AVAILABLE"),
-        ]:
-            with self.subTest(server=server, lock=lock, number=number):
-                driver_error = mysql_error(pymysql.err.OperationalError, number, "m")
-                error = _lock_error(self.run_mysql(driver_error, server), server, lock)
-                self.assertEqual(error.code, code)
-                self.assertIs(error.cause, driver_error)
-                self.assertEqual(str(error), f"{code}: mysql: m")
-        # An error that is no driver error is returned as it is.
-        other = OrmError("CANCELED", "canceled")
-        self.assertIs(_lock_error(other, "mariadb", "update_nowait"), other)
-
-    # Requirements: DIA-208, CFG-6. The statement timeout takes the variable of the server: max_execution_time in
-    # milliseconds on MySQL, max_statement_time in seconds with three fraction digits on MariaDB.
-    def test_the_statement_timeout_takes_the_variable_of_the_server(self):
-        for server, timeout_ms, setting in [
-            ("mysql", 237, "SESSION max_execution_time = 237"),
-            ("mysql", 1500, "SESSION max_execution_time = 1500"),
-            ("mariadb", 237, "SESSION max_statement_time = 0.237"),
-            ("mariadb", 5, "SESSION max_statement_time = 0.005"),
-            ("mariadb", 1500, "SESSION max_statement_time = 1.500"),
-            ("mariadb", 61000, "SESSION max_statement_time = 61.000"),
-        ]:
-            with self.subTest(server=server, timeout_ms=timeout_ms):
-                self.assertEqual(_mysql_statement_timeout(server, timeout_ms), setting)
-        with self.assertRaises(OrmError) as caught:
-            _mysql_statement_timeout("postgres", 237)
-        self.assertEqual(caught.exception.code, "INTERNAL")
-
-    # Requirements: DIA-208, DIA-201. A connection reads its server, then sets the timeout of that server in its session
-    # statement, before any statement of the caller; a connection without a timeout sets none.
-    def test_a_mysql_connection_sets_the_timeout_of_its_server_when_it_connects(self):
-        for version, timeout_ms, setting in [
-            ("8.4.3", 237, ", SESSION max_execution_time = 237"),
-            ("11.8.2-MariaDB", 237, ", SESSION max_statement_time = 0.237"),
-            ("11.8.2-MariaDB", 0, ""),
-        ]:
-            with self.subTest(version=version, timeout_ms=timeout_ms):
-                sent = []
-                with patch.object(
-                    pymysql, "connect", return_value=_RecordingConnection(sent, version)
-                ):
-                    connection = _MysqlConnection(
-                        parse_dsn("mysql://root@127.0.0.1:3306/orm_test"), timeout_ms
-                    )
-                self.assertEqual(
-                    connection.server, "mariadb" if "MariaDB" in version else "mysql"
-                )
-                self.assertEqual(len(sent), 3)
-                self.assertEqual(sent[0], MYSQL_SET_NAMES)
-                self.assertEqual(sent[1], "SELECT VERSION()")
-                self.assertTrue(
-                    sent[2].startswith("SET time_zone = '+00:00', sql_mode = ")
-                )
-                self.assertTrue(sent[2].endswith("'" + setting), sent[2])
-
-    # Requirements: CFG-44, CFG-16. A DSN without ssl-mode connects without TLS, so the driver does not start TLS with
-    # a server that offers it; ssl-mode=VERIFY_IDENTITY connects with the verified TLS context.
-    def test_a_mysql_dsn_without_ssl_mode_connects_without_tls(self):
-        def options_of(dsn: str) -> dict:
-            received = {}
-
-            def connect(**options):
-                received.update(options)
-                return _RecordingConnection([], "8.4.3")
-
-            with patch.object(pymysql, "connect", connect):
-                _MysqlConnection(parse_dsn(dsn))
-            return received
-
-        plain = options_of("mysql://root@127.0.0.1:3306/orm_test")
-        self.assertIs(plain.get("ssl_disabled"), True)
-        self.assertNotIn("ssl", plain)
-        with tempfile.NamedTemporaryFile(suffix=".pem") as ca:
-            context = object()
-            with patch(
-                "polyspec.orm.database._verify_identity_context", return_value=context
-            ) as verify:
-                tls = options_of(
-                    f"mysql://root@db.example:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca={ca.name}"
-                )
-            verify.assert_called_once_with(ca.name)
-        self.assertIs(tls.get("ssl"), context)
-        self.assertNotIn("ssl_disabled", tls)
 
     def test_a_statement_on_a_closed_mysql_connection_is_connection_lost(self):
         driver_error = pymysql.err.InterfaceError(0, "")

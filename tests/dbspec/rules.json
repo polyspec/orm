@@ -2299,6 +2299,7 @@
             "  primary key (id)",
             "  foreign key ck_a (parent_id) references users (id)",
             "  check ck_a (a > 0)",
+            "  index ix_users_parent_id (parent_id)",
             "}"
           ],
           "expect": {

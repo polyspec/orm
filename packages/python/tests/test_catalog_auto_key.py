@@ -460,47 +460,10 @@ class _DescribedSession(_Session):
 
 
 class CatalogMariadbDefaultTest(unittest.TestCase):
-    # Requirements: DIA-205. On MariaDB the table descriptor reads COLUMN_DEFAULT as the introspection does: NULL is no
-    # default, a quoted literal its value, a number as written, any other text an expression default; MySQL's text and
-    # flag are kept as they are.
-    def test_a_mariadb_column_default_is_read_by_the_rule_of_the_introspection(self):
-        def row(name, default, generated=False):
-            return [name, "varchar(8)", True, False, 0, False, default, generated]
-
-        rows = [
-            row("a", None),
-            row("b", "NULL"),
-            row("c", "'it''s'"),
-            row("d", "7"),
-            row("e", "current_timestamp()"),
-            row("f", "current_timestamp(3)"),
-            row("g", "uuid()"),
-        ]
-        metadata = _DescribedSession("mariadb", rows).describe(
-            {"namespace": "orm_test", "name": "sample"}
-        )
-        self.assertEqual(
-            [(c.default_expression, c.expression_default) for c in metadata.columns],
-            [
-                (None, False),
-                (None, False),
-                ("it's", False),
-                ("7", False),
-                ("CURRENT_TIMESTAMP", True),
-                ("CURRENT_TIMESTAMP(3)", True),
-                ("uuid()", True),
-            ],
-        )
-        mysql = _DescribedSession(
-            "mysql", [row("b", "NULL"), row("e", "CURRENT_TIMESTAMP", True)]
-        ).describe({"namespace": "orm_test", "name": "sample"})
-        self.assertEqual(
-            [(c.default_expression, c.expression_default) for c in mysql.columns],
-            [("NULL", False), ("CURRENT_TIMESTAMP", True)],
-        )
-
+    # Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no server
+    # writes one, so the recipes cannot hold it (FCV-2).
     def test_a_mariadb_quoted_default_that_is_not_one_literal_is_metadata_invalid(self):
-        for default in ("'open", "'a' 'b'"):
+        for default in ("'a' 'b'", "'unterminated", "'a'x"):
             with self.subTest(default=default):
                 session = _DescribedSession(
                     "mariadb",
@@ -509,6 +472,11 @@ class CatalogMariadbDefaultTest(unittest.TestCase):
                 with self.assertRaises(OrmError) as caught:
                     session.describe({"namespace": "orm_test", "name": "sample"})
                 self.assertEqual(caught.exception.code, codes.TABLE_METADATA_INVALID)
+                self.assertEqual(
+                    str(caught.exception),
+                    f'TABLE_METADATA_INVALID: column "a": default {default} is not one'
+                    " string literal",
+                )
 
 
 if __name__ == "__main__":

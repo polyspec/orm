@@ -264,6 +264,40 @@
       }
     },
     {
+      "id": "mysql-expression-default",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `orders` ADD COLUMN `token` varchar(36) NULL DEFAULT (concat('a', 'b'))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "column",
+          "orders",
+          "token"
+        ]
+      ]
+    },
+    {
       "id": "mysql-functional-index",
       "dialect": "mysql",
       "documents": {

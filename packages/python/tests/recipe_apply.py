@@ -21,6 +21,7 @@ from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.database import parse_dsn
 from polyspec.orm.markdown import MarkdownConnection
 
+from . import recipe as _recipe
 from .case_database import case_database, case_server
 from .dbspec_apply_runner import Adapter
 from .runner_connect import mysql_connect
@@ -233,6 +234,7 @@ def apply_ops(sql, run_step) -> dict:
 
         started = time.monotonic()
         code = "ok"
+        message = None
         try:
             _COMMANDS[step["op"]](
                 session.adapter,
@@ -242,15 +244,18 @@ def apply_ops(sql, run_step) -> dict:
                 lambda: _NOW,
                 handler,
             )
-        except _Stop:
+        except _Stop as error:
             code = "stopped"
+            message = str(error)
         except DbspecApplyError as error:
             code = error.code
+            message = str(error)
             _holds(step, error)
         except Exception as error:
             if str(error) != step.get("message"):
                 raise
             code = "message"
+            message = str(error)
             _holds(step, error)
         elapsed = (time.monotonic() - started) * 1000
         bounds = step.get("elapsed")
@@ -261,6 +266,8 @@ def apply_ops(sql, run_step) -> dict:
             members.append(["events", {"int": str(state["events"])}])
         for kind in step.get("count", []):
             members.append([kind, {"int": str(kinds.get(kind, 0))}])
+        if step.get("with_message") is True and message is not None:
+            members.append(["message", {"text": message}])
         return {"value": {"object": members}}
 
     ops = {
@@ -279,3 +286,4 @@ def _holds(step: dict, error: Exception) -> None:
     detail = step.get("detail")
     if detail is not None and detail.lower() not in str(error).lower():
         raise AssertionError(f"the message {error} does not hold {detail}")
+    _recipe._check_message_holds(str(error), step.get("message_holds"))

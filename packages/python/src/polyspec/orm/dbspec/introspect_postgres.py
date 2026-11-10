@@ -2,6 +2,7 @@
 # Every query reads the whole current schema at once.
 import re
 
+from polyspec.orm.dbspec.parse import goq
 from polyspec.orm.dbspec.introspect_catalog import Catalog, quote, table_types
 from polyspec.orm.dbspec.names import rendered_column
 from polyspec.orm.dbspec.introspect_check import CheckDecodeError, decode_check
@@ -119,7 +120,7 @@ def read_postgres(query) -> Catalog:
                 "column",
                 table,
                 name,
-                f"type {formatted} with collation {collation!r} has no dbspec type",
+                f"type {formatted} with collation {goq(collation)} has no dbspec type",
             )
             continue
         col = {

@@ -440,27 +440,3 @@ fn guard_result(value: &mut dyn FnMut() -> String) -> String {
     let then = value();
     format!("CASE WHEN {first} BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN {then} END")
 }
-
-#[cfg(test)]
-mod row_lock_tests {
-    use super::Dialect;
-    use crate::MySqlServer;
-
-    // DIA-209: share is LOCK IN SHARE MODE on both servers of the mysql dialect, share_nowait the form of the server.
-    #[test]
-    fn a_row_lock_renders_the_form_of_the_server() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for server in [MySqlServer::MySql, MySqlServer::MariaDb] {
-            assert_eq!(Dialect::MySql.row_lock("update", server), Some(" FOR UPDATE"));
-            assert_eq!(Dialect::MySql.row_lock("share", server), Some(" LOCK IN SHARE MODE"));
-            assert_eq!(Dialect::MySql.row_lock("update_nowait", server), Some(" FOR UPDATE NOWAIT"));
-            assert_eq!(Dialect::Postgres.row_lock("share", server), Some(" FOR SHARE"));
-            assert_eq!(Dialect::Postgres.row_lock("share_nowait", server), Some(" FOR SHARE NOWAIT"));
-            assert_eq!(Dialect::Sqlite.row_lock("share_nowait", server), Some(""));
-            assert_eq!(Dialect::MySql.row_lock("exclusive", server), None);
-            assert_eq!(Dialect::MySql.row_lock("", server), None);
-        }
-        assert_eq!(Dialect::MySql.row_lock("share_nowait", MySqlServer::MySql), Some(" FOR SHARE NOWAIT"));
-        assert_eq!(Dialect::MySql.row_lock("share_nowait", MySqlServer::MariaDb), Some(" LOCK IN SHARE MODE NOWAIT"));
-    }
-}

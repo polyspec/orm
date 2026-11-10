@@ -318,6 +318,9 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("detail").Detail != "" && !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(s.k("detail").Detail)) {
 			return outcome{}, fmt.Errorf("the message %q does not hold %q", err.Error(), s.k("detail").Detail)
 		}
+		if err := s.k("message_holds").MessageHolds.check(err.Error()); err != nil {
+			return outcome{}, err
+		}
 	}
 	if s.k("elapsed").Elapsed != nil && (elapsed < s.k("elapsed").Elapsed.AtLeastMs || elapsed >= s.k("elapsed").Elapsed.BelowMs) {
 		return outcome{}, fmt.Errorf("the command took %d ms, want at least %d and below %d", elapsed, s.k("elapsed").Elapsed.AtLeastMs, s.k("elapsed").Elapsed.BelowMs)
@@ -328,6 +331,9 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	for _, kind := range s.k("count").Count {
 		members = append(members, []any{kind, map[string]any{"int": strconv.Itoa(kinds[kind])}})
+	}
+	if s.k("with_message").WithMessage && err != nil {
+		members = append(members, []any{"message", map[string]any{"text": err.Error()}})
 	}
 	return outcome{fields: map[string]any{"value": map[string]any{"object": members}}}, nil
 }

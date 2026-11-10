@@ -2,6 +2,33 @@
 use super::CatalogError;
 use crate::tool_db::{Conn, QueryLimits, Rows, Val, P};
 
+/// The column of one row of the column query of a server. MariaDB writes COLUMN_DEFAULT as SQL text, which the descriptor
+/// reads in the MySQL form by the rule of the introspection (DIA-205); the query reads no EXTRA, and MariaDB writes no
+/// DEFAULT_GENERATED.
+fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result<TableColumnMetadata, CatalogError> {
+    if row.len() != 8 {
+        return Err("TABLE_METADATA_INVALID: column shape".into());
+    }
+    let mut column = TableColumnMetadata {
+        name: text(&row[0])?,
+        native_type: text(&row[1])?,
+        nullable: row[2].bool().map_err(|e| e.to_string())?,
+        generated: row[3].bool().map_err(|e| e.to_string())?,
+        automatic_key: row[5].bool().map_err(|e| e.to_string())?,
+        default_expression: match &row[6] {
+            Val::Null => None,
+            value => Some(text(value)?),
+        },
+        expression_default: row[7].bool().map_err(|e| e.to_string())?,
+        check_precision: None,
+    };
+    if server == polyspec_orm_schema::dbspec::Server::MariaDb {
+        (column.default_expression, column.expression_default) = polyspec_orm_schema::dbspec::mariadb_catalog_default(column.default_expression.take())
+            .map_err(|error| format!("TABLE_METADATA_INVALID: column {:?}: {error}", column.name))?;
+    }
+    Ok(column)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TableRef {
     pub namespace: String,
@@ -142,30 +169,9 @@ pub(super) async fn describe(
     let mut columns = Vec::new();
     let mut keys = Vec::new();
     for row in result {
-        if row.len() != 8 {
-            return Err("TABLE_METADATA_INVALID: column shape".into());
-        }
-        let mut column = TableColumnMetadata {
-            name: text(&row[0])?,
-            native_type: text(&row[1])?,
-            nullable: row[2].bool().map_err(|e| e.to_string())?,
-            generated: row[3].bool().map_err(|e| e.to_string())?,
-            automatic_key: row[5].bool().map_err(|e| e.to_string())?,
-            default_expression: match &row[6] {
-                Val::Null => None,
-                value => Some(text(value)?),
-            },
-            expression_default: row[7].bool().map_err(|e| e.to_string())?,
-            check_precision: None,
-        };
-        // MariaDB writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the MySQL form by the rule of the
-        // introspection (DIA-205); the query reads no EXTRA, and MariaDB writes no DEFAULT_GENERATED.
-        if server == polyspec_orm_schema::dbspec::Server::MariaDb {
-            (column.default_expression, column.expression_default) = polyspec_orm_schema::dbspec::mariadb_catalog_default(column.default_expression.take())
-                .map_err(|error| format!("TABLE_METADATA_INVALID: column {:?}: {error}", column.name))?;
-        }
+        let column = column_of(&row, server)?;
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
-            return Err("TABLE_METADATA_INVALID: duplicate column".into());
+            return Err(format!("TABLE_METADATA_INVALID: duplicate column {:?}", column.name).into());
         }
         let ordinal = row[4].int().map_err(|e| e.to_string())?;
         if ordinal < 0 {
@@ -201,4 +207,33 @@ pub(super) async fn describe(
         column.check_precision = check.map(|precision| precision as i64);
     }
     Ok(metadata)
+}
+
+#[cfg(test)]
+mod mariadb_default_tests {
+    use super::column_of;
+    use crate::tool_db::Val;
+
+    /// A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID (DIA-205). No server writes one, so
+    /// the recipes cannot hold it, and the catalog of Rust holds sqlx connections with no driver seam, so the case enters at
+    /// the row that describe reads (FCV-2).
+    // Requirements: DIA-205.
+    #[test]
+    fn mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for text in ["'a' 'b'", "'unterminated", "'a'x"] {
+            let row = [
+                Val::Text("broken".into()),
+                Val::Text("varchar(40)".into()),
+                Val::Int(1),
+                Val::Int(0),
+                Val::Int(0),
+                Val::Int(0),
+                Val::Text(text.into()),
+                Val::Int(0),
+            ];
+            let refused = column_of(&row, polyspec_orm_schema::dbspec::Server::MariaDb).expect_err(text);
+            assert_eq!(refused.to_string(), format!("TABLE_METADATA_INVALID: column \"broken\": default {text} is not one string literal"));
+        }
+    }
 }

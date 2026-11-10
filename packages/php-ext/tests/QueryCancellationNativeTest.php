@@ -19,7 +19,7 @@ use ReflectionMethod;
 #[Small]
 final class QueryCancellationNativeTest extends TestCase
 {
-    use \Polyspec\Orm\Tests\QueryCancellationDbCases;
+    use \Polyspec\Orm\Tests\QueryCancellationServerCases;
 
     public function testNativeCancellationStateIsPrivatePersistentAndRemovedWhenReleased(): void
     {

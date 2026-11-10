@@ -460,7 +460,7 @@ async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: Sta
 interface SessionSetup { error?: unknown; server: MySqlServer; readonly ready: WeakMap<object, Promise<void>>; }
 
 /** The statement that bounds the statements of a connection to the server by timeoutMs milliseconds (DIA-208). */
-export function mysqlStatementTimeout(server: MySqlServer, timeoutMs: number): string {
+function mysqlStatementTimeout(server: MySqlServer, timeoutMs: number): string {
   return server === 'mariadb' ? `SET SESSION max_statement_time = ${(timeoutMs / 1000).toFixed(3)}` : `SET SESSION max_execution_time = ${timeoutMs}`;
 }
 

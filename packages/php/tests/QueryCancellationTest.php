@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class QueryCancellationTest extends TestCase
 {
-    use QueryCancellationDbCases;
+    use QueryCancellationServerCases;
 
     public function testCancellationStateIsPrivatePersistentAndRemovedWhenReleased(): void
     {

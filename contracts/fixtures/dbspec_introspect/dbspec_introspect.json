@@ -757,6 +757,28 @@
       ]
     },
     {
+      "id": "mysql_expression_default",
+      "requirements": [
+        "DIA-133",
+        "DIA-205"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-expression-default",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "mysql_functional_index",
       "requirements": [
         "DIA-133",

@@ -104,72 +104,6 @@ trait QueryCancellationDbCases
         self::assertSame([[0]], $root->fetch('select', [$table], null, "SELECT count(*) FROM $table"));
     }
 
-    // Requirements: CFG-9.
-    public function testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot(): void
-    {
-        with_case_database('postgres', static function (): void {
-        }, static function (string $dsn): void {
-            $root = Orm::connect($dsn, new Config());
-            $source = new Cancellation();
-            $cancelled = $root->withCancellation($source);
-            $pdo = $root->pdo();
-            self::assertInstanceOf(\Pdo\Pgsql::class, $pdo);
-            $originalPid = $pdo->getPid();
-            $activeNotice = false;
-            $pdo->setNoticeCallback(static function (string $notice) use ($source, &$activeNotice): void {
-                if (str_contains($notice, 'orm-cancel-active')) {
-                    $activeNotice = true;
-                    $source->cancel();
-                }
-            });
-
-            try {
-                $root->run(
-                    'schema',
-                    ['cancellation_rollback'],
-                    null,
-                    'CREATE TABLE cancellation_rollback (value INTEGER)'
-                );
-                try {
-                    $root->transaction(function () use ($root, $cancelled): void {
-                        $root->run(
-                            'insert',
-                            ['cancellation_rollback'],
-                            1,
-                            'INSERT INTO cancellation_rollback (value) VALUES (1)'
-                        );
-                        $cancelled->run(
-                            'utility',
-                            [],
-                            1,
-                            "DO \$cancel\$ BEGIN RAISE NOTICE 'orm-cancel-active'; PERFORM pg_sleep(30); END \$cancel\$"
-                        );
-                        self::fail('the active PostgreSQL statement should be terminated');
-                    }, retry: 0);
-                    self::fail('the cancelled transaction should fail');
-                } catch (OrmException $error) {
-                    self::assertSame(Code::CANCELED, $error->code_, $error->getMessage());
-                    self::assertTrue($activeNotice, 'the notice callback ran while the statement was active');
-                }
-
-                self::assertSame(
-                    $originalPid,
-                    $root->pdo()->getPid(),
-                    'the logical root handle reuses its cancelled backend after rollback'
-                );
-                self::assertRolledBackAndUsable($root);
-            } finally {
-                $root->close();
-            }
-        });
-    }
-
-    // Requirements: CFG-9.
-    public function testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot(): void
-    {
-        self::lockEventCancelsActiveStatementRollsBackAndReconnectsRoot('mysql');
-    }
-
     /**
      * The lock event case on $driver, a server of the MySQL dialect: MySQL here, MariaDB in
      * QueryCancellationMariadbTest (DIA-200).
@@ -287,12 +221,6 @@ trait QueryCancellationDbCases
                 }
             }
         });
-    }
-
-    // Requirements: CFG-9.
-    public function testMysqlCancellationStopsEveryActiveRootAndReopensEachProcessRoot(): void
-    {
-        self::cancellationStopsEveryActiveRootAndReopensEachProcessRoot('mysql');
     }
 
     /**

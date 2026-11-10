@@ -2902,6 +2902,127 @@
       ]
     },
     {
+      "id": "an_idle_limit_of_the_server_ends_the_connection_of_a_transaction",
+      "requirements": [
+        "DIA-201",
+        "CFG-15"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "sleeper"
+        },
+        {
+          "op": "utils.run",
+          "connection": "connection",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SET SESSION wait_timeout = 1"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990032"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "before the limit"
+                }
+              }
+            },
+            {
+              "op": "utils.run",
+              "connection": "sleeper",
+              "statements": [
+                {
+                  "kind": "utility",
+                  "tables": [],
+                  "sql": "DO SLEEP(3)"
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990032"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "after the limit"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROLLBACK",
+              "message_holds": "transaction failed (CONNECTION_LOST",
+              "rollback": "CONNECTION_LOST"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "sleeper",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990032"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "savepoint_rollback_failed_reports_both_errors",
       "requirements": [
         "CFG-15"

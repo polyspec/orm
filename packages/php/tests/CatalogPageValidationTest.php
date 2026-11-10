@@ -80,37 +80,22 @@ final class CatalogPageValidationTest extends TestCase
         }
     }
 
-    // Requirements: DIA-205. The descriptor reads a MariaDB COLUMN_DEFAULT in the MySQL form: 'NULL' is no default, a
-    // quoted literal its value with its escapes undone, a number itself, the clock and any other text an expression;
-    // a quoted text that is not one whole literal is TABLE_METADATA_INVALID.
-    public function testAMariadbColumnDefaultIsReadInTheMysqlForm(): void
+    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
+    // server writes one, so the recipes cannot hold it (FCV-2).
+    public function testAMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
     {
         $read = new \ReflectionMethod(Catalog::class, 'mariadbColumn');
-        $column = static fn (?string $default): CatalogColumn
-            => new CatalogColumn('c', 'int', true, false, false, $default, false);
-        foreach (
-            [
-                [null, null, false], ['NULL', null, false], ["'it''s'", "it's", false], ["''", '', false],
-                ['42', '42', false], ['-1.5', '-1.5', false], ['current_timestamp()', 'CURRENT_TIMESTAMP', true],
-                ['current_timestamp(6)', 'CURRENT_TIMESTAMP(6)', true], ['uuid()', 'uuid()', true],
-                ["'NULL'", 'NULL', false],
-            ] as [$default, $want, $expression]
-        ) {
-            $got = $read->invoke(null, $column($default));
-            self::assertSame(
-                [$want, $expression],
-                [$got->defaultExpression, $got->expressionDefault],
-                (string) $default
-            );
-            self::assertSame('c', $got->name);
-            self::assertTrue($got->nullable);
-        }
-        try {
-            $read->invoke(null, $column("'a' 'b'"));
-            self::fail('a quoted text that is not one literal is read');
-        } catch (OrmException $error) {
-            self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_);
-            self::assertStringContainsString('column "c"', $error->getMessage());
+        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
+            try {
+                $read->invoke(null, new CatalogColumn('broken', 'int', true, false, false, $text, false));
+                self::fail("the default {$text} was read");
+            } catch (OrmException $error) {
+                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
+                self::assertSame(
+                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
+                    $error->getMessage(),
+                );
+            }
         }
     }
 }

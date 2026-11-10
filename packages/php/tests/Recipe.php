@@ -181,7 +181,7 @@ final class Recipe
     }
 
     /** Asserts that message holds each text of a message_holds field. */
-    private static function assertMessageHolds(mixed $holds, string $message): void
+    public static function assertMessageHolds(mixed $holds, string $message): void
     {
         foreach (self::messageHoldsTexts($holds) as $text) {
             Assert::assertStringContainsString($text, $message, 'the error message');
@@ -3188,6 +3188,11 @@ final class Recipe
                     'generated' => array_map(static fn ($column): bool => $column->generated, $columns),
                     'automatic_keys' => array_map(static fn ($column): bool => $column->automaticKey, $columns),
                     'defaults' => array_map(static fn ($column): bool => $column->defaultExpression !== null, $columns),
+                    'default_texts' => array_map(static fn ($column): ?string => $column->defaultExpression, $columns),
+                    'expression_defaults' => array_map(
+                        static fn ($column): bool => $column->expressionDefault,
+                        $columns
+                    ),
                     'primary_key' => $metadata->primaryKey,
                     'reliable_row_identity' => $metadata->reliableRowIdentity,
                 ];

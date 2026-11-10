@@ -8701,6 +8701,13 @@
               "minLength": 1
             }
           },
+          "message_holds": {
+            "$ref": "#/$defs/messageHolds"
+          },
+          "with_message": {
+            "description": "Adds the whole message of the failure of the command to its value as the member message.",
+            "const": true
+          },
           "detail": {
             "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
@@ -8803,6 +8810,13 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "message_holds": {
+            "$ref": "#/$defs/messageHolds"
+          },
+          "with_message": {
+            "description": "Adds the whole message of the failure of the command to its value as the member message.",
+            "const": true
           },
           "detail": {
             "description": "A text that the message of the failure holds, compared without case.",
@@ -8907,6 +8921,13 @@
               "minLength": 1
             }
           },
+          "message_holds": {
+            "$ref": "#/$defs/messageHolds"
+          },
+          "with_message": {
+            "description": "Adds the whole message of the failure of the command to its value as the member message.",
+            "const": true
+          },
           "detail": {
             "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
@@ -9009,6 +9030,13 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "message_holds": {
+            "$ref": "#/$defs/messageHolds"
+          },
+          "with_message": {
+            "description": "Adds the whole message of the failure of the command to its value as the member message.",
+            "const": true
           },
           "detail": {
             "description": "A text that the message of the failure holds, compared without case.",
@@ -9454,6 +9482,21 @@
                 }
               },
               "defaults": {
+                "type": "array",
+                "items": {
+                  "type": "boolean"
+                }
+              },
+              "default_texts": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "expression_defaults": {
                 "type": "array",
                 "items": {
                   "type": "boolean"

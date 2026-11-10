@@ -1588,7 +1588,7 @@ class Session {
         try {
           read = mariadbDefault(defaultExpression, '');
         } catch (error) {
-          throw err(CODE_METADATA, `default of column "${name}": ${error instanceof Error ? error.message : String(error)}`, error);
+          throw err(CODE_METADATA, `column "${name}": ${error instanceof Error ? error.message : String(error)}`, error);
         }
         defaultExpression = read.dflt;
         expressionDefault = read.extra === 'DEFAULT_GENERATED';

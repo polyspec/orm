@@ -2845,6 +2845,8 @@ def _op_describe_table(step: dict, context: dict) -> dict:
         "generated": [column.generated for column in columns],
         "automatic_keys": [column.automatic_key for column in columns],
         "defaults": [column.default_expression is not None for column in columns],
+        "default_texts": [column.default_expression for column in columns],
+        "expression_defaults": [column.expression_default for column in columns],
     }
 
 

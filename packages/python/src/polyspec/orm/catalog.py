@@ -37,6 +37,7 @@ from polyspec.orm.dbspec.introspect_mysql import mariadb_catalog_default
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import MarkdownConnection
 from polyspec.orm.placeholders import for_mysql, for_postgres
+from polyspec.orm.dbspec.parse import goq
 
 T = TypeVar("T")
 
@@ -293,7 +294,7 @@ def _temporal_write_value(
         if temporal is not None:
             raise _error(
                 code,
-                f"column {column.name!r} takes the dbspec text of a {temporal[0]}, not a datetime",
+                f"column {goq(column.name)} takes the dbspec text of a {temporal[0]}, not a datetime",
             )
 
 
@@ -495,7 +496,7 @@ def _kind(dialect: str, native: str) -> str:
     kind = table.get((dialect, native))
     if kind is None:
         raise _error(
-            codes.TABLE_KIND_UNSUPPORTED, f"relation kind {native!r} of {dialect}"
+            codes.TABLE_KIND_UNSUPPORTED, f"relation kind {goq(native)} of {dialect}"
         )
     return kind
 
@@ -649,7 +650,8 @@ def _check_cells(metadata: CatalogTableMetadata, cells: list) -> None:
     for column, cell in zip(metadata.columns, cells):
         if cell is None and not column.nullable:
             raise _error(
-                codes.ROW_SNAPSHOT_INVALID, f"NULL in non-null column {column.name!r}"
+                codes.ROW_SNAPSHOT_INVALID,
+                f"NULL in non-null column {goq(column.name)}",
             )
         _cell_key(cell)
 
@@ -731,14 +733,14 @@ def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) ->
             None,
         )
         if index is None:
-            raise _error(code, f"unknown column {name!r}")
+            raise _error(code, f"unknown column {goq(name)}")
         column = metadata.columns[index]
         if name in seen:
-            raise _error(code, f"duplicate column {name!r}")
+            raise _error(code, f"duplicate column {goq(name)}")
         if column.generated:
-            raise _error(code, f"generated column {name!r} is not writable")
+            raise _error(code, f"generated column {goq(name)} is not writable")
         if value is None and not column.nullable:
-            raise _error(code, f"NULL in non-null column {name!r}")
+            raise _error(code, f"NULL in non-null column {goq(name)}")
         _temporal_write_value(column, value, dialect, code)
         if _exceeds_declared_capacity(column, value):
             raise _error(
@@ -1782,12 +1784,14 @@ class _Session:
                 )
             name = _check_name(_text(row[0]))
             if any(existing.name == name for existing in columns):
-                raise _error(codes.TABLE_METADATA_INVALID, f"duplicate column {name!r}")
+                raise _error(
+                    codes.TABLE_METADATA_INVALID, f"duplicate column {goq(name)}"
+                )
             default = row[6]
             if default is not None and not isinstance(default, str):
                 raise _error(
                     codes.TABLE_METADATA_INVALID,
-                    f"default expression of column {name!r} is {type(default).__name__}",
+                    f"default expression of column {goq(name)} is not text",
                 )
             expression = _bool(row[7])
             if dialect == "mysql" and self.server == "mariadb":
@@ -1797,7 +1801,7 @@ class _Session:
                 except ValueError as error:
                     raise _error(
                         codes.TABLE_METADATA_INVALID,
-                        f"default expression of column {name!r}: {error}",
+                        f"column {goq(name)}: {error}",
                     ) from None
             column = CatalogColumn(
                 name=name,
@@ -1875,7 +1879,7 @@ class _Session:
         if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], str):
             raise _error(
                 codes.TABLE_METADATA_INVALID,
-                f"the definition of table {table['name']!r} is not one text",
+                f"the definition of table {goq(table['name'])} is not one text",
             )
         for column in temporal:
             column.check_precision = _check_precision(rows[0][0], column.name)
@@ -2344,7 +2348,7 @@ class CatalogConnection:
                 if not column.automatic_key and column.default_expression is None:
                     raise _error(
                         codes.ROW_INSERT_IDENTITY_REQUIRED,
-                        f"primary key {column.name!r} has no generator",
+                        f"primary key {goq(column.name)} has no generator",
                     )
                 omitted_indexes.append(index)
         omitted_auto_keys = [
@@ -2609,7 +2613,7 @@ class CatalogConnection:
                 if not _same_row([after[0][index]], [updated[index]]):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
-                        f"stored ordinary values of {column.name!r} differ",
+                        f"stored ordinary values of {goq(column.name)} differ",
                     )
             return CatalogMutationResult(
                 columns=[c.name for c in descriptor.columns], rows=after

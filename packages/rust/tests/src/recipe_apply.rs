@@ -514,11 +514,13 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
     let elapsed = started.elapsed().as_millis();
     let session = Arc::into_inner(shared).ok_or("the connection of the command is still held")?.into_inner();
     state.sessions.insert(target, session);
+    let mut reported = None;
     let code = match &result {
         Ok(()) => "ok".to_owned(),
         Err(error) => {
             let failure = first_failure(error);
             let message = failure.to_string();
+            reported = Some(message.clone());
             let code = match failure {
                 ApplyError::Event(stop) if stop.is::<Stop>() => "stopped".to_owned(),
                 other => match other.code() {
@@ -531,6 +533,10 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 if !message.to_lowercase().contains(&detail.to_lowercase()) {
                     return Err(format!("the message {message:?} does not hold {detail:?}"));
                 }
+            }
+            let holds = crate::recipe::message_holds(&crate::recipe_reads::read(step, "message_holds")["message_holds"])?;
+            if let Some(text) = crate::recipe::missing_hold(&message, &holds) {
+                return Err(format!("the message {message:?} does not hold {text:?}"));
             }
             code
         }
@@ -548,6 +554,11 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             for kind in counted.iter().filter_map(Value::as_str) {
                 members.push(json!([kind, { "int": kinds.get(kind).copied().unwrap_or(0).to_string() }]));
             }
+        }
+    }
+    if crate::recipe_reads::read(step, "with_message")["with_message"].as_bool() == Some(true) {
+        if let Some(message) = reported {
+            members.push(json!(["message", { "text": message }]));
         }
     }
     Ok(json!({ "value": { "object": members } }))

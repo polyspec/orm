@@ -182,7 +182,7 @@ function messageHoldsTexts(holds) {
 }
 
 // checkMessageHolds throws an error that names the first text of the message_holds field that message does not hold.
-function checkMessageHolds(message, holds) {
+export function checkMessageHolds(message, holds) {
   for (const text of messageHoldsTexts(holds)) {
     if (!message.includes(text)) throw new Error(`message ${message}, want one that holds ${text}`);
   }
@@ -992,6 +992,8 @@ const OPS = {
       generated: metadata.columns.map(c => c.generated),
       automatic_keys: metadata.columns.map(c => c.automaticKey),
       defaults: metadata.columns.map(c => c.defaultExpression !== null),
+      default_texts: metadata.columns.map(c => c.defaultExpression),
+      expression_defaults: metadata.columns.map(c => c.expressionDefault),
     };
   },
   async 'catalog.table_page'(s, { catalog, namespace }) {

@@ -204,7 +204,11 @@ function case_database_next_admin_checks(string $driver, callable $step): int
     case_database($driver, $step)->drop();
     $admin = getenv('ORM_TEST_' . strtoupper($driver) . '_DSN');
     if ($admin === false || $admin === '') {
-        throw new RuntimeException('ORM_TEST_' . strtoupper($driver) . '_DSN is required');
+        $servers = $driver === 'mariadb' ? 'orm-test-mariadb' : 'orm-test-servers';
+        throw new RuntimeException(
+            'ORM_TEST_' . strtoupper($driver)
+                . "_DSN is required; run make {$servers}, which starts the servers and writes it"
+        );
     }
     $checks = case_admin($admin)->query('SELECT @@SESSION.foreign_key_checks');
     if ($checks === false) {

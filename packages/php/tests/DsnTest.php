@@ -132,27 +132,6 @@ class DsnTest extends TestCase
         }
     }
 
-    // Requirements: DIA-208. The statement timeout is the session variable of the server: max_execution_time in
-    // milliseconds on MySQL, max_statement_time in seconds with three fraction digits on MariaDB.
-    public function testTheStatementTimeoutIsTheVariableOfTheServer(): void
-    {
-        $setting = new \ReflectionMethod(Orm::class, 'mysqlStatementTimeout');
-        foreach (
-            [
-                ['mysql', 237, 'SESSION max_execution_time = 237'],
-                ['mysql', 60000, 'SESSION max_execution_time = 60000'],
-                ['mariadb', 237, 'SESSION max_statement_time = 0.237'],
-                ['mariadb', 1, 'SESSION max_statement_time = 0.001'],
-                ['mariadb', 1500, 'SESSION max_statement_time = 1.500'],
-                ['mariadb', 60000, 'SESSION max_statement_time = 60.000'],
-            ] as [$server, $ms, $want]
-        ) {
-            self::assertSame($want, $setting->invoke(null, $server, $ms), "$server $ms");
-        }
-        self::assertStringNotContainsString('max_execution_time', $setting->invoke(null, 'mariadb', 237));
-        self::assertStringNotContainsString('max_statement_time', $setting->invoke(null, 'mysql', 237));
-    }
-
     public function testSharedDsnUrlPartsPreserveEmptyAuthorityRules(): void
     {
         [$parts, $query] = DsnUrl::parse('postgres:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres');

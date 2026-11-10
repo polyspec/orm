@@ -139,7 +139,11 @@ type databaseStep struct {
 	Plans   []string `json:"plans"`
 	Count   []string `json:"count"`
 	Detail  string   `json:"detail"`
-	Message string   `json:"message"`
+	// WithMessage adds the message of the failure of a command to its outcome.
+	WithMessage bool `json:"with_message"`
+	// MessageHolds are the texts that the message of the failure of a command holds (FCV-4).
+	MessageHolds messageHolds `json:"message_holds"`
+	Message      string       `json:"message"`
 	// Code is the error code of fault.next_statement (PRT-48), armed with Message.
 	Code string `json:"code"`
 	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
@@ -882,6 +886,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		generated := make([]bool, len(metadata.Columns))
 		automatic := make([]bool, len(metadata.Columns))
 		defaults := make([]bool, len(metadata.Columns))
+		defaultTexts := make([]any, len(metadata.Columns))
+		expressionDefaults := make([]bool, len(metadata.Columns))
 		for i, column := range metadata.Columns {
 			names[i] = column.Name
 			natives[i] = column.NativeType
@@ -889,12 +895,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			generated[i] = column.Generated
 			automatic[i] = column.AutomaticKey
 			defaults[i] = column.DefaultExpression != nil
+			if column.DefaultExpression != nil {
+				defaultTexts[i] = *column.DefaultExpression
+			}
+			expressionDefaults[i] = column.ExpressionDefault
 		}
 		return outcome{api: metadata, fields: map[string]any{
 			"namespace": map[string]any{"text": metadata.Table.Namespace},
 			"kind":      string(metadata.Kind), "columns_present": len(metadata.Columns) > 0,
 			"columns": names, "native_types": natives, "primary_key": metadata.PrimaryKey, "reliable_row_identity": metadata.ReliableRowIdentity,
 			"nullable": nullable, "generated": generated, "automatic_keys": automatic, "defaults": defaults,
+			"default_texts": defaultTexts, "expression_defaults": expressionDefaults,
 		}}, nil
 	case "catalog.table_page":
 		page, err := c.catalog.TablePage(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.k("table").Table}, s.k("limit").Limit, s.k("offset").Offset)
