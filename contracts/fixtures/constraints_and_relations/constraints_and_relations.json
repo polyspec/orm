@@ -480,6 +480,11 @@
               "error": "CONSTRAINT",
               "message": "CONSTRAINT: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
               "driver_cause": true
+            },
+            "mariadb": {
+              "error": "CONSTRAINT",
+              "message_holds": "CONSTRAINT `ck_author_counts` failed for `",
+              "driver_cause": true
             }
           }
         },
@@ -517,6 +522,11 @@
             "markdown": {
               "error": "DUPLICATE_KEY",
               "message": "DUPLICATE_KEY: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
+              "driver_cause": true
+            },
+            "mariadb": {
+              "error": "DUPLICATE_KEY",
+              "message_holds": "Duplicate entry 'uuid-author-2' for key 'uq_author_uuid'",
               "driver_cause": true
             }
           }
