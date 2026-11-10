@@ -952,7 +952,9 @@ class _MysqlConnection:
             ) from None
         url = parsed.url
         socket = dict(parse_qsl(url.query, keep_blank_values=True)).get("socket")
-        tls = {}
+        # A DSN without ssl-mode connects without TLS (CFG-44): PyMySQL would otherwise start TLS, unverified, with
+        # any server that offers it.
+        tls: dict = {"ssl_disabled": True}
         if parsed.ssl_ca is not None:
             if not os.path.isfile(parsed.ssl_ca) or not os.access(
                 parsed.ssl_ca, os.R_OK
@@ -981,7 +983,7 @@ class _MysqlConnection:
             )
             self.connection = pymysql.connect(**self._connect_options)
         except Exception as error:
-            if tls and _tls_failure(error):
+            if "ssl" in tls and _tls_failure(error):
                 raise OrmError(
                     codes.CONFIG, f"mysql TLS connection failed: SSL: {error}"
                 ) from error

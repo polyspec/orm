@@ -486,6 +486,35 @@ class ServerDriverErrorTest(unittest.TestCase):
                 )
                 self.assertTrue(sent[2].endswith("'" + setting), sent[2])
 
+    # Requirements: CFG-44, CFG-16. A DSN without ssl-mode connects without TLS, so the driver does not start TLS with
+    # a server that offers it; ssl-mode=VERIFY_IDENTITY connects with the verified TLS context.
+    def test_a_mysql_dsn_without_ssl_mode_connects_without_tls(self):
+        def options_of(dsn: str) -> dict:
+            received = {}
+
+            def connect(**options):
+                received.update(options)
+                return _RecordingConnection([], "8.4.3")
+
+            with patch.object(pymysql, "connect", connect):
+                _MysqlConnection(parse_dsn(dsn))
+            return received
+
+        plain = options_of("mysql://root@127.0.0.1:3306/orm_test")
+        self.assertIs(plain.get("ssl_disabled"), True)
+        self.assertNotIn("ssl", plain)
+        with tempfile.NamedTemporaryFile(suffix=".pem") as ca:
+            context = object()
+            with patch(
+                "polyspec.orm.database._verify_identity_context", return_value=context
+            ) as verify:
+                tls = options_of(
+                    f"mysql://root@db.example:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca={ca.name}"
+                )
+            verify.assert_called_once_with(ca.name)
+        self.assertIs(tls.get("ssl"), context)
+        self.assertNotIn("ssl_disabled", tls)
+
     def test_a_statement_on_a_closed_mysql_connection_is_connection_lost(self):
         driver_error = pymysql.err.InterfaceError(0, "")
         error = self.run_mysql(driver_error)
