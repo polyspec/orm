@@ -166,6 +166,43 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    public function testNativeCatalogPassesAThrowableThatIsNoDriverErrorThrough(): void
+    {
+        // The library catches only \PDOException around a driver call: any other throwable of the call, such as the
+        // interrupt of a time limit, reaches the caller as it is, and a PDOException is still mapped.
+        require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
+        $interrupt = new \RuntimeException('interrupted');
+        foreach ([$interrupt, new \PDOException('no such table')] as $failure) {
+            $pdo = new class ([], $failure) extends CatalogMariadbDefaultPdo {
+                public function __construct(array $defaults, private readonly \Throwable $failure)
+                {
+                    parent::__construct($defaults);
+                }
+
+                public function answer(string $query): array
+                {
+                    if (str_starts_with($query, 'SELECT c.COLUMN_NAME,c.COLUMN_TYPE')) {
+                        throw $this->failure;
+                    }
+                    return parent::answer($query);
+                }
+            };
+            $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+            $db->setServer('mariadb');
+            try {
+                self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+                self::fail('a failed columns read was described');
+            } catch (\Throwable $thrown) {
+                if ($failure === $interrupt) {
+                    self::assertSame($interrupt, $thrown);
+                } else {
+                    self::assertInstanceOf(OrmException::class, $thrown);
+                    self::assertSame($failure, $thrown->getPrevious());
+                }
+            }
+        }
+    }
+
     public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
     {
         require_once __DIR__ . '/CatalogMetadataFailurePdo.php';

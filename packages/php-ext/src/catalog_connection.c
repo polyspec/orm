@@ -40,9 +40,25 @@ static const char *cat_columns_sql(const char *dialect)
 
 /* ---- errors ---------------------------------------------------------------------------------------------------------------- */
 
-/* Replaces the pending PDOException with the OrmException that the driver error maps to (Db::driverError). */
+/* Whether the pending exception is a PDOException: the library catches only \PDOException around a driver call, so any other
+ * throwable (an interrupt, an error of the runtime) passes through unchanged. */
+static bool cat_pdo_pending(void)
+{
+    static zend_class_entry *pdo_ce = NULL;
+    if (EG(exception) == NULL) return false;
+    if (pdo_ce == NULL) {
+        zend_string *n = zend_string_init("PDOException", sizeof("PDOException") - 1, 0);
+        pdo_ce = zend_lookup_class(n);
+        zend_string_release(n);
+    }
+    return pdo_ce != NULL && instanceof_function(EG(exception)->ce, pdo_ce);
+}
+
+/* Replaces the pending PDOException with the OrmException that the driver error maps to (Db::driverError); any other pending
+ * throwable stays as it is. */
 static void cat_driver_error(zval *db)
 {
+    if (!cat_pdo_pending()) return;
     zval ex, mapped;
     ZVAL_OBJ(&ex, EG(exception));
     EG(exception) = NULL;
@@ -1174,6 +1190,10 @@ static void cat_abort(zval *db, zval *pdo)
         EG(exception) = Z_OBJ(cause);
         return;
     }
+    if (!cat_pdo_pending()) {
+        zval_ptr_dtor(&cause);
+        return;
+    }
     cat_driver_error(db);
     zval mapped;
     ZVAL_OBJ(&mapped, EG(exception));
@@ -1199,6 +1219,7 @@ static bool cat_end_read(zval *db, zval *pdo)
     if (cat_try_rollback(pdo)) {
         return true;
     }
+    if (!cat_pdo_pending()) return false;
     zval previous, mapped, message, args[3], ex;
     ZVAL_OBJ(&previous, EG(exception));
     EG(exception) = NULL;
@@ -3994,6 +4015,10 @@ static void cat_rollback_throw(zval *db, zval *pdo, zval *cause)
         zend_throw_exception_object(cause);
         return;
     }
+    if (!cat_pdo_pending()) {
+        zval_ptr_dtor(cause);
+        return;
+    }
     zval rollback_native, rollback_mapped;
     ZVAL_OBJ(&rollback_native, EG(exception));
     EG(exception) = NULL;
@@ -4022,6 +4047,7 @@ static bool cat_commit(zval *db, zval *pdo)
     if (cat_try_exec(pdo, "COMMIT")) {
         return true;
     }
+    if (!cat_pdo_pending()) return false;
     zval native, mapped, message, code_rv;
     ZVAL_OBJ(&native, EG(exception));
     EG(exception) = NULL;
