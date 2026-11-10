@@ -198,6 +198,8 @@ static void collect(errorv *errors)
     OBJ_RELEASE(e);
 }
 
+static bool throw_errors(errorv *list);
+
 /*
  * Runs f, then runs all of ends in order regardless of an earlier failure. If there is one error, it is thrown as is; if there are several, the first
  * error and the cleanup errors after it are thrown together in an ApplyCleanupError.
@@ -213,6 +215,14 @@ static bool finish(applier *a, part f, const part *ends, size_t n)
             collect(&errors);
         }
     }
+    return throw_errors(&errors);
+}
+
+/* Throws the errors collected: none returns true; one is thrown as is; several are thrown as the first error and the cleanup
+ * errors after it in an ApplyCleanupError. */
+static bool throw_errors(errorv *list)
+{
+    errorv errors = *list;
     if (errors.n == 0) {
         return true;
     }
@@ -590,6 +600,411 @@ static verify_result verify(applier *a, str want, str *message)
     return VERIFY_OK;
 }
 
+/* ------------------------------------------------------------ conversion */
+
+/* The savepoint of the SQLite rebuild of a table in the text storage of a uuid (PLN-110). */
+#define CONVERT_SAVEPOINT "\"dbspec$convert\""
+#define REBUILD_TABLE "dbspec$rebuild"
+
+/* table name => strs* of its columns in text storage, and its keys in name order */
+typedef struct {
+    smap columns;
+    strs tables;
+} text_columns;
+
+static bool text_column(const text_columns *text, str table, str column)
+{
+    const strs *names = smap_get(&text->columns, table);
+    return names != NULL && strs_has(names, column);
+}
+
+static const table *document_table(const document *d, str name)
+{
+    for (size_t i = 0; d != NULL && i < d->tables.n; i++) {
+        if (str_eq(d->tables.v[i]->name, name)) {
+            return d->tables.v[i];
+        }
+    }
+    return NULL;
+}
+
+static bool fkeys_named(const fkeyv *list, str name)
+{
+    for (size_t i = 0; list != NULL && i < list->n; i++) {
+        if (str_eq(list->v[i]->name, name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static int fkey_by_name(const void *x, const void *y, void *ctx)
+{
+    (void)ctx;
+    return str_cmp((*(fkey *const *)x)->name, (*(fkey *const *)y)->name);
+}
+
+static int table_by_name(const void *x, const void *y, void *ctx)
+{
+    (void)ctx;
+    return str_cmp((*(table *const *)x)->name, (*(table *const *)y)->name);
+}
+
+/* The foreign keys of list in name order. */
+static fkeyv fkeys_sorted(const fkeyv *list)
+{
+    fkeyv out = {0};
+    for (size_t i = 0; list != NULL && i < list->n; i++) {
+        PUSH(out, list->v[i]);
+    }
+    dbs_sort(out.v, out.n, sizeof *out.v, fkey_by_name, NULL);
+    return out;
+}
+
+/* The columns of table t among names, in the order of the state table. */
+static strs state_column_order(const document *state, str t, const strs *names)
+{
+    strs out = {0};
+    const table *st = document_table(state, t);
+    for (size_t i = 0; st != NULL && i < st->columns.n; i++) {
+        if (strs_has(names, st->columns.v[i]->name)) {
+            PUSH(out, st->columns.v[i]->name);
+        }
+    }
+    return out;
+}
+
+/* A failed catalog query of the conversion is ApplyError convert with the database error as its previous; another failure stays
+ * pending. */
+static bool convert_query_failed(void)
+{
+    if (!pending(spl_ce_RuntimeException)) {
+        return false;
+    }
+    return apply_error("convert", SL(""), 0, SL(""), take_exception());
+}
+
+/* The statements of PLN-109 on MySQL and MariaDB, from the storage that the database has now: a command that stopped between two
+ * statements writes the statements that remain. */
+static bool mysql_conversion(applier *a, const document *state, const text_columns *text, const smap *missing, strs *out)
+{
+    renderer *r = &a->r;
+    /* The column types of the columns in text storage: char(36), or varbinary(36) of a conversion that stopped. */
+    smap types = {0}; /* table NUL column => str* */
+    for (size_t i = 0; i < text->tables.n; i++) {
+        str t = text->tables.v[i];
+        const strs *names = smap_get(&text->columns, t);
+        for (size_t k = 0; k < names->n; k++) {
+            str values[2] = {t, names->v[k]};
+            zval args, value;
+            args_strs(&args, values, 2);
+            bool ok = query_value(a, SL("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"),
+                &args, &value);
+            zval_ptr_dtor(&args);
+            if (!ok) {
+                return convert_query_failed();
+            }
+            str *type = dbs_alloc(sizeof *type);
+            *type = Z_TYPE(value) == IS_STRING ? str_z(Z_STR(value)) : SL("");
+            zval_ptr_dtor(&value);
+            smap_set(&types, fmt("%S.%S", t, names->v[k]), type);
+        }
+    }
+    /* 1. The foreign keys of the state that the database has and whose columns or referenced columns are in text storage. */
+    smap dropped = {0}; /* table => fkeyv* */
+    tablev state_tables = {0};
+    for (size_t i = 0; i < state->tables.n; i++) {
+        PUSH(state_tables, state->tables.v[i]);
+    }
+    dbs_sort(state_tables.v, state_tables.n, sizeof *state_tables.v, table_by_name, NULL);
+    for (size_t i = 0; i < state_tables.n; i++) {
+        const table *st = state_tables.v[i];
+        fkeyv fs = fkeys_sorted(&st->fks);
+        for (size_t k = 0; k < fs.n; k++) {
+            fkey *f = fs.v[k];
+            if (fkeys_named(smap_get(missing, st->name), f->name)) {
+                continue;
+            }
+            bool uses = false;
+            for (size_t c = 0; c < f->columns.n && !uses; c++) {
+                uses = text_column(text, st->name, f->columns.v[c]);
+            }
+            for (size_t c = 0; c < f->refs.n && !uses; c++) {
+                uses = text_column(text, f->table, f->refs.v[c]);
+            }
+            if (uses) {
+                PUSH(*out, fmt("ALTER TABLE %S DROP FOREIGN KEY %S", r_q(r, st->name), r_q(r, f->name)));
+                fkeyv *list = smap_get(&dropped, st->name);
+                if (list == NULL) {
+                    list = dbs_alloc(sizeof *list);
+                    *list = (fkeyv){0};
+                    smap_set(&dropped, st->name, list);
+                }
+                PUSH(*list, f);
+            }
+        }
+    }
+    SMAP_EACH(missing, i) {
+        const fkeyv *fs = missing->e[i].val;
+        fkeyv *list = smap_get(&dropped, missing->e[i].key);
+        if (list == NULL) {
+            list = dbs_alloc(sizeof *list);
+            *list = (fkeyv){0};
+            smap_set(&dropped, missing->e[i].key, list);
+        }
+        for (size_t k = 0; k < fs->n; k++) {
+            PUSH(*list, fs->v[k]);
+        }
+    }
+    /* 2. Each char(36) column becomes varbinary(36), which holds both forms. */
+    for (size_t i = 0; i < text->tables.n; i++) {
+        str t = text->tables.v[i];
+        strs order = state_column_order(state, t, smap_get(&text->columns, t));
+        for (size_t k = 0; k < order.n; k++) {
+            str *type = smap_get(&types, fmt("%S.%S", t, order.v[k]));
+            if (type == NULL || !str_eqc(*type, "char(36)")) {
+                continue;
+            }
+            const column *c = table_column(document_table(state, t), order.v[k]);
+            str check = r_q(r, dbs_renderer_name(t, c->name));
+            str definition = fmt("%S VARBINARY(36)%s", r_q(r, c->name), c->nullable ? " NULL" : " NOT NULL");
+            if (c->has_default) {
+                definition = fmt("%S DEFAULT %S", definition, c->def);
+            }
+            PUSH(*out, fmt("ALTER TABLE %S DROP CONSTRAINT %S, MODIFY COLUMN %S, ADD CONSTRAINT %S CHECK (length(%S) IN (16, 36))", r_q(r, t), check,
+                definition, check, r_q(r, c->name)));
+        }
+    }
+    /* 3. The texts become their 16 bytes. */
+    for (size_t i = 0; i < text->tables.n; i++) {
+        str t = text->tables.v[i];
+        strs order = state_column_order(state, t, smap_get(&text->columns, t));
+        for (size_t k = 0; k < order.n; k++) {
+            str qc = r_q(r, order.v[k]);
+            str query = fmt("SELECT COUNT(*) FROM (SELECT 1 FROM %S WHERE length(%S) = 36 LIMIT 1) x", r_q(r, t), qc);
+            zend_long n;
+            if (!query_integer(a, query, NULL, query, &n)) {
+                return convert_query_failed();
+            }
+            if (n > 0) {
+                PUSH(*out, fmt("UPDATE %S SET %S = UNHEX(REPLACE(%S, '-', '')) WHERE length(%S) = 36", r_q(r, t), qc, qc, qc));
+            }
+        }
+    }
+    /* 4. Each table gets its rendered form, a referenced table before the tables that reference it, with its dropped foreign keys
+     * whose referenced table has its rendered form. */
+    smap pending_tables = {0};
+    for (size_t i = 0; i < text->tables.n; i++) {
+        smap_set(&pending_tables, text->tables.v[i], TRUEP);
+    }
+    smap added = {0};
+    for (size_t left = text->tables.n; left > 0; left--) {
+        str next = SNULL;
+        bool found = false;
+        for (size_t i = 0; i < text->tables.n && !found; i++) {
+            str t = text->tables.v[i];
+            if (!smap_has(&pending_tables, t)) {
+                continue;
+            }
+            const table *st = document_table(state, t);
+            bool ready = true;
+            for (size_t k = 0; k < st->fks.n && ready; k++) {
+                ready = str_eq(st->fks.v[k]->table, t) || !smap_has(&pending_tables, st->fks.v[k]->table);
+            }
+            if (ready) {
+                next = t;
+                found = true;
+            } else if (next.s == NULL) {
+                /* A cycle of such tables takes the first of them by name; its foreign keys to a pending table are added last. */
+                next = t;
+            }
+        }
+        smap_del(&pending_tables, next);
+        strs parts = {0};
+        strs order = state_column_order(state, next, smap_get(&text->columns, next));
+        for (size_t k = 0; k < order.n; k++) {
+            const column *c = table_column(document_table(state, next), order.v[k]);
+            str check = r_q(r, dbs_renderer_name(next, c->name));
+            PUSH(parts, fmt("DROP CONSTRAINT %S", check));
+            PUSH(parts, fmt("MODIFY COLUMN %S", r_column(r, c)));
+            PUSH(parts, fmt("ADD CONSTRAINT %S CHECK (%S)", check, r_type_check(r, c)));
+        }
+        fkeyv fs = fkeys_sorted(smap_get(&dropped, next));
+        for (size_t k = 0; k < fs.n; k++) {
+            if (!smap_has(&pending_tables, fs.v[k]->table)) {
+                PUSH(parts, fmt("ADD %S", r_foreign_key(r, fs.v[k])));
+                smap_set(&added, fmt("%S.%S", next, fs.v[k]->name), TRUEP);
+            }
+        }
+        PUSH(*out, fmt("ALTER TABLE %S %S", r_q(r, next), strs_join(&parts, ", ")));
+    }
+    /* 5. A foreign key of a cycle, and one of a table without text storage, is added last. */
+    strs owners = {0};
+    smap_keys_sorted(&dropped, &owners);
+    for (size_t i = 0; i < owners.n; i++) {
+        fkeyv fs = fkeys_sorted(smap_get(&dropped, owners.v[i]));
+        for (size_t k = 0; k < fs.n; k++) {
+            if (!smap_has(&added, fmt("%S.%S", owners.v[i], fs.v[k]->name))) {
+                PUSH(*out, fmt("ALTER TABLE %S ADD %S", r_q(r, owners.v[i]), r_foreign_key(r, fs.v[k])));
+            }
+        }
+    }
+    return !dbs_failed();
+}
+
+/* The statements of PLN-110: each table that holds a column in text storage, in name order, is rebuilt in its rendered form inside
+ * one savepoint. */
+static bool sqlite_conversion(applier *a, const document *state, const text_columns *text, strs *out)
+{
+    renderer *r = &a->r;
+    for (size_t i = 0; i < text->tables.n; i++) {
+        str name = text->tables.v[i];
+        const table *t = document_table(state, name);
+        const strs *names = smap_get(&text->columns, name);
+        PUSH(*out, SL("SAVEPOINT " CONVERT_SAVEPOINT));
+        PUSH(*out, r_create_table(r, t, SL(REBUILD_TABLE), r_table_check_name, (void *)t, NULL));
+        bool identity = false;
+        for (size_t k = 0; k < t->columns.n; k++) {
+            identity = identity || t->columns.v[k]->identity;
+        }
+        if (identity) {
+            PUSH(*out, fmt("INSERT INTO sqlite_sequence (name, seq) SELECT '" REBUILD_TABLE "', seq FROM sqlite_sequence WHERE name = '%S'", name));
+        }
+        strs into = {0}, from = {0};
+        for (size_t k = 0; k < t->columns.n; k++) {
+            str qc = r_q(r, t->columns.v[k]->name);
+            PUSH(into, qc);
+            PUSH(from, strs_has(names, t->columns.v[k]->name) ? fmt("unhex(replace(%S, '-', ''))", qc) : qc);
+        }
+        PUSH(*out, fmt("INSERT INTO %S (%S) SELECT %S FROM %S", r_q(r, SL(REBUILD_TABLE)), strs_join(&into, ", "), strs_join(&from, ", "), r_q(r, name)));
+        PUSH(*out, fmt("DROP TABLE %S", r_q(r, name)));
+        PUSH(*out, fmt("ALTER TABLE %S RENAME TO %S", r_q(r, SL(REBUILD_TABLE)), r_q(r, name)));
+        strs rendered = r_table(r, t);
+        for (size_t k = 1; k < rendered.n; k++) {
+            PUSH(*out, rendered.v[k]);
+        }
+        strs triggers = r_triggers(r, t);
+        for (size_t k = 0; k < triggers.n; k++) {
+            PUSH(*out, triggers.v[k]);
+        }
+        PUSH(*out, SL("RELEASE " CONVERT_SAVEPOINT));
+    }
+    return !dbs_failed();
+}
+
+/* Returns false after a stop or a failure of the conversion, whose exception is pending; inside the SQLite rebuild of a table it
+ * rolls the table back first, so that the table is kept as it was (PLN-110). */
+static bool end_conversion(applier *a, bool open)
+{
+    if (!open) {
+        return false;
+    }
+    errorv errors = {0};
+    PUSH(errors, take_exception());
+    if (!exec_sql(a, SL("ROLLBACK TO " CONVERT_SAVEPOINT))) {
+        collect(&errors);
+    }
+    if (!exec_sql(a, SL("RELEASE " CONVERT_SAVEPOINT))) {
+        collect(&errors);
+    }
+    throw_errors(&errors);
+    return false;
+}
+
+/* Converts the uuid columns in the text storage of a release up to 0.0.28 to 16 bytes, before the drift check and before any plan
+ * (PLN-108). It converts nothing on PostgreSQL, on a database with no recorded plan, and when an unsupported object other than
+ * such a column exists or the schema with such columns read as uuid is not the state; the drift check then reports the database. */
+static bool convert(applier *a, size_t position)
+{
+    if (a->r.d == D_POSTGRES || position == 0) {
+        return true;
+    }
+    const plan *state = a->chain.v[position - 1];
+    unsupportedv skipped = {0};
+    document *live = dbs_introspect(a->c, a->r.d, a->server, SL("schema"), &skipped);
+    if (live == NULL || dbs_failed()) {
+        if (!pending(spl_ce_RuntimeException)) {
+            return false;
+        }
+        return apply_error("verify", SL(""), 0, SL(""), take_exception());
+    }
+    text_columns text = {0};
+    for (size_t i = 0; i < skipped.n; i++) {
+        const unsupported *u = &skipped.v[i];
+        if (!str_eqc(u->kind, "column") || !str_eqc(u->reason, DBS_TEXT_STORAGE_REASON)) {
+            return true;
+        }
+        strs *names = smap_get(&text.columns, u->table);
+        if (names == NULL) {
+            names = dbs_alloc(sizeof *names);
+            *names = (strs){0};
+            smap_set(&text.columns, u->table, names);
+        }
+        PUSH(*names, u->name);
+    }
+    if (text.columns.live == 0) {
+        return true;
+    }
+    smap_keys_sorted(&text.columns, &text.tables);
+    /* A dropped foreign key is missing only while its table holds a column in text storage (PLN-109). */
+    smap missing = {0}; /* table => fkeyv* */
+    for (size_t i = 0; i < live->tables.n; i++) {
+        table *t = live->tables.v[i];
+        const table *want = document_table(state->schema, t->name);
+        if (!smap_has(&text.columns, t->name) || want == NULL) {
+            continue;
+        }
+        for (size_t k = 0; k < want->fks.n; k++) {
+            fkey *f = want->fks.v[k];
+            if (!fkeys_named(&t->fks, f->name)) {
+                PUSH(t->fks, f);
+                fkeyv *list = smap_get(&missing, t->name);
+                if (list == NULL) {
+                    list = dbs_alloc(sizeof *list);
+                    *list = (fkeyv){0};
+                    smap_set(&missing, t->name, list);
+                }
+                PUSH(*list, f);
+            }
+        }
+    }
+    documentv set = {0};
+    PUSH(set, live);
+    manifest m;
+    diags found = {0};
+    if (!dbs_manifest(&set, &m, &found)) {
+        return !dbs_failed();
+    }
+    if (!str_eq(m.schema_hash, state->to)) {
+        return true;
+    }
+    strs statements = {0};
+    bool built = a->r.d == D_MYSQL ? mysql_conversion(a, state->schema, &text, &missing, &statements)
+                                   : sqlite_conversion(a, state->schema, &text, &statements);
+    if (!built) {
+        return false;
+    }
+    bool open = false;
+    for (size_t i = 0; i < statements.n; i++) {
+        str statement = statements.v[i];
+        if (!emit(a, "convert", SL(""), (zend_long)i, 0, statement)) {
+            return end_conversion(a, open);
+        }
+        if (!exec_sql(a, statement)) {
+            if (pending(php_pdo_get_exception())) {
+                apply_error("convert", SL(""), (zend_long)i, statement, take_exception());
+            }
+            return end_conversion(a, open);
+        }
+        if (str_starts(statement, "SAVEPOINT ")) {
+            open = true;
+        } else if (str_starts(statement, "RELEASE ")) {
+            open = false;
+        }
+    }
+    return true;
+}
+
 /* When there is no interrupted plan and the catalog's recorded schema matches, returns the number of recorded plans. */
 static bool settled(applier *a, size_t *out)
 {
@@ -605,6 +1020,9 @@ static bool settled(applier *a, size_t *out)
             return apply_error("interrupted", p->name, row->step, fmt("the plan is %S; run recover or rollback", row->state), NULL);
         }
         want = p->to;
+    }
+    if (!convert(a, pos)) {
+        return false;
     }
     str detail = SL("");
     verify_result result = verify(a, want, &detail);
@@ -1059,6 +1477,13 @@ static bool op_rollback(applier *a)
     if (applied) {
         if (k < 0 || k > n) {
             return apply_error("chain", p->name, 0, fmt("the recorded step %d is outside the plan's %d steps", k, n), NULL);
+        }
+        size_t at = 0;
+        while (at < a->chain.n && a->chain.v[at] != p) {
+            at++;
+        }
+        if (!convert(a, at < a->chain.n ? at + 1 : 0)) {
+            return false;
         }
         if (!verify_as(a, p, p->to, "drift")) {
             return false;

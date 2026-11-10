@@ -335,7 +335,7 @@ typedef struct {
 static const type_ops OPS_BY_TYPE[] = {
     {"i16", OPS(ORDERED)}, {"i32", OPS(ORDERED)}, {"i64", OPS(ORDERED)}, {"f64", OPS(ORDERED)}, {"decimal", OPS(ORDERED)},
     {"date", OPS(ORDERED)}, {"time", OPS(ORDERED)}, {"datetime", OPS(ORDERED)},
-    {"varchar", OPS(VARCHAR_OPS)}, {"text", OPS(TEXT_OPS)}, {"uuid", OPS(EQUALITY)}, {"bool", OPS(BOOL_OPS)}, {"bytes", OPS(EQUALITY)},
+    {"varchar", OPS(VARCHAR_OPS)}, {"text", OPS(TEXT_OPS)}, {"uuid", OPS(ORDERED)}, {"bool", OPS(BOOL_OPS)}, {"bytes", OPS(EQUALITY)},
 };
 
 static const type_ops *ops_of_type(const char *type)

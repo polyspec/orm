@@ -547,7 +547,14 @@ typedef struct {
     ctype *type;
     bool null, identity;
     str def;    /* Empty means there is no default */
+    /* text_storage marks a uuid column in the text storage of a release up to 0.0.28, or of a conversion that stopped (DIA-144,
+     * PLN-108); column_type is its MySQL COLUMN_TYPE. */
+    bool text_storage;
+    str column_type;
 } icolumn;
+
+/* The reason of the unsupported column of a uuid in text storage (DIA-144), which dbspec apply converts to 16 bytes (PLN-108). */
+#define DBS_TEXT_STORAGE_REASON "uuid stored as text by an earlier release; dbspec apply converts it to 16 bytes"
 
 typedef struct {
     str name;
