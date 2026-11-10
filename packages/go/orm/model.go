@@ -233,7 +233,7 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		if st.extra == nil {
 			st.extra = map[string]any{}
 		}
-		added, err := addedColumnValue(col.Type, v)
+		added, err := addedColumnValue(col, v, row)
 		if err != nil {
 			// An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
 			return nil, columnDecodeErr(b.ent.Name, col.Name, err)
@@ -903,7 +903,7 @@ func (c *Core) aggregate(fn string) (any, *runtimemodel.Field, error) {
 	r.ir.Agg = c.agg
 	r.sumCells = 1
 	if field != nil && splitSum(ex.base().driver, field) {
-		r.sumCells = 2
+		r.sumCells = splitCells
 	}
 	v, err := scalar(ex, r)
 	if err != nil {

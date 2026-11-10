@@ -302,14 +302,21 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			sb.WriteString("COUNT(*)")
 		}
 	case "sum":
-		sums := p.aggregateSums(root, agg)
+		sums, nonInteger := p.aggregateSums(root, agg)
 		for i, sum := range sums {
 			sums[i] = "COALESCE(" + sum + ", 0)"
+		}
+		if nonInteger != "" {
+			sums = append(sums, nonInteger)
 		}
 		sb.WriteString(strings.Join(sums, ", "))
 	case "avg":
 		// The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
-		sb.WriteString(strings.Join(p.aggregateSums(root, agg), ", ") + ", COUNT(" + p.qcol(root, agg) + ")")
+		sums, nonInteger := p.aggregateSums(root, agg)
+		if nonInteger != "" {
+			sums = append(sums, nonInteger)
+		}
+		sb.WriteString(strings.Join(sums, ", ") + ", COUNT(" + p.qcol(root, agg) + ")")
 	case "group_count":
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
@@ -654,6 +661,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		col := s.ent.Field(c.column)
 		var expr string
 		var styles []string
+		var sumOf string
 		typ := "text"
 		switch {
 		case c.fn != nil:
@@ -669,15 +677,19 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			typ = fnType
 			col = nil
 		case c.sub != nil:
-			e, err := p.subSelect(b, s, c.sub)
+			sub, err := p.subColumn(b, s, c, idx, outNames)
 			if err != nil {
 				return err
 			}
-			expr = "(" + e + ")"
-			typ, err = p.subType(c.sub)
-			if err != nil {
-				return err
+			if sub.split {
+				// The sum and its cells are written; the column states them (DIA-202, PRT-84).
+				sb.WriteString(sub.expr)
+				asm.Columns = append(asm.Columns, sub.col)
+				continue
 			}
+			expr = sub.expr
+			typ = sub.col.Type
+			sumOf = sub.col.SumOf
 		default:
 			expr = p.readColumn(s, c.column, col)
 			styles = p.clientStyles(col.Codec)
@@ -687,7 +699,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		if col != nil {
 			typ = col.Type
 		}
-		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: c.name, Column: c.column, Type: typ, Styles: styles})
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: c.name, Column: c.column, Type: typ, Styles: styles, SumOf: sumOf})
 		*idx++
 	}
 	if hasAES {
@@ -941,7 +953,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	col := s.ent.Field(pr.Column)
 	lhs := p.qcol(s, pr.Column)
 	if pr.Sub != nil {
-		inner, err := p.subSelect(b, s, pr.Sub)
+		inner, err := p.subSelect(b, s, pr.Sub, nil)
 		if err != nil {
 			return "", err
 		}
@@ -1688,21 +1700,36 @@ func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func
 	return out, nil
 }
 
-// aggregateSums renders the SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text
-// protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite
-// (DIA-200). SQLite sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum
-// of an exact column is the sum of its high 32 bits and the sum of its low 32 bits, which the executor combines (DIA-202).
-func (p *Planner) aggregateSums(root *scope, column string) []string {
+// aggregateSums renders the SUMs of the column of a sum or an average, and the cell that reports a value that is not an
+// integer, or "". MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL
+// refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past
+// it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its 16-bit parts,
+// which the executor combines, and the cell of DIA-202 reports a value that is not an integer (DIA-202).
+func (p *Planner) aggregateSums(root *scope, column string) ([]string, string) {
 	q := p.qcol(root, column)
 	f := root.ent.Field(column)
 	if f != nil && p.D.Name() == "sqlite" && exactAggregate(f.Type) {
-		// A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
-		return []string{"SUM(" + q + " >> 32)", "CASE WHEN MAX(typeof(" + q + ") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(" + q + " & 4294967295) END"}
+		parts := splitParts(q)
+		for i, part := range parts {
+			parts[i] = "SUM(" + part + ")"
+		}
+		return parts, nonIntegerCell(q)
 	}
 	if f != nil && f.Type == "f64" && p.D.Name() == "mysql" {
-		return []string{"SUM(" + q + ") + 0"}
+		return []string{"SUM(" + q + ") + 0"}, ""
 	}
-	return []string{"SUM(" + q + ")"}
+	return []string{"SUM(" + q + ")"}, ""
+}
+
+// splitParts are the four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its
+// sign, in [-2^15, 2^15), and the three others in [0, 2^16).
+func splitParts(q string) []string {
+	return []string{q + " >> 48", "(" + q + " >> 32) & 65535", "(" + q + " >> 16) & 65535", q + " & 65535"}
+}
+
+// nonIntegerCell is 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202).
+func nonIntegerCell(q string) string {
+	return "MAX(typeof(" + q + ") NOT IN ('integer', 'null'))"
 }
 
 // exactAggregate reports whether the sum and the average of a column of the type are exact (DSL-161): an integer or a
@@ -1715,32 +1742,92 @@ func exactAggregate(columnType string) bool {
 	return false
 }
 
-// subSum is the sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
-// the sum of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose
-// SQLite integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the column
-// refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
-func (p *Planner) subSum(root *scope, column string) string {
-	q := p.qcol(root, column)
-	if f := root.ent.Field(column); p.D.Name() == "sqlite" && f != nil && (f.Type == "i16" || f.Type == "i32" || f.Type == "i64") {
-		hi, lo := "SUM("+q+" >> 32)", "SUM("+q+" & 4294967295)"
-		// A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
-		return "CASE WHEN MAX(typeof(" + q + ") NOT IN ('integer', 'null')) THEN 0.5 ELSE (" + hi + " + " + lo + " / 4294967296) * 4294967296 + " + lo + " % 4294967296 END"
+// subPlan is the select expression of a scalar subquery column and its plan column.
+type subPlan struct {
+	expr  string
+	col   plan.OutCol
+	split bool
+}
+
+// subColumn plans the scalar subquery column c at the cell *idx. SQLite refuses a SUM past the i64 range, so on SQLite, and
+// on markdown, the sum of an integer column is the four scalar subqueries of the sums of its 16-bit parts and the one of the
+// cell that reports a value that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan
+// column states their cells. Every other subquery is one cell, and the sum of an integer column states the column it sums.
+func (p *Planner) subColumn(b *builder, s *scope, c outCol, idx *int, outNames *[]string) (subPlan, error) {
+	typ, err := p.subType(c.sub)
+	if err != nil {
+		return subPlan{}, err
 	}
-	return "SUM(" + q + ")"
+	col := plan.OutCol{Index: *idx, Name: c.name, Type: typ}
+	field := p.subField(c.sub)
+	if c.sub.Agg == "sum" && field != nil && (field.Type == "i16" || field.Type == "i32" || field.Type == "i64") {
+		col.SumOf = field.Name
+	}
+	if col.SumOf == "" || p.D.Name() != "sqlite" {
+		e, err := p.subSelect(b, s, c.sub, nil)
+		if err != nil {
+			return subPlan{}, err
+		}
+		return subPlan{expr: "(" + e + ")", col: col}, nil
+	}
+	cells := splitParts("")
+	var sb strings.Builder
+	selects := make([]func(string) string, 0, len(cells)+1)
+	for k := range cells {
+		k := k
+		selects = append(selects, func(q string) string { return "COALESCE(SUM(" + splitParts(q)[k] + "), 0)" })
+	}
+	selects = append(selects, nonIntegerCell)
+	for k, sel := range selects {
+		e, err := p.subSelect(b, s, c.sub, sel)
+		if err != nil {
+			return subPlan{}, err
+		}
+		if k > 0 {
+			sb.WriteString(", ")
+		}
+		name := s.alias + "__" + c.name
+		if k > 0 {
+			name += "__" + strconv.Itoa(k)
+		}
+		sb.WriteString("(" + e + ") AS " + p.D.Quote(name))
+		*outNames = append(*outNames, name)
+		if k < len(cells) {
+			col.SumParts = append(col.SumParts, *idx)
+		} else {
+			at := *idx
+			col.NonInteger = &at
+		}
+		*idx++
+	}
+	return subPlan{expr: sb.String(), col: col, split: true}, nil
+}
+
+// subField is the summed or selected column of a scalar subquery, or nil for a count.
+func (p *Planner) subField(sub *ir.Sub) *runtimemodel.Field {
+	if sub.Agg == "count" {
+		return nil
+	}
+	if entity := p.M.Entities[sub.Query.Entity]; entity != nil {
+		return entity.Field(sub.Column)
+	}
+	return nil
 }
 
 // subSelect renders a subquery for an IN list or a scalar column. The
 // subquery root gets its own alias and resolves "^" refs against outer.
-func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, error) {
+func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub, sel func(q string) string) (string, error) {
 	b.subs++
 	root := p.buildScopes(sub.Query, "s"+strconv.Itoa(b.subs), nil)
 	root.outer = outer
 	var sb strings.Builder
 	sb.WriteString("SELECT ")
-	switch sub.Agg {
-	case "sum":
-		sb.WriteString("COALESCE(" + p.subSum(root, sub.Column) + ", 0)")
-	case "count":
+	switch {
+	case sel != nil:
+		sb.WriteString(sel(p.qcol(root, sub.Column)))
+	case sub.Agg == "sum":
+		sb.WriteString("COALESCE(SUM(" + p.qcol(root, sub.Column) + "), 0)")
+	case sub.Agg == "count":
 		sb.WriteString("COUNT(*)")
 	default:
 		sb.WriteString(p.qcol(root, sub.Column))

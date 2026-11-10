@@ -138,7 +138,7 @@ class _Assembler:
                     schema.name,
                     col["name"],
                     lambda: _added_column_value(
-                        col["type"], row[col["index"]], self.db.zone
+                        col, row[col["index"]], row, self.db.zone
                     ),
                 )
         for key in asm["key"]:
@@ -453,16 +453,70 @@ def _exact_aggregate(field) -> bool:
     return field.type in ("i16", "i32", "i64", "decimal")
 
 
-def _exact_sum(value, scale: int) -> int:
-    """The sum cell of an exact column as the integer sum × 10^scale: an integer cell is that integer (SQLite and markdown
-    store a decimal so, DIA-25), a Decimal or a text cell is a decimal of at most scale fraction digits."""
+# The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
+# integer (DIA-202).
+_SPLIT_CELLS = 5
+
+
+class _NonInteger:
+    """The sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses by
+    the name and the type of its column."""
+
+
+_NON_INTEGER = _NonInteger()
+
+
+def _non_integer_refusal(column: str, type_: str, scale: int) -> OrmError:
+    """The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an
+    integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66)."""
+    if type_ == "decimal":
+        return OrmError(
+            codes.CODEC_DECODE,
+            f"column {column} holds a value that is not a decimal of scale {scale}",
+        )
+    return OrmError(
+        codes.CODEC_DECODE, f"column {column} holds a value that is not an integer"
+    )
+
+
+def _split_sum_value(parts, flag):
+    """The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, _NON_INTEGER when its
+    last cell reports a value that is not an integer, and None when every part is SQL NULL, the sum of no value
+    (DIA-202)."""
+    for cell in (flag, *parts):
+        if cell is not None and (isinstance(cell, bool) or not isinstance(cell, int)):
+            raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if flag is not None and flag != 0:
+        return _NON_INTEGER
+    total = 0
+    none = True
+    for part in parts:
+        total <<= 16
+        if part is None:
+            continue
+        none = False
+        total += part
+    return None if none else total
+
+
+def _exact_sum(field, value) -> int:
+    """The sum cell of the exact column field as the integer sum × 10^scale: an integer cell, or the integer of a split
+    sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a Decimal or a text cell is a
+    decimal of at most scale fraction digits. A sum that holds a value which the type of the column does not hold, which
+    the split sum reports and the text of MySQL and PostgreSQL shows by more fraction digits, is refused by its
+    column."""
+    scale = field.scale
+    if value is _NON_INTEGER:
+        raise _non_integer_refusal(field.name, field.type, scale)
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, Decimal) and value.is_finite():
         value = format(value, "f")
     match = _EXACT_TEXT.fullmatch(value) if isinstance(value, str) else None
-    if match is None or len(match.group(3) or "") > scale:
+    if match is None:
         raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    if len(match.group(3) or "") > scale:
+        raise _non_integer_refusal(field.name, field.type, scale)
     digits = int(match.group(2) + (match.group(3) or "").ljust(scale, "0"))
     return -digits if match.group(1) == "-" else digits
 
@@ -483,7 +537,7 @@ def _sum_value(field, value) -> float:
     """The result of get_sum for the sum cell of the column field (DSL-66, DSL-161)."""
     if not _exact_aggregate(field):
         return _aggregate_number(value)
-    return _nearest_binary64(_exact_sum(value, field.scale), field.scale)
+    return _nearest_binary64(_exact_sum(field, value), field.scale)
 
 
 def _avg_value(field, cells) -> float | None:
@@ -500,7 +554,7 @@ def _avg_value(field, cells) -> float | None:
         raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
     if not _exact_aggregate(field):
         return _aggregate_number(total) / count
-    n = _exact_sum(total, field.scale)
+    n = _exact_sum(field, total)
     # The quotient with one place more than the stated scale: its last digit decides the rounding half away from zero.
     longer = abs(n) * 10 ** (_AVG_SCALE_EXTRA + 1) // count
     rounded = longer // 10 + (1 if longer % 10 >= 5 else 0)
@@ -532,16 +586,15 @@ def aggregate_of(c: Core, kind: str) -> float | None:
 
 
 def _sum_of(cells):
-    """The sum of the sum cells of a statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a
-    split sum (DIA-202); None when both are None, the sum of no value."""
+    """The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-202);
+    None is the sum of no value."""
     if len(cells) == 1:
         return cells[0]
-    high, low = cells
-    if high is None and low is None:
-        return None
-    if any(isinstance(cell, bool) or not isinstance(cell, int) for cell in (high, low)):
-        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
-    return (high << 32) + low
+    if len(cells) != _SPLIT_CELLS:
+        raise OrmError(
+            codes.INTERNAL, f"a split sum reads {len(cells)} cells, not {_SPLIT_CELLS}"
+        )
+    return _split_sum_value(cells[: _SPLIT_CELLS - 1], cells[_SPLIT_CELLS - 1])
 
 
 def _aggregate_range_error(error: OrmError) -> OrmError:
@@ -1118,8 +1171,34 @@ def _group_rows(ex, c: Core, result: dict):
     return GroupRows(rows)
 
 
-def _added_column_value(type_: str, raw, zone: str):
-    """An added column by the type its plan column states (INT-160); other types keep the driver value."""
+def _added_column_value(col: dict, raw, row, zone: str):
+    """An added column by the type its plan column states (INT-160), from its cell raw of the row; other types keep the
+    driver value. The sum of an integer column is the exact integer of its split cells on SQLite and markdown, and a sum
+    of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84)."""
+    type_ = col["type"]
+    if col.get("sum_parts"):
+        if col.get("non_integer") is None:
+            raise OrmError(
+                codes.INTERNAL,
+                f"the split sum {col['name']} states no cell of a value that is not an integer",
+            )
+        try:
+            raw = _split_sum_value(
+                [row[i] for i in col["sum_parts"]], row[col["non_integer"]]
+            )
+        except OrmError as error:
+            raise OrmError(
+                codes.CODEC_DECODE, f"{type_} cell is not an exact integer in its range"
+            ) from error
+        if raw is _NON_INTEGER:
+            raise _non_integer_refusal(col["sum_of"], type_, 0)
+    if raw is None:
+        return None
+    if col.get("sum_of") and (
+        (isinstance(raw, str) and "." in raw)
+        or (isinstance(raw, Decimal) and raw.as_tuple().exponent != 0)
+    ):
+        raise _non_integer_refusal(col["sum_of"], type_, 0)
     if type_ in ("i16", "i32", "i64") and isinstance(raw, str):
         # A text is an integer only exactly.
         if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", raw) is None:
@@ -1163,7 +1242,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
         schema.name,
         column["name"],
         lambda: (
-            _added_column_value(type_, raw, db.zone)
+            _added_column_value({**column, "type": type_}, raw, (), db.zone)
             if type_ in ("i16", "i32", "i64")
             else convert("text" if type_ == "string" else type_, raw, db.zone, declared)
         ),

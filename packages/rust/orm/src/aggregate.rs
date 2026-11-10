@@ -1,6 +1,6 @@
 //! The sum and the average of a column (DSL-66, DSL-161, DIA-200).
 
-use polyspec_orm_schema::dbspec::Type;
+use polyspec_orm_schema::dbspec::{Field, Type};
 
 use crate::value::Val;
 use crate::{codes, Error, Result};
@@ -24,9 +24,20 @@ fn exact_scale(ty: &Type) -> Option<u32> {
     }
 }
 
-/// The sum cell of an exact column as its sign and the digits of the sum × 10^scale: an integer cell is that integer (SQLite
-/// and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale fraction digits.
-fn exact_digits(value: &Val, scale: u32) -> Result<(bool, String)> {
+/// The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an integer, or
+/// a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+pub(crate) fn non_integer_refusal(column: &str, ty: &Type) -> Error {
+    let msg = match ty {
+        Type::Decimal(_, scale) => format!("column {column} holds a value that is not a decimal of scale {scale}"),
+        _ => format!("column {column} holds a value that is not an integer"),
+    };
+    Error::Engine { code: codes::CODEC_DECODE.into(), msg, source: None }
+}
+
+/// The sum cell of the exact column field as its sign and the digits of the sum × 10^scale: an integer cell is that integer
+/// (SQLite and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale fraction digits; a text of more
+/// fraction digits holds a value that the type of the column does not hold, which is refused by its column.
+fn exact_digits(field: &Field, value: &Val, scale: u32) -> Result<(bool, String)> {
     let (negative, whole, fraction) = match value {
         Val::I64(n) => (*n < 0, n.unsigned_abs().to_string(), String::new()),
         Val::Str(text) => {
@@ -38,7 +49,7 @@ fn exact_digits(value: &Val, scale: u32) -> Result<(bool, String)> {
             }
             let fraction = fraction.unwrap_or_default();
             if fraction.len() > scale as usize {
-                return Err(refused());
+                return Err(non_integer_refusal(&field.name, &field.ty));
             }
             (negative, whole.to_owned(), format!("{fraction:0<width$}", width = scale as usize))
         }
@@ -52,27 +63,67 @@ fn exact_digits(value: &Val, scale: u32) -> Result<(bool, String)> {
     Ok((negative, trimmed.to_owned()))
 }
 
-/// The sum of the sum cells of a statement over a column of type `ty`: its one cell, or, for the two cells of the sum of the
-/// high 32 bits and the sum of the low 32 bits of an exact column on SQLite and markdown, the exact integer hi × 2^32 + lo
-/// (DIA-202), an integer cell where it fits i64 and its decimal text at the scale of the column past it; null when both are
-/// null, the sum of no value.
-pub(crate) fn sum_cell(ty: &Type, cells: &[Val]) -> Result<Val> {
+/// The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
+/// integer (DIA-202).
+const SPLIT_CELLS: usize = 5;
+
+/// The sum of the cells of a split sum (DIA-202).
+pub(crate) enum Split {
+    /// Every part is null: the sum of no value.
+    None,
+    /// The exact integer of the parts.
+    Sum(i128),
+    /// The flag cell reports a value that is not an integer, which the reader refuses by its column.
+    NonInteger,
+}
+
+/// The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the four part cells of a split sum, or the report of its
+/// flag cell (DIA-202); a cell that is not an integer is the refusal of every sum. Each part sum of a database of at most
+/// 2^47 rows lies in (-2^63, 2^63), so the sum fits i128 at every step.
+pub(crate) fn split_sum(parts: &[Val], flag: &Val) -> Result<Split> {
+    match flag {
+        Val::Null | Val::I64(0) => {}
+        Val::I64(_) => return Ok(Split::NonInteger),
+        _ => return Err(refused()),
+    }
+    let mut sum: i128 = 0;
+    let mut none = true;
+    for part in parts {
+        sum <<= 16;
+        match part {
+            Val::Null => {}
+            Val::I64(n) => {
+                none = false;
+                sum += i128::from(*n);
+            }
+            _ => return Err(refused()),
+        }
+    }
+    Ok(if none { Split::None } else { Split::Sum(sum) })
+}
+
+/// The sum of the sum cells of a statement over the column field: its one cell, or, for the cells of a split sum of an exact
+/// column on SQLite and markdown, its exact integer (DIA-202), an integer cell where it fits i64 and its decimal text at the
+/// scale of the column past it; null is the sum of no value.
+pub(crate) fn sum_cell(field: &Field, cells: &[Val]) -> Result<Val> {
     match cells {
         [cell] => Ok(cell.clone()),
-        [Val::Null, Val::Null] => Ok(Val::Null),
-        [Val::I64(hi), Val::I64(lo)] if *lo >= 0 => {
-            let sum = (i128::from(*hi) << 32) + i128::from(*lo);
+        [parts @ .., flag] if cells.len() == SPLIT_CELLS => {
+            let sum = match split_sum(parts, flag)? {
+                Split::None => return Ok(Val::Null),
+                Split::NonInteger => return Err(non_integer_refusal(&field.name, &field.ty)),
+                Split::Sum(sum) => sum,
+            };
             if let Ok(n) = i64::try_from(sum) {
                 return Ok(Val::I64(n));
             }
-            let scale = exact_scale(ty).ok_or_else(|| Error::internal("a split sum is over a column that is not exact"))? as usize;
+            let scale = exact_scale(&field.ty).ok_or_else(|| Error::internal("a split sum is over a column that is not exact"))? as usize;
             let digits = format!("{:0>width$}", sum.unsigned_abs(), width = scale + 1);
             let (whole, fraction) = digits.split_at(digits.len() - scale);
             let sign = if sum < 0 { "-" } else { "" };
             Ok(Val::Str(if scale == 0 { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") }))
         }
-        [_, _] => Err(refused()),
-        _ => Err(Error::internal("a sum statement read no sum")),
+        _ => Err(Error::internal(format!("a sum statement read {} cells, not 1 or {SPLIT_CELLS}", cells.len()))),
     }
 }
 
@@ -91,20 +142,20 @@ fn nearest_binary64(negative: bool, digits: &str, scale: u32) -> Result<f64> {
     Ok(value)
 }
 
-/// The result of `get_sum` for the sum cell of a column of type `ty` (DSL-66, DSL-161).
-pub(crate) fn sum_value(ty: &Type, value: &Val) -> Result<f64> {
-    let Some(scale) = exact_scale(ty) else {
+/// The result of `get_sum` for the sum cell of the column field (DSL-66, DSL-161).
+pub(crate) fn sum_value(field: &Field, value: &Val) -> Result<f64> {
+    let Some(scale) = exact_scale(&field.ty) else {
         return value.as_aggregate_f64();
     };
-    let (negative, digits) = exact_digits(value, scale)?;
+    let (negative, digits) = exact_digits(field, value, scale)?;
     nearest_binary64(negative, &digits, scale)
 }
 
-/// The result of `get_avg` for the sum and the count of the values of a column of type `ty`: None for no value; for an exact
+/// The result of `get_avg` for the sum and the count of the values of the column field: None for no value; for an exact
 /// column the exact sum divided by the count, rounded half away from zero to AVG_SCALE_EXTRA places beyond the scale of the
 /// column and then converted once (DSL-66, DSL-161); for an `f64` column the binary64 sum divided by the count, which is the
 /// AVG of every database.
-pub(crate) fn avg_value(ty: &Type, sum: &Val, count: &Val) -> Result<Option<f64>> {
+pub(crate) fn avg_value(field: &Field, sum: &Val, count: &Val) -> Result<Option<f64>> {
     let count = match count {
         Val::I64(n) if *n >= 0 => n.unsigned_abs(),
         _ => return Err(refused()),
@@ -115,10 +166,10 @@ pub(crate) fn avg_value(ty: &Type, sum: &Val, count: &Val) -> Result<Option<f64>
     if matches!(sum, Val::Null) {
         return Err(refused());
     }
-    let Some(scale) = exact_scale(ty) else {
+    let Some(scale) = exact_scale(&field.ty) else {
         return Ok(Some(sum.as_aggregate_f64()? / count as f64));
     };
-    let (negative, digits) = exact_digits(sum, scale)?;
+    let (negative, digits) = exact_digits(field, sum, scale)?;
     // Long division of the digits followed by one place more than the stated scale; its last digit decides the rounding
     // half away from zero. The remainder stays below the count, so ten times it fits a u128.
     let divisor = u128::from(count);

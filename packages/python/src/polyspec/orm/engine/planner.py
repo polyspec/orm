@@ -411,24 +411,20 @@ class Planner:
     def _qcol(self, s: _Scope, col: str) -> str:
         return f"{self.d.quote(s.alias)}.{self.d.quote(col)}"
 
-    def _aggregate_sums(self, root: _Scope, column: str) -> list:
-        """The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on
-        MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200).
-        SQLite sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of
-        an exact column is the sum of its high 32 bits and the sum of its low 32 bits, which the executor combines
-        (DIA-202)."""
+    def _aggregate_sums(self, root: _Scope, column: str) -> tuple[list, str]:
+        """The SUMs of the column of a sum or an average, and the cell that reports a value that is not an integer, or "".
+        MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with
+        1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past it,
+        so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its 16-bit parts,
+        which the executor combines, and the cell of DIA-202 reports a value that is not an integer (DIA-202)."""
         q = self._qcol(root, column)
         field = field_of(root.ent, column)
         kind = field.type if field is not None else ""
         if self.d.name == "sqlite" and kind in ("i16", "i32", "i64", "decimal"):
-            # A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
-            return [
-                f"SUM({q} >> 32)",
-                f"CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM({q} & 4294967295) END",
-            ]
+            return [f"SUM({part})" for part in _split_parts(q)], _non_integer_cell(q)
         if self.d.name == "mysql" and kind == "f64":
-            return [f"SUM({q}) + 0"]
-        return [f"SUM({q})"]
+            return [f"SUM({q}) + 0"], ""
+        return [f"SUM({q})"], ""
 
     def _qualified(self, s: _Scope, columns) -> list:
         return [self._qcol(s, c) for c in columns]
@@ -470,13 +466,17 @@ class Planner:
         if kind == "count":
             sql += "1" if group_count else "COUNT(*)"
         elif kind == "sum":
+            sums, non_integer = self._aggregate_sums(root, agg)
             sql += ", ".join(
-                f"COALESCE({total}, 0)" for total in self._aggregate_sums(root, agg)
+                [f"COALESCE({total}, 0)" for total in sums]
+                + ([non_integer] if non_integer else [])
             )
         elif kind == "avg":
             # The executor divides the sum by the count of values, so the average is exact before its one conversion
             # (DSL-161).
-            sql += f"{', '.join(self._aggregate_sums(root, agg))}, COUNT({self._qcol(root, agg)})"
+            sums, non_integer = self._aggregate_sums(root, agg)
+            cells = sums + ([non_integer] if non_integer else [])
+            sql += f"{', '.join(cells)}, COUNT({self._qcol(root, agg)})"
         elif kind == "group_count":
             sql += self._select_group_count_list(b, root, asm, idx, out_names)
             asm["key"] = _key_refs(asm, list(q.get("group_by") or []))
@@ -719,6 +719,7 @@ class Planner:
                 has_aes = True
             col_styles: list = []
             type_ = "string"
+            sum_of = ""
             if c.get("fn"):
                 if col is None:
                     _fail(
@@ -729,8 +730,16 @@ class Planner:
                 type_ = function_type(c["fn"]["name"], col, s.ent.name, c["column"])
                 col = None
             elif c.get("sub"):
-                expr = f"({self._sub_select(b, s, c['sub'])})"
-                type_ = self._sub_type(c["sub"])
+                expr, sub_col, split = self._sub_column(
+                    b, s, c["name"], c["sub"], idx, out_names
+                )
+                if split:
+                    # The sum and its cells are written; the column states them (DIA-202, PRT-84).
+                    parts.append(expr)
+                    asm["columns"].append(sub_col)
+                    continue
+                type_ = sub_col["type"]
+                sum_of = sub_col.get("sum_of", "")
             else:
                 expr = self._read_column(self._qcol(s, c["column"]), col)
                 col_styles = self._client_styles(_styles(col))
@@ -747,6 +756,7 @@ class Planner:
                     "type": type_,
                     "styles": col_styles,
                     "hidden": False,
+                    **({"sum_of": sum_of} if sum_of else {}),
                 }
             )
             idx["n"] += 1
@@ -1097,15 +1107,17 @@ class Planner:
             )
         return result
 
-    def _sub_select(self, b: _Builder, outer: _Scope, sub: dict) -> str:
+    def _sub_select(self, b: _Builder, outer: _Scope, sub: dict, sel=None) -> str:
         """The subquery of an IN list or a scalar column; "^" points outward."""
         b.subs += 1
         root = self._build_scopes(sub["query"], f"s{b.subs}", None)
         root.outer = outer
         sql = "SELECT "
         agg = sub.get("agg") or ""
-        if agg == "sum":
-            sql += f"COALESCE({self._sub_sum(root, sub['column'])}, 0)"
+        if sel is not None:
+            sql += sel(self._qcol(root, sub["column"]))
+        elif agg == "sum":
+            sql += f"COALESCE(SUM({self._qcol(root, sub['column'])}), 0)"
         elif agg == "count":
             sql += "COUNT(*)"
         else:
@@ -1127,25 +1139,55 @@ class Planner:
             )
         return sql
 
-    def _sub_sum(self, root: _Scope, column: str) -> str:
-        """The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown,
-        the sum of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32,
-        whose SQLite integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type
-        of the column refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160)."""
-        q = self._qcol(root, column)
-        field = field_of(root.ent, column)
+    def _sub_column(
+        self, b: _Builder, s: _Scope, name: str, sub: dict, idx, out_names
+    ) -> tuple[str, dict, bool]:
+        """The select expression of the scalar subquery column name at the cell idx["n"], its plan column, and whether it
+        is split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column is
+        the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is not
+        an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their cells. Every
+        other subquery is one cell, and the sum of an integer column states the column it sums."""
+        col: dict = {
+            "index": idx["n"],
+            "name": name,
+            "column": "",
+            "type": self._sub_type(sub),
+            "styles": [],
+            "hidden": False,
+        }
+        field = self._sub_field(sub)
         if (
-            self.d.name == "sqlite"
+            sub.get("agg") == "sum"
             and field is not None
             and field.type in ("i16", "i32", "i64")
         ):
-            hi, lo = f"SUM({q} >> 32)", f"SUM({q} & 4294967295)"
-            # A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
-            return (
-                f"CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 "
-                f"ELSE ({hi} + {lo} / 4294967296) * 4294967296 + {lo} % 4294967296 END"
-            )
-        return f"SUM({q})"
+            col["sum_of"] = field.name
+        if "sum_of" not in col or self.d.name != "sqlite":
+            return f"({self._sub_select(b, s, sub)})", col, False
+        selects = [
+            (lambda q, k=k: f"COALESCE(SUM({_split_parts(q)[k]}), 0)") for k in range(4)
+        ]
+        selects.append(_non_integer_cell)
+        parts: list[str] = []
+        sum_parts: list[int] = []
+        for k, sel in enumerate(selects):
+            out = f"{s.alias}__{name}" if k == 0 else f"{s.alias}__{name}__{k}"
+            parts.append(f"({self._sub_select(b, s, sub, sel)}) AS {self.d.quote(out)}")
+            out_names.append(out)
+            if k < len(selects) - 1:
+                sum_parts.append(idx["n"])
+            else:
+                col["non_integer"] = idx["n"]
+            idx["n"] += 1
+        col["sum_parts"] = sum_parts
+        return ", ".join(parts), col, True
+
+    def _sub_field(self, sub: dict):
+        """The summed or selected column of a scalar subquery, or None for a count."""
+        if sub.get("agg") == "count":
+            return None
+        entity = self.m.entities.get(sub["query"]["entity"])
+        return field_of(entity, sub.get("column") or "") if entity is not None else None
 
     def _sub_type(self, sub: dict) -> str:
         agg = sub.get("agg")
@@ -1460,3 +1502,19 @@ class Planner:
             "tables": b.tables(),
             "bind_slots": [],
         }
+
+
+def _split_parts(q: str) -> list:
+    """The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+    [-2^15, 2^15), and the three others in [0, 2^16)."""
+    return [
+        f"{q} >> 48",
+        f"({q} >> 32) & 65535",
+        f"({q} >> 16) & 65535",
+        f"{q} & 65535",
+    ]
+
+
+def _non_integer_cell(q: str) -> str:
+    """1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202)."""
+    return f"MAX(typeof({q}) NOT IN ('integer', 'null'))"

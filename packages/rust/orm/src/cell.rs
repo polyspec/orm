@@ -313,6 +313,28 @@ pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
     })
 }
 
+/// The cell of the added column col from its cell value of the row (INT-160): the sum of an integer column is the exact
+/// integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not hold
+/// is refused by that column (DIA-202, PRT-84); then the cell is read as `added_cell` reads it.
+pub(crate) fn added_column(col: &crate::plan::OutCol, value: Val, row: &[Val]) -> Result<Val> {
+    use crate::aggregate::{non_integer_refusal, split_sum, Split};
+    let mut value = value;
+    let summed = || col.sum_of.as_deref().ok_or_else(|| Error::internal(format!("the split sum {} states no summed column", col.name)));
+    if !col.sum_parts.is_empty() {
+        let flag = col.non_integer.ok_or_else(|| Error::internal(format!("the split sum {} states no cell of a value that is not an integer", col.name)))?;
+        let parts: Vec<Val> = col.sum_parts.iter().map(|i| row[*i].clone()).collect();
+        value = match split_sum(&parts, &row[flag]).map_err(|_error| cell_refusal(&col.typ))? {
+            Split::None => Val::Null,
+            Split::NonInteger => return Err(non_integer_refusal(summed()?, &Type::I64)),
+            Split::Sum(sum) => Val::I64(i64::try_from(sum).map_err(|_error| cell_refusal(&col.typ))?),
+        };
+    }
+    if col.sum_of.is_some() && matches!(&value, Val::Str(text) if text.contains('.')) {
+        return Err(non_integer_refusal(summed()?, &Type::I64));
+    }
+    added_cell(&col.typ, value)
+}
+
 /// The cell of an added column by the type its plan column states (INT-160): an integer takes the exact digits of a
 /// stored text too, a datetime has six fraction digits, and another type keeps the driver value.
 pub(crate) fn added_cell(column_type: &str, value: Val) -> Result<Val> {

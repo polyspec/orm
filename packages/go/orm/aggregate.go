@@ -45,34 +45,86 @@ func exactAggregate(field *runtimemodel.Field) bool {
 	return false
 }
 
-// splitSum reports whether the planner splits the sum of the column into the sums of its high and low 32 bits: an exact
-// column on SQLite and on markdown, which runs SQLite (DIA-202).
+// splitSum reports whether the planner splits the sum of the column into the sums of its four 16-bit parts and the cell
+// that reports a value that is not an integer: an exact column on SQLite and on markdown, which runs SQLite (DIA-202).
 func splitSum(driver string, field *runtimemodel.Field) bool {
 	return (driver == "sqlite" || driver == "markdown") && exactAggregate(field)
 }
 
-// sumCell is the sum of a sum or an average statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a
-// split sum (DIA-202); SQL NULL, the sum of no value, stays nil.
+// splitCells is the number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that
+// is not an integer (DIA-202).
+const splitCells = 5
+
+// nonInteger is the sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses
+// by the name and the type of its column.
+type nonInteger struct{}
+
+// nonIntegerRefusal is the CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that
+// is not an integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+func nonIntegerRefusal(column, columnType string, scale int) error {
+	if columnType == "decimal" {
+		return &ir.Error{Code: CodeCodecDecode, Msg: "column " + column + " holds a value that is not a decimal of scale " + strconv.Itoa(scale)}
+	}
+	return &ir.Error{Code: CodeCodecDecode, Msg: "column " + column + " holds a value that is not an integer"}
+}
+
+// splitSumValue is the exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, nonInteger when
+// its last cell reports a value that is not an integer, and nil when every part is SQL NULL, the sum of no value (DIA-202).
+func splitSumValue(parts []any, flag any) (any, error) {
+	if flag != nil {
+		n, ok := flag.(int64)
+		if !ok {
+			return nil, aggregateRefusal()
+		}
+		if n != 0 {
+			return nonInteger{}, nil
+		}
+	}
+	sum := new(big.Int)
+	none := true
+	for _, part := range parts {
+		sum.Lsh(sum, 16)
+		if part == nil {
+			continue
+		}
+		n, ok := part.(int64)
+		if !ok {
+			return nil, aggregateRefusal()
+		}
+		none = false
+		sum.Add(sum, big.NewInt(n))
+	}
+	if none {
+		return nil, nil
+	}
+	return sum, nil
+}
+
+// sumCell is the sum of a sum or an average statement: its one cell, or the exact integer of the cells of a split sum
+// (DIA-202); SQL NULL, the sum of no value, stays nil.
 func sumCell(cells []cell) (any, error) {
 	if len(cells) == 1 {
 		return cells[0].v, nil
 	}
-	if cells[0].v == nil && cells[1].v == nil {
-		return nil, nil
+	if len(cells) != splitCells {
+		return nil, internalErr("a split sum reads %d cells, not %d", len(cells), splitCells)
 	}
-	hi, okHi := cells[0].v.(int64)
-	lo, okLo := cells[1].v.(int64)
-	if !okHi || !okLo {
-		return nil, aggregateRefusal()
+	parts := make([]any, 0, splitCells-1)
+	for _, c := range cells[:splitCells-1] {
+		parts = append(parts, c.v)
 	}
-	sum := new(big.Int).Lsh(big.NewInt(hi), 32)
-	return sum.Add(sum, big.NewInt(lo)), nil
+	return splitSumValue(parts, cells[splitCells-1].v)
 }
 
-// exactSum reads the sum cell of an exact column as its sign and the digits of the sum times 10^scale: an integer cell, or
-// the integer of a split sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a
-// decimal of at most scale fraction digits.
-func exactSum(raw any, scale int) (bool, string, error) {
+// exactSum reads the sum cell of the exact column field as its sign and the digits of the sum times 10^scale: an integer
+// cell, or the integer of a split sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell
+// is a decimal of at most scale fraction digits. A sum that holds a value which the type of the column does not hold, which
+// the split sum reports and the text of MySQL and PostgreSQL shows by more fraction digits, is refused by its column.
+func exactSum(field *runtimemodel.Field, raw any) (bool, string, error) {
+	scale := field.Scale
+	if _, ok := raw.(nonInteger); ok {
+		return false, "", nonIntegerRefusal(field.Name, field.Type, scale)
+	}
 	if n, ok := raw.(*big.Int); ok {
 		return n.Sign() < 0, new(big.Int).Abs(n).String(), nil
 	}
@@ -94,10 +146,12 @@ func exactSum(raw any, scale int) (bool, string, error) {
 	if negative {
 		text = text[1:]
 	}
-	whole, fraction, _ := strings.Cut(text, ".")
-	if whole == "" || !allDigits(whole) || !allDigits(fraction) || len(fraction) > scale ||
-		(strings.Contains(text, ".") && fraction == "") {
+	whole, fraction, dot := strings.Cut(text, ".")
+	if whole == "" || !allDigits(whole) || !allDigits(fraction) || (dot && fraction == "") {
 		return false, "", aggregateRefusal()
+	}
+	if len(fraction) > scale {
+		return false, "", nonIntegerRefusal(field.Name, field.Type, scale)
 	}
 	digits := strings.TrimLeft(whole+fraction+strings.Repeat("0", scale-len(fraction)), "0")
 	if digits == "" {
@@ -134,7 +188,7 @@ func sumValue(field *runtimemodel.Field, v any) (float64, error) {
 	if !exactAggregate(field) {
 		return aggregateFloat(v)
 	}
-	negative, digits, err := exactSum(v, field.Scale)
+	negative, digits, err := exactSum(field, v)
 	if err != nil {
 		return 0, err
 	}
@@ -164,7 +218,7 @@ func avgValue(field *runtimemodel.Field, cells avgCells) (*float64, error) {
 		f := sum / float64(count)
 		return &f, nil
 	}
-	negative, digits, err := exactSum(cells.sum, field.Scale)
+	negative, digits, err := exactSum(field, cells.sum)
 	if err != nil {
 		return nil, err
 	}

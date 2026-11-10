@@ -23,6 +23,8 @@
 static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, zval *zone,
     zval *out);
 static bool cell_refuse(zend_string *entity, zend_string *name, const char *type, zend_object *previous);
+static bool split_sum_value(zval **parts, zval *flag, bool *non_integer, zval *out);
+static bool added_sum(zend_string *entity, zend_string *name, zval *kind, zval *plan, zval *vals, zval *raw, zval *out);
 static bool cell_refusal(zend_string *entity, zend_string *name, zend_string *message, zend_object *previous, zval *out);
 
 static bool read_aggregate(zval *model, const char *fn, zval *return_value);
@@ -239,6 +241,13 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
             zval *type = read_array(col, "type");
             zval empty; ZVAL_EMPTY_STRING(&empty);
             read_append_pair(target, Z_LVAL_P(index), name, type != NULL && Z_TYPE_P(type) != IS_NULL ? type : &empty);
+            /* The plan column rides along: the cells of a split sum and the column it sums (DIA-202, PRT-84). */
+            zval *entry = zend_hash_index_find(Z_ARRVAL_P(target), zend_hash_num_elements(Z_ARRVAL_P(target)) - 1);
+            if (entry != NULL && Z_TYPE_P(entry) == IS_ARRAY) {
+                SEPARATE_ARRAY(entry);
+                zval plan; ZVAL_COPY(&plan, col);
+                add_index_zval(entry, 3, &plan);
+            }
         }
     } ZEND_HASH_FOREACH_END();
     zval *keys = read_array(assemble_decl, "key");
@@ -425,6 +434,12 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
             zval *idx=zend_hash_index_find(Z_ARRVAL_P(entry),0), *name=zend_hash_index_find(Z_ARRVAL_P(entry),1), *kind=zend_hash_index_find(Z_ARRVAL_P(entry),2);
             zval *raw=idx!=NULL&&Z_TYPE_P(idx)==IS_LONG?zend_hash_index_find(Z_ARRVAL_P(vals),(zend_ulong)Z_LVAL_P(idx)):NULL;
             if(name==NULL||raw==NULL) continue;
+            zval *plan = zend_hash_index_find(Z_ARRVAL_P(entry), 3);
+            zval split; ZVAL_UNDEF(&split);
+            if (plan != NULL && Z_TYPE_P(plan) == IS_ARRAY && Z_TYPE_P(name) == IS_STRING) {
+                if (!added_sum(entity, Z_STR_P(name), kind, plan, vals, raw, &split)) { zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+                if (!Z_ISUNDEF(split)) raw = &split;
+            }
             zval converted;
             if (Z_TYPE_P(raw) != IS_NULL && kind != NULL && Z_TYPE_P(name) == IS_STRING && (
                 read_string_is(kind, "i16") || read_string_is(kind, "i32") || read_string_is(kind, "i64") ||
@@ -447,11 +462,12 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                 } else if (ok) {
                     ZVAL_COPY_VALUE(&converted, &cell);
                 }
-                if (!ok) { zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+                if (!ok) { zval_ptr_dtor(&split); zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
             } else {
                 ZVAL_COPY(&converted, raw);
-                if (!read_convert_resource(&converted)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+                if (!read_convert_resource(&converted)) { zval_ptr_dtor(&split); zval_ptr_dtor(&converted); zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
             }
+            zval_ptr_dtor(&split);
             if (kind != NULL && read_string_is(kind, "date")) {
                 zval *dates = read_array(&st, "extra_date");
                 if (dates != NULL && Z_TYPE_P(dates) == IS_ARRAY) { zval marked; ZVAL_TRUE(&marked); zend_hash_update(Z_ARRVAL_P(dates), Z_STR_P(name), &marked); }
@@ -1421,7 +1437,19 @@ ZEND_METHOD(Polyspec_Orm_Model, getCount)
 /* exact_digits reads the sum cell of an exact column as its sign and the digits of the sum × 10^scale: on SQLite and markdown
  * (scaled) the cell is that integer (DIA-25), on MySQL and PostgreSQL a decimal of at most scale fraction digits. False with
  * CODEC_DECODE thrown. */
-static bool exact_digits(zval *raw, zend_long scale, bool scaled, bool *negative, smart_str *digits)
+/* non_integer_refuse throws the CODEC_DECODE of the sum of the column that holds a value which its type does not hold: a value
+ * that is not an integer, or a decimal of more fraction digits than the scale of a decimal column (DIA-202, DSL-66); it
+ * returns false. */
+static bool non_integer_refuse(zend_string *column, bool decimal, zend_long scale)
+{
+    zend_string *text = decimal ? strpprintf(0, "column %s holds a value that is not a decimal of scale " ZEND_LONG_FMT, ZSTR_VAL(column), scale)
+                                : strpprintf(0, "column %s holds a value that is not an integer", ZSTR_VAL(column));
+    read_throw("CODEC_DECODE", ZSTR_VAL(text));
+    zend_string_release(text);
+    return false;
+}
+
+static bool exact_digits(zval *raw, zend_string *column, bool decimal, zend_long scale, bool scaled, bool *negative, smart_str *digits)
 {
     char buf[32];
     const char *s;
@@ -1448,7 +1476,9 @@ static bool exact_digits(zval *raw, zend_long scale, bool scaled, bool *negative
         if (fraction_end == fraction) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
     }
     zend_long room = scaled ? 0 : scale;
-    if (i != n || whole_end == whole || (zend_long)(fraction_end - fraction) > room) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+    if (i != n || whole_end == whole || (scaled && fraction_end > fraction)) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+    /* A sum of more fraction digits than the scale holds a value that the type of the column does not hold. */
+    if ((zend_long)(fraction_end - fraction) > room) return non_integer_refuse(column, decimal, scale);
     size_t k = whole;
     while (k < whole_end && s[k] == '0') k++;
     smart_str_appendl(digits, s + k, whole_end - k);
@@ -1486,71 +1516,209 @@ static bool nearest_binary64(bool negative, const char *digits, zend_long scale,
 }
 
 /* exact_sum_value is the result of getSum for the sum cell of an exact column (DSL-66, DSL-161). */
-static bool exact_sum_value(zval *raw, zend_long scale, bool scaled, zval *out)
+static bool exact_sum_value(zval *raw, zend_string *column, bool decimal, zend_long scale, bool scaled, zval *out)
 {
     bool negative;
     smart_str digits = {0};
-    bool ok = exact_digits(raw, scale, scaled, &negative, &digits) && nearest_binary64(negative, ZSTR_VAL(digits.s), scale, out);
+    bool ok = exact_digits(raw, column, decimal, scale, scaled, &negative, &digits) && nearest_binary64(negative, ZSTR_VAL(digits.s), scale, out);
     smart_str_free(&digits);
     return ok;
 }
 
-/* split_sum_text writes the exact integer hi × 2^32 + lo of the two cells of a split sum as its decimal text (DIA-202). The
- * integer is held as three 32-bit limbs of its magnitude, whose division by 10 keeps every intermediate below 2^36. */
-static void split_sum_text(zend_long hi, zend_long lo, smart_str *out)
+/* The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
+ * integer (DIA-202). */
+#define SPLIT_CELLS 5
+
+/* A signed integer of 160 bits, its sign and the five 32-bit limbs of its magnitude, highest first: the exact sum of a split sum
+ * (DIA-202), whose four part sums lie in (-2^63, 2^63), so that ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 lies below 2^112. */
+typedef struct {
+    bool negative;
+    uint32_t limb[5];
+} split_wide;
+
+static bool split_wide_zero(const uint32_t *m)
 {
-    /* hi × 2^32 + lo = (hi + (lo >> 32)) × 2^32 + (lo & 0xffffffff), with lo >= 0. */
-    int64_t high = (int64_t)hi + (int64_t)((uint64_t)lo >> 32);
-    uint64_t low = (uint64_t)lo & 0xffffffffu;
-    bool negative = high < 0;
-    /* The magnitude of a negative high × 2^32 + low is (|high| - 1) × 2^32 + (2^32 - low), or |high| × 2^32 for low 0. */
-    uint64_t magnitude = negative ? (uint64_t)0 - (uint64_t)high : (uint64_t)high;
-    if (negative && low != 0) {
-        magnitude -= 1;
-        low = 0x100000000u - low;
+    for (int i = 0; i < 5; i++) if (m[i] != 0) return false;
+    return true;
+}
+
+static int split_wide_compare(const uint32_t *a, const uint32_t *b)
+{
+    for (int i = 0; i < 5; i++) if (a[i] != b[i]) return a[i] < b[i] ? -1 : 1;
+    return 0;
+}
+
+static void split_wide_add(uint32_t *a, const uint32_t *b)
+{
+    uint64_t carry = 0;
+    for (int i = 4; i >= 0; i--) {
+        uint64_t v = (uint64_t)a[i] + b[i] + carry;
+        a[i] = (uint32_t)v;
+        carry = v >> 32;
     }
-    uint32_t limbs[3] = {(uint32_t)(magnitude >> 32), (uint32_t)(magnitude & 0xffffffffu), (uint32_t)low};
-    char digits[40];
+}
+
+/* a - b, with a >= b. */
+static void split_wide_subtract(uint32_t *a, const uint32_t *b)
+{
+    uint64_t borrow = 0;
+    for (int i = 4; i >= 0; i--) {
+        uint64_t sub = (uint64_t)b[i] + borrow;
+        borrow = a[i] < sub ? 1 : 0;
+        a[i] = (uint32_t)(((uint64_t)a[i] + (borrow << 32)) - sub);
+    }
+}
+
+/* w × 2^16 + n. */
+static void split_wide_step(split_wide *w, zend_long n)
+{
+    uint32_t carry = 0;
+    for (int i = 4; i >= 0; i--) {
+        uint64_t v = ((uint64_t)w->limb[i] << 16) | carry;
+        w->limb[i] = (uint32_t)v;
+        carry = (uint32_t)(v >> 32);
+    }
+    bool negative = n < 0;
+    uint64_t m = negative ? (uint64_t)0 - (uint64_t)n : (uint64_t)n;
+    uint32_t b[5] = {0, 0, 0, (uint32_t)(m >> 32), (uint32_t)m};
+    if (split_wide_zero(w->limb) || w->negative == negative) {
+        if (split_wide_zero(w->limb)) w->negative = negative;
+        split_wide_add(w->limb, b);
+    } else if (split_wide_compare(w->limb, b) >= 0) {
+        split_wide_subtract(w->limb, b);
+    } else {
+        split_wide_subtract(b, w->limb);
+        memcpy(w->limb, b, sizeof b);
+        w->negative = negative;
+    }
+    if (split_wide_zero(w->limb)) w->negative = false;
+}
+
+/* The decimal text of w. */
+static void split_wide_text(split_wide w, smart_str *out)
+{
+    char digits[64];
     size_t n = 0;
     do {
         uint64_t rest = 0;
-        for (int i = 0; i < 3; i++) {
-            uint64_t acc = (rest << 32) | limbs[i];
-            limbs[i] = (uint32_t)(acc / 10);
+        for (int i = 0; i < 5; i++) {
+            uint64_t acc = (rest << 32) | w.limb[i];
+            w.limb[i] = (uint32_t)(acc / 10);
             rest = acc % 10;
         }
         digits[n++] = (char)('0' + rest);
-    } while (limbs[0] != 0 || limbs[1] != 0 || limbs[2] != 0);
-    if (negative) smart_str_appendc(out, '-');
+    } while (!split_wide_zero(w.limb));
+    if (w.negative) smart_str_appendc(out, '-');
     while (n > 0) smart_str_appendc(out, digits[--n]);
     smart_str_0(out);
 }
 
-/* sum_of is the sum of the sum cells of a statement, row[0] .. row[count - 1]: its one cell, or the exact integer of the two
- * cells of a split sum as its decimal text (DIA-202); null when both are null, the sum of no value. */
-static bool sum_of(zval *row, uint32_t count, zval *out)
+/* The integer of a part or flag cell of a split sum: an integer, or the digits of one; false for any other cell. */
+static bool split_cell(zval *cell, zend_long *out)
+{
+    double ignored;
+    if (Z_TYPE_P(cell) == IS_LONG) {
+        *out = Z_LVAL_P(cell);
+        return true;
+    }
+    return Z_TYPE_P(cell) == IS_STRING && Z_STRLEN_P(cell) != 0
+        && is_numeric_string(Z_STRVAL_P(cell), Z_STRLEN_P(cell), out, &ignored, false) == IS_LONG;
+}
+
+/* split_sum_value is the exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the four part cells of a split sum as its
+ * decimal text in out, or null when every part is null, the sum of no value; non_integer is set when the flag cell reports a
+ * value that is not an integer (DIA-202). A cell that is not an integer is CODEC_DECODE, false. */
+static bool split_sum_value(zval **parts, zval *flag, bool *non_integer, zval *out)
+{
+    zend_long n;
+    *non_integer = false;
+    if (Z_TYPE_P(flag) != IS_NULL) {
+        if (!split_cell(flag, &n)) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+        if (n != 0) {
+            *non_integer = true;
+            ZVAL_NULL(out);
+            return true;
+        }
+    }
+    split_wide w = {false, {0, 0, 0, 0, 0}};
+    bool none = true;
+    for (int i = 0; i < SPLIT_CELLS - 1; i++) {
+        n = 0;
+        if (Z_TYPE_P(parts[i]) != IS_NULL) {
+            if (!split_cell(parts[i], &n)) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+            none = false;
+        }
+        split_wide_step(&w, n);
+    }
+    if (none) {
+        ZVAL_NULL(out);
+        return true;
+    }
+    smart_str text = {0};
+    split_wide_text(w, &text);
+    ZVAL_STR(out, text.s);
+    return true;
+}
+
+/* sum_of is the sum of the sum cells of a statement over the column, row[0] .. row[count - 1]: its one cell, or the exact
+ * integer of the cells of a split sum as its decimal text (DIA-202); null is the sum of no value. A split sum of a column that
+ * holds a value which its type does not hold is refused by that column. */
+static bool sum_of(zval *row, uint32_t count, zend_string *column, bool decimal, zend_long scale, zval *out)
 {
     zval *first = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
     if (first == NULL) return read_throw("INTERNAL", "a sum statement read no row of sums");
     if (count == 1) { ZVAL_COPY(out, first); return true; }
-    zval *second = zend_hash_index_find(Z_ARRVAL_P(row), 1);
-    if (second == NULL) return read_throw("INTERNAL", "a split sum read one of its two sums");
-    if (Z_TYPE_P(first) == IS_NULL && Z_TYPE_P(second) == IS_NULL) { ZVAL_NULL(out); return true; }
-    zend_long parts[2];
-    zval *cells[2] = {first, second};
-    for (int i = 0; i < 2; i++) {
-        double ignored;
-        if (Z_TYPE_P(cells[i]) == IS_LONG) {
-            parts[i] = Z_LVAL_P(cells[i]);
-        } else if (Z_TYPE_P(cells[i]) != IS_STRING || Z_STRLEN_P(cells[i]) == 0
-                   || is_numeric_string(Z_STRVAL_P(cells[i]), Z_STRLEN_P(cells[i]), &parts[i], &ignored, false) != IS_LONG) {
-            return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
-        }
+    zval *cells[SPLIT_CELLS];
+    for (uint32_t i = 0; i < SPLIT_CELLS; i++) {
+        cells[i] = zend_hash_index_find(Z_ARRVAL_P(row), i);
+        if (cells[i] == NULL) return read_throw("INTERNAL", "a split sum read fewer cells than its five");
     }
-    if (parts[1] < 0) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
-    smart_str text = {0};
-    split_sum_text(parts[0], parts[1], &text);
-    ZVAL_STR(out, text.s);
+    bool non_integer;
+    if (!split_sum_value(cells, cells[SPLIT_CELLS - 1], &non_integer, out)) return false;
+    if (non_integer) return non_integer_refuse(column, decimal, scale);
+    return true;
+}
+
+/* added_sum reads the cell of an added column of the plan column plan from the row vals: the sum of an integer column is the
+ * exact integer of its split cells on SQLite and markdown, as its decimal text in out, and a sum of a column that holds a value
+ * which its type does not hold is refused by that column (DIA-202, PRT-84); out stays undefined for any other column. */
+static bool added_sum(zend_string *entity, zend_string *name, zval *kind, zval *plan, zval *vals, zval *raw, zval *out)
+{
+    zval *sum_of = read_array(plan, "sum_of"), *parts = read_array(plan, "sum_parts"), *flag = read_array(plan, "non_integer");
+    if (sum_of == NULL || Z_TYPE_P(sum_of) != IS_STRING) return true;
+    const char *type = kind != NULL && Z_TYPE_P(kind) == IS_STRING ? Z_STRVAL_P(kind) : "i64";
+    zend_string *refusal = strpprintf(0, "column %s holds a value that is not an integer", Z_STRVAL_P(sum_of));
+    bool non_integer = false;
+    if (parts != NULL && Z_TYPE_P(parts) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(parts)) > 0) {
+        if (flag == NULL || Z_TYPE_P(flag) != IS_LONG || zend_hash_num_elements(Z_ARRVAL_P(parts)) != SPLIT_CELLS - 1) {
+            zend_string_release(refusal);
+            return read_throw("INTERNAL", "a split sum states no cell of a value that is not an integer");
+        }
+        zval *cells[SPLIT_CELLS - 1];
+        uint32_t i = 0;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(parts), zval *at) {
+            cells[i] = Z_TYPE_P(at) == IS_LONG ? zend_hash_index_find(Z_ARRVAL_P(vals), (zend_ulong)Z_LVAL_P(at)) : NULL;
+            if (cells[i] == NULL) { zend_string_release(refusal); return read_throw("INTERNAL", "a split sum cell is missing from the row"); }
+            i++;
+        } ZEND_HASH_FOREACH_END();
+        zval *flag_cell = zend_hash_index_find(Z_ARRVAL_P(vals), (zend_ulong)Z_LVAL_P(flag));
+        if (flag_cell == NULL) { zend_string_release(refusal); return read_throw("INTERNAL", "a split sum cell is missing from the row"); }
+        if (!split_sum_value(cells, flag_cell, &non_integer, out)) {
+            /* A part that is not an integer is the refusal of the type of the column. */
+            zend_clear_exception();
+            zend_string_release(refusal);
+            return cell_refuse(entity, name, type, NULL);
+        }
+        raw = out;
+    }
+    if (non_integer || (Z_TYPE_P(raw) == IS_STRING && memchr(Z_STRVAL_P(raw), '.', Z_STRLEN_P(raw)) != NULL)) {
+        zval exception;
+        if (cell_refusal(entity, name, refusal, NULL, &exception)) zend_throw_exception_object(&exception);
+        zend_string_release(refusal);
+        if (Z_TYPE_P(out) != IS_UNDEF) { zval_ptr_dtor(out); ZVAL_UNDEF(out); }
+        return false;
+    }
+    zend_string_release(refusal);
     return true;
 }
 
@@ -1559,7 +1727,7 @@ static bool sum_of(zval *row, uint32_t count, zval *out)
  * of the column and then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count, which is
  * the AVG of every database. The long division keeps its remainder below the count: ten additions of the remainder modulo the
  * count never leave the integer range. */
-static bool avg_value(zval *model, zval *sum, zval *count_cell, bool exact, zend_long scale, bool scaled, zval *out)
+static bool avg_value(zval *model, zval *sum, zval *count_cell, bool exact, zend_string *column, bool decimal, zend_long scale, bool scaled, zval *out)
 {
     zend_long count = -1;
     if (Z_TYPE_P(count_cell) == IS_LONG) {
@@ -1580,7 +1748,7 @@ static bool avg_value(zval *model, zval *sum, zval *count_cell, bool exact, zend
     }
     bool negative;
     smart_str digits = {0};
-    if (!exact_digits(sum, scale, scaled, &negative, &digits)) { smart_str_free(&digits); return false; }
+    if (!exact_digits(sum, column, decimal, scale, scaled, &negative, &digits)) { smart_str_free(&digits); return false; }
     smart_str quotient = {0};
     zend_long rest = 0;
     size_t len = ZSTR_LEN(digits.s);
@@ -1694,27 +1862,30 @@ static bool read_aggregate(zval *model, const char *fn, zval *return_value)
     zval *type = col != NULL ? read_array(col, "type") : NULL, *scale = col != NULL ? read_array(col, "scale") : NULL;
     if (type == NULL || Z_TYPE_P(type) != IS_STRING) { zval_ptr_dtor(&meta); zval_ptr_dtor(&result); read_throw("INTERNAL", "the column of a planned aggregate is missing"); return false; }
     bool exact = read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64") || read_string_is(type, "decimal");
+    bool decimal = read_string_is(type, "decimal");
     zend_long column_scale = scale != NULL && Z_TYPE_P(scale) == IS_LONG ? Z_LVAL_P(scale) : 0;
     zval_ptr_dtor(&meta);
-    /* The row holds two sums where the planner splits the sum of an exact column (DIA-202), one otherwise, and for an average
-     * the count after them. */
+    /* The row holds the cells of a split sum where the planner splits the sum of an exact column (DIA-202), one sum otherwise,
+     * and for an average the count after them. */
     uint32_t cells = Z_TYPE(result) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL(result)) : 0;
     uint32_t sums = strcmp(fn, "sum") == 0 ? cells : cells - 1;
-    if (cells == 0 || sums == 0 || sums > 2) { zval_ptr_dtor(&result); return read_throw("INTERNAL", "a sum or average statement read no row of sums"); }
+    if (cells == 0 || (sums != 1 && sums != SPLIT_CELLS)) { zval_ptr_dtor(&result); return read_throw("INTERNAL", "a sum or average statement read no row of sums"); }
+    zend_string *column = zend_string_copy(Z_STR_P(name));
     zval sum;
-    if (!sum_of(&result, sums, &sum)) { zval_ptr_dtor(&result); return false; }
+    if (!sum_of(&result, sums, column, decimal, column_scale, &sum)) { zend_string_release(column); zval_ptr_dtor(&result); return false; }
     bool done;
     if (strcmp(fn, "sum") == 0) {
-        if (Z_TYPE(sum) == IS_NULL) { ZVAL_NULL(return_value); zval_ptr_dtor(&sum); zval_ptr_dtor(&result); return true; }
-        done = exact ? exact_sum_value(&sum, column_scale, scaled, return_value)
+        if (Z_TYPE(sum) == IS_NULL) { ZVAL_NULL(return_value); zval_ptr_dtor(&sum); zval_ptr_dtor(&result); zend_string_release(column); return true; }
+        done = exact ? exact_sum_value(&sum, column, decimal, column_scale, scaled, return_value)
                      : read_model_static_call(model, "aggregateNumber", return_value, 1, &sum);
     } else {
         zval *count_cell = zend_hash_index_find(Z_ARRVAL(result), sums);
-        done = count_cell != NULL ? avg_value(model, &sum, count_cell, exact, column_scale, scaled, return_value)
+        done = count_cell != NULL ? avg_value(model, &sum, count_cell, exact, column, decimal, column_scale, scaled, return_value)
                                   : read_throw("INTERNAL", "an average statement read no count");
     }
     zval_ptr_dtor(&sum);
     zval_ptr_dtor(&result);
+    zend_string_release(column);
     return done;
 }
 

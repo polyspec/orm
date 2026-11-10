@@ -27,8 +27,9 @@ type request struct {
 	// external lists, per parent model, the relations whose child has its
 	// own connection; they run as separate statements after the parents load.
 	external map[*Core][]relSpec
-	// sumCells is the number of sum cells of a sum or an average statement: 2 where the planner splits the sum of an exact
-	// column into its high and low 32 bits (DIA-202), 1 otherwise.
+	// sumCells is the number of sum cells of a sum or an average statement: splitCells where the planner splits the sum of an
+	// exact column into the sums of its four 16-bit parts and the cell that reports a value that is not an integer (DIA-202),
+	// 1 otherwise.
 	sumCells int
 }
 

@@ -3,7 +3,9 @@ package orm
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -254,12 +256,37 @@ func groupCell(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field
 	}
 }
 
-// addedColumnValue decodes an added column by the type its plan column states (INT-160). Other types keep the driver value.
-func addedColumnValue(typ string, raw any) (any, error) {
+// addedColumnValue decodes an added column by the type its plan column states (INT-160), from its cell raw of the row. The
+// sum of an exact column is the exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a
+// value which its type does not hold is refused by that column (DIA-202, PRT-84). Other types keep the driver value.
+func addedColumnValue(col plan.OutCol, raw any, row []any) (any, error) {
+	if len(col.SumParts) > 0 {
+		if col.NonInteger == nil {
+			return nil, internalErr("the split sum %s states no cell of a value that is not an integer", col.Name)
+		}
+		parts := make([]any, 0, len(col.SumParts))
+		for _, i := range col.SumParts {
+			parts = append(parts, row[i])
+		}
+		sum, err := splitSumValue(parts, row[*col.NonInteger])
+		if err != nil {
+			return nil, cellRefusal(col.Type)
+		}
+		raw = sum
+	}
 	if raw == nil {
 		return nil, nil
 	}
-	switch typ {
+	if col.SumOf != "" && !sumIsInteger(raw) {
+		return nil, nonIntegerRefusal(col.SumOf, col.Type, 0)
+	}
+	if n, ok := raw.(*big.Int); ok {
+		if !n.IsInt64() {
+			return nil, cellRefusal(col.Type)
+		}
+		raw = n.Int64()
+	}
+	switch col.Type {
 	// A text is an integer only when it is exactly the digits of one (INT-160), which AsInt16, AsInt32 and AsInt64 take.
 	case "i64":
 		return AsInt64(raw)
@@ -279,6 +306,19 @@ func addedColumnValue(typ string, raw any) (any, error) {
 	default:
 		return raw, nil
 	}
+}
+
+// sumIsInteger reports whether the sum cell raw of an integer column holds only integers: the split sum reports a value that
+// is not an integer, and the text of MySQL and PostgreSQL has a fraction when the column holds one (DIA-202, PRT-84).
+func sumIsInteger(raw any) bool {
+	if _, ok := raw.(nonInteger); ok {
+		return false
+	}
+	text, ok := raw.(string)
+	if b, isBytes := raw.([]byte); isBytes {
+		text, ok = string(b), true
+	}
+	return !ok || !strings.Contains(text, ".")
 }
 
 // exactIntegerPattern is the text of an integer: its digits, no sign but a minus and no leading zero.

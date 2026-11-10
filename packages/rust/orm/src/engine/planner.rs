@@ -485,19 +485,19 @@ impl<'m> Planner<'m> {
     /// The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
     /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums
     /// integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column
-    /// is the sum of its high 32 bits and the sum of its low 32 bits, which the executor combines (DIA-202).
-    fn aggregate_sums(&self, root: &Scope<'_>, column: &str) -> Vec<String> {
+    /// is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is not
+    /// an integer; the second value is that cell, or None (DIA-202).
+    fn aggregate_sums(&self, root: &Scope<'_>, column: &str) -> (Vec<String>, Option<String>) {
         let q = self.qcol(root, column);
         let ty = root.ent.field(column).map(|f| &f.ty);
         let exact = matches!(ty, Some(Type::I16 | Type::I32 | Type::I64 | Type::Decimal(..)));
         if exact && self.d.name() == "sqlite" {
-            // A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
-            return vec![format!("SUM({q} >> 32)"), format!("CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM({q} & 4294967295) END")];
+            return (split_parts(&q).iter().map(|part| format!("SUM({part})")).collect(), Some(non_integer_cell(&q)));
         }
         if self.d.name() == "mysql" && ty == Some(&Type::F64) {
-            return vec![format!("SUM({q}) + 0")];
+            return (vec![format!("SUM({q}) + 0")], None);
         }
-        vec![format!("SUM({q})")]
+        (vec![format!("SUM({q})")], None)
     }
 
     fn qualified(&self, s: &Scope<'_>, cols: &[String]) -> Vec<String> {
@@ -539,11 +539,17 @@ impl<'m> Planner<'m> {
         match kind {
             "count" => sb.push_str(if group_count { "1" } else { "COUNT(*)" }),
             "sum" => {
-                let sums: Vec<String> = self.aggregate_sums(root, agg).iter().map(|s| format!("COALESCE({s}, 0)")).collect();
-                sb.push_str(&sums.join(", "));
+                let (sums, non_integer) = self.aggregate_sums(root, agg);
+                let mut cells: Vec<String> = sums.iter().map(|s| format!("COALESCE({s}, 0)")).collect();
+                cells.extend(non_integer);
+                sb.push_str(&cells.join(", "));
             }
             // The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
-            "avg" => sb.push_str(&format!("{}, COUNT({})", self.aggregate_sums(root, agg).join(", "), self.qcol(root, agg))),
+            "avg" => {
+                let (mut cells, non_integer) = self.aggregate_sums(root, agg);
+                cells.extend(non_integer);
+                sb.push_str(&format!("{}, COUNT({})", cells.join(", "), self.qcol(root, agg)));
+            }
             "group_count" => {
                 self.select_group_count_list(root, &mut sb, &mut asm, &mut out_names)?;
                 asm.key = asm.key_refs(&q.group_by)?;
@@ -771,6 +777,7 @@ impl<'m> Planner<'m> {
             sep(sb);
             let mut styles = Vec::new();
             let mut typ = "varchar".to_owned();
+            let mut sum_of = None;
             let expr = match c.kind {
                 OutKind::Fn(f) => {
                     typ = function_type(&f.name, col, &s.ent.name, &c.column)?;
@@ -779,8 +786,33 @@ impl<'m> Planner<'m> {
                     e
                 }
                 OutKind::Sub(sub) => {
-                    let e = self.sub_select(b, s, sub)?;
                     typ = self.sub_type(sub)?;
+                    sum_of = self.sub_sum_of(sub)?;
+                    if let (Some(summed), "sqlite") = (&sum_of, self.d.name()) {
+                        // SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer column
+                        // is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a
+                        // value that is not an integer, which the executor combines and checks; the plan column states their
+                        // cells (DIA-202, PRT-84).
+                        let mut out_col = OutCol { name: c.name.clone(), typ: typ.clone(), sum_of: Some(summed.clone()), ..Default::default() };
+                        for k in 0..=SPLIT_PARTS {
+                            if k > 0 {
+                                sb.push_str(", ");
+                            }
+                            let e = self.sub_select(b, s, sub, Some(k))?;
+                            let out = if k == 0 { format!("{}__{}", s.alias, c.name) } else { format!("{}__{}__{k}", s.alias, c.name) };
+                            sb.push_str(&format!("({e}) AS {}", self.d.quote(&out)));
+                            out_names.push(out);
+                            if k < SPLIT_PARTS {
+                                out_col.sum_parts.push(out_names.len() - 1);
+                            } else {
+                                out_col.non_integer = Some(out_names.len() - 1);
+                            }
+                        }
+                        out_col.index = out_col.sum_parts[0];
+                        asm.columns.push(out_col);
+                        continue;
+                    }
+                    let e = self.sub_select(b, s, sub, None)?;
                     format!("({e})")
                 }
                 OutKind::Column => {
@@ -795,7 +827,7 @@ impl<'m> Planner<'m> {
             if let Some(col) = col {
                 typ = col.ty.name().to_owned();
             }
-            asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false });
+            asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false, sum_of, ..Default::default() });
         }
         if has_aes {
             let version = s
@@ -819,6 +851,7 @@ impl<'m> Planner<'m> {
                     typ: version.ty.name().into(),
                     styles: Vec::new(),
                     hidden: true,
+                    ..Default::default()
                 });
             }
         }
@@ -984,7 +1017,7 @@ impl<'m> Planner<'m> {
         })?;
         let mut lhs = self.qcol(s, &pr.column);
         if let Some(sub) = &pr.sub {
-            let inner = self.sub_select(b, s, sub)?;
+            let inner = self.sub_select(b, s, sub, None)?;
             let op = if pr.op == "not_in" { " NOT IN " } else { " IN " };
             return Ok(format!("{lhs}{op}({inner})"));
         }
@@ -1140,18 +1173,21 @@ impl<'m> Planner<'m> {
     }
 
     /// A subquery for an IN list or a scalar column; its root gets its own
-    /// alias and resolves "^" against `outer`.
-    fn sub_select(&self, b: &mut Builder, outer: &Scope<'_>, sub: &ir::Sub) -> Result<String> {
+    /// alias and resolves "^" against `outer`. A cell below SPLIT_PARTS selects the sum of that 16-bit part of the summed
+    /// column, SPLIT_PARTS the cell that reports a value that is not an integer (DIA-202, PRT-84), and None the subquery.
+    fn sub_select(&self, b: &mut Builder, outer: &Scope<'_>, sub: &ir::Sub, cell: Option<usize>) -> Result<String> {
         b.subs += 1;
         let mut root = self.scopes(&sub.query, format!("s{}", b.subs), false)?;
         // Scope is covariant in its lifetime, so the subquery root and `outer` meet at the shorter of their lifetimes.
         root.outer = Some(outer);
         let root = &root;
         let mut sb = String::from("SELECT ");
-        match sub.agg.as_str() {
-            "sum" => sb.push_str(&format!("COALESCE({}, 0)", self.sub_sum(root, &sub.column))),
-            "count" => sb.push_str("COUNT(*)"),
-            _ => sb.push_str(&self.qcol(root, &sub.column)),
+        match (cell, sub.agg.as_str()) {
+            (Some(k), _) if k < SPLIT_PARTS => sb.push_str(&format!("COALESCE(SUM({}), 0)", split_parts(&self.qcol(root, &sub.column))[k])),
+            (Some(_), _) => sb.push_str(&non_integer_cell(&self.qcol(root, &sub.column))),
+            (None, "sum") => sb.push_str(&format!("COALESCE(SUM({}), 0)", self.qcol(root, &sub.column))),
+            (None, "count") => sb.push_str("COUNT(*)"),
+            (None, _) => sb.push_str(&self.qcol(root, &sub.column)),
         }
         sb.push_str(&format!(" FROM {} AS {}", b.table(&root.ent.table), self.d.quote(&root.alias)));
         self.render_joins(b, root, root, &mut sb)?;
@@ -1180,20 +1216,13 @@ impl<'m> Planner<'m> {
         Ok(sb)
     }
 
-    /// The sum of a scalar subquery column. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum
-    /// of an integer column is the two sums of DIA-202 combined in SQL as (hi + lo / 2^32) * 2^32 + lo % 2^32, whose SQLite
-    /// integer arithmetic gives the exact sum within the i64 range and a REAL past it, which the i64 type of the column
-    /// refuses as MySQL's and PostgreSQL's sums past it are refused (PRT-84, INT-160).
-    fn sub_sum(&self, root: &Scope<'_>, column: &str) -> String {
-        let q = self.qcol(root, column);
-        if self.d.name() == "sqlite" && root.ent.field(column).is_some_and(|f| matches!(f.ty, Type::I16 | Type::I32 | Type::I64)) {
-            let (hi, lo) = (format!("SUM({q} >> 32)"), format!("SUM({q} & 4294967295)"));
-            // A cell that is no integer makes the sum 0.5, which the i64 type of the column refuses (PRT-84).
-            return format!(
-                "CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE ({hi} + {lo} / 4294967296) * 4294967296 + {lo} % 4294967296 END"
-            );
+    /// The integer column that a scalar subquery sums, which the plan column states (PRT-84).
+    fn sub_sum_of(&self, sub: &ir::Sub) -> Result<Option<String>> {
+        if sub.agg != "sum" {
+            return Ok(None);
         }
-        format!("SUM({q})")
+        let entity = self.entity(&sub.query.entity)?;
+        Ok(entity.field(&sub.column).filter(|field| matches!(field.ty, Type::I16 | Type::I32 | Type::I64)).map(|field| field.name.clone()))
     }
 
     fn sub_type(&self, sub: &ir::Sub) -> Result<String> {
@@ -1541,4 +1570,18 @@ struct OutItem<'q> {
     name: String,
     column: String,
     kind: OutKind<'q>,
+}
+
+/// The number of parts of a split sum (DIA-202).
+const SPLIT_PARTS: usize = 4;
+
+/// The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+/// [-2^15, 2^15), and the three others in [0, 2^16).
+fn split_parts(q: &str) -> [String; SPLIT_PARTS] {
+    [format!("{q} >> 48"), format!("({q} >> 32) & 65535"), format!("({q} >> 16) & 65535"), format!("{q} & 65535")]
+}
+
+/// 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202).
+fn non_integer_cell(q: &str) -> String {
+    format!("MAX(typeof({q}) NOT IN ('integer', 'null'))")
 }

@@ -86,6 +86,23 @@ pub struct OutCol {
     pub typ: String,
     pub styles: Vec<String>,
     pub hidden: bool,
+    /// The integer column that a scalar subquery sums (PRT-84).
+    pub sum_of: Option<String>,
+    /// The cells of the sums of the four 16-bit parts of that column, highest first, and the cell that reports a value that
+    /// is not an integer, on SQLite and markdown (DIA-202, PRT-84).
+    pub sum_parts: Vec<usize>,
+    pub non_integer: Option<usize>,
+}
+
+impl OutCol {
+    /// The number of cells of the row that the column reads: one, or the cells of a split sum (DIA-202).
+    pub fn cells(&self) -> usize {
+        if self.sum_parts.is_empty() {
+            1
+        } else {
+            self.sum_parts.len() + usize::from(self.non_integer.is_some())
+        }
+    }
 }
 
 /// A joined entity's slice of the same row (kind join, `assemble` set) or a
@@ -110,9 +127,10 @@ impl Assemble {
         self.columns.iter().find(|c| c.name == name).map(|c| c.index)
     }
 
-    /// Width of one positional row: this node's columns plus its joins'.
+    /// Width of one positional row: the cells of this node's columns plus its joins'.
     pub fn total_columns(&self) -> usize {
-        self.columns.len() + self.children.iter().filter_map(|c| c.assemble.as_ref()).map(|a| a.total_columns()).sum::<usize>()
+        self.columns.iter().map(OutCol::cells).sum::<usize>()
+            + self.children.iter().filter_map(|c| c.assemble.as_ref()).map(|a| a.total_columns()).sum::<usize>()
     }
 
     /// Whether this node loads relation `rel` (a join or a relation child).

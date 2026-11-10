@@ -109,5 +109,8 @@ export interface KeyReference { column: string; index: number; }
 export interface ParentReference { step: number; keys: KeyReference[]; if_parent?: PlanIfParent; }
 // aes_version is the position in columns, for a node that reads an AES column, that holds the key version.
 export interface Assemble { entity: string; alias: string; columns: OutputColumn[]; children: Child[]; key: KeyReference[]; aes_version?: number; }
-export interface OutputColumn { index: number; name: string; column: string; type: string; styles: string[]; hidden: boolean; }
+// sum_of names the integer column that a scalar subquery sums (PRT-84); sum_parts are the cells of the sums of the four 16-bit
+// parts of that column, highest first, and non_integer the cell that reports a value that is not an integer, on SQLite and
+// markdown (DIA-202, PRT-84).
+export interface OutputColumn { index: number; name: string; column: string; type: string; styles: string[]; hidden: boolean; sum_of?: string; sum_parts?: number[]; non_integer?: number; }
 export interface Child { rel: string; kind: string; step: number; parent_keys: KeyReference[]; child_keys: KeyReference[]; key: KeyReference[]; flatten: boolean; cascade: boolean; assemble?: Assemble; }
