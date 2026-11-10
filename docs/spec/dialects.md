@@ -104,7 +104,10 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   Both replicas refuse a write in the same way: MySQL's runs `super_read_only`, and MariaDB's runs `read_only` with no `READ ONLY
   ADMIN` for the account of its DSN, so each refuses a write of that account with 1290 (`READ_ONLY`). On MySQL the check
   answers first, with `ROW_MUTATION_UNSUPPORTED`; on MariaDB the insert, the update and the delete pass the check and meet
-  the replica's 1290 (`READ_ONLY`), and the row stays as it was.
+  the replica's 1290 (`READ_ONLY`), and the row stays as it was. MariaDB has no partial revokes, so the premise of that
+  case, a server with partial revokes on, does not hold on MariaDB: the case runs on both servers, and its `mariadb`
+  expect states the answers of the MariaDB replica (DIA-200, rule 4), the 1193 of `@@GLOBAL.partial_revokes` as `DRIVER`
+  and the 1290 of each change as `READ_ONLY`.
 
 - **DIA-208** The statement timeout — MySQL 8.4 / MariaDB 11.8 (probes `mysql.session.statement_timeout`,
   `mariadb.session.statement_timeout`): MySQL bounds a SELECT by `max_execution_time` in milliseconds (3024) and has no
