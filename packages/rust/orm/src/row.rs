@@ -280,6 +280,222 @@ pub(crate) fn numeric_binary_text(bytes: &[u8]) -> Option<String> {
     Some(if dscale == 0 { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") })
 }
 
+/// Why PostgreSQL does not read a text as a numeric: its SQLSTATE, 22P02 for a text that is no numeric and 22003 for a
+/// numeric past the range of the type.
+pub(crate) const NUMERIC_INVALID: &str = "22P02";
+pub(crate) const NUMERIC_OUT_OF_RANGE: &str = "22003";
+
+/// The binary form of the PostgreSQL NUMERIC that PostgreSQL 17 reads from `text` (numeric_in), whatever its number of
+/// digits, or the SQLSTATE with which PostgreSQL refuses the text. The text, between spaces of the C locale, is `NaN`,
+/// an optionally signed `Infinity` or `inf`, any case; or an optionally signed number: a hexadecimal, octal or binary
+/// integer after `0x`, `0o` or `0b`, or decimal digits with an optional point and an optional exponent, where an
+/// underscore stands between two digits. The display scale is the number of fraction digits after the exponent, at
+/// least 0. An exponent past 1073741823, a weight past 32767 base-10000 digits and a display scale past 16383 are
+/// past the range.
+pub(crate) fn numeric_text_binary(text: &str) -> std::result::Result<Vec<u8>, &'static str> {
+    let header = |ndigits: u16, weight: i16, sign: u16, dscale: u16| -> Vec<u8> {
+        [ndigits, weight as u16, sign, dscale].iter().flat_map(|word| word.to_be_bytes()).collect()
+    };
+    let space = |b: u8| matches!(b, b' ' | b'\t' | b'\n' | 0x0B | 0x0C | b'\r');
+    let bytes = text.as_bytes();
+    let mut at = 0;
+    while at < bytes.len() && space(bytes[at]) {
+        at += 1;
+    }
+    let rest = |at: usize| &bytes[at..];
+    let starts = |at: usize, word: &str| rest(at).len() >= word.len() && rest(at)[..word.len()].eq_ignore_ascii_case(word.as_bytes());
+    let end = |mut at: usize| {
+        while at < bytes.len() && space(bytes[at]) {
+            at += 1;
+        }
+        at == bytes.len()
+    };
+    for (word, sign) in
+        [("NaN", 0xC000), ("Infinity", 0xD000), ("+Infinity", 0xD000), ("-Infinity", 0xF000), ("inf", 0xD000), ("+inf", 0xD000), ("-inf", 0xF000)]
+    {
+        if starts(at, word) {
+            return if end(at + word.len()) { Ok(header(0, 0, sign, 0)) } else { Err(NUMERIC_INVALID) };
+        }
+    }
+    let negative = match bytes.get(at) {
+        Some(b'-') => {
+            at += 1;
+            true
+        }
+        Some(b'+') => {
+            at += 1;
+            false
+        }
+        _ => false,
+    };
+    let radix = match (bytes.get(at), bytes.get(at + 1).map(u8::to_ascii_lowercase)) {
+        (Some(b'0'), Some(b'x')) => 16,
+        (Some(b'0'), Some(b'o')) => 8,
+        (Some(b'0'), Some(b'b')) => 2,
+        _ => 10,
+    };
+    // The value is the decimal digits times 10^-scale; weight10 is the decimal weight of the first digit.
+    let mut digits: Vec<u8> = Vec::new();
+    let mut scale: i64 = 0;
+    if radix != 10 {
+        at += 2;
+        let first = at;
+        let digit = |b: u8| (b as char).to_digit(radix).map(|d| d as u8);
+        // The base-10000 digits of the integer, most significant first, multiplied by the radix for each digit.
+        let mut words: Vec<u32> = Vec::new();
+        while let Some(&b) = bytes.get(at) {
+            if let Some(d) = digit(b) {
+                let mut carry = u32::from(d);
+                for w in words.iter_mut().rev() {
+                    let v = *w * radix + carry;
+                    *w = v % 10000;
+                    carry = v / 10000;
+                }
+                while carry > 0 {
+                    words.insert(0, carry % 10000);
+                    carry /= 10000;
+                }
+                at += 1;
+            } else if b == b'_' {
+                at += 1;
+                if !bytes.get(at).is_some_and(|&b| digit(b).is_some()) {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else {
+                break;
+            }
+        }
+        if at == first || !end(at) {
+            return Err(NUMERIC_INVALID);
+        }
+        for w in words {
+            digits.extend(format!("{w:04}").bytes().map(|b| b - b'0'));
+        }
+    } else {
+        let mut point = false;
+        if bytes.get(at) == Some(&b'.') {
+            point = true;
+            at += 1;
+        }
+        if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+            return Err(NUMERIC_INVALID);
+        }
+        while let Some(&b) = bytes.get(at) {
+            if b.is_ascii_digit() {
+                digits.push(b - b'0');
+                if point {
+                    scale += 1;
+                }
+                at += 1;
+            } else if b == b'.' {
+                if point {
+                    return Err(NUMERIC_INVALID);
+                }
+                point = true;
+                at += 1;
+                if bytes.get(at) == Some(&b'_') {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else if b == b'_' {
+                at += 1;
+                if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else {
+                break;
+            }
+        }
+        if matches!(bytes.get(at), Some(b'e' | b'E')) {
+            at += 1;
+            let negative_exponent = match bytes.get(at) {
+                Some(b'+') => {
+                    at += 1;
+                    false
+                }
+                Some(b'-') => {
+                    at += 1;
+                    true
+                }
+                _ => false,
+            };
+            if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                return Err(NUMERIC_INVALID);
+            }
+            let mut exponent: i64 = 0;
+            while let Some(&b) = bytes.get(at) {
+                if b.is_ascii_digit() {
+                    exponent = exponent * 10 + i64::from(b - b'0');
+                    if exponent > i64::from(i32::MAX / 2) {
+                        return Err(NUMERIC_OUT_OF_RANGE);
+                    }
+                    at += 1;
+                } else if b == b'_' {
+                    at += 1;
+                    if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                        return Err(NUMERIC_INVALID);
+                    }
+                } else {
+                    break;
+                }
+            }
+            scale -= if negative_exponent { -exponent } else { exponent };
+        }
+        if !end(at) {
+            return Err(NUMERIC_INVALID);
+        }
+    }
+    // The decimal weight of the first digit that is not 0: one past 4 * 32767 + 3 is past a weight of 32767, which is
+    // known before the digits of a large exponent are written out.
+    if let Some(first) = digits.iter().position(|&d| d != 0) {
+        if (digits.len() - first) as i64 - 1 - scale > 4 * 32767 + 3 {
+            return Err(NUMERIC_OUT_OF_RANGE);
+        }
+    }
+    // A negative scale is that many zero digits after the last one; the display scale is then 0.
+    if scale < 0 {
+        if digits.iter().any(|&d| d != 0) {
+            // A count of zeros past usize is past the range, which is the whole answer of the conversion.
+            let Ok(zeros) = usize::try_from(-scale) else { return Err(NUMERIC_OUT_OF_RANGE) };
+            digits.extend(std::iter::repeat_n(0, zeros));
+        }
+        scale = 0;
+    }
+    // A display scale past 16383, or past u16, is past the range, which is the whole answer of the conversion.
+    let dscale = match u16::try_from(scale) {
+        Ok(dscale) if dscale <= 0x3FFF => dscale,
+        _ => return Err(NUMERIC_OUT_OF_RANGE),
+    };
+    let scale = usize::from(dscale);
+    if digits.len() < scale {
+        let mut padded = vec![0; scale - digits.len()];
+        padded.extend(digits);
+        digits = padded;
+    }
+    let (whole, fraction) = digits.split_at(digits.len() - scale);
+    let mut whole = whole.to_vec();
+    whole.splice(0..0, std::iter::repeat_n(0, (4 - whole.len() % 4) % 4));
+    let mut fraction = fraction.to_vec();
+    fraction.extend(std::iter::repeat_n(0, (4 - fraction.len() % 4) % 4));
+    let group = |part: &[u8]| -> Vec<u16> { part.chunks(4).map(|c| c.iter().fold(0u16, |n, &d| n * 10 + u16::from(d))).collect() };
+    let mut groups = group(&whole);
+    let mut weight = groups.len() as i64 - 1;
+    groups.extend(group(&fraction));
+    let leading = groups.iter().take_while(|&&g| g == 0).count();
+    groups.drain(..leading);
+    weight -= leading as i64;
+    while groups.last() == Some(&0) {
+        groups.pop();
+    }
+    if groups.is_empty() {
+        return Ok(header(0, 0, 0x0000, dscale));
+    }
+    // A weight or a digit count past its 16 bits is past the range, which is the whole answer of each conversion.
+    let (Ok(weight), Ok(ndigits)) = (i16::try_from(weight), u16::try_from(groups.len())) else { return Err(NUMERIC_OUT_OF_RANGE) };
+    let mut out = header(ndigits, weight, if negative { 0x4000 } else { 0x0000 }, dscale);
+    out.extend(groups.iter().flat_map(|g| g.to_be_bytes()));
+    Ok(out)
+}
+
 /// Reads one SQLite cell by the stored value's type (SQLite is dynamically typed): INTEGER as
 /// i64 (bool columns coerce in the typed getters), REAL, TEXT (datetimes stay text with six
 /// fraction digits), BLOB as text-or-bytes.

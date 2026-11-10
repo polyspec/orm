@@ -50,7 +50,8 @@ polyspec-orm-build = { path = "../build", features = ["live-db"] }
 # The binaries of the examples, the benchmark client and the integration program import the shared helpers from it.
 polyspec-orm-test-support = { path = "../test-support" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+# The native baseline of the performance gate reads a DECIMAL and a NUMERIC price through sqlx as its 128-bit decimal.
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "rust_decimal"] }
 # The dbspec.read_set op creates the symbolic links of its tree; the crate holds the platform calls (Rust std has none that is cross-platform).
 symlink = "=0.1.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

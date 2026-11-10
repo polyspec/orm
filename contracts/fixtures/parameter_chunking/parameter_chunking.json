@@ -5,7 +5,8 @@
     "PRT-35",
     "PRT-76",
     "CFG-28",
-    "DIA-154"
+    "DIA-154",
+    "DIA-203"
   ],
   "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
   "cases": [
@@ -635,6 +636,470 @@
                   }
                 ]
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_text_parameter_refused_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an integer column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name INT NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::text::INTEGER",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of INTEGER affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "1"
+            },
+            "name": {
+              "text": "seven"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 1,
+                "name": "seven"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "2"
+            },
+            "name": {
+              "text": " 42 "
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "empties the table for the next change of its column",
+          "sql": "DELETE FROM chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to a date column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DATE NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE DATE USING name::text::DATE",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of DATE affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name DATE NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "3"
+            },
+            "name": {
+              "text": "2026-02-30"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 3,
+                "name": "2026-02-30"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "4"
+            },
+            "name": {
+              "text": "20260203"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_decimal_text_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28",
+        "DIA-203"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an exact numeric column, which PostgreSQL also types the parameter of the statement that runs again as",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DECIMAL(65,30) NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE NUMERIC USING name::text::NUMERIC",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "8"
+            },
+            "name": {
+              "text": "12345678901234567890123456789.5"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "9"
+            },
+            "name": {
+              "text": "0.00000000000000000000000000001"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "10"
+            },
+            "name": {
+              "text": "-1.5E+30"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "12345678901234567890123456789.5"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the rows that the writes stored, each compared with its text as the column reads that text, with no model",
+          "sql": "UPDATE chunk_author SET batch_no = 1 WHERE (seq = 8 AND name = '12345678901234567890123456789.5') OR (seq = 9 AND name = '0.00000000000000000000000000001') OR (seq = 10 AND name = '-1.5E+30')"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_numeric_text_parameter_refused_after_schema_change",
+      "requirements": [
+        "CFG-28",
+        "DIA-203"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an exact numeric column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DECIMAL(65,30) NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE NUMERIC USING name::text::NUMERIC",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "11"
+            },
+            "name": {
+              "text": "1.5 points"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 11,
+                "name": "1.5 points"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "12"
+            },
+            "name": {
+              "text": "1e131072"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 12,
+                "name": "1e131072"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            },
+            "sqlite": {
+              "json": 2
             }
           }
         }
