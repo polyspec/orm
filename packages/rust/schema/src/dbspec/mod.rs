@@ -153,8 +153,9 @@ mod operator_tests {
     }
 }
 
+use lexer::go_quote;
 use parser::Diag;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
 
@@ -545,7 +546,9 @@ fn convert(diags: Vec<Diag>) -> Vec<Diagnostic> {
 struct Session<'s> {
     documents: &'s BTreeMap<String, String>,
     parsed: HashMap<String, Result<Rc<parser::Syntax>, String>>,
-    valid: HashMap<String, Result<(), String>>,
+    /// The validity of a used document by its name and the names of the documents being validated around it, which
+    /// decide its use cycles.
+    valid: HashMap<(String, Vec<String>), Result<(), String>>,
     validating: Vec<String>,
 }
 
@@ -556,11 +559,11 @@ impl<'s> Session<'s> {
             return found.clone();
         }
         let result = match self.documents.get(name) {
-            None => Err(format!("document '{name}' is not in the declared document set")),
+            None => Err(format!("document {} is not in the declared document set", go_quote(name))),
             Some(text) => match parser::parse(text) {
                 Err(stopped) => Err(invalid(name, stopped.diags)),
                 Ok(parsed) if parsed.document.name.text != name => {
-                    Err(format!("the declared document '{name}' has the header name '{}'", parsed.document.name.text))
+                    Err(format!("the document set entry {} holds document {}", go_quote(name), go_quote(&parsed.document.name.text)))
                 }
                 Ok(parsed) => Ok(Rc::new(parsed)),
             },
@@ -571,13 +574,14 @@ impl<'s> Session<'s> {
 
     /// Validates the declared document `name` once.
     fn valid(&mut self, name: &str) -> Result<(), String> {
-        if let Some(result) = self.valid.get(name) {
+        let key = (name.to_owned(), self.validating.clone());
+        if let Some(result) = self.valid.get(&key) {
             return result.clone();
         }
         let parsed = self.parsed(name)?;
         let (diags, _) = self.validate(name, &parsed);
         let result = if diags.is_empty() { Ok(()) } else { Err(invalid(name, diags)) };
-        self.valid.insert(name.to_owned(), result.clone());
+        self.valid.insert(key, result.clone());
         result
     }
 
@@ -587,16 +591,18 @@ impl<'s> Session<'s> {
         self.validating.push(name.to_owned());
         let mut diags = parsed.diags.clone();
         let mut used = Vec::with_capacity(parsed.document.uses.len());
+        let mut seen = HashSet::new();
         for line in &parsed.document.uses {
             let document = &line.document;
-            if !parser::well_formed(&document.text) {
+            // A malformed name is reported by the parser and a repeated one by validation.
+            if !parser::well_formed(&document.text) || !seen.insert(document.text.as_str()) {
                 used.push(None);
                 continue;
             }
             let resolved = if document.text == name {
-                Err(format!("document '{name}' uses itself"))
+                Err("a document cannot use itself".to_owned())
             } else if self.validating.contains(&document.text) {
-                Err(format!("document '{}' is part of a use cycle: {} -> {}", document.text, self.validating.join(" -> "), document.text))
+                Err(format!("using document {} closes a use cycle", go_quote(&document.text)))
             } else {
                 self.parsed(&document.text).and_then(|other| self.valid(&document.text).map(|_| other))
             };
@@ -618,6 +624,6 @@ impl<'s> Session<'s> {
 
 fn invalid(name: &str, mut diags: Vec<Diag>) -> String {
     sort(&mut diags);
-    let first = diags.first().map_or(String::new(), |d| format!(": {}:{} {}: {}", d.pos.line, d.pos.column, d.rule, d.message));
-    format!("document '{name}' is invalid{first}")
+    let first = diags.first().map_or(String::new(), |d| format!(": line {} column {} {}: {}", d.pos.line, d.pos.column, d.rule, d.message));
+    format!("used document {} is invalid{first}", go_quote(name))
 }

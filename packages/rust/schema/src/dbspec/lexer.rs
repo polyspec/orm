@@ -166,3 +166,65 @@ pub(crate) fn tokenize(line: &str, number: usize) -> Vec<Token<'_>> {
     }
     tokens
 }
+
+impl Token<'_> {
+    /// The token as a diagnostic shows it (Go's token.describe): a string by its value, `string '<value>'`, and any
+    /// other token by its text in single quotes.
+    pub(crate) fn describe(&self) -> String {
+        if self.kind == Kind::Str {
+            format!("string '{}'", self.string_value())
+        } else {
+            format!("'{}'", self.text)
+        }
+    }
+
+    /// The syntax message of a token that no token allows (Go's lexLine): an unterminated string, or a character
+    /// quoted as Go's %q quotes a rune.
+    pub(crate) fn lexical_message(&self) -> String {
+        if self.text == "'" {
+            "string is not closed on its line".to_owned()
+        } else {
+            format!("character {} is not allowed here", go_quote_rune(self.text.chars().next().unwrap_or(' ')))
+        }
+    }
+}
+
+/// Appends `c` as the canonical quoting writes it inside `quote` delimiters: the delimiter and `\` after a backslash,
+/// `\a \b \f \n \r \t \v` as those escapes, any other code point below 0x20 and 0x7F as `\xNN`, and every other
+/// code point as is.
+fn quote_char(out: &mut String, c: char, quote: char) {
+    match c {
+        _ if c == quote || c == '\\' => {
+            out.push('\\');
+            out.push(c);
+        }
+        '\u{7}' => out.push_str("\\a"),
+        '\u{8}' => out.push_str("\\b"),
+        '\u{c}' => out.push_str("\\f"),
+        '\n' => out.push_str("\\n"),
+        '\r' => out.push_str("\\r"),
+        '\t' => out.push_str("\\t"),
+        '\u{b}' => out.push_str("\\v"),
+        _ if (c as u32) < 0x20 || c == '\u{7f}' => out.push_str(&format!("\\x{:02x}", c as u32)),
+        _ => out.push(c),
+    }
+}
+
+/// `text` in double quotes by the canonical quoting, as names are shown.
+pub(crate) fn go_quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for c in text.chars() {
+        quote_char(&mut out, c, '"');
+    }
+    out.push('"');
+    out
+}
+
+/// `c` in single quotes by the canonical quoting, as a character that no token allows is shown.
+pub(crate) fn go_quote_rune(c: char) -> String {
+    let mut out = String::from("'");
+    quote_char(&mut out, c, '\'');
+    out.push('\'');
+    out
+}

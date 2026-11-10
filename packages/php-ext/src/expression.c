@@ -8,11 +8,6 @@
 #include "dbspec_str_list.h"
 #include <setjmp.h>
 
-static const str expression_closing_parenthesis_message = {
-    "a check predicate ends with its closing parenthesis",
-    sizeof("a check predicate ends with its closing parenthesis") - 1
-};
-
 enum { OP_COLUMN, OP_LITERAL };
 
 typedef struct {
@@ -21,6 +16,8 @@ typedef struct {
     zend_long column;
     column *col;
     size_t literal;
+    /* The source text of a literal: a string keeps its quotes, a '-' and a number are joined (Go's token.describe). */
+    str source;
 } operand;
 
 typedef VEC(operand) operandv;
@@ -41,6 +38,7 @@ typedef struct {
     const tokens *t;
     zend_long line, end;
     const smap *columns, *action;
+    str table;
     /* Class of a read token, "line:index" => class (same as parse's marks). */
     smap *marks;
     size_t at;
@@ -55,6 +53,8 @@ typedef struct {
     str message;
     const char *rule; /* NULL means check */
 } found;
+
+#define FOUND(at, message) ((found){(at), (message), NULL})
 
 typedef VEC(found) foundv;
 
@@ -99,89 +99,96 @@ static ZEND_NORETURN void fail_at(xparser *p, zend_long column, str message)
     longjmp(p->stop, 1);
 }
 
-static ZEND_NORETURN void fail(xparser *p, str message)
+/* Go's expressionParser.fail: the token at the reader, or the check's closing parenthesis at the end, with the reason. */
+static ZEND_NORETURN void fail(xparser *p, const char *reason)
 {
-    str found_text = p->at < p->t->n ? p->t->v[p->at].text : SL("the line end");
-    if (str_eqc(found_text, "+") || str_eqc(found_text, "-") || str_eqc(found_text, "*") || str_eqc(found_text, "/")) {
-        message = SL("a check has no arithmetic, and a minus applies only to a number literal");
+    if (p->at >= p->t->n) {
+        fail_at(p, p->end, SL("check expression ends early"));
     }
-    fail_at(p, position(p), fmt("%S, found `%S`", message, found_text));
+    fail_at(p, position(p), fmt("%S %s in a check expression", dbs_describe(p->t->v[p->at].text), reason));
 }
 
-static void expect(xparser *p, const char *token)
+static bool number_token(str s)
 {
-    if (!peek_is(p, 0, token)) {
-        fail(p, fmt("expected `%s`", token));
-    }
-    p->at++;
+    return str_digits(s) || str_decimal(s);
+}
+
+static bool string_token(str s)
+{
+    return s.n >= 2 && s.s[0] == '\'' && s.s[s.n - 1] == '\'';
 }
 
 static enode *disjunction(xparser *p);
 
-static operand literal(xparser *p)
+/* Go's literal: a number, a '-' and a number, a string, true or false. */
+static bool literal(xparser *p, operand *out)
 {
     const str *token = peek(p, 0);
-    zend_long column = position(p);
-    if (token != NULL && str_eqc(*token, "null")) {
-        fail(p, SL("a check has no null literal; `is null` tests for null"));
+    if (token == NULL) {
+        return false;
     }
-    bool have = false;
-    str text = SNULL;
-    if (token != NULL && (str_eqc(*token, "true") || str_eqc(*token, "false"))) {
+    zend_long column = position(p);
+    str text;
+    if (number_token(*token) || string_token(*token)) {
         text = *token;
-        have = true;
+        p->at++;
+    } else if (str_eqc(*token, "-") && p->at + 1 < p->t->n && number_token(p->t->v[p->at + 1].text)) {
+        text = fmt("-%S", p->t->v[p->at + 1].text);
+        p->at += 2;
+    } else if (str_eqc(*token, "true") || str_eqc(*token, "false")) {
+        text = *token;
         mark_at(p, p->at, "keyword");
         p->at++;
-    } else if (token != NULL && str_eqc(*token, "-") && p->at + 1 < p->t->n && p->t->v[p->at + 1].column == column + 1
-        && literal_number(fmt("-%S", p->t->v[p->at + 1].text), NULL)) {
-        text = fmt("-%S", p->t->v[p->at + 1].text);
-        have = true;
-        p->at += 2;
-    } else if (token != NULL) {
-        str value;
-        if (literal_number(*token, NULL) || literal_string_value(*token, &value)) {
-            text = *token;
-            have = true;
-            p->at++;
-        }
-    }
-    if (!have) {
-        fail(p, SL("expected a column, a literal or `(`"));
+    } else {
+        return false;
     }
     PUSH(p->literals, text);
-    operand o = {OP_LITERAL, text, column, NULL, p->literals.n - 1};
+    *out = (operand){OP_LITERAL, text, column, NULL, p->literals.n - 1, text};
+    return true;
+}
+
+/* Go's operand: a literal or a column; arithmetic, functions and the keywords are not operands. */
+static operand xoperand(xparser *p)
+{
+    operand o;
+    if (literal(p, &o)) {
+        return o;
+    }
+    if (p->at >= p->t->n) {
+        fail(p, "");
+    }
+    str token = p->t->v[p->at].text;
+    if (!str_dotted(token) || number_token(token) || dbspec_str_in_list(token, keywords)) {
+        fail(p, "is not allowed here");
+    }
+    if (peek_is(p, 1, "(")) {
+        fail(p, "is a function; check predicates have no functions");
+    }
+    o = (operand){OP_COLUMN, token, position(p), smap_get(p->columns, token), 0, token};
+    mark_at(p, p->at, "name");
+    p->at++;
     return o;
 }
 
-static operand xoperand(xparser *p)
+/* An operand not followed by a comparison, in, or is: followed by and, or, ), or the end, it is reported at the operand; otherwise
+ * at the following token. */
+static ZEND_NORETURN void alone(xparser *p, const operand *o)
 {
-    const str *token = peek(p, 0);
-    if (token != NULL && str_dotted(*token) && !str_digits(*token) && !str_decimal(*token)) {
-        if (peek_is(p, 1, "(")) {
-            fail(p, SL("a check has no functions"));
-        }
-        if (!dbspec_str_in_list(*token, keywords)) {
-            operand o = {OP_COLUMN, *token, position(p), smap_get(p->columns, *token), 0};
-            mark_at(p, p->at, "name");
-            p->at++;
-            return o;
-        }
+    const str *next = peek(p, 0);
+    if (next != NULL && !str_eqc(*next, "and") && !str_eqc(*next, "or") && !str_eqc(*next, ")")) {
+        fail(p, "is not allowed here");
     }
-    return literal(p);
-}
-
-static void require_column(xparser *p, const operand *o, const char *keyword)
-{
-    if (o->kind == OP_LITERAL) {
-        fail_at(p, o->column, fmt("`%s` takes a column on its left, found `%S`", keyword, o->text));
-    }
+    fail_at(p, o->column, fmt("%S alone is not a predicate", dbs_describe(o->source)));
 }
 
 static enode *predicate(xparser *p)
 {
     operand left = xoperand(p);
     const str *next = peek(p, 0);
-    if (next != NULL && dbspec_str_in_list(*next, comparisons)) {
+    if (next == NULL) {
+        alone(p, &left);
+    }
+    if (dbspec_str_in_list(*next, comparisons)) {
         enode *n = dbs_alloc(sizeof *n);
         n->kind = N_COMPARE;
         n->op = *next;
@@ -190,38 +197,16 @@ static enode *predicate(xparser *p)
         n->left = left;
         n->right = xoperand(p);
         if (left.kind == OP_LITERAL && n->right.kind == OP_LITERAL) {
-            fail_at(p, left.column, fmt("a comparison needs a column operand, found `%S` %S `%S`", left.text, n->op, n->right.text));
+            fail_at(p, left.column, fmt("%S is compared with a literal; a comparison needs a column", dbs_describe(left.source)));
         }
         PUSH(p->predicates, n);
         return n;
     }
-    bool negated = next != NULL && str_eqc(*next, "not") && peek_is(p, 1, "in");
-    if (negated) {
-        require_column(p, &left, "in");
-        mark_at(p, p->at, "keyword");
-        p->at++;
-        next = peek(p, 0);
+    bool not_in = str_eqc(*next, "not") && peek_is(p, 1, "in");
+    if (left.kind == OP_LITERAL && (str_eqc(*next, "is") || str_eqc(*next, "in") || not_in)) {
+        fail_at(p, left.column, fmt("%S is not a column", dbs_describe(left.source)));
     }
-    if (next != NULL && str_eqc(*next, "in")) {
-        require_column(p, &left, "in");
-        mark_at(p, p->at, "keyword");
-        p->at++;
-        expect(p, "(");
-        enode *n = dbs_alloc(sizeof *n);
-        n->kind = N_IN;
-        n->left = left;
-        n->negated = negated;
-        PUSH(n->list, literal(p));
-        while (peek_is(p, 0, ",")) {
-            p->at++;
-            PUSH(n->list, literal(p));
-        }
-        expect(p, ")");
-        PUSH(p->predicates, n);
-        return n;
-    }
-    if (next != NULL && str_eqc(*next, "is")) {
-        require_column(p, &left, "is");
+    if (str_eqc(*next, "is")) {
         mark_at(p, p->at, "keyword");
         p->at++;
         bool is_not = peek_is(p, 0, "not");
@@ -229,10 +214,11 @@ static enode *predicate(xparser *p)
             mark_at(p, p->at, "keyword");
             p->at++;
         }
-        if (peek_is(p, 0, "null")) {
-            mark_at(p, p->at, "keyword");
+        if (!peek_is(p, 0, "null")) {
+            fail(p, "is not allowed here; expected null");
         }
-        expect(p, "null");
+        mark_at(p, p->at, "keyword");
+        p->at++;
         enode *n = dbs_alloc(sizeof *n);
         n->kind = N_NULL;
         n->left = left;
@@ -240,11 +226,40 @@ static enode *predicate(xparser *p)
         PUSH(p->predicates, n);
         return n;
     }
-    /* An operand not followed by a comparison, in, or is: if followed by and, or, ), or the end, it is reported at the operand; otherwise at the following token. */
-    if (next != NULL && !str_eqc(*next, "and") && !str_eqc(*next, "or") && !str_eqc(*next, ")")) {
-        fail(p, fmt("`%S` is not allowed here", *next));
+    if (not_in) {
+        mark_at(p, p->at, "keyword");
+        p->at++;
     }
-    fail_at(p, left.column, fmt("`%S` alone is not a predicate", left.text));
+    if (peek_is(p, 0, "in")) {
+        mark_at(p, p->at, "keyword");
+        p->at++;
+        if (!peek_is(p, 0, "(")) {
+            fail(p, "is not allowed here; expected (");
+        }
+        p->at++;
+        enode *n = dbs_alloc(sizeof *n);
+        n->kind = N_IN;
+        n->left = left;
+        n->negated = not_in;
+        for (;;) {
+            operand l;
+            if (!literal(p, &l)) {
+                fail(p, "is not a literal");
+            }
+            PUSH(n->list, l);
+            if (peek_is(p, 0, ")")) {
+                p->at++;
+                break;
+            }
+            if (!peek_is(p, 0, ",")) {
+                fail(p, "is not allowed here; expected , or )");
+            }
+            p->at++;
+        }
+        PUSH(p->predicates, n);
+        return n;
+    }
+    alone(p, &left);
 }
 
 static enode *group(xparser *p)
@@ -252,7 +267,10 @@ static enode *group(xparser *p)
     if (peek_is(p, 0, "(")) {
         p->at++;
         enode *inner = disjunction(p);
-        expect(p, ")");
+        if (!peek_is(p, 0, ")")) {
+            fail(p, "is not allowed here; expected )");
+        }
+        p->at++;
         return inner;
     }
     return predicate(p);
@@ -334,19 +352,15 @@ static str node_text(xparser *p, const enode *n)
     }
 }
 
-static bool is_bool(const operand *o)
+static bool bool_literal(const operand *o)
 {
-    if (o->kind == OP_COLUMN) {
-        return o->col != NULL && str_eqc(o->col->type->name, "bool");
-    }
-    return str_eqc(o->text, "true") || str_eqc(o->text, "false");
+    return o->kind == OP_LITERAL && (str_eqc(o->text, "true") || str_eqc(o->text, "false"));
 }
 
-static bool usable(xparser *p, const operand *o, foundv *f)
+/* Go's checkTyper.column: the column of an operand, or NULL after an unknown column, a column of a cascade or set_null foreign key and
+ * a bytes column (reported), and for a column whose type is wrong or whose line failed. */
+static column *usable(xparser *p, const operand *o, foundv *f)
 {
-    if (o->kind == OP_LITERAL) {
-        return true;
-    }
     if (o->col == NULL) {
         /* Go's ref: a reference in the wrong format reports its name rule and is not resolved. */
         const char *rule;
@@ -354,20 +368,22 @@ static bool usable(xparser *p, const operand *o, foundv *f)
         if (name_rule(o->text, &rule, &message)) {
             PUSH(*f, ((found){o->column, message, rule}));
         } else {
-            PUSH(*f, ((found){o->column, fmt("`%S` is not a column of the table", o->text), NULL}));
+            PUSH(*f, FOUND(o->column, fmt("column %S is not a column of table %S", dbs_quote(o->text), dbs_quote(p->table))));
         }
-        return false;
+        return NULL;
     }
-    str *fk = smap_get(p->action, o->text);
-    if (fk != NULL) {
-        PUSH(*f, ((found){o->column, fmt("`%S` is a column of foreign key `%S` with cascade or set_null", o->text, *fk), NULL}));
-        return false;
+    if (smap_get(p->action, o->text) != NULL) {
+        PUSH(*f, FOUND(o->column, fmt("column %S belongs to a foreign key with cascade or set_null", dbs_quote(o->text))));
+        return NULL;
+    }
+    if (str_eqc(o->col->type->name, "invalid")) {
+        return NULL;
     }
     if (str_eqc(o->col->type->name, "bytes")) {
-        PUSH(*f, ((found){o->column, fmt("`%S` is a bytes column, which a check cannot use", o->text), NULL}));
-        return false;
+        PUSH(*f, FOUND(o->column, fmt("bytes column %S cannot be part of a check", dbs_quote(o->text))));
+        return NULL;
     }
-    return !str_eqc(o->col->type->name, "invalid");
+    return o->col;
 }
 
 static bool text_type(const ctype *t)
@@ -389,31 +405,47 @@ static bool columns_meet(const ctype *a, const ctype *b)
     return ctype_same(a, b);
 }
 
-static void meet(xparser *p, const operand *left, const operand *right, foundv *f)
+/* Go's checkTyper.literal: the literal in the canonical default form of a column of the type. A text column takes the varchar form with
+ * no length limit. */
+static void literal_meets(xparser *p, const operand *lit, const ctype *type, foundv *f)
 {
-    bool left_usable = usable(p, left, f);
-    if (!usable(p, right, f) || !left_usable) {
-        return;
-    }
-    if (left->kind == OP_COLUMN && right->kind == OP_COLUMN) {
-        const ctype *a = left->col->type, *b = right->col->type;
-        if (!columns_meet(a, b)) {
-            PUSH(*f, ((found){right->column, fmt("`%S` of %S does not meet `%S` of %S", right->text, ctype_text(b), left->text, ctype_text(a)), NULL}));
-        }
-        return;
-    }
-    const operand *col = left->kind == OP_COLUMN ? left : right;
-    const operand *lit = left->kind == OP_COLUMN ? right : left;
-    const ctype *type = col->col->type;
-    /* A text column accepts the varchar format with no length limit. */
     zend_long unlimited = ZEND_LONG_MAX;
     const ctype *literal_type = str_eqc(type->name, "text") ? ctype_new(SL("varchar"), &unlimited, 1) : type;
     str canonical, problem;
     if (!literal_column_default(literal_type, lit->text, &canonical, &problem)) {
-        PUSH(*f, ((found){lit->column, fmt("`%S` does not meet `%S` of %S: %S", lit->text, col->text, ctype_text(type), problem), NULL}));
+        PUSH(*f, FOUND(lit->column, fmt("%S is not a %S value", dbs_describe(lit->source), ctype_text(type))));
         return;
     }
     p->literals.v[lit->literal] = canonical;
+}
+
+/* Go's checkTyper.comparison. */
+static void comparison(xparser *p, const enode *n, foundv *f)
+{
+    const operand *left = &n->left, *right = &n->right;
+    column *lc = left->kind == OP_COLUMN ? usable(p, left, f) : NULL;
+    column *rc = right->kind == OP_COLUMN ? usable(p, right, f) : NULL;
+    if ((left->kind == OP_COLUMN && lc == NULL) || (right->kind == OP_COLUMN && rc == NULL)) {
+        return;
+    }
+    const column *typed = lc != NULL ? lc : rc;
+    if (ordering(n->op) && (str_eqc(typed->type->name, "bool") || bool_literal(left) || bool_literal(right))) {
+        PUSH(*f, FOUND(n->op_at, fmt("%S does not order bool values", n->op)));
+    }
+    if (lc != NULL && rc != NULL) {
+        if (!columns_meet(lc->type, rc->type)) {
+            PUSH(*f, FOUND(right->column, fmt("column %S is %S and does not meet %S", dbs_quote(right->text), ctype_text(rc->type), ctype_text(lc->type))));
+        }
+    } else if (lc != NULL) {
+        literal_meets(p, right, lc->type, f);
+    } else {
+        literal_meets(p, left, rc->type, f);
+    }
+}
+
+static zend_long found_rank(const found *x)
+{
+    return dbs_rule_rank(x->rule != NULL ? str_c(x->rule) : SL("check"));
 }
 
 static void check_types(xparser *p)
@@ -423,18 +455,15 @@ static void check_types(xparser *p)
         enode *n = p->predicates.v[i];
         switch (n->kind) {
             case N_COMPARE:
-                if (ordering(n->op) && (is_bool(&n->left) || is_bool(&n->right))) {
-                    PUSH(f, ((found){n->op_at, fmt("a bool operand takes only =, <> and in, found `%S`", n->op), NULL}));
-                }
-                meet(p, &n->left, &n->right, &f);
+                comparison(p, n, &f);
                 break;
-            case N_IN:
-                if (usable(p, &n->left, &f)) {
-                    for (size_t k = 0; k < n->list.n; k++) {
-                        meet(p, &n->left, &n->list.v[k], &f);
-                    }
+            case N_IN: {
+                column *c = usable(p, &n->left, &f);
+                for (size_t k = 0; c != NULL && k < n->list.n; k++) {
+                    literal_meets(p, &n->list.v[k], c->type, &f);
                 }
                 break;
+            }
             case N_NULL:
                 usable(p, &n->left, &f);
                 break;
@@ -443,18 +472,20 @@ static void check_types(xparser *p)
     if (f.n == 0) {
         return;
     }
+    /* The first in source order (Go's sortDiagnostics: column, then the rule table, then the order found). */
     found first = f.v[0];
-    for (size_t i = 0; i < f.n; i++) {
-        if (f.v[i].at < first.at) {
+    for (size_t i = 1; i < f.n; i++) {
+        if (f.v[i].at < first.at || (f.v[i].at == first.at && found_rank(&f.v[i]) < found_rank(&first))) {
             first = f.v[i];
         }
     }
     PUSH(*p->errors, mkdiag(first.rule != NULL ? str_c(first.rule) : SL("check"), p->line, first.at, first.message));
 }
 
-bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors, smap *marks)
+bool expression_parse(const tokens *t, zend_long line, zend_long end, str table, const smap *columns, const smap *action, str *text, diags *errors, smap *marks)
 {
     xparser *p = dbs_alloc(sizeof *p);
+    p->table = table;
     p->marks = marks;
     p->t = t;
     p->line = line;
@@ -469,7 +500,7 @@ bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap
     }
     tree = disjunction(p);
     if (p->at < t->n) {
-        fail(p, expression_closing_parenthesis_message);
+        fail(p, "is not allowed here");
     }
     check_types(p);
     if (errors->n != before) {

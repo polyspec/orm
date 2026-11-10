@@ -2,6 +2,7 @@ package dbspec
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -47,8 +48,79 @@ func (t token) describe() string {
 	return "'" + t.text + "'"
 }
 
+// diagnosticAt is the diagnostic of rule at t. Its message writes a text argument of %q as quoteText quotes it, with
+// double quotes (DBS-144), so the quoting reads the same in every runtime.
 func diagnosticAt(rule string, t token, format string, args ...any) Diagnostic {
-	return Diagnostic{Rule: rule, Line: t.line, Column: t.col, Message: fmt.Sprintf(format, args...)}
+	return Diagnostic{Rule: rule, Line: t.line, Column: t.col, Message: messageText(format, args)}
+}
+
+// messageText formats a diagnostic message as fmt.Sprintf does, except that a %q of a text argument is quoteText of it
+// with double quotes: the verb becomes %s and the argument its quoted text.
+func messageText(format string, args []any) string {
+	verbs := []byte(format)
+	quoted := slices.Clone(args)
+	arg := 0
+	for i := 0; i < len(verbs); i++ {
+		if verbs[i] != '%' {
+			continue
+		}
+		j := i + 1
+		for j < len(verbs) && strings.IndexByte("+-# 0123456789.", verbs[j]) >= 0 {
+			j++
+		}
+		if j == len(verbs) {
+			break
+		}
+		if verbs[j] != '%' {
+			if arg < len(quoted) {
+				if text, ok := quoted[arg].(string); ok && verbs[j] == 'q' {
+					verbs[j] = 's'
+					quoted[arg] = quoteText(text, '"')
+				}
+			}
+			arg++
+		}
+		i = j
+	}
+	return fmt.Sprintf(string(verbs), quoted...)
+}
+
+// quoteText is text between two delim characters, as every runtime quotes a name or a character of a message
+// (DBS-144): delim and a backslash take a backslash before them, the controls BEL, BS, FF, LF, CR, TAB and VT are
+// written \a, \b, \f, \n, \r, \t and \v, any other code point below U+0020 and U+007F is \x and two lower-case hex
+// digits, and every other code point is written as it is. The quoting needs no Unicode table.
+func quoteText(text string, delim rune) string {
+	var b strings.Builder
+	b.WriteRune(delim)
+	for _, r := range text {
+		switch {
+		case r == delim || r == '\\':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		case r == '\a':
+			b.WriteString(`\a`)
+		case r == '\b':
+			b.WriteString(`\b`)
+		case r == '\f':
+			b.WriteString(`\f`)
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\v':
+			b.WriteString(`\v`)
+		case r < 0x20 || r == 0x7f:
+			b.WriteString(`\x`)
+			b.WriteByte("0123456789abcdef"[r>>4])
+			b.WriteByte("0123456789abcdef"[r&0xf])
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteRune(delim)
+	return b.String()
 }
 
 // splitSource checks the size and the encoding of text and splits it into
@@ -188,7 +260,7 @@ func lexLine(s string, line int) ([]token, int, *Diagnostic) {
 				r, size = utf8.DecodeRuneInString(s[i:])
 			}
 			if !isWordRune(r) {
-				return tokens, 0, &Diagnostic{Rule: RuleSyntax, Line: line, Column: col, Message: fmt.Sprintf("character %q is not allowed here", r)}
+				return tokens, 0, &Diagnostic{Rule: RuleSyntax, Line: line, Column: col, Message: "character " + quoteText(string(r), '\'') + " is not allowed here"}
 			}
 			start, startCol := i, col
 			i += size

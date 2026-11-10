@@ -520,7 +520,13 @@ def _emit_stable(text: str, header_set: dict) -> str:
 
 def _check_refusal(text: str, header_set: dict, want: list) -> None:
     """Checks that parse refuses text with exactly the diagnostics of want, and that format returns no text and the
-    same diagnostics."""
+    same diagnostics. Every expected diagnostic states its message, which the runtime gives exactly."""
+    for i, w in enumerate(want):
+        if not w.get("message"):
+            raise AssertionError(
+                f"expected diagnostic {i} ({w['rule']} {w['line']} {w['column']}) states no message; every refused text"
+                " states the message of each diagnostic"
+            )
     document, _positions, parsed = parse_dbspec(text, header_set)
     if document is not None:
         raise AssertionError("Parse returned a document for an invalid source")

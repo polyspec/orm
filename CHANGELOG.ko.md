@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0d9dac44ac9f151149868e7e683295216686fae50ff92724e115952d98d4dc51 -->
+<!-- source-sha256: 5992cde704234a07bc668bdd87d2723db9f560c34062a1e869d64c71c92f7ef2 -->
 # 변경 이력
 
 ## Unreleased
+
+- Breaking: 모든 dbspec 거부가 모든 runtime에서 같은 문장이다(DBS-144, DBS-156부터 DBS-171, T419). Go, TypeScript, Python, PHP, PHP extension, Rust는 parse와 검증 diagnostic마다 docs/spec/dbspec.md가 그 규칙에 적은 message를 준다. 그 문장은 Go가 주던 것이며, 나머지 다섯은 각자 다른 문장을 썼다: 이름은 `name "Users" does not match [a-z][a-z0-9_]* or is a reserved word`처럼 큰따옴표로, token은 `unexpected 'x', expected '{'`처럼 작은따옴표로 감싸고, Go는 이제 `table "users" has no primary key`와 `table "users" has no column`에 table 이름을 넣는다. message의 이름과 문자는 DBS-144가 적은 대로 Unicode table 없이 감싸므로, Go는 U+200B 같은 format 문자를 `%q`가 쓰던 `\u200b` 대신 그대로 쓰며, vector format-character-in-name과 control-character-in-name이 그 규칙을 고정한다. 어떤 vector에도 없던 message는 tests/dbspec/rules.json의 case 열한 개가 준다(check-group-without-close, check-is-without-null, check-in-without-list, check-in-list-without-comma, use-table-named-like-used-constraint, use-table-listed-twice, use-table-from-two-documents, foreign-key-repeated-column, audit-history-table-unknown, audit-action-column-is-history-key, audit-record-table-audited). tests/dbspec/invalid.json, limits.json, rules.json, schema-definition.json에서 거부되는 `dbspec.format` text의 diagnostic은 모두 정확한 `message`를 밝히며, 이것은 이제 recipe schema의 필수 field다. 모든 recipe runner와 language vector는 diagnostic이 message를 밝히지 않는 거부 text에서 실패한다.
 
 ## 0.0.29
 

@@ -379,10 +379,9 @@ function isWordRune(cp: number): boolean {
   return cp === 95 || cp === 46 || containsWordRune(cp);
 }
 
-/** The character as Go's %q writes a rune. */
+/** The character as the `character <c> is not allowed here` message quotes it. */
 function goRune(cp: number): string {
-  const escapes: Record<number, string> = { 9: '\\t', 10: '\\n', 13: '\\r', 39: "\\'", 92: '\\\\' };
-  return `'${escapes[cp] ?? String.fromCodePoint(cp)}'`;
+  return quoteText(String.fromCodePoint(cp), "'");
 }
 
 /** Splits one line into tokens (engine/dbspec/lex.go's lexLine); only the space separates tokens. */
@@ -475,12 +474,59 @@ function isPunct(tok: Tk | undefined, text: string): boolean {
   return tok !== undefined && tok.k === K.Punct && tok.t === text;
 }
 
+function isOp(tok: Tk | undefined, text: string): boolean {
+  return tok !== undefined && tok.k === K.Op && tok.t === text;
+}
+
+/** Whether a token is Go's number token: digits with an optional fraction (lex.go isNumberText). */
+function isNumberToken(tok: Tk): boolean {
+  return tok.k === K.Word && UNSIGNED_NUMBER.test(tok.t);
+}
+
 function stringValue(tok: Tk): string {
   return tok.t.slice(1, -1).replaceAll("''", "'");
 }
 
 function quote(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
+}
+
+/** A token as Go's token.describe shows it: a string by its value, any other token by its text. */
+function describe(tok: Tk): string {
+  return tok.k === K.Str ? `string '${stringValue(tok)}'` : `'${tok.t}'`;
+}
+
+/**
+ * The canonical quoting of a text (Go's quote): the delimiter, then per code point the delimiter or `\` as a backslash and
+ * the character, \a \b \f \n \r \t \v as those escapes, another code point below 0x20 or 0x7F as \xNN, and any other code
+ * point as is; then the delimiter.
+ */
+function quoteText(text: string, delim: '"' | "'"): string {
+  const escapes: Record<number, string> = { 7: '\\a', 8: '\\b', 9: '\\t', 10: '\\n', 11: '\\v', 12: '\\f', 13: '\\r' };
+  let out = delim;
+  for (const ch of text) {
+    const cp = present(ch.codePointAt(0), 'ch.codePointAt(0)');
+    const escape = escapes[cp];
+    if (ch === delim || ch === '\\') out += '\\' + ch;
+    else if (escape !== undefined) out += escape;
+    else if (cp < 0x20 || cp === 0x7f) out += `\\x${cp.toString(16).padStart(2, '0')}`;
+    else out += ch;
+  }
+  return out + delim;
+}
+
+/** A name as the messages quote it. */
+function goQuote(text: string): string {
+  return quoteText(text, '"');
+}
+
+/** Go's nameDiagnostics messages for a name: its format, then its length. */
+function nameFormatMessage(name: string): string {
+  return `name ${goQuote(name)} does not match [a-z][a-z0-9_]* or is a reserved word`;
+}
+
+function nameLengthMessage(name: string): string {
+  return `name ${goQuote(name)} has ${utf8Length(name)} bytes, more than ${MAX_NAME_BYTES}`;
 }
 
 function sameType(a: DbspecType, b: DbspecType): boolean {
@@ -649,8 +695,12 @@ function predicateText(p: Predicate): string {
   return text;
 }
 
+/** A token outside the predicate forms, with Go's reason; at is null when the expression ends early. */
 class ExpressionSyntax {
-  constructor(readonly at: Tk | null) {}
+  constructor(
+    readonly at: Tk | null,
+    readonly reason = 'is not allowed here',
+  ) {}
 }
 
 class DocumentParser {
@@ -717,15 +767,16 @@ class DocumentParser {
   }
 
   /** An error for a block that is not closed at the end of the document. It is reported together with the other syntax errors on the same line (Go does not limit it to one per line). */
-  private unclosed(tok: Tk, message: string): void {
+  private unclosed(tok: Tk): void {
+    const message = `block opened at this ${describe(tok)} is not closed`;
     this.diagnostics.push({ rule: 'syntax', line: tok.line, column: columnOf(this.lines[tok.line - 1] ?? '', tok.s), message });
   }
 
-  /** A syntax error at a token, or after the last token of the line. */
-  private syntax(toks: Tk[], i: number, line: number, message: string): void {
+  /** A syntax error at a token, or after the last token of the line, as Go's cursor.fail writes it; expected is what the position reads. */
+  private syntax(toks: Tk[], i: number, line: number, expected: string): void {
     const tok = toks[i];
-    if (tok !== undefined) this.at('syntax', tok, message);
-    else this.report('syntax', line, (this.lines[line - 1] ?? '').length, message);
+    if (tok !== undefined) this.at('syntax', tok, `unexpected ${describe(tok)}, expected ${expected}`);
+    else this.report('syntax', line, (this.lines[line - 1] ?? '').length, `line ends, expected ${expected}`);
   }
 
   private stop(rule: DbspecRule, tok: Tk, message: string): void {
@@ -737,9 +788,9 @@ class DocumentParser {
   private name(tok: Tk): boolean {
     const formed = wellFormed(tok.t);
     if (!formed) {
-      this.at('name.format', tok, RESERVED.has(tok.t) ? `${tok.t} is a reserved word` : `${tok.t} does not match [a-z][a-z0-9_]*`);
+      this.at('name.format', tok, nameFormatMessage(tok.t));
     }
-    if (utf8Length(tok.t) > MAX_NAME_BYTES) this.at('name.length', tok, `${tok.t} is longer than 63 bytes`);
+    if (utf8Length(tok.t) > MAX_NAME_BYTES) this.at('name.length', tok, nameLengthMessage(tok.t));
     return formed;
   }
 
@@ -766,7 +817,7 @@ class DocumentParser {
 
   private constraintName(tok: Tk): void {
     if (!this.name(tok)) return;
-    if (this.document.constraints.has(tok.t)) this.at('name.duplicate', tok, `${tok.t} repeats an index, key, foreign key or check name`);
+    if (this.document.constraints.has(tok.t)) this.at('name.duplicate', tok, `index, unique key, foreign key or check name ${goQuote(tok.t)} repeats in the schema`);
     else this.document.constraints.set(tok.t, tok);
   }
 
@@ -809,12 +860,12 @@ class DocumentParser {
       if (state === 'top') {
         if (isWord(first, 'use')) {
           this.mark(first, 'keyword');
-          if (phase > 1) this.at('order', first, 'use lines come before tables and diagrams');
+          if (phase > 1) this.at('order', first, 'use lines come before table and diagram blocks');
           else phase = 1;
           this.use(toks, line, own);
         } else if (isWord(first, 'table')) {
           this.mark(first, 'keyword');
-          if (phase > 2) this.at('order', first, 'tables come before diagrams');
+          if (phase > 2) this.at('order', first, 'table blocks come before diagram blocks');
           else phase = 2;
           table = this.tableHeader(toks, line, own);
           tableLexical = this.abandoned.has(line);
@@ -826,12 +877,12 @@ class DocumentParser {
           diagramLexical = this.abandoned.has(line);
           state = 'diagram';
         } else {
-          this.at('syntax', first, 'expected use, table or diagram');
+          this.syntax(toks, 0, line, "'use', 'table' or 'diagram'");
         }
       } else if (state === 'table') {
         const t = present(table, 'table');
         if (isPunct(first, '}')) {
-          if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
+          if (toks.length > 1) this.syntax(toks, 1, line, 'the end of the line');
           t.closing = own;
           table = null;
           tableLexical = false;
@@ -842,15 +893,15 @@ class DocumentParser {
         } else if (isWord(first, 'settings')) {
           this.mark(first, 'keyword');
           // Go reports the order for a keyword of a repeated block only when the line is in the correct form (only `settings {`).
-          if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block');
+          if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block, after its other lines');
           this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? present(toks[1], 'toks[1]') : first, entries: [], comments: own, closing: [] });
           t.phase = 2;
-          if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, 'expected {');
-          else if (toks.length > 2) this.syntax(toks, 2, line, 'expected the end of the line');
+          if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, "'{'");
+          else if (toks.length > 2) this.syntax(toks, 2, line, 'the end of the line');
           settingsLexical = this.abandoned.has(line);
           state = 'settings';
         } else if (first.k === K.Word && CONSTRAINT_WORDS.has(first.t)) {
-          if (t.phase === 2) this.at('order', first, 'key, index, foreign key and check lines come before settings');
+          if (t.phase === 2) this.at('order', first, 'key, index, foreign key and check lines come before the settings block');
           else t.phase = 1;
           this.constraint(t, toks, line, own);
         } else {
@@ -863,11 +914,11 @@ class DocumentParser {
             this.failColumnLine(t, first);
           }
           // Go reports the order only when a column line matches the syntax (after c.done in columnLine). It is not a line stopped by the limit either.
-          else if (t.phase > 0 && !this.stopped) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
+          else if (t.phase > 0 && !this.stopped) this.at('order', first, 'column lines come before key, index, foreign key, check and settings lines');
         }
       } else if (state === 'settings') {
         if (isPunct(first, '}')) {
-          if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
+          if (toks.length > 1) this.syntax(toks, 1, line, 'the end of the line');
           present(this.settingsBlock, 'this.settingsBlock').closing = own;
           settingsLexical = false;
           state = 'table';
@@ -877,7 +928,7 @@ class DocumentParser {
       } else {
         const d = present(diagram, 'diagram');
         if (isPunct(first, '}')) {
-          if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
+          if (toks.length > 1) this.syntax(toks, 1, line, 'the end of the line');
           d.closing = own;
           diagram = null;
           diagramLexical = false;
@@ -895,9 +946,9 @@ class DocumentParser {
       return;
     }
     // Only the innermost open block is reported (as in Go): an open settings block does not report the table's `{`.
-    if (state === 'settings') this.unclosed(present(this.settingsBlock, 'this.settingsBlock').open, 'the settings block is not closed');
-    else if (state === 'table') this.unclosed(present(table, 'table').open, 'the table block is not closed');
-    if (state === 'diagram') this.unclosed(present(diagram, 'diagram').open, 'the diagram block is not closed');
+    if (state === 'settings') this.unclosed(present(this.settingsBlock, 'this.settingsBlock').open);
+    else if (state === 'table') this.unclosed(present(table, 'table').open);
+    if (state === 'diagram') this.unclosed(present(diagram, 'diagram').open);
     this.document.closing = comments;
   }
 
@@ -912,6 +963,12 @@ class DocumentParser {
       this.stopped = true;
       return false;
     };
+    // An empty text has no line (Go's splitSource: a final line end does not start a line, so only '' has none).
+    if (this.lines.length === 1 && text === '') {
+      this.report('header', 1, 0, 'document is empty; the first line must be dbspec 1 <document>');
+      this.stopped = true;
+      return false;
+    }
     const prefix = 'dbspec 1 ';
     for (let i = 0; i < prefix.length; i++) if (text[i] !== prefix[i]) return fail(i);
     let end = prefix.length;
@@ -928,12 +985,12 @@ class DocumentParser {
   }
 
   /** Reads `<word> (, <word>)*` up to a closing token; returns the words and the next index. */
-  private list(toks: Tk[], i: number, line: number, close: string): [Tk[], number] | null {
+  private list(toks: Tk[], i: number, line: number, close: string, what: string): [Tk[], number] | null {
     const words: Tk[] = [];
     for (;;) {
       const w = toks[i];
       if (w === undefined || w.k !== K.Word) {
-        this.syntax(toks, i, line, 'expected a name');
+        this.syntax(toks, i, line, what);
         return null;
       }
       words.push(w);
@@ -943,23 +1000,23 @@ class DocumentParser {
         continue;
       }
       if (isPunct(toks[i], close)) return [words, i + 1];
-      this.syntax(toks, i, line, `expected , or ${close}`);
+      this.syntax(toks, i, line, `',' or '${close}'`);
       return null;
     }
   }
 
   private end(toks: Tk[], i: number, line: number): boolean {
     if (i >= toks.length) return true;
-    this.syntax(toks, i, line, 'expected the end of the line');
+    this.syntax(toks, i, line, 'the end of the line');
     return false;
   }
 
   private use(toks: Tk[], line: number, comments: string[]): void {
     for (const t of toks.slice(2)) if (t.k === K.Word) this.document.failed.add(t.t);
     const doc = toks[1];
-    if (doc === undefined || doc.k !== K.Word) return this.syntax(toks, 1, line, 'expected a document name');
-    if (!isPunct(toks[2], '{')) return this.syntax(toks, 2, line, 'expected {');
-    const listed = this.list(toks, 3, line, '}');
+    if (doc === undefined || doc.k !== K.Word) return this.syntax(toks, 1, line, 'a document name');
+    if (!isPunct(toks[2], '{')) return this.syntax(toks, 2, line, "'{'");
+    const listed = this.list(toks, 3, line, '}', 'a table name');
     if (listed === null) return;
     if (!this.end(toks, listed[1], line)) return;
     this.name(doc);
@@ -998,15 +1055,15 @@ class DocumentParser {
       headerFailed: !named || !isPunct(toks[2], '{') || toks.length > 3,
     };
     if (this.document.tables.length >= MAX_TABLES) {
-      this.stop('limit', kw, `a document has at most ${MAX_TABLES} tables`);
+      this.stop('limit', kw, `document has more than ${MAX_TABLES} tables`);
       return table;
     }
     this.document.tables.push(table);
-    if (!named) this.syntax(toks, 1, line, 'expected a table name');
+    if (!named) this.syntax(toks, 1, line, 'a table name');
     else {
       this.mark(name, 'name');
       this.name(name);
-      if (!isPunct(toks[2], '{')) this.syntax(toks, 2, line, 'expected {');
+      if (!isPunct(toks[2], '{')) this.syntax(toks, 2, line, "'{'");
       else this.end(toks, 3, line);
     }
     return table;
@@ -1018,13 +1075,13 @@ class DocumentParser {
     const open = named && isPunct(toks[2], '{') ? present(toks[2], 'toks[2]') : present(toks[0], 'toks[0]');
     const diagram: IDiagram = { open, name: named ? name : present(toks[0], 'toks[0]'), named, entries: [], comments, closing: [] };
     this.document.diagrams.push(diagram);
-    if (!named) this.syntax(toks, 1, line, 'expected a diagram name');
+    if (!named) this.syntax(toks, 1, line, 'a diagram name');
     else {
       this.mark(name, 'name');
       if (this.name(name) && this.document.diagrams.some(d => d !== diagram && d.named && d.name.t === name.t)) {
-        this.at('name.duplicate', name, `diagram ${name.t} repeats`);
+        this.at('name.duplicate', name, `diagram ${goQuote(name.t)} is defined twice`);
       }
-      if (!isPunct(toks[2], '{')) this.syntax(toks, 2, line, 'expected {');
+      if (!isPunct(toks[2], '{')) this.syntax(toks, 2, line, "'{'");
       else this.end(toks, 3, line);
     }
     return diagram;
@@ -1069,34 +1126,59 @@ class DocumentParser {
         return { kind, precision: present(p, 'p') };
       }
       default:
-        this.at('type', tok, `type "${kind}" is not a dbspec type`);
+        this.at('type', tok, `type ${goQuote(kind)} is not a dbspec type`);
         return null;
     }
   }
 
   private column(table: ITable, toks: Tk[], line: number, comments: string[]): void {
     const name = present(toks[0], 'toks[0]');
-    if (name.k !== K.Word) return this.syntax(toks, 0, line, 'expected a column name');
+    if (name.k !== K.Word) return this.syntax(toks, 0, line, "a column name, key, index, foreign key, check, settings or '}'");
     const typeTok = toks[1];
     if (typeTok === undefined || typeTok.k !== K.Word) {
       table.failed.add(name.t);
-      return this.syntax(toks, 1, line, 'expected a type');
+      return this.syntax(toks, 1, line, 'a type');
     }
     this.mark(name, 'name');
     this.mark(typeTok, 'type');
     let i = 2;
     let params: Tk[] | null = null;
     if (isPunct(toks[i], '(')) {
-      const listed = this.list(toks, i + 1, line, ')');
-      if (listed === null) {
-        table.failed.add(name.t);
-        return;
+      // Go's readValue("a type parameter", false): a word, a number or a '-' before a number, then ',' or ')'.
+      const read: Tk[] = [];
+      i++;
+      for (;;) {
+        const v = toks[i];
+        if (isOp(v, '-')) {
+          const number = toks[i + 1];
+          if (number === undefined || !isNumberToken(number)) {
+            table.failed.add(name.t);
+            return this.syntax(toks, i + 1, line, "a number after '-'");
+          }
+          read.push({ k: K.Word, t: '-' + number.t, s: present(v, 'v').s, e: number.e, line });
+          i += 2;
+        } else if (v !== undefined && v.k === K.Word) {
+          read.push(v);
+          i++;
+        } else {
+          table.failed.add(name.t);
+          return this.syntax(toks, i, line, 'a type parameter');
+        }
+        if (isPunct(toks[i], ')')) {
+          i++;
+          break;
+        }
+        if (!isPunct(toks[i], ',')) {
+          table.failed.add(name.t);
+          return this.syntax(toks, i, line, "',' or ')'");
+        }
+        i++;
       }
-      [params, i] = listed;
+      params = read;
     }
     this.columnCount++;
-    if (table.columns.length >= MAX_TABLE_COLUMNS) return this.stop('limit', name, `a table has at most ${MAX_TABLE_COLUMNS} columns`);
-    if (this.columnCount > MAX_COLUMNS) return this.stop('limit', name, `a document has at most ${MAX_COLUMNS} columns`);
+    if (table.columns.length >= MAX_TABLE_COLUMNS) return this.stop('limit', name, `table has more than ${MAX_TABLE_COLUMNS} columns`);
+    if (this.columnCount > MAX_COLUMNS) return this.stop('limit', name, `document has more than ${MAX_COLUMNS} columns`);
     const resolvable = this.name(name);
     const type = this.type(typeTok, params);
     let nullTok: Tk | null = null;
@@ -1118,58 +1200,65 @@ class DocumentParser {
       defaultTok = present(toks[i], 'toks[i]');
       this.mark(defaultTok, 'keyword');
       i++;
+      // Go's value("a default value", true): a '-' reads the number after it.
       const v = toks[i];
       const next = toks[i + 1];
-      if (v !== undefined && v.k === K.Op && v.t === '-' && next !== undefined && next.k === K.Word && next.s === v.e) {
-        valueTok = { k: K.Word, t: '-' + next.t, s: v.s, e: next.e, line };
-        i += 2;
+      if (v !== undefined && isOp(v, '-')) {
+        if (next !== undefined && isNumberToken(next)) {
+          valueTok = { k: K.Word, t: '-' + next.t, s: v.s, e: next.e, line };
+          i += 2;
+        } else {
+          this.syntax(toks, i + 1, line, "a number after '-'");
+          complete = false;
+        }
       } else if (v !== undefined && (v.k === K.Word || v.k === K.Str)) {
         valueTok = v;
         this.markValue(v);
         i++;
       } else {
-        this.syntax(toks, i, line, 'expected a default value');
+        this.syntax(toks, i, line, 'a default value');
         complete = false;
       }
     }
     if (complete) this.end(toks, i, line);
     let value: DbspecDefault | null = null;
     if (identity !== null) {
-      if (type !== null && type.kind !== 'i64') this.at('column', identity, 'an identity column has the type i64');
+      // Go's tableRules reports one of the three, in this order.
       if (nullTok !== null) this.at('column', identity, 'an identity column cannot be null');
-      if (table.identity) this.at('column', identity, 'a table has at most one identity column');
+      else if (type !== null && type.kind !== 'i64') this.at('column', identity, `an identity column has type i64, not ${typeText(type)}`);
+      else if (table.identity) this.at('column', identity, 'a table has at most one identity column');
       table.identity = true;
       if (defaultTok !== null) this.at('column', defaultTok, 'an identity column has no default');
     } else if (defaultTok !== null && type !== null) {
       if (type.kind === 'text' || type.kind === 'bytes') this.at('column', defaultTok, `a ${type.kind} column has no default`);
       else if (valueTok !== null) {
         const fitted = defaultOf(type, valueTok);
-        if (typeof fitted === 'string') this.at('column', valueTok, fitted);
+        if (typeof fitted === 'string') this.at('column', valueTok, `default ${describe(valueTok)} is not a literal of type ${typeText(type)}`);
         else value = fitted;
       }
     }
     const column: IColumn = { name, type, nullable: nullTok !== null, identity, value, comments, dflt: defaultTok, valueTok };
     table.columns.push(column);
     if (!resolvable) return;
-    if (table.colMap.has(name.t)) this.at('name.duplicate', name, `column ${name.t} repeats`);
+    if (table.colMap.has(name.t)) this.at('name.duplicate', name, `column ${goQuote(name.t)} repeats in the table`);
     else table.colMap.set(name.t, column);
   }
 
   private keyColumns(toks: Tk[], i: number, line: number, directions: boolean): [IKeyColumn[], number] | null {
     if (!isPunct(toks[i], '(')) {
-      this.syntax(toks, i, line, 'expected (');
+      this.syntax(toks, i, line, "'('");
       return null;
     }
     i++;
     const cols: IKeyColumn[] = [];
     if (isPunct(toks[i], ')')) {
-      this.syntax(toks, i, line, 'expected a column name');
+      this.syntax(toks, i, line, 'a column name');
       return null;
     }
     for (;;) {
       const w = toks[i];
       if (w === undefined || w.k !== K.Word) {
-        this.syntax(toks, i, line, 'expected a column name');
+        this.syntax(toks, i, line, 'a column name');
         return null;
       }
       i++;
@@ -1185,7 +1274,7 @@ class DocumentParser {
         continue;
       }
       if (isPunct(toks[i], ')')) return [cols, i + 1];
-      this.syntax(toks, i, line, 'expected , or )');
+      this.syntax(toks, i, line, "',' or ')'");
       return null;
     }
   }
@@ -1227,7 +1316,7 @@ class DocumentParser {
         };
         if (!isWord(toks[1], 'key')) {
           failed();
-          return this.syntax(toks, 1, line, 'expected key');
+          return this.syntax(toks, 1, line, "'key'");
         }
         this.mark(toks[1], 'keyword');
         const cols = this.keyColumns(toks, 2, line, false);
@@ -1241,7 +1330,7 @@ class DocumentParser {
         const name = toks[1];
         if (name === undefined || name.k !== K.Word) {
           table.failedKey = true;
-          return this.syntax(toks, 1, line, 'expected a name');
+          return this.syntax(toks, 1, line, `a ${kw.t} name`);
         }
         const cols = this.keyColumns(toks, 2, line, kw.t === 'index');
         if (cols === null || !this.end(toks, cols[1], line)) {
@@ -1264,11 +1353,11 @@ class DocumentParser {
       }
       case 'check': {
         const name = toks[1];
-        if (name === undefined || name.k !== K.Word) return this.syntax(toks, 1, line, 'expected a name');
-        if (!isPunct(toks[2], '(')) return this.syntax(toks, 2, line, 'expected (');
+        if (name === undefined || name.k !== K.Word) return this.syntax(toks, 1, line, 'a check name');
+        if (!isPunct(toks[2], '(')) return this.syntax(toks, 2, line, "'('");
         const close = present(toks[toks.length - 1], 'toks[toks.length - 1]');
         // Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
-        if (toks.length < 4 || !isPunct(close, ')')) return this.syntax(toks, toks.length, line, "expected ')' at the end of the check");
+        if (toks.length < 4 || !isPunct(close, ')')) return this.syntax(toks, toks.length, line, "')' at the end of the check");
         this.mark(name, 'name');
         this.constraintName(name);
         table.checks.push({ name, expr: toks.slice(3, -1), close, comments, text: '' });
@@ -1279,30 +1368,33 @@ class DocumentParser {
 
   private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void {
     const kw = present(toks[0], 'toks[0]');
-    if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
+    if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, "'key'");
     this.mark(toks[1], 'keyword');
     const name = toks[2];
-    if (name === undefined || name.k !== K.Word) return this.syntax(toks, 2, line, 'expected a name');
+    if (name === undefined || name.k !== K.Word) return this.syntax(toks, 2, line, 'a foreign key name');
     this.mark(name, 'name');
     const cols = this.keyColumns(toks, 3, line, false);
     if (cols === null) return;
     let i = cols[1];
-    if (!isWord(toks[i], 'references')) return this.syntax(toks, i, line, 'expected references');
+    if (!isWord(toks[i], 'references')) return this.syntax(toks, i, line, "'references'");
     this.mark(toks[i], 'keyword');
     const target = toks[i + 1];
-    if (target === undefined || target.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a table name');
+    if (target === undefined || target.k !== K.Word) return this.syntax(toks, i + 1, line, 'a table name');
     this.mark(target, 'name');
     const refs = this.keyColumns(toks, i + 2, line, false);
     if (refs === null) return;
     i = refs[1];
     const actions: Record<'delete' | 'update', string> = { delete: 'restrict', update: 'restrict' };
     const actionToks: Tk[] = [];
+    // As Go reads it: an optional `on delete <action>`, then after any further `on` the keyword update and its action.
     for (const event of ['delete', 'update'] as const) {
-      if (!isWord(toks[i], 'on') || !isWord(toks[i + 1], event)) continue;
+      if (!isWord(toks[i], 'on')) break;
+      if (event === 'delete' && !isWord(toks[i + 1], 'delete')) continue;
       this.mark(toks[i], 'keyword');
+      if (!isWord(toks[i + 1], event)) return this.syntax(toks, i + 1, line, `'${event}'`);
       this.mark(toks[i + 1], 'keyword');
       const action = toks[i + 2];
-      if (action === undefined || action.k !== K.Word) return this.syntax(toks, i + 2, line, 'expected an action');
+      if (action === undefined || action.k !== K.Word) return this.syntax(toks, i + 2, line, 'an action');
       actions[event] = action.t;
       actionToks.push(action);
       // R3: an action that is not restrict, cascade or set_null is a word, with a semantic diagnostic.
@@ -1311,9 +1403,9 @@ class DocumentParser {
     }
     if (!this.end(toks, i, line)) return;
     for (const action of actionToks) {
-      if (!ACTIONS.has(action.t)) this.at('foreign_key', action, `action "${action.t}" is not restrict, cascade or set_null`);
+      if (!ACTIONS.has(action.t)) this.at('foreign_key', action, `action ${goQuote(action.t)} is not restrict, cascade or set_null`);
     }
-    if (this.foreignKeyCount >= MAX_FOREIGN_KEYS) return this.stop('limit', kw, `a document has at most ${MAX_FOREIGN_KEYS} foreign keys`);
+    if (this.foreignKeyCount >= MAX_FOREIGN_KEYS) return this.stop('limit', kw, `document has more than ${MAX_FOREIGN_KEYS} foreign keys`);
     this.foreignKeyCount++;
     this.constraintName(name);
     for (const c of cols[0]) this.name(c.tok);
@@ -1343,32 +1435,29 @@ class DocumentParser {
     // The lex error of the line was already reported. Go's cursor does not check this line after that.
     if (lexed) return;
     const kw = present(toks[0], 'toks[0]');
-    if (kw.k !== K.Word) return this.syntax(toks, 0, line, 'expected a setting');
+    if (kw.k !== K.Word) return this.syntax(toks, 0, line, "a setting or '}'");
     // R4: the first word of a settings line is a setting, known or not.
     this.mark(kw, 'setting');
-    const words = (from: number, count: number | null): Tk[] | null => {
+    // Go's arg and rest: each argument is a word, and a missing or wrong one is reported with what that position reads.
+    // A rest list reads at least one word and every token after it; a fixed list ends the line after its words.
+    const words = (from: number, whats: readonly string[], rest: string | null = null): Tk[] | null => {
       const out: Tk[] = [];
-      for (let i = from; i < toks.length; i++) {
-        if (present(toks[i], 'toks[i]').k !== K.Word) {
-          this.syntax(toks, i, line, 'expected a name');
+      let i = from;
+      for (; i < from + whats.length || (rest !== null && (i === from + whats.length || i < toks.length)); i++) {
+        const t = toks[i];
+        if (t === undefined || t.k !== K.Word) {
+          this.syntax(toks, i, line, i < from + whats.length ? present(whats[i - from], 'whats[i - from]') : present(rest, 'rest'));
           return null;
         }
-        out.push(present(toks[i], 'toks[i]'));
+        out.push(t);
       }
-      if (count === null ? out.length === 0 : out.length < count) {
-        this.syntax(toks, toks.length, line, 'expected a name');
-        return null;
-      }
-      if (count !== null && out.length > count) {
-        this.syntax(toks, from + count, line, 'expected the end of the line');
-        return null;
-      }
+      if (!this.end(toks, i, line)) return null;
       return out;
     };
     let entry: ISetting | null = null;
     switch (kw.t) {
       case 'entity': {
-        const w = words(1, 1);
+        const w = words(1, ['an entity name']);
         if (w === null) return;
         this.name(present(w[0], 'w[0]'));
         this.mark(w[0], 'name');
@@ -1378,7 +1467,7 @@ class DocumentParser {
       case 'updated':
       case 'soft_delete':
       case 'aes_version': {
-        const w = words(1, 1);
+        const w = words(1, ['a column name']);
         if (w === null) return;
         this.name(present(w[0], 'w[0]'));
         this.mark(w[0], 'name');
@@ -1386,9 +1475,9 @@ class DocumentParser {
         break;
       }
       case 'select': {
-        if (!isWord(toks[1], 'explicit')) return this.syntax(toks, 1, line, 'expected explicit');
+        if (!isWord(toks[1], 'explicit')) return this.syntax(toks, 1, line, "'explicit'");
         this.mark(toks[1], 'keyword');
-        const w = words(2, null);
+        const w = words(2, [], 'a column name');
         if (w === null) return;
         for (const c of w) {
           this.mark(c, 'name');
@@ -1398,20 +1487,19 @@ class DocumentParser {
         break;
       }
       case 'codec': {
-        const w = words(1, null);
+        const w = words(1, ['a column name'], 'a codec stage');
         if (w === null) return;
-        if (w.length < 2) return this.syntax(toks, toks.length, line, 'expected a codec stage');
         this.mark(w[0], 'name');
         this.name(present(w[0], 'w[0]'));
         const stages = w.slice(1);
         // R3: a codec stage of the known set is a keyword; another word is a word, with a semantic diagnostic.
         for (const s of stages) if (STAGES.has(s.t)) this.mark(s, 'keyword');
-        if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `${s.t} is not a codec stage`);
+        if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `codec stage ${goQuote(s.t)} is unknown`);
         entry = { kw, comments, kind: 'codec', column: present(w[0], 'w[0]'), stages };
         break;
       }
       case 'blind_index': {
-        const w = words(1, 2);
+        const w = words(1, ['the AES column', 'the index column']);
         if (w === null) return;
         for (const c of w) {
           this.mark(c, 'name');
@@ -1421,7 +1509,7 @@ class DocumentParser {
         break;
       }
       case 'navigation': {
-        const w = words(1, 3);
+        const w = words(1, ['a foreign key name', 'the child relation name', 'the parent relation name']);
         if (w === null) return;
         for (const c of w) {
           this.mark(c, 'name');
@@ -1435,7 +1523,7 @@ class DocumentParser {
         entry = { kw, comments, kind: 'immutable' };
         break;
       case 'markdown': {
-        const w = words(1, 1);
+        const w = words(1, ['a column name']);
         if (w === null) return;
         this.mark(w[0], 'name');
         entry = { kw, comments, kind: 'markdown', column: present(w[0], 'w[0]') };
@@ -1450,7 +1538,7 @@ class DocumentParser {
       case 'title':
       case 'order':
       case 'body': {
-        const w = words(1, 1);
+        const w = words(1, ['a column name']);
         if (w === null) return;
         this.mark(w[0], 'name');
         entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: present(w[0], 'w[0]') };
@@ -1458,18 +1546,18 @@ class DocumentParser {
       }
       case 'task_marker': {
         const column = this.settingWord(toks, 1, line, 'a column name');
-        if (column === null || !this.settingEnd(toks, 2, line)) return;
+        if (column === null || !this.end(toks, 2, line)) return;
         entry = { kw, comments, kind: 'task_marker', column };
         break;
       }
       case 'audit': {
         const parts: Tk[] = [];
         let i = 1;
-        for (const label of ['into', 'column', 'references', 'action', 'previous']) {
-          if (!isWord(toks[i], label)) return this.syntax(toks, i, line, `expected ${label}`);
+        for (const [label, what] of [['into', 'the history table'], ['column', 'the audit column'], ['references', 'the audit record table'], ['action', 'the action column'], ['previous', 'the previous column']] as const) {
+          if (!isWord(toks[i], label)) return this.syntax(toks, i, line, `'${label}'`);
           this.mark(toks[i], 'keyword');
           const w = toks[i + 1];
-          if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a name');
+          if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + 1, line, what);
           this.mark(w, 'name');
           this.name(w);
           parts.push(w);
@@ -1479,48 +1567,36 @@ class DocumentParser {
         if (isWord(toks[i], 'tables')) {
           this.mark(present(toks[i], 'toks[i]'), 'keyword');
           const names: Tk[] = [];
-          for (const [k, want] of [[1, 'name'], [2, '('], [3, 'name'], [4, ','], [5, 'name'], [6, ')']] as const) {
+          for (const [k, want] of [[1, 'the tables table'], [2, '('], [3, 'the record column'], [4, ','], [5, 'the name column'], [6, ')']] as const) {
             const w = toks[i + k];
-            if (want === 'name') {
-              if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + k, line, 'expected a name');
+            if (want.length > 1) {
+              if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + k, line, want);
               this.mark(w, 'name');
               this.name(w);
               names.push(w);
-            } else if (!isPunct(w, want)) return this.syntax(toks, i + k, line, `expected ${want}`);
+            } else if (!isPunct(w, want)) return this.syntax(toks, i + k, line, `'${want}'`);
           }
           tables = { table: present(names[0], 'names[0]'), record: present(names[1], 'names[1]'), name: present(names[2], 'names[2]') };
           i += 7;
         }
         const lists: { kw: Tk; columns: Tk[] }[] = [];
         while (isWord(toks[i], 'exclude') || isWord(toks[i], 'include')) {
-          if (!isPunct(toks[i + 1], '(')) return this.syntax(toks, i + 1, line, 'expected (');
-          const listed = this.list(toks, i + 2, line, ')');
+          if (!isPunct(toks[i + 1], '(')) return this.syntax(toks, i + 1, line, "'('");
+          const listed = this.list(toks, i + 2, line, ')', 'a column name');
           if (listed === null) return;
           this.mark(toks[i], 'keyword');
           for (const c of listed[0]) this.mark(c, 'name');
           lists.push({ kw: present(toks[i], 'toks[i]'), columns: listed[0] });
           i = listed[1];
         }
-        if (i < toks.length) return this.syntax(toks, i, line, tables === null && !lists.length ? 'expected tables, exclude, include or the end of the line' : 'expected exclude, include or the end of the line');
+        if (i < toks.length) return this.syntax(toks, i, line, tables === null ? "'tables', 'exclude', 'include' or the end of the line" : "'exclude', 'include' or the end of the line");
         entry = { kw, comments, kind: 'audit', into: present(parts[0], 'parts[0]'), column: present(parts[1], 'parts[1]'), references: present(parts[2], 'parts[2]'), action: present(parts[3], 'parts[3]'), previous: present(parts[4], 'parts[4]'), tables, lists };
         break;
       }
       default:
-        return this.at('setting', kw, `setting "${kw.t}" is unknown`);
+        return this.at('setting', kw, `setting ${goQuote(kw.t)} is unknown`);
     }
     present(this.settingsBlock, 'this.settingsBlock').entries.push(entry);
-  }
-
-  /**
-   * The end of a setting line whose arguments are read: a token after them, such as the state of the per-state task_marker form, is
-   * a syntax error that shows the token as every runtime does (DBS-80), a string by its value and any other token by its text.
-   */
-  private settingEnd(toks: Tk[], i: number, line: number): boolean {
-    const tok = toks[i];
-    if (tok === undefined) return true;
-    const shown = tok.k === K.Str ? `string '${stringValue(tok)}'` : `'${tok.t}'`;
-    this.syntax(toks, i, line, `unexpected ${shown}, expected the end of the line`);
-    return false;
   }
 
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
@@ -1530,7 +1606,7 @@ class DocumentParser {
       this.mark(t, 'name');
       return t;
     }
-    this.syntax(toks, i, line, `expected ${what}`);
+    this.syntax(toks, i, line, what);
     return null;
   }
 
@@ -1538,7 +1614,7 @@ class DocumentParser {
   private storeLine(toks: Tk[], line: number, kw: Tk, comments: string[]): ISetting | null {
     const storage = toks[1];
     if (storage === undefined || storage.k !== K.Word || !['files', 'document', 'block'].includes(storage.t)) {
-      this.syntax(toks, 1, line, "expected 'files', 'document' or 'block'");
+      this.syntax(toks, 1, line, "'files', 'document' or 'block'");
       return null;
     }
     this.mark(storage, 'keyword');
@@ -1553,7 +1629,7 @@ class DocumentParser {
     if (storage.t !== 'files') {
       const word = toks[i];
       if (word === undefined || word.k !== K.Word || (word.t !== 'list' && word.t !== 'table')) {
-        this.syntax(toks, i, line, "expected 'list' or 'table'");
+        this.syntax(toks, i, line, "'list' or 'table'");
         return null;
       }
       this.mark(word, 'keyword');
@@ -1569,7 +1645,7 @@ class DocumentParser {
       if (column === null) return null;
       const period = toks[i + 2];
       if (period === undefined || period.k !== K.Word || !['year', 'month', 'day'].includes(period.t)) {
-        this.syntax(toks, i + 2, line, "expected 'year', 'month' or 'day'");
+        this.syntax(toks, i + 2, line, "'year', 'month' or 'day'");
         return null;
       }
       this.mark(period, 'keyword');
@@ -1577,7 +1653,7 @@ class DocumentParser {
       i += 3;
     }
     if (i < toks.length) {
-      this.syntax(toks, i, line, 'expected the end of the line');
+      this.syntax(toks, i, line, 'the end of the line');
       return null;
     }
     return { kw, comments, kind: 'store', storage, foreignKey, shape, shard };
@@ -1585,31 +1661,36 @@ class DocumentParser {
 
   private placement(diagram: IDiagram, toks: Tk[], line: number, comments: string[]): void {
     const table = present(toks[0], 'toks[0]');
-    if (table.k !== K.Word) return this.syntax(toks, 0, line, 'expected a table name');
-    if (!isWord(toks[1], 'at')) return this.syntax(toks, 1, line, 'expected at');
+    if (table.k !== K.Word) return this.syntax(toks, 0, line, "a table name or '}'");
+    if (!isWord(toks[1], 'at')) return this.syntax(toks, 1, line, "'at'");
     this.mark(toks[1], 'keyword');
     let i = 2;
-    const coordinates: { tok: Tk; text: string }[] = [];
-    for (let n = 0; n < 2; n++) {
+    // Go's diagramLine: each coordinate is a value (a word, a number or a string, or a '-' before a number); a '-'
+    // before any word is a y coordinate that is not an integer.
+    const coordinates: Tk[] = [];
+    for (const what of ['the x coordinate', 'the y coordinate']) {
       const v = toks[i];
       const next = toks[i + 1];
-      if (v !== undefined && v.k === K.Op && v.t === '-' && next !== undefined && next.k === K.Word && next.s === v.e) {
-        coordinates.push({ tok: v, text: '-' + next.t });
+      if (v !== undefined && isOp(v, '-')) {
+        if (next === undefined || !(isNumberToken(next) || (what === 'the y coordinate' && next.k === K.Word))) {
+          return this.syntax(toks, i + 1, line, "a number after '-'");
+        }
+        coordinates.push({ k: K.Word, t: '-' + next.t, s: v.s, e: next.e, line });
         i += 2;
-      } else if (v !== undefined && v.k === K.Word) {
+      } else if (v !== undefined && (v.k === K.Word || v.k === K.Str)) {
         this.markValue(v);
-        coordinates.push({ tok: v, text: v.t });
+        coordinates.push(v);
         i++;
-      } else return this.syntax(toks, i, line, 'expected a coordinate');
+      } else return this.syntax(toks, i, line, what);
     }
     if (!this.end(toks, i, line)) return;
     this.mark(table, 'name');
     this.name(table);
     const values: number[] = [];
     for (const c of coordinates) {
-      const value = INTEGER.test(c.text) && c.text.length <= 12 ? Number(c.text) : NaN;
-      if (!(value >= -2147483648 && value <= 2147483647)) {
-        this.at('diagram', c.tok, `coordinate ${c.text} is not an integer from -2147483648 to 2147483647`);
+      const value = c.k === K.Word && INTEGER.test(c.t) && BigInt(c.t) >= -2147483648n && BigInt(c.t) <= 2147483647n ? Number(c.t) : NaN;
+      if (Number.isNaN(value)) {
+        this.at('diagram', c, `coordinate ${describe(c)} is not an integer from -2147483648 to 2147483647`);
       }
       values.push(value + 0);
     }
@@ -1623,17 +1704,18 @@ class DocumentParser {
     const available = new Map<string, ITable | null>();
     const usedAt = new Map<string, Tk>();
     const usedDocuments = new Set<string>();
-    const usedConstraints = new Set<string>();
+    // A constraint name of a used document, with the first used document that declares it.
+    const usedConstraints = new Map<string, string>();
     const usedTables = new Set<string>();
     for (const use of doc.uses) {
       if (!wellFormed(use.doc.t)) continue;
       if (usedDocuments.has(use.doc.t)) {
-        this.at('name.duplicate', use.doc, `document ${use.doc.t} is used twice`);
+        this.at('name.duplicate', use.doc, `document ${goQuote(use.doc.t)} is used twice`);
         continue;
       }
       usedDocuments.add(use.doc.t);
       if (use.doc.t === doc.name) {
-        this.at('use', use.doc, `document ${doc.name} uses itself`);
+        this.at('use', use.doc, 'a document cannot use itself');
         continue;
       }
       const target = this.resolve(use.doc);
@@ -1644,24 +1726,33 @@ class DocumentParser {
         continue;
       }
       {
-        const names = new Set<string>();
+        // Go's uses: the first constraint name of the document that an earlier used document declares, once per use line.
+        let repeated = false;
         for (const name of target.constraints.keys()) {
-          if (usedConstraints.has(name) || usedTables.has(name)) names.add(name);
+          const owner = usedConstraints.get(name);
+          if (owner !== undefined && owner !== use.doc.t && !repeated) {
+            this.at('name.duplicate', use.doc, `document ${goQuote(use.doc.t)} repeats constraint name ${goQuote(name)} of document ${goQuote(owner)}`);
+            repeated = true;
+          }
+          if (owner === undefined) usedConstraints.set(name, use.doc.t);
         }
-        for (const t of target.tables) if (t.named && usedConstraints.has(t.name.t)) names.add(t.name.t);
-        for (const name of names) this.at('name.duplicate', use.doc, `${name} is declared by two used documents`);
-        for (const name of target.constraints.keys()) usedConstraints.add(name);
         for (const t of target.tables) if (t.named) usedTables.add(t.name.t);
       }
       const tables = new Map(target.tables.filter(t => t.named).map(t => [t.name.t, t]));
+      const listed = new Set<string>();
       for (const t of use.tables) {
         if (!wellFormed(t.t)) continue;
+        if (listed.has(t.t)) {
+          this.at('name.duplicate', t, `table ${goQuote(t.t)} is listed twice`);
+          continue;
+        }
+        listed.add(t.t);
         if (available.has(t.t)) {
-          this.at('name.duplicate', t, `table ${t.t} is used twice`);
+          this.at('name.duplicate', t, `table ${goQuote(t.t)} is already used from another document`);
           continue;
         }
         const found = tables.get(t.t);
-        if (found === undefined) this.at('use', t, `document ${use.doc.t} does not define table ${t.t}`);
+        if (found === undefined) this.at('use', t, `document ${goQuote(use.doc.t)} does not define table ${goQuote(t.t)}`);
         available.set(t.t, found ?? null);
         usedAt.set(t.t, t);
       }
@@ -1673,19 +1764,23 @@ class DocumentParser {
       if (!available.has(t.name.t)) {
         available.set(t.name.t, t);
         localTables.set(t.name.t, t.name);
-        if (usedConstraints.has(t.name.t) && !t.headerFailed) this.at('name.duplicate', t.name, `table ${t.name.t} repeats a constraint name of a used document`);
+        const owner = usedConstraints.get(t.name.t);
+        if (owner !== undefined && !t.headerFailed) this.at('name.duplicate', t.name, `table ${goQuote(t.name.t)} is named like a constraint of document ${goQuote(owner)}`);
         continue;
       }
       // Go does not report duplicate table names for a table whose header failed (the failed table in validate.go).
       if (t.headerFailed) continue;
       const used = usedAt.get(t.name.t);
-      this.at('name.duplicate', used === undefined ? t.name : later(used, t.name), `table ${t.name.t} repeats`);
+      const message = localTables.has(t.name.t) ? `table ${goQuote(t.name.t)} is defined twice` : `table ${goQuote(t.name.t)} is also a used table`;
+      this.at('name.duplicate', used === undefined ? t.name : later(used, t.name), message);
     }
     for (const name of doc.failed) if (!available.has(name)) available.set(name, null);
     for (const [name, tok] of doc.constraints) {
       const table = localTables.get(name);
-      if (table !== undefined) this.at('name.duplicate', tok, `${name} names both a table and a constraint`);
-      else if (usedConstraints.has(name) || usedTables.has(name)) this.at('name.duplicate', tok, `${name} repeats a name of a used document`);
+      // Go's order: a constraint name of a used document, then a table name of this document or of a used document.
+      const owner = usedConstraints.get(name);
+      if (owner !== undefined) this.at('name.duplicate', tok, `name ${goQuote(name)} is a constraint name of used document ${goQuote(owner)}`);
+      else if (table !== undefined || usedTables.has(name)) this.at('name.duplicate', tok, `name ${goQuote(name)} is also a table name`);
     }
     for (const t of doc.tables) this.validateTable(t, available);
     this.generatedNamesUnique(doc, available);
@@ -1693,21 +1788,22 @@ class DocumentParser {
       const placed = new Set<string>();
       for (const p of d.entries) {
         if (!wellFormed(p.table.t)) continue;
-        if (!available.has(p.table.t)) this.at('diagram', p.table, `table ${p.table.t} is not defined or used`);
-        else if (placed.has(p.table.t)) this.at('diagram', p.table, `table ${p.table.t} repeats in the diagram`);
+        if (!available.has(p.table.t)) this.at('diagram', p.table, `table ${goQuote(p.table.t)} is not a table of this document or a used table`);
+        else if (placed.has(p.table.t)) this.at('diagram', p.table, `table ${goQuote(p.table.t)} appears twice in the diagram`);
         placed.add(p.table.t);
       }
     }
   }
 
+  /** Go's uses: a use cycle, then the declared set, then the header name of the entry, then the first diagnostic of the document. */
   private resolve(tok: Tk): IDocument | null {
     const name = tok.t;
-    if (!Object.hasOwn(this.context.documents, name)) {
-      this.at('use', tok, `document ${name} is not in the declared document set`);
+    if (this.chain.includes(name)) {
+      this.at('use', tok, `using document ${goQuote(name)} closes a use cycle`);
       return null;
     }
-    if (this.chain.includes(name)) {
-      this.at('use', tok, `document ${name} uses itself through use lines`);
+    if (!Object.hasOwn(this.context.documents, name)) {
+      this.at('use', tok, `document ${goQuote(name)} is not in the declared document set`);
       return null;
     }
     let parsed = this.context.cache.get(name);
@@ -1715,25 +1811,26 @@ class DocumentParser {
       parsed = parseText(present(this.context.documents[name], 'this.context.documents[name]'), this.context, [...this.chain, name]);
       this.context.cache.set(name, parsed);
     }
-    const first = parsed.diagnostics[0];
-    if (first !== undefined) {
-      this.at('use', tok, `document ${name} is invalid: ${first.rule} at line ${first.line} column ${first.column}: ${first.message}`);
+    const stopped = parsed.parser === null || parsed.parser.halted;
+    if (!stopped && parsed.document.name !== name) {
+      this.at('use', tok, `the document set entry ${goQuote(name)} holds document ${goQuote(parsed.document.name)}`);
       return null;
     }
-    if (parsed.document.name !== name) {
-      this.at('use', tok, `the declared document ${name} has the header name ${parsed.document.name}`);
+    const first = parsed.diagnostics[0];
+    if (first !== undefined) {
+      this.at('use', tok, `used document ${goQuote(name)} is invalid: line ${first.line} column ${first.column} ${first.rule}: ${first.message}`);
       return null;
     }
     return parsed.document;
   }
 
   /** A column of the table, undefined for a malformed name (already reported), or null after reporting it unknown. */
-  private lookup(table: ITable, tok: Tk, rule: DbspecRule, what = 'column'): IColumn | null | undefined {
+  private lookup(table: ITable, tok: Tk, rule: DbspecRule): IColumn | null | undefined {
     if (!wellFormed(tok.t)) return undefined;
     const column = table.colMap.get(tok.t);
     if (column === undefined) {
       if (table.failed.has(tok.t)) return undefined;
-      this.at(rule, tok, `${what} ${tok.t} is not a column of table ${table.name.t}`);
+      this.at(rule, tok, `column ${goQuote(tok.t)} is not a column of table ${goQuote(table.name.t)}`);
       return null;
     }
     return column;
@@ -1742,30 +1839,30 @@ class DocumentParser {
   private keyLike(table: ITable, key: IKey, primary: boolean): void {
     const at = key.name ?? key.kw;
     if (key.cols.length === 0) this.at('key', at, 'a key or index lists at least one column');
-    if (key.cols.length > MAX_KEY_COLUMNS) this.at('key', at, `a key or index lists at most ${MAX_KEY_COLUMNS} columns`);
+    if (key.cols.length > MAX_KEY_COLUMNS) this.at('key', at, `a key or index lists ${key.cols.length} columns, more than ${MAX_KEY_COLUMNS}`);
     const seen = new Set<string>();
     let varchar = 0;
     for (const c of key.cols) {
       const column = this.lookup(table, c.tok, 'key');
       if (column === undefined || column === null) continue;
       if (seen.has(c.tok.t)) {
-        this.at('key', c.tok, `column ${c.tok.t} repeats`);
+        this.at('key', c.tok, `column ${goQuote(c.tok.t)} repeats in the key`);
         continue;
       }
       seen.add(c.tok.t);
       if (column.type !== null && (column.type.kind === 'text' || column.type.kind === 'bytes')) {
         this.at('key', c.tok, `a ${column.type.kind} column cannot be part of a key or index`);
       }
-      if (primary && column.nullable) this.at('key', c.tok, `primary key column ${c.tok.t} is null`);
+      if (primary && column.nullable) this.at('key', c.tok, `primary key column ${goQuote(c.tok.t)} is nullable`);
       if (column.type !== null && column.type.kind === 'varchar') varchar += column.type.length;
     }
-    if (varchar > MAX_KEY_VARCHAR) this.at('key', at, `the varchar columns total ${varchar} characters, more than ${MAX_KEY_VARCHAR}`);
+    if (varchar > MAX_KEY_VARCHAR) this.at('key', at, `the varchar columns of the key total ${varchar} characters, more than ${MAX_KEY_VARCHAR}`);
   }
 
   private validateTable(table: ITable, available: Map<string, ITable | null>): void {
-    if (table.columns.length === 0 && table.failedLines === 0) this.at('column', table.name, 'a table has at least one column');
-    if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${table.name.t} has no primary key`);
-    for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'a table has exactly one primary key');
+    if (table.columns.length === 0 && table.failedLines === 0) this.at('column', table.name, `table ${goQuote(table.name.t)} has no column`);
+    if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${goQuote(table.name.t)} has no primary key`);
+    for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'table has more than one primary key');
     for (const pk of table.pks.slice(0, 1)) this.keyLike(table, pk, true);
     for (const u of table.uniques) this.keyLike(table, u, false);
     for (const i of table.indexes) this.keyLike(table, i, false);
@@ -1773,10 +1870,10 @@ class DocumentParser {
     const identity = table.columns.find(c => c.identity !== null);
     if (identity !== undefined) {
       if (pk === undefined) {
-        if (!table.failedPrimary) this.at('column', present(identity.identity, 'identity.identity'), 'an identity column is the only primary key column');
+        if (!table.failedPrimary) this.at('column', present(identity.identity, 'identity.identity'), 'the identity column must be the only primary key column');
       } else if (pk.cols.every(c => wellFormed(c.tok.t) && !table.failed.has(c.tok.t))) {
         const only = pk.cols.length === 1 && present(pk.cols[0], 'pk.cols[0]').tok.t === identity.name.t;
-        if (!only) this.at('column', present(identity.identity, 'identity.identity'), 'an identity column is the only primary key column');
+        if (!only) this.at('column', present(identity.identity, 'identity.identity'), 'the identity column must be the only primary key column');
       }
     }
     const banned = new Set<string>();
@@ -1809,7 +1906,7 @@ class DocumentParser {
         continue;
       }
       if (seen.has(c.t)) {
-        this.at('foreign_key', c, `column ${c.t} repeats`);
+        this.at('foreign_key', c, `column ${goQuote(c.t)} repeats in the foreign key`);
         resolved = false;
       }
       seen.add(c.t);
@@ -1822,7 +1919,7 @@ class DocumentParser {
       return;
     }
     if (!available.has(fk.table.t)) {
-      this.at('foreign_key', fk.table, `table ${fk.table.t} is not defined or used`);
+      this.at('foreign_key', fk.table, `table ${goQuote(fk.table.t)} is not a table of this document or a used table`);
       this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
@@ -1850,18 +1947,18 @@ class DocumentParser {
       parents.push(column);
     }
     if (fk.cols.length !== fk.refs.length) {
-      this.at('foreign_key', fk.name, 'the foreign key lists a different number of child and referenced columns');
+      this.at('foreign_key', fk.name, `foreign key lists ${fk.cols.length} columns and ${fk.refs.length} referenced columns`);
     } else if (referencesKnown) {
       const refs = fk.refs.map(r => r.t).join(',');
       const keys = [...target.pks.slice(0, 1), ...target.uniques].map(k => k.cols.map(c => c.tok.t).join(','));
       if (!keys.includes(refs) && !target.failedKey && !target.failedPrimary) {
-        this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${target.name.t}`);
+        this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${goQuote(fk.table.t)}`);
       }
       for (let i = 0; i < children.length; i++) {
         const child = children[i]?.type ?? null;
         const parent = parents[i]?.type ?? null;
         if (child !== null && parent !== null && !sameType(child, parent)) {
-          this.at('foreign_key', fk.name, `column ${present(fk.cols[i], 'fk.cols[i]').t} is ${typeText(child)} but references ${typeText(parent)}`);
+          this.at('foreign_key', fk.name, `column ${goQuote(present(fk.cols[i], 'fk.cols[i]').t)} has type ${typeText(child)}, the referenced column has ${typeText(parent)}`);
           break;
         }
       }
@@ -1878,9 +1975,10 @@ class DocumentParser {
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => present(k.cols[i], 'k.cols[i]').tok.t === name),
     );
-    if (known && !indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
-    if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => c !== null && !c.nullable)) {
-      this.at('foreign_key', fk.name, 'set_null requires every child column to be null');
+    if (known && !indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'the table declares no index or key whose leading columns are the foreign key columns');
+    const required = fk.onDelete === 'set_null' || fk.onUpdate === 'set_null' ? children.find(c => c !== null && !c.nullable) : undefined;
+    if (required !== undefined && required !== null) {
+      this.at('foreign_key', fk.name, `set_null requires every foreign key column to be null; ${goQuote(required.name.t)} is not`);
     }
   }
 
@@ -1912,14 +2010,14 @@ class DocumentParser {
       i++;
       return tok;
     };
-    const expectPunct = (text: string): void => {
+    const expectPunct = (text: string, reason: string): void => {
       const tok = take();
-      if (!isPunct(tok, text)) throw new ExpressionSyntax(tok);
+      if (!isPunct(tok, text)) throw new ExpressionSyntax(tok, reason);
       out.push(text);
     };
     const expectWord = (text: string): void => {
       const tok = take();
-      if (!isWord(tok, text)) throw new ExpressionSyntax(tok);
+      if (!isWord(tok, text)) throw new ExpressionSyntax(tok, `is not allowed here; expected ${text}`);
       mark(tok, 'keyword');
       out.push(text);
     };
@@ -1947,9 +2045,8 @@ class DocumentParser {
         mark(t, 'keyword');
         return literalOperand(t, t.t);
       }
-      if (isWord(t, 'null')) flag('check', t, 'the null literal is not part of a predicate');
-      else if (t.k === K.Word && !EXPRESSION_WORDS.has(t.t)) flag('check', t, `${t.t} is not a literal`);
-      else throw new ExpressionSyntax(t);
+      // Go's literal list: any other token is not a literal.
+      flag('check', t, `${describe(t)} is not a literal in a check expression`);
       out.push(t.t);
       return null;
     };
@@ -1959,7 +2056,7 @@ class DocumentParser {
       const t = take();
       if (t.k === K.Str) return literalOperand(t, t.t);
       if (t.k === K.Op && t.t === '-') {
-        flag('check', t, 'unary minus applies only to a number literal');
+        flag('check', t, `${describe(t)} is not allowed here in a check expression`);
         out.push('-');
         term();
         return null;
@@ -1971,12 +2068,12 @@ class DocumentParser {
         return literalOperand(t, t.t);
       }
       if (t.t === 'null') {
-        flag('check', t, 'the null literal is not part of a predicate');
+        flag('check', t, `${describe(t)} is not allowed here in a check expression`);
         return null;
       }
       if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
       if (isPunct(peek(), '(')) {
-        flag('check', t, `function ${t.t} is not part of a predicate`);
+        flag('check', t, `${describe(t)} is a function; check predicates have no functions in a check expression`);
         // A diagnostic has already been reported, so the arguments are skipped by matching parentheses only.
         let depth = 0;
         do {
@@ -1990,11 +2087,11 @@ class DocumentParser {
       // A column reference is a name (R13), whether it resolves or not.
       mark(t, 'name');
       if (!wellFormed(t.t)) {
-        issue(t, RESERVED.has(t.t) ? `${t.t} is a reserved word` : `${t.t} does not match [a-z][a-z0-9_]*`, 'name.format');
+        issue(t, nameFormatMessage(t.t), 'name.format');
         return null;
       }
       if (utf8Length(t.t) > MAX_NAME_BYTES) {
-        issue(t, `${t.t} is longer than 63 bytes`, 'name.length');
+        issue(t, nameLengthMessage(t.t), 'name.length');
         return null;
       }
       out.push(t.t);
@@ -2002,16 +2099,16 @@ class DocumentParser {
       // A column whose own line failed was reported on that line.
       if (column === undefined && table.failed.has(t.t)) return null;
       // The diagnostic of a column is chosen in source order together with the type diagnostics.
-      if (column === undefined) issue(t, `${t.t} is not a column of table ${table.name.t}`);
-      else if (banned.has(t.t)) issue(t, `column ${t.t} belongs to a cascade or set_null foreign key`);
-      else if (column.type !== null && column.type.kind === 'bytes') issue(t, `bytes column ${t.t} is not part of a predicate`);
+      if (column === undefined) issue(t, `column ${goQuote(t.t)} is not a column of table ${goQuote(table.name.t)}`);
+      else if (banned.has(t.t)) issue(t, `column ${goQuote(t.t)} belongs to a foreign key with cascade or set_null`);
+      else if (column.type !== null && column.type.kind === 'bytes') issue(t, `bytes column ${goQuote(t.t)} cannot be part of a check`);
       else return { column, tok: t, type: column.type, slot: -1 };
       return null;
     };
     const operand = (): Operand | null => {
       let result = term();
       for (let t = peek(); t !== undefined && t.k === K.Op && ARITHMETIC.has(t.t); t = peek()) {
-        flag('check', t, `arithmetic ${t.t} is not part of a predicate`);
+        flag('check', t, `${describe(t)} is not allowed here in a check expression`);
         out.push(take().t);
         term();
         result = null;
@@ -2024,23 +2121,22 @@ class DocumentParser {
     const fit = (column: Operand, value: Operand): void => {
       if (column.type === null) return;
       const fitted = defaultOf(column.type, value.tok);
-      if (typeof fitted === 'string') issue(value.tok, `${value.tok.t} does not meet column ${column.tok.t}: ${fitted}`);
-      else if (fitted.kind === 'literal') out[value.slot] = fitted.text;
-      else issue(value.tok, `${value.tok.t} is not a literal`);
+      if (typeof fitted !== 'string' && fitted.kind === 'literal') out[value.slot] = fitted.text;
+      else issue(value.tok, `${describe(value.tok)} is not a ${typeText(column.type)} value`);
     };
     const compare = (left: Operand, op: Tk, right: Operand): void => {
-      if (ORDERINGS.has(op.t) && (isBool(left) || isBool(right))) issue(op, `${op.t} does not compare bool values`);
+      if (ORDERINGS.has(op.t) && (isBool(left) || isBool(right))) issue(op, `${op.t} does not order bool values`);
       if (left.column !== null && right.column !== null) {
         if (left.type !== null && right.type !== null && meetKindOf(left.type) !== meetKindOf(right.type)) {
-          issue(right.tok, `column ${right.tok.t} (${typeText(right.type)}) does not meet column ${left.tok.t} (${typeText(left.type)})`);
+          issue(right.tok, `column ${goQuote(right.tok.t)} is ${typeText(right.type)} and does not meet ${typeText(left.type)}`);
         }
       } else if (left.column !== null) fit(left, right);
       else if (right.column !== null) fit(right, left);
     };
     // The operand before in and is is a column.
-    const subject = (left: Operand | null, word: Tk): Operand | null => {
+    const subject = (left: Operand | null): Operand | null => {
       if (left !== null && left.column === null) {
-        flag('check', left.tok, `${word.t} takes a column, not a literal`);
+        flag('check', left.tok, `${describe(left.tok)} is not a column`);
         return null;
       }
       return left;
@@ -2049,15 +2145,15 @@ class DocumentParser {
     const alone = (start: Tk): never => {
       const next = peek();
       if (next !== undefined && !isWord(next, 'and') && !isWord(next, 'or') && !isPunct(next, ')')) {
-        flag('check', next, `${next.t} is not part of a predicate`);
-      } else flag('check', start, `${start.t} alone is not a predicate`);
+        flag('check', next, `${describe(next)} is not allowed here in a check expression`);
+      } else flag('check', start, `${describe(start)} alone is not a predicate`);
       throw new ExpressionSyntax(null);
     };
     const predicate = (): Predicate => {
       if (isPunct(peek(), '(')) {
         take();
         const inner = or();
-        if (!isPunct(take(), ')')) throw new ExpressionSyntax(present(toks[i - 1], 'toks[i - 1]'));
+        if (!isPunct(take(), ')')) throw new ExpressionSyntax(present(toks[i - 1], 'toks[i - 1]'), 'is not allowed here; expected )');
         return inner;
       }
       out = [];
@@ -2068,7 +2164,7 @@ class DocumentParser {
         out.push(take().t);
         const right = operand();
         if (left !== null && right !== null && left.column === null && right.column === null) {
-          flag('check', left.tok, 'a comparison has at least one column operand');
+          flag('check', left.tok, `${describe(left.tok)} is compared with a literal; a comparison needs a column`);
         } else if (left !== null && right !== null) compare(left, t, right);
         return { kind: 'leaf', parts: out };
       }
@@ -2079,21 +2175,21 @@ class DocumentParser {
       }
       const u = peek();
       if (isWord(u, 'in')) {
-        const column = subject(left, present(u, 'u'));
+        const column = subject(left);
         mark(u, 'keyword');
         out.push(take().t);
-        expectPunct('(');
+        expectPunct('(', 'is not allowed here; expected (');
         const values = [literal()];
         while (isPunct(peek(), ',')) {
           out.push(take().t);
           values.push(literal());
         }
-        expectPunct(')');
+        expectPunct(')', 'is not allowed here; expected , or )');
         if (column !== null) for (const value of values) if (value !== null) fit(column, value);
         return { kind: 'leaf', parts: out };
       }
       if (isWord(u, 'is')) {
-        subject(left, present(u, 'u'));
+        subject(left);
         mark(u, 'keyword');
         out.push(take().t);
         if (isWord(peek(), 'not')) {
@@ -2103,7 +2199,7 @@ class DocumentParser {
         expectWord('null');
         return { kind: 'leaf', parts: out };
       }
-      return alone(present(start, 'start'));
+      return alone(left?.tok ?? present(start, 'start'));
     };
     const and = (): Predicate => {
       let left = predicate();
@@ -2129,7 +2225,7 @@ class DocumentParser {
       if (i < toks.length) throw new ExpressionSyntax(present(toks[i], 'toks[i]'));
     } catch (error) {
       if (!(error instanceof ExpressionSyntax)) throw error;
-      flag('check', error.at ?? check.close, error.at === null ? 'the check expression ends early' : `${error.at.t} is not allowed here in a check expression`);
+      flag('check', error.at ?? check.close, error.at === null ? 'check expression ends early' : `${describe(error.at)} ${error.reason} in a check expression`);
       return;
     }
     if (flagged) return;
@@ -2162,7 +2258,7 @@ class DocumentParser {
                 : s.kind;
       if (seen.has(key)) {
         // A setting that a table may hold once per name repeats for that name, as Go states it (DBS-80).
-        this.at('setting', s.kw, key === s.kind ? `setting ${key} repeats` : `${s.kind} repeats for "${key.slice(s.kind.length + 1)}"`);
+        this.at('setting', s.kw, key === s.kind ? `setting ${key} repeats` : `${s.kind} repeats for ${goQuote(key.slice(s.kind.length + 1))}`);
         continue;
       }
       seen.add(key);
@@ -2171,20 +2267,20 @@ class DocumentParser {
           break;
         case 'updated': {
           const c = lookup(s.column);
-          if (c && c.type !== null && c.type.kind !== 'datetime') this.at('setting', s.column, 'updated names a datetime column');
+          if (c && c.type !== null && c.type.kind !== 'datetime') this.at('setting', s.column, `updated needs a datetime column, not ${typeText(c.type)}`);
           break;
         }
         case 'soft_delete': {
           const c = lookup(s.column);
           if (c && c.type !== null && (c.type.kind !== 'datetime' || !c.nullable)) {
-            this.at('setting', s.column, 'soft_delete names a nullable datetime column');
+            this.at('setting', s.column, 'soft_delete needs a nullable datetime column');
           }
           break;
         }
         case 'select_explicit': {
           const listed = new Set<string>();
           for (const tok of s.columns) {
-            if (lookup(tok) && listed.has(tok.t)) this.at('setting', tok, `column ${tok.t} repeats`);
+            if (lookup(tok) && listed.has(tok.t)) this.at('setting', tok, `column ${goQuote(tok.t)} repeats in select explicit`);
             listed.add(tok.t);
           }
           break;
@@ -2195,9 +2291,9 @@ class DocumentParser {
         case 'aes_version': {
           const c = lookup(s.column);
           if (c && c.type !== null && (!['i16', 'i32', 'i64'].includes(c.type.kind) || c.nullable)) {
-            this.at('setting', s.column, 'aes_version names a non-null integer column');
+            this.at('setting', s.column, 'aes_version needs a non-null integer column');
           }
-          if (aesColumns.size === 0) this.at('setting', s.kw, 'aes_version requires a column with the aes codec stage');
+          if (aesColumns.size === 0) this.at('setting', s.kw, 'aes_version without a column that uses aes');
           break;
         }
         case 'blind_index':
@@ -2205,7 +2301,7 @@ class DocumentParser {
           break;
         case 'navigation':
           if (wellFormed(s.foreignKey.t) && !table.failed.has(s.foreignKey.t) && !table.fks.some(fk => fk.name.t === s.foreignKey.t)) {
-            this.at('setting', s.foreignKey, `${s.foreignKey.t} is not a foreign key of table ${table.name.t}`);
+            this.at('setting', s.foreignKey, `foreign key ${goQuote(s.foreignKey.t)} is not a foreign key of the table`);
           }
           break;
         case 'markdown':
@@ -2258,7 +2354,7 @@ class DocumentParser {
   /** A block store names a foreign key of the table. */
   private checkForeignKeyName(table: ITable, tok: Tk): void {
     if (!this.ref(tok) || table.failed.has(tok.t)) return;
-    if (!table.fks.some(f => f.name.t === tok.t)) this.at('setting', tok, `foreign key ${tok.t} is not a foreign key of the table`);
+    if (!table.fks.some(f => f.name.t === tok.t)) this.at('setting', tok, `foreign key ${goQuote(tok.t)} is not a foreign key of the table`);
   }
 
   /** The title and body columns are non-null varchar or text columns. */
@@ -2294,7 +2390,7 @@ class DocumentParser {
       this.at('setting', s.column, 'order needs a non-null i32 or i64 column with no default');
       return;
     }
-    if (inKeyOrCheck(table, s.column.t)) this.at('setting', s.column, `order column ${s.column.t} is in a key, index or check`);
+    if (inKeyOrCheck(table, s.column.t)) this.at('setting', s.column, `order column ${goQuote(s.column.t)} is in a key, index or check`);
   }
 
   /**
@@ -2312,30 +2408,30 @@ class DocumentParser {
   private codec(table: ITable, s: Extract<ISetting, { kind: 'codec' }>, hasAesVersion: boolean): void {
     const column = this.lookup(table, s.column, 'setting');
     const stages = s.stages.map(stage => stage.t);
-    if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires aes_version');
+    if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires an aes_version setting');
     const json = stages.indexOf('ordered_json');
     if (json > 0) this.at('setting', present(s.stages[json], 's.stages[json]'), 'ordered_json is the first codec stage');
     if (!column || column.type === null || !stages.every(stage => STAGES.has(stage))) return;
     const last = present(stages[stages.length - 1], 'stages[stages.length - 1]');
     const bytes = last === 'aes' || last === 'gz' || last === 'ip';
     const kind = column.type.kind;
-    if (bytes && kind !== 'bytes') this.at('setting', s.column, `the ${last} stage stores bytes and needs a bytes column`);
+    if (bytes && kind !== 'bytes') this.at('setting', s.column, `the last codec stage ${last} stores bytes and needs a bytes column, not ${typeText(column.type)}`);
     if (!bytes && kind !== 'varchar' && kind !== 'text') {
-      this.at('setting', s.column, `the ${last} stage stores text and needs a varchar or text column`);
+      this.at('setting', s.column, `the last codec stage ${last} stores text and needs a varchar or text column, not ${typeText(column.type)}`);
     }
   }
 
   private blindIndex(table: ITable, s: Extract<ISetting, { kind: 'blind_index' }>, aesColumns: Set<string>): void {
     const source = this.lookup(table, s.column, 'setting');
-    if (source && !aesColumns.has(s.column.t)) this.at('setting', s.kw, `column ${s.column.t} has no aes codec stage`);
+    if (source && !aesColumns.has(s.column.t)) this.at('setting', s.kw, `blind_index names column ${goQuote(s.column.t)}, which has no codec with the aes stage`);
     const target = this.lookup(table, s.indexColumn, 'setting');
     if (!target) return;
     const type = target.type;
     const indexed = [...table.uniques, ...table.indexes].some(k => k.cols.length === 1 && present(k.cols[0], 'k.cols[0]').tok.t === s.indexColumn.t);
-    if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not aes-encoded');
-    else if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64');
-    else if (source && source.nullable !== target.nullable) this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');
-    else if (!table.failedKey && !indexed) this.at('setting', s.indexColumn, 'the blind index column is the only column of a declared index or unique key');
+    if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not AES-encoded');
+    else if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) this.at('setting', s.indexColumn, `the blind index column is varchar(n) with n >= 64, not ${typeText(type)}`);
+    else if (source && source.nullable !== target.nullable) this.at('setting', s.indexColumn, 'the blind index column has the nullability of the AES column');
+    else if (!table.failedKey && !indexed) this.at('setting', s.indexColumn, `column ${goQuote(s.indexColumn.t)} is not the only column of a declared index or unique key`);
   }
 
   private audit(
@@ -2352,7 +2448,7 @@ class DocumentParser {
     if (s.tables !== null) this.auditTables(table, s, s.tables, available);
     if (!wellFormed(s.into.t)) return;
     if (!available.has(s.into.t)) {
-      this.at('setting', s.into, `history table ${s.into.t} is not defined or used`);
+      this.at('setting', s.into, `history table ${goQuote(s.into.t)} is not a table of this document or a used table`);
       return;
     }
     const history = available.get(s.into.t) ?? null;
@@ -2360,29 +2456,33 @@ class DocumentParser {
     // Go does not check the columns of a history table whose header failed (audit in settings.go).
     if (history.headerFailed) return;
     if (history === table) {
-      this.at('setting', s.into, 'a table is not its own history table');
+      this.at('setting', s.into, 'a table cannot be its own history table');
       return;
     }
-    if (history.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', s.into, `history table ${s.into.t} is audited itself`);
+    if (history.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', s.into, `history table ${goQuote(s.into.t)} is audited itself`);
     const key = history.columns.find(c => c.identity !== null);
     if (key === undefined || key.type === null || key.type.kind !== 'i64') {
-      this.at('setting', s.into, `history table ${s.into.t} has no i64 identity primary key`);
+      this.at('setting', s.into, `history table ${goQuote(s.into.t)} needs an i64 identity primary key`);
     }
-    const action = wellFormed(s.action.t) ? history.colMap.get(s.action.t) : undefined;
+    // Go's audit: the identity key, then the action column, are reserved columns that the next column cannot be.
+    const separate = new Set<string>();
+    if (key !== undefined) separate.add(key.name.t);
     if (wellFormed(s.action.t)) {
-      if (action === undefined) this.at('setting', s.action, `${s.action.t} is not a column of history table ${s.into.t}`);
+      const action = history.colMap.get(s.action.t);
+      if (action === undefined) this.at('setting', s.action, `column ${goQuote(s.action.t)} is not a column of history table ${goQuote(s.into.t)}`);
+      else if (separate.has(s.action.t)) this.at('setting', s.action, 'the action column is a separate column of the history table');
       else if ((action.type !== null && typeText(action.type) !== 'varchar(8)') || action.nullable) {
         this.at('setting', s.action, 'the action column is a non-null varchar(8)');
       }
+      separate.add(s.action.t);
     }
     if (wellFormed(s.previous.t)) {
       const previous = history.colMap.get(s.previous.t);
-      if (previous === undefined) this.at('setting', s.previous, `${s.previous.t} is not a column of history table ${s.into.t}`);
-      else if (
-        !previous.nullable ||
-        (previous.type !== null && column && column.type !== null && !sameType(previous.type, column.type))
-      ) {
-        this.at('setting', s.previous, 'the previous column is nullable and has the type of the audit column');
+      if (previous === undefined) this.at('setting', s.previous, `column ${goQuote(s.previous.t)} is not a column of history table ${goQuote(s.into.t)}`);
+      else if (separate.has(s.previous.t)) this.at('setting', s.previous, 'the previous column is a separate column of the history table');
+      else if (!previous.nullable) this.at('setting', s.previous, 'the previous column is nullable');
+      else if (previous.type !== null && column && column.type !== null && !sameType(previous.type, column.type)) {
+        this.at('setting', s.previous, `the previous column has the audit column type ${typeText(column.type)}, not ${typeText(previous.type)}`);
       }
     }
     // A setting that uses both lists does not determine which columns are recorded, so the columns of the history table are not checked.
@@ -2394,15 +2494,15 @@ class DocumentParser {
       allowed.add(c.name.t);
       if (!wellFormed(c.name.t)) continue;
       const copy = history.colMap.get(c.name.t);
-      if (copy === undefined || reserved.has(c.name.t)) this.at('setting', s.into, `history table ${s.into.t} has no column ${c.name.t}`);
+      if (copy === undefined || reserved.has(c.name.t)) this.at('setting', s.into, `history table ${goQuote(s.into.t)} has no copy of column ${goQuote(c.name.t)}`);
       else if (c.type !== null && copy.type !== null && !sameType(c.type, copy.type)) {
-        this.at('setting', s.into, `history column ${c.name.t} is ${typeText(copy.type)}, not ${typeText(c.type)}`);
+        this.at('setting', s.into, `history column ${goQuote(c.name.t)} has type ${typeText(copy.type)}, not ${typeText(c.type)}`);
       }
     }
     for (const c of history.columns) {
       if (allowed.has(c.name.t)) continue;
-      if (wellFormed(c.name.t) && table.colMap.has(c.name.t)) this.at('setting', s.into, `history table ${s.into.t} has column ${c.name.t}, which table ${table.name.t} does not record`);
-      else this.at('setting', s.into, `history table ${s.into.t} has the extra column ${c.name.t}`);
+      if (wellFormed(c.name.t) && table.colMap.has(c.name.t)) this.at('setting', s.into, `history table ${goQuote(s.into.t)} has column ${goQuote(c.name.t)}, which table ${goQuote(table.name.t)} does not record`);
+      else this.at('setting', s.into, `history table ${goQuote(s.into.t)} has column ${goQuote(c.name.t)}, which is not a column of table ${goQuote(table.name.t)}`);
     }
   }
 
@@ -2421,10 +2521,10 @@ class DocumentParser {
     for (const list of s.lists) {
       for (const tok of list.columns) {
         if (listed.has(tok.t)) {
-          this.at('setting', tok, `column ${tok.t} repeats in audit ${list.kw.t}`);
+          this.at('setting', tok, `column ${goQuote(tok.t)} repeats in audit ${list.kw.t}`);
           continue;
         }
-        if (tok.t === s.column.t) this.at('setting', tok, `the audit column ${tok.t} is always recorded and is not listed in exclude or include`);
+        if (tok.t === s.column.t) this.at('setting', tok, `the audit column ${goQuote(tok.t)} is always recorded and is not listed in exclude or include`);
         else if (this.name(tok)) this.lookup(table, tok, 'setting');
         listed.add(tok.t);
       }
@@ -2449,7 +2549,7 @@ class DocumentParser {
     const ref = c.table;
     if (!wellFormed(ref.t)) return;
     if (!available.has(ref.t)) {
-      this.at('setting', ref, `tables table ${ref.t} is not a table of this document or a used table`);
+      this.at('setting', ref, `tables table ${goQuote(ref.t)} is not a table of this document or a used table`);
       return;
     }
     const tables = available.get(ref.t) ?? null;
@@ -2459,13 +2559,13 @@ class DocumentParser {
       return;
     }
     if (tables.settings?.entries.some(e => e.kind === 'audit')) {
-      this.at('setting', ref, `tables table ${ref.t} is audited itself`);
+      this.at('setting', ref, `tables table ${goQuote(ref.t)} is audited itself`);
       return;
     }
     let known = true;
     for (const tok of [c.record, c.name]) {
       if (wellFormed(tok.t) && !tables.colMap.has(tok.t) && !tables.failed.has(tok.t)) {
-        this.at('setting', tok, `column ${tok.t} is not a column of tables table ${ref.t}`);
+        this.at('setting', tok, `column ${goQuote(tok.t)} is not a column of tables table ${goQuote(ref.t)}`);
         known = false;
       }
     }
@@ -2475,18 +2575,18 @@ class DocumentParser {
       this.at('setting', c.name, 'the name column is a varchar(n) with n >= 63');
     }
     for (const col of tables.columns) {
-      if (col.name.t !== c.record.t && col.name.t !== c.name.t) this.at('setting', ref, `tables table ${ref.t} has the extra column ${col.name.t}`);
+      if (col.name.t !== c.record.t && col.name.t !== c.name.t) this.at('setting', ref, `tables table ${goQuote(ref.t)} has the extra column ${goQuote(col.name.t)}`);
     }
     const pk = tables.pks[0];
     if (!tables.failedPrimary && (tables.pks.length !== 1 || pk === undefined || pk.cols.length !== 2 || pk.cols[0]?.tok.t !== c.record.t || pk.cols[1]?.tok.t !== c.name.t)) {
-      this.at('setting', ref, `the primary key of tables table ${ref.t} is (${c.record.t}, ${c.name.t})`);
+      this.at('setting', ref, `the primary key of tables table ${goQuote(ref.t)} is (${c.record.t}, ${c.name.t})`);
     }
     const record = available.get(s.references.t) ?? null;
     if (record === null || record.headerFailed || record.pks.length !== 1 || present(record.pks[0], 'record.pks[0]').cols.length !== 1 || tables.failedKey) return;
     const key = present(present(record.pks[0], 'record.pks[0]').cols[0], 'record.pks[0].cols[0]').tok.t;
     const declared = tables.fks.some(fk => fk.cols.length === 1 && present(fk.cols[0], 'fk.cols[0]').t === c.record.t && fk.table.t === s.references.t
       && fk.refs.length === 1 && present(fk.refs[0], 'fk.refs[0]').t === key && fk.onDelete === 'restrict' && fk.onUpdate === 'restrict');
-    if (!declared) this.at('setting', ref, `tables table ${ref.t} needs the foreign key (${c.record.t}) references ${s.references.t} (${key}) on delete restrict on update restrict`);
+    if (!declared) this.at('setting', ref, `tables table ${goQuote(ref.t)} needs the foreign key (${c.record.t}) references ${s.references.t} (${key}) on delete restrict on update restrict`);
   }
 
   /**
@@ -2499,7 +2599,7 @@ class DocumentParser {
     const ref = s.references;
     if (!wellFormed(ref.t)) return;
     if (!available.has(ref.t)) {
-      this.at('setting', ref, `audit record table ${ref.t} is not a table of this document or a used table`);
+      this.at('setting', ref, `audit record table ${goQuote(ref.t)} is not a table of this document or a used table`);
       return;
     }
     const record = available.get(ref.t) ?? null;
@@ -2514,16 +2614,16 @@ class DocumentParser {
       this.at('setting', ref, 'the audit record table is another table than the history table');
       return;
     }
-    if (record.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', ref, `audit record table ${ref.t} is audited itself`);
+    if (record.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', ref, `audit record table ${goQuote(ref.t)} is audited itself`);
     if (record.pks.length !== 1 || present(record.pks[0], 'record.pks[0]').cols.length !== 1) {
-      if (!record.failedPrimary) this.at('setting', ref, `audit record table ${ref.t} needs a primary key of one column`);
+      if (!record.failedPrimary) this.at('setting', ref, `audit record table ${goQuote(ref.t)} needs a primary key of one column`);
       return;
     }
     const key = present(present(record.pks[0], 'record.pks[0]').cols[0], 'record.pks[0].cols[0]').tok.t;
     const pk = record.colMap.get(key);
     if (column === undefined || pk === undefined) return;
     if (pk.type !== null && column.type !== null && !sameType(pk.type, column.type)) {
-      this.at('setting', s.column, `the audit column has type ${typeText(column.type)}, not the type ${typeText(pk.type)} of the primary key of ${ref.t}`);
+      this.at('setting', s.column, `the audit column has type ${typeText(column.type)}, not the type ${typeText(pk.type)} of the primary key of ${goQuote(ref.t)}`);
       return;
     }
     const declared = table.fks.some(fk => fk.cols.length === 1 && present(fk.cols[0], 'fk.cols[0]').t === s.column.t && fk.table.t === ref.t
@@ -2743,13 +2843,13 @@ function encodingError(lines: string[]): RawDiagnostic | null {
     for (let i = 0; i < text.length; i++) {
       const c = text.charCodeAt(i);
       let message: string | null = null;
-      if (c === 0xfeff && n === 0 && i === 0) message = 'the text starts with a byte order mark';
-      else if (c === 13 && (last || i !== text.length - 1)) message = 'the text has a bare CR';
+      if (c === 0xfeff && n === 0 && i === 0) message = 'document starts with a byte order mark';
+      else if (c === 13 && (last || i !== text.length - 1)) message = 'carriage return without a following line feed';
       else if (c >= 0xd800 && c <= 0xdbff) {
         const d = text.charCodeAt(i + 1);
         if (d >= 0xdc00 && d <= 0xdfff) i++;
-        else message = 'the text has an unpaired UTF-16 surrogate and is not valid UTF-8';
-      } else if (c >= 0xdc00 && c <= 0xdfff) message = 'the text has an unpaired UTF-16 surrogate and is not valid UTF-8';
+        else message = 'text is not valid UTF-8';
+      } else if (c >= 0xdc00 && c <= 0xdfff) message = 'text is not valid UTF-8';
       if (message !== null) return { rule: 'encoding', line: n + 1, column: columnOf(text, i), message };
     }
   }
@@ -2763,7 +2863,7 @@ function encodingError(lines: string[]): RawDiagnostic | null {
 function parseText(text: string, context: ParseContext, parents: readonly string[], validate = true): Parsed {
   const empty: IDocument = { name: '', nameTok: null, uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   if (utf8Length(text) > MAX_BYTES) {
-    const diagnostics: RawDiagnostic[] = [{ rule: 'limit', line: 1, column: 1, message: 'a document has at most 32 MiB' }];
+    const diagnostics: RawDiagnostic[] = [{ rule: 'limit', line: 1, column: 1, message: `document has ${utf8Length(text)} bytes, more than ${MAX_BYTES}` }];
     return { diagnostics, document: empty, parser: null };
   }
   const raw = text.split('\n');

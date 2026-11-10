@@ -1728,6 +1728,11 @@ fn diagnostic_values(diagnostics: &[dbspec::Diagnostic]) -> Vec<Value> {
 
 /// A refused text: parse and format both refuse it with the expect's diagnostics, each with a message, and no document or text.
 fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> Result<(), String> {
+    for (i, expected) in want.iter().enumerate() {
+        if expected.get("message").and_then(Value::as_str).is_none_or(str::is_empty) {
+            return Err(format!("expected diagnostic {i} ({expected}) states no message; every refused text states the message of each diagnostic"));
+        }
+    }
     let parse_errors = match dbspec::parse(text, set) {
         Ok(_) => return Err("a document with a diagnostic parsed".to_owned()),
         Err(errors) => errors,
@@ -1737,13 +1742,7 @@ fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> 
         Err(errors) => errors,
     };
     for errors in [&parse_errors, &format_errors] {
-        // The message is compared where the expected diagnostic states it.
-        let mut got = diagnostic_values(errors);
-        for (value, (error, expected)) in got.iter_mut().zip(errors.iter().zip(want)) {
-            if expected.get("message").is_some() {
-                value["message"] = Value::String(error.message.clone());
-            }
-        }
+        let got: Vec<Value> = errors.iter().map(|d| serde_json::json!({"rule": d.rule, "line": d.line, "column": d.column, "message": d.message})).collect();
         if got.is_empty() || got != want {
             return Err(format!("diagnostics = {got:?}, want {want:?}"));
         }

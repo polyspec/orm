@@ -98,7 +98,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -215,7 +216,8 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"Users\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -353,7 +355,8 @@
                 {
                   "rule": "name.length",
                   "line": 4,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" has 64 bytes, more than 63"
                 }
               ]
             }
@@ -504,7 +507,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 8
+                  "column": 8,
+                  "message": "type \"tinyint\" is not a dbspec type"
                 }
               ]
             }
@@ -655,7 +659,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 10
+                  "column": 10,
+                  "message": "decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
                 }
               ]
             }
@@ -835,7 +840,8 @@
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "an identity column has type i64, not i32"
                 }
               ]
             }
@@ -971,12 +977,14 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 }
               ]
             }
@@ -1081,7 +1089,8 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 }
               ]
             }
@@ -1183,7 +1192,8 @@
                 {
                   "rule": "key",
                   "line": 7,
-                  "column": 24
+                  "column": 24,
+                  "message": "a text column cannot be part of a key or index"
                 }
               ]
             }
@@ -1371,7 +1381,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 }
               ]
             }
@@ -1673,7 +1684,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"user_id\" is not"
                 }
               ]
             }
@@ -2018,7 +2030,8 @@
                 {
                   "rule": "check",
                   "line": 7,
-                  "column": 24
+                  "column": 24,
+                  "message": "'length' is a function; check predicates have no functions in a check expression"
                 }
               ]
             }
@@ -2256,7 +2269,8 @@
                 {
                   "rule": "check",
                   "line": 14,
-                  "column": 25
+                  "column": 25,
+                  "message": "column \"user_id\" belongs to a foreign key with cascade or set_null"
                 }
               ]
             }
@@ -2653,7 +2667,8 @@
                 {
                   "rule": "setting",
                   "line": 15,
-                  "column": 5
+                  "column": 5,
+                  "message": "immutable is rejected on a child of a cascade or set_null foreign key"
                 }
               ]
             }
@@ -3053,7 +3068,8 @@
                 {
                   "rule": "setting",
                   "line": 18,
-                  "column": 5
+                  "column": 5,
+                  "message": "audit is rejected on a child of a cascade or set_null foreign key"
                 }
               ]
             }
@@ -3920,7 +3936,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"lazy\" is unknown"
                 }
               ]
             }
@@ -4105,7 +4122,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "document \"billing\" is not in the declared document set"
                 }
               ]
             }
@@ -4278,7 +4296,8 @@
                 {
                   "rule": "diagram",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "table \"orders\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -4476,7 +4495,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 14,
-                  "column": 10
+                  "column": 10,
+                  "message": "index, unique key, foreign key or check name \"uq_code\" repeats in the schema"
                 }
               ]
             }
@@ -4816,12 +4836,14 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"Flag\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "type",
                   "line": 6,
-                  "column": 8
+                  "column": 8,
+                  "message": "type \"tinyint\" is not a dbspec type"
                 }
               ]
             }
@@ -4984,7 +5006,8 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 5
+                  "column": 5,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -5120,7 +5143,8 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "block opened at this '{' is not closed"
                 }
               ]
             }
@@ -5251,7 +5275,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -5394,7 +5419,8 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 }
               ]
             }
@@ -5590,7 +5616,8 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 }
               ]
             }
@@ -5800,7 +5827,8 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 }
               ]
             }
@@ -6022,12 +6050,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "syntax",
                   "line": 10,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected an entity name"
                 }
               ]
             }
@@ -6230,12 +6260,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"bogus_setting\" is unknown"
                 }
               ]
             }
@@ -6443,7 +6475,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 14
+                  "column": 14,
+                  "message": "unexpected 'entity', expected the end of the line"
                 }
               ]
             }
@@ -6654,12 +6687,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "order",
                   "line": 12,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 }
               ]
             }
@@ -6898,7 +6933,8 @@
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected '{'"
                 }
               ]
             }
@@ -7068,7 +7104,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 12
+                  "column": 12,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -7283,7 +7320,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 12
+                  "column": 12,
+                  "message": "character '€' is not allowed here"
                 }
               ]
             }
@@ -7492,12 +7530,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "syntax",
                   "line": 11,
-                  "column": 5
+                  "column": 5,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -7712,7 +7752,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected '{'"
                 }
               ]
             }
@@ -7914,7 +7955,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected '{'"
                 }
               ]
             }
@@ -8105,12 +8147,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "name.format",
                   "line": 10,
-                  "column": 12
+                  "column": 12,
+                  "message": "name \"5\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -8332,12 +8376,14 @@
                 {
                   "rule": "order",
                   "line": 9,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 },
                 {
                   "rule": "syntax",
                   "line": 10,
-                  "column": 15
+                  "column": 15,
+                  "message": "character '€' is not allowed here"
                 }
               ]
             }
@@ -8544,12 +8590,14 @@
                 {
                   "rule": "column",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no column"
                 },
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 }
               ]
             }
@@ -8637,7 +8685,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 9
+                  "column": 9,
+                  "message": "name \"users\" is also a table name"
                 }
               ]
             }
@@ -8809,7 +8858,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 5
+                  "column": 5,
+                  "message": "aes_version without a column that uses aes"
                 }
               ]
             }
@@ -8996,7 +9046,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting entity repeats"
                 }
               ]
             }
@@ -9193,7 +9244,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "used document \"core\" is invalid: line 3 column 5 use: using document \"shop\" closes a use cycle"
                 }
               ]
             }
@@ -9388,7 +9440,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "the document set entry \"core\" holds document \"other\""
                 }
               ]
             }
@@ -9571,7 +9624,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "a document cannot use itself"
                 }
               ]
             }
@@ -9744,7 +9798,8 @@
                 {
                   "rule": "diagram",
                   "line": 9,
-                  "column": 12
+                  "column": 12,
+                  "message": "coordinate '2147483648' is not an integer from -2147483648 to 2147483647"
                 }
               ]
             }
@@ -9934,7 +9989,8 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"default\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -10085,7 +10141,8 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 31
+                  "column": 31,
+                  "message": "default '1.50' is not a literal of type decimal(13,1)"
                 }
               ]
             }
@@ -10278,7 +10335,8 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 32
+                  "column": 32,
+                  "message": "default 'null' is not a literal of type varchar(8)"
                 }
               ]
             }
@@ -10465,7 +10523,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 33
+                  "column": 33,
+                  "message": "unexpected 'extra', expected the end of the line"
                 }
               ]
             }
@@ -11656,12 +11715,14 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"Users\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "limit",
                   "line": 1009,
-                  "column": 3
+                  "column": 3,
+                  "message": "table has more than 1000 columns"
                 }
               ]
             }
@@ -12712,7 +12773,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 15
+                  "column": 15,
+                  "message": "unexpected 'id', expected '('"
                 }
               ]
             }
@@ -12845,7 +12907,8 @@
                 {
                   "rule": "syntax",
                   "line": 12,
-                  "column": 24
+                  "column": 24,
+                  "message": "unexpected 'user_id', expected '('"
                 }
               ]
             }
@@ -13168,7 +13231,8 @@
                 {
                   "rule": "syntax",
                   "line": 7,
-                  "column": 24
+                  "column": 24,
+                  "message": "unexpected 'code', expected '('"
                 }
               ]
             }
@@ -13561,7 +13625,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 14
+                  "column": 14,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -13698,7 +13763,8 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 1
+                  "column": 1,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -13835,7 +13901,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 14
+                  "column": 14,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -13978,7 +14045,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 10
+                  "column": 10,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14115,7 +14183,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 7
+                  "column": 7,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14252,7 +14321,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 8
+                  "column": 8,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14389,7 +14459,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 9
+                  "column": 9,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14520,7 +14591,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14657,7 +14729,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 8
+                  "column": 8,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -14809,7 +14882,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 19
+                  "column": 19,
+                  "message": "'+' is not allowed here in a check expression"
                 }
               ]
             }
@@ -15342,7 +15416,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 22
+                  "column": 22,
+                  "message": "'null' is not allowed here in a check expression"
                 }
               ]
             }
@@ -15863,7 +15938,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "bytes column \"raw\" cannot be part of a check"
                 }
               ]
             }
@@ -16384,7 +16460,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 23
+                  "column": 23,
+                  "message": "column \"rate\" is decimal(8,4) and does not meet decimal(13,2)"
                 }
               ]
             }
@@ -16905,7 +16982,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 24
+                  "column": 24,
+                  "message": "'0.001' is not a decimal(13,2) value"
                 }
               ]
             }
@@ -17426,7 +17504,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 22
+                  "column": 22,
+                  "message": "'12345.0' is not a decimal(8,4) value"
                 }
               ]
             }
@@ -17947,7 +18026,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 21
+                  "column": 21,
+                  "message": "'3000000000' is not a i32 value"
                 }
               ]
             }
@@ -18468,7 +18548,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 21
+                  "column": 21,
+                  "message": "'1.5' is not a i32 value"
                 }
               ]
             }
@@ -18989,7 +19070,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 22
+                  "column": 22,
+                  "message": "< does not order bool values"
                 }
               ]
             }
@@ -19510,7 +19592,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 24
+                  "column": 24,
+                  "message": "'1' is not a bool value"
                 }
               ]
             }
@@ -20031,7 +20114,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 21
+                  "column": 21,
+                  "message": "string 'a' is not a i32 value"
                 }
               ]
             }
@@ -20552,7 +20636,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 23
+                  "column": 23,
+                  "message": "string 'not-a-uuid' is not a uuid value"
                 }
               ]
             }
@@ -21073,7 +21158,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 21
+                  "column": 21,
+                  "message": "string '2020-1-1' is not a date value"
                 }
               ]
             }
@@ -21594,7 +21680,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 25
+                  "column": 25,
+                  "message": "string '12:00:00.5' is not a time(0) value"
                 }
               ]
             }
@@ -22115,7 +22202,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 20
+                  "column": 20,
+                  "message": "column \"day\" is date and does not meet datetime(6)"
                 }
               ]
             }
@@ -22636,7 +22724,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "'1' is compared with a literal; a comparison needs a column"
                 }
               ]
             }
@@ -23157,7 +23246,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "'qty' alone is not a predicate"
                 }
               ]
             }
@@ -23666,7 +23756,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 23
+                  "column": 23,
+                  "message": "column \"price\" is decimal(13,2) and does not meet f64"
                 }
               ]
             }
@@ -24187,7 +24278,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 26
+                  "column": 26,
+                  "message": "string 'x' is not a i32 value"
                 }
               ]
             }
@@ -24732,7 +24824,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 27
+                  "column": 27,
+                  "message": "'1' is compared with a literal; a comparison needs a column"
                 }
               ]
             }
@@ -25277,7 +25370,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"nope\" is not a column of table \"t\""
                 }
               ]
             }
@@ -25822,7 +25916,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "string 'a' is not a i32 value"
                 }
               ]
             }
@@ -26343,7 +26438,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "'1' is not a column"
                 }
               ]
             }
@@ -26888,7 +26984,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 19
+                  "column": 19,
+                  "message": "'+' is not allowed here in a check expression"
                 }
               ]
             }
@@ -27421,7 +27518,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 17
+                  "column": 17,
+                  "message": "'+' is not allowed here in a check expression"
                 }
               ]
             }
@@ -27954,7 +28052,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 19
+                  "column": 19,
+                  "message": "< does not order bool values"
                 }
               ]
             }
@@ -28488,7 +28587,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 122
+                  "column": 122,
+                  "message": "column \"missing\" is not a column of table \"card\""
                 }
               ]
             }
@@ -29383,7 +29483,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 122
+                  "column": 122,
+                  "message": "column \"secret\" repeats in audit exclude"
                 }
               ]
             }
@@ -30278,7 +30379,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 122
+                  "column": 122,
+                  "message": "audit names its recorded columns by exclude or by include, not both"
                 }
               ]
             }
@@ -31185,7 +31287,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 122
+                  "column": 122,
+                  "message": "the audit column \"audit_seq\" is always recorded and is not listed in exclude or include"
                 }
               ]
             }
@@ -32080,7 +32183,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 126
+                  "column": 126,
+                  "message": "the audit column \"audit_seq\" is always recorded and is not listed in exclude or include"
                 }
               ]
             }
@@ -33000,7 +33104,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"card_history\" has column \"secret\", which table \"card\" does not record"
                 }
               ]
             }
@@ -33901,12 +34006,14 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"card_history\" has no copy of column \"title\""
                 },
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"card_history\" has column \"deleted_at\", which table \"card\" does not record"
                 }
               ]
             }
@@ -34770,7 +34877,8 @@
                 {
                   "rule": "syntax",
                   "line": 14,
-                  "column": 113
+                  "column": 113,
+                  "message": "unexpected 'secret', expected '('"
                 }
               ]
             }
@@ -35641,7 +35749,8 @@
                 {
                   "rule": "syntax",
                   "line": 14,
-                  "column": 122
+                  "column": 122,
+                  "message": "unexpected 'now', expected 'tables', 'exclude', 'include' or the end of the line"
                 }
               ]
             }
@@ -36525,7 +36634,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 57
+                  "column": 57,
+                  "message": "audit record table \"journal\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -37242,7 +37352,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 57
+                  "column": 57,
+                  "message": "the audit record table is another table than the history table"
                 }
               ]
             }
@@ -37959,12 +38070,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 9,
-                  "column": 15
+                  "column": 15,
+                  "message": "the referenced columns are not the primary key or a unique key of table \"audit\""
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 57
+                  "column": 57,
+                  "message": "audit record table \"audit\" needs a primary key of one column"
                 }
               ]
             }
@@ -38687,22 +38800,26 @@
                 {
                   "rule": "foreign_key",
                   "line": 9,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"audit_seq\" has type i32, the referenced column has i64"
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 16
+                  "column": 16,
+                  "message": "history column \"audit_seq\" has type i64, not i32"
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 36
+                  "column": 36,
+                  "message": "the audit column has type i32, not the type i64 of the primary key of \"audit\""
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 86
+                  "column": 86,
+                  "message": "the previous column has the audit column type i32, not i64"
                 }
               ]
             }
@@ -39418,7 +39535,8 @@
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 36
+                  "column": 36,
+                  "message": "the audit column needs the foreign key (audit_seq) references audit (seq) on delete restrict on update restrict"
                 }
               ]
             }
@@ -40032,12 +40150,14 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 5
+                  "column": 5,
+                  "message": "audit is rejected on a child of a cascade or set_null foreign key"
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 36
+                  "column": 36,
+                  "message": "the audit column needs the foreign key (audit_seq) references audit (seq) on delete restrict on update restrict"
                 }
               ]
             }
@@ -40754,7 +40874,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 36
+                  "column": 36,
+                  "message": "the audit column is a non-null column"
                 }
               ]
             }
@@ -41455,12 +41576,14 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"or\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"between\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -41625,7 +41748,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "'not' is not allowed here in a check expression"
                 }
               ]
             }
@@ -42164,7 +42288,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 19
+                  "column": 19,
+                  "message": "'between' is not allowed here in a check expression"
                 }
               ]
             }
@@ -42697,7 +42822,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 15
+                  "column": 15,
+                  "message": "'active' alone is not a predicate"
                 }
               ]
             }
@@ -43206,7 +43332,8 @@
                 {
                   "rule": "check",
                   "line": 20,
-                  "column": 17
+                  "column": 17,
+                  "message": "'not' is not allowed here in a check expression"
                 }
               ]
             }
@@ -43750,22 +43877,26 @@
                 {
                   "rule": "name.format",
                   "line": 7,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"10\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.format",
                   "line": 18,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"10\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "setting",
                   "line": 24,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"h\" has no copy of column \"id\""
                 },
                 {
                   "rule": "setting",
                   "line": 24,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"h\" has no copy of column \"aid\""
                 }
               ]
             }
@@ -44364,7 +44495,8 @@
                 {
                   "rule": "setting",
                   "line": 13,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting store repeats"
                 }
               ]
             }
@@ -45570,7 +45702,8 @@
                 {
                   "rule": "syntax",
                   "line": 12,
-                  "column": 19
+                  "column": 19,
+                  "message": "line ends, expected 'list' or 'table'"
                 }
               ]
             }
@@ -46757,7 +46890,8 @@
                 {
                   "rule": "syntax",
                   "line": 12,
-                  "column": 11
+                  "column": 11,
+                  "message": "unexpected 'folder', expected 'files', 'document' or 'block'"
                 }
               ]
             }
@@ -47944,7 +48078,8 @@
                 {
                   "rule": "setting",
                   "line": 40,
-                  "column": 17
+                  "column": 17,
+                  "message": "foreign key \"fk_missing\" is not a foreign key of the table"
                 }
               ]
             }
@@ -49131,7 +49266,8 @@
                 {
                   "rule": "setting",
                   "line": 40,
-                  "column": 17
+                  "column": 17,
+                  "message": "foreign key \"id\" is not a foreign key of the table"
                 }
               ]
             }
@@ -50318,7 +50454,8 @@
                 {
                   "rule": "syntax",
                   "line": 40,
-                  "column": 32
+                  "column": 32,
+                  "message": "line ends, expected 'list' or 'table'"
                 }
               ]
             }
@@ -51499,7 +51636,8 @@
                 {
                   "rule": "setting",
                   "line": 13,
-                  "column": 11
+                  "column": 11,
+                  "message": "title needs a non-null varchar or text column"
                 }
               ]
             }
@@ -52651,7 +52789,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 11
+                  "column": 11,
+                  "message": "title needs a non-null varchar or text column"
                 }
               ]
             }
@@ -52838,7 +52977,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 10
+                  "column": 10,
+                  "message": "body needs a non-null varchar or text column"
                 }
               ]
             }
@@ -53025,7 +53165,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 14
+                  "column": 14,
+                  "message": "markdown needs a varchar or text column, not i64"
                 }
               ]
             }
@@ -53254,7 +53395,8 @@
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 5
+                  "column": 5,
+                  "message": "markdown repeats for \"body\""
                 }
               ]
             }
@@ -54413,7 +54555,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 32
+                  "column": 32,
+                  "message": "store shard needs a non-null date or datetime column"
                 }
               ]
             }
@@ -54648,7 +54791,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 23
+                  "column": 23,
+                  "message": "store shard needs a non-null date or datetime column"
                 }
               ]
             }
@@ -54871,7 +55015,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 23
+                  "column": 23,
+                  "message": "column \"missing_on\" is not a column of table \"event\""
                 }
               ]
             }
@@ -55076,7 +55221,8 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 35
+                  "column": 35,
+                  "message": "unexpected 'week', expected 'year', 'month' or 'day'"
                 }
               ]
             }
@@ -55284,7 +55430,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 17
+                  "column": 17,
+                  "message": "store shard is rejected on a table with a self foreign key"
                 }
               ]
             }
@@ -55644,7 +55791,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 25
+                  "column": 25,
+                  "message": "store shard is rejected on a table with order"
                 }
               ]
             }
@@ -55889,7 +56037,8 @@
                 {
                   "rule": "setting",
                   "line": 16,
-                  "column": 35
+                  "column": 35,
+                  "message": "store shard is rejected on a block table"
                 }
               ]
             }
@@ -56372,7 +56521,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 11
+                  "column": 11,
+                  "message": "order needs a non-null i32 or i64 column with no default"
                 }
               ]
             }
@@ -56565,7 +56715,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 11
+                  "column": 11,
+                  "message": "order needs a non-null i32 or i64 column with no default"
                 }
               ]
             }
@@ -56765,7 +56916,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 11
+                  "column": 11,
+                  "message": "order column \"seq\" is in a key, index or check"
                 }
               ]
             }
@@ -56983,7 +57135,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 11
+                  "column": 11,
+                  "message": "order needs a non-null i32 or i64 column with no default"
                 }
               ]
             }
@@ -57184,7 +57337,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 18
+                  "column": 18,
+                  "message": "character '!' is not allowed here"
                 }
               ]
             }
@@ -57320,7 +57474,8 @@
                 {
                   "rule": "syntax",
                   "line": 13,
-                  "column": 65
+                  "column": 65,
+                  "message": "line ends, expected an action"
                 }
               ]
             }
@@ -57755,7 +57910,8 @@
                 {
                   "rule": "syntax",
                   "line": 13,
-                  "column": 65
+                  "column": 65,
+                  "message": "line ends, expected an action"
                 }
               ]
             }
@@ -58184,7 +58340,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 5
+                  "column": 5,
+                  "message": "blind_index names column \"page_id\", which has no codec with the aes stage"
                 }
               ]
             }
@@ -58442,7 +58599,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 66
+                  "column": 66,
+                  "message": "action \"bogus\" is not restrict, cascade or set_null"
                 }
               ]
             }
@@ -58848,7 +59006,8 @@
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "table has more than one primary key"
                 }
               ]
             }
@@ -59052,7 +59211,8 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 27
+                  "column": 27,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -59281,7 +59441,8 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 23
+                  "column": 23,
+                  "message": "character '$' is not allowed here"
                 }
               ]
             }
@@ -59485,7 +59646,8 @@
                 {
                   "rule": "syntax",
                   "line": 7,
-                  "column": 16
+                  "column": 16,
+                  "message": "string is not closed on its line"
                 }
               ]
             }
@@ -59670,7 +59832,8 @@
                 {
                   "rule": "syntax",
                   "line": 7,
-                  "column": 10
+                  "column": 10,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -59856,7 +60019,8 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 1
+                  "column": 1,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -60057,12 +60221,14 @@
                 {
                   "rule": "name.format",
                   "line": 4,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"user.id\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 16
+                  "column": 16,
+                  "message": "name \"user.id\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -60199,7 +60365,8 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"a.b\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -60340,7 +60507,8 @@
                 {
                   "rule": "name.format",
                   "line": 8,
-                  "column": 13
+                  "column": 13,
+                  "message": "name \"placed.at\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -60541,7 +60709,8 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 16
+                  "column": 16,
+                  "message": "name \"id.x\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -60684,7 +60853,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 10
+                  "column": 10,
+                  "message": "name \"orders\" is also a table name"
                 }
               ]
             }
@@ -60941,82 +61111,98 @@
                 {
                   "rule": "column",
                   "line": 3,
-                  "column": 15
+                  "column": 15,
+                  "message": "an identity column cannot be null"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 9
+                  "column": 9,
+                  "message": "a table has at most one identity column"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 18
+                  "column": 18,
+                  "message": "an identity column has no default"
                 },
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 13
+                  "column": 13,
+                  "message": "a text column has no default"
                 },
                 {
                   "rule": "column",
                   "line": 6,
-                  "column": 21
+                  "column": 21,
+                  "message": "default '32768' is not a literal of type i16"
                 },
                 {
                   "rule": "column",
                   "line": 7,
-                  "column": 27
+                  "column": 27,
+                  "message": "default string 'abc' is not a literal of type varchar(2)"
                 },
                 {
                   "rule": "column",
                   "line": 8,
-                  "column": 31
+                  "column": 31,
+                  "message": "default '1.234' is not a literal of type decimal(5,2)"
                 },
                 {
                   "rule": "column",
                   "line": 9,
-                  "column": 28
+                  "column": 28,
+                  "message": "default '1000' is not a literal of type decimal(5,2)"
                 },
                 {
                   "rule": "column",
                   "line": 10,
-                  "column": 20
+                  "column": 20,
+                  "message": "default string '2026-02-30' is not a literal of type date"
                 },
                 {
                   "rule": "column",
                   "line": 11,
-                  "column": 22
+                  "column": 22,
+                  "message": "default string '24:00:00' is not a literal of type time(2)"
                 },
                 {
                   "rule": "column",
                   "line": 12,
-                  "column": 29
+                  "column": 29,
+                  "message": "default string '2026-01-01 00:00:00.5' is not a literal of type datetime(0)"
                 },
                 {
                   "rule": "column",
                   "line": 13,
-                  "column": 21
+                  "column": 21,
+                  "message": "default '1' is not a literal of type bool"
                 },
                 {
                   "rule": "column",
                   "line": 14,
-                  "column": 21
+                  "column": 21,
+                  "message": "default 'now' is not a literal of type date"
                 },
                 {
                   "rule": "column",
                   "line": 15,
-                  "column": 22
+                  "column": 22,
+                  "message": "default string 'not-a-uuid' is not a literal of type uuid"
                 },
                 {
                   "rule": "column",
                   "line": 16,
-                  "column": 21
+                  "column": 21,
+                  "message": "default '1e5' is not a literal of type f64"
                 },
                 {
                   "rule": "key",
                   "line": 17,
-                  "column": 16
+                  "column": 16,
+                  "message": "primary key column \"id\" is nullable"
                 }
               ]
             }
@@ -61615,12 +61801,14 @@
                 {
                   "rule": "setting",
                   "line": 15,
-                  "column": 23
+                  "column": 23,
+                  "message": "the blind index column is varchar(n) with n >= 64, not varchar(63)"
                 },
                 {
                   "rule": "setting",
                   "line": 16,
-                  "column": 5
+                  "column": 5,
+                  "message": "blind_index repeats for \"email\""
                 }
               ]
             }
@@ -62050,17 +62238,20 @@
                 {
                   "rule": "syntax",
                   "line": 2,
-                  "column": 1
+                  "column": 1,
+                  "message": "character '\\t' is not allowed here"
                 },
                 {
                   "rule": "name.format",
                   "line": 4,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"null\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 10
+                  "column": 10,
+                  "message": "name \"orders\" is also a table name"
                 }
               ]
             }
@@ -62323,7 +62514,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 23
+                  "column": 23,
+                  "message": "the blind index column is varchar(n) with n >= 64, not bytes"
                 }
               ]
             }
@@ -62569,7 +62761,8 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 5
+                  "column": 5,
+                  "message": "character '€' is not allowed here"
                 }
               ]
             }
@@ -62582,6 +62775,282 @@
             "",
             "table t {",
             "  id€ i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  4,
+                  6,
+                  9,
+                  "word"
+                ],
+                [
+                  4,
+                  10,
+                  18,
+                  "word"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "format-character-in-name",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table t {",
+            "  id\u200b i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 4,
+                  "column": 5,
+                  "message": "character '\u200b' is not allowed here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table t {",
+            "  id\u200b i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  4,
+                  6,
+                  9,
+                  "word"
+                ],
+                [
+                  4,
+                  10,
+                  18,
+                  "word"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "control-character-in-name",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table t {",
+            "  id\u0001 i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 4,
+                  "column": 5,
+                  "message": "character '\\x01' is not allowed here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table t {",
+            "  id\u0001 i64 identity",
             "  primary key (id)",
             "}"
           ],
@@ -62708,12 +63177,14 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"café\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.format",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"한글\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -62883,7 +63354,8 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"col٣\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -63034,7 +63506,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 7
+                  "column": 7,
+                  "message": "character '́' is not allowed here"
                 }
               ]
             }
@@ -63186,7 +63659,8 @@
                 {
                   "rule": "name.format",
                   "line": 7,
-                  "column": 17
+                  "column": 17,
+                  "message": "name \"éx\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -63379,7 +63853,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 14
+                  "column": 14,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -63516,7 +63991,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 14
+                  "column": 14,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -63655,12 +64131,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 },
                 {
                   "rule": "key",
                   "line": 7,
-                  "column": 18
+                  "column": 18,
+                  "message": "column \"missing\" is not a column of table \"users\""
                 }
               ]
             }
@@ -63847,12 +64325,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 12
+                  "column": 12,
+                  "message": "line ends, expected '{'"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "an identity column has type i64, not i32"
                 }
               ]
             }
@@ -63983,12 +64463,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "unexpected '{', expected a table name"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "an identity column has type i64, not i32"
                 }
               ]
             }
@@ -64119,12 +64601,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 },
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 15
+                  "column": 15,
+                  "message": "unexpected 'id', expected '('"
                 }
               ]
             }
@@ -64255,12 +64739,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 },
                 {
                   "rule": "type",
                   "line": 4,
-                  "column": 6
+                  "column": 6,
+                  "message": "type \"bogus\" is not a dbspec type"
                 }
               ]
             }
@@ -64396,12 +64882,14 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -64514,17 +65002,20 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"teams\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 }
               ]
             }
@@ -64832,7 +65323,8 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -65168,12 +65660,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 },
                 {
                   "rule": "name.duplicate",
                   "line": 8,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" is defined twice"
                 }
               ]
             }
@@ -65398,7 +65892,8 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -65647,7 +66142,8 @@
                 {
                   "rule": "syntax",
                   "line": 18,
-                  "column": 20
+                  "column": 20,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -66550,7 +67046,8 @@
                 {
                   "rule": "syntax",
                   "line": 25,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected 'x', expected '{'"
                 }
               ]
             }
@@ -67257,7 +67754,8 @@
                 {
                   "rule": "order",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "column lines come before key, index, foreign key, check and settings lines"
                 }
               ]
             }
@@ -67408,7 +67906,8 @@
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 7
+                  "column": 7,
+                  "message": "line ends, expected a type"
                 }
               ]
             }
@@ -67554,7 +68053,8 @@
                 {
                   "rule": "order",
                   "line": 7,
-                  "column": 3
+                  "column": 3,
+                  "message": "column lines come before key, index, foreign key, check and settings lines"
                 }
               ]
             }
@@ -67737,7 +68237,8 @@
                 {
                   "rule": "syntax",
                   "line": 7,
-                  "column": 7
+                  "column": 7,
+                  "message": "line ends, expected a type"
                 }
               ]
             }
@@ -67921,7 +68422,8 @@
                 {
                   "rule": "order",
                   "line": 14,
-                  "column": 3
+                  "column": 3,
+                  "message": "column lines come before key, index, foreign key, check and settings lines"
                 }
               ]
             }
@@ -68304,7 +68806,8 @@
                 {
                   "rule": "syntax",
                   "line": 14,
-                  "column": 7
+                  "column": 7,
+                  "message": "line ends, expected a type"
                 }
               ]
             }
@@ -68674,7 +69177,8 @@
                 {
                   "rule": "order",
                   "line": 7,
-                  "column": 3
+                  "column": 3,
+                  "message": "column lines come before key, index, foreign key, check and settings lines"
                 }
               ]
             }
@@ -68869,7 +69373,8 @@
                 {
                   "rule": "syntax",
                   "line": 7,
-                  "column": 7
+                  "column": 7,
+                  "message": "line ends, expected a type"
                 }
               ]
             }
@@ -69063,12 +69568,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 57
+                  "column": 57,
+                  "message": "column \"nope\" is not a column of table \"teams\""
                 }
               ]
             }
@@ -69370,7 +69877,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 57
+                  "column": 57,
+                  "message": "column \"nope\" is not a column of table \"teams\""
                 }
               ]
             }
@@ -69702,17 +70210,20 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"team_id\" is not"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 57
+                  "column": 57,
+                  "message": "column \"nope\" is not a column of table \"teams\""
                 }
               ]
             }
@@ -70031,7 +70542,8 @@
                 {
                   "rule": "syntax",
                   "line": 11,
-                  "column": 18
+                  "column": 18,
+                  "message": "line ends, expected ',' or ')'"
                 }
               ]
             }
@@ -70321,7 +70833,8 @@
                 {
                   "rule": "syntax",
                   "line": 12,
-                  "column": 31
+                  "column": 31,
+                  "message": "line ends, expected ',' or ')'"
                 }
               ]
             }
@@ -70647,12 +71160,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 50
+                  "column": 50,
+                  "message": "table \"nowhere\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -70954,7 +71469,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 50
+                  "column": 50,
+                  "message": "table \"nowhere\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -71286,17 +71802,20 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"team_id\" is not"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 50
+                  "column": 50,
+                  "message": "table \"nowhere\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -71616,12 +72135,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "foreign key lists 2 columns and 1 referenced columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 }
               ]
             }
@@ -71948,17 +72469,20 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "foreign key lists 2 columns and 1 referenced columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"team_id\" is not"
                 }
               ]
             }
@@ -72302,12 +72826,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "name.format",
                   "line": 12,
-                  "column": 50
+                  "column": 50,
+                  "message": "name \"Nowhere\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -72610,12 +73136,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"team_id\" is not"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -73010,7 +73538,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -73409,7 +73938,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -73712,12 +74242,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "the referenced columns are not the primary key or a unique key of table \"teams\""
                 },
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -74082,17 +74614,20 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "the referenced columns are not the primary key or a unique key of table \"teams\""
                 },
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"team_id\" has type i64, the referenced column has i32"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -74455,12 +74990,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 54
+                  "column": 54,
+                  "message": "table \"nowhere\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -74773,12 +75310,14 @@
                 {
                   "rule": "type",
                   "line": 10,
-                  "column": 11
+                  "column": 11,
+                  "message": "type \"nosuch\" is not a dbspec type"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 12,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 }
               ]
             }
@@ -75080,12 +75619,14 @@
                 {
                   "rule": "type",
                   "line": 10,
-                  "column": 11
+                  "column": 11,
+                  "message": "type \"nosuch\" is not a dbspec type"
                 },
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "set_null requires every foreign key column to be null; \"team_id\" is not"
                 }
               ]
             }
@@ -75437,12 +75978,14 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 30
+                  "column": 30,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 },
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 67
+                  "column": 67,
+                  "message": "column \"missing\" is not a column of table \"teams\""
                 }
               ]
             }
@@ -75799,7 +76342,8 @@
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 12
+                  "column": 12,
+                  "message": "block opened at this '{' is not closed"
                 }
               ]
             }
@@ -75955,12 +76499,14 @@
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "block opened at this 'settings' is not closed"
                 },
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected '{'"
                 }
               ]
             }
@@ -76097,12 +76643,14 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "block opened at this '{' is not closed"
                 },
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 20
+                  "column": 20,
+                  "message": "unexpected '(', expected the end of the line"
                 }
               ]
             }
@@ -76272,12 +76820,14 @@
                 {
                   "rule": "syntax",
                   "line": 8,
-                  "column": 14
+                  "column": 14,
+                  "message": "block opened at this '{' is not closed"
                 },
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 16
+                  "column": 16,
+                  "message": "unexpected '(', expected the end of the line"
                 }
               ]
             }
@@ -76467,12 +77017,14 @@
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 12
+                  "column": 12,
+                  "message": "block opened at this '{' is not closed"
                 },
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 1
+                  "column": 1,
+                  "message": "setting \"table\" is unknown"
                 }
               ]
             }
@@ -76648,27 +77200,32 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 },
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected '{', expected the end of the line"
                 },
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "column \"id\" repeats in the table"
                 },
                 {
                   "rule": "column",
                   "line": 6,
-                  "column": 10
+                  "column": 10,
+                  "message": "a table has at most one identity column"
                 }
               ]
             }
@@ -76811,22 +77368,26 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 13
+                  "column": 13,
+                  "message": "block opened at this '{' is not closed"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 },
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 13
+                  "column": 13,
+                  "message": "unexpected '{', expected the end of the line"
                 }
               ]
             }
@@ -76944,17 +77505,20 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 },
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 15
+                  "column": 15,
+                  "message": "unexpected '{', expected the end of the line"
                 }
               ]
             }
@@ -77080,22 +77644,26 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" has no primary key"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 },
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 14
+                  "column": 14,
+                  "message": "unexpected '{', expected the end of the line"
                 },
                 {
                   "rule": "syntax",
                   "line": 6,
-                  "column": 12
+                  "column": 12,
+                  "message": "unexpected '0', expected the end of the line"
                 }
               ]
             }
@@ -77246,7 +77814,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 21
+                  "column": 21,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -77421,7 +77990,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -77584,7 +78154,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 17
+                  "column": 17,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -77759,7 +78330,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 23
+                  "column": 23,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -77934,7 +78506,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 15
+                  "column": 15,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -78091,7 +78664,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 12
+                  "column": 12,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -78248,7 +78822,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected 'x', expected ',' or ')'"
                 }
               ]
             }
@@ -78417,7 +78992,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected ')', expected a type parameter"
                 }
               ]
             }
@@ -78598,7 +79174,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected '2', expected ',' or ')'"
                 }
               ]
             }
@@ -78773,7 +79350,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 8
+                  "column": 8,
+                  "message": "varchar(n) needs 1 <= n <= 16383"
                 }
               ]
             }
@@ -78942,7 +79520,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 8
+                  "column": 8,
+                  "message": "decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
                 }
               ]
             }
@@ -79124,12 +79703,14 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "unexpected 'bogus', expected the end of the line"
                 },
                 {
                   "rule": "encoding",
                   "line": 8,
-                  "column": 4
+                  "column": 4,
+                  "message": "carriage return without a following line feed"
                 }
               ]
             }
@@ -79274,7 +79855,8 @@
                 {
                   "rule": "name.length",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"service_module_board_comment_history_archive_row_xxxxxxxxxxxxxxx\" has 64 bytes, more than 63"
                 }
               ]
             }
@@ -79413,7 +79995,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "generated name service_module_board_comment_archive_row_2026_archive_$66e39dab of table service_module_board_comment_archive_row_2026_archive_ column col_00101989 repeats the generated name of table service_module_board_comment_archive_row_2026_archive_ column col_00027815"
                 }
               ]
             }
@@ -79578,7 +80161,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "generated name service_module_board_comment_archive_row_2026_archive_$e2d5e68c of table service_module_board_comment_archive_row_2026_archive_ column e2d5e68c repeats the generated name of table service_module_board_comment_archive_row_2026_archive_ column col_00000000"
                 }
               ]
             }
@@ -79790,7 +80374,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "tables table \"journal_table\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -81291,7 +81876,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "the tables table is another table than the audited, the history and the audit record table"
                 }
               ]
             }
@@ -82792,7 +83378,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "the tables table is another table than the audited, the history and the audit record table"
                 }
               ]
             }
@@ -84293,7 +84880,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "tables table \"team\" is audited itself"
                 }
               ]
             }
@@ -85794,7 +86382,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 139
+                  "column": 139,
+                  "message": "column \"table_title\" is not a column of tables table \"audit_table\""
                 }
               ]
             }
@@ -87295,12 +87884,14 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 139
+                  "column": 139,
+                  "message": "the name column is a varchar(n) with n >= 63"
                 },
                 {
                   "rule": "setting",
                   "line": 31,
-                  "column": 136
+                  "column": 136,
+                  "message": "the name column is a varchar(n) with n >= 63"
                 }
               ]
             }
@@ -88802,12 +89393,14 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "tables table \"audit_table\" has the extra column \"note\""
                 },
                 {
                   "rule": "setting",
                   "line": 31,
-                  "column": 112
+                  "column": 112,
+                  "message": "tables table \"audit_table\" has the extra column \"note\""
                 }
               ]
             }
@@ -90328,12 +90921,14 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "the primary key of tables table \"audit_table\" is (audit_seq, table_name)"
                 },
                 {
                   "rule": "setting",
                   "line": 31,
-                  "column": 112
+                  "column": 112,
+                  "message": "the primary key of tables table \"audit_table\" is (audit_seq, table_name)"
                 }
               ]
             }
@@ -91864,12 +92459,14 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 115
+                  "column": 115,
+                  "message": "tables table \"audit_table\" needs the foreign key (audit_seq) references audit (seq) on delete restrict on update restrict"
                 },
                 {
                   "rule": "setting",
                   "line": 31,
-                  "column": 112
+                  "column": 112,
+                  "message": "tables table \"audit_table\" needs the foreign key (audit_seq) references audit (seq) on delete restrict on update restrict"
                 }
               ]
             }
@@ -93267,7 +93864,8 @@
                 {
                   "rule": "syntax",
                   "line": 11,
-                  "column": 127
+                  "column": 127,
+                  "message": "unexpected 'audit_seq', expected '('"
                 }
               ]
             }
@@ -94744,7 +95342,8 @@
                 {
                   "rule": "syntax",
                   "line": 11,
-                  "column": 123
+                  "column": 123,
+                  "message": "unexpected 'tables', expected 'tables', 'exclude', 'include' or the end of the line"
                 }
               ]
             }
@@ -96191,7 +96790,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 8
+                  "column": 8,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -96246,7 +96846,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 14
+                  "column": 14,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -96307,7 +96908,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 9
+                  "column": 9,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -96356,7 +96958,8 @@
                 {
                   "rule": "name.format",
                   "line": 1,
-                  "column": 10
+                  "column": 10,
+                  "message": "name \"Shop\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -96413,7 +97016,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 9
+                  "column": 9,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -96490,7 +97094,8 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 1
+                  "column": 1,
+                  "message": "unexpected 'view', expected 'use', 'table' or 'diagram'"
                 }
               ]
             }
@@ -96571,7 +97176,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 27
+                  "column": 27,
+                  "message": "string is not closed on its line"
                 }
               ]
             }
@@ -96751,7 +97357,8 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 18
+                  "column": 18,
+                  "message": "character ';' is not allowed here"
                 }
               ]
             }
@@ -96888,7 +97495,8 @@
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected 'null', expected the end of the line"
                 }
               ]
             }
@@ -97031,7 +97639,8 @@
                 {
                   "rule": "syntax",
                   "line": 5,
-                  "column": 16
+                  "column": 16,
+                  "message": "unexpected ')', expected a column name"
                 }
               ]
             }
@@ -97176,7 +97785,8 @@
                 {
                   "rule": "order",
                   "line": 8,
-                  "column": 1
+                  "column": 1,
+                  "message": "use lines come before table and diagram blocks"
                 }
               ]
             }
@@ -97360,7 +97970,8 @@
                 {
                   "rule": "order",
                   "line": 6,
-                  "column": 1
+                  "column": 1,
+                  "message": "table blocks come before diagram blocks"
                 }
               ]
             }
@@ -97525,7 +98136,8 @@
                 {
                   "rule": "order",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "column lines come before key, index, foreign key, check and settings lines"
                 }
               ]
             }
@@ -97696,7 +98308,8 @@
                 {
                   "rule": "order",
                   "line": 8,
-                  "column": 3
+                  "column": 3,
+                  "message": "key, index, foreign key and check lines come before the settings block"
                 }
               ]
             }
@@ -97864,7 +98477,8 @@
                 {
                   "rule": "order",
                   "line": 8,
-                  "column": 3
+                  "column": 3,
+                  "message": "a table has at most one settings block, after its other lines"
                 }
               ]
             }
@@ -98041,7 +98655,8 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"primary\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -98179,7 +98794,8 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"9lives\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -98329,7 +98945,8 @@
                 {
                   "rule": "name.format",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"core.users\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -98467,7 +99084,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "column \"id\" repeats in the table"
                 }
               ]
             }
@@ -98622,7 +99240,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 8,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"users\" is defined twice"
                 }
               ]
             }
@@ -98841,7 +99460,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 10,
-                  "column": 9
+                  "column": 9,
+                  "message": "diagram \"d\" is defined twice"
                 }
               ]
             }
@@ -99033,7 +99653,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 7,
-                  "column": 9
+                  "column": 9,
+                  "message": "index, unique key, foreign key or check name \"x_id\" repeats in the schema"
                 }
               ]
             }
@@ -99259,7 +99880,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 8,
-                  "column": 9
+                  "column": 9,
+                  "message": "name \"uq_accounts_code\" is a constraint name of used document \"core\""
                 }
               ]
             }
@@ -99485,7 +100107,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 5,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"accounts\" is also a used table"
                 }
               ]
             }
@@ -99667,7 +100290,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 8
+                  "column": 8,
+                  "message": "varchar(n) needs 1 <= n <= 16383"
                 }
               ]
             }
@@ -99836,7 +100460,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 8
+                  "column": 8,
+                  "message": "varchar(n) needs 1 <= n <= 16383"
                 }
               ]
             }
@@ -100005,7 +100630,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 6
+                  "column": 6,
+                  "message": "time(p) needs 0 <= p <= 6"
                 }
               ]
             }
@@ -100156,7 +100782,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 6
+                  "column": 6,
+                  "message": "datetime(p) needs 0 <= p <= 6"
                 }
               ]
             }
@@ -100325,7 +100952,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 5
+                  "column": 5,
+                  "message": "decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
                 }
               ]
             }
@@ -100506,7 +101134,8 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 5
+                  "column": 5,
+                  "message": "i32 takes no parameters"
                 }
               ]
             }
@@ -100677,17 +101306,20 @@
                 {
                   "rule": "type",
                   "line": 5,
-                  "column": 5
+                  "column": 5,
+                  "message": "type \"f32\" is not a dbspec type"
                 },
                 {
                   "rule": "type",
                   "line": 6,
-                  "column": 5
+                  "column": 5,
+                  "message": "type \"char\" is not a dbspec type"
                 },
                 {
                   "rule": "type",
                   "line": 7,
-                  "column": 5
+                  "column": 5,
+                  "message": "type \"json\" is not a dbspec type"
                 }
               ]
             }
@@ -100881,12 +101513,14 @@
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 15
+                  "column": 15,
+                  "message": "an identity column cannot be null"
                 },
                 {
                   "rule": "key",
                   "line": 5,
-                  "column": 16
+                  "column": 16,
+                  "message": "primary key column \"id\" is nullable"
                 }
               ]
             }
@@ -101029,7 +101663,8 @@
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 19
+                  "column": 19,
+                  "message": "an identity column has no default"
                 }
               ]
             }
@@ -101179,7 +101814,8 @@
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 10
+                  "column": 10,
+                  "message": "the identity column must be the only primary key column"
                 }
               ]
             }
@@ -101342,7 +101978,8 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 13
+                  "column": 13,
+                  "message": "a table has at most one identity column"
                 }
               ]
             }
@@ -101499,7 +102136,8 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 13
+                  "column": 13,
+                  "message": "a text column has no default"
                 }
               ]
             }
@@ -101674,67 +102312,80 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 17
+                  "column": 17,
+                  "message": "default '32768' is not a literal of type i16"
                 },
                 {
                   "rule": "column",
                   "line": 6,
-                  "column": 17
+                  "column": 17,
+                  "message": "default '-2147483649' is not a literal of type i32"
                 },
                 {
                   "rule": "column",
                   "line": 7,
-                  "column": 18
+                  "column": 18,
+                  "message": "default '1' is not a literal of type bool"
                 },
                 {
                   "rule": "column",
                   "line": 8,
-                  "column": 26
+                  "column": 26,
+                  "message": "default '100' is not a literal of type decimal(3,1)"
                 },
                 {
                   "rule": "column",
                   "line": 9,
-                  "column": 26
+                  "column": 26,
+                  "message": "default '1.25' is not a literal of type decimal(3,1)"
                 },
                 {
                   "rule": "column",
                   "line": 10,
-                  "column": 24
+                  "column": 24,
+                  "message": "default string 'abc' is not a literal of type varchar(2)"
                 },
                 {
                   "rule": "column",
                   "line": 11,
-                  "column": 18
+                  "column": 18,
+                  "message": "default string 'x' is not a literal of type uuid"
                 },
                 {
                   "rule": "column",
                   "line": 12,
-                  "column": 18
+                  "column": 18,
+                  "message": "default string '2026-02-30' is not a literal of type date"
                 },
                 {
                   "rule": "column",
                   "line": 13,
-                  "column": 21
+                  "column": 21,
+                  "message": "default string '24:00:00' is not a literal of type time(0)"
                 },
                 {
                   "rule": "column",
                   "line": 14,
-                  "column": 25
+                  "column": 25,
+                  "message": "default string '2026-01-01T00:00:00' is not a literal of type datetime(0)"
                 },
                 {
                   "rule": "column",
                   "line": 15,
-                  "column": 17
+                  "column": 17,
+                  "message": "default 'now' is not a literal of type i32"
                 },
                 {
                   "rule": "column",
                   "line": 16,
-                  "column": 17
+                  "column": 17,
+                  "message": "default string '1' is not a literal of type i32"
                 },
                 {
                   "rule": "column",
                   "line": 17,
-                  "column": 24
+                  "column": 24,
+                  "message": "default 'null' is not a literal of type varchar(4)"
                 }
               ]
             }
@@ -102335,7 +102986,8 @@
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "table has more than one primary key"
                 }
               ]
             }
@@ -102504,7 +103156,8 @@
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 20
+                  "column": 20,
+                  "message": "primary key column \"n\" is nullable"
                 }
               ]
             }
@@ -102667,12 +103320,14 @@
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 19
+                  "column": 19,
+                  "message": "column \"id\" repeats in the key"
                 },
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 23
+                  "column": 23,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 }
               ]
             }
@@ -102866,7 +103521,8 @@
                 {
                   "rule": "key",
                   "line": 7,
-                  "column": 16
+                  "column": 16,
+                  "message": "a bytes column cannot be part of a key or index"
                 }
               ]
             }
@@ -103063,7 +103719,8 @@
                 {
                   "rule": "key",
                   "line": 21,
-                  "column": 3
+                  "column": 3,
+                  "message": "a key or index lists 17 columns, more than 16"
                 }
               ]
             }
@@ -103598,7 +104255,8 @@
                 {
                   "rule": "key",
                   "line": 9,
-                  "column": 9
+                  "column": 9,
+                  "message": "the varchar columns of the key total 641 characters, more than 640"
                 }
               ]
             }
@@ -103886,7 +104544,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 8,
-                  "column": 38
+                  "column": 38,
+                  "message": "table \"teams\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -104151,7 +104810,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 10,
-                  "column": 38
+                  "column": 38,
+                  "message": "table \"teams\" is not a table of this document or a used table"
                 }
               ]
             }
@@ -104451,7 +105111,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"user_id\" has type i32, the referenced column has i64"
                 }
               ]
             }
@@ -104784,7 +105445,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 13,
-                  "column": 15
+                  "column": 15,
+                  "message": "foreign key lists 2 columns and 1 referenced columns"
                 }
               ]
             }
@@ -105142,7 +105804,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "the referenced columns are not the primary key or a unique key of table \"users\""
                 }
               ]
             }
@@ -105522,17 +106185,20 @@
                 {
                   "rule": "foreign_key",
                   "line": 11,
-                  "column": 21
+                  "column": 21,
+                  "message": "column \"nope\" is not a column of table \"orders\""
                 },
                 {
                   "rule": "foreign_key",
                   "line": 11,
-                  "column": 45
+                  "column": 45,
+                  "message": "column \"missing\" is not a column of table \"users\""
                 },
                 {
                   "rule": "foreign_key",
                   "line": 11,
-                  "column": 64
+                  "column": 64,
+                  "message": "action \"no_action\" is not restrict, cascade or set_null"
                 }
               ]
             }
@@ -105841,7 +106507,8 @@
                 {
                   "rule": "foreign_key",
                   "line": 15,
-                  "column": 15
+                  "column": 15,
+                  "message": "the table declares no index or key whose leading columns are the foreign key columns"
                 }
               ]
             }
@@ -106235,7 +106902,8 @@
                 {
                   "rule": "check",
                   "line": 6,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"x\" is not a column of table \"users\""
                 }
               ]
             }
@@ -106424,7 +107092,8 @@
                 {
                   "rule": "check",
                   "line": 14,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"user_id\" belongs to a foreign key with cascade or set_null"
                 }
               ]
             }
@@ -106853,22 +107522,26 @@
                 {
                   "rule": "check",
                   "line": 9,
-                  "column": 18
+                  "column": 18,
+                  "message": "'between' is not allowed here in a check expression"
                 },
                 {
                   "rule": "check",
                   "line": 10,
-                  "column": 20
+                  "column": 20,
+                  "message": "column \"t3\" is time(3) and does not meet time(0)"
                 },
                 {
                   "rule": "check",
                   "line": 11,
-                  "column": 15
+                  "column": 15,
+                  "message": "'1' is not a column"
                 },
                 {
                   "rule": "check",
                   "line": 12,
-                  "column": 29
+                  "column": 29,
+                  "message": "> does not order bool values"
                 }
               ]
             }
@@ -107291,12 +107964,14 @@
                 {
                   "rule": "setting",
                   "line": 7,
-                  "column": 24
+                  "column": 24,
+                  "message": "column \"nope\" is not a column of table \"users\""
                 },
                 {
                   "rule": "setting",
                   "line": 7,
-                  "column": 29
+                  "column": 29,
+                  "message": "column \"id\" repeats in select explicit"
                 }
               ]
             }
@@ -107494,27 +108169,32 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 13
+                  "column": 13,
+                  "message": "updated needs a datetime column, not date"
                 },
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 17
+                  "column": 17,
+                  "message": "soft_delete needs a nullable datetime column"
                 },
                 {
                   "rule": "setting",
                   "line": 13,
-                  "column": 11
+                  "column": 11,
+                  "message": "the last codec stage gz stores bytes and needs a bytes column, not i32"
                 },
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 5
+                  "column": 5,
+                  "message": "aes_version without a column that uses aes"
                 },
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 17
+                  "column": 17,
+                  "message": "aes_version needs a non-null integer column"
                 }
               ]
             }
@@ -107813,17 +108493,20 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 5
+                  "column": 5,
+                  "message": "a column with the aes stage requires an aes_version setting"
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 22
+                  "column": 22,
+                  "message": "codec stage \"zip\" is unknown"
                 },
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 5
+                  "column": 5,
+                  "message": "blind_index names column \"plain\", which has no codec with the aes stage"
                 }
               ]
             }
@@ -108138,7 +108821,8 @@
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 24
+                  "column": 24,
+                  "message": "column \"token\" is not the only column of a declared index or unique key"
                 }
               ]
             }
@@ -108406,12 +109090,14 @@
                 {
                   "rule": "setting",
                   "line": 7,
-                  "column": 16
+                  "column": 16,
+                  "message": "foreign key \"fk_nope\" is not a foreign key of the table"
                 },
                 {
                   "rule": "name.format",
                   "line": 7,
-                  "column": 24
+                  "column": 24,
+                  "message": "name \"Owner\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -108604,7 +109290,8 @@
                 {
                   "rule": "setting",
                   "line": 15,
-                  "column": 5
+                  "column": 5,
+                  "message": "immutable is rejected on a child of a cascade or set_null foreign key"
                 }
               ]
             }
@@ -108994,32 +109681,38 @@
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"service_history\" needs an i64 identity primary key"
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"service_history\" has no copy of column \"audit_seq\""
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"service_history\" has column \"history_id\", which is not a column of table \"service\""
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 16
+                  "column": 16,
+                  "message": "history table \"service_history\" has column \"extra\", which is not a column of table \"service\""
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 73
+                  "column": 73,
+                  "message": "the action column is a non-null varchar(8)"
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 89
+                  "column": 89,
+                  "message": "the previous column is nullable"
                 }
               ]
             }
@@ -109615,7 +110308,8 @@
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 16
+                  "column": 16,
+                  "message": "a table cannot be its own history table"
                 }
               ]
             }
@@ -110126,7 +110820,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 22
+                  "column": 22,
+                  "message": "document \"core\" does not define table \"teams\""
                 }
               ]
             }
@@ -110328,7 +111023,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "used document \"core\" is invalid: line 3 column 7 key: table \"accounts\" has no primary key"
                 }
               ]
             }
@@ -110516,7 +111212,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "the document set entry \"core\" holds document \"other\""
                 }
               ]
             }
@@ -110696,12 +111393,14 @@
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 26
+                  "column": 26,
+                  "message": "default '12.0' is not a literal of type decimal(4,0)"
                 },
                 {
                   "rule": "column",
                   "line": 6,
-                  "column": 21
+                  "column": 21,
+                  "message": "default string '12:00:00.0' is not a literal of type time(0)"
                 }
               ]
             }
@@ -110937,12 +111636,14 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 16
+                  "column": 16,
+                  "message": "name \"Id\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.format",
                   "line": 6,
-                  "column": 19
+                  "column": 19,
+                  "message": "name \"Nope\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -111130,7 +111831,8 @@
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 15
+                  "column": 15,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -111462,7 +112164,8 @@
                 {
                   "rule": "key",
                   "line": 6,
-                  "column": 3
+                  "column": 3,
+                  "message": "the varchar columns of the key total 800 characters, more than 640"
                 }
               ]
             }
@@ -111669,7 +112372,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 8,
-                  "column": 9
+                  "column": 9,
+                  "message": "name \"accounts\" is also a table name"
                 }
               ]
             }
@@ -111905,7 +112609,8 @@
                 {
                   "rule": "name.duplicate",
                   "line": 4,
-                  "column": 5
+                  "column": 5,
+                  "message": "document \"extra\" repeats constraint name \"uq_accounts_code\" of document \"core\""
                 }
               ]
             }
@@ -112149,7 +112854,8 @@
                 {
                   "rule": "use",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "used document \"core\" is invalid: line 3 column 5 use: used document \"extra\" is invalid: line 3 column 5 use: using document \"core\" closes a use cycle"
                 }
               ]
             }
@@ -112347,17 +113053,20 @@
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 11
+                  "column": 11,
+                  "message": "the last codec stage base64 stores text and needs a varchar or text column, not bytes"
                 },
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 11
+                  "column": 11,
+                  "message": "the last codec stage gz stores bytes and needs a bytes column, not text"
                 },
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 17
+                  "column": 17,
+                  "message": "ordered_json is the first codec stage"
                 }
               ]
             }
@@ -112661,27 +113370,32 @@
                 {
                   "rule": "setting",
                   "line": 21,
-                  "column": 20
+                  "column": 20,
+                  "message": "the blind index column is varchar(n) with n >= 64, not varchar(32)"
                 },
                 {
                   "rule": "setting",
                   "line": 22,
-                  "column": 20
+                  "column": 20,
+                  "message": "the blind index column has the nullability of the AES column"
                 },
                 {
                   "rule": "setting",
                   "line": 23,
-                  "column": 20
+                  "column": 20,
+                  "message": "the blind index column is not AES-encoded"
                 },
                 {
                   "rule": "setting",
                   "line": 24,
-                  "column": 5
+                  "column": 5,
+                  "message": "blind_index repeats for \"s3\""
                 },
                 {
                   "rule": "setting",
                   "line": 25,
-                  "column": 20
+                  "column": 20,
+                  "message": "column \"h2\" is not the only column of a declared index or unique key"
                 }
               ]
             }
@@ -113239,7 +113953,8 @@
                 {
                   "rule": "setting",
                   "line": 14,
-                  "column": 19
+                  "column": 19,
+                  "message": "the blind index column is varchar(n) with n >= 64, not bytes"
                 }
               ]
             }
@@ -113549,7 +114264,8 @@
                 {
                   "rule": "check",
                   "line": 6,
-                  "column": 15
+                  "column": 15,
+                  "message": "column \"x\" is not a column of table \"users\""
                 }
               ]
             }
@@ -113748,7 +114464,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 8
+                  "column": 8,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -113803,7 +114520,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 9
+                  "column": 9,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -113886,7 +114604,8 @@
                 {
                   "rule": "setting",
                   "line": 12,
-                  "column": 48
+                  "column": 48,
+                  "message": "the action column is a non-null varchar(8)"
                 }
               ]
             }
@@ -114587,7 +115306,8 @@
                 {
                   "rule": "diagram",
                   "line": 12,
-                  "column": 12
+                  "column": 12,
+                  "message": "coordinate '-2147483649' is not an integer from -2147483648 to 2147483647"
                 }
               ]
             }
@@ -114844,27 +115564,32 @@
                 {
                   "rule": "check",
                   "line": 6,
-                  "column": 18
+                  "column": 18,
+                  "message": "'like' is not allowed here in a check expression"
                 },
                 {
                   "rule": "check",
                   "line": 7,
-                  "column": 20
+                  "column": 20,
+                  "message": "'-' is not allowed here in a check expression"
                 },
                 {
                   "rule": "check",
                   "line": 8,
-                  "column": 18
+                  "column": 18,
+                  "message": "'AND' is not allowed here in a check expression"
                 },
                 {
                   "rule": "check",
                   "line": 9,
-                  "column": 22
+                  "column": 22,
+                  "message": "'id' is not a literal in a check expression"
                 },
                 {
                   "rule": "check",
                   "line": 10,
-                  "column": 22
+                  "column": 22,
+                  "message": "check expression ends early"
                 }
               ]
             }
@@ -115242,17 +115967,20 @@
                 {
                   "rule": "name.format",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "name.length",
                   "line": 5,
-                  "column": 3
+                  "column": 3,
+                  "message": "name \"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" has 64 bytes, more than 63"
                 },
                 {
                   "rule": "name.format",
                   "line": 7,
-                  "column": 9
+                  "column": 9,
+                  "message": "name \"identity\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 }
               ]
             }
@@ -115438,17 +116166,20 @@
                 {
                   "rule": "diagram",
                   "line": 9,
-                  "column": 12
+                  "column": 12,
+                  "message": "coordinate '1.5' is not an integer from -2147483648 to 2147483647"
                 },
                 {
                   "rule": "diagram",
                   "line": 9,
-                  "column": 16
+                  "column": 16,
+                  "message": "coordinate 'x' is not an integer from -2147483648 to 2147483647"
                 },
                 {
                   "rule": "diagram",
                   "line": 10,
-                  "column": 3
+                  "column": 3,
+                  "message": "table \"users\" appears twice in the diagram"
                 }
               ]
             }
@@ -115662,7 +116393,8 @@
                 {
                   "rule": "key",
                   "line": 3,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"user\" has no primary key"
                 }
               ]
             }
@@ -115764,7 +116496,8 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"order\" has no primary key"
                 },
                 {
                   "rule": "setting",
@@ -115925,7 +116658,8 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 }
               ]
             }
@@ -116053,7 +116787,8 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 }
               ]
             }
@@ -116152,12 +116887,14 @@
                 {
                   "rule": "diagram",
                   "line": 3,
-                  "column": 3
+                  "column": 3,
+                  "message": "table \"t\" is not a table of this document or a used table"
                 },
                 {
                   "rule": "syntax",
                   "line": 4,
-                  "column": 9
+                  "column": 9,
+                  "message": "unexpected 'e', expected 'at'"
                 }
               ]
             }
@@ -116284,7 +117021,8 @@
                 {
                   "rule": "syntax",
                   "line": 2,
-                  "column": 1
+                  "column": 1,
+                  "message": "unexpected 'foo', expected 'use', 'table' or 'diagram'"
                 }
               ]
             }
@@ -116356,12 +117094,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"user\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 10
+                  "column": 10,
+                  "message": "unexpected 'x', expected the end of the line"
                 }
               ]
             }
@@ -116470,17 +117210,20 @@
                 {
                   "rule": "name.format",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"12\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "column",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"12\" has no column"
                 },
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"12\" has no primary key"
                 }
               ]
             }
@@ -116564,7 +117307,8 @@
                 {
                   "rule": "encoding",
                   "line": 2,
-                  "column": 8
+                  "column": 8,
+                  "message": "carriage return without a following line feed"
                 }
               ]
             }
@@ -116646,7 +117390,8 @@
                 {
                   "rule": "encoding",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "document starts with a byte order mark"
                 }
               ]
             }
@@ -116704,7 +117449,8 @@
                 {
                   "rule": "header",
                   "line": 1,
-                  "column": 8
+                  "column": 8,
+                  "message": "the first line is exactly dbspec 1 <document>"
                 }
               ]
             }
@@ -116789,12 +117535,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"user\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 19
+                  "column": 19,
+                  "message": "string is not closed on its line"
                 }
               ]
             }
@@ -116904,12 +117652,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"user\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 5
+                  "column": 5,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -117008,12 +117758,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 },
                 {
                   "rule": "check",
                   "line": 4,
-                  "column": 16
+                  "column": 16,
+                  "message": "column \"status\" is not a column of table \"t\""
                 }
               ]
             }
@@ -117155,12 +117907,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 },
                 {
                   "rule": "check",
                   "line": 4,
-                  "column": 29
+                  "column": 29,
+                  "message": "'foo' is a function; check predicates have no functions in a check expression"
                 }
               ]
             }
@@ -117333,17 +118087,20 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 },
                 {
                   "rule": "column",
                   "line": 4,
-                  "column": 13
+                  "column": 13,
+                  "message": "a text column has no default"
                 },
                 {
                   "rule": "column",
                   "line": 5,
-                  "column": 21
+                  "column": 21,
+                  "message": "default 'now' is not a literal of type date"
                 }
               ]
             }
@@ -117503,12 +118260,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"user\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 2,
-                  "column": 11
+                  "column": 11,
+                  "message": "line ends, expected '{'"
                 }
               ]
             }
@@ -117600,12 +118359,14 @@
                 {
                   "rule": "key",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "table \"t\" has no primary key"
                 },
                 {
                   "rule": "syntax",
                   "line": 3,
-                  "column": 10
+                  "column": 10,
+                  "message": "unexpected 'bogus', expected the end of the line"
                 }
               ]
             }
@@ -117707,7 +118468,8 @@
                 {
                   "rule": "syntax",
                   "line": 2,
-                  "column": 1
+                  "column": 1,
+                  "message": "unexpected '-', expected 'use', 'table' or 'diagram'"
                 }
               ]
             }
@@ -117819,7 +118581,8 @@
                 {
                   "rule": "syntax",
                   "line": 2,
-                  "column": 1
+                  "column": 1,
+                  "message": "character '\\t' is not allowed here"
                 }
               ]
             }
@@ -117888,7 +118651,8 @@
                 {
                   "rule": "encoding",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "document starts with a byte order mark"
                 }
               ]
             }
@@ -126138,7 +126902,8 @@
                 {
                   "rule": "limit",
                   "line": 8194,
-                  "column": 1
+                  "column": 1,
+                  "message": "document has more than 4096 tables"
                 }
               ]
             }
@@ -134378,7 +135143,8 @@
                 {
                   "rule": "setting",
                   "line": 8,
-                  "column": 5
+                  "column": 5,
+                  "message": "a column with the aes stage requires an aes_version setting"
                 }
               ]
             }
@@ -134580,7 +135346,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 11
+                  "column": 11,
+                  "message": "the last codec stage aes stores bytes and needs a bytes column, not text"
                 }
               ]
             }
@@ -135240,7 +136007,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 17
+                  "column": 17,
+                  "message": "column \"missing\" is not a column of table \"tasks\""
                 }
               ]
             }
@@ -136731,7 +137499,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 16
+                  "column": 16,
+                  "message": "unexpected string 'x', expected the end of the line"
                 }
               ]
             }
@@ -136956,7 +137725,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 19
+                  "column": 19,
+                  "message": "unexpected 'extra', expected the end of the line"
                 }
               ]
             }

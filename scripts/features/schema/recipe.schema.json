@@ -7111,7 +7111,8 @@
                       "required": [
                         "rule",
                         "line",
-                        "column"
+                        "column",
+                        "message"
                       ],
                       "additionalProperties": false,
                       "properties": {
@@ -7126,7 +7127,8 @@
                         },
                         "message": {
                           "type": "string",
-                          "description": "The message of the diagnostic, which every runtime gives exactly; a diagnostic without it is compared by its rule and position."
+                          "minLength": 1,
+                          "description": "The message of the diagnostic, which every runtime gives exactly (docs/spec/dbspec.md DBS-144); a refused text whose diagnostic has no message fails the recipe check."
                         }
                       }
                     }

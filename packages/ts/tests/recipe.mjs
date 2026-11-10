@@ -2563,13 +2563,13 @@ function emitStable(text, set) {
 // checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
 // and the same diagnostics.
 function checkRefusal(text, set, want) {
+  for (const [i, w] of want.entries()) assert.ok(w.message, `expected diagnostic ${i} (${w.rule} ${w.line} ${w.column}) states no message; every refused text states the message of each diagnostic`);
   const parsed = parseDbspec(text, set);
   assert.ok(!parsed.document, 'Parse returned a document for an invalid source');
   const formatted = formatDbspec(text, set);
   assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
   for (const got of [parsed.diagnostics, formatted.diagnostics]) {
-    // The message is compared where the expected diagnostic states it.
-    const rows = got.map((d, i) => ({ rule: d.rule, line: d.line, column: d.column, ...(want[i]?.message === undefined ? {} : { message: d.message }) }));
+    const rows = got.map(d => ({ rule: d.rule, line: d.line, column: d.column, message: d.message }));
     assert.deepEqual(rows, want, 'diagnostics');
     for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
   }

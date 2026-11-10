@@ -2,6 +2,7 @@
 //! meet, which operators a `bool` operand takes, and the canonical text of each
 //! literal in the default form of the column it meets.
 
+use super::lexer::go_quote;
 use super::literal::{check_literal, Value};
 use super::model::{Document, Expr, Literal, Name, Operand, Pos, Type};
 
@@ -62,7 +63,7 @@ impl Typing<'_> {
     fn column_type(&mut self, name: &Name) -> Option<Type> {
         let ty = (self.column)(name)?;
         if ty == Type::Bytes {
-            self.report(name.pos, format!("bytes column '{}' is not part of a check predicate", name.text));
+            self.report(name.pos, format!("bytes column {} cannot be part of a check", go_quote(&name.text)));
             return None;
         }
         Some(ty)
@@ -111,15 +112,15 @@ impl Typing<'_> {
             Operand::Literal(literal) => matches!(&literal.value, Value::Word(_)),
         };
         if ORDERINGS.contains(&op) && (boolean(left, left_type) || boolean(right, right_type)) {
-            self.report(op_pos, format!("'{op}' does not apply to a bool operand"));
+            self.report(op_pos, format!("{op} does not order bool values"));
         }
         match (left, right) {
             // Reading rejects a comparison of two literals.
             (Operand::Literal(_), Operand::Literal(_)) => {}
-            (Operand::Column(a), Operand::Column(b)) => {
+            (Operand::Column(_), Operand::Column(b)) => {
                 if let (Some(a_type), Some(b_type)) = (left_type, right_type) {
                     if !meets(a_type, b_type) {
-                        self.report(b.pos, format!("column '{}' {} does not meet column '{}' {}", b.text, b_type.render(), a.text, a_type.render()));
+                        self.report(b.pos, format!("column {} is {} and does not meet {}", go_quote(&b.text), b_type.render(), a_type.render()));
                     }
                 }
             }
