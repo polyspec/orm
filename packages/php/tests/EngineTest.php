@@ -592,7 +592,7 @@ final class EngineTest extends TestCase
         ];
         foreach ($want as $key => $locks) {
             [$dialect, $server] = explode('/', $key);
-            $engine = new Engine($model, $dialect, 8, false, $server);
+            $engine = new Engine($model, $dialect, 8, $server);
             foreach ($locks as $lock => $suffix) {
                 $sql = $engine->compile([
                     'ir_version' => 1,

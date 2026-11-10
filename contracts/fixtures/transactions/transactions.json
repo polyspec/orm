@@ -2925,10 +2925,7 @@
             {
               "kind": "utility",
               "tables": [],
-              "sql": {
-                "mysql": "SET SESSION wait_timeout = 1",
-                "postgres": "SET idle_in_transaction_session_timeout = 1000"
-              }
+              "sql": "SET SESSION wait_timeout = 1"
             }
           ],
           "expect": {
@@ -2936,7 +2933,23 @@
               "value": {
                 "array": []
               }
-            },
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "utils.run",
+          "connection": "connection",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SET idle_in_transaction_session_timeout = 1000"
+            }
+          ],
+          "expect": {
             "postgres": {
               "value": {
                 "array": []
@@ -2944,7 +2957,6 @@
             }
           },
           "only": [
-            "mysql",
             "postgres"
           ]
         },
@@ -2976,10 +2988,7 @@
                 {
                   "kind": "utility",
                   "tables": [],
-                  "sql": {
-                    "mysql": "DO SLEEP(3)",
-                    "postgres": "DO $$ BEGIN PERFORM pg_sleep(3); END $$"
-                  }
+                  "sql": "DO SLEEP(3)"
                 }
               ],
               "expect": {
@@ -2987,7 +2996,23 @@
                   "value": {
                     "array": []
                   }
-                },
+                }
+              },
+              "only": [
+                "mysql"
+              ]
+            },
+            {
+              "op": "utils.run",
+              "connection": "sleeper",
+              "statements": [
+                {
+                  "kind": "utility",
+                  "tables": [],
+                  "sql": "DO $$ BEGIN PERFORM pg_sleep(3); END $$"
+                }
+              ],
+              "expect": {
                 "postgres": {
                   "value": {
                     "array": []
@@ -2995,7 +3020,6 @@
                 }
               },
               "only": [
-                "mysql",
                 "postgres"
               ]
             },
