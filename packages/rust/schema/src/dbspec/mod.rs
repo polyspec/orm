@@ -40,7 +40,8 @@ pub use compare::{compare_schemas, Difference, RULE_COMPARE};
 pub use convert::{mysql_uuid_conversion, sqlite_uuid_conversion, MySqlTextStorage, TextStorage, CONVERT_SAVEPOINT};
 pub use file::{read_bytes, read_file, ReadError, SIGNATURE};
 pub use introspect::{
-    catalog_followups, catalog_queries, check_server, hex_bytes, mariadb_catalog_default, read_catalog, uuid_text, CatalogValue, Introspection, Server, Unsupported, TEXT_STORAGE_REASON,
+    catalog_followups, catalog_queries, check_server, hex_bytes, mariadb_catalog_default, read_catalog, uuid_text, CatalogValue, Introspection, Server,
+    Unsupported, TEXT_STORAGE_REASON,
 };
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
