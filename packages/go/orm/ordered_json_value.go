@@ -3,6 +3,7 @@ package orm
 import (
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"math"
 	"reflect"
 	"sort"
@@ -66,10 +67,19 @@ func orderedDepth(value *orderedjson.Value) (int, error) {
 	return deepest, nil
 }
 
-// orderedParsed is a JSON text that a Go value gives as ordered-json, at depth levels inside the value.
+// orderedParsed is a JSON text that a Go value gives as ordered-json, at depth levels inside the value. The parser reads the
+// levels left below the limit, so a text nested past it is json-depth, as every other value nested past it is, and any other
+// failure of the parser is json-text (COD-70).
 func orderedParsed(body []byte, depth int) (*orderedjson.Value, error) {
-	parsed, err := orderedjson.ParseBytes(body)
+	if depth >= orderedjson.MaxDepth {
+		return nil, errJSONDepth()
+	}
+	parsed, err := orderedjson.ParseWithMaxDepth(string(body), orderedjson.MaxDepth-depth)
 	if err != nil {
+		var parseErr orderedjson.Error
+		if errors.As(err, &parseErr) && parseErr.Kind() == orderedjson.MaximumDepthExceededError {
+			return nil, errJSONDepth()
+		}
 		return nil, errJSONText(err)
 	}
 	return orderedChecked(parsed, depth)

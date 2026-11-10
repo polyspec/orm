@@ -62,6 +62,37 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 	}
 }
 
+// TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit holds json-depth of COD-70 for the Go values whose bytes are one JSON
+// text: a jsontext.Value, a json.RawMessage and a json.Marshaler, alone or inside a list, are refused as a value nested deeper
+// than 256 levels is, and a text at the limit is taken.
+func TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit(t *testing.T) {
+	// The test of COD-70 (docs/spec).
+	testcase.Start(t, testcase.Compute)
+	nested := func(levels int) []byte { return []byte(strings.Repeat("[", levels) + strings.Repeat("]", levels)) }
+	const refused = "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+	for _, tc := range []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{"text at the limit", jsontext.Value(nested(256)), ""},
+		{"text past the limit", jsontext.Value(nested(257)), refused},
+		{"raw message past the limit", json.RawMessage(nested(257)), refused},
+		{"marshaler past the limit", customJSONValue{body: nested(257)}, refused},
+		{"text at the limit inside a list", []any{jsontext.Value(nested(255))}, ""},
+		{"text past the limit inside a list", []any{jsontext.Value(nested(256))}, refused},
+		{"raw message past the limit inside a list", []any{json.RawMessage(nested(256))}, refused},
+	} {
+		_, err := Encode([]string{"ordered_json"}, Value(tc.value))
+		switch {
+		case tc.want == "" && err != nil:
+			t.Errorf("%s: %v", tc.name, err)
+		case tc.want != "" && (err == nil || err.Error() != tc.want):
+			t.Errorf("%s: error %v, want %s", tc.name, err, tc.want)
+		}
+	}
+}
+
 func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	// The test of COD-22 (docs/spec).
 	testcase.Start(t, testcase.Compute)
