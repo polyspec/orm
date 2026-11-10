@@ -7344,7 +7344,17 @@
             "description": "With refused_message: the code of the error of that refusal.",
             "type": "string",
             "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "connects": {
+            "description": "With refused_message: the number of connections that the client opens for the reconnect. The runner relays the reconnect through a TCP listener of its own on 127.0.0.1 in front of the host and port of the DSN, which counts the connections it accepts, and compares the count when the refused reconnect has returned; the listener closes with the step.",
+            "type": "integer",
+            "minimum": 1
           }
+        },
+        "dependentRequired": {
+          "connects": [
+            "refused_message"
+          ]
         }
       },
       "sql.hold_connection": {

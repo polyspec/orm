@@ -92,15 +92,17 @@ type databaseStep struct {
 	Refused        bool            `json:"refused"`
 	RefusedMessage string          `json:"refused_message"`
 	RefusedCode    string          `json:"refused_code"`
-	MaxRows        int             `json:"max_rows"`
-	MaxBytes       int             `json:"max_bytes"`
-	Page           json.RawMessage `json:"page"`
-	Index          int             `json:"index"`
-	Metadata       json.RawMessage `json:"metadata"`
-	Values         json.RawMessage `json:"values"`
-	Snapshot       json.RawMessage `json:"snapshot"`
-	Set            json.RawMessage `json:"set"`
-	As             string          `json:"as"`
+	// Connects is the number of connections that catalog.reconnect opens for a refused reconnect (DIA-211).
+	Connects int             `json:"connects"`
+	MaxRows  int             `json:"max_rows"`
+	MaxBytes int             `json:"max_bytes"`
+	Page     json.RawMessage `json:"page"`
+	Index    int             `json:"index"`
+	Metadata json.RawMessage `json:"metadata"`
+	Values   json.RawMessage `json:"values"`
+	Snapshot json.RawMessage `json:"snapshot"`
+	Set      json.RawMessage `json:"set"`
+	As       string          `json:"as"`
 	// Edge is the side of a write that clock.read bounds.
 	Edge string `json:"edge"`
 	// The catalog fields: the databases that run the step, the namespace of a table, the binds and page of a query, and
@@ -1121,12 +1123,27 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("user_from_database").UserFromDatabase != "" {
 			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
 		}
+		var relay *connectRelay
+		if s.k("connects").Connects != 0 {
+			started, through, err := startConnectRelay(dsn)
+			if err != nil {
+				return outcome{}, err
+			}
+			relay, dsn = started, through
+		}
 		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil && s.k("refused_message").RefusedMessage == "" {
 			return outcome{}, err
 		}
 		if s.k("refused_message").RefusedMessage != "" {
-			return outcome{}, refusedConnect(c, catalog, err, s.k("refused_code").RefusedCode, s.k("refused_message").RefusedMessage)
+			err := refusedConnect(c, catalog, err, s.k("refused_code").RefusedCode, s.k("refused_message").RefusedMessage)
+			if relay != nil {
+				if got, want := relay.accepted.Load(), int64(s.k("connects").Connects); err == nil && got != want {
+					err = fmt.Errorf("the client opened %d connections for the refused reconnect, want %d", got, want)
+				}
+				err = errors.Join(err, relay.close())
+			}
+			return outcome{}, err
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {

@@ -4201,7 +4201,13 @@ mod database {
                     None => base,
                 };
                 if let Some(text) = crate::recipe_reads::read(step, "refused_message").get("refused_message").and_then(Value::as_str) {
-                    return match CatalogConnection::connect(&dsn).await {
+                    let connects = crate::recipe_reads::read(step, "connects").get("connects").and_then(Value::as_u64);
+                    let relay = match connects {
+                        Some(_) => Some(ConnectRelay::start(&dsn).map_err(fault)?),
+                        None => None,
+                    };
+                    let through = relay.as_ref().map_or(dsn.clone(), |relay| relay.dsn.clone());
+                    let refused = match CatalogConnection::connect(&through).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
                         Err(error)
                             if error.message().to_lowercase().contains(text)
@@ -4212,6 +4218,14 @@ mod database {
                             Ok(Output::fields(json!({})))
                         }
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
+                    };
+                    let Some(relay) = relay else { return refused };
+                    let accepted = relay.close().map_err(fault)?;
+                    return match (refused, connects) {
+                        (Ok(_), Some(want)) if accepted != want => {
+                            Err(fault(format!("the client opened {accepted} connections for the refused reconnect, want {want}")))
+                        }
+                        (refused, _) => refused,
                     };
                 }
                 let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::call)?;
@@ -5583,6 +5597,114 @@ mod database {
         };
         admin.close().await;
         ended.map_err(|e| format!("the transaction session holds a lock on {table}: {e}"))
+    }
+
+    /// The TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection it accepts to the
+    /// host and port of the DSN, copying the bytes both ways, and counts the connections it accepted. A client learns that its
+    /// connect is refused only from bytes that the server sends through an accepted connection, so when a refused reconnect has
+    /// returned, every connection that the client opened for it has been counted.
+    struct ConnectRelay {
+        dsn: String,
+        address: std::net::SocketAddr,
+        accepted: std::sync::Arc<std::sync::atomic::AtomicU64>,
+        stopped: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        streams: std::sync::Arc<std::sync::Mutex<Vec<std::net::TcpStream>>>,
+        accept: std::thread::JoinHandle<Vec<std::thread::JoinHandle<std::io::Result<()>>>>,
+    }
+
+    impl ConnectRelay {
+        fn start(dsn: &str) -> Result<Self, String> {
+            use std::sync::atomic::Ordering;
+            let (head, rest) = dsn.split_once('@').ok_or_else(|| format!("catalog.reconnect connects: the DSN names no host and port: {dsn}"))?;
+            let end = rest.find(['/', '?']).unwrap_or(rest.len());
+            let target = rest[..end].to_owned();
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
+            let address = listener.local_addr().map_err(|e| e.to_string())?;
+            let relay_dsn = format!("{head}@{address}{}", &rest[end..]);
+            let accepted = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+            let stopped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let streams = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+            let (counted, stop, held) = (accepted.clone(), stopped.clone(), streams.clone());
+            let accept = std::thread::spawn(move || {
+                let mut copies = Vec::new();
+                for client in listener.incoming() {
+                    // close wakes this accept with a connection of its own after it sets stopped, which is not counted.
+                    if stop.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let Ok(client) = client else { continue };
+                    counted.fetch_add(1, Ordering::SeqCst);
+                    copies.push(std::thread::spawn({
+                        let (target, held) = (target.clone(), held.clone());
+                        move || relay_pair(client, &target, &held)
+                    }));
+                }
+                copies
+            });
+            Ok(Self { dsn: relay_dsn, address, accepted, stopped, streams, accept })
+        }
+
+        /// Stops the relay, closes every relayed connection, waits until no thread of it runs, and returns the connections it
+        /// accepted, or the first error of a relayed connection.
+        fn close(self) -> Result<u64, String> {
+            use std::sync::atomic::Ordering;
+            let accepted = self.accepted.load(Ordering::SeqCst);
+            self.stopped.store(true, Ordering::SeqCst);
+            let woke = std::net::TcpStream::connect(self.address).map_err(|e| format!("wake the relay: {e}"));
+            if let Ok(streams) = self.streams.lock() {
+                for stream in streams.iter() {
+                    shut(stream).map_err(|e| e.to_string())?;
+                }
+            }
+            let copies = self.accept.join().map_err(|_| "the accept thread of the relay panicked".to_owned())?;
+            for copy in copies {
+                copy.join().map_err(|_| "a thread of the relay panicked".to_owned())?.map_err(|e| e.to_string())?;
+            }
+            drop(woke?);
+            Ok(accepted)
+        }
+    }
+
+    /// relay_pair connects an accepted client to the target and copies both ways until both directions end; the streams are
+    /// kept in held so that close can end them.
+    fn relay_pair(client: std::net::TcpStream, target: &str, held: &std::sync::Mutex<Vec<std::net::TcpStream>>) -> std::io::Result<()> {
+        let server = std::net::TcpStream::connect(target)?;
+        if let Ok(mut held) = held.lock() {
+            held.push(client.try_clone()?);
+            held.push(server.try_clone()?);
+        }
+        let (client_reader, server_reader) = (client.try_clone()?, server.try_clone()?);
+        let upstream = std::thread::spawn(move || relay_copy(client_reader, server));
+        let downstream = relay_copy(server_reader, client);
+        upstream.join().map_err(|_| std::io::Error::other("a copy of the relay panicked"))??;
+        downstream
+    }
+
+    /// Copies one direction of a relayed connection and shuts both ends when it ends, which ends the other direction; a reset
+    /// or a closed end is how a connection ends, not an error.
+    fn relay_copy(mut from: std::net::TcpStream, mut to: std::net::TcpStream) -> std::io::Result<()> {
+        match std::io::copy(&mut from, &mut to) {
+            Ok(_) => {}
+            Err(error) if ended(&error) => {}
+            Err(error) => return Err(error),
+        }
+        shut(&from)?;
+        shut(&to)
+    }
+
+    /// shut shuts a stream both ways; one that the other side already closed is shut.
+    fn shut(stream: &std::net::TcpStream) -> std::io::Result<()> {
+        match stream.shutdown(std::net::Shutdown::Both) {
+            Err(error) if !ended(&error) => Err(error),
+            _ => Ok(()),
+        }
+    }
+
+    fn ended(error: &std::io::Error) -> bool {
+        matches!(
+            error.kind(),
+            std::io::ErrorKind::NotConnected | std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionAborted
+        )
     }
 
     /// The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the case

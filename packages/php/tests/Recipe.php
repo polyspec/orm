@@ -3082,14 +3082,26 @@ final class Recipe
                     ? self::userFromDatabaseDsn($reconnectBase, $s['user_from_database'])
                     : $reconnectBase;
                 if (isset($s['refused_message'])) {
+                    $relay = isset($s['connects']) ? new ConnectRelay($reconnectDsn) : null;
                     try {
-                        Catalog::connect($reconnectDsn);
-                    } catch (OrmException $error) {
-                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
-                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
-                        return [];
+                        try {
+                            Catalog::connect($relay?->dsn ?? $reconnectDsn);
+                        } catch (OrmException $error) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                            Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                            if ($relay !== null) {
+                                Assert::assertSame(
+                                    $s['connects'],
+                                    $relay->accepted(),
+                                    'the connections that the client opened for the refused reconnect'
+                                );
+                            }
+                            return [];
+                        }
+                        Assert::fail('the server accepted the connection that the step expects it to refuse');
+                    } finally {
+                        $relay?->close();
                     }
-                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();

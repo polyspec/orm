@@ -767,6 +767,7 @@
       "op"
     ],
     "catalog.reconnect": [
+      "connects",
       "dsn",
       "op",
       "refused_code",

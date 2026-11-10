@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { connect as connectSocket, createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
@@ -777,6 +777,37 @@ function userFromDatabaseDsn(dsn, prefix) {
 
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
+
+// connectRelay is the TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection it
+// accepts to the host and port of the DSN, copying the bytes both ways, and counts the connections it accepted. A client learns
+// that its connect is refused only from bytes that the server sends through an accepted connection, so when a refused reconnect
+// has returned, every connection that the client opened for it has been counted.
+async function connectRelay(dsn) {
+  const match = /^([a-z]+:\/\/[^@/]+@)([^/?]+)(.*)$/.exec(dsn);
+  if (match === null) throw new Error(`catalog.reconnect connects: the DSN names no host and port: ${dsn}`);
+  const [host, port] = [match[2].slice(0, match[2].lastIndexOf(':')), Number(match[2].slice(match[2].lastIndexOf(':') + 1))];
+  const sockets = new Set();
+  const relay = { accepted: 0 };
+  const server = createServer(client => {
+    relay.accepted += 1;
+    const upstream = connectSocket({ host, port });
+    for (const socket of [client, upstream]) {
+      sockets.add(socket);
+      socket.on('error', () => { client.destroy(); upstream.destroy(); });
+      socket.on('close', () => { sockets.delete(socket); client.destroy(); upstream.destroy(); });
+    }
+    client.pipe(upstream);
+    upstream.pipe(client);
+  });
+  await new Promise((done, failed) => { server.once('error', failed); server.listen(0, '127.0.0.1', done); });
+  relay.dsn = `${match[1]}127.0.0.1:${server.address().port}${match[3]}`;
+  relay.close = () => new Promise(done => {
+    for (const socket of sockets) socket.destroy();
+    server.close(() => done());
+  });
+  return relay;
+}
+
   async 'dsn.connect'(s, context) {
     if (s.dsn.startsWith('env:')) {
       const variable = serverVariable(s.dsn.slice(4), context.database);
@@ -834,10 +865,16 @@ const OPS = {
     const base = s.dsn === undefined ? context.dsn : connectDsn(s.dsn, context.database, context.dsn);
     const dsn = s.user_from_database === undefined ? base : userFromDatabaseDsn(base, s.user_from_database);
     if (s.refused_message !== undefined) {
-      const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
-      if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
-      if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
-      if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+      const relay = s.connects === undefined ? undefined : await connectRelay(dsn);
+      try {
+        const refused = await connectCatalog(relay?.dsn ?? dsn).then(catalog => catalog.close().then(() => null), error => error);
+        if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
+        if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+        if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+        if (relay !== undefined && relay.accepted !== s.connects) throw new Error(`the client opened ${relay.accepted} connections for the refused reconnect, want ${s.connects}`);
+      } finally {
+        await relay?.close();
+      }
       return {};
     }
     // A committed mutation leaves its connection in the pool of the catalog that this step replaces (INT-106d).

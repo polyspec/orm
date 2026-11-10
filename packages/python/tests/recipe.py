@@ -3,11 +3,13 @@
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
 import atexit
+import contextlib
 import dataclasses
 import json
 import math
 import os
 import re
+import select
 import shutil
 import socket
 import sqlite3
@@ -2867,6 +2869,78 @@ def _user_from_database_dsn(dsn: str, prefix: str) -> str:
     return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
 
 
+class _ConnectRelay:
+    """The TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection
+    it accepts to the host and port of the DSN, copying the bytes both ways, and counts the connections it accepted.
+    A client learns that its connect is refused only from bytes that the server sends through an accepted
+    connection, so when a refused reconnect has returned, every connection that the client opened for it has been
+    counted."""
+
+    def __init__(self, dsn: str) -> None:
+        match = re.match(r"^([a-z]+://[^@/]+@)([^/?]+)(.*)$", dsn)
+        if match is None:
+            raise AssertionError(
+                f"catalog.reconnect connects: the DSN names no host and port: {dsn}"
+            )
+        host, _, port = match.group(2).rpartition(":")
+        self._target = (host, int(port))
+        self._listener = socket.create_server(("127.0.0.1", 0))
+        # close wakes the accept loop through this pair, since closing a listener does not wake an accept on every platform.
+        self._wake, self._woken = socket.socketpair()
+        self._sockets: list[socket.socket] = []
+        self._lock = threading.Lock()
+        self._threads: list[threading.Thread] = []
+        self.accepted = 0
+        self.dsn = f"{match.group(1)}127.0.0.1:{self._listener.getsockname()[1]}{match.group(3)}"
+        self._start(self._serve)
+
+    def _start(self, target, *args) -> None:
+        thread = threading.Thread(target=target, args=args, daemon=True)
+        with self._lock:
+            self._threads.append(thread)
+        thread.start()
+
+    def _serve(self) -> None:
+        while True:
+            ready, _, _ = select.select([self._listener, self._woken], [], [])
+            if self._woken in ready:
+                return
+            client, _ = self._listener.accept()
+            self.accepted += 1
+            try:
+                server = socket.create_connection(self._target)
+            except OSError:
+                client.close()
+                continue
+            with self._lock:
+                self._sockets += [client, server]
+            self._start(self._copy, client, server)
+            self._start(self._copy, server, client)
+
+    @staticmethod
+    def _copy(source: socket.socket, sink: socket.socket) -> None:
+        # Copies one direction and shuts both ends when it ends, which ends the other direction.
+        with contextlib.suppress(OSError):
+            while data := source.recv(65536):
+                sink.sendall(data)
+        for end in (source, sink):
+            with contextlib.suppress(OSError):
+                end.shutdown(socket.SHUT_RDWR)
+
+    def close(self) -> None:
+        """Stops the relay, closes every relayed connection and returns when no thread of it runs."""
+        self._wake.send(b"x")
+        with self._lock:
+            sockets, threads = list(self._sockets), list(self._threads)
+        for end in sockets:
+            with contextlib.suppress(OSError):
+                end.shutdown(socket.SHUT_RDWR)
+        for thread in threads:
+            thread.join()
+        for end in [*sockets, self._listener, self._wake, self._woken]:
+            end.close()
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "dsn" in step:
@@ -2874,21 +2948,31 @@ def _op_reconnect(step: dict, context: dict) -> dict:
     if "user_from_database" in step:
         dsn = _user_from_database_dsn(dsn, step["user_from_database"])
     if "refused_message" in step:
+        relay = _ConnectRelay(dsn) if "connects" in step else None
         try:
-            connect_catalog(dsn).current_namespace()
-        except Exception as error:
-            if step["refused_message"] not in str(error).lower():
-                raise AssertionError(
-                    f"the server refused the connection for another reason: {error}"
-                ) from error
-            if getattr(error, "code", None) != step["refused_code"]:
-                raise AssertionError(
-                    f"the refused connection has another code than {step['refused_code']}: {error}"
-                ) from error
-            return {}
-        raise AssertionError(
-            "the server accepted the connection that the step expects it to refuse"
-        )
+            try:
+                connect_catalog(relay.dsn if relay else dsn).current_namespace()
+            except Exception as error:
+                if step["refused_message"] not in str(error).lower():
+                    raise AssertionError(
+                        f"the server refused the connection for another reason: {error}"
+                    ) from error
+                if getattr(error, "code", None) != step["refused_code"]:
+                    raise AssertionError(
+                        f"the refused connection has another code than {step['refused_code']}: {error}"
+                    ) from error
+                if relay is not None and relay.accepted != step["connects"]:
+                    raise AssertionError(
+                        f"the client opened {relay.accepted} connections for the refused reconnect, "
+                        f"want {step['connects']}"
+                    ) from error
+                return {}
+            raise AssertionError(
+                "the server accepted the connection that the step expects it to refuse"
+            )
+        finally:
+            if relay is not None:
+                relay.close()
     # A committed mutation leaves its connection in the catalog that this step replaces (INT-106e).
     if not context.get("closed"):
         context["catalog"].close()

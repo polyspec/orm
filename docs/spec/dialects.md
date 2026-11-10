@@ -124,6 +124,18 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0)`, which
   gives the rows of the join on both servers and reads only its table (DIA-200, rule 1).
 
+- **DIA-211** The count of refused connects — MySQL 8.4 / MariaDB 11.8: the case
+  `plain_connect_on_a_held_place_is_refused_once` of the catalog recipe holds that a client does not try again a connect
+  that `max_user_connections` refuses (CFG-35), and the servers count that refusal in no common form. MySQL records it as
+  an error 1226 of its user in `performance_schema.events_errors_summary_by_user_by_error` and counts it in
+  `performance_schema.users`. MariaDB has no error summary; `performance_schema.users` counts only the connections that it
+  admits, `USER_STATISTICS` leaves its `DENIED_CONNECTIONS` at 0, and `Aborted_connects` is global. Its server_audit plugin
+  writes a refused connect as a `FAILED_CONNECT` line, but only after the refusal is sent (`login_connection`,
+  sql/sql_connect.cc, sends the error in `end_statement` and calls `mysql_audit_notify_connection_connect` after it), so a
+  read right after the refusal missed the line in 6 of 10 runs on 11.8.6. The count is the client's, not the server's: the
+  step `catalog.reconnect {connects}` relays the reconnect through a TCP listener of the runner in front of the server,
+  which counts the connections it accepts, and each runtime gives 1 on both servers in the same form (DIA-200, rule 1).
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: a9368f7fc56c2dafd2fd073748a79d95e01bc980b7115727894103be771321fc -->
+<!-- source-sha256: d5994df2cbcf2426aadf2963d9b335fb68b58f8ea0d64c87bb3e48ff87940b87 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -114,6 +114,17 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   상수로 이름 짓는 subquery `COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE
   k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0)`로 읽는다.
   이 subquery는 두 server에서 join과 같은 row를 주고 그 table만 읽는다(DIA-200, 규칙 1).
+
+- **DIA-211** 거부된 연결의 수 — MySQL 8.4 / MariaDB 11.8: catalog recipe의 case
+  `plain_connect_on_a_held_place_is_refused_once`는 client가 `max_user_connections`가 거부한 연결을 다시 시도하지 않는다는
+  것(CFG-35)을 지키는데, 두 server는 그 거부를 공통된 형태로 세지 않는다. MySQL은 그것을 그 user의 오류 1226으로
+  `performance_schema.events_errors_summary_by_user_by_error`에 기록하고 `performance_schema.users`에서 센다. MariaDB에는 오류
+  요약이 없고, `performance_schema.users`는 받아들인 연결만 세며, `USER_STATISTICS`는 `DENIED_CONNECTIONS`를 0으로 두고,
+  `Aborted_connects`는 global이다. MariaDB의 server_audit plugin은 거부된 연결을 `FAILED_CONNECT` 줄로 쓰지만 거부를 보낸
+  뒤에야 쓰므로(`login_connection`, sql/sql_connect.cc는 `end_statement`에서 오류를 보내고 그 뒤에
+  `mysql_audit_notify_connection_connect`를 부른다), 거부 직후 읽으면 11.8.6에서 run 10번 중 6번 그 줄을 놓쳤다. 그래서 수는
+  server가 아니라 client의 것이다. step `catalog.reconnect {connects}`는 재연결을 server 앞에 둔 runner의 TCP listener로
+  중계하고, listener는 받아들인 연결을 센다. 각 runtime은 두 server에서 같은 형태로 1을 준다(DIA-200, 규칙 1).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

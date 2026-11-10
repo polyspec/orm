@@ -54,7 +54,8 @@
     "INT-182",
     "INT-183",
     "INT-184",
-    "INT-185"
+    "INT-185",
+    "DIA-211"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -10442,7 +10443,8 @@
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
-        "CFG-35"
+        "CFG-35",
+        "DIA-211"
       ],
       "only": [
         "mysql"
@@ -10464,11 +10466,6 @@
           "sql": "CALL one_connection_user('create')"
         },
         {
-          "op": "sql.exec",
-          "reason": "the connects that the server has counted for that name until now in performance_schema.users, which both servers have (MariaDB has no error summary by user): MySQL counts a refused connect there, so the held connection and the one refused reconnect make two more; MariaDB counts only the connections that it admits, and no table of MariaDB counts a refusal of max_user_connections by user, so its answer is one more, the held connection",
-          "sql": "CREATE TABLE connects_before AS SELECT COALESCE(SUM(TOTAL_CONNECTIONS), 0) AS n FROM performance_schema.users WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28))"
-        },
-        {
           "op": "sql.hold_connection",
           "user_from_database": "o1_"
         },
@@ -10476,34 +10473,11 @@
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
           "refused_code": "DRIVER",
-          "refused_message": "max_user_connections"
+          "refused_message": "max_user_connections",
+          "connects": 1
         },
         {
           "op": "sql.release_connection"
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT CAST(counted.n - before_it.n AS CHAR) AS connects FROM (SELECT COALESCE(SUM(TOTAL_CONNECTIONS), 0) AS n FROM performance_schema.users WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28))) counted CROSS JOIN connects_before before_it",
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "text": "2"
-                  }
-                ]
-              ]
-            },
-            "mariadb": {
-              "rows": [
-                [
-                  {
-                    "text": "1"
-                  }
-                ]
-              ]
-            }
-          }
         },
         {
           "op": "catalog.close"
