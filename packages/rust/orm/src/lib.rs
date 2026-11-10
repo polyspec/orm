@@ -146,6 +146,16 @@ fn mariadb_code(number: u16) -> Option<&'static str> {
     })
 }
 
+/// The catalog code of a MariaDB error `number` with SQLSTATE `state` of a statement that took the row lock `lock`, empty for
+/// none (DIA-201, DIA-209): 1205 of a `*_nowait` lock is LOCK_NOT_AVAILABLE, and every other error is read by MariaDB's
+/// table, SQLSTATE 40001 is DEADLOCK, and any other is DRIVER.
+fn mariadb_statement_code(number: u16, state: Option<&str>, lock: &str) -> &'static str {
+    if number == 1205 && matches!(lock, "update_nowait" | "share_nowait") {
+        return codes::LOCK_NOT_AVAILABLE;
+    }
+    mariadb_code(number).or((state == Some("40001")).then_some(codes::DEADLOCK)).unwrap_or(codes::DRIVER)
+}
+
 /// The server of a mysql connection, which the connection reads once by `VERSION()` (DIA-201).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MySqlServer {
@@ -153,17 +163,41 @@ pub(crate) enum MySqlServer {
     MariaDb,
 }
 
+impl MySqlServer {
+    /// The server that a `VERSION()` names: one that contains `-MariaDB` is MariaDB, and any other is MySQL (DIA-201).
+    pub(crate) fn of_version(version: &str) -> MySqlServer {
+        if version.contains("-MariaDB") {
+            MySqlServer::MariaDb
+        } else {
+            MySqlServer::MySql
+        }
+    }
+
+    /// The statement that sets the statement timeout of `ms` milliseconds on a connection of the server (DIA-208): MySQL
+    /// bounds a SELECT by `max_execution_time` in milliseconds, and MariaDB every statement by `max_statement_time` in
+    /// seconds, written with three fraction digits.
+    pub(crate) fn statement_timeout(self, ms: u32) -> String {
+        match self {
+            MySqlServer::MySql => format!("SET SESSION max_execution_time = {ms}"),
+            MySqlServer::MariaDb => format!("SET SESSION max_statement_time = {}.{:03}", ms / 1000, ms % 1000),
+        }
+    }
+}
+
 impl Error {
     /// The error with the code that the table of its server gives a MySQL error number (DIA-201): `From<sqlx::Error>` reads
-    /// a number by MySQL's table, so on MariaDB a database error of a mysql connection is read again by MariaDB's.
-    pub(crate) fn for_server(self, server: MySqlServer) -> Error {
+    /// a number by MySQL's table, so on MariaDB a database error of a mysql connection is read again by MariaDB's. `lock` is
+    /// the row lock that the failing statement took, empty for a statement with none: MariaDB fails a NOWAIT lock that it
+    /// cannot take at once with 1205, its lock wait timeout, so 1205 of a statement of a `*_nowait` lock is
+    /// LOCK_NOT_AVAILABLE, as MySQL's 3572 is, and 1205 of any other statement stays CANCELED (DIA-209).
+    pub(crate) fn for_server(self, server: MySqlServer, lock: &str) -> Error {
         if server != MySqlServer::MariaDb {
             return self;
         }
         match self {
             Error::Driver { code: _, msg, source: sqlx::Error::Database(d) } if d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().is_some() => {
                 let m = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().expect("a MySQL database error");
-                let code = mariadb_code(m.number()).or((m.code() == Some("40001")).then_some(codes::DEADLOCK)).unwrap_or(codes::DRIVER);
+                let code = mariadb_statement_code(m.number(), m.code(), lock);
                 Error::Driver { code: code.into(), msg, source: sqlx::Error::Database(d) }
             }
             other => other,
@@ -355,6 +389,49 @@ macro_rules! models {
 #[cfg(test)]
 #[path = "../tests/common/or_panic.rs"]
 mod or_panic;
+
+#[cfg(test)]
+mod mysql_server_tests {
+    use super::*;
+
+    // DIA-201: a version that contains -MariaDB is MariaDB, and any other is MySQL.
+    #[test]
+    fn the_server_is_read_from_its_version() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(MySqlServer::of_version("11.8.6-MariaDB"), MySqlServer::MariaDb);
+        assert_eq!(MySqlServer::of_version("11.8.6-MariaDB-log"), MySqlServer::MariaDb);
+        assert_eq!(MySqlServer::of_version("8.4.6"), MySqlServer::MySql);
+        assert_eq!(MySqlServer::of_version("8.4.6-mariadb"), MySqlServer::MySql);
+    }
+
+    // DIA-208: MySQL takes max_execution_time in milliseconds, MariaDB max_statement_time in seconds with three fraction
+    // digits; neither server is given the variable of the other.
+    #[test]
+    fn the_statement_timeout_is_set_by_the_variable_of_the_server() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(MySqlServer::MySql.statement_timeout(237), "SET SESSION max_execution_time = 237");
+        assert_eq!(MySqlServer::MariaDb.statement_timeout(237), "SET SESSION max_statement_time = 0.237");
+        assert_eq!(MySqlServer::MariaDb.statement_timeout(5), "SET SESSION max_statement_time = 0.005");
+        assert_eq!(MySqlServer::MariaDb.statement_timeout(1500), "SET SESSION max_statement_time = 1.500");
+        assert_eq!(MySqlServer::MariaDb.statement_timeout(60000), "SET SESSION max_statement_time = 60.000");
+        assert!(!MySqlServer::MySql.statement_timeout(237).contains("max_statement_time"));
+        assert!(!MySqlServer::MariaDb.statement_timeout(237).contains("max_execution_time"));
+    }
+
+    // DIA-209: MariaDB's 1205 is LOCK_NOT_AVAILABLE for a statement of a NOWAIT lock, and CANCELED for any other.
+    #[test]
+    fn mariadb_1205_is_read_by_the_lock_of_the_statement() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(mariadb_statement_code(1205, Some("HY000"), "update_nowait"), codes::LOCK_NOT_AVAILABLE);
+        assert_eq!(mariadb_statement_code(1205, Some("HY000"), "share_nowait"), codes::LOCK_NOT_AVAILABLE);
+        for lock in ["", "update", "share"] {
+            assert_eq!(mariadb_statement_code(1205, Some("HY000"), lock), codes::CANCELED, "lock {lock:?}");
+        }
+        assert_eq!(mariadb_statement_code(1969, Some("70100"), "share_nowait"), codes::CANCELED);
+        assert_eq!(mariadb_statement_code(1213, Some("40001"), "update_nowait"), codes::DEADLOCK);
+        assert_eq!(mariadb_statement_code(3572, Some("HY000"), "update_nowait"), codes::DRIVER);
+    }
+}
 
 #[cfg(test)]
 mod sqlite_code_tests {

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 26165a29529c572fc3e412b56faac7182e2e6b890d8e64fa009ddea8bdb363dd -->
+<!-- source-sha256: da975413b0360bd1616d7cd3182c9ff7bc4153eab29b358ef1a4aa70f916d1b2 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -64,11 +64,55 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   그 text로, 시계는 `current_timestamp()`나 `current_timestamp(p)`로 쓰며, `EXTRA`에는 `DEFAULT_GENERATED`가 없다. 두 형식을
   함께 주는 query가 없으므로(DIA-200, 규칙 2) introspection은 MariaDB text를 MySQL 형식으로 읽는다. `NULL`은 default가
   없는 것이고, 따옴표로 감싼 literal은 escape를 푼 그 값이며, 숫자는 그 자신이고, 다른 text는 시계를 포함해 MySQL이 표시하는
-  것과 같은 식 default다. 하나의 온전한 literal이 아닌 따옴표 text는 error다.
+  것과 같은 식 default다. 하나의 온전한 literal이 아닌 따옴표 text는 error다. catalog connection의 table descriptor
+  (`describeTable`)도 같은 text를 같은 규칙으로 읽는다. 그 default 식은 MySQL 형식이고 `NULL`이면 없으며, 식 표시는 MySQL이
+  표시하는 것과 같다.
 
 - **DIA-206** CHECK 삭제 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.check.drop_constraint`,
-  `mariadb.check.drop_constraint`): plan은 두 server가 같은 결과로 받는 `ALTER TABLE t DROP CONSTRAINT c`로 CHECK를
-  지운다. MariaDB에는 `DROP CHECK`가 없다(1064)(DIA-200, 규칙 1).
+  `mariadb.check.drop_constraint`, `mysql.check.drop_constraint_shared_name`, `mariadb.check.drop_constraint_shared_name`):
+  plan은 두 server가 같은 결과로 받는 `ALTER TABLE t DROP CONSTRAINT c`로 CHECK를 지운다. MariaDB에는 `DROP CHECK`가
+  없다(1064)(DIA-200, 규칙 1). MySQL은 CHECK가 그 표의 foreign key와 이름을 나누는 것을 허용하고, 그때 그 이름의
+  `DROP CONSTRAINT`는 모호하다(3939). MariaDB는 나눈 이름을 거부한다(1826). 어떤 plan도 그런 표를 만나지 않는다. 문서는
+  모든 check, foreign key, unique key, index의 이름을 서로 다르게 짓고(DBS-34, vector `check-and-foreign-key-share-a-name`),
+  plan은 바뀌는 foreign key와 check를 무엇을 더하기 전에 지우므로(PLN-74, PLN-75, PLN-80, PLN-81), plan이 지우는 CHECK는
+  그 표의 어떤 constraint와도 이름을 나누지 않는다.
+
+- **DIA-207** Partial revoke — MySQL 8.4 / MariaDB 11.8 (probe `mysql.session.partial_revokes_listed`,
+  `mariadb.session.partial_revokes_listed`): catalog은 partial revoke가 켜진 server에서 row 변경을 거부하며(INT-119), 모든
+  runtime에서 `SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'`로 읽고 row가 하나라도
+  나오면 거부한다. MySQL은 설정이 켜져 있을 때 그 설정을 내놓고, MariaDB에는 partial revoke도 `partial_revokes`도 없어
+  (1193) row를 내놓지 않으므로, 이 한 형식이 두 server에 같은 결과로 답한다(DIA-200, 규칙 1). catalog recipe의 case
+  `row_change_with_partial_revokes_enabled`가 MariaDB의 답을 적는다. 그 replica에는 켤 설정이 없어, MySQL이 그곳에서
+  거부하는 row 변경이 이루어진다.
+
+- **DIA-208** Statement timeout — MySQL 8.4 / MariaDB 11.8 (probe `mysql.session.statement_timeout`,
+  `mariadb.session.statement_timeout`): MySQL은 SELECT를 millisecond 단위의 `max_execution_time`으로 제한하고(3024)
+  `max_statement_time`이 없다(1193). MariaDB는 `max_execution_time`이 없고(1193) 모든 statement를 초 단위의
+  `max_statement_time`으로 제한한다(1969). 두 server에 모두 통하는 설정이 없으므로(DIA-200, 규칙 2), `statementTimeoutMs`
+  (CFG-6)를 가진 연결은 모든 runtime에서, pool의 모든 연결에서, server를 읽은 뒤(DIA-201) 다른 statement보다 먼저 MySQL에서는
+  `SESSION max_execution_time = <ms>`를, MariaDB에서는 소수 세 자리로 적은 `SESSION max_statement_time = <ms / 1000>`을
+  설정한다. MariaDB가 멈춘 statement는 `CANCELED`를 돌려주므로(1969, DIA-201), MariaDB는 PostgreSQL처럼 write도 제한한다.
+  recipe dsn_connection의 case `mysql_session_settings`가 각 server의 설정을 읽는다.
+
+- **DIA-209** Row lock — MySQL 8.4 / MariaDB 11.8 (probe `mysql.lock.share_clause`, `mariadb.lock.share_clause`,
+  `mysql.lock.nowait_held`, `mariadb.lock.nowait_held`): lock `share`는 두 server가 공유 row lock으로 읽는
+  ` LOCK IN SHARE MODE`로 render한다. MariaDB에는 `FOR SHARE`가 없다(1064). `update_nowait`는 두 server가 똑같이 읽는
+  ` FOR UPDATE NOWAIT`로 render한다(DIA-200, 규칙 1). `share_nowait`에는 공통 형식이 없다. MySQL은 `FOR SHARE` 뒤에만,
+  MariaDB는 `LOCK IN SHARE MODE` 뒤에만 NOWAIT를 받으므로(그 밖에는 1064), planner는 연결의 server에 따라(DIA-201;
+  DIA-200, 규칙 2) MySQL에서는 ` FOR SHARE NOWAIT`를, MariaDB에서는 ` LOCK IN SHARE MODE NOWAIT`를 render한다. MariaDB는
+  바로 잡지 못한 NOWAIT lock을 lock wait timeout의 번호인 1205로 실패시키고 MySQL은 3572를 준다. MariaDB에서 `*_nowait`
+  lock의 statement가 1205로 실패하면 MySQL처럼 `LOCK_NOT_AVAILABLE`을 돌려주고(INT-49), 다른 statement의 1205는 그대로
+  `CANCELED`다(CFG-6). recipe transactions의 case `nowait_lock_held_by_another_transaction`가 MySQL, MariaDB, PostgreSQL 서버에서 이를
+  확인한다. SQLite는 한 번에 쓰기 transaction 하나만 받으므로 두 번째 transaction이 `BEGIN IMMEDIATE`에서 기다리고 lock에 닿지
+  않아 이 case에서 빠진다(INT-49의 SQLite lock row는 `sqlite-row-lock-restoration`이 확인한다).
+
+- **DIA-210** catalog descriptor의 primary key 순번 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.catalog.key_ordinal_by_name`,
+  `mariadb.catalog.key_ordinal_by_name`): MariaDB는 `information_schema` table을 그 자신의 조건에 있는 상수로만 table 이름으로
+  읽으므로, `COLUMNS`의 column에 `KEY_COLUMN_USAGE`를 join하면 모든 database의 모든 table을 연다("Scanned all databases").
+  case database가 있는 server에서 describe 하나에 약 1초가 걸린다. catalog connection의 descriptor는 column의 순번을 table을
+  상수로 이름 짓는 subquery `COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE
+  k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0)`로 읽는다.
+  이 subquery는 두 server에서 join과 같은 row를 주고 그 table만 읽는다(DIA-200, 규칙 1).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
@@ -443,6 +487,7 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.auto_increment.rollback_leaves_gap` | MySQL의 fact가 성립한다 |
 | `mariadb.binary.zero_padded` | MySQL의 fact가 성립한다 |
 | `mariadb.bool.alias_tinyint` | MySQL의 fact가 성립한다 |
+| `mariadb.catalog.key_ordinal_by_name` | table을 상수로 이름 짓는 subquery가 join처럼 primary key 순번을 읽고, join만 모든 database의 모든 table을 연다 |
 | `mariadb.char.trailing_spaces_removed` | MySQL의 fact가 성립한다 |
 | `mariadb.check.alter_rewrites_introducers` | MariaDB에는 REGEXP_LIKE가 없고(CHECK 밖에서 1305, 안에서 1901), ALTER TABLE은 CHECK_CLAUSE를 그대로 둔다 |
 | `mariadb.check.alter_writes_time_precision` | ALTER TABLE은 time(p) column과 만나는 time literal을 쓴 그대로 둔다 |
@@ -450,6 +495,7 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.check.bool_column_rejected` | bool column 하나만으로 CHECK 식이 되고, 그 CHECK는 0을 거부한다(4025) |
 | `mariadb.check.catalog_text` | CHECK_CLAUSE는 바깥 괄호와 character set introducer가 없는 식이다 |
 | `mariadb.check.drop_constraint` | MySQL의 fact가 성립한다 |
+| `mariadb.check.drop_constraint_shared_name` | CHECK는 그 표의 foreign key나 unique key와 이름을 나눌 수 없어(1826), DROP CONSTRAINT는 constraint 하나를 가리킨다 |
 | `mariadb.check.enforced_null_passes` | CHECK는 적용되고(4025, SQLSTATE 23000) NULL은 통과한다 |
 | `mariadb.check.fk_action_column_rejected` | 참조 action이 있는 foreign key의 column은 CHECK에 나올 수 없다(1901) |
 | `mariadb.check.name_schema_scope` | CHECK 이름의 범위는 그 table이다: 두 table이 각각 CHECK ck를 가질 수 있다 |
@@ -515,6 +561,8 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.like.ascii_fold_replace` | MySQL의 fact가 성립한다 |
 | `mariadb.like.binary_collation_case_sensitive` | MySQL의 fact가 성립한다 |
 | `mariadb.like.binary_collation_code_point` | MySQL의 fact가 성립한다 |
+| `mariadb.lock.nowait_held` | 다른 transaction이 잠근 row의 NOWAIT 읽기는 lock wait timeout의 번호인 1205로 바로 실패한다 |
+| `mariadb.lock.share_clause` | LOCK IN SHARE MODE는 공유 row lock을 잡고 NOWAIT를 받으며, MariaDB에는 FOR SHARE가 없다(1064) |
 | `mariadb.not_null.missing_value_rejected` | MySQL의 fact가 성립한다 |
 | `mariadb.now.compare_six_digits` | MySQL의 fact가 성립한다 |
 | `mariadb.now.precision_truncates` | MySQL의 fact가 성립한다 |
@@ -531,7 +579,9 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 | `mariadb.render.timestamp_conversion` | MySQL의 fact가 성립한다 |
 | `mariadb.render.uuid_check` | REGEXP CHECK를 가진 CHAR(36) ascii_bin은 소문자 canonical UUID text만 받고(4025), REGEXP_LIKE는 거부된다(1901) |
 | `mariadb.sequence.unsupported` | MariaDB에는 CREATE SEQUENCE가 있고, sequence는 그 자체 종류의 table이다 |
+| `mariadb.session.partial_revokes_listed` | MariaDB에는 partial_revokes가 없고(1193), SHOW GLOBAL VARIABLES는 그 row를 내놓지 않는다 |
 | `mariadb.session.sql_mode_set` | MySQL의 fact가 성립한다 |
+| `mariadb.session.statement_timeout` | MariaDB에는 max_execution_time이 없고(1193), SESSION max_statement_time이 모든 statement를 초 단위로 제한한다(1969) |
 | `mariadb.text.index_needs_prefix` | prefix 길이 없는 TEXT index를 768문자 prefix로 받고, STATISTICS는 이를 SUB_PART로 보고한다 |
 | `mariadb.text.literal_default_needs_expression` | TEXT는 DEFAULT 'x'와 DEFAULT ('x')를 모두 받고, COLUMN_DEFAULT는 둘 다 따옴표 친 literal로 보고한다 |
 | `mariadb.text.max_bytes` | MySQL의 fact가 성립한다 |

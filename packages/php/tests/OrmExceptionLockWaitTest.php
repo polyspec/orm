@@ -52,4 +52,29 @@ final class OrmExceptionLockWaitTest extends TestCase
             }
         }
     }
+
+    // Requirements: DIA-209. MariaDB fails a NOWAIT lock that it cannot take at once with 1205: a statement of a
+    // *_nowait lock that fails with 1205 on MariaDB is LOCK_NOT_AVAILABLE, and 1205 of a statement without a nowait
+    // lock, or on MySQL, whose NOWAIT failure is 3572, is no lock error (it stays CANCELED by the table of its server).
+    public function testMariadb1205OfANowaitLockIsLockNotAvailable(): void
+    {
+        $map = new \ReflectionMethod(\Polyspec\Orm\Db::class, 'nowaitLockError');
+        $cases = [
+            ['mariadb', 'update_nowait', 1205, Code::LOCK_NOT_AVAILABLE],
+            ['mariadb', 'share_nowait', 1205, Code::LOCK_NOT_AVAILABLE],
+            ['mariadb', 'update', 1205, null], ['mariadb', 'share', 1205, null], ['mariadb', '', 1205, null],
+            ['mariadb', 'share_nowait', 1969, null],
+            ['mysql', 'update_nowait', 1205, null], ['mysql', 'share_nowait', 1205, null],
+            ['postgres', 'update_nowait', 1205, null],
+        ];
+        foreach ($cases as [$server, $lock, $number, $want]) {
+            $driverError = new PDOException('m');
+            $driverError->errorInfo = ['HY000', $number, 'm'];
+            $error = $map->invoke(null, $server, $lock, $driverError);
+            self::assertSame($want, $error?->code_, "{$server} {$lock} {$number}");
+            if ($error !== null) {
+                self::assertSame($driverError, $error->getPrevious());
+            }
+        }
+    }
 }

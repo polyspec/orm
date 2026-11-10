@@ -1645,7 +1645,9 @@ static bool mysql_number(str s)
  * SQL NULL, a literal without quotes and escapes, and an expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among
  * them, with EXTRA DEFAULT_GENERATED (probe mysql.default.catalog_text). A quoted text that is not one whole literal is a
  * RuntimeException and false. */
-static bool mariadb_default(str table, str name, bool *def_null, str *def, str *extra)
+/* The DIA-205 reading of one MariaDB COLUMN_DEFAULT, which mariadb_default and the catalog descriptor share: false when a quoted
+ * text is not one whole literal, which each caller reports in its own error. */
+static bool mariadb_default_read(bool *def_null, str *def, str *extra)
 {
     if (*def_null || extra->n > 0) {
         return true;
@@ -1661,7 +1663,7 @@ static bool mariadb_default(str table, str name, bool *def_null, str *def, str *
         str value;
         size_t length = 0;
         if (!sql_string(&d, text, &value, &length) || length != text.n) {
-            return dbs_throw(spl_ce_RuntimeException, fmt("column %S.%S: default %S is not one string literal", table, name, text));
+            return false;
         }
         *def = value;
         return true;
@@ -1678,6 +1680,41 @@ static bool mariadb_default(str table, str name, bool *def_null, str *def, str *
     }
     *extra = SL("DEFAULT_GENERATED");
     return true;
+}
+
+static bool mariadb_default(str table, str name, bool *def_null, str *def, str *extra)
+{
+    str text = *def;
+    if (!mariadb_default_read(def_null, def, extra)) {
+        return dbs_throw(spl_ce_RuntimeException, fmt("column %S.%S: default %S is not one string literal", table, name, text));
+    }
+    return true;
+}
+
+/* The default of a MariaDB COLUMN_DEFAULT in the MySQL form, for the table descriptor of the catalog connection, which reads no
+ * EXTRA (DIA-205): *out is the default text, NULL for none, and *expression whether it is an expression default. A quoted text
+ * that is not one whole literal returns false with *bad the message "default <text> is not one string literal". */
+bool dbspec_mariadb_catalog_default(zend_string *def, zend_string **out, bool *expression, zend_string **bad)
+{
+    *out = NULL;
+    *expression = false;
+    *bad = NULL;
+    if (def == NULL) {
+        return true;
+    }
+    dbs_arena arena, *saved;
+    dbs_enter(&arena, &saved);
+    bool def_null = false;
+    str text = str_z(def), extra = SL("");
+    bool ok = mariadb_default_read(&def_null, &text, &extra);
+    if (!ok) {
+        *bad = str_zend(fmt("default %S is not one string literal", str_z(def)));
+    } else if (!def_null) {
+        *out = str_zend(text);
+        *expression = str_eqc(extra, "DEFAULT_GENERATED");
+    }
+    dbs_leave(&arena, saved);
+    return ok;
 }
 
 static str mysql_default_literal(str value, const ctype *type)

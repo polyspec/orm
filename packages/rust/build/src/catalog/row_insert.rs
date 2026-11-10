@@ -70,7 +70,7 @@ impl CatalogConnection {
                     return Err("ROW_CONFLICT: insertion key already exists".into());
                 }
             }
-            let descriptor = metadata::describe(&mut connection, &self.dialect, &declared.table).await?;
+            let descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &declared.table).await?;
             if &descriptor != declared {
                 return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
             }
@@ -135,7 +135,7 @@ impl CatalogConnection {
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;
             let after = lookup(&mut connection, &descriptor, &self.dialect, &keys, false).await?;
-            let after_descriptor = metadata::describe(&mut connection, &self.dialect, &descriptor.table).await?;
+            let after_descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &descriptor.table).await?;
             if descriptor != after_descriptor {
                 return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
             }

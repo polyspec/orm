@@ -19,6 +19,8 @@ pub(crate) struct Planner<'m> {
     /// The database assigns the `key_prefix` key and the `order` position of a row that an insert leaves out: a corpus that
     /// a flowmark server serves (docs/spec/protocol.md PRT-73).
     pub assigns: bool,
+    /// The server of a mysql connection, whose form a row lock takes (DIA-201, DIA-209); MySQL on every other database.
+    pub server: crate::MySqlServer,
 }
 
 /// One entity occurrence in a statement (the root or a join) with its alias.
@@ -603,7 +605,7 @@ impl<'m> Planner<'m> {
                 if !q.lock.is_empty() {
                     let lock = self
                         .d
-                        .row_lock(&q.lock)
+                        .row_lock(&q.lock, self.server)
                         .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} row lock {:?} is not supported", self.d.name(), q.lock)))?;
                     sb.push_str(lock);
                 }

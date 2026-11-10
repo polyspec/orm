@@ -386,6 +386,15 @@ def _mariadb_default(dflt, extra: str):
     return dflt, "DEFAULT_GENERATED"
 
 
+def mariadb_catalog_default(dflt) -> tuple:
+    """The default text and the expression flag of a MariaDB COLUMN_DEFAULT that the table descriptor of a catalog
+    connection reads, by the rule of the introspection (DIA-205): its query gives the DEFAULT_GENERATED flag and no
+    EXTRA, and MariaDB writes no DEFAULT_GENERATED, so the text is read with an empty EXTRA. A quoted text that is not
+    one whole literal is a ValueError."""
+    value, extra = _mariadb_default(dflt, "")
+    return value, extra == "DEFAULT_GENERATED"
+
+
 def _renderer_check(server: str, col: dict) -> str:
     """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md
     "Introspection", "Checks"). MariaDB writes it without the outer parentheses and the introducers, in the escaped

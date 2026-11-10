@@ -14,6 +14,9 @@ __all__ = [
     "quote_with",
 ]
 
+from polyspec.orm import codes
+from polyspec.orm.errors import OrmError
+
 # Column type that each column function takes.
 column_function_types = {
     "day_of_week": ("date", "datetime"),
@@ -219,10 +222,39 @@ def _ascii_lower(x: str) -> str:
     )
 
 
+# The row lock suffix of each server of the mysql dialect (DIA-209): both read LOCK IN SHARE MODE as a shared row lock,
+# since MariaDB has no FOR SHARE, and FOR UPDATE [NOWAIT] alike. share_nowait has no common form: MySQL takes NOWAIT
+# after FOR SHARE alone and MariaDB after LOCK IN SHARE MODE alone.
+_MYSQL_LOCKS = {
+    server: {
+        "update": " FOR UPDATE",
+        "share": " LOCK IN SHARE MODE",
+        "update_nowait": " FOR UPDATE NOWAIT",
+        "share_nowait": share_nowait,
+    }
+    for server, share_nowait in (
+        ("mysql", " FOR SHARE NOWAIT"),
+        ("mariadb", " LOCK IN SHARE MODE NOWAIT"),
+    )
+}
+
+
 class MysqlDialect(Dialect):
-    """AES and hex are on the host side, so the row's key version chooses the key and every dialect writes the same hex text; ip is on the SQL side."""
+    """AES and hex are on the host side, so the row's key version chooses the key and every dialect writes the same hex text; ip is on the SQL side.
+    server is the server of the connection, mysql or mariadb, which it read by VERSION() (DIA-201); the row lock of
+    share_nowait is rendered by it (DIA-209)."""
 
     name = "mysql"
+
+    def __init__(self, server: str = "mysql"):
+        if server not in _MYSQL_LOCKS:
+            raise OrmError(
+                codes.INTERNAL, f"mysql server {server!r} is not mysql or mariadb"
+            )
+        self.server = server
+
+    def row_lock(self, mode):
+        return _MYSQL_LOCKS[self.server].get(mode)
 
     def quote(self, ident: str) -> str:
         return quote_with("`", ident)

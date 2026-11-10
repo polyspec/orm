@@ -872,7 +872,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	}
 	rows, err := stmt.QueryContext(ctx, args...)
 	rows, endAgain, err := d.queryAgain(ctx, ex.transaction() == nil, sqlText, args, rows, err)
-	err = mapDriverErrContext(err, ctx, ex.base().server)
+	err = mapLockedErr(err, ctx, ex.base().server, st.Lock)
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
@@ -923,7 +923,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		out = append(out, vals)
 	}
 	if err == nil {
-		err = mapDriverErrContext(rows.Err(), ctx, ex.base().server)
+		err = mapLockedErr(rows.Err(), ctx, ex.base().server, st.Lock)
 	}
 	if closeErr := rows.Close(); err == nil {
 		err = mapDriverErrContext(closeErr, ctx, ex.base().server)

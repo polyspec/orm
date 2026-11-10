@@ -195,6 +195,24 @@ final class Db
         return $this->driver === 'mysql' ? $this->state->server : $this->driver;
     }
 
+    /**
+     * The error of a statement whose plan step takes the row lock $lock. MariaDB fails a NOWAIT lock that it cannot
+     * take at once with 1205, the number of its lock wait timeout, so 1205 of a statement of a *_nowait lock is
+     * LOCK_NOT_AVAILABLE, as MySQL's 3572 is, and 1205 of any other statement stays CANCELED (DIA-209).
+     */
+    private function statementError(\PDOException $e, string $lock): OrmException
+    {
+        return self::nowaitLockError($this->server(), $lock, $e) ?? $this->driverError($e);
+    }
+
+    /** LOCK_NOT_AVAILABLE for MariaDB's 1205 of a statement of a *_nowait lock, else null (DIA-209). */
+    private static function nowaitLockError(string $server, string $lock, \PDOException $e): ?OrmException
+    {
+        return $server === 'mariadb' && str_ends_with($lock, '_nowait') && ($e->errorInfo[1] ?? null) === 1205
+            ? new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e)
+            : null;
+    }
+
     /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {
@@ -455,14 +473,15 @@ final class Db
      * $done publishes the event with the hrtime before the statement was sent and the error. A driver error
      * is mapped to an OrmException, attached to the event, and thrown. A statement whose $control is false
      * consumes an armed statement fault:
-     * it is not sent, and ends with that error (docs/spec/protocol.md 3.2).
+     * it is not sent, and ends with that error (docs/spec/protocol.md 3.2). $lock is the row lock of the plan step of
+     * the statement, '' for any other statement, which the error of a NOWAIT lock on MariaDB reads (DIA-209).
      *
      * @template T
      * @param \Closure(): T $send
      * @param \Closure(int, ?OrmException): void $done
      * @return T
      */
-    private function send(\Closure $send, \Closure $done, bool $control = false): mixed
+    private function send(\Closure $send, \Closure $done, bool $control = false, string $lock = ''): mixed
     {
         $start = hrtime(true);
         if (!$control && $this->state->statementFault !== null) {
@@ -481,7 +500,7 @@ final class Db
         } catch (\PDOException $e) {
             $error = $cancellation?->isCancelled()
                 ? new OrmException(Code::CANCELED, 'statement was cancelled', $e)
-                : $this->driverError($e);
+                : $this->statementError($e, $lock);
             if ($cancellation?->isCancelled()) {
                 $this->state->stmts = [];
                 $this->state->stmtOrder = [];
@@ -1247,7 +1266,8 @@ final class Db
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
         // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
-        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize, $this->corpus);
+        // The plans of a mysql connection are the ones of its server (DIA-209).
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize, $this->corpus, $this->server());
         $r->canonicalize();
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
@@ -1923,7 +1943,8 @@ final class Db
                 $st->closeCursor();
                 return $rows;
             });
-        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error), false,
+            (string) ($step['lock'] ?? ''));
         // An error from failing to free a row that was read is not the statement's error, so it is thrown
         // after the event.
         if ($step['decode'] !== []) {
@@ -1943,7 +1964,8 @@ final class Db
                 $st->closeCursor();
                 return $v;
             });
-        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error), false,
+            (string) ($step['lock'] ?? ''));
         return $v === false ? null : $v;
     }
 

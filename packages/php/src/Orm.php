@@ -65,14 +65,13 @@ final class Orm
                 // does not incur a separate round trip to send a statement. It begins with SET NAMES utf8mb4 COLLATE
                 // utf8mb4_0900_bin, the collation of the text columns that the renderer writes, so a text literal
                 // compares by code point as a column does, on MySQL and MariaDB alike (DIA-202).
+                // The statement timeout is not in it: its variable is the one of the server, which the connection
+                // reads only after it opens (DIA-208).
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
-                    // MySQL bounds SELECT statements with max_execution_time.
                     \Pdo\Mysql::ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin, "
                         . "time_zone = '+00:00', sql_mode = '"
-                        . self::MYSQL_SQL_MODE . "'"
-                        . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = '
-                            . '' . $config->statementTimeoutMs : ''),
+                        . self::MYSQL_SQL_MODE . "'",
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
@@ -99,6 +98,11 @@ final class Orm
             // pooler may state for itself (DIA-201).
             $version = $driver === 'mysql' ? (string) $pdo->query('SELECT VERSION()')->fetchColumn() : '';
             $server = str_contains($version, '-MariaDB') ? 'mariadb' : 'mysql';
+            if ($driver === 'mysql' && $config->statementTimeoutMs > 0) {
+                // The first connection sets the statement timeout by the variable of the server it read, before any
+                // statement of the caller (DIA-208, CFG-7).
+                $pdo->exec('SET ' . self::mysqlStatementTimeout($server, $config->statementTimeoutMs));
+            }
             if ($driver === 'sqlite') {
                 // The driver reports the extended result code, whose name ends the message of an error (INT-154).
                 $pdo->setAttribute(\Pdo\Sqlite::ATTR_EXTENDED_RESULT_CODES, true);
@@ -123,6 +127,12 @@ final class Orm
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
         if ($driver === 'mysql') {
             $db->setServer($server);
+            if ($config->statementTimeoutMs > 0) {
+                // A connection that opens again for this Db knows its server, so its init command takes the statement
+                // timeout of that server (DIA-208, CFG-7).
+                $options[\Pdo\Mysql::ATTR_INIT_COMMAND] .= ', '
+                    . self::mysqlStatementTimeout($server, $config->statementTimeoutMs);
+            }
             $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
             $db->setReconnect($open);
             $openControl = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
@@ -151,6 +161,18 @@ final class Orm
             ));
         }
         return $db;
+    }
+
+    /**
+     * The session setting of the statement timeout of a mysql connection by its server (DIA-208): MySQL bounds a SELECT
+     * by max_execution_time in milliseconds, MariaDB every statement by max_statement_time in seconds, written with
+     * three fraction digits.
+     */
+    private static function mysqlStatementTimeout(string $server, int $ms): string
+    {
+        return $server === 'mariadb'
+            ? sprintf('SESSION max_statement_time = %d.%03d', intdiv($ms, 1000), $ms % 1000)
+            : 'SESSION max_execution_time = ' . $ms;
     }
 
     /** @param \Closure(): \PDO $open */

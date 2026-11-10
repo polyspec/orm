@@ -6,7 +6,8 @@ import { getEventListeners } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { driverError, openDriver, parseDsn } from '../dist/driver.js';
+import { driverError, mysqlStatementTimeout, openDriver, parseDsn } from '../dist/driver.js';
+import { dialectOf } from '../dist/engine/dialect.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 // Requirements: PLN-24.
@@ -30,6 +31,45 @@ caseTest('driver-error/number-by-server/mysql', COMPUTE, () => {
     assert.equal(driverError('mysql', error(errno), 'mysql').code, mysql, `mysql ${errno}`);
     assert.equal(driverError('mysql', error(errno), 'mariadb').code, mariadb, `mariadb ${errno}`);
   }
+});
+
+// Requirements: DIA-209. MariaDB fails a NOWAIT lock that it cannot take at once with 1205: a statement of a *_nowait lock reads it
+// as LOCK_NOT_AVAILABLE, and any other statement as CANCELED, the lock wait timeout; MySQL's 1205 stays CANCELED, its NOWAIT is 3572.
+caseTest('driver-error/nowait-lock-wait/mysql', COMPUTE, () => {
+  const error = errno => Object.assign(new Error(`error ${errno}`), { errno });
+  assert.equal(driverError('mysql', error(1205), 'mariadb', true).code, 'LOCK_NOT_AVAILABLE');
+  assert.equal(driverError('mysql', error(1205), 'mariadb', false).code, 'CANCELED');
+  assert.equal(driverError('mysql', error(1205), 'mysql', true).code, 'CANCELED');
+  assert.equal(driverError('mysql', error(3572), 'mysql', true).code, 'LOCK_NOT_AVAILABLE');
+  assert.equal(driverError('mysql', error(1213), 'mariadb', true).code, 'DEADLOCK');
+});
+
+// Requirements: DIA-208. The statement timeout is the variable of the server: max_execution_time in milliseconds on MySQL, and
+// max_statement_time in seconds with three fraction digits on MariaDB; neither server has the other's variable.
+caseTest('driver-statement-timeout/variable-by-server/mysql', COMPUTE, () => {
+  assert.equal(mysqlStatementTimeout('mysql', 237), 'SET SESSION max_execution_time = 237');
+  assert.equal(mysqlStatementTimeout('mariadb', 237), 'SET SESSION max_statement_time = 0.237');
+  assert.equal(mysqlStatementTimeout('mariadb', 1500), 'SET SESSION max_statement_time = 1.500');
+  assert.equal(mysqlStatementTimeout('mariadb', 1), 'SET SESSION max_statement_time = 0.001');
+  assert.doesNotMatch(mysqlStatementTimeout('mariadb', 237), /max_execution_time/);
+  assert.doesNotMatch(mysqlStatementTimeout('mysql', 237), /max_statement_time/);
+});
+
+// Requirements: DIA-209. share renders LOCK IN SHARE MODE on both servers of the mysql dialect and FOR SHARE on PostgreSQL;
+// share_nowait renders FOR SHARE NOWAIT on MySQL and LOCK IN SHARE MODE NOWAIT on MariaDB; an unknown mode has no suffix.
+caseTest('dialect-row-lock/by-server/mysql', COMPUTE, () => {
+  const lock = (name, server, mode) => dialectOf(name, server).rowLock(mode);
+  for (const server of ['mysql', 'mariadb']) {
+    assert.equal(lock('mysql', server, 'share'), ' LOCK IN SHARE MODE', server);
+    assert.equal(lock('mysql', server, 'update'), ' FOR UPDATE', server);
+    assert.equal(lock('mysql', server, 'update_nowait'), ' FOR UPDATE NOWAIT', server);
+    assert.equal(lock('mysql', server, 'exclusive'), undefined, server);
+  }
+  assert.equal(lock('mysql', 'mysql', 'share_nowait'), ' FOR SHARE NOWAIT');
+  assert.equal(lock('mysql', 'mariadb', 'share_nowait'), ' LOCK IN SHARE MODE NOWAIT');
+  assert.equal(lock('mysql', undefined, 'share_nowait'), ' FOR SHARE NOWAIT');
+  assert.equal(lock('postgres', 'mysql', 'share'), ' FOR SHARE');
+  assert.equal(lock('postgres', 'mysql', 'share_nowait'), ' FOR SHARE NOWAIT');
 });
 
 async function withReservedSqliteSession(file, exercise) {

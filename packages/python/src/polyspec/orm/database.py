@@ -775,6 +775,25 @@ def _driver_error(
     return OrmError(_postgres_code(error.sqlstate, lost), f"postgres: {message}", error)
 
 
+def _lock_error(error: BaseException, server: str, lock: str) -> BaseException:
+    """The error of a statement that carries the row lock lock (DIA-209): MariaDB fails a NOWAIT lock that it cannot
+    take at once with 1205, the number of its lock wait timeout, where MySQL gives 3572, so on MariaDB the 1205 of a
+    statement of a *_nowait lock is LOCK_NOT_AVAILABLE, as on MySQL (INT-49). The 1205 of any other statement, and
+    every other error, is returned as it is: a lock wait timeout stays CANCELED (CFG-6)."""
+    if (
+        server != "mariadb"
+        or not lock.endswith("_nowait")
+        or not isinstance(error, OrmError)
+        or error.code != codes.CANCELED
+    ):
+        return error
+    cause = error.cause
+    args = getattr(cause, "args", ())
+    if not args or args[0] != 1205 or not _is_driver_error("mysql", cause):
+        return error
+    return OrmError(codes.LOCK_NOT_AVAILABLE, str(error).partition(": ")[2], cause)
+
+
 def _is_driver_error(driver: str, error: Exception) -> bool:
     """Whether the error is an error class of the driver, which the handlers map; any other error is raised as it is."""
     return _driver_error(driver, error) is not error
@@ -906,6 +925,20 @@ def _tls_failure(error: BaseException) -> bool:
 MYSQL_SET_NAMES = "SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin"
 
 
+def _mysql_statement_timeout(server: str, timeout_ms: int) -> str:
+    """The session setting of a statement timeout of timeout_ms on the server of a mysql connection (DIA-208): MySQL
+    bounds a SELECT by max_execution_time in milliseconds and has no max_statement_time; MariaDB has no
+    max_execution_time and bounds every statement by max_statement_time in seconds, written with three fraction
+    digits. A server that is neither is INTERNAL: the connection reads its server by VERSION() (DIA-201)."""
+    if server == "mysql":
+        return f"SESSION max_execution_time = {timeout_ms}"
+    if server == "mariadb":
+        return (
+            f"SESSION max_statement_time = {timeout_ms // 1000}.{timeout_ms % 1000:03d}"
+        )
+    raise OrmError(codes.INTERNAL, f"mysql server {server!r} has no statement timeout")
+
+
 class _MysqlConnection:
     """One PyMySQL connection. Imported when needed."""
 
@@ -960,11 +993,12 @@ class _MysqlConnection:
         self.execute(MYSQL_SET_NAMES, [])
         version = self.execute("SELECT VERSION()", [])["rows"][0][0]
         self.server = "mariadb" if "-MariaDB" in str(version) else "mysql"
-        # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
+        # The session settings are one statement, sent after the server is read and before any statement of the
+        # caller; the statement timeout takes the variable of the server (DIA-208).
         self.execute(
             f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'"
             + (
-                f", SESSION max_execution_time = {statement_timeout_ms}"
+                f", {_mysql_statement_timeout(self.server, statement_timeout_ms)}"
                 if statement_timeout_ms > 0
                 else ""
             ),
@@ -1827,6 +1861,9 @@ class Db:
         # The server of the connection, which a mysql connection read once by VERSION() when it connected (DIA-201), and
         # the dialect's own on PostgreSQL and SQLite; the introspection reads by it (DIA-203).
         self._server = first.server if self.sql_driver == "mysql" else self.sql_driver
+        if self.sql_driver == "mysql":
+            # The mysql dialect renders a row lock by the server (DIA-209).
+            self.dialect = dialect_class(self._server)
         self._shared.pool.release(first)
         self._connection = _Leased(self)
 
@@ -1907,7 +1944,11 @@ class Db:
         self.schemas.setdefault(manifest_hash, model)
         if manifest_hash not in self.engines:
             # A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
-            self.engines[manifest_hash] = Engine(model, self.sql_driver, self.corpus)
+            # The engine of a mysql connection renders by its server (DIA-209), and the plan cache of the connection
+            # holds the plans of that engine alone, so a plan of one server never serves another.
+            self.engines[manifest_hash] = Engine(
+                model, self.sql_driver, self.corpus, self._server
+            )
 
     @property
     def closed(self) -> bool:
@@ -2140,21 +2181,30 @@ class Db:
         )
         connection = ex.frame.connection if ex.frame is not None else self._connection
         transaction = ex.frame.number if ex.frame is not None else None
-        return self.events.send(
-            statement_kind(sql),
-            step.get("tables", ()),
-            transaction,
-            resolved["masked"],
-            sql,
-            lambda: self._sent(
-                lambda: (
+
+        def run():
+            try:
+                return (
                     _execute_cancellable(
                         connection, sql, resolved["values"], self._cancellation
                     )
                     if ex.frame is not None
                     else connection.execute(sql, resolved["values"], self._cancellation)
                 )
-            ),
+            except OrmError as error:
+                # The lock mode of the step, which the planner records, chooses the code of MariaDB's 1205 (DIA-209).
+                mapped = _lock_error(error, self._server, step.get("lock") or "")
+                if mapped is error:
+                    raise
+                raise mapped from error.cause
+
+        return self.events.send(
+            statement_kind(sql),
+            step.get("tables", ()),
+            transaction,
+            resolved["masked"],
+            sql,
+            lambda: self._sent(run),
         )
 
     def _sent(self, run):

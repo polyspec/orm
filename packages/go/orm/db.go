@@ -208,7 +208,7 @@ func (d *DB) register(s *Schema) error {
 	if d.m.schemas[s.Hash] != nil {
 		return nil
 	}
-	eng, err := engine.New(m, d.driver)
+	eng, err := engine.NewForServer(m, d.driver, d.server)
 	if err != nil {
 		return err
 	}
@@ -326,30 +326,24 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		}
 		return nil, configErr("%s", msg)
 	}
-	s, err := openSQL(sqlDriver, dsn)
-	if err != nil {
-		return nil, configErr("%s", err)
-	}
 	if cfg.PoolSize < 0 {
-		return nil, closeAfter(s, configErr("pool size must not be negative"))
+		return nil, configErr("pool size must not be negative")
 	}
 	if cfg.PoolSize == 0 {
 		cfg.PoolSize = defaultPoolSize
 	}
 	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
-		return nil, closeAfter(s, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize))
+		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
 	}
 	if cfg.PoolIdleSize == 0 {
 		cfg.PoolIdleSize = cfg.PoolSize
 	}
 	if cfg.PoolLifetimeMs < 0 {
-		return nil, closeAfter(s, configErr("pool lifetime must not be negative"))
+		return nil, configErr("pool lifetime must not be negative")
 	}
-	s.SetMaxOpenConns(cfg.PoolSize)
-	s.SetMaxIdleConns(cfg.PoolIdleSize)
-	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
-	if err := s.PingContext(ctx); err != nil {
-		return nil, closeAfter(s, mapDriverErr(err, ""))
+	s, err := openPool(ctx, sqlDriver, dsn, cfg)
+	if err != nil {
+		return nil, err
 	}
 	if dsn.driver == "sqlite" {
 		if err := checkSQLite(); err != nil {
@@ -360,6 +354,17 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	if dsn.driver == "mysql" {
 		if server, err = readServer(ctx, s); err != nil {
 			return nil, closeAfter(s, err)
+		}
+		if dsn.statementTimeoutMs > 0 {
+			// The bound is the variable of the server just read (DIA-208): the pool that read it closes, and every
+			// connection of the pool that the caller uses sets the bound when it connects, before any statement of the caller.
+			if err := s.Close(); err != nil {
+				return nil, mapDriverErr(err, server)
+			}
+			dsn = dsn.withStatementTimeout(server)
+			if s, err = openPool(ctx, sqlDriver, dsn, cfg); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}, native: dsn.native}, cfg: cfg, driver: dsn.driver, server: server, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
@@ -573,6 +578,21 @@ func (c namesConnector) Connect(ctx context.Context) (driver.Conn, error) {
 	return conn, nil
 }
 
+// openPool opens the pool of dsn with the pool settings of cfg and checks that it connects.
+func openPool(ctx context.Context, sqlDriver string, dsn parsedDSN, cfg Config) (*sql.DB, error) {
+	s, err := openSQL(sqlDriver, dsn)
+	if err != nil {
+		return nil, configErr("%s", err)
+	}
+	s.SetMaxOpenConns(cfg.PoolSize)
+	s.SetMaxIdleConns(cfg.PoolIdleSize)
+	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
+	if err := s.PingContext(ctx); err != nil {
+		return nil, closeAfter(s, mapDriverErr(err, ""))
+	}
+	return s, nil
+}
+
 func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	if dsn.driver != "mysql" || sqlDriver != "mysql" {
 		return sql.Open(sqlDriver, dsn.native)
@@ -704,6 +724,17 @@ func mapDriverErrContext(err error, ctx context.Context, server string) error {
 		return &ir.Error{Code: coded.Code, Msg: coded.Msg, Cause: errors.Join(coded.Cause, ctx.Err())}
 	}
 	return mapped
+}
+
+// mapLockedErr maps the error of a statement that takes the row lock mode lock. MariaDB fails a NOWAIT lock that it cannot
+// take at once with 1205, the number of its lock wait timeout, where MySQL gives 3572 (DIA-209, probe mariadb.lock.nowait_held):
+// 1205 of a statement whose lock is a *_nowait mode is LOCK_NOT_AVAILABLE (INT-49), and of any other statement CANCELED (CFG-6).
+func mapLockedErr(err error, ctx context.Context, server, lock string) error {
+	var me *mysql.MySQLError
+	if server == serverMariaDB && strings.HasSuffix(lock, "_nowait") && errors.As(err, &me) && me.Number == 1205 {
+		return &ir.Error{Code: CodeLockNotAvailable, Msg: me.Error(), Cause: err}
+	}
+	return mapDriverErrContext(err, ctx, server)
 }
 
 func mapMySQLErr(err error) error {

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 234682ef3d55da5619d51bd8ba9a33e570b5db0ee5ddb9f1d9f5f42269162bc1 -->
+<!-- source-sha256: fd1e41ff123ab1d329c00be187c563f5132fd0f9c2bb8ebcb0593a460a75b36d -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -612,7 +612,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다. 연결을 잃은 commit이 catalog를 끝내지는 않는다. 다음 호출은 새 연결로 읽는다.
 - **INT-118a** `polyspec-orm-build`의 commit 분류기는 `COMMIT` 중의 끊긴 전송이나 protocol 오류를 응답 없음으로 보며, 명시적 거부로 보지 않는다. 이는 Rust driver 오류에만 해당한다.
-- **INT-119** trigger가 없다는 판단은 표, 그 database 또는 모든 database에 대해 검증된 계정 직접 grant가 있을 때만 유효하다. role 전용 grant와 켜진 partial revoke는 보이는 것으로 가정하지 않고 `ROW_MUTATION_UNSUPPORTED`로 거부한다. 켜진 partial revoke는 변경이 무엇도 잠그기 전에 `partial-revoke`를 담은 메시지로, grant 없음은 `trigger visibility`를 담은 메시지로 거부한다.
+- **INT-119** trigger가 없다는 판단은 표, 그 database 또는 모든 database에 대해 검증된 계정 직접 grant가 있을 때만 유효하다. role 전용 grant와 켜진 partial revoke는 보이는 것으로 가정하지 않고 `ROW_MUTATION_UNSUPPORTED`로 거부한다. 켜진 partial revoke는 변경이 무엇도 잠그기 전에 DIA-207의 한 statement로 읽어 `partial-revoke`를 담은 메시지로, grant 없음은 `trigger visibility`를 담은 메시지로 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 준비된 열 이름이 descriptor와 맞지 않거나 읽기 범위 안에서 metadata가 바뀌면, 열이 사라져 문장이 실패한 경우를 포함해, 표 페이지를 `TABLE_PAGE_METADATA_CHANGED`로 거부한다. MySQL 읽기 범위는 READ COMMITTED로 읽는다. REPEATABLE READ에서는 information schema가 transaction의 snapshot으로 답하므로 descriptor를 다시 읽어도 변경이 보이지 않는다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.

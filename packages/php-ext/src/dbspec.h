@@ -716,6 +716,8 @@ void out_unsupported(const unsupportedv *list, zval *out);
 
 /* Throws a PHP exception. The caller stops the operation by returning false. */
 bool dbs_throw(zend_class_entry *ce, str message);
+/* The default of a MariaDB COLUMN_DEFAULT in the MySQL form for the catalog descriptor (DIA-205, introspect.c). */
+bool dbspec_mariadb_catalog_default(zend_string *def, zend_string **out, bool *expression, zend_string **bad);
 bool dbs_throw_code(zend_class_entry *ce, str message, zend_long code);
 #define dbs_failed() (EG(exception) != NULL)
 

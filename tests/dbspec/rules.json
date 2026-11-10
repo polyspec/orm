@@ -2162,6 +2162,40 @@
       ]
     },
     {
+      "id": "check-and-foreign-key-share-a-name",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  parent_id i64 null",
+            "  a i32",
+            "  primary key (id)",
+            "  foreign key ck_a (parent_id) references users (id)",
+            "  check ck_a (a > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 8,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "constraint-name-across-documents",
       "requirements": [
         "DBS-34",

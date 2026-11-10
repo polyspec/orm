@@ -18,12 +18,19 @@ type Engine struct {
 	P *planner.Planner
 }
 
-// New builds an engine for the given dialect name.
+// New builds an engine for the given dialect name; a mysql engine renders for a MySQL server.
 func New(m *runtimemodel.Model, dialectName string) (*Engine, error) {
+	return NewForServer(m, dialectName, "")
+}
+
+// NewForServer builds an engine for the given dialect name and the server of the connection, which a mysql connection reads
+// by VERSION() (DIA-201): "mariadb" renders the clauses of MariaDB where the two servers have no common form (DIA-209), and
+// any other server, the empty one among them, renders for MySQL.
+func NewForServer(m *runtimemodel.Model, dialectName, server string) (*Engine, error) {
 	var d dialect.Dialect
 	switch dialectName {
 	case "mysql":
-		d = dialect.MySQL{}
+		d = dialect.MySQL{MariaDB: server == "mariadb"}
 	case "postgres":
 		d = dialect.Postgres{}
 	case "sqlite":

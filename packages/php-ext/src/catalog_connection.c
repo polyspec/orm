@@ -30,7 +30,10 @@ static const char *cat_kind_sql(const char *dialect)
 
 static const char *cat_columns_sql(const char *dialect)
 {
-    if (strcmp(dialect, "mysql") == 0) return "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION";
+    /* The primary-key ordinal is a subquery that names the table by constants: a LEFT JOIN of KEY_COLUMN_USAGE opens every table
+     * of every database on MariaDB, and both servers give the same rows to this form (DIA-210). Its parameters are the namespace
+     * and the name, twice. */
+    if (strcmp(dialect, "mysql") == 0) return "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION";
     if (strcmp(dialect, "postgres") == 0) return "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum";
     return "SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid";
 }
@@ -1434,10 +1437,25 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
     zval_ptr_dtor(&kind_rows);
     zval_ptr_dtor(&args);
 
+    /* MariaDB writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the MySQL form by the server that the
+     * connection read (DIA-201, DIA-205). */
+    bool mariadb = false;
+    if (strcmp(dialect, "mysql") == 0) {
+        zval server;
+        ZVAL_UNDEF(&server);
+        if (!cat_call_n(db, "server", &server, 0, NULL)) return false;
+        mariadb = Z_TYPE(server) == IS_STRING && zend_string_equals_literal(Z_STR(server), "mariadb");
+        zval_ptr_dtor(&server);
+    }
+
     /* SQLite table-valued pragmas take the table name first and the schema second. */
     array_init(&col_args);
     add_next_index_str(&col_args, zend_string_copy(sqlite ? name : ns));
     add_next_index_str(&col_args, zend_string_copy(sqlite ? ns : name));
+    if (strcmp(dialect, "mysql") == 0) {
+        add_next_index_str(&col_args, zend_string_copy(ns));
+        add_next_index_str(&col_args, zend_string_copy(name));
+    }
     if (!cat_query(db, pdo, cat_columns_sql(dialect), &col_args, CAT_METADATA_ROWS, CAT_METADATA_BYTES, &col_names, &col_types, &col_rows, NULL)) {
         zval_ptr_dtor(&col_args);
         return false;
@@ -1483,9 +1501,21 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
             db_throw_orm("TABLE_METADATA_INVALID", "negative key ordinal");
             goto out_cols;
         }
+        zend_string *def = Z_TYPE_P(c[6]) == IS_STRING ? zend_string_copy(Z_STR_P(c[6])) : NULL;
+        if (mariadb) {
+            zend_string *read = NULL, *bad = NULL;
+            bool read_ok = dbspec_mariadb_catalog_default(def, &read, &col->expression, &bad);
+            if (def != NULL) zend_string_release(def);
+            if (!read_ok) {
+                db_throw_orm("TABLE_METADATA_INVALID", "column \"%s\": %s", ZSTR_VAL(cname), ZSTR_VAL(bad));
+                zend_string_release(bad);
+                goto out_cols;
+            }
+            def = read;
+        }
         col->name = zend_string_copy(cname);
         col->type = zend_string_copy(ctype);
-        col->def = Z_TYPE_P(c[6]) == IS_STRING ? zend_string_copy(Z_STR_P(c[6])) : NULL;
+        col->def = def;
         if (ordinal > 0) {
             keys[nkeys].ordinal = ordinal;
             keys[nkeys].index = i;
@@ -4109,22 +4139,17 @@ static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, z
 }
 
 /* Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger
- * from the account (INT-119). */
+ * from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no
+ * row, the one form that both servers answer with the same result (DIA-207). */
 static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo)
 {
     zval rows;
     zval none;
     array_init(&none);
-    bool queried = cat_query_params(db, pdo, "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", &none, 1, &rows);
+    bool queried = cat_query_params(db, pdo, "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", &none, 1, &rows);
     zval_ptr_dtor(&none);
     if (!queried) return false;
-    bool partial_off = zend_hash_num_elements(Z_ARRVAL(rows)) == 1;
-    if (partial_off) {
-        zval *r0 = zend_hash_index_find(Z_ARRVAL(rows), 0);
-        zval *cell = Z_TYPE_P(r0) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(r0), 0) : NULL;
-        partial_off = cell != NULL && zval_get_long(cell) == 0 && (Z_TYPE_P(cell) == IS_LONG || (Z_TYPE_P(cell) == IS_STRING
-            && zend_string_equals_literal(Z_STR_P(cell), "0")));
-    }
+    bool partial_off = zend_hash_num_elements(Z_ARRVAL(rows)) == 0;
     zval_ptr_dtor(&rows);
     if (!partial_off) {
         db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL partial-revoke visibility requires verification");

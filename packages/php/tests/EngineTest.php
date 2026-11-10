@@ -567,4 +567,59 @@ final class EngineTest extends TestCase
             );
         }
     }
+
+    // Requirements: DIA-209. share renders LOCK IN SHARE MODE on both servers of the mysql dialect and FOR SHARE on
+    // PostgreSQL; share_nowait renders FOR SHARE NOWAIT on a MySQL server and LOCK IN SHARE MODE NOWAIT on a MariaDB
+    // server; the engine of one server never serves its plan to the other.
+    public function testRowLocksByServer(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
+        $want = [
+            'mysql/mysql' => [
+                'update' => ' FOR UPDATE', 'update_nowait' => ' FOR UPDATE NOWAIT',
+                'share' => ' LOCK IN SHARE MODE', 'share_nowait' => ' FOR SHARE NOWAIT',
+            ],
+            'mysql/mariadb' => [
+                'update' => ' FOR UPDATE', 'update_nowait' => ' FOR UPDATE NOWAIT',
+                'share' => ' LOCK IN SHARE MODE', 'share_nowait' => ' LOCK IN SHARE MODE NOWAIT',
+            ],
+            'postgres/postgres' => [
+                'update' => ' FOR UPDATE', 'update_nowait' => ' FOR UPDATE NOWAIT',
+                'share' => ' FOR SHARE', 'share_nowait' => ' FOR SHARE NOWAIT',
+            ],
+            'sqlite/sqlite' => ['update' => '', 'update_nowait' => '', 'share' => '', 'share_nowait' => ''],
+        ];
+        foreach ($want as $key => $locks) {
+            [$dialect, $server] = explode('/', $key);
+            $engine = new Engine($model, $dialect, 8, false, $server);
+            foreach ($locks as $lock => $suffix) {
+                $sql = $engine->compile([
+                    'ir_version' => 1,
+                    'manifest_hash' => $model->manifestHash,
+                    'kind' => 'all',
+                    'entity' => 'service',
+                    'lock' => $lock,
+                    'n_params' => 0,
+                ])['steps'][0]['sql'];
+                if ($suffix !== '') {
+                    self::assertStringEndsWith($suffix, $sql, "$key $lock");
+                } else {
+                    // SQLite locks in the executor (PRT-8): its statement has no lock clause.
+                    self::assertStringNotContainsString(' FOR ', $sql, "$key $lock");
+                    self::assertStringNotContainsString(' LOCK ', $sql, "$key $lock");
+                }
+            }
+        }
+        self::assertSame(' LOCK IN SHARE MODE', (new \Polyspec\Orm\Dialect('mysql'))->rowLock('share'));
+        self::assertSame(' FOR SHARE NOWAIT', (new \Polyspec\Orm\Dialect('mysql'))->rowLock('share_nowait'));
+        self::assertNull((new \Polyspec\Orm\Dialect('mysql', 'mariadb'))->rowLock('exclusive'));
+        $hash = \Polyspec\Orm\Tests\Model\Author::meta()['manifest_hash'];
+        self::assertNotSame(
+            Engine::for($hash, 'mysql', 8, false, 'mysql'),
+            Engine::for($hash, 'mysql', 8, false, 'mariadb'),
+            'the engine of each server of the mysql dialect is its own'
+        );
+        self::assertSame(Engine::for($hash, 'mysql', 8), Engine::for($hash, 'mysql', 8, false, 'mysql'));
+    }
 }

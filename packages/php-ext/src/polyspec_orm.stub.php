@@ -963,7 +963,13 @@ final class Dialect
 {
     public readonly string $name;
 
-    public function __construct(string $name) {}
+    /**
+     * The server of the dialect: on mysql, mysql or mariadb, which the connection read by VERSION() (DIA-201); on
+     * postgres and sqlite, the dialect's name.
+     */
+    public readonly string $server;
+
+    public function __construct(string $name, ?string $server = null) {}
     public static function isValueFunction(string $name): bool {}
     public static function quoteWith(string $q, string $ident): string {}
     public function quote(string $ident): string {}
@@ -1553,13 +1559,14 @@ final class Engine
      * assigns plans for a database that assigns the key_prefix keys and the order positions that an insert leaves out,
      * as a flowmark corpus does.
      */
-    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize, bool $assigns = false) {}
+    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize, bool $assigns = false, ?string $server = null) {}
 
     /**
-     * The engine shared by the generated model of a manifest hash, by the dialect and by assigns. The hash
-     * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     * The engine shared by the generated model of a manifest hash, by the dialect, by whether the database assigns
+     * keys and by the server, whose plans may differ on one dialect (DIA-209), so a plan of one server never serves
+     * another. The hash of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false): Engine {}
+    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false, ?string $server = null): Engine {}
 
     /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array {}

@@ -446,5 +446,70 @@ class CatalogAutoKeyTest(unittest.TestCase):
         self.assertEqual(session.calls, [])
 
 
+class _DescribedSession(_Session):
+    """A mysql session whose metadata reads return the given column rows of one base table."""
+
+    def __init__(self, server, columns):
+        self.dialect = "mysql"
+        self.server = server
+        self.columns = columns
+
+    def run(self, sql, params=(), max_rows=None, max_bytes=None, *_, **__):
+        rows = [["BASE TABLE"]] if "TABLE_TYPE" in sql else self.columns
+        return _Raw(names=[], rows=rows, affected=0)
+
+
+class CatalogMariadbDefaultTest(unittest.TestCase):
+    # Requirements: DIA-205. On MariaDB the table descriptor reads COLUMN_DEFAULT as the introspection does: NULL is no
+    # default, a quoted literal its value, a number as written, any other text an expression default; MySQL's text and
+    # flag are kept as they are.
+    def test_a_mariadb_column_default_is_read_by_the_rule_of_the_introspection(self):
+        def row(name, default, generated=False):
+            return [name, "varchar(8)", True, False, 0, False, default, generated]
+
+        rows = [
+            row("a", None),
+            row("b", "NULL"),
+            row("c", "'it''s'"),
+            row("d", "7"),
+            row("e", "current_timestamp()"),
+            row("f", "current_timestamp(3)"),
+            row("g", "uuid()"),
+        ]
+        metadata = _DescribedSession("mariadb", rows).describe(
+            {"namespace": "orm_test", "name": "sample"}
+        )
+        self.assertEqual(
+            [(c.default_expression, c.expression_default) for c in metadata.columns],
+            [
+                (None, False),
+                (None, False),
+                ("it's", False),
+                ("7", False),
+                ("CURRENT_TIMESTAMP", True),
+                ("CURRENT_TIMESTAMP(3)", True),
+                ("uuid()", True),
+            ],
+        )
+        mysql = _DescribedSession(
+            "mysql", [row("b", "NULL"), row("e", "CURRENT_TIMESTAMP", True)]
+        ).describe({"namespace": "orm_test", "name": "sample"})
+        self.assertEqual(
+            [(c.default_expression, c.expression_default) for c in mysql.columns],
+            [("NULL", False), ("CURRENT_TIMESTAMP", True)],
+        )
+
+    def test_a_mariadb_quoted_default_that_is_not_one_literal_is_metadata_invalid(self):
+        for default in ("'open", "'a' 'b'"):
+            with self.subTest(default=default):
+                session = _DescribedSession(
+                    "mariadb",
+                    [["a", "varchar(8)", True, False, 0, False, default, False]],
+                )
+                with self.assertRaises(OrmError) as caught:
+                    session.describe({"namespace": "orm_test", "name": "sample"})
+                self.assertEqual(caught.exception.code, codes.TABLE_METADATA_INVALID)
+
+
 if __name__ == "__main__":
     testcase.main()

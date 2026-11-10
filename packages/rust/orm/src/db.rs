@@ -634,6 +634,9 @@ impl Db {
         let dialect = Dialect::parse(parsed.sql_driver());
         let cache = cfg.statement_cache_size;
         let timeout = cfg.statement_timeout_ms;
+        // The server of a mysql pool, which its first connection reads (DIA-201).
+        let read = Arc::new(tokio::sync::OnceCell::<crate::MySqlServer>::new());
+        let pool_read = Arc::clone(&read);
         // A LISTEN subscription opens a connection of its own with the options of the pool (DIA-194).
         let listen = match &parsed.options {
             ConnectOptions::Postgres(o) => Some(o.clone()),
@@ -641,18 +644,27 @@ impl Db {
         };
         let pool = match parsed.options {
             ConnectOptions::Markdown(dsn) => Pool::Markdown(open_markdown(dsn, pool_size, idle, &cfg).await?),
-            // MySQL bounds SELECT statements with max_execution_time;
-            // PostgreSQL bounds every statement with statement_timeout.
+            // A mysql connection reads the server of its pool before any other statement (DIA-201): the first connection of the
+            // pool reads it by VERSION(), and every later one, reconnects included, takes the value that it read. MySQL bounds
+            // SELECT statements with max_execution_time and MariaDB every statement with max_statement_time, so the statement
+            // timeout is set by the server (DIA-208) before the connection runs a statement of the caller.
             ConnectOptions::MySql(o) => Pool::MySql(
                 pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, &owner)
                     .after_connect(move |conn, _| {
+                        let read = Arc::clone(&pool_read);
                         Box::pin(async move {
+                            let server = *read
+                                .get_or_try_init(|| async {
+                                    let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(&mut *conn).await?;
+                                    Ok::<_, sqlx::Error>(crate::MySqlServer::of_version(&version))
+                                })
+                                .await?;
                             // sqlx adds PIPES_AS_CONCAT and NO_ENGINE_SUBSTITUTION to the
                             // server's sql_mode, and the IGNORE_SPACE client flag adds that
                             // mode; this replaces them with the declared one.
                             sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION sql_mode = '{MYSQL_SQL_MODE}'"))).execute(&mut *conn).await?;
                             if timeout > 0 {
-                                sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION max_execution_time = {timeout}"))).execute(&mut *conn).await?;
+                                sqlx::query(sqlx::AssertSqlSafe(server.statement_timeout(timeout))).execute(&mut *conn).await?;
                             }
                             Ok(())
                         })
@@ -686,16 +698,12 @@ impl Db {
         // The server is read once by VERSION(), never by the handshake, whose version a pooler may state for itself (DIA-201).
         let server = match &pool {
             Pool::MySql(p) => {
-                // The connection returns to the pool before open ends, as a completed statement does (INT-79): the drop
-                // handler of SQLx returns it from a task of its own, and the pool statistics after open count it idle.
+                // The first connection of the pool reads the server as it opens. The connection returns to the pool before
+                // open ends, as a completed statement does (INT-79): the drop handler of SQLx returns it from a task of its
+                // own, and the pool statistics after open count it idle.
                 let mut connection = p.acquire().await?;
-                let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(&mut *connection).await?;
                 connection.return_to_pool().await;
-                if version.contains("-MariaDB") {
-                    crate::MySqlServer::MariaDb
-                } else {
-                    crate::MySqlServer::MySql
-                }
+                *read.get().ok_or_else(|| Error::internal("a mysql connection opened without reading its server"))?
             }
             _ => crate::MySqlServer::MySql,
         };
@@ -864,7 +872,7 @@ impl Db {
             return Ok(p.clone());
         }
         // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
-        let mut plan = engine::compile_for(&manifest, dialect, &req.ir, self.is_markdown())?;
+        let mut plan = engine::compile_for(&manifest, dialect, self.inner.server, &req.ir, self.is_markdown())?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }
@@ -1028,12 +1036,12 @@ impl Db {
     ) -> Result<T> {
         if !self.inner.subscribers.observed() {
             // A mysql error number is read by the table of the connection's server (DIA-201), observed or not.
-            return r.map_err(|e| e.for_server(self.inner.server));
+            return r.map_err(|e| e.for_server(self.inner.server, &st.lock));
         }
         let binds = shown();
         let tables = origin.tables.unwrap_or(&st.tables);
         self.statement_done(
-            Sent { sql, binds: &binds, kind: origin.kind.unwrap_or_else(|| statement_kind(&st.sql)), tables, transaction: origin.transaction },
+            Sent { sql, binds: &binds, kind: origin.kind.unwrap_or_else(|| statement_kind(&st.sql)), tables, transaction: origin.transaction, lock: &st.lock },
             start,
             r,
         )

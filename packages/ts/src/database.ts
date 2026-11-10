@@ -584,8 +584,9 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    // A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
-    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name, this.corpus));
+    // A corpus assigns the key_prefix keys and the order positions that an insert leaves out. A mysql engine renders the row locks of
+    // the server that connect read (DIA-201, DIA-209), so its plans, which this connection alone caches, hold the text of that server.
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name, this.corpus, this.pool.server === 'mariadb' ? 'mariadb' : 'mysql'));
   }
 
   /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
@@ -1256,7 +1257,8 @@ export class Db {
     // kind is the verb of the SQL that the plan step writes, and tables is the table of the plan step.
     const done = this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked);
     this.checkStatementFault(sql, done);
-    return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done);
+    // A row lock *_nowait is named to the driver, which reads MariaDB's 1205 of that statement as LOCK_NOT_AVAILABLE (DIA-209).
+    return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done, (step.lock ?? '').endsWith('_nowait'));
   }
 }
 

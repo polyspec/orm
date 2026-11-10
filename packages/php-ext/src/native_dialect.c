@@ -228,11 +228,15 @@ void native_dialect_register(zend_class_entry *ce)
     dialect_declare_array_constant(ce, "INTERVAL_BOUNDS", bounds_map, ZEND_ACC_PRIVATE);
 }
 
+/* new Dialect($name, $server): the server is the one that a mysql connection read when it connected, mysql or mariadb
+ * (DIA-201), and the name of the dialect on postgres and sqlite; null is the dialect's name. */
 ZEND_METHOD(Polyspec_Orm_Dialect, __construct)
 {
-    zend_string *name;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    zend_string *name, *server = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
         Z_PARAM_STR(name)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_STR_OR_NULL(server)
     ZEND_PARSE_PARAMETERS_END();
     if (!zend_string_equals_literal(name, "mysql") && !zend_string_equals_literal(name, "postgres")
         && !zend_string_equals_literal(name, "sqlite")) {
@@ -240,6 +244,7 @@ ZEND_METHOD(Polyspec_Orm_Dialect, __construct)
         RETURN_THROWS();
     }
     zend_update_property_str(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("name"), name);
+    zend_update_property_str(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("server"), server != NULL ? server : name);
 }
 
 ZEND_METHOD(Polyspec_Orm_Dialect, isValueFunction)
@@ -628,24 +633,30 @@ ZEND_METHOD(Polyspec_Orm_Dialect, writeUuid)
     RETURN_STR_COPY(value);
 }
 
+/* The clause of a row lock (DIA-209): share is LOCK IN SHARE MODE on both servers of mysql, which MariaDB reads as FOR SHARE of
+ * MySQL, and FOR SHARE on PostgreSQL; share_nowait has no common form on mysql, so it is FOR SHARE NOWAIT on MySQL and LOCK IN
+ * SHARE MODE NOWAIT on MariaDB, by the server of the dialect. SQLite locks by the lock table and renders nothing. */
 ZEND_METHOD(Polyspec_Orm_Dialect, rowLock)
 {
     zend_string *mode;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(mode)
     ZEND_PARSE_PARAMETERS_END();
-    if (!zend_string_equals_literal(mode, "update") && !zend_string_equals_literal(mode, "share")
-        && !zend_string_equals_literal(mode, "update_nowait") && !zend_string_equals_literal(mode, "share_nowait")) {
+    bool update = zend_string_equals_literal(mode, "update"), share = zend_string_equals_literal(mode, "share");
+    bool update_nowait = zend_string_equals_literal(mode, "update_nowait");
+    bool share_nowait = zend_string_equals_literal(mode, "share_nowait");
+    if (!update && !share && !update_nowait && !share_nowait) {
         RETURN_NULL();
     }
     if (dialect_is(ZEND_THIS, "sqlite")) RETURN_EMPTY_STRING();
-    zend_string *upper = zend_string_copy(mode);
-    for (size_t i = 0; i < ZSTR_LEN(upper); i++) {
-        ZSTR_VAL(upper)[i] = ZSTR_VAL(upper)[i] == '_' ? ' ' : (char)toupper((unsigned char)ZSTR_VAL(upper)[i]);
-    }
-    zend_string *result = zend_strpprintf(0, " FOR %s", ZSTR_VAL(upper));
-    zend_string_release(upper);
-    RETURN_STR(result);
+    if (update) RETURN_STRING(" FOR UPDATE");
+    if (update_nowait) RETURN_STRING(" FOR UPDATE NOWAIT");
+    bool mysql = dialect_is(ZEND_THIS, "mysql");
+    if (share) RETURN_STRING(mysql ? " LOCK IN SHARE MODE" : " FOR SHARE");
+    zval server_rv;
+    zval *server = zend_read_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("server"), true, &server_rv);
+    bool mariadb = mysql && server != NULL && Z_TYPE_P(server) == IS_STRING && zend_string_equals_literal(Z_STR_P(server), "mariadb");
+    RETURN_STRING(mariadb ? " LOCK IN SHARE MODE NOWAIT" : " FOR SHARE NOWAIT");
 }
 
 static zend_string *dialect_literal_string(zend_string *text)

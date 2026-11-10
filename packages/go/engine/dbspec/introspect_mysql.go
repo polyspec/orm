@@ -496,6 +496,20 @@ func mariadbDefault(dflt sql.NullString, extra string) (sql.NullString, string, 
 	return dflt, "DEFAULT_GENERATED", nil
 }
 
+// MariaDBCatalogDefault reads a MariaDB COLUMN_DEFAULT in the form of MySQL's for the catalog descriptor (DIA-205): the default
+// in MySQL's text, nil for no default, and whether MySQL marks it DEFAULT_GENERATED, an expression default. A quoted text that
+// is not one whole literal is an error.
+func MariaDBCatalogDefault(dflt *string) (*string, bool, error) {
+	if dflt == nil {
+		return nil, false, nil
+	}
+	read, extra, err := mariadbDefault(sql.NullString{String: *dflt, Valid: true}, "")
+	if err != nil || !read.Valid {
+		return nil, false, err
+	}
+	return &read.String, extra == "DEFAULT_GENERATED", nil
+}
+
 // mysqlNow reports whether a DEFAULT_GENERATED default is the renderer clock default of that column,
 // or not.
 func mysqlNow(text string, typ Type) bool {

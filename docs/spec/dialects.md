@@ -71,11 +71,57 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   `EXTRA` has no `DEFAULT_GENERATED`. No query gives both forms (DIA-200, rule 2), so the introspection reads the MariaDB
   text in the MySQL form: `NULL` is no default, a quoted literal is its value with its escapes undone, a number is
   itself, and any other text is an expression default as MySQL marks it, the clock among them; a quoted text that is not
-  one whole literal is an error.
+  one whole literal is an error. The table descriptor of the catalog connection (`describeTable`) reads the same text by
+  the same rule: its default expression is the MySQL form, none for `NULL`, and its expression flag is the one MySQL marks.
 
 - **DIA-206** Dropping a CHECK — MySQL 8.4 / MariaDB 11.8 (probes `mysql.check.drop_constraint`,
-  `mariadb.check.drop_constraint`): a plan drops a CHECK by `ALTER TABLE t DROP CONSTRAINT c`, which both servers accept
-  with the same result, and MariaDB has no `DROP CHECK` (1064) (DIA-200, rule 1).
+  `mariadb.check.drop_constraint`, `mysql.check.drop_constraint_shared_name`, `mariadb.check.drop_constraint_shared_name`):
+  a plan drops a CHECK by `ALTER TABLE t DROP CONSTRAINT c`, which both servers accept with the same result, and MariaDB
+  has no `DROP CHECK` (1064) (DIA-200, rule 1). MySQL lets a CHECK share its name with a foreign key of its table, and
+  `DROP CONSTRAINT` of that name is then ambiguous (3939); MariaDB refuses the shared name (1826). No plan meets that
+  table: a document names every check, foreign key, unique key and index apart (DBS-34, the vector
+  `check-and-foreign-key-share-a-name`), and a plan drops the foreign keys and checks that change before it adds any
+  (PLN-74, PLN-75, PLN-80, PLN-81), so a CHECK that a plan drops never shares its name with a constraint of its table.
+
+- **DIA-207** Partial revokes — MySQL 8.4 / MariaDB 11.8 (probes `mysql.session.partial_revokes_listed`,
+  `mariadb.session.partial_revokes_listed`): the catalog refuses a row change on a server with partial revokes (INT-119)
+  by `SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'`, in every runtime, and refuses
+  when it lists a row. MySQL lists the setting when it is on; MariaDB has no partial revokes and no `partial_revokes`
+  (1193), and lists no row, so the one form answers both servers with the same result (DIA-200, rule 1). The case
+  `row_change_with_partial_revokes_enabled` of the catalog recipe states the MariaDB answer: its replica has no setting
+  to enable, and the row changes that MySQL refuses there are made.
+
+- **DIA-208** The statement timeout — MySQL 8.4 / MariaDB 11.8 (probes `mysql.session.statement_timeout`,
+  `mariadb.session.statement_timeout`): MySQL bounds a SELECT by `max_execution_time` in milliseconds (3024) and has no
+  `max_statement_time` (1193); MariaDB has no `max_execution_time` (1193) and bounds every statement by
+  `max_statement_time` in seconds (1969). No setting holds on both (DIA-200, rule 2), so a connection with
+  `statementTimeoutMs` (CFG-6), in every runtime and on every connection of a pool, sets after it reads its server
+  (DIA-201) and before any other statement `SESSION max_execution_time = <ms>` on MySQL and
+  `SESSION max_statement_time = <ms / 1000>`, written with three fraction digits, on MariaDB. A statement that MariaDB
+  stops returns `CANCELED` (1969, DIA-201), so MariaDB bounds a write too, as PostgreSQL does. The case
+  `mysql_session_settings` of the recipe dsn_connection reads the setting of each server.
+
+- **DIA-209** Row locks — MySQL 8.4 / MariaDB 11.8 (probes `mysql.lock.share_clause`, `mariadb.lock.share_clause`,
+  `mysql.lock.nowait_held`, `mariadb.lock.nowait_held`): the lock `share` renders ` LOCK IN SHARE MODE`, which both
+  servers read as a shared row lock, since MariaDB has no `FOR SHARE` (1064), and `update_nowait` renders
+  ` FOR UPDATE NOWAIT`, which both read alike (DIA-200, rule 1). `share_nowait` has no common form: MySQL takes NOWAIT
+  after `FOR SHARE` alone and MariaDB after `LOCK IN SHARE MODE` alone (1064 otherwise), so the planner renders
+  ` FOR SHARE NOWAIT` on MySQL and ` LOCK IN SHARE MODE NOWAIT` on MariaDB by the server of the connection (DIA-201;
+  DIA-200, rule 2). MariaDB fails a NOWAIT lock that it cannot take at once with 1205, the number of its lock wait
+  timeout, where MySQL gives 3572: on MariaDB a statement of a `*_nowait` lock that fails with 1205 returns
+  `LOCK_NOT_AVAILABLE`, as on MySQL (INT-49), and 1205 of any other statement stays `CANCELED` (CFG-6). The case
+  `nowait_lock_held_by_another_transaction` of the recipe transactions holds it on the MySQL, MariaDB and PostgreSQL servers; it
+  leaves out SQLite, which admits one write transaction at a time, so a second transaction waits at its `BEGIN IMMEDIATE` and
+  never reaches its lock (the SQLite lock row of INT-49 is held by `sqlite-row-lock-restoration`).
+
+- **DIA-210** The primary-key ordinal of the catalog descriptor — MySQL 8.4 / MariaDB 11.8 (probes
+  `mysql.catalog.key_ordinal_by_name`, `mariadb.catalog.key_ordinal_by_name`): MariaDB reads an `information_schema` table by
+  the name of its table only from constants of its own conditions, so a join of `KEY_COLUMN_USAGE` on the columns of
+  `COLUMNS` opens every table of every database ("Scanned all databases"), about a second for each describe on a server
+  with the case databases. The descriptor of the catalog connection reads the ordinal of a column by a subquery that
+  names the table by constants, `COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE
+  k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0)`, which
+  gives the rows of the join on both servers and reads only its table (DIA-200, rule 1).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
@@ -455,6 +501,7 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.auto_increment.rollback_leaves_gap` | the MySQL fact holds |
 | `mariadb.binary.zero_padded` | the MySQL fact holds |
 | `mariadb.bool.alias_tinyint` | the MySQL fact holds |
+| `mariadb.catalog.key_ordinal_by_name` | a subquery that names the table by constants reads the primary-key ordinal as the join does, and only the join opens every table of every database |
 | `mariadb.char.trailing_spaces_removed` | the MySQL fact holds |
 | `mariadb.check.alter_rewrites_introducers` | MariaDB has no REGEXP_LIKE (1305 outside a CHECK, 1901 in one), and ALTER TABLE leaves CHECK_CLAUSE as it was |
 | `mariadb.check.alter_writes_time_precision` | ALTER TABLE leaves a time literal that meets a time(p) column as it was written |
@@ -462,6 +509,7 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.check.bool_column_rejected` | a bool column alone is a CHECK expression, which refuses 0 (4025) |
 | `mariadb.check.catalog_text` | CHECK_CLAUSE is the expression without outer parentheses and without a character set introducer |
 | `mariadb.check.drop_constraint` | the MySQL fact holds |
+| `mariadb.check.drop_constraint_shared_name` | a CHECK cannot share its name with a foreign key or a unique key of its table (1826), so DROP CONSTRAINT names one constraint |
 | `mariadb.check.enforced_null_passes` | CHECK is enforced (4025, SQLSTATE 23000) and NULL passes |
 | `mariadb.check.fk_action_column_rejected` | a column of a foreign key with a referential action cannot appear in a CHECK (1901) |
 | `mariadb.check.name_schema_scope` | CHECK names are scoped to their table: two tables may each have a CHECK ck |
@@ -527,6 +575,8 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.like.ascii_fold_replace` | the MySQL fact holds |
 | `mariadb.like.binary_collation_case_sensitive` | the MySQL fact holds |
 | `mariadb.like.binary_collation_code_point` | the MySQL fact holds |
+| `mariadb.lock.nowait_held` | a NOWAIT read of a row that another transaction locks fails at once with 1205, the number of a lock wait timeout |
+| `mariadb.lock.share_clause` | LOCK IN SHARE MODE takes a shared row lock and takes NOWAIT, and MariaDB has no FOR SHARE (1064) |
 | `mariadb.not_null.missing_value_rejected` | the MySQL fact holds |
 | `mariadb.now.compare_six_digits` | the MySQL fact holds |
 | `mariadb.now.precision_truncates` | the MySQL fact holds |
@@ -543,7 +593,9 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 | `mariadb.render.timestamp_conversion` | the MySQL fact holds |
 | `mariadb.render.uuid_check` | CHAR(36) ascii_bin with a REGEXP CHECK accepts only lower-case canonical UUID text (4025); REGEXP_LIKE is refused (1901) |
 | `mariadb.sequence.unsupported` | MariaDB has CREATE SEQUENCE, a table of its own kind |
+| `mariadb.session.partial_revokes_listed` | MariaDB has no partial_revokes (1193), and SHOW GLOBAL VARIABLES lists no row of it |
 | `mariadb.session.sql_mode_set` | the MySQL fact holds |
+| `mariadb.session.statement_timeout` | MariaDB has no max_execution_time (1193): SESSION max_statement_time bounds every statement in seconds (1969) |
 | `mariadb.text.index_needs_prefix` | an index on TEXT without a prefix length is accepted with the prefix of 768 characters, which STATISTICS reports as SUB_PART |
 | `mariadb.text.literal_default_needs_expression` | TEXT accepts DEFAULT 'x' and DEFAULT ('x'), and COLUMN_DEFAULT reports both as the quoted literal |
 | `mariadb.text.max_bytes` | the MySQL fact holds |

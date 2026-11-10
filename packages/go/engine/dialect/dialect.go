@@ -101,7 +101,7 @@ func upsert(conflict []string, assigns string) string {
 	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
 }
 
-// rowLock is the row lock clause of MySQL and PostgreSQL for a lock mode; the
+// rowLock is the row lock clause of PostgreSQL for a lock mode, which MySQL takes for the exclusive modes (MySQL.RowLock); the
 // second result is false for a mode neither has.
 func rowLock(mode string) (string, bool) {
 	switch mode {

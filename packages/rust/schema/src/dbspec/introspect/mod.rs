@@ -111,6 +111,13 @@ pub fn check_server(dialect: Dialect, server: Server) {
     }
 }
 
+/// MariaDB's COLUMN_DEFAULT as the table descriptor of a catalog connection reads it (DIA-205): the default in the MySQL
+/// form, None for `NULL`, and whether it is an expression default as MySQL marks it. A quoted text that is not one whole
+/// literal is an error.
+pub fn mariadb_catalog_default(dflt: Option<String>) -> Result<(Option<String>, bool), String> {
+    mysql::mariadb_catalog_default(dflt)
+}
+
 /// The catalog queries of `dialect` on `server` in the order [`read_catalog`] expects
 /// their rows. Every query reads all tables at once, so their number does not
 /// depend on the table count. The caller passes the server that the connection read

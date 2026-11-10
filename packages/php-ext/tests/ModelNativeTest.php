@@ -612,6 +612,32 @@ final class ModelNativeTest extends TestCase
         self::assertSame('CURRENT_TIMESTAMP', $sqlite->now(3));
         self::assertSame(' FOR UPDATE NOWAIT', $postgres->rowLock('update_nowait'));
         self::assertSame('', $sqlite->rowLock('share'));
+        // DIA-209: share is LOCK IN SHARE MODE on both servers of mysql and FOR SHARE on PostgreSQL; share_nowait is
+        // FOR SHARE NOWAIT on a MySQL server and LOCK IN SHARE MODE NOWAIT on a MariaDB server.
+        self::assertTrue($dialectReflection->getProperty('server')->isReadOnly());
+        $mariadb = new \Polyspec\Orm\Dialect('mysql', 'mariadb');
+        self::assertSame('mysql', $mysql->server);
+        self::assertSame('mysql', (new \Polyspec\Orm\Dialect('mysql', 'mysql'))->server);
+        self::assertSame('mariadb', $mariadb->server);
+        self::assertSame('postgres', $postgres->server);
+        $locks = [
+            'mysql' => [$mysql, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' LOCK IN SHARE MODE', ' FOR SHARE NOWAIT'],
+            'mariadb' => [$mariadb, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' LOCK IN SHARE MODE', ' LOCK IN SHARE MODE NOWAIT'],
+            'postgres' => [$postgres, ' FOR UPDATE', ' FOR UPDATE NOWAIT', ' FOR SHARE', ' FOR SHARE NOWAIT'],
+            'sqlite' => [$sqlite, '', '', '', ''],
+        ];
+        foreach ($locks as $server => [$dialect, $update, $updateNowait, $share, $shareNowait]) {
+            self::assertSame($update, $dialect->rowLock('update'), "$server update");
+            self::assertSame($updateNowait, $dialect->rowLock('update_nowait'), "$server update_nowait");
+            self::assertSame($share, $dialect->rowLock('share'), "$server share");
+            self::assertSame($shareNowait, $dialect->rowLock('share_nowait'), "$server share_nowait");
+            self::assertNull($dialect->rowLock('exclusive'), "$server exclusive");
+            self::assertNull($dialect->rowLock('SHARE'), "$server SHARE");
+        }
+        // The mode is the caller's string: rendering its clause leaves it as it was.
+        $mode = str_repeat('share', 1) . '_nowait';
+        $mysql->rowLock($mode);
+        self::assertSame('share_nowait', $mode);
         self::assertSame(
             'NOW(6)',
             $mysql->valueFunction('now', static fn (): string => '?', static fn (): string => '?')

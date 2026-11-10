@@ -422,6 +422,14 @@ fn mariadb_default(dflt: Option<String>, extra: String) -> Result<(Option<String
     Ok((Some(text), generated))
 }
 
+/// Reads MariaDB's COLUMN_DEFAULT of the table descriptor of the catalog connection in the MySQL form (DIA-205): the default
+/// that [`mariadb_default`] reads with an empty EXTRA, since the catalog query reads no EXTRA and MariaDB writes no
+/// DEFAULT_GENERATED, and whether it is an expression default as MySQL marks it.
+pub(super) fn mariadb_catalog_default(dflt: Option<String>) -> Result<(Option<String>, bool), String> {
+    let (dflt, extra) = mariadb_default(dflt, String::new())?;
+    Ok((dflt, extra == "DEFAULT_GENERATED"))
+}
+
 /// Writes the COLUMN_DEFAULT value with its escapes undone as a dbspec literal. parse decides its canonical form and
 /// validity.
 fn mysql_default(value: &str, typ: Type) -> String {
@@ -571,6 +579,39 @@ mod show_create_tests {
             let create = format!("{}\n", lines.join("\n"));
             let got = shown_checks(&create).get(name).cloned().unwrap_or_else(|| "not found".to_owned());
             assert_eq!(got, expected, "case {id}: the reader of check {name}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod mariadb_catalog_default_tests {
+    use super::mariadb_catalog_default;
+
+    /// MariaDB's COLUMN_DEFAULT reads in the MySQL form for the catalog descriptor (DIA-205): NULL is no default, a quoted
+    /// literal is its value, a number is itself, and any other text, the clock among them, is an expression default.
+    // Requirements: DIA-205.
+    #[test]
+    fn mariadb_catalog_default_reads_the_mysql_form() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let read = |text: Option<&str>| mariadb_catalog_default(text.map(str::to_owned));
+        assert_eq!(read(None), Ok((None, false)));
+        assert_eq!(read(Some("NULL")), Ok((None, false)));
+        assert_eq!(read(Some("'it''s'")), Ok((Some("it's".to_owned()), false)));
+        assert_eq!(read(Some("'NULL'")), Ok((Some("NULL".to_owned()), false)));
+        assert_eq!(read(Some("0.00")), Ok((Some("0.00".to_owned()), false)));
+        assert_eq!(read(Some("-3")), Ok((Some("-3".to_owned()), false)));
+        assert_eq!(read(Some("current_timestamp()")), Ok((Some("CURRENT_TIMESTAMP".to_owned()), true)));
+        assert_eq!(read(Some("current_timestamp(6)")), Ok((Some("CURRENT_TIMESTAMP(6)".to_owned()), true)));
+        assert_eq!(read(Some("uuid()")), Ok((Some("uuid()".to_owned()), true)));
+    }
+
+    /// A quoted text that is not one whole literal is an error (DIA-205).
+    // Requirements: DIA-205.
+    #[test]
+    fn mariadb_catalog_default_refuses_a_broken_literal() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for text in ["'unterminated", "'a' 'b'", "'a'x"] {
+            assert!(mariadb_catalog_default(Some(text.to_owned())).is_err(), "{text}");
         }
     }
 }

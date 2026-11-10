@@ -393,6 +393,20 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     }
 
     /**
+     * The default of a MariaDB COLUMN_DEFAULT in the MySQL form, for the table descriptor of the catalog connection,
+     * which reads no EXTRA (DIA-205): the default text, null for none, and whether it is an expression. A quoted text
+     * that is not one whole literal is a RuntimeException.
+     *
+     * @internal
+     * @return array{0: ?string, 1: bool}
+     */
+    public static function mariadbCatalogDefault(?string $default): array
+    {
+        [$text, $extra] = self::mariadbDefault($default, '');
+        return [$text, $extra === 'DEFAULT_GENERATED'];
+    }
+
+    /**
      * The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks").
      * MariaDB writes it without the outer parentheses and the introducers, in the escaped form that read gives its
      * CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check,

@@ -40,19 +40,27 @@ final class Engine
         string $dialect,
         private readonly int $cacheSize,
         bool $assigns = false,
+        ?string $server = null,
     ) {
         $this->validator = new Validator($model);
-        $this->planner = new Planner($model, new Dialect($dialect), $assigns);
+        $this->planner = new Planner($model, new Dialect($dialect, $server), $assigns);
     }
 
     /**
-     * The engine shared by the generated model of a manifest hash, by the dialect and by whether the database assigns
-     * keys. The hash of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     * The engine shared by the generated model of a manifest hash, by the dialect, by whether the database assigns
+     * keys and by the server, whose plans may differ on one dialect (DIA-209), so a plan of one server never serves
+     * another. The hash of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false): self
-    {
-        return self::$engines[$manifestHash . "\0" . $dialect . "\0" . ($assigns ? 'assigns' : '')]
-            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize, $assigns);
+    public static function for(
+        string $manifestHash,
+        string $dialect,
+        int $cacheSize,
+        bool $assigns = false,
+        ?string $server = null,
+    ): self {
+        $server ??= $dialect;
+        return self::$engines[$manifestHash . "\0" . $dialect . "\0" . ($assigns ? 'assigns' : '') . "\0" . $server]
+            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize, $assigns, $server);
     }
 
     /** The plan of a value-free request (docs/spec/protocol.md). */

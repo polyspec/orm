@@ -1,6 +1,7 @@
 package dialects
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -47,6 +48,56 @@ func mariadbFacts() []Probe {
 			e.Note("version=%s sql_mode=%s log_bin=%s log_bin_trust_function_creators=%s time_zone=%s system_time_zone=%s explicit_defaults_for_timestamp=%s",
 				version, mode, e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"),
 				e.Value("SELECT @@time_zone"), e.Value("SELECT @@system_time_zone"), e.Value("SELECT @@explicit_defaults_for_timestamp"))
+		}),
+		p("session.partial_revokes_listed", "MariaDB has no partial_revokes (1193), and SHOW GLOBAL VARIABLES lists no row of it", func(e *Env) {
+			e.Fails("SELECT @@GLOBAL.partial_revokes", "1193")
+			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes'", "")
+			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", "")
+		}),
+		p("check.drop_constraint_shared_name", "a CHECK cannot share its name with a foreign key or a unique key of its table (1826), so DROP CONSTRAINT names one constraint", func(e *Env) {
+			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
+			e.Fails("CREATE TABLE c (id int PRIMARY KEY, pid int, a int, CONSTRAINT x FOREIGN KEY (pid) REFERENCES p (id), CONSTRAINT x CHECK (a > 0))", "1826")
+			e.Fails("CREATE TABLE u (a int, CONSTRAINT y UNIQUE (a), CONSTRAINT y CHECK (a > 0))", "1826")
+		}),
+		p("session.statement_timeout", "MariaDB has no max_execution_time (1193): SESSION max_statement_time bounds every statement in seconds (1969)", func(e *Env) {
+			e.Fails("SET SESSION max_execution_time = 237", "1193")
+			e.Exec("SET SESSION max_statement_time = 0.237")
+			e.Want("SELECT @@SESSION.max_statement_time", "0.237")
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY)", "INSERT INTO t VALUES (1)", "BEGIN", "UPDATE t SET id = 1 WHERE id = 1")
+			other := e.Other()
+			other.Exec("SET SESSION max_statement_time = 0.02")
+			other.Fails("SELECT COUNT(*) FROM information_schema.COLLATIONS a, information_schema.COLLATIONS b, information_schema.COLLATIONS c", "1969")
+			other.Fails("UPDATE t SET id = 1 WHERE id = 1", "1969")
+			e.Merge(other)
+			e.Exec("ROLLBACK")
+		}),
+		p("lock.share_clause", "LOCK IN SHARE MODE takes a shared row lock and takes NOWAIT, and MariaDB has no FOR SHARE (1064)", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY)", "INSERT INTO t VALUES (1)", "BEGIN")
+			e.Want("SELECT id FROM t WHERE id = 1 LOCK IN SHARE MODE", "1")
+			e.Want("SELECT id FROM t WHERE id = 1 LOCK IN SHARE MODE NOWAIT", "1")
+			e.Fails("SELECT id FROM t WHERE id = 1 FOR SHARE", "1064")
+			e.Fails("SELECT id FROM t WHERE id = 1 FOR SHARE NOWAIT", "1064")
+			e.Exec("ROLLBACK")
+		}),
+		p("catalog.key_ordinal_by_name", "a subquery that names the table by constants reads the primary-key ordinal as the join does, and only the join opens every table of every database", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, b int, c int, PRIMARY KEY (b, a))")
+			database := e.Value("SELECT DATABASE()")
+			e.WantRows(fmt.Sprintf(keyOrdinalJoin, database), "a|2,b|1,c|0")
+			e.WantRows(fmt.Sprintf(keyOrdinalByName, database), "a|2,b|1,c|0")
+			join := e.Column("EXPLAIN " + fmt.Sprintf(keyOrdinalJoin, database))
+			e.Check(strings.Contains(join, "Scanned all databases"), "the join reads KEY_COLUMN_USAGE by name: %s", join)
+			byName := e.Column("EXPLAIN " + fmt.Sprintf(keyOrdinalByName, database))
+			e.Check(!strings.Contains(byName, "Scanned all databases") && strings.Count(byName, "Scanned 0 databases") == 2, "the subquery scans more than its table: %s", byName)
+		}),
+		p("lock.nowait_held", "a NOWAIT read of a row that another transaction locks fails at once with 1205, the number of a lock wait timeout", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY)", "INSERT INTO t VALUES (1)", "BEGIN", "UPDATE t SET id = 1 WHERE id = 1")
+			other := e.Other()
+			other.Exec("BEGIN")
+			other.Fails("SELECT id FROM t WHERE id = 1 FOR UPDATE NOWAIT", "1205")
+			other.Fails("SELECT id FROM t WHERE id = 1 LOCK IN SHARE MODE NOWAIT", "1205")
+			other.Exec("ROLLBACK")
+			e.Merge(other)
+			e.Exec("ROLLBACK")
 		}),
 		// Integers and numbers.
 		p("int.display_width_dropped", "COLUMN_TYPE keeps the integer display width: int(11), tinyint(1), bigint(20)", func(e *Env) {

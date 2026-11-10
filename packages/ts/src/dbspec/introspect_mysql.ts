@@ -328,7 +328,7 @@ const MARIADB_CLOCK = /^current_timestamp\(([1-6]?)\)$/;
  * literal without quotes and escapes, and an expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among them, with EXTRA
  * DEFAULT_GENERATED (probe mysql.default.catalog_text). A quoted text that is not one whole literal is an error.
  */
-function mariadbDefault(dflt: string | null, extra: string): { dflt: string | null; extra: string } {
+export function mariadbDefault(dflt: string | null, extra: string): { dflt: string | null; extra: string } {
   if (dflt === null || extra !== '') return { dflt, extra };
   if (dflt === 'NULL') return { dflt: null, extra };
   if (dflt.startsWith("'")) {

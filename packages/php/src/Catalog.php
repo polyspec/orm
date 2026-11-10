@@ -86,12 +86,15 @@ final class Catalog
      * automatic key, default expression and whether the default is an expression.
      */
     private const COLUMNS_SQL = [
+        // The key ordinal is a subquery that names the table by constants, which neither server reads by opening
+        // every table of every database, as MariaDB reads a join of KEY_COLUMN_USAGE (DIA-210). It takes the
+        // namespace and the name twice.
         'mysql' => "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND "
-            . "c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE "
-            . "'%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM "
-            . "information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON "
-            . "pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME "
-            . "AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+            . "c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM "
+            . "information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND "
+            . "k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),"
+            . "c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE "
+            . "c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
         'postgres' => 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT '
             . 'a.attnotnull,(a.attgenerated<>\'\' OR '
             . 'a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),CASE WHEN length(a.attgenerated)=0 '
@@ -2024,7 +2027,11 @@ final class Catalog
         $kind = self::kind($this->dialect, self::text($kindRaw['rows'][0][0]));
 
         // SQLite table-valued pragmas take the table name first and the schema second.
-        $args = $this->dialect === 'sqlite' ? [$ref['name'], $ref['namespace']] : [$ref['namespace'], $ref['name']];
+        $args = match ($this->dialect) {
+            'sqlite' => [$ref['name'], $ref['namespace']],
+            'mysql' => [$ref['namespace'], $ref['name'], $ref['namespace'], $ref['name']],
+            default => [$ref['namespace'], $ref['name']],
+        };
         $raw = $this->query($pdo, self::COLUMNS_SQL[$this->dialect], $args, self::METADATA_ROWS, self::METADATA_BYTES);
 
         $columns = [];
@@ -2034,6 +2041,9 @@ final class Catalog
                 throw new OrmException(Code::TABLE_METADATA_INVALID, 'column shape of ' . count($row) . ' values');
             }
             $column = self::columnRow($row);
+            if ($this->db->server() === 'mariadb') {
+                $column = self::mariadbColumn($column);
+            }
             foreach ($columns as $existing) {
                 if ($existing->name === $column->name) {
                     throw new OrmException(Code::TABLE_METADATA_INVALID, "duplicate column \"$column->name\"");
@@ -2220,6 +2230,33 @@ final class Catalog
             self::boolValue($row[5]),
             $row[6],
             self::boolValue($row[7])
+        );
+    }
+
+    /**
+     * A column of a MariaDB server, whose COLUMN_DEFAULT is SQL text and whose EXTRA marks no expression default, with
+     * the default of the MySQL form (DIA-205): 'NULL' is no default, a quoted literal its value, a number itself, and
+     * any other text an expression; a quoted text that is not one whole literal is TABLE_METADATA_INVALID.
+     */
+    private static function mariadbColumn(CatalogColumn $column): CatalogColumn
+    {
+        try {
+            [$default, $expression] = Dbspec\MysqlCatalog::mariadbCatalogDefault($column->defaultExpression);
+        } catch (\RuntimeException $e) {
+            throw new OrmException(
+                Code::TABLE_METADATA_INVALID,
+                "column \"$column->name\": {$e->getMessage()}",
+                $e
+            );
+        }
+        return new CatalogColumn(
+            $column->name,
+            $column->nativeType,
+            $column->nullable,
+            $column->generated,
+            $column->automaticKey,
+            $default,
+            $expression
         );
     }
 
@@ -3124,12 +3161,19 @@ final class Catalog
 
     /**
      * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
-     * hide a trigger from the account (INT-119).
+     * hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
+     * partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
      */
     private function mysqlPartialRevokesOff(\PDO $pdo): void
     {
-        $partial = $this->query($pdo, 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096);
-        if (count($partial['rows']) !== 1 || (string) $partial['rows'][0][0] !== '0') {
+        $partial = $this->query(
+            $pdo,
+            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
+            [],
+            1,
+            4096
+        );
+        if (count($partial['rows']) !== 0) {
             throw new OrmException(
                 Code::ROW_MUTATION_UNSUPPORTED,
                 'MySQL partial-revoke visibility requires verification'

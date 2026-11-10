@@ -475,21 +475,21 @@ func columnNames(metadata CatalogTableMetadata) []string {
 }
 
 // mysqlPartialRevokesOff refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a
-// server may hide a trigger from the account (INT-119).
+// server may hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
+// partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
 func (s *catalogSession) mysqlPartialRevokesOff() error {
-	partial, err := s.queryRaw("SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", nil, 1, 4096)
+	partial, err := s.queryRaw(catalogPartialRevokesSQL, nil, 1, 4096)
 	if err != nil {
 		return err
 	}
-	partialRows, err := catalogConvert(partial, partial.types)
-	if err != nil {
-		return err
-	}
-	if len(partialRows) != 1 || partialRows[0][0] != int64(0) {
+	if len(partial.rows) != 0 {
 		return catalogErr(catalogCodeRowUnsupport, "%s", "MySQL partial-revoke visibility requires verification")
 	}
 	return nil
 }
+
+// catalogPartialRevokesSQL lists partial_revokes when a server enables it (DIA-207).
+const catalogPartialRevokesSQL = "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'"
 
 // mysqlSafety refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
 // the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).

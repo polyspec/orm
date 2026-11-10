@@ -690,8 +690,36 @@ static bool cancellation_reopen(zval *db, zval *primary)
 typedef bool (*op_fn)(zval *self, void *ctx, zval *ret);
 typedef bool (*done_fn)(zval *self, void *ctx, zend_long start, zval *err);
 
-/* Db::send. control statements are not blocked by an armed fault. ret is set when the operation returns true. */
-static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done, void *dctx, zval *ret)
+/* LOCK_NOT_AVAILABLE in out for MariaDB's 1205 of a statement of a *_nowait lock, which MariaDB gives where MySQL gives 3572;
+ * false for any other error, whose 1205 stays CANCELED (DIA-209). server is the server of the connection and lock the row lock
+ * of the statement's plan step, NULL for any other statement. */
+static bool nowait_lock_error(zval *server, zval *lock, zval *error, zval *out)
+{
+    if (lock == NULL || Z_TYPE_P(lock) != IS_STRING || Z_STRLEN_P(lock) < 7
+        || strcmp(Z_STRVAL_P(lock) + Z_STRLEN_P(lock) - 7, "_nowait") != 0 || !is_str(server, "mariadb")) {
+        return false;
+    }
+    zval *info = rd(error, "errorInfo");
+    zval *number = info != NULL && Z_TYPE_P(info) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(info), 1) : NULL;
+    if (number == NULL || Z_TYPE_P(number) != IS_LONG || Z_LVAL_P(number) != 1205) {
+        return false;
+    }
+    zval message, args[3];
+    ZVAL_UNDEF(&message);
+    if (!mcall(error, "getMessage", &message, 0, NULL)) {
+        return false;
+    }
+    str_zv(&args[0], "LOCK_NOT_AVAILABLE");
+    ZVAL_COPY_VALUE(&args[1], &message);
+    ZVAL_COPY(&args[2], error);
+    bool ok = newobj(ORM_EXCEPTION, out, 3, args);
+    for (int index = 0; index < 3; index++) zval_ptr_dtor(&args[index]);
+    return ok;
+}
+
+/* Db::send. control statements are not blocked by an armed fault. ret is set when the operation returns true. lock is the row
+ * lock of the statement's plan step, NULL for any other statement. */
+static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done, void *dctx, zval *ret, zval *lock)
 {
     ZVAL_UNDEF(ret);
     zend_long start = now_hr();
@@ -744,6 +772,10 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
         bool made;
         if (cancelled) {
             made = cancellation_exception(&pe, &err);
+        } else if (nowait_lock_error(&driver, lock, &pe, &err)) {
+            made = true;
+        } else if (EG(exception) != NULL) {
+            made = false;
         } else {
             ZVAL_COPY(&args[0], &pe);
             ZVAL_COPY(&args[1], &driver);
@@ -2275,7 +2307,7 @@ static bool query_rows(zval *self, zval *step, zval *params, zval *sql_in, zval 
     qctx qc = {&sql, &args};
     modelctx mc = {step, &sql, &args};
     zval rows;
-    ok = send_op(self, false, op_query, &qc, done_model, &mc, &rows);
+    ok = send_op(self, false, op_query, &qc, done_model, &mc, &rows, aget(step, "lock"));
     zval_ptr_dtor(&sql);
     if (ok) {
         zval *dec = aget(step, "decode");
@@ -2311,7 +2343,7 @@ static bool scalar_of_step(zval *self, zval *step, zval *params, zval *out)
     qctx qc = {&sql, &args};
     modelctx mc = {step, &sql, &args};
     zval v;
-    bool ok = send_op(self, false, op_scalar, &qc, done_model, &mc, &v);
+    bool ok = send_op(self, false, op_scalar, &qc, done_model, &mc, &v, aget(step, "lock"));
     zval_ptr_dtor(&sql);
     zval_ptr_dtor(&args);
     if (!ok) {
@@ -2885,14 +2917,16 @@ static bool plan_of(zval *self, zval *r, zval *out)
         return false;
     }
     zval_ptr_dtor(&model);
-    zval eargs[4], engine, rr, shape;
+    zval eargs[5], engine, rr, shape;
     ZVAL_COPY(&eargs[0], hash);
     ZVAL_COPY(&eargs[1], rd(self, "driver"));
     ZVAL_LONG(&eargs[2], as_long(rd(rd(self, "config"), "planCacheSize")));
     /* A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
     ZVAL_BOOL(&eargs[3], is_corpus(self));
-    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 4, eargs);
-    for (int i = 0; i < 4; i++) {
+    /* The plans of a mysql connection are the ones of its server (DIA-209). */
+    ZVAL_COPY(&eargs[4], error_driver(self));
+    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 5, eargs);
+    for (int i = 0; i < 5; i++) {
         zval_ptr_dtor(&eargs[i]);
     }
     if (!ok) {
@@ -3109,7 +3143,7 @@ static bool observed_as(zval *self, bool control, zval *kind, zval *tables, zval
     }
     zval_ptr_dtor(&pdo);
     pubctx pc = {kind, tables, tx, sql, binds};
-    return send_op(self, control, op, opctx, done_publish, &pc, out);
+    return send_op(self, control, op, opctx, done_publish, &pc, out, NULL);
 }
 
 bool db_observed_native(zval *connection, zval *kind, zval *tables, zval *transaction, zval *sql,
@@ -3796,7 +3830,7 @@ static bool send_write(zval *self, zval *step, zval *args, zval *r, zval *id, zv
     ZVAL_COPY(&sql, aget(step, "sql"));
     modelctx mc = {step, &sql, args};
     zval res;
-    bool ok = send_op(self, false, op_write, &wc, done_model, &mc, &res);
+    bool ok = send_op(self, false, op_write, &wc, done_model, &mc, &res, NULL);
     zval_ptr_dtor(&sql);
     if (!ok) {
         return false;
@@ -4651,7 +4685,7 @@ static bool execute_impl(zval *self, zval *step, zval *params)
     ZVAL_COPY(&sql, aget(step, "sql"));
     modelctx mc = {step, &sql, &args};
     zval res;
-    ok = send_op(self, false, op_execute, &wc, done_model, &mc, &res);
+    ok = send_op(self, false, op_execute, &wc, done_model, &mc, &res, NULL);
     zval_ptr_dtor(&sql);
     zval_ptr_dtor(&args);
     if (ok) {

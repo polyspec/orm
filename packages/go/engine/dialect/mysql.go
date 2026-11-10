@@ -8,7 +8,11 @@ import (
 // MySQL is the primary dialect. Style expressions are defined to preserve the
 // stored byte representation
 // AES and hex are host-side; IP packing remains SQL-side.
-type MySQL struct{}
+type MySQL struct {
+	// MariaDB is set when the server of the connection is MariaDB (DIA-201), which renders the one clause that has no common
+	// form on the two servers (DIA-209).
+	MariaDB bool
+}
 
 func (MySQL) Name() string                            { return "mysql" }
 func (MySQL) Quote(ident string) string               { return QuoteWith("`", ident) }
@@ -27,7 +31,20 @@ func (MySQL) HostNow() bool                         { return false }
 func (MySQL) ClockOperand(col string, _ int) string { return col }
 func (MySQL) ReadTime(col string, _ int) string     { return "CAST(" + col + " AS CHAR)" }
 func (MySQL) WriteTime(ph string) string            { return ph }
-func (MySQL) RowLock(mode string) (string, bool) {
+
+// RowLock renders a shared lock as LOCK IN SHARE MODE, which both servers read, since MariaDB has no FOR SHARE (DIA-209,
+// probes mysql.lock.share_clause and mariadb.lock.share_clause). A shared NOWAIT lock has no common form: MySQL takes
+// NOWAIT after FOR SHARE alone and MariaDB after LOCK IN SHARE MODE alone.
+func (d MySQL) RowLock(mode string) (string, bool) {
+	switch mode {
+	case "share":
+		return " LOCK IN SHARE MODE", true
+	case "share_nowait":
+		if d.MariaDB {
+			return " LOCK IN SHARE MODE NOWAIT", true
+		}
+		return " FOR SHARE NOWAIT", true
+	}
 	return rowLock(mode)
 }
 

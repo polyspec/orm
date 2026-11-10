@@ -120,6 +120,52 @@ final class CatalogConnectionSurfaceTest extends TestCase
         coverageAssertColumnNameFailureIsPrevious($read);
     }
 
+    // Requirements: DIA-205. A MariaDB server writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the MySQL form:
+    // 'NULL' is no default, a quoted literal its value with its escapes undone, a number itself, and any other text an
+    // expression default, the clock as CURRENT_TIMESTAMP(p); on a MySQL server the same text is the default as it is.
+    public function testNativeMariadbColumnDefaultIsReadInTheMysqlForm(): void
+    {
+        require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
+        $defaults = [
+            ['none', null], ['null_text', 'NULL'], ['quoted', "'it''s'"], ['number', '-1.5e3'],
+            ['clock', 'current_timestamp(3)'], ['clock0', 'current_timestamp()'], ['expression', 'uuid()'],
+        ];
+        $want = [
+            'mariadb' => [
+                [null, false], [null, false], ["it's", false], ['-1.5e3', false],
+                ['CURRENT_TIMESTAMP(3)', true], ['CURRENT_TIMESTAMP', true], ['uuid()', true],
+            ],
+            'mysql' => [
+                [null, false], ['NULL', false], ["'it''s'", false], ['-1.5e3', false],
+                ['current_timestamp(3)', false], ['current_timestamp()', false], ['uuid()', false],
+            ],
+        ];
+        foreach ($want as $server => $columns) {
+            $db = new Db(new CatalogMariadbDefaultPdo($defaults), 'mysql', new Config(), new DateTimeZone('UTC'));
+            $db->setServer($server);
+            $metadata = self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+            $read = array_map(
+                static fn (CatalogColumn $column): array => [$column->defaultExpression, $column->expressionDefault],
+                array_slice($metadata->columns, 1),
+            );
+            self::assertSame($columns, $read, $server);
+        }
+
+        // A quoted text that is not one whole literal is no default that the descriptor can state.
+        $db = new Db(new CatalogMariadbDefaultPdo([['broken', "'a' 'b'"]]), 'mysql', new Config(), new DateTimeZone('UTC'));
+        $db->setServer('mariadb');
+        try {
+            self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+            self::fail('a default that is not one string literal was described');
+        } catch (OrmException $error) {
+            self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_);
+            self::assertSame(
+                "TABLE_METADATA_INVALID: column \"broken\": default 'a' 'b' is not one string literal",
+                $error->getMessage(),
+            );
+        }
+    }
+
     public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
     {
         require_once __DIR__ . '/CatalogMetadataFailurePdo.php';

@@ -28,8 +28,15 @@ pub(super) fn quote(value: &str, dialect: &str) -> Result<String, CatalogError> 
     };
     Ok(format!("{mark}{}{mark}", value.replace(mark, &format!("{mark}{mark}"))))
 }
-pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, CatalogError> {
-    let metadata = metadata::describe(connection, dialect, table).await?;
+pub(super) async fn read(
+    connection: &mut Conn,
+    dialect: &str,
+    server: polyspec_orm_schema::dbspec::Server,
+    table: &TableRef,
+    limit: usize,
+    offset: u64,
+) -> Result<TablePage, CatalogError> {
+    let metadata = metadata::describe(connection, dialect, server, table).await?;
     if metadata.columns.is_empty() {
         return Err("TABLE_PAGE_UNSUPPORTED: relation has no selectable columns".into());
     }
@@ -54,13 +61,13 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
         // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
         Err(error) if error.message().starts_with("CATALOG_LIMIT") => return Err(error),
         Err(error) => {
-            return match metadata::describe(connection, dialect, table).await {
+            return match metadata::describe(connection, dialect, server, table).await {
                 Ok(after) if after != metadata => Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into()),
                 _ => Err(error),
             };
         }
     };
-    let after = metadata::describe(connection, dialect, table).await?;
+    let after = metadata::describe(connection, dialect, server, table).await?;
     assemble(metadata, result, has_more, after, limit, offset)
 }
 fn assemble(

@@ -11,6 +11,7 @@ import { OrmError } from './runtime_error.js';
 import { sqliteResultCodeSuffix } from './sqlite-codes.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 import * as codes from './codes.js';
+import type { MySqlServer } from './engine/dialect.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -66,8 +67,11 @@ export type StatementDone = (sql: string, elapsed: number, error: OrmError | nul
 /** A connection pool or one reserved connection. */
 interface DriverConnection {
   readonly name: DriverName;
-  /** Runs one prepared statement; an aborted signal cancels it and raises CANCELED. */
-  execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult>;
+  /**
+   * Runs one prepared statement; an aborted signal cancels it and raises CANCELED. nowait says that the statement takes a row lock
+   * `*_nowait`, whose failure MariaDB reports as 1205 (DIA-209).
+   */
+  execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone, nowait?: boolean): Promise<DriverResult>;
 }
 
 export interface DriverPool extends DriverConnection {
@@ -110,13 +114,13 @@ function seconds(started: number): number { return (performance.now() - started)
  *
  * @internal
  */
-export async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T, server?: MySqlServer): Promise<T> {
+export async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T, server?: MySqlServer, nowait = false): Promise<T> {
   const started = performance.now();
   let result: T;
   try {
     result = await work();
   } catch (error) {
-    const mapped = driverError(name, error, server);
+    const mapped = driverError(name, error, server, nowait);
     done(sql, seconds(started), mapped, origin);
     throw mapped;
   }
@@ -211,8 +215,7 @@ function connectionLost(name: DriverName, source: { code: string | undefined; er
   return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
 }
 
-/** The server of a mysql connection, which the connection reads once by VERSION() (DIA-201). */
-export type MySqlServer = 'mysql' | 'mariadb';
+export type { MySqlServer } from './engine/dialect.js';
 
 /**
  * The codes of the error numbers of each server of the mysql dialect (DIA-201): MariaDB numbers its errors above 1999
@@ -224,7 +227,12 @@ const MYSQL_CODES: Record<MySqlServer, ReadonlyMap<number, string>> = {
   mariadb: new Map([[1205, codes.CANCELED], [1317, codes.CANCELED], [1969, codes.CANCELED], [1062, codes.DUPLICATE_KEY], [1451, codes.FOREIGN_KEY], [1452, codes.FOREIGN_KEY], [1213, codes.DEADLOCK], [1290, codes.READ_ONLY], [1792, codes.READ_ONLY], [4025, codes.CONSTRAINT]]),
 };
 
-export function driverError(name: DriverName, error: unknown, server: MySqlServer = 'mysql'): OrmError {
+/**
+ * The OrmError of a driver error. server is the server of a mysql connection (DIA-201), and nowait says that the failing statement
+ * takes a row lock `*_nowait`: MariaDB fails a NOWAIT lock that it cannot take at once with 1205, which is LOCK_NOT_AVAILABLE then,
+ * as MySQL's 3572 is, and CANCELED otherwise (DIA-209).
+ */
+export function driverError(name: DriverName, error: unknown, server: MySqlServer = 'mysql', nowait = false): OrmError {
   if (error instanceof OrmError) return error;
   const driverCode = property(error, 'code');
   const errcode = property(error, 'errcode');
@@ -245,7 +253,10 @@ export function driverError(name: DriverName, error: unknown, server: MySqlServe
     return new OrmError(codes.CONFIG, `mysql TLS connection failed: ${message}`, error);
   }
   // A mysql error is read by its number in the table of its server (DIA-201).
-  if (name === 'mysql') return new OrmError(source.errno === undefined ? codes.DRIVER : MYSQL_CODES[server].get(source.errno) ?? codes.DRIVER, `${name}: ${message}`, error);
+  if (name === 'mysql') {
+    if (server === 'mariadb' && nowait && source.errno === 1205) return new OrmError(codes.LOCK_NOT_AVAILABLE, `${name}: ${message}`, error);
+    return new OrmError(source.errno === undefined ? codes.DRIVER : MYSQL_CODES[server].get(source.errno) ?? codes.DRIVER, `${name}: ${message}`, error);
+  }
   const lockNotAvailable = source.code === '55P03';
   // PostgreSQL 57014 and SQLite 9 report a statement that was stopped before it finished; SQLite BUSY reports a lock that
   // another connection still held when busy_timeout ended.
@@ -440,10 +451,24 @@ async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: Sta
 
 /**
  * The failure of the session setup that runs on each new MySQL connection, and the server that the setup read by VERSION(),
- * never by the handshake (DIA-201). The setup runs ahead of every statement of its connection, so the server is known when a
- * statement settles. read settles when the first connection has read the server, or failed to.
+ * never by the handshake (DIA-201). ready holds, for each connection of the pool, the end of its setup: the statement timeout is the
+ * variable of the server that the connection reads (DIA-208), so it is set after VERSION() answers, and no statement of the caller
+ * is sent on a connection before its ready settles.
  */
-interface SessionSetup { error?: unknown; server: MySqlServer; readonly read: Promise<void>; }
+interface SessionSetup { error?: unknown; server: MySqlServer; readonly ready: WeakMap<object, Promise<void>>; }
+
+/** The statement that bounds the statements of a connection to the server by timeoutMs milliseconds (DIA-208). */
+export function mysqlStatementTimeout(server: MySqlServer, timeoutMs: number): string {
+  return server === 'mariadb' ? `SET SESSION max_statement_time = ${(timeoutMs / 1000).toFixed(3)}` : `SET SESSION max_execution_time = ${timeoutMs}`;
+}
+
+/** Waits for the session setup of a connection that the pool gave out, which every statement of the caller on it follows. */
+async function setUp(setup: SessionSetup, connection: MySqlConnection): Promise<MySqlConnection> {
+  const ready = setup.ready.get(privateMember<object>(connection, 'connection'));
+  if (ready === undefined) throw new OrmError(codes.INTERNAL, 'a mysql connection of the pool has no session setup');
+  await ready;
+  return connection;
+}
 
 function sessionError(setup: SessionSetup): OrmError | undefined {
   if (setup.error === undefined) return undefined;
@@ -462,23 +487,22 @@ class MySqlPoolDriver implements DriverPool {
       error => { throw sessionError(this.setup) ?? error; },
     );
   }
-  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    if (signal === undefined) return observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(this.pool, sql, params)), this.setup.server);
-    // A cancellable statement holds its own connection, so KILL QUERY names
-    // the thread that runs it.
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone, nowait = false): Promise<DriverResult> {
+    // The statement holds a connection whose session setup has ended (DIA-208); a cancellable statement holds it so that KILL QUERY
+    // names the thread that runs it.
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error, this.setup.server); }
+    try { connection = await this.checked(this.pool.getConnection().then(async held => setUp(this.setup, held))); } catch (error) { throw driverError(this.name, error, this.setup.server); }
     try {
-      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection, done, this.setup.server),
-        observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(connection, sql, params)), this.setup.server));
+      const work = observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(connection, sql, params)), this.setup.server, nowait);
+      return await (signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, connection, done, this.setup.server), work));
     } finally {
       connection.release();
     }
   }
   public async reserve(): Promise<DriverSession> {
     let connection: MySqlConnection;
-    // The session takes the server that the setup read, so the reserve waits for that read (DIA-201).
-    try { connection = await this.checked(this.pool.getConnection().then(async held => { await this.setup.read; return held; })); } catch (error) { throw driverError(this.name, error, this.setup.server); }
+    // The session takes the server that the setup read, so the reserve waits for the setup of its connection (DIA-201, DIA-208).
+    try { connection = await this.checked(this.pool.getConnection().then(async held => setUp(this.setup, held))); } catch (error) { throw driverError(this.name, error, this.setup.server); }
     return new MySqlSession(connection, this.pool, this.setup.server);
   }
   public stats(): PoolStats {
@@ -492,8 +516,8 @@ class MySqlPoolDriver implements DriverPool {
 class MySqlSession implements DriverSession {
   public readonly name = 'mysql' as const;
   public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool, private readonly server: MySqlServer) {}
-  public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params), this.server);
+  public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone, nowait = false): Promise<DriverResult> {
+    const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params), this.server, nowait);
     return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done, this.server), work);
   }
   public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
@@ -1125,22 +1149,23 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null; buffer(): Buffer | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : field.type === 'GEOMETRY' ? field.buffer() : next()) } : {}),
         maxPreparedStatements: statementCacheSize,
       });
-      let serverRead = (): void => {};
-      const setup: SessionSetup = { server: 'mysql', read: new Promise<void>(resolve => { serverRead = resolve; }) };
+      const setup: SessionSetup = { server: 'mysql', ready: new WeakMap() };
       const core = mysqlCorePool(created);
       core.on('connection', connection => {
+        let setupEnded = (): void => {};
+        setup.ready.set(connection, new Promise<void>(resolve => { setupEnded = resolve; }));
         connection.query(MYSQL_SET_NAMES, error => { if (error) setup.error = error; });
-        // The server is read by VERSION() (DIA-201).
+        connection.query(`SET time_zone = '+00:00', sql_mode = '${MYSQL_SQL_MODE}'`, error => { if (error) setup.error = error; });
+        // The server is read by VERSION() (DIA-201). The statement timeout is the variable of that server, which the connection sets
+        // before any statement of the caller (DIA-208): MySQL bounds a SELECT by max_execution_time in milliseconds and MariaDB every
+        // statement by max_statement_time in seconds.
         connection.query('SELECT VERSION() AS version', (error: unknown, rows?: unknown) => {
-          if (error) { setup.error = error; serverRead(); return; }
+          if (error) { setup.error = error; setupEnded(); return; }
           const version = Array.isArray(rows) ? property(rows[0], 'version') : undefined;
           setup.server = typeof version === 'string' && version.includes('-MariaDB') ? 'mariadb' : 'mysql';
-          serverRead();
+          if (statementTimeoutMs <= 0) { setupEnded(); return; }
+          connection.query(mysqlStatementTimeout(setup.server, statementTimeoutMs), timeoutError => { if (timeoutError) setup.error = timeoutError; setupEnded(); });
         });
-        // MySQL bounds SELECT statements with max_execution_time.
-        const zone = `SET time_zone = '+00:00', sql_mode = '${MYSQL_SQL_MODE}'`;
-        const session = statementTimeoutMs > 0 ? `${zone}, SESSION max_execution_time = ${statementTimeoutMs}` : zone;
-        connection.query(session, error => { if (error) setup.error = error; });
       });
       boundMySqlPool(core, bounds);
       return new MySqlPoolDriver(created, setup, bounds.size);

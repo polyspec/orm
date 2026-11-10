@@ -33,6 +33,7 @@ from polyspec.orm.database import (
     _sqlite_path,
     parse_dsn,
 )
+from polyspec.orm.dbspec.introspect_mysql import mariadb_catalog_default
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import MarkdownConnection
 from polyspec.orm.placeholders import for_mysql, for_postgres
@@ -95,7 +96,7 @@ _KIND_SQL = {
 # The columns of a relation in physical order: name, native type, nullable, generated, primary-key ordinal, automatic key,
 # default expression and whether the default is an expression.
 _COLUMNS_SQL = {
-    "mysql": "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+    "mysql": "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
     "postgres": "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
     "sqlite": 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
 }
@@ -1761,7 +1762,12 @@ class _Session:
             if dialect == "sqlite"
             else [table["namespace"], table["name"]]
         )
-        rows = self.run(_COLUMNS_SQL[dialect], args, METADATA_ROWS, METADATA_BYTES).rows
+        # The mysql query names the table twice: its key ordinal is a subquery that names the table by constants, so
+        # MariaDB opens only that table (DIA-210).
+        column_args = args * 2 if dialect == "mysql" else args
+        rows = self.run(
+            _COLUMNS_SQL[dialect], column_args, METADATA_ROWS, METADATA_BYTES
+        ).rows
 
         columns: list = []
         keys: list = []
@@ -1779,6 +1785,16 @@ class _Session:
                     codes.TABLE_METADATA_INVALID,
                     f"default expression of column {name!r} is {type(default).__name__}",
                 )
+            expression = _bool(row[7])
+            if dialect == "mysql" and self.server == "mariadb":
+                # MariaDB writes its default as SQL text, read as the introspection reads it (DIA-205).
+                try:
+                    default, expression = mariadb_catalog_default(default)
+                except ValueError as error:
+                    raise _error(
+                        codes.TABLE_METADATA_INVALID,
+                        f"default expression of column {name!r}: {error}",
+                    ) from None
             column = CatalogColumn(
                 name=name,
                 native_type=_text(row[1]),
@@ -1786,7 +1802,7 @@ class _Session:
                 generated=_bool(row[3]),
                 automatic_key=_bool(row[5]),
                 default_expression=default,
-                expression_default=_bool(row[7]),
+                expression_default=expression,
             )
             ordinal = _int(row[4])
             if ordinal < 0:
@@ -1875,11 +1891,15 @@ class _Session:
 
     def mysql_partial_revokes_off(self) -> None:
         """Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
-        hide a trigger from the account (INT-119)."""
+        hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
+        partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207)."""
         partial = self.run(
-            "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", [], 1, 4096
+            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
+            [],
+            1,
+            4096,
         ).rows
-        if len(partial) != 1 or partial[0][0] != 0:
+        if len(partial) != 0:
             raise _error(
                 codes.ROW_MUTATION_UNSUPPORTED,
                 "MySQL partial-revoke visibility requires verification",

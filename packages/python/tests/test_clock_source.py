@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from polyspec.orm import clock
 from polyspec.orm.engine.dialect import MysqlDialect, PostgresDialect, SqliteDialect
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 
@@ -80,6 +81,31 @@ class NativeDialectHookTest(unittest.TestCase):
         )
         self.assertEqual(SqliteDialect().row_lock("update"), "")
         self.assertIsNone(SqliteDialect().row_lock("invalid"))
+
+    # Requirements: DIA-209. The mysql dialect renders share as LOCK IN SHARE MODE on both servers and share_nowait by
+    # the server of the connection; PostgreSQL keeps FOR SHARE.
+    def test_the_row_lock_of_the_mysql_dialect_is_rendered_by_its_server(self):
+        for server, share_nowait in (
+            ("mysql", " FOR SHARE NOWAIT"),
+            ("mariadb", " LOCK IN SHARE MODE NOWAIT"),
+        ):
+            with self.subTest(server=server):
+                dialect = MysqlDialect(server)
+                self.assertEqual(dialect.row_lock("update"), " FOR UPDATE")
+                self.assertEqual(dialect.row_lock("share"), " LOCK IN SHARE MODE")
+                self.assertEqual(
+                    dialect.row_lock("update_nowait"), " FOR UPDATE NOWAIT"
+                )
+                self.assertEqual(dialect.row_lock("share_nowait"), share_nowait)
+                self.assertIsNone(dialect.row_lock("invalid"))
+        self.assertEqual(MysqlDialect().row_lock("share_nowait"), " FOR SHARE NOWAIT")
+        self.assertEqual(PostgresDialect().row_lock("share"), " FOR SHARE")
+        self.assertEqual(
+            PostgresDialect().row_lock("share_nowait"), " FOR SHARE NOWAIT"
+        )
+        with self.assertRaises(OrmError) as caught:
+            MysqlDialect("postgres")
+        self.assertEqual(caught.exception.code, "INTERNAL")
 
 
 if __name__ == "__main__":
