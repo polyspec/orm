@@ -616,10 +616,10 @@ final class EngineTest extends TestCase
         self::assertNull((new \Polyspec\Orm\Dialect('mysql', 'mariadb'))->rowLock('exclusive'));
         $hash = \Polyspec\Orm\Tests\Model\Author::meta()['manifest_hash'];
         self::assertNotSame(
-            Engine::for($hash, 'mysql', 8, false, 'mysql'),
-            Engine::for($hash, 'mysql', 8, false, 'mariadb'),
+            Engine::for($hash, 'mysql', 8, 'mysql'),
+            Engine::for($hash, 'mysql', 8, 'mariadb'),
             'the engine of each server of the mysql dialect is its own'
         );
-        self::assertSame(Engine::for($hash, 'mysql', 8), Engine::for($hash, 'mysql', 8, false, 'mysql'));
+        self::assertSame(Engine::for($hash, 'mysql', 8), Engine::for($hash, 'mysql', 8, 'mysql'));
     }
 }
