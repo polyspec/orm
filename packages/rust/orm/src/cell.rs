@@ -25,11 +25,6 @@ pub(crate) fn cell_refusal(column_type: &str) -> Error {
     Error::Engine { code: codes::CODEC_DECODE.into(), msg: cell_message(column_type), source: None }
 }
 
-/// The CODEC_DECODE of a cell that its column type does not hold, keeping the failure that found it (COD-1).
-pub(crate) fn cell_refusal_by(column_type: &str, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg: cell_message(column_type), source: Some(Box::new(cause)) }
-}
-
 /// The refusal of a text cell whose bytes are not UTF-8 (COD-69), which keeps the failure of the UTF-8 read.
 pub(crate) fn invalid_utf8(cause: impl std::error::Error + Send + Sync + 'static) -> Error {
     Error::Engine { code: codes::CODEC_DECODE.into(), msg: "text is not valid UTF-8".into(), source: Some(Box::new(cause)) }

@@ -81,61 +81,42 @@ pub trait Src {
 
 /// One row of a select step as handed to the generated code.
 pub enum Cells {
-    /// The MySQL driver row itself: decoded straight into the struct when no host AES stage is
-    /// present. AES rows use the positional path so the stored key version can be selected.
-    Raw(MySqlRow),
     /// A positional row (styled cells already decoded).
     Pos(Vec<Val>),
 }
 
 impl Src for Cells {
     fn i64(&mut self, i: usize) -> Result<i64> {
-        match self {
-            Cells::Raw(r) => raw_i64(r, i),
-            Cells::Pos(v) => v[i].as_i64(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_i64()
     }
     fn f64(&mut self, i: usize) -> Result<f64> {
-        match self {
-            Cells::Raw(r) => raw_f64(r, i),
-            Cells::Pos(v) => v[i].as_f64(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_f64()
     }
     fn bool(&mut self, i: usize) -> Result<bool> {
-        match self {
-            Cells::Raw(r) => raw_bool(r, i),
-            Cells::Pos(v) => v[i].as_bool(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_bool()
     }
     fn string(&mut self, i: usize) -> Result<String> {
-        match self {
-            Cells::Raw(r) => raw_string(r, i),
-            Cells::Pos(v) => v[i].take_string(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].take_string()
     }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime> {
-        match self {
-            Cells::Raw(r) => raw_datetime(r, i),
-            Cells::Pos(v) => v[i].as_datetime(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_datetime()
     }
     fn date(&mut self, i: usize) -> Result<NaiveDate> {
-        match self {
-            Cells::Raw(r) => raw_date(r, i),
-            Cells::Pos(v) => v[i].as_date(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_date()
     }
-    fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val> {
-        match self {
-            Cells::Raw(r) => crate::codec::decode(styles, &read_cell_mysql(r, i)?),
-            Cells::Pos(v) => Ok(std::mem::take(&mut v[i])),
-        }
+    fn styled(&mut self, i: usize, _styles: &[String]) -> Result<Val> {
+        let Cells::Pos(v) = self;
+        Ok(std::mem::take(&mut v[i]))
     }
     fn val(&mut self, i: usize) -> Result<Val> {
-        match self {
-            Cells::Raw(r) => read_cell_mysql(r, i),
-            Cells::Pos(v) => Ok(v[i].clone()),
-        }
+        let Cells::Pos(v) = self;
+        Ok(v[i].clone())
     }
 }
 
@@ -144,67 +125,11 @@ fn type_name(r: &MySqlRow, i: usize) -> &str {
     r.column(i).type_info().name()
 }
 
-fn required_cell<T>(value: Option<T>, i: usize) -> Result<T> {
-    value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required"), source: None })
-}
-
 /// A `YEAR` cell, which `YEAR(col)` also returns. sqlx's i64 does not accept `YEAR` (only
 /// unsigned Rust integers of an `UNSIGNED` column do); the value is a two-byte integer, so it is
 /// decoded as i64 without that type check.
 fn year_cell(r: &MySqlRow, i: usize) -> Result<Option<i64>> {
     Ok(r.try_get_unchecked::<Option<i64>, _>(i)?)
-}
-
-fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
-    Ok(match type_name(r, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
-        "YEAR" => required_cell(year_cell(r, i)?, i)?,
-        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?).map_err(|error| crate::cell::cell_refusal_by("i64", error))?
-        }
-        "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
-        _ => read_cell_mysql(r, i)?.as_i64()?,
-    })
-}
-
-fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
-    Ok(match type_name(r, i) {
-        "FLOAT" | "DOUBLE" => Val::F64(required_cell(r.try_get::<Option<f64>, _>(i)?, i)?).as_f64()?,
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_f64()?,
-        "YEAR" => Val::I64(required_cell(year_cell(r, i)?, i)?).as_f64()?,
-        _ => read_cell_mysql(r, i)?.as_f64()?,
-    })
-}
-
-fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
-    Ok(match type_name(r, i) {
-        // The driver reads any nonzero TINYINT(1) as true; a cell neither 0 nor 1 is no boolean (PRT-67).
-        "BOOLEAN" => Val::I64(i64::from(required_cell(r.try_get::<Option<i8>, _>(i)?, i)?)).as_bool()?,
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_bool()?,
-        _ => read_cell_mysql(r, i)?.as_bool()?,
-    })
-}
-
-fn raw_string(r: &MySqlRow, i: usize) -> Result<String> {
-    Ok(match type_name(r, i) {
-        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => required_cell(r.try_get::<Option<String>, _>(i)?, i)?,
-        _ => read_cell_mysql(r, i)?.take_string()?,
-    })
-}
-
-fn raw_datetime(r: &MySqlRow, i: usize) -> Result<NaiveDateTime> {
-    Ok(match type_name(r, i) {
-        "DATETIME" => required_cell(r.try_get::<Option<NaiveDateTime>, _>(i)?, i)?,
-        "TIMESTAMP" => required_cell(r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?, i)?.naive_utc(),
-        _ => read_cell_mysql(r, i)?.as_datetime()?,
-    })
-}
-
-fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
-    Ok(match type_name(r, i) {
-        "DATE" => required_cell(r.try_get::<Option<NaiveDate>, _>(i)?, i)?,
-        _ => read_cell_mysql(r, i)?.as_date()?,
-    })
 }
 
 /// Reads one MySQL cell as a `Val` by its column type name.
