@@ -82963,12 +82963,12 @@
     },
     {
      "op": "sql.exec",
-     "reason": "the accepted forms of every client (COD-1): a float with no fraction in an integer column, the decimal text of a number in a float column, a boolean text, a time whose fraction fits its precision, a leap day",
-     "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (2, 7.0, -12.0, '1.5e1', 't', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '10:00:00.5', '2024-02-29', 'x', 'n')"
+     "reason": "the accepted forms of every client (COD-1): a float with no fraction in an integer column, the decimal text of a number in a float column, a boolean text, a time whose fraction fits its precision, a leap day, the 16 bytes of a uuid",
+     "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (2, 7.0, -12.0, '1.5e1', 't', X'a0eebc999c0b4ef8bb6d6bb9bd380a11', '10:00:00.5', '2024-02-29', 'x', 'n')"
     },
     {
      "op": "sql.exec",
-     "reason": "the refused forms near them: the digits of an integer as a stored text, a float with a fraction, a number beyond the finite range, a boolean text no client takes, a time fraction digit beyond the precision, a day that is no day",
+     "reason": "the refused forms near them: the digits of an integer as a stored text, a float with a fraction, a number beyond the finite range, a boolean text no client takes, a time fraction digit beyond the precision, a day that is no day, the text of a uuid in place of its 16 bytes",
      "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (3, '7', 2.5, '1e999', 'yes', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '10:00:00.1234', '2023-02-29', 'x', 'n')"
     },
     {
@@ -83062,7 +83062,7 @@
      "expect": {
       "sqlite": {
        "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not text"
+       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not a uuid"
       }
      }
     },
@@ -83157,7 +83157,8 @@
       "ratio",
       "active",
       "clock",
-      "day"
+      "day",
+      "ref"
      ],
      "expect": {
       "sqlite": {
@@ -83168,7 +83169,8 @@
         "seq": 2,
         "active": true,
         "clock": "10:00:00.500",
-        "day": "2024-02-29"
+        "day": "2024-02-29",
+        "ref": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
        }
       }
      }
@@ -83284,6 +83286,25 @@
       "sqlite": {
        "error": "CODEC_DECODE",
        "message": "CODEC_DECODE: typed_value.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "ref"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not a uuid"
       }
      }
     },
