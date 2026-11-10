@@ -21,7 +21,7 @@ polyspec-orm-test-support = { path = "../../../test-support" }
 sha2 = "0.10"
 futures-util = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 serde_json = "1"
 

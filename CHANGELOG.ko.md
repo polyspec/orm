@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c35e4dc2dbc72d81449d7a2f10f5ddc7ebaafc52699ac7b3a558395e1874060e -->
+<!-- source-sha256: 75961e512da5ec0d42b8d42d7e71da8ba6cb2da6ec0a6f232f6283d42a722fca -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.29
 
+- Rust는 다른 runtime처럼 MySQL Unix 소켓에서 비밀번호로 로그인한다(T385.13, CFG-10). sqlx 0.9.0은 그곳의 `caching_sha2_password` 전체 인증에서 공개 키 요청을 전송했고 MySQL은 그것을 틀린 비밀번호로 읽으므로, server에 그 계정의 cache 항목이 없을 때마다 로그인이 1045로 실패했다. Rust workspace는 sqlx를 fork min-0-max/sqlx의 release `v0.9.0-polyspec.1`에서 받으며, 이 release는 TLS에서처럼 소켓에서도 평문 비밀번호를 전송한다.
 - CFG-42는 여러 SQLite process의 각 쓰기가 CFG-12의 busy timeout만큼 기다린다고 적고, 여섯 runtime의 시험은 파일을 `_pragma=busy_timeout(60000)`으로 연다. 그래서 runner의 부하가 대기를 끝내지 않는다(T385.11).
 - Go markdown 연결은 SQL 연결과 TypeScript의 순서로 pool option을 검사한다: pool size, idle size, 그다음 lifetime(T385.10, CFG-5a). 이전에는 idle size보다 lifetime을 먼저 검사해서, idle size가 pool size보다 크고 lifetime이 음수이면 lifetime 오류를 냈다.
 - PHP library는 extension처럼 `Dialect::$name`을 `$server`보다 먼저 선언한다. 그래서 둘 다 `Dialect`의 property를 같은 순서로 나열한다(T385.9).

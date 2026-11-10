@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: a506adadd0ee58f66b9120cb6e1b90883bbceda42ba5b96bf800edfbceaf284f -->
+<!-- source-sha256: f407f77f6576c5988231becd4d984e2498ec4775d18bab7200710e9c9c708e3d -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -10,7 +10,7 @@
 | artifacts | `orm-gen-<version>-<os>-<arch>`, `SHA256SUMS` | Go `orm-gen`은 빌드 시점에 실행한다. 스키마 작업은 클라이언트 라이브러리 함수다 | version은 VERSION 파일에서 오며 `latest` symlink를 사용하지 않는다 |
 | distribution | Go: module path; PHP: `bin/orm-gen`을 포함한 composer package `polyspec/orm`; TypeScript: `orm-gen` bin을 포함한 npm package `@polyspec/orm`; Rust: `polyspec-orm`과 `polyspec-orm-build` crate | — | registry 게시가 필요하면 별도 결정으로 처리한다 |
 | configuration | DSN과 secret은 연결 호출의 인자다. 스키마 경로는 연결 옵션(Go, PHP, TypeScript)이거나, 생성된 스키마가 `Db.connect_schema`의 인자이거나(Python), 빌드가 포함한다(Rust) | — | — |
-| drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | 다른 드라이버가 hot path에서 2배 빠르다는 측정 |
+| drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`(fork min-0-max/sqlx의 release `v0.9.0-polyspec.1`. sqlx 0.9.0에 수정 하나를 더했다. MySQL Unix 소켓에서 `caching_sha2_password` 전체 인증이 평문 비밀번호를 전송한다. 0.9.0은 그곳에 공개 키 요청을 전송했고 server는 그것을 틀린 비밀번호로 읽는다(CFG-10). workspace는 이를 하나뿐인 `sqlx` 의존성으로 받는다); PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | 다른 드라이버가 hot path에서 2배 빠르다는 측정 |
 | YAML 코덱 | 모든 runtime은 orm의 YAML reader(`docs/spec/codec.md` COD-74)로 읽는다. Go, TypeScript, Python, PHP, Rust는 각자의 언어로, PHP 확장은 C로 읽으며, 읽기 경로에서는 어떤 library도 parse하지 않는다. library는 쓰기만 하고, 쓴 text는 각각 reader가 다시 읽는다(`yaml-read-back`): Go `go.yaml.in/yaml/v3`, Python `ruamel.yaml`, PHP `purrphp/yaml`(fork `min-0-max/yaml`), Rust `serde-saphyr`, TypeScript `yaml`이며, PHP 확장은 client의 PHP library 호출로 쓴다; lock 파일을 커밋한다. PHP 확장의 나머지 codec을 native로 옮기는 일은 T182-2에서 열려 있다. | 80개 vector와 잘못된 입력 사례는 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 기대값이다. 이는 contract이며 native codec coverage가 완료됐다는 뜻은 아니다. | 공통 벡터와 오류 사례가 유지되는 경우에만 라이브러리를 교체한다 |
 
 ## release asset에서 설치

@@ -12,7 +12,7 @@ license = "MIT"
 polyspec-orm = { path = "../orm" }
 # Reports the databases it created and dropped as STEP lines of the running case.
 polyspec-orm-testcase = { path = "../testcase" }
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres"] }
 tokio = { version = "1", features = ["rt"] }
 url = "2"
 

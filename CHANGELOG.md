@@ -5,6 +5,7 @@
 
 ## 0.0.29
 
+- Rust logs in with a password over a MySQL Unix socket, as the other runtimes do (T385.13, CFG-10). sqlx 0.9.0 sent a public key request in the full authentication of `caching_sha2_password` there, which MySQL reads as a wrong password, so the login failed with 1045 whenever the server held no cached entry for the account. The Rust workspace takes sqlx from the fork min-0-max/sqlx, release `v0.9.0-polyspec.1`, which sends the cleartext password over a socket as over TLS.
 - CFG-42 states that each write of several SQLite processes waits as long as the busy timeout of CFG-12, and its tests in the six runtimes open the file with `_pragma=busy_timeout(60000)`, so the load of the runner ends no wait (T385.11).
 - A Go markdown connection checks its pool options in the order of a SQL connection and of TypeScript: the pool size, the idle size, then the lifetime (T385.10, CFG-5a). It checked the lifetime before the idle size, so an idle size above the pool size with a negative lifetime gave the lifetime error.
 - The PHP library declares `Dialect::$name` before `$server`, as the extension does, so both list the properties of a `Dialect` in one order (T385.9).
