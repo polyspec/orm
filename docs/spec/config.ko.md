@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: bb5b10a24cafe855f664790e2e4e8fb4cf18ed555437d16745f7aabe3f0e71e6 -->
+<!-- source-sha256: 703b4e98711b890fea5db46453926450b242c2cb5894031a8beae4e1136cfef5 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -59,6 +59,7 @@ mysql://user:password@db.example:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-c
 - **CFG-16** `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 `CONFIG`로 연결을 실패시키고, 메시지는 `TLS connection failed`를 담는다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
 - **CFG-17** host는 server 인증서가 이름하는 host 이름이며 IP 주소가 아니다. TypeScript driver가 주소 host를 이름 `localhost`로 검사하기 때문이며, 모든 클라이언트는 `ssl-mode`와 함께 쓴 주소에 `CONFIG`를 반환한다. 이 모드는 TCP로 연결하며 `socket`을 받지 않는다.
 - **CFG-18** `VERIFY_CA`나 `REQUIRED` 같은 `ssl-mode`의 다른 값, `ssl-ca` 없는 `ssl-mode`, `ssl-mode` 없는 `ssl-ca`, 상대 `ssl-ca` 경로, 읽을 수 없는 CA file은 Rust를 뺀 모든 클라이언트에서 `CONFIG`를 반환한다. Rust의 매개변수는 아래에 있다.
+- **CFG-44** `ssl-mode`가 없는 MySQL DSN은 모든 클라이언트에서 TLS 없이 연결한다. server가 TLS를 내놓아도 그렇다. PyMySQL과 sqlx는 그렇지 않으면 server가 TLS를 내놓을 때마다 인증서를 확인하지 않은 채 TLS를 쓰므로, DSN이 `ssl-mode`를 적지 않으면 Python 클라이언트는 `ssl_disabled`를, Rust 클라이언트는 `ssl-mode=DISABLED`를 넘긴다. Go, TypeScript, PHP driver는 그런 DSN에 TLS를 보내지 않는다. recipe dsn_connection의 case `plain_dsn_connects_without_tls`가 MySQL과 MariaDB에서 session의 `Ssl_version`이 비어 있음을 읽는다.
 - **CFG-19** Go와 Rust를 뺀 모든 클라이언트는 다음 매개변수만 받고 다른 매개변수에는 `CONFIG`를 반환한다. MySQL은 `timezone`, `socket`, `ssl-mode`, `ssl-ca`, PostgreSQL은 `timezone`, `host`, `sslmode`, SQLite는 `timezone`, `_pragma`, 그리고 그 자체로 `CONFIG`를 반환하는 `_txlock`이다.
 - **CFG-20** 클라이언트는 받는 다른 매개변수가 서로 다르다. Go 클라이언트는 다른 MySQL 매개변수를 go-sql-driver/mysql에 전달하며, 이 driver는 그 이름의 session 변수나 driver option을 설정한다. 다른 PostgreSQL 매개변수는 pgx에 전달한다. Rust 클라이언트는 `timezone`을 뺀 모든 매개변수를 sqlx에 전달하며, sqlx는 대소문자와 관계없이 `verify_ca` 같은 다른 `ssl-mode` 값도 받는다. 이 page의 매개변수만 이름한 DSN은 모든 클라이언트에서 같게 동작한다. Go와 Rust 클라이언트가 다른 매개변수를 거부하게 하면 현재 사용자의 MySQL DSN이 바뀌며, 그 사용자는 Rust 클라이언트로 `ssl-mode=verify_ca`를 쓰므로 이는 별도의 변경이다.
 

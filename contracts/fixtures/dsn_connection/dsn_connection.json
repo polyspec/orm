@@ -15,7 +15,8 @@
     "CFG-28",
     "CFG-29",
     "CFG-13",
-    "DIA-154"
+    "DIA-154",
+    "CFG-44"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
@@ -269,6 +270,37 @@
                 "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
                 "+00:00",
                 "237"
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "plain_dsn_connects_without_tls",
+      "requirements": [
+        "CFG-44"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "session_read": {
+              "sql": "SHOW SESSION STATUS LIKE 'Ssl_version'",
+              "row": [
+                "Ssl_version",
+                ""
               ]
             }
           },
