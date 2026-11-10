@@ -36,6 +36,14 @@ final class Literal
         return $digits === '' ? '0' : ($n[0] ? '-' : '') . $digits;
     }
 
+    /** The lower-case canonical text of the 16 bytes $bytes of a uuid (DIA-27). */
+    public static function uuidText(string $bytes): string
+    {
+        $hex = bin2hex($bytes);
+        return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4) . '-' . substr($hex, 16, 4)
+            . '-' . substr($hex, 20);
+    }
+
     /** A single-quoted string token's value, or null when the token is not a string. */
     public static function stringValue(string $token): ?string
     {

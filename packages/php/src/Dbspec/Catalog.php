@@ -12,6 +12,13 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Catalog
 {
+    /**
+     * The reason of the unsupported column of a uuid in text storage (DIA-144), which dbspec apply converts to 16 bytes
+     * (PLN-108).
+     */
+    public const TEXT_STORAGE_REASON = 'uuid stored as text by an earlier release; dbspec apply converts it to 16 '
+        . 'bytes';
+
     /** @var list<CatalogTable> */
     public array $tables = [];
     /** @var list<Unsupported> */

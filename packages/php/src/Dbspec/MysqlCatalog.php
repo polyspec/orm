@@ -49,6 +49,8 @@ WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAM
     private const NUMBER = '/^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$/D';
     /** A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p). */
     private const MARIADB_CLOCK = '/^current_timestamp\(([1-6]?)\)$/D';
+    /** A binary default of MariaDB's COLUMN_DEFAULT. */
+    private const MARIADB_HEX_LITERAL = "/^x'([0-9a-f]{2})*'$/D";
     private const TRIGGERS = 'SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, '
         . 'ACTION_STATEMENT
 FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME';
@@ -56,8 +58,8 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
         . 'ORDER BY ROUTINE_NAME';
     private const EVENTS = 'SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY '
         . 'EVENT_NAME';
-    private const TYPE = '/^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time'
-        . '|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/D';
+    private const TYPE = '/^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|binary\(16\)|char\(36\)'
+        . '|varbinary\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/D';
 
     /**
      * $server is mysql or mariadb, the server that the connection reached, which the caller read when it connected
@@ -80,6 +82,9 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
         $columns = [];
         // table: column: the catalog type of a type that is determined only when the renderer CHECK exists
         $pending = [];
+        // table: column: the COLUMN_TYPE of a uuid column in the text storage of a release up to 0.0.28, or of a
+        // conversion that stopped (DIA-144, PLN-108)
+        $textStorage = [];
         foreach (CatalogRows::read($connection, self::COLUMNS) as $row) {
             [$table, $name, $columnType, $nullable] = array_map(
                 static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS),
@@ -111,6 +116,9 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
                 continue;
             }
             [$typ, $needsCheck] = $type;
+            if ($typ->name === 'uuid' && $needsCheck !== 'binary(16)') {
+                $textStorage[$table][$name] = $columnType;
+            }
             $column = ['name' => $name, 'type' => $typ, 'null' => $nullable === 'YES',
                 'identity' => false, 'default' => ''];
             $extra = trim($extra, " \t\n\r\v\f");
@@ -180,11 +188,15 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
                 $known = $column === null ? null : $columns[$table][$column];
                 if (
                     $known === null
-                    || self::withoutIntroducers($clause)
-                        !== self::withoutIntroducers(self::rendererCheck($server, $known))
+                    || self::withoutIntroducers($clause) !== self::withoutIntroducers(
+                        self::rendererCheck($server, $known, $textStorage[$table][$column] ?? null)
+                    )
                 ) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
+                }
+                if (isset($textStorage[$table][$column])) {
+                    $c->report('column', $table, $column, Catalog::TEXT_STORAGE_REASON);
                 }
                 $checked[$table][$column] = true;
                 continue;
@@ -250,7 +262,11 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
             'double' => [new ColumnType('f64'), '', $g(2) === ''],
             'longtext' => [new ColumnType('text'), '', $text],
             'longblob' => [new ColumnType('bytes'), '', true],
+            'binary(16)' => [new ColumnType('uuid'), $columnType, true],
+            // The text storage of a uuid by a release up to 0.0.28 (DIA-144, PLN-108).
             'char(36)' => [new ColumnType('uuid'), $columnType, $charset === 'ascii' && $collation === 'ascii_bin'],
+            // The text storage of a uuid whose conversion to 16 bytes stopped (DIA-144, PLN-109).
+            'varbinary(36)' => [new ColumnType('uuid'), $columnType, true],
             'date' => [new ColumnType('date'), '', $g(2) === ''],
             'time' => [new ColumnType('time', [$precision]), $columnType, true],
             'datetime' => [new ColumnType('datetime', [$precision]), '', true],
@@ -389,6 +405,11 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
         if (preg_match(self::NUMBER, $default) === 1) {
             return [$default, $extra];
         }
+        if (preg_match(self::MARIADB_HEX_LITERAL, $default) === 1) {
+            // MariaDB writes a binary default as x' and the lower-case hex of its bytes, MySQL as 0x and the upper-case
+            // hex (probe mariadb.render.uuid_bytes).
+            return ['0x' . strtoupper(substr($default, 2, -1)), $extra];
+        }
         if (preg_match(self::MARIADB_CLOCK, $default, $m) === 1) {
             return [$m[1] === '' ? 'CURRENT_TIMESTAMP' : "CURRENT_TIMESTAMP({$m[1]})", 'DEFAULT_GENERATED'];
         }
@@ -412,25 +433,46 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
     /**
      * The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks").
      * MariaDB writes it without the outer parentheses and the introducers, in the escaped form that read gives its
-     * CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check,
-     * mariadb.render.time_of_day_check; DIA-203).
+     * CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_bytes,
+     * mariadb.render.time_of_day_check; DIA-203). $textStorage is the COLUMN_TYPE of a uuid column in text storage.
+     *
+     * @param array{name: string, type: ColumnType, null: bool, identity: bool, default: string} $column
      */
-    private static function rendererCheck(string $server, array $column): string
+    private static function rendererCheck(string $server, array $column, ?string $textStorage): string
     {
         $c = "`{$column['name']}`";
+        if ($textStorage !== null) {
+            return self::textStorageCheck($server, $c, $textStorage);
+        }
         if ($server === 'mariadb') {
             return match ($column['type']->name) {
                 'bool' => "$c in (0,1)",
-                'uuid' => "$c regexp \\'" . Renderer::UUID_PATTERN . "\\'",
+                // MariaDB writes length as octet_length (probe mariadb.render.uuid_bytes).
+                'uuid' => "octet_length($c) = 16",
                 'time' => "$c >= \\'00:00:00\\' and $c < \\'24:00:00\\'",
                 default => '',
             };
         }
         return match ($column['type']->name) {
             'bool' => "($c in (0,1))",
-            'uuid' => "regexp_like($c,_utf8mb4\\'" . Renderer::UUID_PATTERN . "\\')",
+            'uuid' => "(length($c) = 16)",
             'time' => "(($c >= _utf8mb4\\'00:00:00\\') and ($c < _utf8mb4\\'24:00:00\\'))",
             default => '',
+        };
+    }
+
+    /**
+     * The CHECK_CLAUSE of the uuid column $c in text storage (DIA-144): the pattern CHECK of a char(36) column that a
+     * release up to 0.0.28 rendered on MySQL, and the one of the MariaDB renderer of DIA-203, or the CHECK of a
+     * varbinary(36) column whose conversion stopped (PLN-109).
+     */
+    private static function textStorageCheck(string $server, string $c, string $columnType): string
+    {
+        return match (true) {
+            $columnType === 'varbinary(36)' && $server === 'mariadb' => "octet_length($c) in (16,36)",
+            $columnType === 'varbinary(36)' => "(length($c) in (16,36))",
+            $server === 'mariadb' => "$c regexp \\'" . Renderer::UUID_PATTERN . "\\'",
+            default => "regexp_like($c,_utf8mb4\\'" . Renderer::UUID_PATTERN . "\\',_utf8mb4\\'c\\')",
         };
     }
 
@@ -454,7 +496,25 @@ FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY
         if (in_array($type->name, ['i16', 'i32', 'i64', 'decimal', 'f64'], true)) {
             return $value;
         }
+        if ($type->name === 'uuid' && str_starts_with($value, '0x')) {
+            // A binary default is 0x and the upper-case hex of its bytes: the 16 bytes of a uuid, or the 36 bytes of
+            // the text of a varbinary(36) column whose conversion stopped (PLN-109).
+            $bytes = self::hexBytes(substr($value, 2));
+            if ($bytes !== null) {
+                return Literal::quote(strlen($bytes) === 16 ? Literal::uuidText($bytes) : $bytes);
+            }
+        }
         return Literal::quote($value);
+    }
+
+    /** The bytes of an even number of hex digits of either case, or null for another text (Go's hex.DecodeString). */
+    private static function hexBytes(string $hex): ?string
+    {
+        if (strlen($hex) % 2 !== 0 || preg_match('/^[0-9A-Fa-f]*$/D', $hex) !== 1) {
+            return null;
+        }
+        $bytes = hex2bin($hex);
+        return $bytes === false ? null : $bytes;
     }
 
     private static function readIndexes(\PDO $connection, Catalog $c): void

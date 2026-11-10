@@ -9,7 +9,7 @@ namespace Polyspec\Orm\Dbspec;
  * (docs/spec/dialects.md "Introspection", "Checks"). A literal is read as the value of the column
  * it meets. An expression that cannot be read is a CheckDecodeFailure.
  *
- * operand node is ['node' => 'operand', 'kind' => column|number|string|bool,
+ * operand node is ['node' => 'operand', 'kind' => column|number|string|bytes|bool,
  * 'text' => ...], and predicate node is ['node' => 'predicate', 'op' => and|or|
  * compare|in|null, ...].
  *
@@ -17,7 +17,7 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class CheckDecoder
 {
-    /** @var list<array{0: string, 1: string}> kind and text: ident, word, number, string, op, punct */
+    /** @var list<array{0: string, 1: string}> kind and text: ident, word, number, string, bytes, op, punct */
     private array $tokens = [];
     private int $i = 0;
 
@@ -91,6 +91,22 @@ final class CheckDecoder
                 [$value, $length] = self::sqlString($dialect, substr($text, $i));
                 $out[] = ['string', $value];
                 $i += $length;
+            } elseif ($rest === '0x' || (($ch === 'X' || $ch === 'x') && ($text[$i + 1] ?? '') === "'")) {
+                // A binary literal: MySQL writes it as 0x and its hex, MariaDB and SQLite as X'hex' (DIA-123).
+                $quoted = $ch !== '0';
+                $j = $i + 2;
+                while ($j < $n && str_contains('0123456789abcdefABCDEF', $text[$j])) {
+                    $j++;
+                }
+                $hex = substr($text, $i + 2, $j - $i - 2);
+                if ($quoted) {
+                    if ($j >= $n || $text[$j] !== "'") {
+                        throw new CheckDecodeFailure('unclosed binary literal');
+                    }
+                    $j++;
+                }
+                $out[] = ['bytes', strtolower($hex)];
+                $i = $j;
             } elseif (ctype_digit($ch)) {
                 $j = $i;
                 while ($j < $n && (ctype_digit($text[$j]) || $text[$j] === '.')) {
@@ -326,7 +342,7 @@ final class CheckDecoder
             $this->i++;
             return self::operandNode('column', $text);
         }
-        if ($kind === 'number' || $kind === 'string') {
+        if ($kind === 'number' || $kind === 'string' || $kind === 'bytes') {
             $this->i++;
             return self::operandNode($kind, $text);
         }
@@ -462,6 +478,13 @@ final class CheckDecoder
                 return Literal::quote($o['text']);
             case 'bool':
                 return $o['text'];
+            case 'bytes':
+                // The 16 bytes of a uuid literal, which the renderer writes on MySQL and SQLite (DIA-123); dbspec has
+                // no other binary literal.
+                if (strlen($o['text']) !== 32 || $type?->name !== 'uuid') {
+                    throw new CheckDecodeFailure("the binary literal {$o['text']} is no uuid literal");
+                }
+                return Literal::quote(Literal::uuidText((string) hex2bin($o['text'])));
         }
         if ($type?->name === 'bool' && $o['text'] === '1') {
             return 'true';
