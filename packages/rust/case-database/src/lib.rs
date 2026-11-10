@@ -184,8 +184,9 @@ impl Drop for CaseDatabase {
     }
 }
 
-/// Drops the database. For MySQL, the time to wait for a metadata lock is 60 seconds, so a transaction that
-/// is still stuck from dropping returns an error. PostgreSQL ends remaining connections and then drops.
+/// Drops the database. MySQL and MariaDB drop on one session with foreign_key_checks = 0 (DIA-212), which is closed
+/// after the drop and returns to no pool; a drop that does not end is ended by the deadline of its case. PostgreSQL ends
+/// remaining connections and then drops.
 async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<(), String> {
     if let Some(path) = path {
         for file in sqlite_paths_with_suffixes(path, &["", "-wal", "-shm", "-journal"]) {
@@ -202,13 +203,43 @@ async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<
     }
     let admin = admin.ok_or("no admin DSN")?;
     let db = polyspec_orm::Db::connect(admin, 1, polyspec_orm::Config::default()).await.map_err(|e| format!("admin connection: {e}"))?;
-    let statement = match db.pool() {
-        Pool::MySql(_) => format!("SET SESSION lock_wait_timeout = 60; DROP DATABASE {name}"),
-        _ => format!("DROP DATABASE {name} WITH (FORCE)"),
+    let result = match db.pool() {
+        // One session with foreign_key_checks = 0 (DIA-212): a DROP DATABASE that MariaDB cannot finish logs the
+        // tables it dropped as one DROP TABLE list under the checks of the session. The session is closed, not
+        // returned to the pool, so no later statement runs without the checks.
+        Pool::MySql(pool) => match pool.acquire().await {
+            Ok(mut session) => {
+                let statement = format!("SET SESSION foreign_key_checks = 0; DROP DATABASE {name}");
+                let dropped = sqlx::raw_sql(sqlx::AssertSqlSafe(statement)).execute(&mut *session).await.map(|_| ()).map_err(|e| e.to_string());
+                let closed = session.close().await.map_err(|e| format!("close the session of the drop: {e}"));
+                dropped.and(closed)
+            }
+            Err(e) => Err(format!("admin session: {e}")),
+        },
+        _ => execute(&db, &format!("DROP DATABASE {name} WITH (FORCE)")).await,
     };
-    let result = execute(&db, &statement).await;
     db.close().await;
     result
+}
+
+/// The case of the drop of a case database of `driver` ("mysql" or "mariadb"): creates and drops a case database and
+/// returns the foreign_key_checks of the next session of the admin DSN. The drop turns the checks of its session off
+/// (DIA-212) and closes that session, so the next one has them on; the modules case_database_mysql of the program all and
+/// case_database_mariadb of the program mariadb assert 1 on the two servers of the MySQL dialect (DIA-200).
+pub async fn next_admin_checks(driver: &str) -> i64 {
+    CaseDatabase::create(driver).await.drop().await;
+    let admin = require_dsn(&format!("ORM_TEST_{}_DSN", driver.to_uppercase()));
+    let db = match polyspec_orm::Db::connect(&admin, 1, polyspec_orm::Config::default()).await {
+        Ok(db) => db,
+        Err(e) => panic!("admin connection: {e}"),
+    };
+    let Pool::MySql(pool) = db.pool() else { panic!("{driver} is no server of the MySQL dialect") };
+    let checks = sqlx::query_scalar::<_, i64>("SELECT CAST(@@SESSION.foreign_key_checks AS SIGNED)").fetch_one(pool).await;
+    db.close().await;
+    match checks {
+        Ok(checks) => checks,
+        Err(e) => panic!("read foreign_key_checks: {e}"),
+    }
 }
 
 async fn execute(db: &polyspec_orm::Db, sql: &str) -> Result<(), String> {

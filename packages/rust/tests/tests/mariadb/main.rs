@@ -15,6 +15,7 @@ pub mod model_writes_dispatch;
 
 mod aes_rotation_mariadb;
 mod audit_triggers_mariadb;
+mod case_database_mariadb;
 mod catalog_connection_mariadb;
 mod complex_query_mariadb;
 mod composite_keys_mariadb;
@@ -47,6 +48,7 @@ fn main() {
     polyspec_orm_testcase::run_groups(vec![
         polyspec_orm_testcase::Group::new("aes_rotation_mariadb", aes_rotation_mariadb::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_mariadb", audit_triggers_mariadb::trials),
+        polyspec_orm_testcase::Group::new("case_database_mariadb", case_database_mariadb::trials),
         polyspec_orm_testcase::Group::new("zone_mariadb", polyspec_orm_cases::zone::mariadb_trials),
         polyspec_orm_testcase::Group::new("catalog_connection_mariadb", catalog_connection_mariadb::trials),
         polyspec_orm_testcase::Group::new("complex_query_mariadb", complex_query_mariadb::trials),

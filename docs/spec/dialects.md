@@ -155,6 +155,30 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   step `catalog.reconnect {connects}` relays the reconnect through a TCP listener of the runner in front of the server,
   which counts the connections it accepts, and each runtime gives 1 on both servers in the same form (DIA-200, rule 1).
 
+- **DIA-212** The drop of a case database — MySQL 8.4 / MariaDB 11.8: a `DROP DATABASE` of MariaDB that drops the tables
+  of its database but cannot remove its folder, since the folder holds a file that is no table's (a trigger file
+  `card.TRG-` that a run of the audit recipe left), fails with 1010 "Directory not empty" and logs the tables that it
+  dropped as one `DROP TABLE IF EXISTS` list in the binary log, with error code 0 and the `foreign_key_checks` of its
+  session. A replica that applies that list with the checks on refuses the parent of a foreign key with 1451, stops its SQL
+  thread, and every later `replica.await` of the run fails; the same list with `foreign_key_checks = 0` drops every table.
+  The harness of each runtime drops a case database with `SET SESSION foreign_key_checks = 0` on the session of its
+  `DROP DATABASE` on both servers (DIA-200, rule 1). `DROP DATABASE` drops the tables of its database whatever their
+  foreign keys, so a drop that succeeds is the same, and a drop that fails with 1010 still fails its case. That session
+  ends with the drop and returns to no pool, so no later statement of the harness runs without the checks: in every
+  runtime a test of its harness drops a case database and reads `foreign_key_checks` 1 on the next admin session, on both
+  servers. The drop sets no wait limit of its own; a drop that does not end is ended by the deadline of its case.
+  The file comes from MariaDB itself: a `CREATE TRIGGER` on a table that already has a trigger copies `<table>.TRG` to
+  `<table>.TRG-` as its crash backup and records the removal of the copy in the DDL log, bound to the execute entry of
+  the statement (`Table_triggers_list::create_trigger`, sql/sql_trigger.cc). After the statement succeeds,
+  `mysql_create_or_drop_trigger` frees that entry (`ddl_log_complete`) and then runs the removal, which keeps the copy when
+  the entry at the freed position is active (`DDL_LOG_DELETE_TMP_FILE_ACTION`, sql/ddl_log.cc): a DDL statement of another
+  session that takes the position in between leaves the copy for good. Eight sessions that each create, in a database of
+  their own, the twelve triggers of four tables and then drop the database left one copy among 960 on 11.8.6, and its drop
+  failed with 1010; the code is the same on 12.2 and on main. That is a defect of the server, and the test servers run the
+  MariaDB release as it is: sixteen sessions of twenty-five databases each made 3200 copies on 11.8.6, of which 5 stayed
+  and 5 drops failed with 1010. A case whose drop fails with 1010 fails with that error, and the client of every runtime
+  returns it as the server gave it, as it does for a user's MariaDB under the same load.
+
 - **DIA-213** The database of an introspection read — MySQL 8.4 / MariaDB 11.8: MariaDB reads an `information_schema`
   table of one database only when a condition names the schema column of the table that a row describes, `TABLE_SCHEMA`
   (`EVENT_OBJECT_SCHEMA` for `TRIGGERS`); a condition on `CONSTRAINT_SCHEMA` or `TRIGGER_SCHEMA` alone, or a join of

@@ -13,6 +13,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
+
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 )
 
 // Servers holds the administrative connections that create and drop the
@@ -156,8 +158,7 @@ func (s *Servers) openMySQL(ctx, cleanup context.Context, e *Env) (func() error,
 		// A probe that needs a second database names it <database>_b.
 		_, err = s.mysqlAdmin.ExecContext(cleanup, "DROP DATABASE IF EXISTS `"+e.Name+"_b`")
 		errs = append(errs, err)
-		_, err = s.mysqlAdmin.ExecContext(cleanup, "DROP DATABASE `"+e.Name+"`")
-		errs = append(errs, err)
+		errs = append(errs, testdb.DropDatabase(cleanup, s.mysqlAdmin, "mysql", "`"+e.Name+"`"))
 		var count int
 		err = s.mysqlAdmin.QueryRowContext(cleanup, "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)", e.Name, e.Name+"_b").Scan(&count)
 		errs = append(errs, err)

@@ -1564,8 +1564,8 @@ orm-test-mariadb:
 # mariadb-recipes-check/<runtime> runs every recipe entry of the database mariadb of one runtime on the MariaDB servers of make
 # orm-test-mariadb (FCV-3, DIA-200), each the target of the CI group mariadb_<runtime>; a runner of the MySQL servers cannot hold
 # them (scripts/ci/server-programs.mts), so no target of those servers runs an entry of mariadb. An entry is a test of its own:
-# Test<Name>Mariadb of packages/go/orm, the recipe entries TestRecipe<Name>Mariadb among them, which the Go lane of client-db
-# (GO_LANE_SKIP) and go-test-check skip; <recipe>-mariadb.test.mjs and the PHP class
+# Test<Name>Mariadb of packages/go/orm and packages/go/internal/testdb, the recipe entries TestRecipe<Name>Mariadb among them,
+# which the Go lane of client-db (GO_LANE_SKIP) and go-test-check skip; <recipe>-mariadb.test.mjs and the PHP class
 # <Name>Mariadb..., which the suites leave to these targets (scripts/suite-test.mts) and the extension's unit run does not
 # select (PHP_EXTENSION_NATIVE_CASES); the Python module <recipe>_mariadb, which no test_*.py discovery finds; and the module
 # <recipe>_mariadb of the Rust program mariadb, which a plain cargo test does not run (test = false). Each target fails when one
@@ -1573,7 +1573,7 @@ orm-test-mariadb:
 MARIADB_TS_ENTRIES = $(sort $(wildcard packages/ts/tests/*-mariadb.test.mjs))
 .PHONY: mariadb-recipes-check/go mariadb-recipes-check/rust mariadb-recipes-check/typescript mariadb-recipes-check/python mariadb-recipes-check/php mariadb-recipes-check/php-extension
 mariadb-recipes-check/go: lease-tool
-	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm -run '^Test[A-Za-z]*Mariadb$$' -count=1
+	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm ./packages/go/internal/testdb -run '^Test[A-Za-z]*Mariadb$$' -count=1
 mariadb-recipes-check/rust: lease-tool
 	$(WITH_MARIADB_ENV) cd packages/rust && $(CARGO_TEST) mariadb-recipes-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test mariadb
 mariadb-recipes-check/typescript: typescript-current
@@ -1582,6 +1582,7 @@ mariadb-recipes-check/typescript: typescript-current
 mariadb-recipes-check/python: lease-tool python-venv-check
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.aes_rotation_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.audit_triggers_mariadb
+	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.case_database_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.catalog_connection_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.complex_query_mariadb
 	$(WITH_MARIADB_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.composite_keys_mariadb

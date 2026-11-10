@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 12ba7a6869d726162b1b28808fd6a0e224ec61489aa82a982165948684731230 -->
+<!-- source-sha256: c611bb59d84ff4a5389fe01ee8dd5f2c58b0d286a87121720bcaabcf544dceb5 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -144,6 +144,28 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   `mysql_audit_notify_connection_connect`를 부른다), 거부 직후 읽으면 11.8.6에서 run 10번 중 6번 그 줄을 놓쳤다. 그래서 수는
   server가 아니라 client의 것이다. step `catalog.reconnect {connects}`는 재연결을 server 앞에 둔 runner의 TCP listener로
   중계하고, listener는 받아들인 연결을 센다. 각 runtime은 두 server에서 같은 형태로 1을 준다(DIA-200, 규칙 1).
+
+- **DIA-212** case database의 삭제 — MySQL 8.4 / MariaDB 11.8: MariaDB의 `DROP DATABASE`가 database의 표는 지웠지만 폴더에
+  어느 표의 것도 아닌 파일(audit recipe의 한 run이 남긴 trigger 파일 `card.TRG-`)이 있어 폴더를 지우지 못하면, 1010
+  "Directory not empty"로 실패하고 지운 표들을 `DROP TABLE IF EXISTS` 목록 하나로 binary log에 남긴다. 그 error code는
+  0이고 session의 `foreign_key_checks`를 따른다. 검사를 켠 채 그 목록을 적용하는 replica는 foreign key의 부모를 1451로
+  거부하고 SQL thread를 멈추며, 그 run의 뒤따르는 `replica.await`는 모두 실패한다. 같은 목록을
+  `foreign_key_checks = 0`으로 적용하면 표가 모두 지워진다. 각 runtime의 harness는 두 server에서 case database를
+  `DROP DATABASE`의 session에 `SET SESSION foreign_key_checks = 0`을 두고 지운다(DIA-200, 규칙 1). `DROP DATABASE`는
+  foreign key와 상관없이 database의 표를 지우므로 성공하는 삭제는 같고, 1010으로 실패하는 삭제는 여전히 그 case를
+  실패시킨다. 그 session은 삭제와 함께 끝나고 어느 pool로도 돌아가지 않으므로, harness의 뒤따르는 statement는 모두
+  검사를 켠 채 실행된다. 모든 runtime에서 harness의 시험이 case database를 지운 뒤 다음 admin session에서
+  `foreign_key_checks` 1을 읽으며, 두 server 모두에서 그렇다. 삭제는 자기 대기 한도를 두지 않고, 끝나지 않는 삭제는 그
+  case의 deadline이 끝낸다. 그 파일은 MariaDB 자신이 남긴다. trigger가 이미 있는 표에 `CREATE TRIGGER`를 하면
+  `<table>.TRG`를 crash 대비 사본 `<table>.TRG-`로 복사하고, 그 사본의 삭제를 statement의 execute entry에 묶어 DDL
+  log에 적는다(`Table_triggers_list::create_trigger`, sql/sql_trigger.cc). statement가 성공하면
+  `mysql_create_or_drop_trigger`는 그 entry를 먼저 놓고(`ddl_log_complete`) 그다음 삭제를 실행하는데, 삭제는 놓은
+  위치의 entry가 활성이면 사본을 남긴다(`DDL_LOG_DELETE_TMP_FILE_ACTION`, sql/ddl_log.cc). 그 사이에 다른 session의
+  DDL statement가 그 위치를 차지하면 사본은 그대로 남는다. 여덟 session이 각자의 database에서 표 넷의 trigger 열둘을
+  만들고 database를 지우자 11.8.6에서 사본 960개 중 하나가 남았고, 그 삭제는 1010으로 실패했다. 12.2와 main의 code도
+  같다. 이것은 server의 결함이고, test server는 MariaDB release를 그대로 쓴다. 11.8.6에서 각 스물다섯 database의 열여섯
+  session이 사본 3200개를 만들었고, 그중 5개가 남아 삭제 5개가 1010으로 실패했다. 삭제가 1010으로 실패한 case는 그 오류로
+  실패하고, 모든 runtime의 client는 같은 부하의 사용자 MariaDB에서처럼 그 오류를 server가 준 그대로 돌려준다.
 
 - **DIA-213** introspection 읽기의 database — MySQL 8.4 / MariaDB 11.8: MariaDB는 조건이 row가 설명하는 table의 schema
   column인 `TABLE_SCHEMA`(`TRIGGERS`에서는 `EVENT_OBJECT_SCHEMA`)를 이름 지을 때만 `information_schema` table을 한 database에서

@@ -10,7 +10,10 @@
 package testdb
 
 import (
+	"context"
 	"database/sql"
+	sqldriver "database/sql/driver"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -81,17 +84,40 @@ func New(t testing.TB, driver string) string {
 	c.Step("database %s created", name)
 	t.Cleanup(func() {
 		defer testcase.Close(t, admin)
-		stmt := "DROP DATABASE " + name
-		if driver == "postgres" {
-			stmt += " WITH (FORCE)"
-		}
-		if _, err := admin.Exec(stmt); err != nil {
+		if err := DropDatabase(context.Background(), admin, driver, name); err != nil {
 			t.Errorf("drop case database %s: %v", name, err)
 			return
 		}
 		c.Step("database %s dropped", name)
 	})
 	return Retarget(t, base, name)
+}
+
+// DropDatabase drops the database name of the server of admin. On MySQL and MariaDB it drops on one session with
+// foreign_key_checks = 0 (DIA-212): a DROP DATABASE that MariaDB cannot finish logs the tables that it dropped as one
+// DROP TABLE list under the checks of its session, which a replica with the checks on refuses at a parent table. That
+// session is closed, not returned to the pool, so no later use of admin runs without the checks.
+func DropDatabase(ctx context.Context, admin *sql.DB, driver, name string) (err error) {
+	if driver == "postgres" {
+		_, err = admin.ExecContext(ctx, "DROP DATABASE "+name+" WITH (FORCE)")
+		return err
+	}
+	conn, err := admin.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	// The session turned its checks off, so it never returns to the pool: Raw returning driver.ErrBadConn makes
+	// database/sql close the connection and end conn; any other result leaves conn open, and it is closed.
+	defer func() {
+		if discard := conn.Raw(func(any) error { return sqldriver.ErrBadConn }); !errors.Is(discard, sqldriver.ErrBadConn) {
+			err = errors.Join(err, fmt.Errorf("discard the session of the drop: %w", discard), conn.Close())
+		}
+	}()
+	if _, err = conn.ExecContext(ctx, "SET SESSION foreign_key_checks = 0"); err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx, "DROP DATABASE "+name)
+	return err
 }
 
 // Retarget is the DSN with the path of dsn changed to the database name. Use it to open the case database

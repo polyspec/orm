@@ -40,6 +40,10 @@
       ],
       "internal": [
         {
+          "glob": "packages/go/internal/testdb/testdb_test.go",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
           "glob": "packages/go/orm/driver_error_test.go",
           "reason": "test: maps stand-in errors at the private MySQL and driver mappers; a server condition reaches these codes through the recipes"
         },
@@ -399,6 +403,14 @@
       ],
       "internal": [
         {
+          "glob": "packages/php/tests/CaseDatabaseMysqlTest.php",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
+          "glob": "packages/php/tests/CaseDatabaseMariadbTest.php",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
           "glob": "packages/php/tests/NativeCellReadTest.php",
           "reason": "test: the private row assembly refuses a non-finite float cell of a stand-in driver row, a cell that MySQL and SQLite do not store"
         },
@@ -605,6 +617,14 @@
       ],
       "internal": [
         {
+          "glob": "packages/php-ext/tests/CaseDatabaseMysqlExtensionTest.php",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
+          "glob": "packages/php-ext/tests/CaseDatabaseMariadbExtensionTest.php",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
           "glob": "packages/php-ext/tests/ModelStreamReadTest.php",
           "reason": "test: the native row assembly reads stream cells and their warnings from a stand-in, the form that no recipe database returns"
         },
@@ -712,6 +732,14 @@
         "packages/ts/tests/recipe_generator.mjs"
       ],
       "internal": [
+        {
+          "glob": "packages/ts/tests/case-database-mysql.test.mjs",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
+          "glob": "packages/ts/tests/case-database-mariadb.test.mjs",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
         {
           "glob": "packages/ts/tests/driver-integer-param.mjs",
           "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
@@ -888,6 +916,14 @@
       ],
       "internal": [
         {
+          "glob": "packages/python/tests/test_case_database_mysql.py",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
+          "glob": "packages/python/tests/case_database_mariadb.py",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
           "glob": "packages/python/tests/test_catalog_mutation_helper.py",
           "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
         },
@@ -1034,6 +1070,14 @@
         "packages/rust/schema/tests/cases/common/or_panic.rs"
       ],
       "internal": [
+        {
+          "glob": "packages/rust/tests/tests/all/case_database_mysql.rs",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
+        {
+          "glob": "packages/rust/tests/tests/mariadb/case_database_mariadb.rs",
+          "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
+        },
         {
           "glob": "packages/rust/schema/tests/cases/dbspec_runtime.rs",
           "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"

@@ -23,6 +23,7 @@ mod audit_triggers_postgres;
 mod audit_triggers_sqlite;
 mod bind_messages;
 mod canonical_none;
+mod case_database_mysql;
 mod catalog_connection_markdown;
 mod catalog_connection_mysql;
 mod catalog_connection_postgres;
@@ -228,6 +229,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("audit_triggers_markdown", audit_triggers_markdown::trials),
         polyspec_orm_testcase::Group::new("bind_messages", bind_messages::trials),
         polyspec_orm_testcase::Group::new("canonical_none", canonical_none::trials),
+        polyspec_orm_testcase::Group::new("case_database_mysql", case_database_mysql::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_mysql", catalog_connection_mysql::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_postgres", catalog_connection_postgres::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_sqlite", catalog_connection_sqlite::trials),

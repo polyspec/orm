@@ -19,6 +19,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -176,7 +177,9 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 		mustExec(t, admin, "CREATE DATABASE `"+name+"`")
 		u.Path = "/" + name
 		return u.String(), func() {
-			mustExec(t, admin, "DROP DATABASE `"+name+"`")
+			if err := testdb.DropDatabase(context.Background(), admin, "mysql", "`"+name+"`"); err != nil {
+				t.Fatalf("drop database %s: %v", name, err)
+			}
 			testcase.Close(t, admin)
 		}
 	}

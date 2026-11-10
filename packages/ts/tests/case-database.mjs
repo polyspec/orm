@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 
 const execute = promisify(execFile);
 const require = createRequire(new URL('../package.json', import.meta.url));
@@ -55,19 +56,26 @@ export function postgresClient(dsn) {
 
 const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', mariadb: 'ORM_TEST_MARIADB_DSN', postgres: 'ORM_TEST_POSTGRES_DSN' };
 
-/** Runs one statement with the admin DSN. The MySQL connection opens without a database. */
-async function admin(dialect, statement) {
+/**
+ * Runs one statement, or a list of them on one session, with the admin DSN, and returns the DSN and the rows of the last
+ * statement. The MySQL connection opens without a database. The session ends with the call and serves no later one, so a
+ * session variable that a list sets, such as the foreign_key_checks of a drop (DIA-212), reaches no later statement.
+ */
+export async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
   if (!dsn) throw new Error(`${adminEnv[dialect]} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
+  let rows;
   if (dialect === 'mysql' || dialect === 'mariadb') {
     const conn = await mysqlConnection(dsn, null);
-    try { await conn.query(statement); } finally { await conn.end(); }
-    return dsn;
+    try {
+      for (const one of [statement].flat()) [rows] = await conn.query(one);
+    } finally { await conn.end(); }
+    return { dsn, rows };
   }
   const client = postgresClient(dsn);
   await client.connect();
-  try { await client.query(statement); } finally { await client.end(); }
-  return dsn;
+  try { ({ rows } = await client.query(statement)); } finally { await client.end(); }
+  return { dsn, rows };
 }
 
 /**
@@ -93,13 +101,17 @@ export async function createCaseDatabase(dialect, step) {
     };
   }
   if (!(dialect in adminEnv)) throw new Error(`unknown dialect ${dialect}`);
-  const base = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
+  const { dsn: base } = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
   step(`database ${name} created`);
   return {
     dialect, name, path: null, dsn: relatedDsn(base, name),
     async drop(report = step) {
       try {
-        await admin(dialect, dialect !== 'postgres' ? `DROP DATABASE \`${name}\`` : `DROP DATABASE "${name}" WITH (FORCE)`);
+        // One session with foreign_key_checks = 0 (DIA-212): a DROP DATABASE that MariaDB cannot finish logs the
+        // tables it dropped as one DROP TABLE list under the checks of the session.
+        await admin(dialect, dialect !== 'postgres'
+          ? ['SET SESSION foreign_key_checks = 0', `DROP DATABASE \`${name}\``]
+          : `DROP DATABASE "${name}" WITH (FORCE)`);
       } catch (error) { throw new Error(`drop database ${name}: ${error.message}`, { cause: error }); }
       report(`database ${name} dropped`);
     },
@@ -177,4 +189,19 @@ export async function withCaseCorpus(setPath, step, body) {
     }
     await rm(parent, { recursive: true, force: true });
   }
+}
+
+/**
+ * Registers the case of the drop of a case database of dialect (mysql or mariadb): the drop turns the
+ * foreign_key_checks of its session off (DIA-212), so the next session of admin has them on. The entries
+ * case-database-mysql.test.mjs and case-database-mariadb.test.mjs run it on the two servers of the MySQL dialect (DIA-200).
+ */
+export function dropDiscardsItsSession(dialect) {
+  caseTest(`${dialect}: the drop of a case database leaves the next admin session with foreign_key_checks 1`, DATABASE, async ({ step }) => {
+    const database = await createCaseDatabase(dialect, step);
+    await database.drop();
+    const { rows } = await admin(dialect, 'SELECT @@SESSION.foreign_key_checks AS checks');
+    if (Number(rows[0].checks) !== 1) throw new Error(`the next admin session has foreign_key_checks ${rows[0].checks}, want 1`);
+    step('the next admin session has foreign_key_checks 1');
+  });
 }

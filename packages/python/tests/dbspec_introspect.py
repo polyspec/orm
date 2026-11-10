@@ -37,7 +37,14 @@ def case_database(dialect, name, dsn, sqlite_dir):
             finally:
                 connection.close()
         finally:
-            Adapter(admin).execute(f"DROP DATABASE `{name}`")
+            # One session with foreign_key_checks = 0 (DIA-212), closed after the drop, so no later statement runs
+            # without the checks.
+            drop = mysql_connect(dsn, None)
+            try:
+                Adapter(drop).execute("SET SESSION foreign_key_checks = 0")
+                Adapter(drop).execute(f"DROP DATABASE `{name}`")
+            finally:
+                drop.close()
             left = Adapter(admin).execute(
                 "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = %s",
                 (name,),
