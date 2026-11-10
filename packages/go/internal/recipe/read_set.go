@@ -80,9 +80,9 @@ func checkReadSet(s step, database string) (err error) {
 		Documents []string `json:"documents"`
 		External  []string `json:"external"`
 		Errors    []struct {
-			Rule         string `json:"rule"`
-			Path         string `json:"path"`
-			MessageHolds string `json:"message_holds"`
+			Rule         string       `json:"rule"`
+			Path         string       `json:"path"`
+			MessageHolds messageHolds `json:"message_holds"`
 		} `json:"errors"`
 	}
 	if err := json.Unmarshal(raw, &want); err != nil {
@@ -112,8 +112,8 @@ func checkReadSet(s step, database string) (err error) {
 			if !strings.Contains(got.Message, got.Path) {
 				return fmt.Errorf("the message %q does not name the path %s", got.Message, got.Path)
 			}
-			if !strings.Contains(got.Message, wanted.MessageHolds) {
-				return fmt.Errorf("the message %q does not hold %q", got.Message, wanted.MessageHolds)
+			if err := wanted.MessageHolds.check(got.Message); err != nil {
+				return err
 			}
 		}
 		return nil

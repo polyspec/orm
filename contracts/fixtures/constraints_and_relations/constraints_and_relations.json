@@ -323,7 +323,10 @@
           "expect": {
             "mysql": {
               "error": "FOREIGN_KEY",
-              "message_holds": "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT)",
+              "message_holds": [
+                "Cannot delete or update a parent row: a foreign key constraint fails (`",
+                "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`)"
+              ],
               "driver_cause": true
             },
             "postgres": {
@@ -340,11 +343,6 @@
             "markdown": {
               "error": "FOREIGN_KEY",
               "message": "FOREIGN_KEY: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
-              "driver_cause": true
-            },
-            "mariadb": {
-              "error": "FOREIGN_KEY",
-              "message_holds": "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`))",
               "driver_cause": true
             }
           }
@@ -462,7 +460,7 @@
           "expect": {
             "mysql": {
               "error": "CONSTRAINT",
-              "message_holds": "Check constraint 'ck_author_counts' is violated.",
+              "message_holds": "ck_author_counts",
               "driver_cause": true
             },
             "postgres": {
@@ -479,11 +477,6 @@
             "markdown": {
               "error": "CONSTRAINT",
               "message": "CONSTRAINT: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
-              "driver_cause": true
-            },
-            "mariadb": {
-              "error": "CONSTRAINT",
-              "message_holds": "CONSTRAINT `ck_author_counts` failed for `",
               "driver_cause": true
             }
           }
@@ -505,7 +498,10 @@
           "expect": {
             "mysql": {
               "error": "DUPLICATE_KEY",
-              "message_holds": "Duplicate entry 'uuid-author-2' for key 'author.uq_author_uuid'",
+              "message_holds": [
+                "Duplicate entry 'uuid-author-2' for key '",
+                "uq_author_uuid'"
+              ],
               "driver_cause": true
             },
             "postgres": {
@@ -522,11 +518,6 @@
             "markdown": {
               "error": "DUPLICATE_KEY",
               "message": "DUPLICATE_KEY: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
-              "driver_cause": true
-            },
-            "mariadb": {
-              "error": "DUPLICATE_KEY",
-              "message_holds": "Duplicate entry 'uuid-author-2' for key 'uq_author_uuid'",
               "driver_cause": true
             }
           }

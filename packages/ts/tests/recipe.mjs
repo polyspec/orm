@@ -155,11 +155,28 @@ async function connectDriver(dsn, config = {}, database = NONE) {
   }
 }
 
+// messageHoldsTexts reads a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+// array is its texts; an empty array or any other value is a recipe error, as it would check nothing.
+function messageHoldsTexts(holds) {
+  if (holds === undefined) return [];
+  if (typeof holds === 'string') return [holds];
+  if (Array.isArray(holds) && holds.length > 0 && holds.every(text => typeof text === 'string')) return holds;
+  if (Array.isArray(holds) && holds.length === 0) throw new Error('message_holds is an empty array, which checks nothing');
+  throw new Error(`message_holds is ${JSON.stringify(holds)}, want a string or an array of strings`);
+}
+
+// checkMessageHolds throws an error that names the first text of the message_holds field that message does not hold.
+function checkMessageHolds(message, holds) {
+  for (const text of messageHoldsTexts(holds)) {
+    if (!message.includes(text)) throw new Error(`message ${message}, want one that holds ${text}`);
+  }
+}
+
 // checkMarkdownFailure compares what the listener of a markdown op received and the failure of the op with the step and its expect.
 function checkMarkdownFailure(received, messages, failure, expect) {
   if (!isDeepStrictEqual(received, messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
-  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+  checkMessageHolds(failure.message, expect.message_holds);
 }
 
 // checkMarkdownConnect runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the
@@ -246,7 +263,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
-    if (!message.includes(expect.message_holds ?? '')) throw new Error(`message ${message}, want one that holds ${expect.message_holds}`);
+    checkMessageHolds(message, expect.message_holds);
     return;
   }
   if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -1215,7 +1232,7 @@ async function runStep(rawStep, context) {
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
     if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
     if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
-    if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    checkMessageHolds(error.message, expected.message_holds);
     if (expected.rollback !== undefined) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
       assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
@@ -3021,7 +3038,7 @@ function checkReadSet(step, database) {
       assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), expect.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
       result.errors.forEach((e, i) => {
         assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
-        assert.ok(e.message.includes(expect.errors[i].message_holds ?? ''), `the message holds the text: ${e.message}`);
+        checkMessageHolds(e.message, expect.errors[i].message_holds);
       });
       return;
     }

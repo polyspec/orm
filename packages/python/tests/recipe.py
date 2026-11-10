@@ -1331,10 +1331,7 @@ def _dbspec_read_set(step: dict, database: str) -> None:
                     raise AssertionError(
                         f"the message {error.message!r} does not name {error.path!r}"
                     )
-                if wanted.get("message_holds", "") not in error.message:
-                    raise AssertionError(
-                        f"the message {error.message!r} does not hold {wanted['message_holds']!r}"
-                    )
+                _check_message_holds(error.message, wanted.get("message_holds"))
             return
         _expect_equal([(error.rule, error.path) for error in errors], [], "errors")
         for files, paths, name in (
@@ -2099,6 +2096,29 @@ def _markdown_listener(answer) -> tuple[socket.socket, threading.Thread, int]:
     return listener, server, listener.getsockname()[1]
 
 
+def _message_holds_texts(holds: Any) -> list[str]:
+    """The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+    array is its texts; an empty array or any other value is a recipe error, as it would check nothing."""
+    if holds is None:
+        return []
+    if isinstance(holds, str):
+        return [holds]
+    if isinstance(holds, list) and not holds:
+        raise ValueError("message_holds is an empty array, which checks nothing")
+    if isinstance(holds, list) and all(isinstance(text, str) for text in holds):
+        return holds
+    raise ValueError(
+        f"message_holds is {holds!r}, want a string or an array of strings"
+    )
+
+
+def _check_message_holds(message: str, holds: Any) -> None:
+    """Raises an AssertionError that names the first text of the message_holds field that message does not hold."""
+    for text in _message_holds_texts(holds):
+        if text not in message:
+            raise AssertionError(f"message {message!r}, want one that holds {text!r}")
+
+
 def _markdown_connect(step: dict, database: str) -> None:
     """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
     of the step, and checks the line it received and the outcome of the expect of database."""
@@ -2128,10 +2148,7 @@ def _markdown_connect(step: dict, database: str) -> None:
         )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
-    if outcome.get("message_holds", "") not in message:
-        raise AssertionError(
-            f"message {message}, want one that holds {outcome['message_holds']}"
-        )
+    _check_message_holds(message, outcome.get("message_holds"))
 
 
 def _markdown_session(step: dict, database: str) -> None:
@@ -2192,10 +2209,7 @@ def _markdown_session(step: dict, database: str) -> None:
         )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
-    if outcome.get("message_holds", "") not in message:
-        raise AssertionError(
-            f"message {message}, want one that holds {outcome['message_holds']}"
-        )
+    _check_message_holds(message, outcome.get("message_holds"))
 
 
 def _dsn_connect(step: dict, database: str) -> None:
@@ -2215,10 +2229,7 @@ def _dsn_connect(step: dict, database: str) -> None:
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
-        if outcome.get("message_holds", "") not in message:
-            raise AssertionError(
-                f"message {message}, want one that holds {outcome['message_holds']}"
-            )
+        _check_message_holds(message, outcome.get("message_holds"))
         return
     if got is not None:
         raise AssertionError(f"unexpected error {got}")
@@ -4845,11 +4856,10 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error cause {error.cause!r}, want {cause!r}"
             ) from error
-        holds = expected.get("message_holds")
-        if holds is not None and holds not in str(error):
-            raise AssertionError(
-                f"error message {str(error)!r} does not hold {holds!r}"
-            ) from error
+        try:
+            _check_message_holds(str(error), expected.get("message_holds"))
+        except AssertionError as fault:
+            raise fault from error
         if "rollback" in expected:
             rollback = error.rollback
             if rollback.code != expected["rollback"] or str(rollback) not in str(error):

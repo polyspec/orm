@@ -98,6 +98,13 @@
     ]
   },
   "$defs": {
+    "messageHolds": {
+      "description": "The text that the message of the error holds: one string, or a non-empty array of strings that the message holds each of (FCV-4). An empty array is a recipe error, as it would check nothing.",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
     "textLine": {
       "description": "A line of a dbspec.format text, or a form that a helper expands to lines, so that a long document need not be written out in full: repeat gives its lines count times with {var} replaced by from, from + 1, ...; fill gives one line of its text repeated count times.",
       "oneOf": [
@@ -824,8 +831,7 @@
             },
             "message_holds": {
               "description": "The text that the message of the error holds, for a message that the driver wraps.",
-              "type": "string",
-              "minLength": 1
+              "$ref": "#/$defs/messageHolds"
             },
             "rollback": {
               "description": "The code of the error of the failed rollback that a ROLLBACK error keeps; its message holds the text of that error (CFG-15).",
@@ -6998,7 +7004,7 @@
                               "enum": ["set.file", "set.symlink", "set.json", "set.schema", "set.key", "set.empty", "set.path", "set.duplicate"]
                             },
                             "path": { "type": "string" },
-                            "message_holds": { "type": "string" }
+                            "message_holds": { "$ref": "#/$defs/messageHolds" }
                           }
                         }
                       }
@@ -9206,8 +9212,7 @@
               },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
-                "type": "string",
-                "minLength": 1
+                "$ref": "#/$defs/messageHolds"
               },
               "error": {
                 "type": "string",
@@ -9420,8 +9425,7 @@
               },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
-                "type": "string",
-                "minLength": 1
+                "$ref": "#/$defs/messageHolds"
               }
             }
           }
@@ -9472,8 +9476,7 @@
               },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
-                "type": "string",
-                "minLength": 1
+                "$ref": "#/$defs/messageHolds"
               },
               "error": {
                 "type": "string",
@@ -9535,8 +9538,7 @@
               },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
-                "type": "string",
-                "minLength": 1
+                "$ref": "#/$defs/messageHolds"
               }
             }
           }
@@ -9600,8 +9602,7 @@
               },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
-                "type": "string",
-                "minLength": 1
+                "$ref": "#/$defs/messageHolds"
               }
             }
           }

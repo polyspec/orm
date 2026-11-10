@@ -155,6 +155,39 @@ final class Recipe
         return self::$databaseCaseIds[$path][$database];
     }
 
+    /**
+     * The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+     * array is its texts; an empty array or any other value is a recipe error, as it would check nothing.
+     *
+     * @return list<string>
+     */
+    private static function messageHoldsTexts(mixed $holds): array
+    {
+        if ($holds === null) {
+            return [];
+        }
+        if (is_string($holds)) {
+            return [$holds];
+        }
+        if ($holds === []) {
+            throw new InvalidArgumentException('message_holds is an empty array, which checks nothing');
+        }
+        if (is_array($holds) && array_is_list($holds) && array_filter($holds, 'is_string') === $holds) {
+            return $holds;
+        }
+        throw new InvalidArgumentException(
+            'message_holds is ' . json_encode($holds) . ', want a string or an array of strings'
+        );
+    }
+
+    /** Asserts that message holds each text of a message_holds field. */
+    private static function assertMessageHolds(mixed $holds, string $message): void
+    {
+        foreach (self::messageHoldsTexts($holds) as $text) {
+            Assert::assertStringContainsString($text, $message, 'the error message');
+        }
+    }
+
     /** The recipe at path, relative to the repository root, decoded when a test of another recipe ran last. */
     private static function document(string $path): array
     {
@@ -893,7 +926,7 @@ final class Recipe
             'the lines that the listener received',
         );
         Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
-        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+        self::assertMessageHolds($step['expect'][$database]['message_holds'] ?? null, $message);
     }
 
     /**
@@ -947,7 +980,7 @@ final class Recipe
             'the lines that the listener received',
         );
         Assert::assertSame($step['expect'][$database]['error'], $code);
-        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+        self::assertMessageHolds($step['expect'][$database]['message_holds'] ?? null, $message);
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -970,7 +1003,7 @@ final class Recipe
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
-            Assert::assertStringContainsString($expect['message_holds'] ?? '', $message);
+            self::assertMessageHolds($expect['message_holds'] ?? null, $message);
             return;
         }
         if ($code !== null) {
@@ -1873,7 +1906,7 @@ final class Recipe
                 );
                 foreach ($result->errors as $i => $error) {
                     Assert::assertStringContainsString($error->path, $error->message, 'the message names the path');
-                    Assert::assertStringContainsString($expect['errors'][$i]['message_holds'] ?? '', $error->message);
+                    self::assertMessageHolds($expect['errors'][$i]['message_holds'] ?? null, $error->message);
                 }
                 return;
             }
@@ -2845,13 +2878,7 @@ final class Recipe
             if (isset($expected['cause'])) {
                 Assert::assertSame($expected['cause'], $error->getPrevious()?->getMessage(), 'the error cause');
             }
-            if (isset($expected['message_holds'])) {
-                Assert::assertStringContainsString(
-                    $expected['message_holds'],
-                    $error->getMessage(),
-                    'the error message'
-                );
-            }
+            self::assertMessageHolds($expected['message_holds'] ?? null, $error->getMessage());
             if (($expected['keeps_callback'] ?? false) === true) {
                 Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
             }

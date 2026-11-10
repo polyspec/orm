@@ -701,13 +701,66 @@ func key(s step) string {
 	return *s.k("key").Key
 }
 
+// messageHolds is a message_holds field (FCV-4): one text, or a non-empty array of texts, each of which the message holds.
+// An absent field holds nothing to check; an empty array is a recipe error, as it would check nothing.
+type messageHolds []string
+
+// UnmarshalJSON reads a string or a non-empty array of strings.
+func (m *messageHolds) UnmarshalJSON(raw []byte) error {
+	holds, err := messageHoldsOf(json.RawMessage(raw))
+	if err != nil {
+		return err
+	}
+	*m = holds
+	return nil
+}
+
+// messageHoldsOf reads a message_holds field from its JSON or from its decoded value: nil, a string, or an array of strings.
+func messageHoldsOf(value any) (messageHolds, error) {
+	if raw, ok := value.(json.RawMessage); ok {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, err
+		}
+	}
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case string:
+		return messageHolds{v}, nil
+	case []any:
+		if len(v) == 0 {
+			return nil, errors.New("message_holds is an empty array, which checks nothing")
+		}
+		holds := make(messageHolds, len(v))
+		for i, item := range v {
+			text, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("message_holds item %d is %T, want a string", i, item)
+			}
+			holds[i] = text
+		}
+		return holds, nil
+	}
+	return nil, fmt.Errorf("message_holds is %T, want a string or an array of strings", value)
+}
+
+// check returns an error that names the first text of m that message does not hold.
+func (m messageHolds) check(message string) error {
+	for _, text := range m {
+		if !strings.Contains(message, text) {
+			return fmt.Errorf("error message %q does not hold %q", message, text)
+		}
+	}
+	return nil
+}
+
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
 		Value        json.RawMessage `json:"value"`
 		Error        string          `json:"error"`
 		Message      string          `json:"message"`
-		MessageHolds string          `json:"message_holds"`
+		MessageHolds messageHolds    `json:"message_holds"`
 		BytesPrefix  string          `json:"bytes_prefix_hex"`
 		BytesLength  int             `json:"bytes_length"`
 		LibraryCause bool            `json:"library_cause"`
@@ -727,10 +780,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 		if outcome.Message != "" && r.err.Error() != outcome.Message {
 			return fmt.Errorf("error message %q, want %q", r.err.Error(), outcome.Message)
 		}
-		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
-			return fmt.Errorf("error %q, want a message that holds %q", r.err.Error(), outcome.MessageHolds)
-		}
-		return nil
+		return outcome.MessageHolds.check(r.err.Error())
 	}
 	if r.err != nil {
 		return fmt.Errorf("unexpected error %w", r.err)

@@ -727,8 +727,12 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 				return fmt.Errorf("error cause %w, want %q", cause, want)
 			}
 		}
-		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
-			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		holds, fault := messageHoldsOf(expected["message_holds"])
+		if fault != nil {
+			return fault
+		}
+		if fault := holds.check(err.Error()); fault != nil {
+			return fault
 		}
 		if keeps, ok := expected["keeps_callback"]; ok && keeps == true && !errors.Is(err, errCallback) {
 			return fmt.Errorf("error %q does not keep the error of the callback", err.Error())

@@ -320,6 +320,23 @@ async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<St
     Ok(names.join(","))
 }
 
+/// The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an array is
+/// its texts; an empty array or any other value is a recipe error, as it would check nothing.
+fn message_holds(value: &Value) -> Result<Vec<&str>, String> {
+    match value {
+        Value::Null => Ok(Vec::new()),
+        Value::String(text) => Ok(vec![text.as_str()]),
+        Value::Array(items) if items.is_empty() => Err("message_holds is an empty array, which checks nothing".to_owned()),
+        Value::Array(items) => items.iter().map(|item| item.as_str().ok_or_else(|| format!("message_holds item {item} is no string"))).collect(),
+        other => Err(format!("message_holds is {other}, want a string or an array of strings")),
+    }
+}
+
+/// The first text of holds that message does not hold, if any.
+fn missing_hold<'a>(message: &str, holds: &[&'a str]) -> Option<&'a str> {
+    holds.iter().copied().find(|text| !message.contains(text))
+}
+
 /// The markdown.connect op (FCV-4, PRT-64): `Db::connect` on a listener that answers the first line with the reply of the step,
 /// checked against the line it received and the outcome of the expect of `database`.
 fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
@@ -344,10 +361,10 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     if received != text("received") {
         return Err(format!("the listener received {received:?}, want {:?}", text("received")));
     }
-    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), message_holds(&expect["message_holds"])?);
     match outcome {
-        Err((code, message)) if code == want && message.contains(holds) => Ok(()),
-        Err((code, message)) => Err(format!("error {code} ({message}), want {want} with {holds}")),
+        Err((code, message)) if code == want && missing_hold(&message, &holds).is_none() => Ok(()),
+        Err((code, message)) => Err(format!("error {code} ({message}), want {want} with {holds:?}")),
         Ok(_) => Err(format!("error none, want {want}")),
     }
 }
@@ -421,10 +438,10 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
         return Err(format!("the listener received {received:?}, want {messages:?}"));
     }
     let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
-    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), message_holds(&expect["message_holds"])?);
     match outcome {
-        Err(error) if error.code() == want && error.to_string().contains(holds) => Ok(()),
-        Err(error) => Err(format!("error {} ({error}), want {want} with {holds}", error.code())),
+        Err(error) if error.code() == want && missing_hold(&error.to_string(), &holds).is_none() => Ok(()),
+        Err(error) => Err(format!("error {} ({error}), want {want} with {holds:?}", error.code())),
         Ok(()) => Err(format!("error none, want {want}")),
     }
 }
@@ -436,14 +453,10 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     let outcome = runtime.block_on(connect_driver(dsn, &crate::recipe_reads::read(step, "config")["config"], database));
     match (outcome, expect["error"].as_str()) {
-        (Err((got, message)), Some(code)) if got == code => {
-            let holds = expect["message_holds"].as_str().unwrap_or_default();
-            if message.contains(holds) {
-                Ok(())
-            } else {
-                Err(format!("message {message}, want one that holds {holds}"))
-            }
-        }
+        (Err((got, message)), Some(code)) if got == code => match missing_hold(&message, &message_holds(&expect["message_holds"])?) {
+            None => Ok(()),
+            Some(text) => Err(format!("message {message}, want one that holds {text}")),
+        },
         (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
         (Ok(_), Some(code)) => Err(format!("error none, want {code}")),
         (Err((_, message)), None) => Err(format!("unexpected error {message}")),
@@ -574,9 +587,8 @@ fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
             if !error.message.contains(&path) {
                 return Err(format!("the message {:?} does not name {path}", error.message));
             }
-            let holds = wanted["message_holds"].as_str().unwrap_or_default();
-            if !error.message.contains(holds) {
-                return Err(format!("the message {:?} does not hold {holds:?}", error.message));
+            if let Some(text) = missing_hold(&error.message, &message_holds(&wanted["message_holds"])?) {
+                return Err(format!("the message {:?} does not hold {text:?}", error.message));
             }
         }
         return Ok(());
@@ -3748,7 +3760,8 @@ mod database {
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
                 let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
-                let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                let holds = super::message_holds(expected.as_ref().and_then(|e| e.get("message_holds")).unwrap_or(&Value::Null))?;
+                let missing = super::missing_hold(&message, &holds).map(str::to_owned);
                 // The transaction op composes this message from the callback error and the rollback error it returns.
                 if let Some(rollback) = expected.as_ref().and_then(|e| e.get("rollback")).and_then(Value::as_str) {
                     let kept = message.rsplit_once("and rollback failed (").map(|(_, text)| text).and_then(error_code);
@@ -3768,10 +3781,10 @@ mod database {
                             Err(format!("error message {text:?} ({message:?}), want {exact:?}"))
                         }
                         _ if want_cause.is_some() && cause != want_cause => Err(format!("error cause {cause:?}, want {want_cause:?}")),
-                        _ => match holds {
-                            Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
-                            _ if wants_cause && !driver_cause => Err(format!("error {message:?} has no driver cause")),
-                            _ => crate::recipe_reads::check_outcome(
+                        _ => match missing {
+                            Some(text) => Err(format!("error message {message:?} does not hold {text:?}")),
+                            None if wants_cause && !driver_cause => Err(format!("error {message:?} has no driver cause")),
+                            None => crate::recipe_reads::check_outcome(
                                 expected.as_ref(),
                                 crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default(),
                                 &["error", "message_suffix", "message", "cause", "message_holds", "rollback", "keeps_callback", "driver_cause", "file_created"],
