@@ -418,6 +418,30 @@ mod mysql_server_tests {
         assert!(!MySqlServer::MariaDb.statement_timeout(237).contains("max_execution_time"));
     }
 
+    // DIA-201: an error number is read by the table of its server. MySQL's is `mysql_code`, with DRIVER for a number it
+    // does not name, as `From<sqlx::Error>` reads it; MariaDB's is `mariadb_statement_code` of a statement with no row
+    // lock, as `Error::for_server` reads it. The numbers are those of the error number tests of the other runtimes.
+    #[test]
+    fn an_error_number_is_read_by_the_table_of_its_server() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for (number, state, mysql, mariadb) in [
+            (4025, "23000", codes::DRIVER, codes::CONSTRAINT),
+            (3819, "HY000", codes::CONSTRAINT, codes::DRIVER),
+            (3572, "HY000", codes::LOCK_NOT_AVAILABLE, codes::DRIVER),
+            (3024, "HY000", codes::CANCELED, codes::DRIVER),
+            (4031, "HY000", codes::CONNECTION_LOST, codes::DRIVER),
+            (1969, "70100", codes::DRIVER, codes::CANCELED),
+            (1062, "23000", codes::DUPLICATE_KEY, codes::DUPLICATE_KEY),
+            (1452, "23000", codes::FOREIGN_KEY, codes::FOREIGN_KEY),
+            (1213, "40001", codes::DEADLOCK, codes::DEADLOCK),
+            (1290, "HY000", codes::READ_ONLY, codes::READ_ONLY),
+            (1205, "HY000", codes::CANCELED, codes::CANCELED),
+        ] {
+            assert_eq!(mysql_code(number).unwrap_or(codes::DRIVER), mysql, "MySQL error {number}");
+            assert_eq!(mariadb_statement_code(number, Some(state), ""), mariadb, "MariaDB error {number}");
+        }
+    }
+
     // DIA-209: MariaDB's 1205 is LOCK_NOT_AVAILABLE for a statement of a NOWAIT lock, and CANCELED for any other.
     #[test]
     fn mariadb_1205_is_read_by_the_lock_of_the_statement() {
