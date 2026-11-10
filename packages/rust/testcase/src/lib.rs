@@ -22,7 +22,7 @@ pub use sqlite_file::SqliteFile;
 
 /// The time a case allows for each step of its work (the Go testcase package's stepBudget). The MySQL stress plan applies its steps
 /// at 28 to 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: it is an upper bound, and a stuck
-/// step is found by [`StallGuard`] long before.
+/// step is found by [`StepGuard`] long before.
 pub const STEP_BUDGET: Duration = Duration::from_millis(250);
 /// The time for the work around the steps, such as creating and dropping a database (the Go testcase package's fixedBudget).
 pub const FIXED_BUDGET: Duration = Duration::from_secs(60);
@@ -32,34 +32,60 @@ pub fn step_budget(steps: usize) -> Duration {
     STEP_BUDGET * u32::try_from(steps).expect("the step count fits u32") + FIXED_BUDGET
 }
 
-/// Ends work that reports no progress for `limit` (the Go testcase package's StallGuard). Each [`StallGuard::progressed`] call restarts the
-/// limit, so a long case that keeps applying steps is never cut off by it, while a stuck step is.
-pub struct StallGuard {
-    limit: Duration,
+/// The failure text of a case whose [`StepGuard`] saw no step within `limit`; every runtime writes the same text.
+pub fn stall_text(limit: Duration) -> String {
+    format!("no step was applied within {}", seconds(limit))
+}
+
+/// The failure text of a case that kept applying steps past its step `budget` ([`StepGuard`]); every runtime writes the same
+/// text.
+pub fn budget_text(budget: Duration) -> String {
+    format!("step budget {} exceeded", seconds(budget))
+}
+
+/// `d` as seconds with the digits it needs (120s, 60.25s), the form of the texts of the step guard.
+fn seconds(d: Duration) -> String {
+    format!("{}s", d.as_secs_f64())
+}
+
+/// Ends the work of a case with a step deadline (the Go testcase package's StepGuard): at its step `budget`, and when it reports
+/// no progress for `stall`. Each [`StepGuard::progressed`] call restarts the stall limit, so a long case that keeps applying steps
+/// is ended only by its budget, while a stuck step is ended by the stall limit. The error names the limit that ended the work
+/// ([`stall_text`], [`budget_text`]).
+pub struct StepGuard {
+    budget: Duration,
+    stall: Duration,
+    started: Instant,
     last: Mutex<Instant>,
 }
 
-impl StallGuard {
-    /// A guard whose limit starts now.
-    pub fn new(limit: Duration) -> Self {
-        Self { limit, last: Mutex::new(Instant::now()) }
+impl StepGuard {
+    /// A guard whose budget and stall limit start now.
+    pub fn new(budget: Duration, stall: Duration) -> Self {
+        let now = Instant::now();
+        Self { budget, stall, started: now, last: Mutex::new(now) }
     }
 
     /// Records one unit of progress, such as an applied step.
     pub fn progressed(&self) {
-        *self.last.lock().expect("the stall guard lock is not poisoned") = Instant::now();
+        *self.last.lock().expect("the step guard lock is not poisoned") = Instant::now();
     }
 
-    /// Polls `work` until it ends and returns its output. It returns an error, and drops `work`, when no progress came within the limit.
+    /// Polls `work` until it ends and returns its output. It returns the text of the limit, and drops `work`, when the budget has
+    /// passed or no progress came within the stall limit.
     pub async fn run<T>(&self, work: impl Future<Output = T>) -> Result<T, String> {
         let mut work = std::pin::pin!(work);
+        let end = self.started + self.budget;
         loop {
-            let due = *self.last.lock().expect("the stall guard lock is not poisoned") + self.limit;
+            let due = *self.last.lock().expect("the step guard lock is not poisoned") + self.stall;
             let now = Instant::now();
-            if due <= now {
-                return Err(format!("no step was applied within {:?}", self.limit));
+            if end <= now {
+                return Err(budget_text(self.budget));
             }
-            if let Ok(output) = tokio::time::timeout(due - now, work.as_mut()).await {
+            if due <= now {
+                return Err(stall_text(self.stall));
+            }
+            if let Ok(output) = tokio::time::timeout(due.min(end) - now, work.as_mut()).await {
                 return Ok(output);
             }
         }

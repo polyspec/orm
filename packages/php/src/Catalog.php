@@ -27,8 +27,7 @@ final class Catalog
     private const REOPEN_SECONDS = 2.0;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
-    /** The text of each catalog value rule (docs/spec/interfaces.md "Catalog value rules", INT-166 to INT-182). */
-    private const RULE_MYSQL_YEAR = 'MySQL YEAR has no grid cell';
+    /** The text of each catalog value rule (docs/spec/interfaces.md "Catalog value rules", INT-167 to INT-182). */
     private const RULE_MYSQL_TIMESTAMP = 'MySQL TIMESTAMP follows a time zone';
     private const RULE_POSTGRES_ZONED = 'PostgreSQL timestamptz and timetz are unsupported';
     private const RULE_POSTGRES_NUMERIC = 'PostgreSQL numeric is not finite';
@@ -86,12 +85,20 @@ final class Catalog
      * automatic key, default expression and whether the default is an expression.
      */
     private const COLUMNS_SQL = [
-        'mysql' => "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND "
-            . "c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE "
-            . "'%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM "
-            . "information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON "
-            . "pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME "
-            . "AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+        // The key ordinal is a subquery that names the table by constants, which neither server reads by opening
+        // every table of every database, as MariaDB reads a join of KEY_COLUMN_USAGE (DIA-210). It takes the
+        // namespace and the name twice. The native type is COLUMN_TYPE in the form of MySQL 8.4, which MariaDB
+        // writes with an integer display width (DIA-204).
+        'mysql' => "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint',"
+            . "'smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE "
+            . "'%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,"
+            . "LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',"
+            . "(c.GENERATION_EXPRESSION IS NOT NULL AND "
+            . "c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM "
+            . "information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND "
+            . "k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),"
+            . "c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE "
+            . "c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
         'postgres' => 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT '
             . 'a.attnotnull,(a.attgenerated<>\'\' OR '
             . 'a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),CASE WHEN length(a.attgenerated)=0 '
@@ -1078,11 +1085,11 @@ final class Catalog
             'FLOAT' => self::float32Cell($value),
             'DOUBLE' => self::float64Cell($value),
             'TIMESTAMP' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
-            'YEAR' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
             'DATE', 'NEWDATE' => new CatalogGridCell('date', self::serverDate(self::driverText($value))),
             'DATETIME' => new CatalogGridCell('datetime', self::serverDateTime(self::driverText($value))),
             'TIME' => new CatalogGridCell('time', self::serverTime(self::driverText($value))),
             'DECIMAL', 'NEWDECIMAL' => new CatalogGridCell('decimal', self::decimalText($value)),
+            'YEAR' => new CatalogGridCell('integer', self::yearNumber($value)),
             'LONG', 'LONGLONG', 'SHORT', 'TINY', 'INT24' => self::integerCell($value, $unsigned),
             // The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185).
             'BIT' => new CatalogGridCell('binary', self::bitBytes($value, $bits)),
@@ -1276,6 +1283,7 @@ final class Catalog
         if (!is_string($value)) {
             throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
         }
+        $value = self::unpadded($value);
         $n = filter_var($value, FILTER_VALIDATE_INT);
         if ($n !== false && !$unsigned) {
             return new CatalogGridCell('integer', $n);
@@ -1283,6 +1291,30 @@ final class Catalog
         // Digits beyond the signed range are an unsigned value, whatever the column reports (INT-157).
         if (self::isUnsignedDigits($value)) {
             return new CatalogGridCell('unsigned', $value);
+        }
+        throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+    }
+
+    /**
+     * The digits of a MySQL integer text without the leading zeros that the server pads a ZEROFILL value with to its
+     * display width (00042 is 42); any other text is unchanged.
+     */
+    private static function unpadded(string $text): string
+    {
+        return preg_match('/^\d+$/D', $text) === 1 ? (ltrim($text, '0') === '' ? '0' : ltrim($text, '0')) : $text;
+    }
+
+    /**
+     * The integer of a MySQL YEAR value (INT-166): 1901 to 2155, or 0 for the zero year. The server writes it in four
+     * digits, 0000 for the zero year, and flags the column UNSIGNED, which does not make it an unsigned cell.
+     */
+    private static function yearNumber(mixed $value): int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_string($value) && preg_match('/^\d{4}$/D', $value) === 1) {
+            return (int) $value;
         }
         throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
     }
@@ -2024,7 +2056,11 @@ final class Catalog
         $kind = self::kind($this->dialect, self::text($kindRaw['rows'][0][0]));
 
         // SQLite table-valued pragmas take the table name first and the schema second.
-        $args = $this->dialect === 'sqlite' ? [$ref['name'], $ref['namespace']] : [$ref['namespace'], $ref['name']];
+        $args = match ($this->dialect) {
+            'sqlite' => [$ref['name'], $ref['namespace']],
+            'mysql' => [$ref['namespace'], $ref['name'], $ref['namespace'], $ref['name']],
+            default => [$ref['namespace'], $ref['name']],
+        };
         $raw = $this->query($pdo, self::COLUMNS_SQL[$this->dialect], $args, self::METADATA_ROWS, self::METADATA_BYTES);
 
         $columns = [];
@@ -2034,6 +2070,9 @@ final class Catalog
                 throw new OrmException(Code::TABLE_METADATA_INVALID, 'column shape of ' . count($row) . ' values');
             }
             $column = self::columnRow($row);
+            if ($this->db->server() === 'mariadb') {
+                $column = self::mariadbColumn($column);
+            }
             foreach ($columns as $existing) {
                 if ($existing->name === $column->name) {
                     throw new OrmException(Code::TABLE_METADATA_INVALID, "duplicate column \"$column->name\"");
@@ -2223,6 +2262,33 @@ final class Catalog
         );
     }
 
+    /**
+     * A column of a MariaDB server, whose COLUMN_DEFAULT is SQL text and whose EXTRA marks no expression default, with
+     * the default of the MySQL form (DIA-205): 'NULL' is no default, a quoted literal its value, a number itself, and
+     * any other text an expression; a quoted text that is not one whole literal is TABLE_METADATA_INVALID.
+     */
+    private static function mariadbColumn(CatalogColumn $column): CatalogColumn
+    {
+        try {
+            [$default, $expression] = Dbspec\MysqlCatalog::mariadbCatalogDefault($column->defaultExpression);
+        } catch (\RuntimeException $e) {
+            throw new OrmException(
+                Code::TABLE_METADATA_INVALID,
+                "column \"$column->name\": {$e->getMessage()}",
+                $e
+            );
+        }
+        return new CatalogColumn(
+            $column->name,
+            $column->nativeType,
+            $column->nullable,
+            $column->generated,
+            $column->automaticKey,
+            $default,
+            $expression
+        );
+    }
+
     private static function text(mixed $value): string
     {
         if (!is_string($value)) {
@@ -2336,7 +2402,7 @@ final class Catalog
     }
 
     /**
-     * The conversion of the values of one described column, which is not NULL: the rule of its native type (INT-166 to
+     * The conversion of the values of one described column, which is not NULL: the rule of its native type (INT-167 to
      * INT-170, INT-185), a temporal value in its declared precision, a boolean (INT-182), and the plain conversion of
      * value() otherwise. On PostgreSQL a type that no type text names takes the class of its result OID (pgClass).
      *
@@ -2368,7 +2434,7 @@ final class Catalog
         $class = $dialect === 'mysql' ? self::mysqlColumnClass($native) : (self::pgColumnClass($native)
             ?? ($oid === null ? 'refused' : $this->pgClass($pdo, $oid)));
         return match ($class) {
-            'year' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
+            'year' => self::yearNumber(...),
             'mysql_timestamp' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
             'zoned' => $refuse(Code::CATALOG_VALUE, self::RULE_POSTGRES_ZONED),
             'refused', 'multirange' => $refuse(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
@@ -2803,6 +2869,9 @@ final class Catalog
         if ($value === null || is_bool($value) || is_int($value)) {
             return $value;
         }
+        if ($dialect === 'mysql' && strtoupper($nativeType) === 'YEAR') {
+            return self::yearNumber($value);
+        }
         if (is_resource($value)) {
             // PDO reads a PostgreSQL bytea as a stream (INT-107).
             return self::driverBytes($value);
@@ -2814,7 +2883,11 @@ final class Catalog
         if (!self::isUtf8($value)) {
             return $value;
         }
-        return match (self::typeClass($nativeType)) {
+        $class = self::typeClass($nativeType);
+        if ($class === 'int' && $dialect === 'mysql') {
+            $value = self::unpadded($value);
+        }
+        return match ($class) {
             // A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column.
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false ? (int) $value
                 : ($dialect === 'sqlite' || self::isUnsignedDigits($value) ? $value
@@ -3124,12 +3197,19 @@ final class Catalog
 
     /**
      * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
-     * hide a trigger from the account (INT-119).
+     * hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
+     * partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
      */
     private function mysqlPartialRevokesOff(\PDO $pdo): void
     {
-        $partial = $this->query($pdo, 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096);
-        if (count($partial['rows']) !== 1 || (string) $partial['rows'][0][0] !== '0') {
+        $partial = $this->query(
+            $pdo,
+            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
+            [],
+            1,
+            4096
+        );
+        if (count($partial['rows']) !== 0) {
             throw new OrmException(
                 Code::ROW_MUTATION_UNSUPPORTED,
                 'MySQL partial-revoke visibility requires verification'

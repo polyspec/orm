@@ -241,7 +241,7 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
             zval *type = read_array(col, "type");
             zval empty; ZVAL_EMPTY_STRING(&empty);
             read_append_pair(target, Z_LVAL_P(index), name, type != NULL && Z_TYPE_P(type) != IS_NULL ? type : &empty);
-            /* The plan column rides along: the cells of a split sum and the column it sums (DIA-202, PRT-84). */
+            /* The plan column rides along: the cells of a split sum and the column it sums (DIA-218, PRT-84). */
             zval *entry = zend_hash_index_find(Z_ARRVAL_P(target), zend_hash_num_elements(Z_ARRVAL_P(target)) - 1);
             if (entry != NULL && Z_TYPE_P(entry) == IS_ARRAY) {
                 SEPARATE_ARRAY(entry);
@@ -1438,7 +1438,7 @@ ZEND_METHOD(Polyspec_Orm_Model, getCount)
  * (scaled) the cell is that integer (DIA-25), on MySQL and PostgreSQL a decimal of at most scale fraction digits. False with
  * CODEC_DECODE thrown. */
 /* non_integer_refuse throws the CODEC_DECODE of the sum of the column that holds a value which its type does not hold: a value
- * that is not an integer, or a decimal of more fraction digits than the scale of a decimal column (DIA-202, DSL-66); it
+ * that is not an integer, or a decimal of more fraction digits than the scale of a decimal column (DIA-218, DSL-66); it
  * returns false. */
 static bool non_integer_refuse(zend_string *column, bool decimal, zend_long scale)
 {
@@ -1526,11 +1526,11 @@ static bool exact_sum_value(zval *raw, zend_string *column, bool decimal, zend_l
 }
 
 /* The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
- * integer (DIA-202). */
+ * integer (DIA-218). */
 #define SPLIT_CELLS 5
 
 /* A signed integer of 160 bits, its sign and the five 32-bit limbs of its magnitude, highest first: the exact sum of a split sum
- * (DIA-202), whose four part sums lie in (-2^63, 2^63), so that ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 lies below 2^112. */
+ * (DIA-218), whose four part sums lie in (-2^63, 2^63), so that ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 lies below 2^112. */
 typedef struct {
     bool negative;
     uint32_t limb[5];
@@ -1627,7 +1627,7 @@ static bool split_cell(zval *cell, zend_long *out)
 
 /* split_sum_value is the exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the four part cells of a split sum as its
  * decimal text in out, or null when every part is null, the sum of no value; non_integer is set when the flag cell reports a
- * value that is not an integer (DIA-202). A cell that is not an integer is CODEC_DECODE, false. */
+ * value that is not an integer (DIA-218). A cell that is not an integer is CODEC_DECODE, false. */
 static bool split_sum_value(zval **parts, zval *flag, bool *non_integer, zval *out)
 {
     zend_long n;
@@ -1661,7 +1661,7 @@ static bool split_sum_value(zval **parts, zval *flag, bool *non_integer, zval *o
 }
 
 /* sum_of is the sum of the sum cells of a statement over the column, row[0] .. row[count - 1]: its one cell, or the exact
- * integer of the cells of a split sum as its decimal text (DIA-202); null is the sum of no value. A split sum of a column that
+ * integer of the cells of a split sum as its decimal text (DIA-218); null is the sum of no value. A split sum of a column that
  * holds a value which its type does not hold is refused by that column. */
 static bool sum_of(zval *row, uint32_t count, zend_string *column, bool decimal, zend_long scale, zval *out)
 {
@@ -1745,7 +1745,7 @@ static bool added_decimal(zval *raw, zend_long precision, zend_long scale, bool 
 
 /* added_sum reads the cell of an added column of the plan column plan from the row vals: the sum of an integer or decimal
  * column is the exact integer of its split cells on SQLite and markdown, as its decimal text, and a sum of a column that
- * holds a value which its type does not hold is refused by that column (DIA-202, PRT-84); a decimal is its exact text of its
+ * holds a value which its type does not hold is refused by that column (DIA-218, PRT-84); a decimal is its exact text of its
  * scale (INT-160), in out. out stays undefined for any other column. */
 static bool added_sum(zend_string *entity, zend_string *name, zval *kind, zval *plan, zval *vals, zval *raw, zval *out)
 {
@@ -1869,7 +1869,7 @@ static bool avg_value(zval *model, zval *sum, zval *count_cell, bool exact, zend
 /* aggregate_range_error replaces the pending error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the
  * finite range with SQLSTATE 22003, and MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar
  * that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver error as its cause
- * (DIA-200). */
+ * (DIA-216). */
 static void aggregate_range_error(void)
 {
     zend_object *error = EG(exception);
@@ -1947,7 +1947,7 @@ static bool read_aggregate(zval *model, const char *fn, zval *return_value)
     bool decimal = read_string_is(type, "decimal");
     zend_long column_scale = scale != NULL && Z_TYPE_P(scale) == IS_LONG ? Z_LVAL_P(scale) : 0;
     zval_ptr_dtor(&meta);
-    /* The row holds the cells of a split sum where the planner splits the sum of an exact column (DIA-202), one sum otherwise,
+    /* The row holds the cells of a split sum where the planner splits the sum of an exact column (DIA-218), one sum otherwise,
      * and for an average the count after them. */
     uint32_t cells = Z_TYPE(result) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL(result)) : 0;
     uint32_t sums = strcmp(fn, "sum") == 0 ? cells : cells - 1;

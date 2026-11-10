@@ -6,7 +6,7 @@
 //! its recorded one; [`rollback`] undoes the last plan with its rollback
 //! statements; [`finalize`] drops what the applied plans hid.
 
-use super::{chain, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep};
+use super::{chain, check_server, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep, Server};
 use chrono::{DateTime, Utc};
 use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
@@ -255,10 +255,10 @@ pub fn effect_query(dialect: Dialect, kind: &str) -> Option<&'static str> {
         (Dialect::MySql, "column") => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
         (Dialect::MySql, "index") => "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
         (Dialect::MySql, "constraint") => {
-            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?"
+            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?"
         }
         (Dialect::MySql, "trigger") => {
-            "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?"
+            "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?"
         }
         (Dialect::Postgres, "table") => {
             "SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN ('r', 'p') AND relname = $1"
@@ -315,11 +315,12 @@ macro_rules! apply_entrypoint {
         pub async fn $name<C: ApplyConnection + ?Sized>(
             connection: &mut C,
             dialect: Dialect,
+            server: Server,
             plans: &[Plan],
             now: &ApplyClock<'_>,
             events: &mut ApplyEvents<'_>,
         ) -> Result<(), ApplyError> {
-            run_command(connection, dialect, plans, now, events, Command::$command).await
+            run_command(connection, dialect, server, plans, now, events, Command::$command).await
         }
     };
 }
@@ -328,7 +329,10 @@ apply_entrypoint!(
     /// Applies, step by step, the plans of the chain of `plans` that the database
     /// of `connection` has not applied, up to their finalize steps; on a database
     /// that has applied the whole chain it changes nothing. `dialect` must be the
-    /// database of the connection, `now` gives `applied_at` and `events` receives
+    /// database of the connection and `server` the server that the connection
+    /// read when it connected, by which the verification introspects (DIA-203);
+    /// a server that is not a server of the dialect panics (DBS-174, [`check_server`]).
+    /// `now` gives `applied_at` and `events` receives
     /// every event; an error it returns stops the command at that point. When
     /// restoring the session settings or SQLite foreign keys, or releasing the
     /// lock, fails after a failure, the result is [`ApplyError::Cleanup`] with
@@ -372,12 +376,13 @@ enum Command {
 async fn run_command<C: ApplyConnection + ?Sized>(
     connection: &mut C,
     dialect: Dialect,
+    server: Server,
     plans: &[Plan],
     now: &ApplyClock<'_>,
     events: &mut ApplyEvents<'_>,
     command: Command,
 ) -> Result<(), ApplyError> {
-    let mut applier = Applier::new(connection, dialect, plans, now, events)?;
+    let mut applier = Applier::new(connection, dialect, server, plans, now, events)?;
     let restore = applier.open().await?;
     let result = match command {
         Command::Apply => applier.apply_chain().await,
@@ -420,6 +425,8 @@ enum Restore {
 struct Applier<'a, C: ?Sized> {
     c: &'a mut C,
     d: Dialect,
+    /// The server of the connection, which the caller read when it connected; verify introspects by it (DIA-203).
+    server: Server,
     now: &'a ApplyClock<'a>,
     events: &'a mut ApplyEvents<'a>,
     chain: Vec<&'a Plan>,
@@ -446,9 +453,10 @@ fn finalize_start(steps: &[PlanStep]) -> usize {
 }
 
 impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
-    fn new(c: &'a mut C, d: Dialect, plans: &'a [Plan], now: &'a ApplyClock<'a>, events: &'a mut ApplyEvents<'a>) -> Result<Self, ApplyError> {
+    fn new(c: &'a mut C, d: Dialect, server: Server, plans: &'a [Plan], now: &'a ApplyClock<'a>, events: &'a mut ApplyEvents<'a>) -> Result<Self, ApplyError> {
+        check_server(d, server);
         let chain = chain(plans).map_err(|diagnostics| ApplyError::Chain { plan: None, message: diagnostics[0].message.clone() })?;
-        Ok(Applier { c, d, now, events, chain, history: Vec::new(), server_session: 0 })
+        Ok(Applier { c, d, server, now, events, chain, history: Vec::new(), server_session: 0 })
     }
 
     fn q(&self, name: &str) -> String {
@@ -899,7 +907,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     /// The database's introspection has the `want` schemaHash (None means an empty database), and
     /// there are no unsupported objects. If it differs, returns that difference.
     async fn verify(&mut self, want: Option<&str>) -> Result<(), VerifyError> {
-        let introspection = introspect(&mut *self.c, self.d, "schema").await.map_err(VerifyError::Introspection)?;
+        let introspection = introspect(&mut *self.c, self.d, self.server, "schema").await.map_err(VerifyError::Introspection)?;
         if let Some(u) = introspection.unsupported.first() {
             return Err(VerifyError::Mismatch(format!(
                 "the database has {} objects that dbspec cannot express, first {} {} {}: {}",
@@ -1230,7 +1238,7 @@ impl ApplyConnection for crate::markdown::MarkdownLease {
 
 #[cfg(test)]
 mod sqlite_lock_result_tests {
-    use super::{Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier, CatalogValue, Dialect};
+    use super::{Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier, CatalogValue, Dialect, Server};
     use crate::test_support::DatabaseErrorStub;
     use chrono::Utc;
 
@@ -1340,7 +1348,7 @@ mod sqlite_lock_result_tests {
         let mut connection = FailingPostgresSetup;
         let clock: &ApplyClock<'_> = &|| Utc::now();
         let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
-        let mut applier = Applier::new(&mut connection, Dialect::Postgres, &[], clock, events).expect("empty plan chain");
+        let mut applier = Applier::new(&mut connection, Dialect::Postgres, Server::Postgres, &[], clock, events).expect("empty plan chain");
         let error = match applier.open().await {
             Err(error) => error,
             Ok(_) => panic!("settings read unexpectedly succeeded"),
@@ -1362,10 +1370,10 @@ mod sqlite_lock_result_tests {
         let clock: &ApplyClock<'_> = &|| Utc::now();
         let mut callback = |_event: &super::ApplyEvent| Ok(());
         let events: &mut ApplyEvents<'_> = &mut callback;
-        super::apply(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("apply empty chain");
-        super::recover(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("recover empty chain");
-        super::rollback(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("rollback empty chain");
-        super::finalize(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("finalize empty chain");
+        super::apply(&mut connection, Dialect::Sqlite, Server::Sqlite, &[], clock, events).await.expect("apply empty chain");
+        super::recover(&mut connection, Dialect::Sqlite, Server::Sqlite, &[], clock, events).await.expect("recover empty chain");
+        super::rollback(&mut connection, Dialect::Sqlite, Server::Sqlite, &[], clock, events).await.expect("rollback empty chain");
+        super::finalize(&mut connection, Dialect::Sqlite, Server::Sqlite, &[], clock, events).await.expect("finalize empty chain");
     }
 
     #[tokio::test]
@@ -1378,7 +1386,7 @@ mod sqlite_lock_result_tests {
             let clock: &ApplyClock<'_> = &|| Utc::now();
             let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
             let opened = {
-                let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events).expect("empty plan chain");
+                let mut applier = Applier::new(&mut connection, Dialect::Sqlite, Server::Sqlite, &[], clock, events).expect("empty plan chain");
                 applier.open().await
             };
             let error = match opened {

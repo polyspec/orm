@@ -242,7 +242,9 @@ export class Renderer {
         case 'bool':
           return `${q} IN (0, 1)`;
         case 'uuid':
-          return `REGEXP_LIKE(${q}, '${UUID_PATTERN}', 'c')`;
+          // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
+          // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
+          return `${q} REGEXP '${UUID_PATTERN}'`;
         case 'time':
           return `${q} >= '00:00:00' AND ${q} < '24:00:00'`;
         default:

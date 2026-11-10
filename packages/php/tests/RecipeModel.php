@@ -224,12 +224,14 @@ trait RecipeModel
         if ($dsn !== 'case-socket') {
             return $dsn;
         }
-        if ($database !== 'mysql') {
+        // MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
+        if ($database !== 'mysql' && $database !== 'mariadb') {
             Assert::fail("dsn case-socket needs mysql, not $database");
         }
-        $socket ??= (string) getenv('ORM_TEST_MYSQL_SOCKET');
+        $variable = 'ORM_TEST_' . strtoupper($database) . '_SOCKET';
+        $socket ??= (string) getenv($variable);
         if ($socket === '') {
-            Assert::fail('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');
+            Assert::fail("dsn case-socket: $variable is unset; run make orm-test-servers");
         }
         if (preg_match('#^mysql://([^@/]+)@[^/]+/([^?]+)#', $caseDsn, $match) !== 1) {
             Assert::fail("dsn case-socket: the case DSN $caseDsn is not a mysql DSN");

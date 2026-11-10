@@ -50,7 +50,7 @@ const LOCKS = { update: 'forUpdate', share: 'forShare', update_nowait: 'forUpdat
 const affected = db => ({ value: { int: String(lastAffected(db)) } });
 
 /** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step. */
-export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST_MYSQL_SOCKET) {
+export function connectDsn(dsn, database, caseDsn, socket = process.env[`ORM_TEST_${database.toUpperCase()}_SOCKET`]) {
   if (dsn === undefined || dsn === 'case') return caseDsn;
   if (dsn.startsWith('case?')) return `${caseDsn}${caseDsn.includes('?') ? '&' : '?'}${dsn.slice('case?'.length)}`;
   if (dsn === 'case-pooler') {
@@ -74,8 +74,9 @@ export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST
     return replica.toString();
   }
   if (dsn !== 'case-socket') return dsn;
-  if (database !== 'mysql') throw new Error(`dsn case-socket needs mysql, not ${database}`);
-  if (!socket) throw new Error('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');
+  // MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
+  if (database !== 'mysql' && database !== 'mariadb') throw new Error(`dsn case-socket needs mysql, not ${database}`);
+  if (!socket) throw new Error(`dsn case-socket: ORM_TEST_${database.toUpperCase()}_SOCKET is unset; run make orm-test-servers`);
   const match = /^mysql:\/\/([^@/]+)@[^/]+\/([^?]+)/.exec(caseDsn);
   if (match === null) throw new Error(`dsn case-socket: the case DSN ${caseDsn} is not a mysql DSN`);
   return `mysql://${match[1]}@localhost/${match[2]}?socket=${socket}`;
@@ -313,14 +314,14 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
     },
     // query.search (FCV-4, PRT-75): a count with a fulltext_boolean chain key over the columns. The statement is compiled with
     // the engine of the case dialect (DIA-187 refuses SQLite); a blank text runs on the case connection, where the bind check
-    // refuses it with IR_INVALID (DIA-6).
+    // refuses it with IR_INVALID (DIA-6). A corpus compiles in SQLite's dialect (DIA-185), MariaDB in MySQL's (DIA-200).
     async 'query.search'(s, context) {
       const db = connection(s.connection, context);
       if (s.model !== 'Author') throw new Error(`model ${s.model} has no query.search entry`);
       const author = new Author().connect(db);
       author[CORE].whereChain('', [{ conn: '', op: 'fulltext_boolean', column: '', columns: s.columns, compare: '' }], [s.text]);
       const built = author[CORE].build('count');
-      const plan = new Engine(Author.entity.model, context.database === 'markdown' ? 'sqlite' : context.database).compile(built.finish());
+      const plan = new Engine(Author.entity.model, ({ markdown: 'sqlite', mariadb: 'mysql' })[context.database] ?? context.database).compile(built.finish());
       // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
       // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
       const boolean = plan.steps[0].bind_slots[0]?.transform === 'fulltext_boolean';

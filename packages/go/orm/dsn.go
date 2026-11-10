@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 	"regexp"
@@ -33,6 +34,21 @@ type parsedDSN struct {
 	sslHost string
 	// markdown is the server address, corpus, and token of a markdown:// DSN. It is empty for other schemes.
 	markdown markdownDSN
+	// statementTimeoutMs is the statement bound of a mysql connection, which names the variable of its server (DIA-208), so
+	// native carries it only after the server is read (withStatementTimeout); zero elsewhere.
+	statementTimeoutMs int
+}
+
+// withStatementTimeout returns the mysql DSN whose every connection sets the statement bound by the variable of server, at
+// connect and before any statement of the caller (DIA-208): MySQL bounds SELECT statements with max_execution_time in
+// milliseconds, MariaDB every statement with max_statement_time in seconds, written with three fraction digits.
+func (d parsedDSN) withStatementTimeout(server string) parsedDSN {
+	name, value := "max_execution_time", strconv.Itoa(d.statementTimeoutMs)
+	if server == serverMariaDB {
+		name, value = "max_statement_time", fmt.Sprintf("%d.%03d", d.statementTimeoutMs/1000, d.statementTimeoutMs%1000)
+	}
+	d.native += "&" + name + "=" + value
+	return d
 }
 
 // parseDSN reads the DSN URI; the scheme is the only database selector.
@@ -73,10 +89,8 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		q.Set("time_zone", quoteText("+00:00"))
 		q.Set("sql_mode", quoteText(mysqlSQLMode))
 		q.Set("clientFoundRows", "true")
-		if statementTimeoutMs > 0 {
-			// MySQL bounds SELECT statements with max_execution_time.
-			q.Set("max_execution_time", strconv.Itoa(statementTimeoutMs))
-		}
+		// The statement bound is the variable of the server, which the connection reads after it opens (DIA-208).
+		out.statementTimeoutMs = statementTimeoutMs
 		// Datetime cells arrive as time.Time values; openSQL sets the driver
 		// location to the connection time zone.
 		q.Set("parseTime", "true")

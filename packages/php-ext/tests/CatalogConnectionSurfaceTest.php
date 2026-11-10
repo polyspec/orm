@@ -28,6 +28,8 @@ use RuntimeException;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
+    use CatalogThrowableCases;
+
     // Requirements: INT-103, INT-117.
     public function testNativeDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
     {
@@ -120,6 +122,27 @@ final class CatalogConnectionSurfaceTest extends TestCase
         coverageAssertColumnNameFailureIsPrevious($read);
     }
 
+    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
+    // server writes one, so the recipes cannot hold it (FCV-2).
+    public function testNativeMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
+    {
+        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
+            $pdo = new CatalogMariadbDefaultPdo([['broken', $text]]);
+            $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+            $db->setServer('mariadb');
+            try {
+                self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+                self::fail("the default {$text} was described");
+            } catch (OrmException $error) {
+                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
+                self::assertSame(
+                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
+                    $error->getMessage(),
+                );
+            }
+        }
+    }
+
     public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
     {
         require_once __DIR__ . '/CatalogMetadataFailurePdo.php';
@@ -177,7 +200,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
         self::assertTrue((new ReflectionClass(Catalog::class))->getMethod('insertRow')->isInternal());
 
-        require_once __DIR__ . '/CatalogCommitFaultPdo.php';
         $pdo = new CatalogCommitFaultPdo();
         $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
         $catalog = null;
@@ -219,42 +241,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $catalog = self::catalogWith($db, 'sqlite');
         return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
-    }
-
-    // The recipes hold the rows of these inserts and the key `defaults` of a description; the text of a default and
-    // the flag of an expression default have no recipe key (generated_identity_sqlite, generated_key_lifecycle).
-    public function testNativeDescribedDefaultsKeepTheirExpressionText(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-native-');
-        self::assertNotFalse($path);
-        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
-        $setup->exec(
-            "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
-            . 'n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))'
-        );
-        $setup->exec(
-            'CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), '
-            . 'n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)'
-        );
-        $setup = null;
-
-        $catalog = null;
-        try {
-            $catalog = Catalog::connect('sqlite://' . $path);
-            $generated = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated']);
-            self::assertTrue($generated->columns[0]->automaticKey);
-            self::assertNull($generated->columns[0]->defaultExpression);
-            self::assertFalse($generated->columns[0]->expressionDefault);
-            $default = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_default']);
-            self::assertSame("'generated'", $default->columns[1]->defaultExpression);
-            self::assertFalse($default->columns[1]->automaticKey);
-            $expression = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_expression']);
-            self::assertTrue($expression->columns[0]->expressionDefault);
-        } finally {
-            $catalog?->close();
-            unlink($path);
-        }
     }
 
     public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void

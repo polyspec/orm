@@ -252,7 +252,13 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
                     return Err(bad("mysql DSN ssl-mode requires TCP and does not accept socket".into()));
                 }
             }
-            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())))
+            // sqlx sends SET NAMES utf8mb4 when it connects, with no collation, which a pooler in front of the server may not
+            // know (ProxySQL refuses utf8mb4_0900_bin with 1115): a text column that the renderer writes compares under its
+            // own utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202).
+            let options = MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())).charset("utf8mb4");
+            // A DSN without ssl-mode connects without TLS, also to a server that offers it (CFG-44): sqlx would otherwise
+            // take TLS whenever the server offers it, with no check of its certificate. A named ssl-mode reaches sqlx (CFG-20).
+            ConnectOptions::MySql(if pairs.iter().any(|(key, _)| key == "ssl-mode") { options } else { options.ssl_mode(sqlx::mysql::MySqlSslMode::Disabled) })
         }
         "postgres" => {
             let host = url.host_str().unwrap_or("").to_owned() + &pairs.iter().filter(|(k, _)| k == "host").map(|(_, v)| v.clone()).collect::<String>();
@@ -351,6 +357,9 @@ pub(crate) struct DbInner {
     pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
     /// The dialect the connection plans for: SQLite's on a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
     pub(crate) dialect: Option<Dialect>,
+    /// The server of a mysql connection, read once by `VERSION()` when the connection opens, never by the handshake (DIA-201);
+    /// MySQL on every other database.
+    pub(crate) server: crate::MySqlServer,
     pub(crate) cfg: Config,
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
@@ -622,6 +631,9 @@ impl Db {
         let dialect = Dialect::parse(parsed.sql_driver());
         let cache = cfg.statement_cache_size;
         let timeout = cfg.statement_timeout_ms;
+        // The server of a mysql pool, which its first connection reads (DIA-201).
+        let read = Arc::new(tokio::sync::OnceCell::<crate::MySqlServer>::new());
+        let pool_read = Arc::clone(&read);
         // A LISTEN subscription opens a connection of its own with the options of the pool (DIA-194).
         let listen = match &parsed.options {
             ConnectOptions::Postgres(o) => Some(o.clone()),
@@ -629,18 +641,27 @@ impl Db {
         };
         let pool = match parsed.options {
             ConnectOptions::Markdown(dsn) => Pool::Markdown(open_markdown(dsn, pool_size, idle, &cfg).await?),
-            // MySQL bounds SELECT statements with max_execution_time;
-            // PostgreSQL bounds every statement with statement_timeout.
+            // A mysql connection reads the server of its pool before any other statement (DIA-201): the first connection of the
+            // pool reads it by VERSION(), and every later one, reconnects included, takes the value that it read. MySQL bounds
+            // SELECT statements with max_execution_time and MariaDB every statement with max_statement_time, so the statement
+            // timeout is set by the server (DIA-208) before the connection runs a statement of the caller.
             ConnectOptions::MySql(o) => Pool::MySql(
                 pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, &owner)
                     .after_connect(move |conn, _| {
+                        let read = Arc::clone(&pool_read);
                         Box::pin(async move {
+                            let server = *read
+                                .get_or_try_init(|| async {
+                                    let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(&mut *conn).await?;
+                                    Ok::<_, sqlx::Error>(crate::MySqlServer::of_version(&version))
+                                })
+                                .await?;
                             // sqlx adds PIPES_AS_CONCAT and NO_ENGINE_SUBSTITUTION to the
                             // server's sql_mode, and the IGNORE_SPACE client flag adds that
                             // mode; this replaces them with the declared one.
                             sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION sql_mode = '{MYSQL_SQL_MODE}'"))).execute(&mut *conn).await?;
                             if timeout > 0 {
-                                sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION max_execution_time = {timeout}"))).execute(&mut *conn).await?;
+                                sqlx::query(sqlx::AssertSqlSafe(server.statement_timeout(timeout))).execute(&mut *conn).await?;
                             }
                             Ok(())
                         })
@@ -671,12 +692,25 @@ impl Db {
                 Pool::Sqlite(pool)
             }
         };
+        // The server is read once by VERSION(), never by the handshake, whose version a pooler may state for itself (DIA-201).
+        let server = match &pool {
+            Pool::MySql(p) => {
+                // The first connection of the pool reads the server as it opens. The connection returns to the pool before
+                // open ends, as a completed statement does (INT-79): the drop handler of SQLx returns it from a task of its
+                // own, and the pool statistics after open count it idle.
+                let mut connection = p.acquire().await?;
+                connection.return_to_pool().await;
+                *read.get().ok_or_else(|| Error::internal("a mysql connection opened without reading its server"))?
+            }
+            _ => crate::MySqlServer::MySql,
+        };
         let db = Db {
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
                 listen,
                 dialect,
+                server,
                 cfg,
                 zone: parsed.zone,
                 plans: Mutex::new(HashMap::new()),
@@ -735,6 +769,18 @@ impl Db {
         match &self.inner.pool {
             Pool::Markdown(_) => "sqlite",
             _ => self.driver(),
+        }
+    }
+
+    /// The server of the connection that dbspec introspects by (DIA-203): the server that connect read on a mysql
+    /// connection (DIA-201), and the database's own on PostgreSQL and SQLite; a markdown connection answers in SQLite's
+    /// dialect, as its server (DIA-185).
+    pub(crate) fn dbspec_server(&self) -> crate::dbspec::Server {
+        match (&self.inner.pool, self.inner.server) {
+            (Pool::MySql(_), crate::MySqlServer::MariaDb) => crate::dbspec::Server::MariaDb,
+            (Pool::MySql(_), crate::MySqlServer::MySql) => crate::dbspec::Server::MySql,
+            (Pool::Postgres(_), _) => crate::dbspec::Server::Postgres,
+            (Pool::Sqlite(_) | Pool::Markdown(_), _) => crate::dbspec::Server::Sqlite,
         }
     }
 
@@ -822,7 +868,7 @@ impl Db {
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let mut plan = engine::compile(&manifest, dialect, &req.ir)?;
+        let mut plan = engine::compile_for(&manifest, dialect, self.inner.server, &req.ir)?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }
@@ -985,12 +1031,13 @@ impl Db {
         r: Result<T>,
     ) -> Result<T> {
         if !self.inner.subscribers.observed() {
-            return r;
+            // A mysql error number is read by the table of the connection's server (DIA-201), observed or not.
+            return r.map_err(|e| e.for_server(self.inner.server, &st.lock));
         }
         let binds = shown();
         let tables = origin.tables.unwrap_or(&st.tables);
         self.statement_done(
-            Sent { sql, binds: &binds, kind: origin.kind.unwrap_or_else(|| statement_kind(&st.sql)), tables, transaction: origin.transaction },
+            Sent { sql, binds: &binds, kind: origin.kind.unwrap_or_else(|| statement_kind(&st.sql)), tables, transaction: origin.transaction, lock: &st.lock },
             start,
             r,
         )

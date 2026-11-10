@@ -283,19 +283,41 @@ final class Dbspec
      * the main database (SQLite) of the connection into one document named
      * `$name` and the objects it leaves out (docs/spec/dialects.md
      * "Introspection"). The number of catalog queries does not depend on the
-     * table count. A failing query, or a catalog that yields no document, is
-     * a RuntimeException; an unknown dialect is an InvalidArgumentException.
+     * table count. `$server` is the server that the connection reached, which
+     * the caller read when it connected (DIA-203): mysql or mariadb for the
+     * mysql dialect, postgres and sqlite for their own; introspect reads no
+     * version. A failing query, or a catalog that yields no document, is a
+     * RuntimeException; an unknown dialect, and a server that is not a server
+     * of the dialect, are an InvalidArgumentException.
      */
-    public static function introspect(\PDO $connection, string $dialect, string $name): IntrospectResult
+    public static function introspect(\PDO $connection, string $dialect, string $server, string $name): IntrospectResult
     {
+        self::checkServer($dialect, $server);
         $catalog = match ($dialect) {
-            'mysql' => MysqlCatalog::read($connection),
+            'mysql' => MysqlCatalog::read($connection, $server),
             'postgres' => PostgresCatalog::read($connection),
             'sqlite' => SqliteCatalog::read($connection),
-            default => throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, "
-                . "postgres and sqlite"),
         };
         return $catalog->document($name);
+    }
+
+    /**
+     * Refuses a dialect other than mysql, postgres and sqlite, naming the dialect, and a server that is not a server
+     * of the dialect, naming the server (DBS-174): MySQL and MariaDB are the servers of the mysql dialect, PostgreSQL
+     * and SQLite each the server of its own (DIA-200).
+     *
+     * @internal
+     */
+    public static function checkServer(string $dialect, string $server): void
+    {
+        if (!in_array($dialect, Renderer::DIALECTS, true)) {
+            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres "
+                . "and sqlite");
+        }
+        $of = ['mysql' => 'mysql', 'mariadb' => 'mysql', 'postgres' => 'postgres', 'sqlite' => 'sqlite'][$server] ?? '';
+        if ($of !== $dialect) {
+            throw new \InvalidArgumentException("dbspec: server $server is not a server of the dialect $dialect");
+        }
     }
 
     /**
@@ -776,8 +798,10 @@ final class Dbspec
      * SQLite foreign keys, releasing the lock or closing a result fails after
      * it, apply throws an ApplyCleanupError whose previous throwable is that
      * failure and whose `cleanup` lists the cleanup errors in order. An
-     * unknown dialect, or a connection whose error mode is not
-     * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
+     * unknown dialect, a server that is not a server of the dialect, or a
+     * connection whose error mode is not PDO::ERRMODE_EXCEPTION, is an
+     * InvalidArgumentException. `$server` is the server of the connection, as
+     * for introspect, by which apply verifies the schema. A database that
      * has applied the whole chain stays unchanged.
      *
      * @param PlanList $plans the whole chain; apply runs its plans that the database has not applied, in chain order
@@ -787,11 +811,12 @@ final class Dbspec
     public static function apply(
         \PDO $connection,
         string $dialect,
+        string $server,
         array $plans,
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::apply($connection, $dialect, $plans, $now, $events);
+        PlanApply::apply($connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -808,11 +833,12 @@ final class Dbspec
     public static function recover(
         \PDO $connection,
         string $dialect,
+        string $server,
         array $plans,
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::recover($connection, $dialect, $plans, $now, $events);
+        PlanApply::recover($connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -829,11 +855,12 @@ final class Dbspec
     public static function rollback(
         \PDO $connection,
         string $dialect,
+        string $server,
         array $plans,
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::rollback($connection, $dialect, $plans, $now, $events);
+        PlanApply::rollback($connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -848,11 +875,12 @@ final class Dbspec
     public static function finalize(
         \PDO $connection,
         string $dialect,
+        string $server,
         array $plans,
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::finalize($connection, $dialect, $plans, $now, $events);
+        PlanApply::finalize($connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**

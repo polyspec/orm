@@ -81,7 +81,7 @@ async function catalogQueryFailure(dialect, database, dsn) {
   const session = await nativeSession(database, dsn);
   try {
     const answering = { query: async statement => [await session.query(statement.sql ?? statement)] };
-    const failure = await introspectDbspec(answering, dialect, 'introspected').then(() => null, error => error);
+    const failure = await introspectDbspec(answering, dialect, dialect, 'introspected').then(() => null, error => error);
     if (failure === null) throw new Error(`the ${dialect} catalog queries did not fail on ${database}`);
     if (failure instanceof TypeError) throw failure;
     return { failed: true };
@@ -90,15 +90,33 @@ async function catalogQueryFailure(dialect, database, dsn) {
   }
 }
 
+// The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
+const sqlDialect = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
+
+// The server of a case database that the public dbspec calls take (DIA-203): the markdown corpus answers in SQLite's dialect, as its
+// server.
+const serverOf = database => (database === 'markdown' ? 'sqlite' : database);
+
+// refusable reports whether the expect of dbspec.introspect on the case database names refused, an integer: the expect of the
+// database, else of its dialect, as the runner reads it (FCV-3).
+function refusable(step, native, database) {
+  const expect = step.expect ?? {};
+  const outcome = expect[Object.hasOwn(expect, native) ? native : database];
+  return outcome !== null && typeof outcome === 'object' && Number.isInteger(outcome.refused);
+}
+
 // introspectStep runs a dbspec.introspect step: on one native connection of the case database, the connection rules, the
 // rendered documents and the statements of the vector, then the public introspectDbspec. A vector with a document compares
 // the emitted document and the unsupported objects; any other requires none unsupported and the schema text of the source.
-// Its result is the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
+// Its result is the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198). Where that expect
+// names refused, a statement of the vector that the server refuses ends the step with the server's error number, which the expect
+// compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
 export async function introspectStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
+  // MariaDB runs SQL in MySQL's (DIA-200).
   const native = context.database;
-  const database = native === 'markdown' ? 'sqlite' : native;
+  const database = sqlDialect(native);
   if (step.catalog_of !== undefined) return catalogQueryFailure(step.catalog_of, native, dsn);
   const { texts, vector } = sourceOf(step, dir);
   const documents = parseSet(texts);
@@ -111,14 +129,30 @@ export async function introspectStep(step, context) {
   let counter;
   try {
     const schema = schemaName(database, dsn);
-    for (const sql of [...CONNECTION_RULES[database], ...rendered.statements, ...extra]) await session.query(sql.replaceAll('{schema}', schema));
+    const refuses = refusable(step, native, database);
+    const statements = [...CONNECTION_RULES[database], ...rendered.statements, ...extra];
+    for (const [i, sql] of statements.entries()) {
+      const refused = await session.query(sql.replaceAll('{schema}', schema)).then(() => null, error => error);
+      if (refused === null) continue;
+      // A refusal is an error packet of a server of the MySQL protocol, which mysql2 gives with its SQLSTATE and error number;
+      // the error decides it, not the name of the database, as in every runtime (DIA-200, rule 1).
+      if (refuses && i >= statements.length - extra.length && typeof refused.sqlState === 'string' && Number.isInteger(refused.errno)) return { refused: refused.errno };
+      throw refused;
+    }
+    if (refuses) throw new Error(`the statements of vector ${step.case} ran on ${native}, whose expect names their refusal`);
     const counted = counting(database, session.connection);
     counter = counted.counter;
-    result = await introspectDbspec(counted.proxy, database, 'introspected');
+    result = await introspectDbspec(counted.proxy, database, serverOf(native), 'introspected');
   } finally {
     await session.close();
   }
   const { document, unsupported } = result;
+  // A vector may state the answer of MariaDB where the server itself answers otherwise, in place of its document and unsupported
+  // objects (DIA-200, rule 4).
+  if (native === 'mariadb' && vector.mariadb !== undefined) {
+    vector.document = vector.mariadb.document;
+    vector.unsupported = vector.mariadb.unsupported;
+  }
   if (vector.document !== undefined) {
     const got = emitDbspec(document);
     if (got !== `${vector.document.join('\n')}\n`) throw new Error(`the introspected document differs:\n${got}`);
@@ -159,9 +193,10 @@ const documentText = lines => `${lines.join('\n')}\n`;
 // run, the target is read again and no table or column named dbspec$ remains.
 export async function planPhysicalStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
+  // MariaDB runs SQL in MySQL's (DIA-200).
   const native = context.database;
-  const database = native === 'markdown' ? 'sqlite' : native;
+  const database = sqlDialect(native);
   const id = step.case;
   const vector = readPlanCases(resolve(dir, step.vectors)).find(candidate => candidate.id === id);
   if (vector === undefined) throw new Error(`the vectors have no case ${id}`);
@@ -213,7 +248,7 @@ export async function planPhysicalStep(step, context) {
       if (violations !== '0') throw new Error(`foreign_key_check returns ${violations} rows`);
     };
     const schemaIs = async (what, want) => {
-      const { document, unsupported } = await introspectDbspec(session.connection, database, 'introspected');
+      const { document, unsupported } = await introspectDbspec(session.connection, database, serverOf(native), 'introspected');
       if (unsupported.length > 0) throw new Error(`${what}: unsupported objects ${JSON.stringify(unsupported)}`);
       const got = document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '';
       if (got !== want) throw new Error(`${what}: the schema text differs\n--- want\n${want}--- got\n${got}`);

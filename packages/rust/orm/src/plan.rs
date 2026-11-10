@@ -93,13 +93,13 @@ pub struct OutCol {
     pub precision: Option<u8>,
     pub scale: Option<u8>,
     /// The cells of the sums of the four 16-bit parts of that column, highest first, and the cell that reports a value that
-    /// is not an integer, on SQLite and markdown (DIA-202, PRT-84).
+    /// is not an integer, on SQLite and markdown (DIA-218, PRT-84).
     pub sum_parts: Vec<usize>,
     pub non_integer: Option<usize>,
 }
 
 impl OutCol {
-    /// The number of cells of the row that the column reads: one, or the cells of a split sum (DIA-202).
+    /// The number of cells of the row that the column reads: one, or the cells of a split sum (DIA-218).
     pub fn cells(&self) -> usize {
         if self.sum_parts.is_empty() {
             1

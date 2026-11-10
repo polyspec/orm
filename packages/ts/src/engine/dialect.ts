@@ -131,6 +131,19 @@ function lockSuffix(mode: string): string | undefined {
   return undefined;
 }
 
+/**
+ * The row lock suffix of a server of the mysql dialect (DIA-209): both servers read ` LOCK IN SHARE MODE` as a shared row lock, and
+ * MariaDB has no `FOR SHARE`; NOWAIT follows `FOR SHARE` alone on MySQL and `LOCK IN SHARE MODE` alone on MariaDB, so `share_nowait`
+ * is rendered by the server of the connection (DIA-201).
+ */
+function mysqlLockSuffix(server: MySqlServer): (mode: string) => string | undefined {
+  return mode => {
+    if (mode === 'share') return ' LOCK IN SHARE MODE';
+    if (mode === 'share_nowait') return server === 'mariadb' ? ' LOCK IN SHARE MODE NOWAIT' : ' FOR SHARE NOWAIT';
+    return lockSuffix(mode);
+  };
+}
+
 function tupleIn(cols: readonly string[], rows: readonly (readonly string[])[], negate: boolean, values: boolean): string {
   let list = rows.map(row => `(${row.join(', ')})`).join(', ');
   if (values) list = `VALUES ${list}`;
@@ -184,7 +197,7 @@ const mysql: Dialect = {
   decodesStage: s => s === 'ip',
   hostNow: false,
   clockOperand: col => col,
-  rowLock: lockSuffix,
+  rowLock: mysqlLockSuffix('mysql'),
   columnFunction(name, col) {
     switch (name) {
       case 'day_of_week': return `DAYOFWEEK(${col})`;
@@ -334,9 +347,16 @@ const sqlite: Dialect = {
   restartIdentity: (table, column) => `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(${quoteWith('"', column)}), 0) FROM ${quoteWith('"', table)}) WHERE name = ${literal(table)}`,
 };
 
-export function dialectOf(name: string): Dialect | undefined {
+/** The mysql dialect on a MariaDB server: only the row lock `share_nowait` differs (DIA-209). */
+const mariadb: Dialect = { ...mysql, rowLock: mysqlLockSuffix('mariadb') };
+
+/** The server of a mysql connection, which the connection reads once by VERSION() (DIA-201). */
+export type MySqlServer = 'mysql' | 'mariadb';
+
+/** The dialect of name; on mysql, the one of the server that the connection read (DIA-201), MySQL when none is given. */
+export function dialectOf(name: string, server: MySqlServer = 'mysql'): Dialect | undefined {
   switch (name) {
-    case 'mysql': return mysql;
+    case 'mysql': return server === 'mariadb' ? mariadb : mysql;
     case 'postgres': return postgres;
     case 'sqlite': return sqlite;
   }

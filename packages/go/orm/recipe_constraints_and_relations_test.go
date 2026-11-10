@@ -19,6 +19,13 @@ func TestRecipeConstraintsAndRelationsMysql(t *testing.T) {
 	recipe.Run(t, constraintsAndRelationsRecipe, "mysql")
 }
 
+// TestRecipeConstraintsAndRelationsMariadb runs the constraints_and_relations recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeConstraintsAndRelationsMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, constraintsAndRelationsRecipe, "mariadb")
+}
+
 // TestRecipeConstraintsAndRelationsPostgres runs the constraints_and_relations recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: CFG-33, INT-87.
 func TestRecipeConstraintsAndRelationsPostgres(t *testing.T) {

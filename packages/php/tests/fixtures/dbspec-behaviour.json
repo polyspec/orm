@@ -11216,7 +11216,7 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "irreversible representative: a finalize step has no rollback",
+                "irreversible representative at step 40: a finalize step has no rollback",
                 [
                     "irreversible",
                     "representative",
@@ -25635,7 +25635,7 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "irreversible drop_required_column: a finalize step has no rollback",
+                "irreversible drop_required_column at step 12: a finalize step has no rollback",
                 [
                     "irreversible",
                     "drop_required_column",

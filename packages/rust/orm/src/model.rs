@@ -964,7 +964,7 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
 }
 
 /// The cells of a scalar statement: every cell of a sum or an average, whose sums are one cell or the cells of a split sum
-/// (DIA-202) and an average
+/// (DIA-218) and an average
 /// the count after them; the one cell of every other.
 fn scalar_cells(rows: &[crate::row::DriverRow], kind: &str, zone: crate::db::Zone) -> Result<Vec<Val>> {
     if kind != "avg" && kind != "sum" {

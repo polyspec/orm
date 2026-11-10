@@ -584,7 +584,9 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name));
+    // A mysql engine renders the row locks of the server that connect read (DIA-201, DIA-209), so its plans, which this
+    // connection alone caches, hold the text of that server.
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name, this.pool.server === 'mariadb' ? 'mariadb' : 'mysql'));
   }
 
   /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
@@ -1255,7 +1257,8 @@ export class Db {
     // kind is the verb of the SQL that the plan step writes, and tables is the table of the plan step.
     const done = this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked);
     this.checkStatementFault(sql, done);
-    return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done);
+    // A row lock *_nowait is named to the driver, which reads MariaDB's 1205 of that statement as LOCK_NOT_AVAILABLE (DIA-209).
+    return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done, (step.lock ?? '').endsWith('_nowait'));
   }
 }
 
@@ -1460,7 +1463,7 @@ function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T)
 
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
   const { request, params } = hooked(ex, given, givenParams);
-  // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar statement
+  // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other scalar statement
   // reads one cell.
   const cells = (rows: unknown[][]): unknown => request.kind === 'avg' || request.kind === 'sum'
     ? present(rows[0], `the row of a ${request.kind}`) : rows[0]?.[0] ?? null;

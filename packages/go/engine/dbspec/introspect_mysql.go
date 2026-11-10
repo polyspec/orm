@@ -17,29 +17,39 @@ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABL
 IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EXPRESSION, '')
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME, ORDINAL_POSITION`
 	mysqlIndexesQuery = `SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),
-SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS
+SUB_PART IS NOT NULL, COLUMN_NAME IS NULL, INDEX_TYPE FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX`
+	// MariaDB reads an information_schema table of one database only by the schema column of its table (TABLE_SCHEMA,
+	// EVENT_OBJECT_SCHEMA), so each read names it; a constraint and a trigger are in the schema of their table, so MySQL
+	// gives the same rows (DIA-213).
 	mysqlForeignKeysQuery = `SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, rc.UPDATE_RULE,
 rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
-AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
+AND k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION`
 	// The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS gets slower in proportion to the table count, so
 	// (over 60 seconds with 2000 tables) they are read in two queries and joined by name. MySQL's CHECK
 	// names are unique within the database.
 	mysqlCheckClausesQuery = `SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME`
+	// MariaDB scopes a CHECK name to its table (probe mariadb.check.name_schema_scope), so its clauses are read by table and
+	// name (DIA-203).
+	mariadbCheckClausesQuery = `SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME`
 	mysqlChecksQuery = `SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
-WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`
+	// MariaDB has no NOT ENFORCED CHECK and no ENFORCED column, so each of its checks is enforced (DIA-203).
+	mariadbChecksQuery = `SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`
 	mysqlTriggersQuery = `SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
-FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`
+FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`
 	mysqlRoutinesQuery = `SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME`
 	mysqlEventsQuery   = `SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME`
 )
 
 var mysqlTypePattern = regexp.MustCompile(`^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$`)
 
-func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
+func readMySQL(ctx context.Context, q Querier, server Server) (*catalog, error) {
 	c := &catalog{}
 	err := eachRow(ctx, q, mysqlTablesQuery, func(r scanner) error {
 		var name, kind, options string
@@ -76,6 +86,12 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		if generation != "" {
 			c.report("column", table, name, "a generated column has no dbspec definition")
 			return nil
+		}
+		if server == ServerMariaDB {
+			var err error
+			if dflt, extra, err = mariadbDefault(dflt, extra); err != nil {
+				return fmt.Errorf("column %s.%s: %w", table, name, err)
+			}
 		}
 		typ, needsCheck, ok := mysqlType(columnType, charset, collation)
 		if !ok {
@@ -122,20 +138,39 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		return nil, err
 	}
 	checked := map[string]map[string]bool{}
+	// clauses holds each CHECK_CLAUSE by checkKey, in the escaped form of MySQL's CHECK_CLAUSE.
 	clauses := map[string]string{}
-	err = eachRow(ctx, q, mysqlCheckClausesQuery, func(r scanner) error {
-		var name, clause string
-		if err := r.Scan(&name, &clause); err != nil {
-			return err
+	clausesQuery := mysqlCheckClausesQuery
+	if server == ServerMariaDB {
+		clausesQuery = mariadbCheckClausesQuery
+	}
+	err = eachRow(ctx, q, clausesQuery, func(r scanner) error {
+		var table, name, clause string
+		if server != ServerMariaDB {
+			if err := r.Scan(&name, &clause); err != nil {
+				return err
+			}
+		} else {
+			if err := r.Scan(&table, &name, &clause); err != nil {
+				return err
+			}
+			// MariaDB writes CHECK_CLAUSE as SQL text, escaping a string literal once (probes mariadb.check.catalog_text,
+			// mariadb.check.string_escaped_twice), and MySQL escapes it once more; the MariaDB text takes that escape so that
+			// one reader reads both (DIA-203).
+			clause = escapeMySQLClause(clause)
 		}
-		clauses[name] = clause
+		clauses[checkKey(server, table, name)] = clause
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	var checks [][3]string
-	err = eachRow(ctx, q, mysqlChecksQuery, func(r scanner) error {
+	checksQuery := mysqlChecksQuery
+	if server == ServerMariaDB {
+		checksQuery = mariadbChecksQuery
+	}
+	err = eachRow(ctx, q, checksQuery, func(r scanner) error {
 		var table, name, enforced string
 		if err := r.Scan(&table, &name, &enforced); err != nil {
 			return err
@@ -146,12 +181,12 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	shown, err := mysqlShownChecks(ctx, q, checks, clauses)
+	shown, err := mysqlShownChecks(ctx, q, server, checks, clauses)
 	if err != nil {
 		return nil, err
 	}
 	handle := func(table, name, enforced string) error {
-		clause, ok := clauses[name]
+		clause, ok := clauses[checkKey(server, table, name)]
 		if !ok {
 			return fmt.Errorf("check %s.%s has no CHECK_CLAUSE", table, name)
 		}
@@ -169,7 +204,7 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		if strings.Contains(name, "$") {
 			column, found := renderedColumn(table, name, columns[table])
 			col := columns[table][column]
-			if !found || withoutIntroducers(clause) != withoutIntroducers(mysqlRendererCheck(col)) {
+			if !found || withoutIntroducers(clause) != withoutIntroducers(mysqlRendererCheck(server, col)) {
 				c.report("check", table, name, "the check %s is not the renderer CHECK", clause)
 				return nil
 			}
@@ -254,12 +289,14 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 		precision = p
 	}
 	switch m[1] {
+	// An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it
+	// (probes mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width (DIA-204).
 	case "smallint":
-		return Type{Kind: TypeI16}, "", m[2] == ""
+		return Type{Kind: TypeI16}, "", true
 	case "int":
-		return Type{Kind: TypeI32}, "", m[2] == ""
+		return Type{Kind: TypeI32}, "", true
 	case "bigint":
-		return Type{Kind: TypeI64}, "", m[2] == ""
+		return Type{Kind: TypeI64}, "", true
 	case "tinyint(1)":
 		return Type{Kind: TypeBool}, columnType, true
 	case "double":
@@ -281,14 +318,27 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 }
 
 // mysqlRendererCheck is the form in which a renderer CHECK remains in CHECK_CLAUSE
-// (docs/spec/dialects.md "Introspection", "Checks").
-func mysqlRendererCheck(col icolumn) string {
+// (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it without the outer parentheses and the
+// introducers, in the escaped form that readMySQL gives its CHECK_CLAUSE (probes mariadb.check.catalog_text,
+// mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
+func mysqlRendererCheck(server Server, col icolumn) string {
 	c := "`" + col.name + "`"
+	if server == ServerMariaDB {
+		switch col.typ.Kind {
+		case TypeBool:
+			return c + " in (0,1)"
+		case TypeUUID:
+			return c + " regexp \\'" + uuidPattern + "\\'"
+		case TypeTime:
+			return c + " >= \\'00:00:00\\' and " + c + " < \\'24:00:00\\'"
+		}
+		return ""
+	}
 	switch col.typ.Kind {
 	case TypeBool:
 		return "(" + c + " in (0,1))"
 	case TypeUUID:
-		return "regexp_like(" + c + ",_utf8mb4\\'" + uuidPattern + "\\',_utf8mb4\\'c\\')"
+		return "regexp_like(" + c + ",_utf8mb4\\'" + uuidPattern + "\\')"
 	case TypeTime:
 		return "((" + c + " >= _utf8mb4\\'00:00:00\\') and (" + c + " < _utf8mb4\\'24:00:00\\'))"
 	}
@@ -318,12 +368,12 @@ func withoutIntroducers(clause string) string {
 // reversed on the client. The result is in CHECK_CLAUSE form: this function escapes the body of SHOW CREATE
 // once more, as CHECK_CLAUSE does, and decodeCheck undoes that. It reads SHOW CREATE TABLE once per table,
 // and runs only after rows is closed (it does not query inside rows that are open on the same connection).
-func mysqlShownChecks(ctx context.Context, q Querier, checks [][3]string, clauses map[string]string) (map[string]map[string]string, error) {
+func mysqlShownChecks(ctx context.Context, q Querier, server Server, checks [][3]string, clauses map[string]string) (map[string]map[string]string, error) {
 	shown := map[string]map[string]string{}
 	created := map[string]string{}
 	for _, check := range checks {
 		table, name := check[0], check[1]
-		if !mysqlNonASCII(clauses[name]) {
+		if !mysqlNonASCII(clauses[checkKey(server, table, name)]) {
 			continue
 		}
 		if _, ok := created[table]; !ok {
@@ -399,6 +449,68 @@ func mysqlNonASCII(clause string) bool {
 		}
 	}
 	return false
+}
+
+// checkKey is the key of a check in the clauses of readMySQL: its name on MySQL, whose CHECK names are unique in the
+// database, and its table and name on MariaDB, which scopes a CHECK name to its table (probes mysql.check.name_schema_scope,
+// mariadb.check.name_schema_scope).
+func checkKey(server Server, table, name string) string {
+	if server == ServerMariaDB {
+		return table + "\x00" + name
+	}
+	return name
+}
+
+// mysqlNumber is a number literal of COLUMN_DEFAULT.
+var mysqlNumber = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$`)
+
+// mariadbClock is a clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p).
+var mariadbClock = regexp.MustCompile(`^current_timestamp\(([1-6]?)\)$`)
+
+// mariadbDefault reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as
+// SQL text: NULL for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as
+// written, and an expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe
+// mariadb.default.catalog_text). MySQL gives a NULL default as SQL NULL, a literal without quotes and escapes, and an
+// expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among them, with EXTRA DEFAULT_GENERATED (probe
+// mysql.default.catalog_text). A quoted text that is not one whole literal is an error.
+func mariadbDefault(dflt sql.NullString, extra string) (sql.NullString, string, error) {
+	if !dflt.Valid || extra != "" {
+		return dflt, extra, nil
+	}
+	text := dflt.String
+	switch {
+	case text == "NULL":
+		return sql.NullString{}, extra, nil
+	case strings.HasPrefix(text, "'"):
+		value, n, err := readSQLString(DialectMySQL, text)
+		if err != nil || n != len(text) {
+			return dflt, extra, fmt.Errorf("default %s is not one string literal", text)
+		}
+		return sql.NullString{String: value, Valid: true}, extra, nil
+	case mysqlNumber.MatchString(text):
+		return dflt, extra, nil
+	}
+	if m := mariadbClock.FindStringSubmatch(text); m != nil {
+		if m[1] == "" {
+			return sql.NullString{String: "CURRENT_TIMESTAMP", Valid: true}, "DEFAULT_GENERATED", nil
+		}
+		return sql.NullString{String: "CURRENT_TIMESTAMP(" + m[1] + ")", Valid: true}, "DEFAULT_GENERATED", nil
+	}
+	return dflt, "DEFAULT_GENERATED", nil
+}
+
+// MariaDBCatalogDefault reads a MariaDB COLUMN_DEFAULT in the form of MySQL's for the catalog descriptor (DIA-205): the default
+// in MySQL's text, nil for no default, and whether MySQL marks it DEFAULT_GENERATED, an expression default. A quoted text that
+// is not one whole literal is an error.
+func MariaDBCatalogDefault(dflt *string) (*string, bool, error) {
+	if dflt == nil {
+		return nil, false, nil
+	}
+	read, extra, err := mariadbDefault(sql.NullString{String: *dflt, Valid: true}, "")
+	if err != nil || !read.Valid {
+		return nil, false, err
+	}
+	return &read.String, extra == "DEFAULT_GENERATED", nil
 }
 
 // mysqlNow reports whether a DEFAULT_GENERATED default is the renderer clock default of that column,

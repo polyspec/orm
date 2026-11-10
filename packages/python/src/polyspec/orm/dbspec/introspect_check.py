@@ -1,5 +1,6 @@
 # Reads a dialect catalog's check expression as dbspec predicate text
 # (docs/spec/dialects.md "Introspection", "Checks").
+from polyspec.orm.dbspec.parse import go_rune_quote, goq
 from polyspec.orm.dbspec.introspect_catalog import quote
 
 __all__ = ["CheckDecodeError", "decode_check", "unscaled_decimal"]
@@ -19,13 +20,13 @@ def decode_check(dialect: str, text: str, columns: dict) -> str:
     if dialect == "postgres":
         if not text.startswith("CHECK "):
             raise CheckDecodeError(
-                f"constraint definition {text!r} does not start with CHECK"
+                f"constraint definition {goq(text)} does not start with CHECK"
             )
         text = text[len("CHECK ") :]
     decoder = _CheckDecoder(_check_tokens(dialect, text), columns, dialect)
     node = decoder.expression()
     if decoder.i != len(decoder.tokens):
-        raise CheckDecodeError(f"unexpected {decoder.tokens[decoder.i]['text']!r}")
+        raise CheckDecodeError(f"unexpected {goq(decoder.tokens[decoder.i]['text'])}")
     if node["kind"] == "operand":
         raise CheckDecodeError("an operand alone is not a predicate")
     return decoder.write(node)
@@ -108,7 +109,7 @@ def _check_tokens(dialect: str, text: str) -> list:
             out.append({"kind": "punct", "text": ch})
             i += 1
         else:
-            raise CheckDecodeError(f"unexpected character {ch!r}")
+            raise CheckDecodeError(f"unexpected character {go_rune_quote(ch)}")
     return out
 
 
@@ -175,7 +176,7 @@ class _CheckDecoder:
 
     def _expect(self, text: str) -> None:
         if not self._punct(text):
-            raise CheckDecodeError(f"expected {text!r} at token {self.i}")
+            raise CheckDecodeError(f"expected {goq(text)} at token {self.i}")
 
     def expression(self) -> dict:
         left = self._and()
@@ -297,7 +298,7 @@ class _CheckDecoder:
         if t["kind"] == "word":
             self.i += 1
             return _operand("column", t["text"])
-        raise CheckDecodeError(f"unexpected {t['text']!r}")
+        raise CheckDecodeError(f"unexpected {goq(t['text'])}")
 
     def _list(self) -> list:
         """Reads (a, b, ...) after in."""

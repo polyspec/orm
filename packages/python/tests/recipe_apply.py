@@ -21,7 +21,8 @@ from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.database import parse_dsn
 from polyspec.orm.markdown import MarkdownConnection
 
-from .case_database import case_database
+from . import recipe as _recipe
+from .case_database import case_database, case_server
 from .dbspec_apply_runner import Adapter
 from .runner_connect import mysql_connect
 
@@ -35,6 +36,8 @@ _CONNECTION_RULES = {
 }
 _SERVER_ENV = {
     "mysql": "ORM_TEST_MYSQL_SERVER_DSN",
+    # MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    "mariadb": "ORM_TEST_MARIADB_SERVER_DSN",
     "postgres": "ORM_TEST_POSTGRES_SERVER_DSN",
 }
 _COMMANDS = {
@@ -46,8 +49,8 @@ _COMMANDS = {
 
 
 def _dialect_of(database: str) -> str:
-    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185)."""
-    return "sqlite" if database == "markdown" else database
+    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200)."""
+    return {"markdown": "sqlite", "mariadb": "mysql"}.get(database, database)
 
 
 class _Stop(Exception):
@@ -110,7 +113,7 @@ def _direct(context: dict, dsn: str) -> _Session:
         server = _required(_SERVER_ENV[database])
         connection = (
             mysql_connect(server, name)
-            if database == "mysql"
+            if _dialect_of(database) == "mysql"
             else psycopg.connect(server, dbname=name, autocommit=True)
         )
     session = _Session(_dialect_of(database), connection)
@@ -160,7 +163,10 @@ def _connect(step: dict, context: dict) -> dict:
 
 def _schema(step: dict, context: dict) -> dict:
     result = introspect_dbspec(
-        _session_of(step, context).adapter, _dialect_of(context["database"]), "x"
+        _session_of(step, context).adapter,
+        _dialect_of(context["database"]),
+        case_server(context["database"]),
+        "x",
     )
     if result["unsupported"]:
         raise AssertionError(f"dbspec.schema: unsupported {result['unsupported']}")
@@ -207,6 +213,8 @@ def apply_ops(sql, run_step) -> dict:
         state = {"events": 0, "ran": False}
 
         def handler(event: dict) -> None:
+            if context.get("guard") is not None:
+                context["guard"].progress()
             state["events"] += 1
             kinds[event["kind"]] = kinds.get(event["kind"], 0) + 1
             if on is None or on["event"] != event["kind"]:
@@ -226,23 +234,28 @@ def apply_ops(sql, run_step) -> dict:
 
         started = time.monotonic()
         code = "ok"
+        message = None
         try:
             _COMMANDS[step["op"]](
                 session.adapter,
                 _dialect_of(context["database"]),
+                case_server(context["database"]),
                 plans,
                 lambda: _NOW,
                 handler,
             )
-        except _Stop:
+        except _Stop as error:
             code = "stopped"
+            message = str(error)
         except DbspecApplyError as error:
             code = error.code
+            message = str(error)
             _holds(step, error)
         except Exception as error:
             if str(error) != step.get("message"):
                 raise
             code = "message"
+            message = str(error)
             _holds(step, error)
         elapsed = (time.monotonic() - started) * 1000
         bounds = step.get("elapsed")
@@ -253,6 +266,8 @@ def apply_ops(sql, run_step) -> dict:
             members.append(["events", {"int": str(state["events"])}])
         for kind in step.get("count", []):
             members.append([kind, {"int": str(kinds.get(kind, 0))}])
+        if step.get("with_message") is True and message is not None:
+            members.append(["message", {"text": message}])
         return {"value": {"object": members}}
 
     ops = {
@@ -271,3 +286,4 @@ def _holds(step: dict, error: Exception) -> None:
     detail = step.get("detail")
     if detail is not None and detail.lower() not in str(error).lower():
         raise AssertionError(f"the message {error} does not hold {detail}")
+    _recipe._check_message_holds(str(error), step.get("message_holds"))

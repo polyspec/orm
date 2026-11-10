@@ -27,7 +27,11 @@ FIXTURE = json.loads(
 CODE = FIXTURE["code"]
 MESSAGE = FIXTURE["message"]
 DIALECTS = ("sqlite", "mysql", "postgres")
-DSN_VARIABLES = {"mysql": "ORM_TEST_MYSQL_DSN", "postgres": "ORM_TEST_POSTGRES_DSN"}
+DSN_VARIABLES = {
+    "mysql": "ORM_TEST_MYSQL_DSN",
+    "mariadb": "ORM_TEST_MARIADB_DSN",
+    "postgres": "ORM_TEST_POSTGRES_DSN",
+}
 RAN = set()  # (case, dialect) pairs whose case started
 MODELS = {}
 

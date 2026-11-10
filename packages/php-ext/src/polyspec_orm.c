@@ -1254,6 +1254,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyError, __construct)
         smart_str_append(&b, plan);
     }
     if (zend_string_equals_literal(code, "failed") || zend_string_equals_literal(code, "interrupted")
+        || zend_string_equals_literal(code, "irreversible") || zend_string_equals_literal(code, "nulls")
         || (zend_string_equals_literal(code, "session") && ZSTR_LEN(plan) > 0)) {
         smart_str_appends(&b, " at step ");
         smart_str_append_long(&b, step);
@@ -2353,16 +2354,17 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, importMermaid)
 ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, introspect)
 {
     zval *connection;
-    zend_string *dialect_name, *name;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    zend_string *dialect_name, *server, *name;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
         Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce())
         Z_PARAM_STR(dialect_name)
+        Z_PARAM_STR(server)
         Z_PARAM_STR(name)
     ZEND_PARSE_PARAMETERS_END();
     ENTER();
     dialect d;
     unsupportedv unsupported = {0};
-    document *doc = dbs_dialect(zs(dialect_name), &d) ? dbs_introspect(connection, d, zs(name), &unsupported) : NULL;
+    document *doc = dbs_dialect(zs(dialect_name), &d) ? dbs_introspect(connection, d, zs(server), zs(name), &unsupported) : NULL;
     if (doc != NULL && !dbs_failed()) {
         obj_new(return_value, dbs_ce_IntrospectResult);
         zval dz, list;
@@ -2374,21 +2376,38 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, introspect)
     LEAVE();
 }
 
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, checkServer)
+{
+    zend_string *dialect_name, *server;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(dialect_name)
+        Z_PARAM_STR(server)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    dialect d;
+    bool mariadb;
+    if (dbs_dialect(zs(dialect_name), &d)) {
+        dbs_server(d, zs(server), &mariadb);
+    }
+    LEAVE();
+}
+
 /* Dbspec's apply commands, and those of PlanApply, which the PHP client's Dbspec calls and which take the same arguments. */
 #define APPLY_METHOD(cls, op) \
 ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, op) \
 { \
     zval *connection, *plans, *now, *events = NULL; \
-    zend_string *dialect_name; \
-    ZEND_PARSE_PARAMETERS_START(5, 5) \
+    zend_string *dialect_name, *server; \
+    ZEND_PARSE_PARAMETERS_START(6, 6) \
         Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce()) \
         Z_PARAM_STR(dialect_name) \
+        Z_PARAM_STR(server) \
         Z_PARAM_ARRAY(plans) \
         Z_PARAM_OBJECT_OF_CLASS(now, zend_ce_closure) \
         Z_PARAM_OBJECT_OF_CLASS_OR_NULL(events, zend_ce_closure) \
     ZEND_PARSE_PARAMETERS_END(); \
     ENTER(); \
-    dbs_apply(#op, connection, zs(dialect_name), plans, now, events); \
+    dbs_apply(#op, connection, zs(dialect_name), zs(server), plans, now, events); \
     LEAVE(); \
 }
 

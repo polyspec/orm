@@ -62,14 +62,17 @@ final class Orm
         switch ($driver) {
             case 'mysql':
                 // Session settings are one init command that runs once when the connection opens. Each setting
-                // does not incur a separate round trip to send a statement.
+                // does not incur a separate round trip to send a statement. It begins with SET NAMES utf8mb4, with no
+                // collation, which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin
+                // with 1115): a text column that the renderer writes compares under its own utf8mb4_0900_bin, and SQL
+                // that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202).
+                // The statement timeout is not in it: its variable is the one of the server, which the connection
+                // reads only after it opens (DIA-208).
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
-                    // MySQL bounds SELECT statements with max_execution_time.
-                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '"
-                        . self::MYSQL_SQL_MODE . "'"
-                        . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = '
-                            . '' . $config->statementTimeoutMs : ''),
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET NAMES utf8mb4, "
+                        . "time_zone = '+00:00', sql_mode = '"
+                        . self::MYSQL_SQL_MODE . "'",
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
@@ -92,6 +95,15 @@ final class Orm
                 )
                 : \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            // The server of a mysql connection is read once by VERSION(), never by the handshake, whose version a
+            // pooler may state for itself (DIA-201).
+            $version = $driver === 'mysql' ? (string) $pdo->query('SELECT VERSION()')->fetchColumn() : '';
+            $server = str_contains($version, '-MariaDB') ? 'mariadb' : 'mysql';
+            if ($driver === 'mysql' && $config->statementTimeoutMs > 0) {
+                // The first connection sets the statement timeout by the variable of the server it read, before any
+                // statement of the caller (DIA-208, CFG-7).
+                $pdo->exec('SET ' . self::mysqlStatementTimeout($server, $config->statementTimeoutMs));
+            }
             if ($driver === 'sqlite') {
                 // The driver reports the extended result code, whose name ends the message of an error (INT-154).
                 $pdo->setAttribute(\Pdo\Sqlite::ATTR_EXTENDED_RESULT_CODES, true);
@@ -115,6 +127,13 @@ final class Orm
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
         if ($driver === 'mysql') {
+            $db->setServer($server);
+            if ($config->statementTimeoutMs > 0) {
+                // A connection that opens again for this Db knows its server, so its init command takes the statement
+                // timeout of that server (DIA-208, CFG-7).
+                $options[\Pdo\Mysql::ATTR_INIT_COMMAND] .= ', '
+                    . self::mysqlStatementTimeout($server, $config->statementTimeoutMs);
+            }
             $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
             $db->setReconnect($open);
             $openControl = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
@@ -143,6 +162,18 @@ final class Orm
             ));
         }
         return $db;
+    }
+
+    /**
+     * The session setting of the statement timeout of a mysql connection by its server (DIA-208): MySQL bounds a SELECT
+     * by max_execution_time in milliseconds, MariaDB every statement by max_statement_time in seconds, written with
+     * three fraction digits.
+     */
+    private static function mysqlStatementTimeout(string $server, int $ms): string
+    {
+        return $server === 'mariadb'
+            ? sprintf('SESSION max_statement_time = %d.%03d', intdiv($ms, 1000), $ms % 1000)
+            : 'SESSION max_execution_time = ' . $ms;
     }
 
     /** @param \Closure(): \PDO $open */

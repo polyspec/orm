@@ -67,13 +67,14 @@ pub(super) async fn lock_original(
     connection: &mut Conn,
     original: &RowSnapshot,
     dialect: &str,
+    server: polyspec_orm_schema::dbspec::Server,
     keys: &[P],
     cancellation: &AtomicBool,
     publish: &Publisher,
 ) -> Result<TableMetadata, CatalogError> {
     cancelled(cancellation)?;
     let current = lookup(connection, original.metadata(), dialect, keys, true).await?;
-    let descriptor = metadata::describe(connection, dialect, &original.metadata().table).await?;
+    let descriptor = metadata::describe(connection, dialect, server, &original.metadata().table).await?;
     original.check_current(&descriptor, &current)?;
     if dialect == "mysql" {
         mysql_safety(connection, &descriptor).await?;
@@ -152,10 +153,15 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
     super::temporal::read(connection, metadata, dialect, &sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await
 }
 /// Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a
-/// trigger from the account (INT-119).
+/// trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no partial revokes and
+/// lists no row, the one form that both servers answer with the same result (DIA-207).
 pub(super) async fn mysql_partial_revokes_off(connection: &mut Conn) -> Result<(), CatalogError> {
     let revokes = connection
-        .grid_query_bounded("SELECT @@GLOBAL.partial_revokes", &[], QueryLimits { max_rows: 1, max_bytes: 65536 })
+        .grid_query_bounded(
+            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
+            &[],
+            QueryLimits { max_rows: 1, max_bytes: 65536 },
+        )
         .await
         .map_err(|e| e.to_string())?;
     require_partial_revokes_disabled(&revokes)
@@ -202,7 +208,7 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
     Ok(())
 }
 fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), CatalogError> {
-    if matches!(result.rows.as_slice(), [row] if matches!(row.as_slice(), [GridCell::Integer(0)] | [GridCell::Unsigned(0)] | [GridCell::Boolean(false)])) {
+    if result.rows.is_empty() {
         Ok(())
     } else {
         Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into())
@@ -238,7 +244,7 @@ impl CatalogConnection {
         let _closes = super::ClosesOnDrop(self);
         let mut connection = begin_mutation(self, &cancellation).await?;
         let result: Result<_, CatalogError> = async {
-            let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
+            let descriptor = lock_original(&mut connection, original, &self.dialect, self.server, &keys, &cancellation, &publish).await?;
             super::temporal::check_write_precision(&mut connection, &descriptor, changes, &self.dialect).await?;
             let sets = changes
                 .iter()
@@ -266,7 +272,7 @@ impl CatalogConnection {
                 .map(|(name, value)| changes.iter().find(|(column, _)| column == name).map(|(_, value)| Ok(value.clone())).unwrap_or_else(|| bind(value)))
                 .collect::<Result<Vec<_>, CatalogError>>()?;
             let after = lookup(&mut connection, &descriptor, &self.dialect, &new_keys, false).await?;
-            let after_descriptor = metadata::describe(&mut connection, &self.dialect, &descriptor.table).await?;
+            let after_descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &descriptor.table).await?;
             original.check_updated(&after_descriptor, &after, &assignments)?;
             cancelled(&cancellation)?;
             Ok(after)

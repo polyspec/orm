@@ -24,28 +24,35 @@ export interface DbspecIntrospection {
  * main database (SQLite) of a connection into one dbspec document named
  * `name`, with a number of catalog queries that does not depend on the table
  * count (docs/spec/dialects.md "Introspection"). A failing query rejects with the
- * driver's error; an unknown dialect, a connection without its query method
- * and a catalog that yields no document reject with an Error.
+ * driver's error; an unknown dialect, a server that is not a server of the
+ * dialect, a connection without its query method and a catalog that yields no
+ * document reject with an Error.
+ *
+ * `server` is the server that the connection reached, which the caller read
+ * when it connected (DIA-203): mysql or mariadb for the mysql dialect, and the
+ * dialect's own for postgres and sqlite. The introspection reads no version.
  */
-export function introspectDbspec(connection: DbspecMySqlConnection, dialect: 'mysql', name: string): Promise<DbspecIntrospection>;
-export function introspectDbspec(connection: DbspecPostgresConnection, dialect: 'postgres', name: string): Promise<DbspecIntrospection>;
-export function introspectDbspec(connection: DbspecSqliteConnection, dialect: 'sqlite', name: string): Promise<DbspecIntrospection>;
+export function introspectDbspec(connection: DbspecMySqlConnection, dialect: 'mysql', server: 'mysql' | 'mariadb', name: string): Promise<DbspecIntrospection>;
+export function introspectDbspec(connection: DbspecPostgresConnection, dialect: 'postgres', server: 'postgres', name: string): Promise<DbspecIntrospection>;
+export function introspectDbspec(connection: DbspecSqliteConnection, dialect: 'sqlite', server: 'sqlite', name: string): Promise<DbspecIntrospection>;
 export async function introspectDbspec(
   connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection,
   dialect: DbspecDialect,
+  server: DbspecServer,
   name: string,
 ): Promise<DbspecIntrospection> {
   if (typeof name !== 'string') throw new TypeError('dbspec document name must be a string');
+  checkServer(dialect, server);
   switch (dialect) {
     case 'mysql':
       if (!isMySqlConnection(connection)) throw missingMethod(dialect, 'query');
-      return introspectCatalog(mysqlQuery(connection), dialect, name);
+      return introspectCatalog(mysqlQuery(connection), dialect, server, name);
     case 'postgres':
       if (!isPostgresConnection(connection)) throw missingMethod(dialect, 'query');
-      return introspectCatalog(postgresQuery(connection), dialect, name);
+      return introspectCatalog(postgresQuery(connection), dialect, server, name);
     case 'sqlite':
       if (!isSqliteConnection(connection)) throw missingMethod(dialect, 'prepare');
-      return introspectCatalog(sqliteQuery(connection), dialect, name);
+      return introspectCatalog(sqliteQuery(connection), dialect, server, name);
     default:
       throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
   }
@@ -53,13 +60,18 @@ export async function introspectDbspec(
 
 /**
  * Sends the catalog queries as query and reads the same document as introspectDbspec. Unlike a client connection, which is a driver
- * object, it is used by the side that reads the catalog through a query function.
+ * object, it is used by the side that reads the catalog through a query function. server is as for introspectDbspec.
  */
-export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection> {
+export function introspectCatalog(query: CatalogQuery, dialect: 'mysql', server: 'mysql' | 'mariadb', name: string): Promise<DbspecIntrospection>;
+export function introspectCatalog(query: CatalogQuery, dialect: 'postgres', server: 'postgres', name: string): Promise<DbspecIntrospection>;
+export function introspectCatalog(query: CatalogQuery, dialect: 'sqlite', server: 'sqlite', name: string): Promise<DbspecIntrospection>;
+export function introspectCatalog(query: CatalogQuery, dialect: DbspecDialect, server: DbspecServer, name: string): Promise<DbspecIntrospection>;
+export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDialect, server: DbspecServer, name: string): Promise<DbspecIntrospection> {
+  checkServer(dialect, server);
   let catalog: Catalog;
   switch (dialect) {
     case 'mysql':
-      catalog = await readMySQL(query);
+      catalog = await readMySQL(query, server);
       break;
     case 'postgres':
       catalog = await readPostgres(query);
@@ -72,6 +84,26 @@ export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDial
   }
   const { document, unsupported } = catalog.document(name);
   return Object.freeze({ document, unsupported: Object.freeze(unsupported.map(u => Object.freeze({ ...u }))) });
+}
+
+/**
+ * The server that a connection reached (DIA-200): mysql and mariadb are the servers of the mysql dialect, postgres and sqlite each
+ * the server of its own.
+ */
+export type DbspecServer = 'mysql' | 'mariadb' | 'postgres' | 'sqlite';
+
+/** The dialect of each server. */
+const SERVER_DIALECTS: Readonly<Record<DbspecServer, DbspecDialect>> = { mysql: 'mysql', mariadb: 'mysql', postgres: 'postgres', sqlite: 'sqlite' };
+
+/**
+ * Refuses a dialect other than mysql, postgres and sqlite, naming the dialect, and a server that is not a server of the dialect, naming
+ * the server (DBS-174).
+ */
+export function checkServer(dialect: DbspecDialect, server: DbspecServer): void {
+  if (dialect !== 'mysql' && dialect !== 'postgres' && dialect !== 'sqlite') throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
+  if (!Object.hasOwn(SERVER_DIALECTS, server) || SERVER_DIALECTS[server] !== dialect) {
+    throw new TypeError(`dbspec: server ${String(server)} is not a server of the dialect ${dialect}`);
+  }
 }
 
 function missingMethod(dialect: DbspecDialect, method: string): TypeError {

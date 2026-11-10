@@ -231,7 +231,6 @@ class ServerDriverErrorTest(unittest.TestCase):
             "Check constraint 'ck_parent_amount' is violated.",
             "CONSTRAINT",
         ),
-        (pymysql.err.OperationalError, 4025, "CONSTRAINT `ck` failed", "CONSTRAINT"),
         (
             pymysql.err.OperationalError,
             1213,
@@ -335,9 +334,10 @@ class ServerDriverErrorTest(unittest.TestCase):
         ("42601", 'syntax error at or near "SELEC"', "DRIVER"),
     )
 
-    def run_mysql(self, error):
+    def run_mysql(self, error, server="mysql"):
         connection = _MysqlConnection.__new__(_MysqlConnection)
         connection.connection = _Connection(error)
+        connection.server = server
         with self.assertRaises(OrmError) as caught:
             connection.execute("INSERT INTO `parent` (`name`) VALUES (?)", ["a"])
         return caught.exception

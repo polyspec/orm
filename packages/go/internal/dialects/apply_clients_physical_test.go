@@ -402,7 +402,7 @@ func checkChainState(t *testing.T, dialect, uri string, want []string, target st
 	defer testcase.Close(t, db)
 	ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
 	defer cancel()
-	document, unsupported, err := dbspec.Introspect(ctx, db, dbspec.Dialect(dialect), "x")
+	document, unsupported, err := dbspec.Introspect(ctx, db, dbspec.Dialect(dialect), dbspec.Server(dialect), "x")
 	if err != nil || len(unsupported) > 0 {
 		t.Fatalf("introspect: %v %+v", err, unsupported)
 	}

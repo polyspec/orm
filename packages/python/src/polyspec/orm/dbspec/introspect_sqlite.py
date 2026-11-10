@@ -1,8 +1,8 @@
 # Reads SQLite's main database as a catalog (docs/spec/dialects.md "Introspection").
 # Joins sqlite_master with table-valued pragmas to read all tables at once.
-import json
 import re
 
+from polyspec.orm.dbspec.parse import goq
 from polyspec.orm.dbspec.introspect_catalog import (
     Catalog,
     action_name,
@@ -144,7 +144,7 @@ def read_sqlite(query) -> Catalog:
                 "column",
                 table,
                 name,
-                f"the column definition {st.columns.get(name, '')!r} has "
+                f"the column definition {goq(st.columns.get(name, ''))} has "
                 f"clauses that dbspec does not read",
             )
             continue
@@ -161,7 +161,7 @@ def read_sqlite(query) -> Catalog:
                     "column",
                     table,
                     name,
-                    f"declared type {declared} with CHECK {json.dumps(check if check is not None else '')} has no "
+                    f"declared type {declared} with CHECK {goq(check if check is not None else '')} has no "
                     f"dbspec type",
                 )
                 continue
@@ -353,14 +353,14 @@ def _parse_sqlite_table(text: str):
                 "FOREIGN KEY": "foreign_key",
             }.get(m.group(2))
             if kind is None:
-                st.unsupported = f"the primary key {item!r} has no dbspec definition"
+                st.unsupported = f"the primary key {goq(item)} has no dbspec definition"
                 return st, []
             unsupported.append(
                 {
                     "kind": kind,
                     "table": "",
                     "name": m.group(1) or "",
-                    "reason": f"the table item {item!r} has no dbspec definition",
+                    "reason": f"the table item {goq(item)} has no dbspec definition",
                 }
             )
             continue
@@ -369,7 +369,7 @@ def _parse_sqlite_table(text: str):
             # The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
             st.columns[m.group(1) or m.group(2)] = item
             continue
-        st.unsupported = f"the table item {item!r} has no dbspec definition"
+        st.unsupported = f"the table item {goq(item)} has no dbspec definition"
         return st, []
     return st, unsupported
 

@@ -102,6 +102,41 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (a tinyint)")
 			e.Fails("INSERT INTO t VALUES (128)", "1264")
 		}),
+		p("session.partial_revokes_listed", "SHOW GLOBAL VARIABLES lists partial_revokes, OFF on this server, and its form that asks for a value other than OFF lists no row", func(e *Env) {
+			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes'", "partial_revokes|OFF")
+			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", "")
+		}),
+		p("session.statement_timeout", "SESSION max_execution_time bounds a SELECT in milliseconds (3024), and MySQL has no max_statement_time (1193)", func(e *Env) {
+			e.Exec("SET SESSION max_execution_time = 237")
+			e.Want("SELECT @@SESSION.max_execution_time", "237")
+			e.Exec("SET SESSION max_execution_time = 20")
+			e.Fails("SELECT COUNT(*) FROM information_schema.COLLATIONS a, information_schema.COLLATIONS b, information_schema.COLLATIONS c", "3024")
+			e.Fails("SELECT @@SESSION.max_statement_time", "1193")
+		}),
+		p("lock.share_clause", "LOCK IN SHARE MODE and FOR SHARE take a shared row lock, and NOWAIT follows FOR SHARE alone (1064 after LOCK IN SHARE MODE)", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY)", "INSERT INTO t VALUES (1)", "BEGIN")
+			e.Want("SELECT id FROM t WHERE id = 1 LOCK IN SHARE MODE", "1")
+			e.Want("SELECT id FROM t WHERE id = 1 FOR SHARE", "1")
+			e.Want("SELECT id FROM t WHERE id = 1 FOR SHARE NOWAIT", "1")
+			e.Fails("SELECT id FROM t WHERE id = 1 LOCK IN SHARE MODE NOWAIT", "1064")
+			e.Exec("ROLLBACK")
+		}),
+		p("catalog.key_ordinal_by_name", "a subquery that names the table by constants reads the primary-key ordinal of each column as the join of KEY_COLUMN_USAGE does", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, b int, c int, PRIMARY KEY (b, a))")
+			database := e.Value("SELECT DATABASE()")
+			e.WantRows(fmt.Sprintf(keyOrdinalJoin, database), "a|2,b|1,c|0")
+			e.WantRows(fmt.Sprintf(keyOrdinalByName, database), "a|2,b|1,c|0")
+		}),
+		p("lock.nowait_held", "a NOWAIT read of a row that another transaction locks fails at once with 3572", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY)", "INSERT INTO t VALUES (1)", "BEGIN", "UPDATE t SET id = 1 WHERE id = 1")
+			other := e.Other()
+			other.Exec("BEGIN")
+			other.Fails("SELECT id FROM t WHERE id = 1 FOR UPDATE NOWAIT", "3572")
+			other.Fails("SELECT id FROM t WHERE id = 1 FOR SHARE NOWAIT", "3572")
+			other.Exec("ROLLBACK")
+			e.Merge(other)
+			e.Exec("ROLLBACK")
+		}),
 		p("text.max_bytes", "TEXT holds at most 65535 bytes (1406)", func(e *Env) {
 			e.Exec("CREATE TABLE t (v text)", "INSERT INTO t VALUES (REPEAT('a', 65535))")
 			e.Fails("INSERT INTO t VALUES (REPEAT('a', 65536))", "1406")
@@ -337,6 +372,11 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (v varchar(5) COLLATE utf8mb4_bin, UNIQUE KEY uq (v))", "INSERT INTO t VALUES ('a'), ('A')")
 			e.Fails("INSERT INTO t VALUES ('a ')", "1062")
 		}),
+		p("collation.literal_collate", "After SET NAMES utf8mb4, COLLATE utf8mb4_0900_bin on a text literal compares it by code point: a <> A, a <> 'a ', a <> á and B < a", func(e *Env) {
+			e.Exec("SET NAMES utf8mb4")
+			e.Want("SELECT CONCAT(@@character_set_client, ' ', @@character_set_connection, ' ', @@character_set_results)", "utf8mb4 utf8mb4 utf8mb4")
+			e.Want("SELECT CONCAT('a' = 'A' COLLATE utf8mb4_0900_bin, 'a' = 'a ' COLLATE utf8mb4_0900_bin, 'a' = 'á' COLLATE utf8mb4_0900_bin, 'B' < 'a' COLLATE utf8mb4_0900_bin)", "0001")
+		}),
 		p("collation.utf8mb4_0900_bin_codepoint", "utf8mb4_0900_bin is NO PAD and orders by code point", func(e *Env) {
 			e.Exec("CREATE TABLE t (v varchar(5) COLLATE utf8mb4_0900_bin, UNIQUE KEY uq (v))",
 				"INSERT INTO t VALUES ('a'), ('a '), ('A'), ('á'), ('B'), ('Z'), ('_')")
@@ -423,6 +463,9 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0))", "INSERT INTO t VALUES (NULL), (1)")
 			e.Fails("INSERT INTO t VALUES (0)", "3819")
 		}),
+		p("check.number_4025_not_a_check", "4025 is not a CHECK fault on MySQL: it refuses an AUTOEXTEND_SIZE out of range", func(e *Env) {
+			e.Fails("CREATE TABLE t (a int) AUTOEXTEND_SIZE=1M", "4025")
+		}),
 		p("check.not_enforced_option", "CHECK ... NOT ENFORCED is stored and not applied", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0) NOT ENFORCED)", "INSERT INTO t VALUES (0)")
 			e.Want("SELECT ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'ck'", "NO")
@@ -450,10 +493,20 @@ func mysqlProbes() []Probe {
 		}),
 		p("check.alter_rewrites_introducers", "ALTER TABLE writes CHECK_CLAUSE again: a literal that meets an ascii column takes _ascii and a literal that meets a time column loses its introducer", func(e *Env) {
 			const q = "SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME"
-			e.Exec("CREATE TABLE t (a char(36) CHARACTER SET ascii COLLATE ascii_bin, t time, CONSTRAINT ck1 CHECK (REGEXP_LIKE(a, '^x$', 'c')), CONSTRAINT ck2 CHECK (t < '24:00:00'))")
-			e.WantRows(q, "regexp_like(`a`,_utf8mb4\\'^x$\\',_utf8mb4\\'c\\'),(`t` < _utf8mb4\\'24:00:00\\')")
+			e.Exec("CREATE TABLE t (a char(36) CHARACTER SET ascii COLLATE ascii_bin, t time, CONSTRAINT ck1 CHECK (a REGEXP '^x$'), CONSTRAINT ck2 CHECK (t < '24:00:00'))")
+			e.WantRows(q, "regexp_like(`a`,_utf8mb4\\'^x$\\'),(`t` < _utf8mb4\\'24:00:00\\')")
 			e.Exec("ALTER TABLE t ADD INDEX ix (t)")
-			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\',_utf8mb4\\'c\\'),(`t` < \\'24:00:00\\')")
+			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\'),(`t` < \\'24:00:00\\')")
+		}),
+		p("check.drop_constraint", "ALTER TABLE ... DROP CONSTRAINT drops a CHECK", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0))", "ALTER TABLE t DROP CONSTRAINT ck", "INSERT INTO t VALUES (0)")
+			e.Want("SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "0")
+		}),
+		p("check.drop_constraint_shared_name", "a CHECK may share its name with a foreign key of its table, and DROP CONSTRAINT of that name is then ambiguous (3939) where DROP CHECK is not", func(e *Env) {
+			e.Exec("CREATE TABLE p (id int PRIMARY KEY)", "CREATE TABLE c (id int PRIMARY KEY, pid int, a int, CONSTRAINT x FOREIGN KEY (pid) REFERENCES p (id), CONSTRAINT x CHECK (a > 0))")
+			e.Fails("ALTER TABLE c DROP CONSTRAINT x", "3939")
+			e.Exec("ALTER TABLE c DROP CHECK x")
+			e.WantRows("SELECT CONSTRAINT_TYPE FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'c' AND CONSTRAINT_NAME = 'x'", "FOREIGN KEY")
 		}),
 		p("check.alter_writes_time_precision", "ALTER TABLE writes a time literal that meets a time(p) column with p fraction digits", func(e *Env) {
 			e.Exec("CREATE TABLE t (a time(3), CONSTRAINT ck CHECK (a < '24:00:00'))", "ALTER TABLE t ADD INDEX ix (a)")
@@ -622,8 +675,8 @@ func mysqlProbes() []Probe {
 				utc, "ALTER TABLE t MODIFY d datetime(6) NULL")
 			e.Want("SELECT CONCAT(COLUMN_TYPE, ' ', (SELECT d FROM t)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "datetime(6) 2020-01-01 00:00:00.000000")
 		}),
-		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP_LIKE CHECK accepts only lower-case canonical UUID text (3819)", func(e *Env) {
-			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (REGEXP_LIKE(u, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')))",
+		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP CHECK, which CHECK_CLAUSE writes as regexp_like, accepts only lower-case canonical UUID text (3819)", func(e *Env) {
+			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (u REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))",
 				"INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")
 			e.Fails("INSERT INTO t VALUES ('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')", "3819")
 		}),
@@ -663,3 +716,10 @@ func mysqlConfig(raw string) (*mysql.Config, error) {
 	cfg.DBName = strings.TrimPrefix(u.Path, "/")
 	return cfg, nil
 }
+
+// keyOrdinalJoin and keyOrdinalByName read the primary-key ordinal of each column of table t of database %[1]s: by a join of
+// KEY_COLUMN_USAGE on the columns, and by a subquery that names the table by constants (DIA-210).
+const (
+	keyOrdinalJoin   = "SELECT c.COLUMN_NAME, COALESCE(pk.ORDINAL_POSITION, 0) FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA = c.TABLE_SCHEMA AND pk.TABLE_NAME = c.TABLE_NAME AND pk.COLUMN_NAME = c.COLUMN_NAME AND pk.CONSTRAINT_NAME = 'PRIMARY' WHERE c.TABLE_SCHEMA = '%[1]s' AND c.TABLE_NAME = 't' ORDER BY c.ORDINAL_POSITION"
+	keyOrdinalByName = "SELECT c.COLUMN_NAME, COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA = '%[1]s' AND k.TABLE_NAME = 't' AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0) FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA = '%[1]s' AND c.TABLE_NAME = 't' ORDER BY c.ORDINAL_POSITION"
+)

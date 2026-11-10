@@ -654,15 +654,15 @@ async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number | null> {
   return avgValue(field, sumOf(cells.slice(0, -1)), cells.at(-1));
 }
 
-/** The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an integer (DIA-202). */
+/** The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an integer (DIA-218). */
 const splitCells = 5;
 
-/** The sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses by the name and the type of its column. */
+/** The sum of a column that holds a value that is not an integer (DIA-218), which the reader of the sum refuses by the name and the type of its column. */
 const nonInteger = Symbol('a value that is not an integer');
 
 /**
  * The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an integer, or
- * a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+ * a decimal of more fraction digits than the scale of the column (DIA-218, DSL-66).
  */
 function nonIntegerRefusal(column: string, type: string, scale: number): OrmError {
   return new OrmError(codes.CODEC_DECODE, type === 'decimal'
@@ -672,7 +672,7 @@ function nonIntegerRefusal(column: string, type: string, scale: number): OrmErro
 
 /**
  * The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, nonInteger when its last cell
- * reports a value that is not an integer, and null when every part is SQL NULL, the sum of no value (DIA-202).
+ * reports a value that is not an integer, and null when every part is SQL NULL, the sum of no value (DIA-218).
  */
 function splitSumValue(parts: readonly unknown[], flag: unknown): bigint | typeof nonInteger | null {
   const integer = (cell: unknown): bigint => {
@@ -693,7 +693,7 @@ function splitSumValue(parts: readonly unknown[], flag: unknown): bigint | typeo
   return none ? null : sum;
 }
 
-/** The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-202); null is the sum of no value. */
+/** The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-218); null is the sum of no value. */
 function sumOf(cells: readonly unknown[]): unknown {
   if (cells.length === 1) return cells[0];
   if (cells.length !== splitCells) throw new OrmError(codes.INTERNAL, `a split sum reads ${cells.length} cells, not ${splitCells}`);
@@ -724,7 +724,7 @@ function exactAggregate(field: Field): boolean {
 
 /**
  * The sum cell of the exact column field as the integer sum × 10^scale: an integer cell, or the integer of a split sum
- * (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale
+ * (DIA-218), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale
  * fraction digits. A sum that holds a value which the type of the column does not hold, which the split sum reports and the
  * text of MySQL and PostgreSQL shows by more fraction digits, is refused by its column.
  */
@@ -778,7 +778,7 @@ function avgValue(field: Field, sum: unknown, countCell: unknown): number | null
 /**
  * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003, and
  * MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver
- * error as its cause (DIA-200).
+ * error as its cause (DIA-216).
  */
 function aggregateRangeError(error: unknown): unknown {
   if (!(error instanceof OrmError) || error.code !== codes.DRIVER) return error;
@@ -1222,7 +1222,7 @@ function exactIntegers(value: unknown): unknown {
  * An added column by the type its plan column states (INT-160), from its cell raw of the row; other types keep the driver
  * value. A text is an integer only exactly, and an integer is a safe integer (COD-45). The sum of an integer column is the
  * exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not
- * hold is refused by that column (DIA-202, PRT-84).
+ * hold is refused by that column (DIA-218, PRT-84).
  */
 export function addedColumnValue(col: OutputColumn, raw: unknown, row: readonly unknown[], zone: string): unknown {
   const type = col.type;

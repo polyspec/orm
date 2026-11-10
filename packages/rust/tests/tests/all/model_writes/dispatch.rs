@@ -5,6 +5,7 @@
 use polyspec_orm::Db;
 use polyspec_orm_tests::bench_models::{bench_config, bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
+use polyspec_orm_tests::recipe::ModelError;
 use serde_json::{json, Value};
 
 use crate::model::{Author, CompositeAccount, CompositeMembership, RankedTask, SCHEMA};
@@ -18,11 +19,11 @@ pub fn models() -> Box<dyn ModelDispatcher> {
 pub struct ModelWrites;
 
 impl BenchModels for ModelWrites {
-    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
         run(db, op, step).await
     }
 
-    async fn run_unconnected(&self, op: &str, step: &Value) -> Result<Value, String> {
+    async fn run_unconnected(&self, op: &str, step: &Value) -> Result<Value, ModelError> {
         match op {
             "model.create" => assign_account(CompositeAccount::new(), &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?
                 .create()
@@ -33,7 +34,7 @@ impl BenchModels for ModelWrites {
                 let count = CompositeAccount::new().get_count().await.map_err(fail)?;
                 Ok(json!({ "value": { "int": count.to_string() } }))
             }
-            other => Err(format!("{other} has no unconnected form")),
+            other => Err(format!("{other} has no unconnected form").into()),
         }
     }
 }
@@ -53,9 +54,9 @@ async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_or
 
 /// Two flows write two rows in opposite order (PLN-24), each on its own thread and connection: each holds its first row until
 /// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
-async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
+async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, ModelError> {
     if polyspec_orm_tests::recipe_reads::read(step, "column")["column"] != "name" {
-        return Err(format!("CompositeAccount column {} has no recipe deadlock", polyspec_orm_tests::recipe_reads::read(step, "column")["column"]));
+        return Err(format!("CompositeAccount column {} has no recipe deadlock", polyspec_orm_tests::recipe_reads::read(step, "column")["column"]).into());
     }
     let dsn = polyspec_orm_tests::recipe_reads::read(step, "dsn")["dsn"].as_str().ok_or_else(|| "transaction.deadlock has no dsn".to_owned())?.to_owned();
     let keys = [
@@ -67,7 +68,7 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
         .into_iter()
         .map(|index: usize| {
             let (held, dsn) = (held.clone(), dsn.clone());
-            std::thread::spawn(move || -> Result<(u64, u64), String> {
+            std::thread::spawn(move || -> Result<(u64, u64), ModelError> {
                 let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
                 runtime.block_on(async move {
                     let conn = Db::connect_schema(&dsn, &SCHEMA, 1, bench_config()).await.map_err(fail)?;
@@ -116,11 +117,11 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
 }
 
 /// model.create and model.count of RankedTask, whose order column the application writes (DBS-79).
-async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     if op == "model.count" {
         let filter = &polyspec_orm_tests::recipe_reads::read(step, "where")["where"];
         if !filter.is_null() && filter.as_object().is_none_or(|filter| !filter.is_empty()) {
-            return Err(format!("RankedTask where {filter} has no recipe entry"));
+            return Err(format!("RankedTask where {filter} has no recipe entry").into());
         }
         let count = RankedTask::new().connect(db).get_count().await.map_err(fail)?;
         return Ok(json!({ "value": { "int": count.to_string() } }));
@@ -130,14 +131,14 @@ async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         row = match column.as_str() {
             "title" => row.set_title(text(value)?),
             "position" => row.set_position(i32::try_from(int(value)?).map_err(|e| format!("RankedTask position {value}: {e}"))?),
-            other => return Err(format!("RankedTask column {other} has no recipe entry")),
+            other => return Err(format!("RankedTask column {other} has no recipe entry").into()),
         };
     }
     row.create().await.map(|_| json!({})).map_err(fail)
 }
 
 /// The op of `step` on `db`: its fields, which the expect of the step compares.
-async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "transaction.deadlock" => transaction_deadlock(db, step).await,
         "model.create" | "model.count" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "RankedTask" => ranked_task(db, op, step).await,
@@ -175,11 +176,11 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.update" => {
             let Some(mut row) = find_account(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"]).await? else {
-                return Err("model.update: the key names no row".to_owned());
+                return Err("model.update: the key names no row".to_owned().into());
             };
             for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "set")["set"])? {
                 if column != "name" {
-                    return Err(format!("CompositeAccount column {column} has no recipe update"));
+                    return Err(format!("CompositeAccount column {column} has no recipe update").into());
                 }
                 row = row.set_name(text(value)?);
             }
@@ -241,7 +242,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 query = match column.as_str() {
                     Some("tenant_id") => query.order_by_tenant_id_asc(),
                     Some("account_id") => query.order_by_account_id_asc(),
-                    other => return Err(format!("CompositeAccount column {other:?} has no recipe order")),
+                    other => return Err(format!("CompositeAccount column {other:?} has no recipe order").into()),
                 };
             }
             // The relation of a model.query (INT-87): each child row gives one output row, its columns after the parent's.
@@ -251,7 +252,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 let child: CompositeMembership = membership_relation(relation, db)?;
                 query = match (relation["many"].as_bool() == Some(true), relation["alias"].as_str()) {
                     (true, Some("memberships")) => query.relations(child.alias_memberships()),
-                    (_, Some(other)) => return Err(format!("CompositeMembership alias {other} has no recipe entry")),
+                    (_, Some(other)) => return Err(format!("CompositeMembership alias {other} has no recipe entry").into()),
                     (true, None) => query.relations(child),
                     (false, None) => query.relation(child),
                 };
@@ -264,7 +265,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                     "share" => query.for_share(),
                     "update_nowait" => query.for_update_no_wait(),
                     "share_nowait" => query.for_share_no_wait(),
-                    other => return Err(format!("lock {other} is not a lock of the recipe")),
+                    other => return Err(format!("lock {other} is not a lock of the recipe").into()),
                 };
             }
             let collection = query.gets().await.map_err(fail)?;
@@ -290,22 +291,22 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         "model.arithmetic" => {
             let column = polyspec_orm_tests::recipe_reads::read(step, "column")["column"].as_str().unwrap_or_default();
             if column != "read_count" {
-                return Err(format!("Author column {column} has no recipe arithmetic"));
+                return Err(format!("Author column {column} has no recipe arithmetic").into());
             }
             let Some(mut row) =
                 Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)?
             else {
-                return Err("model.arithmetic: the key names no row".to_owned());
+                return Err("model.arithmetic: the key names no row".to_owned().into());
             };
             let amount = i32::try_from(int(&polyspec_orm_tests::recipe_reads::read(step, "amount")["amount"])?).map_err(|e| e.to_string())?;
             row = match polyspec_orm_tests::recipe_reads::read(step, "operation")["operation"].as_str() {
                 Some("plus") => row.plus_read_count(amount),
                 Some("minus") => row.minus_read_count(amount),
-                other => return Err(format!("the operation {other:?} is neither plus nor minus")),
+                other => return Err(format!("the operation {other:?} is neither plus nor minus").into()),
             };
             row.update(false).await.map(|()| json!({})).map_err(fail)
         }
-        other => Err(format!("OP_UNKNOWN {other}")),
+        other => Err(format!("OP_UNKNOWN {other}").into()),
     }
 }
 
@@ -422,7 +423,7 @@ fn membership_relation(relation: &Value, db: &Db) -> Result<CompositeMembership,
 
 /// The CompositeMembership rows of one parent: through the generated getter of the alias, or of the result name of a
 /// relation without one. A parent without a child gives none.
-fn membership_children<'a>(row: &'a CompositeAccount, relation: &Value) -> Result<Vec<&'a CompositeMembership>, String> {
+fn membership_children<'a>(row: &'a CompositeAccount, relation: &Value) -> Result<Vec<&'a CompositeMembership>, ModelError> {
     let many = relation["many"].as_bool() == Some(true);
     Ok(match (relation["alias"].as_str(), many) {
         (Some("memberships"), _) => row.get_memberships().map_err(fail)?.map(|c| c.models().collect()).unwrap_or_default(),
@@ -432,7 +433,7 @@ fn membership_children<'a>(row: &'a CompositeAccount, relation: &Value) -> Resul
 }
 
 /// The CompositeAccount row of a key with `tenant_id` and `account_id`, or None when no row has it.
-async fn find_account(db: &Db, key: &Value) -> Result<Option<CompositeAccount>, String> {
+async fn find_account(db: &Db, key: &Value) -> Result<Option<CompositeAccount>, ModelError> {
     account(db).get_by_tenant_id_and_account_id(int(&key["tenant_id"])?, int(&key["account_id"])?).await.map_err(fail)
 }
 
@@ -488,7 +489,7 @@ fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, S
 
 /// model.query on the Author model: the chain of `where`, the orders (a leading "-" is descending), the window when limit or
 /// offset is greater than 0, and the projection of `columns`, each cell a recipe wrapper.
-async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
+async fn author_query(db: &Db, step: &Value) -> Result<Value, ModelError> {
     let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
     let mut author = author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &wanted)?;
     for order in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {
@@ -497,7 +498,7 @@ async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
             "name" => author.order_by_name_asc(),
             "-seq" => author.order_by_seq_desc(),
             "-name" => author.order_by_name_desc(),
-            other => return Err(format!("Author column {other} has no recipe order")),
+            other => return Err(format!("Author column {other} has no recipe order").into()),
         };
     }
     let window = |key: &str| match &polyspec_orm_tests::recipe_reads::read(step, key)[key] {
@@ -524,7 +525,7 @@ fn optional_text(cell: Option<&str>) -> Value {
     }
 }
 
-fn author_field(row: &Author, column: &str) -> Result<Value, String> {
+fn author_field(row: &Author, column: &str) -> Result<Value, ModelError> {
     match column {
         "seq" => Ok(json!({ "int": row.get_seq().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
@@ -533,25 +534,25 @@ fn author_field(row: &Author, column: &str) -> Result<Value, String> {
         "aes_key_version" => Ok(json!({ "int": row.get_aes_key_version().map_err(fail)?.to_string() })),
         "aes_hex_email" => Ok(optional_text(row.get_aes_hex_email().map_err(fail)?)),
         "aes_hex_phone" => Ok(optional_text(row.get_aes_hex_phone().map_err(fail)?)),
-        other => Err(format!("Author column {other} has no recipe getter")),
+        other => Err(format!("Author column {other} has no recipe getter").into()),
     }
 }
 
-fn composite_cell(row: &CompositeAccount, column: &str) -> Result<Value, String> {
+fn composite_cell(row: &CompositeAccount, column: &str) -> Result<Value, ModelError> {
     match column {
         "tenant_id" => Ok(json!({ "int": row.get_tenant_id().map_err(fail)?.to_string() })),
         "account_id" => Ok(json!({ "int": row.get_account_id().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
-        other => Err(format!("CompositeAccount column {other} has no recipe getter")),
+        other => Err(format!("CompositeAccount column {other} has no recipe getter").into()),
     }
 }
 
-fn membership_cell(row: &CompositeMembership, column: &str) -> Result<Value, String> {
+fn membership_cell(row: &CompositeMembership, column: &str) -> Result<Value, ModelError> {
     match column {
         "tenant_id" => Ok(json!({ "int": row.get_tenant_id().map_err(fail)?.to_string() })),
         "account_id" => Ok(json!({ "int": row.get_account_id().map_err(fail)?.to_string() })),
         "role" => Ok(json!({ "text": row.get_role().map_err(fail)? })),
-        other => Err(format!("CompositeMembership column {other} has no recipe getter")),
+        other => Err(format!("CompositeMembership column {other} has no recipe getter").into()),
     }
 }
 

@@ -50,8 +50,9 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
   };
   // A failed setup leaves nothing behind: the servers it started and its folders go, and the error is rethrown.
   try {
-    // The copied server script imports this helper through ../tests; keep that relative path inside the fixture root.
-    for (const file of ['scripts/test-servers.mts', 'tests/errors.mts']) {
+    // The copied server script imports this helper through ../tests and the MariaDB servers beside it; keep those relative paths
+    // inside the fixture root.
+    for (const file of ['scripts/test-servers.mts', 'scripts/test-servers-mariadb.mts', 'scripts/mariadb-build.mts', 'tests/errors.mts']) {
       mkdirSync(join(root, file, '..'), { recursive: true });
       copyFileSync(join(repository, file), join(root, file));
     }

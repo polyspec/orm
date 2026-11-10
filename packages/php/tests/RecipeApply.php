@@ -40,7 +40,12 @@ final class RecipeApply
         'sqlite' => ['PRAGMA foreign_keys = ON'],
     ];
 
-    private const SERVER_ENV = ['mysql' => 'ORM_TEST_MYSQL_SERVER_DSN', 'postgres' => 'ORM_TEST_POSTGRES_SERVER_DSN'];
+    // MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    private const SERVER_ENV = [
+        'mysql' => 'ORM_TEST_MYSQL_SERVER_DSN',
+        'mariadb' => 'ORM_TEST_MARIADB_SERVER_DSN',
+        'postgres' => 'ORM_TEST_POSTGRES_SERVER_DSN',
+    ];
 
     /**
      * @param array<string, mixed> $context
@@ -88,8 +93,17 @@ final class RecipeApply
         return self::command($s, $context, $runStep);
     }
 
-    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185). */
+    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
     private static function dialect(string $database): string
+    {
+        return ['markdown' => 'sqlite', 'mariadb' => 'mysql'][$database] ?? $database;
+    }
+
+    /**
+     * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
+     * as its server.
+     */
+    private static function server(string $database): string
     {
         return $database === 'markdown' ? 'sqlite' : $database;
     }
@@ -100,7 +114,7 @@ final class RecipeApply
      */
     private static function dialectKey(string $database, array $entries): string
     {
-        return $database === 'markdown' && !array_key_exists('markdown', $entries) ? 'sqlite' : $database;
+        return array_key_exists($database, $entries) ? $database : self::dialect($database);
     }
 
     private static function required(string $name): string
@@ -148,7 +162,7 @@ final class RecipeApply
         } else {
             $pdo = self::open(self::required(self::SERVER_ENV[$database]), self::nameOf($dsn));
         }
-        foreach (self::CONNECTION_RULES[$database] as $rule) {
+        foreach (self::CONNECTION_RULES[self::dialect($database)] as $rule) {
             $pdo->exec($rule);
         }
         return $pdo;
@@ -185,7 +199,12 @@ final class RecipeApply
     /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function schema(RecipeStep $s, array $context): array
     {
-        $result = Dbspec::introspect(self::session($s, $context), self::dialect($context['database']), 'x');
+        $result = Dbspec::introspect(
+            self::session($s, $context),
+            self::dialect($context['database']),
+            self::server($context['database']),
+            'x'
+        );
         if ($result->unsupported !== []) {
             Assert::fail('dbspec.schema: unsupported ' . json_encode($result->unsupported));
         }
@@ -241,10 +260,19 @@ final class RecipeApply
         $command = substr($s['op'], strlen('dbspec.'));
         $started = hrtime(true);
         $code = 'ok';
+        $message = null;
         try {
-            Dbspec::$command($session, self::dialect($context['database']), $plans, $now, $handler);
+            Dbspec::$command(
+                $session,
+                self::dialect($context['database']),
+                self::server($context['database']),
+                $plans,
+                $now,
+                $handler
+            );
         } catch (Throwable $error) {
             $failure = $error instanceof ApplyCleanupError ? ($error->getPrevious() ?? $error) : $error;
+            $message = $failure->getMessage();
             if ($failure instanceof Stop) {
                 $code = 'stopped';
             } elseif ($failure instanceof ApplyError) {
@@ -257,6 +285,7 @@ final class RecipeApply
             if (isset($s['detail']) && stripos($failure->getMessage(), $s['detail']) === false) {
                 Assert::fail("the message {$failure->getMessage()} does not hold {$s['detail']}");
             }
+            Recipe::assertMessageHolds($s['message_holds'] ?? null, $failure->getMessage());
         }
         $elapsed = (hrtime(true) - $started) / 1_000_000;
         if (
@@ -274,6 +303,9 @@ final class RecipeApply
         }
         foreach ($s['count'] ?? [] as $kind) {
             $members[] = [$kind, ['int' => (string) ($kinds[$kind] ?? 0)]];
+        }
+        if (($s['with_message'] ?? false) === true && $message !== null) {
+            $members[] = ['message', ['text' => $message]];
         }
         return ['value' => ['object' => $members]];
     }

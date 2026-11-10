@@ -9,7 +9,7 @@
 
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out);
 
-static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener);
+static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener, zend_string *server);
 static bool orm_decoded(zval *input, bool raw, zval *out);
 static bool orm_query_decode(const char *value, size_t length, zval *out);
 
@@ -61,7 +61,7 @@ ZEND_NAMED_FUNCTION(orm_listener_open)
     zval rv_dsn, rv_config, *dsn, *config;
     if (!orm_closure_connection(ZEND_THIS, "listener connection", &rv_dsn, &rv_config, &dsn, &config)) RETURN_THROWS();
     zval db;
-    if (!orm_connect_sql(Z_STR_P(dsn), config, &db, true)) RETURN_THROWS();
+    if (!orm_connect_sql(Z_STR_P(dsn), config, &db, true, NULL)) RETURN_THROWS();
     zval pdo;
     if (!pdo_call(&db, "pdo", &pdo, 0, NULL, NULL)) {
         zval_ptr_dtor(&db);
@@ -893,8 +893,10 @@ ZEND_NAMED_FUNCTION(orm_cancel_backend)
         zend_throw_error(NULL, "invalid native cancellation operation state");
         RETURN_THROWS();
     }
+    zval rv_server;
+    zval *server = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "server", sizeof("server") - 1, true, &rv_server);
     zval control, pdo;
-    if (!orm_connect_sql(Z_STR_P(dsn), config, &control, true)) RETURN_THROWS();
+    if (!orm_connect_sql(Z_STR_P(dsn), config, &control, true, server != NULL && Z_TYPE_P(server) == IS_STRING ? Z_STR_P(server) : NULL)) RETURN_THROWS();
     if (!pdo_call(&control, "pdo", &pdo, 0, NULL, NULL)) {
         zval_ptr_dtor(&control);
         RETURN_THROWS();
@@ -946,8 +948,10 @@ ZEND_NAMED_FUNCTION(orm_reopen_backend)
     ZEND_PARSE_PARAMETERS_NONE();
     zval rv_dsn, rv_config, *dsn, *config;
     if (!orm_closure_connection(ZEND_THIS, "cancellation reopen", &rv_dsn, &rv_config, &dsn, &config)) RETURN_THROWS();
+    zval rv_server;
+    zval *server = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "server", sizeof("server") - 1, true, &rv_server);
     zval reopened;
-    if (!orm_connect_sql(Z_STR_P(dsn), config, &reopened, false)) RETURN_THROWS();
+    if (!orm_connect_sql(Z_STR_P(dsn), config, &reopened, false, server != NULL && Z_TYPE_P(server) == IS_STRING ? Z_STR_P(server) : NULL)) RETURN_THROWS();
     zval state_rv;
     zval *state = orm_connection_state(&reopened, &state_rv);
     zval *pdo = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "pdo", sizeof("pdo") - 1, true, &state_rv);
@@ -1045,7 +1049,10 @@ static bool orm_store_markdown_cancellation(zval *db, zval *pdo)
     return EG(exception) == NULL;
 }
 
-static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *dsn, zval *config, zend_string *driver)
+/* server is the server that the connection read (DIA-201), which the connections that open again for the same Db take
+ * without reading it again: they set the statement timeout in their init command (CFG-7, DIA-208). */
+static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *dsn, zval *config, zend_string *driver,
+    zend_string *server)
 {
     if (zend_string_equals_literal(driver, "postgres")) {
         zval context, cancel, state_rv;
@@ -1083,12 +1090,14 @@ static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *d
     zend_update_property(zend_standard_class_def, Z_OBJ(cancel_context), "config", sizeof("config") - 1, config);
     zend_update_property_str(zend_standard_class_def, Z_OBJ(cancel_context), "driver", sizeof("driver") - 1, driver);
     zend_update_property_long(zend_standard_class_def, Z_OBJ(cancel_context), "connectionId", sizeof("connectionId") - 1, id);
+    if (server != NULL) zend_update_property_str(zend_standard_class_def, Z_OBJ(cancel_context), "server", sizeof("server") - 1, server);
     bool made_cancel = orm_fake_closure(&cancel, orm_cancel_backend, "cancel", &cancel_context);
     zval_ptr_dtor(&cancel_context);
     if (!made_cancel) return false;
     object_init(&reopen_context);
     zend_update_property_str(zend_standard_class_def, Z_OBJ(reopen_context), "dsn", sizeof("dsn") - 1, dsn);
     zend_update_property(zend_standard_class_def, Z_OBJ(reopen_context), "config", sizeof("config") - 1, config);
+    if (server != NULL) zend_update_property_str(zend_standard_class_def, Z_OBJ(reopen_context), "server", sizeof("server") - 1, server);
     bool made_reopen = orm_fake_closure(&reopen, orm_reopen_backend, "reopen", &reopen_context);
     zval_ptr_dtor(&reopen_context);
     if (!made_reopen) {
@@ -1117,7 +1126,27 @@ static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *d
     return EG(exception) == NULL;
 }
 
-static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener)
+/* Appends the setting that bounds the statements of a mysql connection by statementTimeoutMs, by the server that the connection
+ * read (DIA-208): MySQL bounds a SELECT by max_execution_time in milliseconds, MariaDB every statement by max_statement_time in
+ * seconds, written with three fraction digits. */
+static void orm_mysql_statement_timeout(smart_str *out, zend_string *server, zend_long timeout_ms)
+{
+    if (zend_string_equals_literal(server, "mariadb")) {
+        smart_str_appends(out, "SESSION max_statement_time = ");
+        smart_str_append_long(out, timeout_ms / 1000);
+        char fraction[8];
+        snprintf(fraction, sizeof(fraction), ".%03d", (int)(timeout_ms % 1000));
+        smart_str_appends(out, fraction);
+        return;
+    }
+    smart_str_appends(out, "SESSION max_execution_time = ");
+    smart_str_append_long(out, timeout_ms);
+}
+
+/* Opens a SQL connection. server is NULL for the first connection of a Db, which reads its server by VERSION() and then sets
+ * the statement timeout by a statement of its own; a connection that opens again for the same Db names the server that the
+ * first one read and takes the timeout in its init command (CFG-7, DIA-208). */
+static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener, zend_string *server)
 {
     zval parsed;
     ZVAL_UNDEF(&parsed);
@@ -1144,6 +1173,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         }
     }
     zend_long timeout = zval_get_long(orm_config_value(config, "statementTimeoutMs"));
+    zend_string *mysql_server = NULL;
     zend_string *final_dsn = zend_string_copy(Z_STR_P(pdo_dsn));
     zval options;
     array_init(&options);
@@ -1153,10 +1183,15 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         add_index_bool(&options, Z_LVAL(found_rows), true);
         zval_ptr_dtor(&found_rows);
         smart_str command = {0};
-        smart_str_appends(&command, "SET time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
-        if (timeout > 0) {
-            smart_str_appends(&command, ", SESSION max_execution_time = ");
-            smart_str_append_long(&command, timeout);
+        /* SET NAMES utf8mb4 begins the init command, with no collation, which a pooler in front of the server may not know
+         * (ProxySQL refuses utf8mb4_0900_bin with 1115): a text column that the renderer writes compares under its own
+         * utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202). The
+         * statement timeout is the variable of the server: a connection that opens again for the same Db knows it and takes it
+         * here, and the first connection sets it after it reads the server (CFG-7, DIA-208). */
+        smart_str_appends(&command, "SET NAMES utf8mb4, time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+        if (server != NULL && timeout > 0) {
+            smart_str_appends(&command, ", ");
+            orm_mysql_statement_timeout(&command, server, timeout);
         }
         smart_str_0(&command);
         ZVAL_STRING(&constant_name, "Pdo\\Mysql::ATTR_INIT_COMMAND");
@@ -1244,14 +1279,50 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         zval_ptr_dtor(&pdo); goto fail;
     }
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&ctor[i]);
+    if (zend_string_equals_literal(Z_STR_P(driver), "mysql")) {
+        /* The server of a mysql connection is read once by VERSION(), never by the handshake, whose version a pooler may
+         * state for itself (DIA-201); a connection that opens again for the same Db takes the server that the first read. */
+        if (server != NULL) {
+            mysql_server = zend_string_copy(server);
+        } else {
+            zval query, statement, version;
+            ZVAL_STRING(&query, "SELECT VERSION()");
+            bool read = pdo_call(&pdo, "query", &statement, 1, &query, NULL);
+            zval_ptr_dtor(&query);
+            if (read) {
+                read = pdo_call(&statement, "fetchColumn", &version, 0, NULL, NULL);
+                zval_ptr_dtor(&statement);
+            }
+            if (!read) { zval_ptr_dtor(out); goto pdo_fail; }
+            zend_string *text = zval_get_string(&version);
+            zval_ptr_dtor(&version);
+            mysql_server = strstr(ZSTR_VAL(text), "-MariaDB") != NULL
+                ? zend_string_init("mariadb", sizeof("mariadb") - 1, 0) : zend_string_init("mysql", sizeof("mysql") - 1, 0);
+            zend_string_release(text);
+            /* The first connection sets the statement timeout after it reads the server and before any statement of the
+             * caller (DIA-208). */
+            if (timeout > 0) {
+                smart_str set_timeout = {0};
+                smart_str_appends(&set_timeout, "SET ");
+                orm_mysql_statement_timeout(&set_timeout, mysql_server, timeout);
+                smart_str_0(&set_timeout);
+                bool timed = orm_exec(&pdo, ZSTR_VAL(set_timeout.s));
+                smart_str_free(&set_timeout);
+                if (!timed) { zval_ptr_dtor(out); goto pdo_fail; }
+            }
+        }
+        zval server_value, set_result;
+        ZVAL_STR_COPY(&server_value, mysql_server);
+        bool set = pdo_call(out, "setServer", &set_result, 1, &server_value, NULL);
+        zval_ptr_dtor(&server_value);
+        if (set) zval_ptr_dtor(&set_result);
+        if (!set) { zval_ptr_dtor(out); zval_ptr_dtor(&pdo); goto fail; }
+    }
     if (!listener && (zend_string_equals_literal(Z_STR_P(driver), "mysql") || zend_string_equals_literal(Z_STR_P(driver), "postgres"))
-        && !orm_store_cancellation_callbacks(out, &pdo, dsn, config, Z_STR_P(driver))) {
+        && !orm_store_cancellation_callbacks(out, &pdo, dsn, config, Z_STR_P(driver), mysql_server)) {
         zval_ptr_dtor(out);
         zval_ptr_dtor(&pdo);
-        zval_ptr_dtor(&options);
-        zend_string_release(final_dsn);
-        zval_ptr_dtor(&parsed);
-        return false;
+        goto fail;
     }
     if (zend_string_equals_literal(Z_STR_P(driver), "postgres") && !listener) {
         zval context, closure, set_result;
@@ -1265,11 +1336,12 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         if (set) zval_ptr_dtor(&set_result);
         if (!set) {
             zval_ptr_dtor(out);
-            zval_ptr_dtor(&pdo); zval_ptr_dtor(&options); zend_string_release(final_dsn); zval_ptr_dtor(&parsed);
-            return false;
+            zval_ptr_dtor(&pdo);
+            goto fail;
         }
     }
     zval_ptr_dtor(&pdo);
+    if (mysql_server != NULL) zend_string_release(mysql_server);
     zval_ptr_dtor(&options); zend_string_release(final_dsn); zval_ptr_dtor(&parsed);
     return true;
 pdo_fail:
@@ -1279,6 +1351,7 @@ pdo_fail:
     }
     if (Z_TYPE(pdo) == IS_OBJECT) zval_ptr_dtor(&pdo);
 fail:
+    if (mysql_server != NULL) zend_string_release(mysql_server);
     zval_ptr_dtor(&options); zend_string_release(final_dsn); zval_ptr_dtor(&parsed);
     return false;
 }
@@ -1291,7 +1364,7 @@ static bool orm_connect_dsn(zend_string *dsn, zval *config, zval *out)
     if (!orm_scheme(dsn, &scheme)) return false;
     bool markdown = zend_string_equals_literal(scheme, "markdown");
     zend_string_release(scheme);
-    return markdown ? orm_connect_markdown(dsn, config, out) : orm_connect_sql(dsn, config, out, false);
+    return markdown ? orm_connect_markdown(dsn, config, out) : orm_connect_sql(dsn, config, out, false, NULL);
 }
 
 ZEND_METHOD(Polyspec_Orm_Orm, connect)

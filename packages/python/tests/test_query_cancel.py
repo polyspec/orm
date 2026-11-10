@@ -259,10 +259,12 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
 PROBE_ROW = "UPDATE cancel_probe SET name = 'temporary' WHERE id = 1"
 
 
-class AbandonedQueryTest(unittest.IsolatedAsyncioTestCase):
+class AbandonedQueryCase:
     """A Future is the cancellation primitive of Python (CFG-9), and the probes reach each native driver, so this
     stays native (FCV-2): a Future cancelled while a statement runs in a transaction of its handle ends the
-    statement with CANCELED, and the transaction rolls back."""
+    statement with CANCELED, and the transaction rolls back. AbandonedQueryTest runs it on SQLite and PostgreSQL, the
+    entry test_query_cancel_mysql on MySQL, and the entry query_cancel_mariadb on MariaDB, a server of the MySQL dialect
+    (DIA-200)."""
 
     deadline = testcase.DATABASE
 
@@ -314,7 +316,7 @@ class AbandonedQueryTest(unittest.IsolatedAsyncioTestCase):
                     "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL "
                     "SELECT x + 1 FROM n WHERE x < 1000000) SELECT sum(x) FROM n"
                 )
-            elif dialect == "mysql":
+            elif dialect in ("mysql", "mariadb"):
                 original_write = raw._write_bytes
 
                 def write(packet):
@@ -348,7 +350,7 @@ class AbandonedQueryTest(unittest.IsolatedAsyncioTestCase):
             finally:
                 if dialect == "sqlite":
                     raw.set_progress_handler(None, 0)
-                elif dialect == "mysql":
+                elif dialect in ("mysql", "mariadb"):
                     del raw._write_bytes
                 else:
                     raw.remove_notice_handler(notice)
@@ -370,13 +372,11 @@ class AbandonedQueryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(caught.exception.code, "CANCELED")
         self.assertIsNotNone(caught.exception.cause)
 
+
+class AbandonedQueryTest(AbandonedQueryCase, unittest.IsolatedAsyncioTestCase):
     # Requirements: CFG-9.
     async def test_abandoned_query_is_canceled_and_rolled_back_sqlite(self):
         await self.abandon("sqlite")
-
-    # Requirements: CFG-9.
-    async def test_abandoned_query_is_canceled_and_rolled_back_mysql(self):
-        await self.abandon("mysql")
 
     # Requirements: CFG-9.
     async def test_abandoned_query_is_canceled_and_rolled_back_postgres(self):

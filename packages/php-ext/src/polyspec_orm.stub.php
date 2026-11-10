@@ -658,10 +658,22 @@ final class Dbspec
 
     /**
      * Reads the current database (MySQL), the current schema (PostgreSQL) or the main database (SQLite) of the
-     * connection into one document named `$name` and the objects it leaves out. A failing query, or a catalog
-     * that yields no document, is a RuntimeException; an unknown dialect is an InvalidArgumentException.
+     * connection into one document named `$name` and the objects it leaves out. `$server` is the server that the
+     * connection reached, which the caller read when it connected: `mysql` or `mariadb` for the dialect `mysql`, and
+     * the dialect's name otherwise; the introspection reads no version. A failing query, or a catalog that yields no
+     * document, is a RuntimeException; an unknown dialect, or a server that is not a server of the dialect, is an
+     * InvalidArgumentException.
      */
-    public static function introspect(\PDO $connection, string $dialect, string $name): IntrospectResult {}
+    public static function introspect(\PDO $connection, string $dialect, string $server, string $name): IntrospectResult {}
+
+    /**
+     * Refuses a dialect other than mysql, postgres and sqlite, naming the dialect, and a server that is not a server of
+     * the dialect, naming the server (DBS-174): MySQL and MariaDB are the servers of the mysql dialect, PostgreSQL and
+     * SQLite each the server of its own (DIA-200).
+     *
+     * @internal
+     */
+    public static function checkServer(string $dialect, string $server): void {}
 
     /** The manifest of the document set, whose documents are taken in document name order, or its diagnostics. */
     public static function manifest(array $documents): ManifestResult {}
@@ -696,19 +708,20 @@ final class Dbspec
     /**
      * Applies the plans of the chain that the database has not recorded, one statement at a time, each plan up to
      * its finalize steps, verifying the schema after each plan. A failure is an ApplyError, or an
-     * ApplyCleanupError when restoring the session after it fails too; an unknown dialect, or a connection whose
-     * error mode is not PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException.
+     * ApplyCleanupError when restoring the session after it fails too; an unknown dialect, a server that is not a
+     * server of the dialect, or a connection whose error mode is not PDO::ERRMODE_EXCEPTION, is an
+     * InvalidArgumentException. `$server` is the server of the connection, as for introspect, which the verification reads by.
      */
-    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function apply(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Continues the interrupted plan forward. Failures and arguments are as for apply. */
-    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function recover(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Undoes the last plan of the history with its rollback statements and deletes its row. Failures and arguments are as for apply. */
-    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function rollback(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Runs the finalize steps of every applied plan in chain order and records the plans done. Failures and arguments are as for apply. */
-    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function finalize(\PDO $connection, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Writes the document as a standard Mermaid erDiagram and lists what the diagram leaves out. */
     public static function exportMermaid(Document $document): MermaidExportResult {}
@@ -728,16 +741,16 @@ final class PlanApply
     private function __construct() {}
 
     /** Dbspec::apply, which calls it. */
-    public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function apply(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::recover. */
-    public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function recover(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::rollback. */
-    public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function rollback(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Dbspec::finalize. */
-    public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+    public static function finalize(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Reads whether one effect holds in the database of the connection. */
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}
@@ -827,6 +840,7 @@ final class DbState
     public int $stmtRetained = 0;
     public bool $closed = false;
     public ?\Closure $listener = null;
+    public string $server = 'mysql';
     public bool $rollbackFault = false;
     public ?OrmException $statementFault = null;
     public ?\DateTimeImmutable $fixedClock = null;
@@ -947,7 +961,13 @@ final class Dialect
 {
     public readonly string $name;
 
-    public function __construct(string $name) {}
+    /**
+     * The server of the dialect: on mysql, mysql or mariadb, which the connection read by VERSION() (DIA-201); on
+     * postgres and sqlite, the dialect's name.
+     */
+    public readonly string $server;
+
+    public function __construct(string $name, ?string $server = null) {}
     public static function isValueFunction(string $name): bool {}
     public static function quoteWith(string $q, string $ident): string {}
     public function quote(string $ident): string {}
@@ -1381,11 +1401,11 @@ final class Code
     public const string DUPLICATE_KEY = 'DUPLICATE_KEY';
     /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action */
     public const string FOREIGN_KEY = 'FOREIGN_KEY';
-    /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
+    /** driver: MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201) */
     public const string CONSTRAINT = 'CONSTRAINT';
     /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
     public const string READ_ONLY = 'READ_ONLY';
-    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
+    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013, and 4031 of MySQL alone / PostgreSQL SQLSTATE class 08 and 25P03/57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
     public const string CONNECTION_LOST = 'CONNECTION_LOST';
     /** driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock */
     public const string DRIVER = 'DRIVER';
@@ -1412,6 +1432,7 @@ final class OrmException extends \RuntimeException
     public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): OrmException {}
 
     private static function mysqlCode(?int $num, string $state): string {}
+    private static function mariadbCode(?int $num, string $state): string {}
     private static function postgresCode(string $state): string {}
 }
 
@@ -1532,13 +1553,14 @@ final class Engine
     public readonly RuntimeModel $model;
     private readonly int $cacheSize;
 
-    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize) {}
+    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize, ?string $server = null) {}
 
     /**
-     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
-     * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     * The engine shared by the generated model of a manifest hash, by the dialect and by the server, whose plans may
+     * differ on one dialect (DIA-209), so a plan of one server never serves another. The hash of a generated model that
+     * has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize): Engine {}
+    public static function for(string $manifestHash, string $dialect, int $cacheSize, ?string $server = null): Engine {}
 
     /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array {}
@@ -1658,6 +1680,11 @@ final class Db
     public function config(): Config {}
     /** @internal */
     public function pdo(): \PDO {}
+    /**
+     * @internal The server of the connection: on mysql, mysql or mariadb, which connect read by VERSION() (DIA-201);
+     * on postgres and sqlite, the driver's name.
+     */
+    public function server(): string {}
     /** @internal */
     public function driverError(\PDOException $e): OrmException {}
     /** The operations outside the query syntax. */
@@ -1670,6 +1697,8 @@ final class Db
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */
     public function setListener(\Closure $open): void {}
+    /** @internal */
+    public function setServer(string $server): void {}
     /** @internal */
     public function setReconnect(\Closure $open): void {}
     /** @internal */

@@ -30,16 +30,36 @@ static const char *cat_kind_sql(const char *dialect)
 
 static const char *cat_columns_sql(const char *dialect)
 {
-    if (strcmp(dialect, "mysql") == 0) return "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION";
+    /* The primary-key ordinal is a subquery that names the table by constants: a LEFT JOIN of KEY_COLUMN_USAGE opens every table
+     * of every database on MariaDB, and both servers give the same rows to this form (DIA-210). Its parameters are the namespace
+     * and the name, twice. The native type is COLUMN_TYPE in the form of MySQL 8.4, which MariaDB writes with an integer display
+ * width (DIA-204). */
+    if (strcmp(dialect, "mysql") == 0) return "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint','smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE '%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION";
     if (strcmp(dialect, "postgres") == 0) return "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum";
     return "SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid";
 }
 
 /* ---- errors ---------------------------------------------------------------------------------------------------------------- */
 
-/* Replaces the pending PDOException with the OrmException that the driver error maps to (Db::driverError). */
+/* Whether the pending exception is a PDOException: the library catches only \PDOException around a driver call, so any other
+ * throwable (an interrupt, an error of the runtime) passes through unchanged. */
+static bool cat_pdo_pending(void)
+{
+    static zend_class_entry *pdo_ce = NULL;
+    if (EG(exception) == NULL) return false;
+    if (pdo_ce == NULL) {
+        zend_string *n = zend_string_init("PDOException", sizeof("PDOException") - 1, 0);
+        pdo_ce = zend_lookup_class(n);
+        zend_string_release(n);
+    }
+    return pdo_ce != NULL && instanceof_function(EG(exception)->ce, pdo_ce);
+}
+
+/* Replaces the pending PDOException with the OrmException that the driver error maps to (Db::driverError); any other pending
+ * throwable stays as it is. */
 static void cat_driver_error(zval *db)
 {
+    if (!cat_pdo_pending()) return;
     zval ex, mapped;
     ZVAL_OBJ(&ex, EG(exception));
     EG(exception) = NULL;
@@ -1171,6 +1191,10 @@ static void cat_abort(zval *db, zval *pdo)
         EG(exception) = Z_OBJ(cause);
         return;
     }
+    if (!cat_pdo_pending()) {
+        zval_ptr_dtor(&cause);
+        return;
+    }
     cat_driver_error(db);
     zval mapped;
     ZVAL_OBJ(&mapped, EG(exception));
@@ -1196,6 +1220,7 @@ static bool cat_end_read(zval *db, zval *pdo)
     if (cat_try_rollback(pdo)) {
         return true;
     }
+    if (!cat_pdo_pending()) return false;
     zval previous, mapped, message, args[3], ex;
     ZVAL_OBJ(&previous, EG(exception));
     EG(exception) = NULL;
@@ -1434,10 +1459,25 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
     zval_ptr_dtor(&kind_rows);
     zval_ptr_dtor(&args);
 
+    /* MariaDB writes COLUMN_DEFAULT as SQL text, which the descriptor reads in the MySQL form by the server that the
+     * connection read (DIA-201, DIA-205). */
+    bool mariadb = false;
+    if (strcmp(dialect, "mysql") == 0) {
+        zval server;
+        ZVAL_UNDEF(&server);
+        if (!cat_call_n(db, "server", &server, 0, NULL)) return false;
+        mariadb = Z_TYPE(server) == IS_STRING && zend_string_equals_literal(Z_STR(server), "mariadb");
+        zval_ptr_dtor(&server);
+    }
+
     /* SQLite table-valued pragmas take the table name first and the schema second. */
     array_init(&col_args);
     add_next_index_str(&col_args, zend_string_copy(sqlite ? name : ns));
     add_next_index_str(&col_args, zend_string_copy(sqlite ? ns : name));
+    if (strcmp(dialect, "mysql") == 0) {
+        add_next_index_str(&col_args, zend_string_copy(ns));
+        add_next_index_str(&col_args, zend_string_copy(name));
+    }
     if (!cat_query(db, pdo, cat_columns_sql(dialect), &col_args, CAT_METADATA_ROWS, CAT_METADATA_BYTES, &col_names, &col_types, &col_rows, NULL)) {
         zval_ptr_dtor(&col_args);
         return false;
@@ -1483,9 +1523,21 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
             db_throw_orm("TABLE_METADATA_INVALID", "negative key ordinal");
             goto out_cols;
         }
+        zend_string *def = Z_TYPE_P(c[6]) == IS_STRING ? zend_string_copy(Z_STR_P(c[6])) : NULL;
+        if (mariadb) {
+            zend_string *read = NULL, *bad = NULL;
+            bool read_ok = dbspec_mariadb_catalog_default(def, &read, &col->expression, &bad);
+            if (def != NULL) zend_string_release(def);
+            if (!read_ok) {
+                db_throw_orm("TABLE_METADATA_INVALID", "column \"%s\": %s", ZSTR_VAL(cname), ZSTR_VAL(bad));
+                zend_string_release(bad);
+                goto out_cols;
+            }
+            def = read;
+        }
         col->name = zend_string_copy(cname);
         col->type = zend_string_copy(ctype);
-        col->def = Z_TYPE_P(c[6]) == IS_STRING ? zend_string_copy(Z_STR_P(c[6])) : NULL;
+        col->def = def;
         if (ordinal > 0) {
             keys[nkeys].ordinal = ordinal;
             keys[nkeys].index = i;
@@ -2118,7 +2170,6 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
 
 /* ---- catalog value rules (docs/spec/interfaces.md "Catalog value rules", INT-165 to INT-185) ----------------------------- */
 
-#define CAT_RULE_MYSQL_YEAR "MySQL YEAR has no grid cell"
 #define CAT_RULE_MYSQL_TIMESTAMP "MySQL TIMESTAMP follows a time zone"
 #define CAT_RULE_POSTGRES_ZONED "PostgreSQL timestamptz and timetz are unsupported"
 #define CAT_RULE_POSTGRES_NUMERIC "PostgreSQL numeric is not finite"
@@ -2641,6 +2692,17 @@ static bool cat_float_cell(zval *v, bool single, zval *cell)
     return cat_grid_made(true, "float64", &value, cell);
 }
 
+/* Drops the leading zeros that the server pads a MySQL ZEROFILL value with to its display width from a text of digits (00042
+ * is 42), keeping one digit (Catalog::unpadded); any other text is unchanged. */
+static void cat_unpadded(const char **s, size_t *n)
+{
+    if (*n == 0 || cat_digits(*s, *n) != *n) return;
+    while (*n > 1 && **s == '0') {
+        (*s)++;
+        (*n)--;
+    }
+}
+
 /* An integer cell (Catalog::integerCell): a PHP integer, or text that holds one. An UNSIGNED column is decimal digits, exact over
  * the whole range; text that is not the digits of a 64-bit integer is INT-171. */
 static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
@@ -2657,6 +2719,7 @@ static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
     if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     const char *p = Z_STRVAL_P(v);
     size_t n = Z_STRLEN_P(v);
+    cat_unpadded(&p, &n);
     zend_long n64 = 0;
     if (!unsigned_ && n > 0 && is_numeric_string(p, n, &n64, NULL, 0) == IS_LONG) {
         ZVAL_LONG(&value, n64);
@@ -2666,6 +2729,22 @@ static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
     if (!cat_unsigned_digits(p, n)) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     ZVAL_STRINGL(&value, p, n);
     return cat_grid_made(true, "unsigned", &value, cell);
+}
+
+/* The integer of a MySQL YEAR value (Catalog::yearNumber, INT-166): 1901 to 2155, or 0 for the zero year. The server writes it
+ * in four digits, 0000 for the zero year, and flags the column UNSIGNED, which does not make it an unsigned cell. */
+static bool cat_year_number(zval *v, zval *out)
+{
+    if (Z_TYPE_P(v) == IS_LONG) {
+        ZVAL_LONG(out, Z_LVAL_P(v));
+        return true;
+    }
+    if (Z_TYPE_P(v) != IS_STRING || Z_STRLEN_P(v) != 4 || cat_digits(Z_STRVAL_P(v), 4) != 4) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    const char *s = Z_STRVAL_P(v);
+    ZVAL_LONG(out, (zend_long)((s[0] - '0') * 1000 + (s[1] - '0') * 100 + (s[2] - '0') * 10 + (s[3] - '0')));
+    return true;
 }
 
 /* A text cell; a value that is not valid UTF-8 is its bytes (Catalog::textCell, INT-153, INT-157). */
@@ -2750,11 +2829,11 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, bool unsigned_, bool bi
         case 4: return cat_float_cell(v, true, cell);
         case 5: return cat_float_cell(v, false, cell);
         case 7: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_TIMESTAMP);
-        case 13: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_YEAR);
         case 10: case 14: return cat_temporal_cell(v, 'd', cell);
         case 12: return cat_temporal_cell(v, 'x', cell);
         case 11: return cat_temporal_cell(v, 't', cell);
         case 0: case 246: return cat_grid_made(cat_decimal_text(v, &value), "decimal", &value, cell);
+        case 13: return cat_grid_made(cat_year_number(v, &value), "integer", &value, cell);
         case 1: case 2: case 3: case 8: case 9: return cat_integer_cell(v, unsigned_, cell);
         /* The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185). */
         case 16: return cat_grid_made(cat_bit_bytes(v, bits, &value), "binary", &value, cell);
@@ -3028,6 +3107,7 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
         ZVAL_COPY(out, v);
         return true;
     }
+    if (strcmp(dialect, "mysql") == 0 && strcasecmp(native, "YEAR") == 0) return cat_year_number(v, out);
     /* PDO reads a PostgreSQL bytea as a stream (INT-107). */
     if (Z_TYPE_P(v) == IS_RESOURCE) return cat_bytes_value(v, out);
     if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
@@ -3041,6 +3121,7 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
     bool sqlite = strcmp(dialect, "sqlite") == 0;
     char class_ = cat_type_class(native);
     if (class_ == 'i') {
+        if (strcmp(dialect, "mysql") == 0) cat_unpadded(&s, &n);
         zend_long integer;
         if (cat_filter_int(s, n, &integer)) {
             ZVAL_LONG(out, integer);
@@ -3048,6 +3129,10 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
         }
         /* A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column. */
         if (!sqlite && !cat_unsigned_digits(s, n)) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+        if (!sqlite) {
+            ZVAL_STRINGL(out, s, n);
+            return true;
+        }
     } else if (class_ == 'f') {
         zend_long l;
         double d;
@@ -3204,7 +3289,7 @@ static zend_long cat_declared_width(const char *native)
 /* The conversion of the values of one described column (Catalog::describedReader). */
 typedef enum {
     CAT_READ_PLAIN, CAT_READ_REFUSE, CAT_READ_BOOL, CAT_READ_BIT, CAT_READ_BYTES, CAT_READ_TEXT, CAT_READ_NUMERIC,
-    CAT_READ_SERVER_TEMPORAL, CAT_READ_SQLITE_TEMPORAL,
+    CAT_READ_SERVER_TEMPORAL, CAT_READ_SQLITE_TEMPORAL, CAT_READ_YEAR,
 } cat_read;
 
 typedef struct {
@@ -3217,7 +3302,7 @@ typedef struct {
 } cat_reader;
 
 /*
- * The reader of one described column (Catalog::describedReader): the rule of its native type (INT-166 to INT-170, INT-185), a
+ * The reader of one described column (Catalog::describedReader): the rule of its native type (INT-167 to INT-170, INT-185), a
  * temporal value in its declared precision, a boolean (INT-182), and the plain conversion otherwise. On PostgreSQL a type that
  * no type text names takes the class of its result OID (cat_pg_class); a column of no OID is refused.
  */
@@ -3252,7 +3337,7 @@ static bool cat_reader_of(zval *db, zval *pdo, zval *cache, const char *dialect,
     }
     reader->read = CAT_READ_REFUSE;
     reader->code = "CATALOG_VALUE";
-    if (strcmp(class_, "year") == 0) reader->text = CAT_RULE_MYSQL_YEAR;
+    if (strcmp(class_, "year") == 0) reader->read = CAT_READ_YEAR;
     else if (strcmp(class_, "mysql_timestamp") == 0) reader->text = CAT_RULE_MYSQL_TIMESTAMP;
     else if (strcmp(class_, "zoned") == 0) reader->text = CAT_RULE_POSTGRES_ZONED;
     else if (strcmp(class_, "refused") == 0 || strcmp(class_, "multirange") == 0) reader->text = CAT_RULE_NATIVE_TYPE;
@@ -3291,6 +3376,7 @@ static bool cat_read_value(cat_reader *reader, zval *cell, const char *dialect, 
         case CAT_READ_NUMERIC: return cat_postgres_numeric(cell, out);
         case CAT_READ_SERVER_TEMPORAL: return cat_described_server_temporal(cell, reader->kind, dialect, reader->native, out);
         case CAT_READ_SQLITE_TEMPORAL: return cat_sqlite_temporal(cell, reader->kind, reader->number, out);
+        case CAT_READ_YEAR: return cat_year_number(cell, out);
         default: return cat_plain_value(cell, reader->native, dialect, out);
     }
 }
@@ -3964,6 +4050,10 @@ static void cat_rollback_throw(zval *db, zval *pdo, zval *cause)
         zend_throw_exception_object(cause);
         return;
     }
+    if (!cat_pdo_pending()) {
+        zval_ptr_dtor(cause);
+        return;
+    }
     zval rollback_native, rollback_mapped;
     ZVAL_OBJ(&rollback_native, EG(exception));
     EG(exception) = NULL;
@@ -3992,6 +4082,7 @@ static bool cat_commit(zval *db, zval *pdo)
     if (cat_try_exec(pdo, "COMMIT")) {
         return true;
     }
+    if (!cat_pdo_pending()) return false;
     zval native, mapped, message, code_rv;
     ZVAL_OBJ(&native, EG(exception));
     EG(exception) = NULL;
@@ -4030,7 +4121,15 @@ static bool cat_commit(zval *db, zval *pdo)
     zval rollback;
     ZVAL_NULL(&rollback);
     zend_string *text = zend_strpprintf(0, "commit outcome unknown; do not retry: %s", Z_STRVAL(message));
-    if (!cat_try_rollback(pdo)) {
+    if (!cat_try_rollback(pdo) && !cat_pdo_pending()) {
+        /* A throwable of the ROLLBACK that is no driver error reaches the caller as it is (Catalog::write catches only
+         * \PDOException). */
+        zend_string_release(text);
+        zval_ptr_dtor(&cause);
+        zval_ptr_dtor(&message);
+        return false;
+    }
+    if (EG(exception) != NULL) {
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;
@@ -4109,22 +4208,17 @@ static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, z
 }
 
 /* Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger
- * from the account (INT-119). */
+ * from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no
+ * row, the one form that both servers answer with the same result (DIA-207). */
 static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo)
 {
     zval rows;
     zval none;
     array_init(&none);
-    bool queried = cat_query_params(db, pdo, "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", &none, 1, &rows);
+    bool queried = cat_query_params(db, pdo, "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", &none, 1, &rows);
     zval_ptr_dtor(&none);
     if (!queried) return false;
-    bool partial_off = zend_hash_num_elements(Z_ARRVAL(rows)) == 1;
-    if (partial_off) {
-        zval *r0 = zend_hash_index_find(Z_ARRVAL(rows), 0);
-        zval *cell = Z_TYPE_P(r0) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(r0), 0) : NULL;
-        partial_off = cell != NULL && zval_get_long(cell) == 0 && (Z_TYPE_P(cell) == IS_LONG || (Z_TYPE_P(cell) == IS_STRING
-            && zend_string_equals_literal(Z_STR_P(cell), "0")));
-    }
+    bool partial_off = zend_hash_num_elements(Z_ARRVAL(rows)) == 0;
     zval_ptr_dtor(&rows);
     if (!partial_off) {
         db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL partial-revoke visibility requires verification");

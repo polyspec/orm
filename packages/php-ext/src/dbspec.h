@@ -410,6 +410,9 @@ typedef enum { D_MYSQL, D_POSTGRES, D_SQLITE } dialect;
 
 /* For an unknown dialect, throws InvalidArgumentException and returns false. */
 bool dbs_dialect(str name, dialect *out);
+/* For a server that is not a server of the dialect d, throws InvalidArgumentException and returns false; mariadb is whether the
+ * server is MariaDB (DIA-203). */
+bool dbs_server(dialect d, str server, bool *mariadb);
 extern const char *const dbs_dialect_names[3];
 
 typedef struct {
@@ -638,7 +641,7 @@ bool row_integer(zval *row, zend_long i, str query, zend_long *out);
 bool value_integer(zval *v, zend_long i, str query, zend_long *out);
 bool value_flag(zval *v, zend_long i, str query, bool *out);
 /* Reads the connection's database as one document and missing objects. A failure is a PHP exception and NULL. */
-document *dbs_introspect(zval *pdo, dialect d, str name, unsupportedv *out);
+document *dbs_introspect(zval *pdo, dialect d, str server, str name, unsupportedv *out);
 
 /* ------------------------------------------------------------------ apply */
 
@@ -648,7 +651,7 @@ typedef struct {
 } dbs_effect_query;
 extern const dbs_effect_query dbs_effect_queries[];
 /* op is apply, recover, rollback, or finalize. A failure is a PHP exception and false. */
-bool dbs_apply(const char *op, zval *c, str dialect_name, zval *plans, zval *now, zval *events);
+bool dbs_apply(const char *op, zval *c, str dialect_name, str server, zval *plans, zval *now, zval *events);
 bool dbs_effect_on(zval *c, str dialect_name, const effect *e, bool *out);
 
 /* ---------------------------------------------------------------- Mermaid */
@@ -713,6 +716,8 @@ void out_unsupported(const unsupportedv *list, zval *out);
 
 /* Throws a PHP exception. The caller stops the operation by returning false. */
 bool dbs_throw(zend_class_entry *ce, str message);
+/* The default of a MariaDB COLUMN_DEFAULT in the MySQL form for the catalog descriptor (DIA-205, introspect.c). */
+bool dbspec_mariadb_catalog_default(zend_string *def, zend_string **out, bool *expression, zend_string **bad);
 bool dbs_throw_code(zend_class_entry *ce, str message, zend_long code);
 #define dbs_failed() (EG(exception) != NULL)
 

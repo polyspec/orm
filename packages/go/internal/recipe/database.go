@@ -61,6 +61,22 @@ type databaseCase struct {
 	NotThroughPooler string            `json:"not_through_pooler"`
 	Seed             *seed             `json:"seed"`
 	Steps            []json.RawMessage `json:"steps"`
+	// Deadline is the step deadline of a case that applies more steps than a database case runs statements (FCV-4).
+	Deadline *caseDeadline `json:"deadline"`
+}
+
+// caseDeadline states the steps that a case applies one after another. The case's deadline is testcase.StepBudget of them
+// instead of testcase.Database, and a stall guard fails the case when no apply event comes within testcase.Database.
+type caseDeadline struct {
+	Steps int `json:"steps"`
+}
+
+// caseDeadlineOf is the deadline of c: testcase.Database, or the step budget that c states.
+func caseDeadlineOf(c databaseCase) time.Duration {
+	if c.Deadline == nil {
+		return testcase.Database
+	}
+	return testcase.StepBudget(c.Deadline.Steps)
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -92,15 +108,17 @@ type databaseStep struct {
 	Refused        bool            `json:"refused"`
 	RefusedMessage string          `json:"refused_message"`
 	RefusedCode    string          `json:"refused_code"`
-	MaxRows        int             `json:"max_rows"`
-	MaxBytes       int             `json:"max_bytes"`
-	Page           json.RawMessage `json:"page"`
-	Index          int             `json:"index"`
-	Metadata       json.RawMessage `json:"metadata"`
-	Values         json.RawMessage `json:"values"`
-	Snapshot       json.RawMessage `json:"snapshot"`
-	Set            json.RawMessage `json:"set"`
-	As             string          `json:"as"`
+	// Connects is the number of connections that catalog.reconnect opens for a refused reconnect (DIA-211).
+	Connects int             `json:"connects"`
+	MaxRows  int             `json:"max_rows"`
+	MaxBytes int             `json:"max_bytes"`
+	Page     json.RawMessage `json:"page"`
+	Index    int             `json:"index"`
+	Metadata json.RawMessage `json:"metadata"`
+	Values   json.RawMessage `json:"values"`
+	Snapshot json.RawMessage `json:"snapshot"`
+	Set      json.RawMessage `json:"set"`
+	As       string          `json:"as"`
 	// Edge is the side of a write that clock.read bounds.
 	Edge string `json:"edge"`
 	// The catalog fields: the databases that run the step, the namespace of a table, the binds and page of a query, and
@@ -121,7 +139,11 @@ type databaseStep struct {
 	Plans   []string `json:"plans"`
 	Count   []string `json:"count"`
 	Detail  string   `json:"detail"`
-	Message string   `json:"message"`
+	// WithMessage adds the message of the failure of a command to its outcome.
+	WithMessage bool `json:"with_message"`
+	// MessageHolds are the texts that the message of the failure of a command holds (FCV-4).
+	MessageHolds messageHolds `json:"message_holds"`
+	Message      string       `json:"message"`
 	// Code is the error code of fault.next_statement (PRT-48), armed with Message.
 	Code string `json:"code"`
 	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
@@ -273,6 +295,8 @@ type databaseContext struct {
 	corpusDir string
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
 	applyStep int
+	// progress restarts the stall limit of the step guard of a case with a step deadline at each apply event; it does nothing otherwise.
+	progress func()
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
 }
@@ -280,7 +304,7 @@ type databaseContext struct {
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
-	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" {
+	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" && database != "mariadb" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
 	f := readRecipe[databaseFile](t, path)
@@ -312,7 +336,7 @@ func runDatabase(t *testing.T, path, database string) {
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {
-			testcase.Start(t, testcase.Database)
+			testcase.Start(t, caseDeadlineOf(c))
 			runCase(t, path, f, c, database, schema, external)
 			reportCase(t, c.ID, database)
 		})
@@ -448,12 +472,13 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 	case "case-server":
 		return caseServerDSN(database, caseDSN)
 	case "case-socket":
-		if database != "mysql" {
-			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
+		if database != "mysql" && database != "mariadb" {
+			return "", fmt.Errorf("dsn case-socket needs mysql or mariadb, not %s", database)
 		}
-		socket := os.Getenv("ORM_TEST_MYSQL_SOCKET")
+		variable := "ORM_TEST_" + strings.ToUpper(database) + "_SOCKET"
+		socket := os.Getenv(variable)
 		if socket == "" {
-			return "", errors.New("dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers")
+			return "", fmt.Errorf("dsn case-socket: %s is unset; run make orm-test-servers or make orm-test-mariadb", variable)
 		}
 		return caseSocketDSN(caseDSN, socket)
 	}
@@ -508,6 +533,14 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
+	progress := func() {}
+	if c.Deadline != nil {
+		// The step guard ends the case at its step budget, or when no apply event comes within the Database tier; its
+		// cause names the limit with the text of every runtime (FCV-4).
+		var stop func()
+		ctx, progress, stop = testcase.StepGuard(ctx, caseDeadlineOf(c), testcase.Database)
+		defer stop()
+	}
 	markdown := database == "markdown"
 	var dsn, corpusDir string
 	if markdown {
@@ -561,7 +594,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
+		t: t, ctx: ctx, progress: progress, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -596,6 +629,10 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	for index, raw := range c.Steps {
 		op, err := runRawStep(raw, state)
 		if err != nil {
+			if cause := context.Cause(ctx); cause != nil && !errors.Is(cause, context.Canceled) {
+				// The step guard ended the case: its cause names the limit.
+				err = fmt.Errorf("%w (%w)", err, cause)
+			}
 			t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, op, database, err)
 		}
 		step.Step("step %d %s", index, op)
@@ -664,9 +701,19 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 }
 
 // onDatabase reports whether a case or step with the list only runs on database. A corpus speaks SQLite's dialect, so
-// what names sqlite names it too.
+// what names sqlite names it too; MariaDB is a server of the MySQL dialect (DIA-200), so what names mysql names it too.
 func onDatabase(only []string, database string) bool {
-	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite"))
+	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite")) ||
+		(database == "mariadb" && slices.Contains(only, "mysql"))
+}
+
+// serverVariable is the variable that an env: DSN of a step names on database: on MariaDB, a variable of the MySQL servers
+// names the same server of the MariaDB servers, ORM_TEST_MYSQL_ becoming ORM_TEST_MARIADB_ (FCV-3).
+func serverVariable(name, database string) string {
+	if rest, ok := strings.CutPrefix(name, "ORM_TEST_MYSQL_"); ok && database == "mariadb" {
+		return "ORM_TEST_MARIADB_" + rest
+	}
+	return name
 }
 
 // runStepWith runs a step through op and compares the fields that its expect names.
@@ -719,8 +766,12 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 				return fmt.Errorf("error cause %w, want %q", cause, want)
 			}
 		}
-		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
-			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		holds, fault := messageHoldsOf(expected["message_holds"])
+		if fault != nil {
+			return fault
+		}
+		if fault := holds.check(err.Error()); fault != nil {
+			return fault
 		}
 		if keeps, ok := expected["keeps_callback"]; ok && keeps == true && !errors.Is(err, errCallback) {
 			return fmt.Errorf("error %q does not keep the error of the callback", err.Error())
@@ -835,6 +886,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		generated := make([]bool, len(metadata.Columns))
 		automatic := make([]bool, len(metadata.Columns))
 		defaults := make([]bool, len(metadata.Columns))
+		defaultTexts := make([]any, len(metadata.Columns))
+		expressionDefaults := make([]bool, len(metadata.Columns))
 		for i, column := range metadata.Columns {
 			names[i] = column.Name
 			natives[i] = column.NativeType
@@ -842,12 +895,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			generated[i] = column.Generated
 			automatic[i] = column.AutomaticKey
 			defaults[i] = column.DefaultExpression != nil
+			if column.DefaultExpression != nil {
+				defaultTexts[i] = *column.DefaultExpression
+			}
+			expressionDefaults[i] = column.ExpressionDefault
 		}
 		return outcome{api: metadata, fields: map[string]any{
 			"namespace": map[string]any{"text": metadata.Table.Namespace},
 			"kind":      string(metadata.Kind), "columns_present": len(metadata.Columns) > 0,
 			"columns": names, "native_types": natives, "primary_key": metadata.PrimaryKey, "reliable_row_identity": metadata.ReliableRowIdentity,
 			"nullable": nullable, "generated": generated, "automatic_keys": automatic, "defaults": defaults,
+			"default_texts": defaultTexts, "expression_defaults": expressionDefaults,
 		}}, nil
 	case "catalog.table_page":
 		page, err := c.catalog.TablePage(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.k("table").Table}, s.k("limit").Limit, s.k("offset").Offset)
@@ -1115,12 +1173,27 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("user_from_database").UserFromDatabase != "" {
 			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
 		}
+		var relay *connectRelay
+		if s.k("connects").Connects != 0 {
+			started, through, err := startConnectRelay(dsn)
+			if err != nil {
+				return outcome{}, err
+			}
+			relay, dsn = started, through
+		}
 		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil && s.k("refused_message").RefusedMessage == "" {
 			return outcome{}, err
 		}
 		if s.k("refused_message").RefusedMessage != "" {
-			return outcome{}, refusedConnect(c, catalog, err, s.k("refused_code").RefusedCode, s.k("refused_message").RefusedMessage)
+			err := refusedConnect(c, catalog, err, s.k("refused_code").RefusedCode, s.k("refused_message").RefusedMessage)
+			if relay != nil {
+				if got, want := relay.accepted.Load(), int64(s.k("connects").Connects); err == nil && got != want {
+					err = fmt.Errorf("the client opened %d connections for the refused reconnect, want %d", got, want)
+				}
+				err = errors.Join(err, relay.close())
+			}
+			return outcome{}, err
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {
@@ -1376,9 +1449,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			return outcome{fields: map[string]any{"failed": true}}, nil
 		}
-		queries, err := introspectStep(s, c)
+		queries, refused, err := introspectStep(s, c)
 		if err != nil {
 			return outcome{}, err
+		}
+		if refused != 0 {
+			return outcome{fields: map[string]any{"refused": refused}}, nil
 		}
 		return outcome{fields: map[string]any{"queries": queries}}, nil
 	case "events.server_transactions":
@@ -1445,12 +1521,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 		}
 		if name, isEnv := strings.CutPrefix(dsn, "env:"); isEnv {
+			name = serverVariable(name, c.database)
 			dsn = os.Getenv(name)
 			if dsn == "" {
 				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
 			}
 		}
-		driver, err := connectDriver(dsn, s.k("config").Config)
+		driver, err := connectDriver(dsn, c.database, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1647,18 +1724,26 @@ func endSession(table string, c *databaseContext) error {
 		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
 		return err
 	}
-	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
+	// The session is the one, other than this one, whose transaction holds the table: a metadata lock of the transaction, which
+	// MySQL and MariaDB both list live (MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is a
+	// cache that concurrent readers keep from refreshing).
+	if err := raw.QueryRow(fmt.Sprintf(mysqlLockHolder, table)).Scan(&id); err != nil {
 		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
 	}
 	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
 	return err
 }
 
+// mysqlLockHolder is the session whose transaction holds the table %s of the case database, the session that session.end ends
+// on MySQL and MariaDB.
+const mysqlLockHolder = `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '%s' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`
+
 // awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
 // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits
 // after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on
 // the database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
-// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+// of the wait: the replica applies the writes of every client that runs in parallel, one after another. MariaDB names the two
+// SHOW BINLOG STATUS and MASTER_POS_WAIT, and its status has four columns.
 func awaitReplica(c *databaseContext) error {
 	source := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, source)
@@ -1687,17 +1772,22 @@ func awaitReplica(c *databaseContext) error {
 	var file string
 	var position int64
 	var ignored [3]any
-	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
+	status, wait, columns := "SHOW BINARY LOG STATUS", "SELECT SOURCE_POS_WAIT(?, ?, 60)", []any{&file, &position, &ignored[0], &ignored[1], &ignored[2]}
+	if c.database == "mariadb" {
+		status, wait, columns = "SHOW BINLOG STATUS", "SELECT MASTER_POS_WAIT(?, ?, 60)", columns[:4]
+	}
+	if err := source.QueryRow(status).Scan(columns...); err != nil {
 		return err
 	}
-	replica := os.Getenv("ORM_TEST_MYSQL_REPLICA_DSN")
+	variable := serverVariable("ORM_TEST_MYSQL_REPLICA_DSN", c.database)
+	replica := os.Getenv(variable)
 	if replica == "" {
-		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it")
+		return fmt.Errorf("replica.await: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	target := testdb.Open(c.t, c.database, replica)
 	defer testcase.Close(c.t, target)
 	var waited *int64
-	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
+	if err := target.QueryRow(wait, file, position).Scan(&waited); err != nil {
 		return err
 	}
 	if waited == nil || *waited < 0 {
@@ -1901,21 +1991,36 @@ func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) 
 	return text, present, nil
 }
 
-// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185).
+// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
 func (c *databaseContext) dialect() string {
-	if c.database == "markdown" {
-		return "sqlite"
-	}
-	return c.database
+	return dialectOf(c.database)
 }
 
-// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so
-// it reads the SQLite entry unless the value states its own.
+// server is the server of the case database that the public dbspec calls take (DIA-203): the markdown corpus answers in
+// SQLite's dialect, as its server.
+func (c *databaseContext) server() dbspec.Server {
+	if c.database == "markdown" {
+		return dbspec.ServerSQLite
+	}
+	return dbspec.Server(c.database)
+}
+
+// dialectOf is the SQL dialect of database.
+func dialectOf(database string) string {
+	switch database {
+	case "markdown":
+		return "sqlite"
+	case "mariadb":
+		return "mysql"
+	}
+	return database
+}
+
+// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185) and
+// MariaDB in MySQL's (DIA-200), so each reads the entry of its dialect unless the value states its own (FCV-3).
 func dialectKey[V any](database string, entries map[string]V) string {
-	if database == "markdown" {
-		if _, own := entries[database]; !own {
-			return "sqlite"
-		}
+	if _, own := entries[database]; !own {
+		return dialectOf(database)
 	}
 	return database
 }

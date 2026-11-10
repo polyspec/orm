@@ -77,7 +77,8 @@ def native_session(driver: str, dsn: str):
             connection.close()
         return
     parameters = dict(parse_qsl(url.query))
-    if driver == "mysql":
+    # MariaDB is a server of the MySQL dialect, reached with the MySQL driver (DIA-200).
+    if driver in ("mysql", "mariadb"):
         import pymysql
         import pymysql.cursors
 

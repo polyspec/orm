@@ -301,7 +301,9 @@ impl Renderer {
         match self.d {
             Dialect::MySql => match c.ty {
                 Type::Bool => Some(format!("{q} IN (0, 1)")),
-                Type::Uuid => Some(format!("REGEXP_LIKE({q}, '{UUID_PATTERN}', 'c')")),
+                // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
+                // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
+                Type::Uuid => Some(format!("{q} REGEXP '{UUID_PATTERN}'")),
                 Type::Time(_) => Some(format!("{q} >= '00:00:00' AND {q} < '24:00:00'")),
                 _ => None,
             },

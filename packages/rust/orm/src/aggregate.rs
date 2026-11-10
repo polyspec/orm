@@ -1,4 +1,4 @@
-//! The sum and the average of a column (DSL-66, DSL-161, DIA-200).
+//! The sum and the average of a column (DSL-66, DSL-161, DIA-216).
 
 use polyspec_orm_schema::dbspec::{Field, Type};
 
@@ -25,7 +25,7 @@ fn exact_scale(ty: &Type) -> Option<u32> {
 }
 
 /// The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an integer, or
-/// a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+/// a decimal of more fraction digits than the scale of the column (DIA-218, DSL-66).
 pub(crate) fn non_integer_refusal(column: &str, ty: &Type) -> Error {
     let msg = match ty {
         Type::Decimal(_, scale) => format!("column {column} holds a value that is not a decimal of scale {scale}"),
@@ -64,10 +64,10 @@ fn exact_digits(field: &Field, value: &Val, scale: u32) -> Result<(bool, String)
 }
 
 /// The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
-/// integer (DIA-202).
+/// integer (DIA-218).
 const SPLIT_CELLS: usize = 5;
 
-/// The sum of the cells of a split sum (DIA-202).
+/// The sum of the cells of a split sum (DIA-218).
 pub(crate) enum Split {
     /// Every part is null: the sum of no value.
     None,
@@ -78,7 +78,7 @@ pub(crate) enum Split {
 }
 
 /// The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the four part cells of a split sum, or the report of its
-/// flag cell (DIA-202); a cell that is not an integer is the refusal of every sum. Each part sum of a database of at most
+/// flag cell (DIA-218); a cell that is not an integer is the refusal of every sum. Each part sum of a database of at most
 /// 2^47 rows lies in (-2^63, 2^63), so the sum fits i128 at every step.
 pub(crate) fn split_sum(parts: &[Val], flag: &Val) -> Result<Split> {
     match flag {
@@ -103,7 +103,7 @@ pub(crate) fn split_sum(parts: &[Val], flag: &Val) -> Result<Split> {
 }
 
 /// The sum of the sum cells of a statement over the column field: its one cell, or, for the cells of a split sum of an exact
-/// column on SQLite and markdown, its exact integer (DIA-202), an integer cell where it fits i64 and its decimal text at the
+/// column on SQLite and markdown, its exact integer (DIA-218), an integer cell where it fits i64 and its decimal text at the
 /// scale of the column past it; null is the sum of no value.
 pub(crate) fn sum_cell(field: &Field, cells: &[Val]) -> Result<Val> {
     match cells {
@@ -203,7 +203,7 @@ pub(crate) fn avg_value(field: &Field, sum: &Val, count: &Val) -> Result<Option<
 
 /// The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003, and
 /// MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it
-/// is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-200).
+/// is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-216).
 pub(crate) fn range_error(error: Error) -> Error {
     let out_of_range = matches!(&error, Error::Driver { code, source, .. }
         if code == codes::DRIVER && source.as_database_error().and_then(|d| d.code()).as_deref() == Some("22003"));

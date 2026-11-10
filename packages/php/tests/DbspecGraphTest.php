@@ -260,6 +260,7 @@ final class DbspecGraphTest extends TestCase
             static fn() => Dbspec::apply(
                 new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]),
                 'sqlite',
+                'sqlite',
                 [1],
                 static fn() => new DateTimeImmutable(),
                 null

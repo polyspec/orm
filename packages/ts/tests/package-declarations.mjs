@@ -105,9 +105,10 @@ try {
     writeFileSync(join(project, 'index.ts'), [
       `import { Db, introspectDbspec, type DbspecApplyMySqlConnection, type DbspecApplyPostgresConnection, type DbspecApplySqliteConnection, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from '${name}';`,
       'export async function use(db: Db, mysql: DbspecMySqlConnection, postgres: DbspecPostgresConnection, sqlite: DbspecSqliteConnection): Promise<void> {',
-      "  await introspectDbspec(mysql, 'mysql', 'example');",
-      "  await introspectDbspec(postgres, 'postgres', 'example');",
-      "  await introspectDbspec(sqlite, 'sqlite', 'example');",
+      "  await introspectDbspec(mysql, 'mysql', 'mysql', 'example');",
+      "  await introspectDbspec(mysql, 'mysql', 'mariadb', 'example');",
+      "  await introspectDbspec(postgres, 'postgres', 'postgres', 'example');",
+      "  await introspectDbspec(sqlite, 'sqlite', 'sqlite', 'example');",
       '  await db.close();',
       '}',
       'export type ApplyConnections = [DbspecApplyMySqlConnection, DbspecApplyPostgresConnection, DbspecApplySqliteConnection];',

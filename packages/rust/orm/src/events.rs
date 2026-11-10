@@ -143,6 +143,8 @@ impl Db {
     /// Publishes the event of a finished statement and returns the result the operation receives: if a subscriber
     /// fails, it is SUBSCRIBER; otherwise it is the statement's result.
     pub(crate) fn statement_done<T>(&self, s: Sent<'_>, start: Instant, result: Result<T>) -> Result<T> {
+        // A mysql error number is read by the table of the connection's server (DIA-201).
+        let result = result.map_err(|e| e.for_server(self.inner.server, s.lock));
         let subscribers = &self.inner.subscribers;
         if !subscribers.observed() {
             return result;
@@ -174,12 +176,15 @@ pub(crate) struct Sent<'a> {
     pub(crate) kind: &'a str,
     pub(crate) tables: &'a [String],
     pub(crate) transaction: Option<u64>,
+    /// The row lock that the statement took (`Step::lock`), empty for a statement with none; it reads a MariaDB 1205
+    /// (DIA-209).
+    pub(crate) lock: &'a str,
 }
 
 impl<'a> Sent<'a> {
     /// A statement with no bind.
     pub(crate) fn bare(kind: &'a str, tables: &'a [String], transaction: Option<u64>, sql: &'a str) -> Sent<'a> {
-        Sent { sql, binds: &[], kind, tables, transaction }
+        Sent { sql, binds: &[], kind, tables, transaction, lock: "" }
     }
 }
 

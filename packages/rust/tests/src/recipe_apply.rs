@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
-use polyspec_orm::dbspec::{self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan};
+use polyspec_orm::dbspec::{self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan, Server};
 use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
@@ -149,6 +149,8 @@ struct State {
     plans: HashMap<String, Plan>,
     sessions: HashMap<String, Conn>,
     step: usize,
+    /// Whether the case runs on MariaDB, a server of the MySQL dialect whose direct server is its own (DIA-200, FCV-3).
+    mariadb: bool,
 }
 
 /// The apply ops of one case; [`ApplyOps::close`] ends its connections before the case database is dropped.
@@ -166,9 +168,15 @@ impl ApplyOps {
             self.runtime = Some(built);
         }
         let runtime = self.runtime.as_ref().ok_or("the runtime of the apply ops")?;
+        self.state.mariadb = database == "mariadb";
         let state = &mut self.state;
         // A corpus runs the statements of SQLite and reads its entries (DIA-185); its DSN names the corpus.
-        let database = if database == "markdown" { "sqlite" } else { database };
+        let database = match database {
+            "markdown" => "sqlite",
+            // MariaDB is a server of the MySQL dialect (DIA-200).
+            "mariadb" => "mysql",
+            other => other,
+        };
         // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
         std::thread::scope(|scope| {
             scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().map_err(|panic| crate::recipe::panicked("an apply op", &*panic))?
@@ -217,6 +225,18 @@ fn dialect_of(database: &str) -> Result<Dialect, String> {
     }
 }
 
+/// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on a case of MariaDB, and the
+/// server of the dialect's own database otherwise; a markdown corpus, already read as sqlite, answers in SQLite's dialect, as
+/// its server.
+fn server_of(database: &str, mariadb: bool) -> Result<Server, String> {
+    match (dialect_of(database)?, mariadb) {
+        (Dialect::MySql, true) => Ok(Server::MariaDb),
+        (Dialect::MySql, false) => Ok(Server::MySql),
+        (Dialect::Postgres, _) => Ok(Server::Postgres),
+        (Dialect::Sqlite, _) => Ok(Server::Sqlite),
+    }
+}
+
 /// The database name of a case DSN.
 fn name_of(dsn: &str) -> &str {
     let path = dsn.split('?').next().unwrap_or(dsn);
@@ -224,13 +244,14 @@ fn name_of(dsn: &str) -> &str {
 }
 
 /// The direct connection to the database of the case DSN, with the rules of a new connection.
-async fn direct(database: &str, dsn: &str) -> Result<Conn, String> {
+async fn direct(database: &str, mariadb: bool, dsn: &str) -> Result<Conn, String> {
     let name = name_of(dsn);
     let (mut session, rule) = match database {
         "mysql" => {
-            let server = required("ORM_TEST_MYSQL_SERVER_DSN")?;
+            let variable = if mariadb { "ORM_TEST_MARIADB_SERVER_DSN" } else { "ORM_TEST_MYSQL_SERVER_DSN" };
+            let server = required(variable)?;
             let ConnectOptions::MySql(options) = parse_dsn(&server).map_err(|e| e.to_string())?.options else {
-                return Err("ORM_TEST_MYSQL_SERVER_DSN is not mysql://".to_owned());
+                return Err(format!("{variable} is not mysql://"));
             };
             let connection = MySqlConnection::connect_with(&options.database(name)).await.map_err(|e| e.to_string())?;
             (Conn::MySql(connection), "SET time_zone = '+00:00'")
@@ -325,8 +346,11 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             Ok(json!({}))
         }
         "dbspec.connect" => {
-            let session =
-                if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            let session = if crate::recipe_reads::read(step, "through")["through"] == "pooler" {
+                through_pooler(dsn).await?
+            } else {
+                direct(database, state.mariadb, dsn).await?
+            };
             state.sessions.insert(name.to_owned(), session);
             Ok(json!({}))
         }
@@ -339,7 +363,8 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         "dbspec.schema" => {
             let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
-            let introspection = dbspec::introspect(session, dialect_of(database)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
+            let introspection =
+                dbspec::introspect(session, dialect_of(database)?, server_of(database, state.mariadb)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
             if !introspection.unsupported.is_empty() {
                 return Err(format!("dbspec.schema: unsupported {:?}", introspection.unsupported));
             }
@@ -358,7 +383,8 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             result.map(|()| json!({}))
         }
         "dbspec.other_database" => {
-            let other = CaseDatabase::create(database).await;
+            // The other database is on the server of the case, which direct connects to: MariaDB's own on MariaDB (DIA-200).
+            let other = CaseDatabase::create(if state.mariadb { "mariadb" } else { database }).await;
             let result = other_steps(state, step, database, other.dsn()).await;
             other.drop().await;
             result.map(|()| json!({}))
@@ -370,7 +396,7 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
 /// The nested steps of dbspec.other_database, on a new connection to the other database that ends with them.
 async fn other_steps(state: &mut State, step: &Value, database: &str, other: &str) -> Result<(), String> {
     let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
-    state.sessions.insert(name.to_owned(), direct(database, other).await?);
+    state.sessions.insert(name.to_owned(), direct(database, state.mariadb, other).await?);
     let mut result = Ok(());
     for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
         if skipped(nested, database) {
@@ -401,9 +427,29 @@ fn first_failure(error: &ApplyError) -> &ApplyError {
     }
 }
 
+thread_local! {
+    /// The step guard of the case with a step deadline that runs on this thread (each case runs on a thread of its own).
+    static STALL: std::cell::RefCell<Option<std::sync::Arc<polyspec_orm_testcase::StepGuard>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Sets, or with None clears, the step guard of the case that runs on this thread.
+pub(crate) fn guard_case(guard: Option<std::sync::Arc<polyspec_orm_testcase::StepGuard>>) {
+    STALL.with(|stall| *stall.borrow_mut() = guard);
+}
+
+/// Records an apply event of the case that runs on this thread: it restarts the stall limit of its step guard, if it has one.
+fn progressed() {
+    STALL.with(|stall| {
+        if let Some(guard) = stall.borrow().as_ref() {
+            guard.progressed();
+        }
+    });
+}
+
 /// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
 async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
     let dialect = dialect_of(database)?;
+    let server = server_of(database, state.mariadb)?;
     let target = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default().to_owned();
     let mut plans: Vec<Plan> = Vec::new();
     for name in crate::recipe_reads::read(step, "plans")["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
@@ -420,6 +466,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
     let result = {
         let nested_session = Arc::clone(&shared);
         let mut handler = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
+            progressed();
             events += 1;
             *kinds.entry(event.kind.as_str().to_owned()).or_default() += 1;
             let Some(on) = on else { return Ok(()) };
@@ -457,21 +504,23 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         };
         let mut connection = Shared { inner: Arc::clone(&shared) };
         match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
-            "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, &plans, &now, &mut handler).await,
-            "dbspec.finalize" => dbspec::finalize(&mut connection, dialect, &plans, &now, &mut handler).await,
+            "dbspec.apply" => dbspec::apply(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.recover" => dbspec::recover(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, server, &plans, &now, &mut handler).await,
+            "dbspec.finalize" => dbspec::finalize(&mut connection, dialect, server, &plans, &now, &mut handler).await,
             other => return Err(format!("OP_UNKNOWN {other}")),
         }
     };
     let elapsed = started.elapsed().as_millis();
     let session = Arc::into_inner(shared).ok_or("the connection of the command is still held")?.into_inner();
     state.sessions.insert(target, session);
+    let mut reported = None;
     let code = match &result {
         Ok(()) => "ok".to_owned(),
         Err(error) => {
             let failure = first_failure(error);
             let message = failure.to_string();
+            reported = Some(message.clone());
             let code = match failure {
                 ApplyError::Event(stop) if stop.is::<Stop>() => "stopped".to_owned(),
                 other => match other.code() {
@@ -484,6 +533,10 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 if !message.to_lowercase().contains(&detail.to_lowercase()) {
                     return Err(format!("the message {message:?} does not hold {detail:?}"));
                 }
+            }
+            let holds = crate::recipe::message_holds(&crate::recipe_reads::read(step, "message_holds")["message_holds"])?;
+            if let Some(text) = crate::recipe::missing_hold(&message, &holds) {
+                return Err(format!("the message {message:?} does not hold {text:?}"));
             }
             code
         }
@@ -501,6 +554,11 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             for kind in counted.iter().filter_map(Value::as_str) {
                 members.push(json!([kind, { "int": kinds.get(kind).copied().unwrap_or(0).to_string() }]));
             }
+        }
+    }
+    if crate::recipe_reads::read(step, "with_message")["with_message"].as_bool() == Some(true) {
+        if let Some(message) = reported {
+            members.push(json!(["message", { "text": message }]));
         }
     }
     Ok(json!({ "value": { "object": members } }))

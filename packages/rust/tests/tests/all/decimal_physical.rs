@@ -154,7 +154,12 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
     if driver == "sqlite" {
         std::fs::remove_file(dsn.trim_start_matches("sqlite://")).unwrap();
     } else {
-        let drop = if driver == "postgres" { format!("DROP DATABASE {name} WITH (FORCE)") } else { format!("DROP DATABASE {name}") };
+        // One session with foreign_key_checks = 0 (DIA-212).
+        let drop = if driver == "postgres" {
+            format!("DROP DATABASE {name} WITH (FORCE)")
+        } else {
+            format!("SET SESSION foreign_key_checks = 0; DROP DATABASE {name}")
+        };
         schema_set_server(driver, &drop).await;
     }
 }

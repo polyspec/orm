@@ -1,7 +1,7 @@
 // Tests the argument parsing of tests/cargo-test.mts: it splits cargo test options, the test name filter and the binary arguments, and reads cargo's
 // JSON messages, reading only the test binary and its package directory.
 import assert from 'node:assert/strict';
-import { executables, programEnvironment, programs, split } from '../../tests/cargo-test.mts';
+import { executables, programEnvironment, programs, removeEndedRuns, split } from '../../tests/cargo-test.mts';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statfsSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -163,3 +163,23 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
   }
 });
 
+// The ended-run case: a run started outside the check runner (no ORM_STEP, so its folder is cargo-test-direct-<pid>-<suffix>)
+// that ends by a signal never runs its finally, and no runner removes its folder, a copy of every test binary it ran. The next
+// cargo-test removes such a folder once its process has exited; it keeps the folder of a running process, the folder of a
+// step, which the check runner reports and removes, and any other name.
+caseTest('cargo-test removes the folder of a direct run whose process has exited and keeps the others', COMPUTE, () => {
+  const runs = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-runs-')));
+  try {
+    // A process that has exited and been reaped: spawnSync returns after the wait.
+    const dead = spawnSync('true').pid;
+    assert.ok(dead !== undefined);
+    const names = { ended: `cargo-test-direct-${dead}-AbC123`, running: `cargo-test-direct-${process.pid}-dEf456`,
+      step: `cargo-test-rust-check-${dead}-GhI789`, other: `client-db-rust-${dead}` };
+    for (const name of Object.values(names)) mkdirSync(join(runs, name, 'programs'), { recursive: true });
+    assert.deepEqual(removeEndedRuns(runs), [names.ended]);
+    assert.ok(!existsSync(join(runs, names.ended)), 'the folder of the ended direct run is kept');
+    for (const name of [names.running, names.step, names.other]) assert.ok(existsSync(join(runs, name)), `${name} was removed`);
+  } finally {
+    rmSync(runs, { recursive: true, force: true });
+  }
+});

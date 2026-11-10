@@ -19,7 +19,7 @@ impl CatalogConnection {
         let _closes = super::ClosesOnDrop(self);
         let mut connection = begin_mutation(self, &cancellation).await?;
         let result: Result<_, CatalogError> = async {
-            let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
+            let descriptor = lock_original(&mut connection, original, &self.dialect, self.server, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
             let affected = connection.exec(&sql, &keys).await.map_err(super::catalog_write_error)?;
             if affected != 1 {
@@ -28,7 +28,7 @@ impl CatalogConnection {
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;
             let after = lookup(&mut connection, &descriptor, &self.dialect, &keys, false).await?;
-            let after_descriptor = metadata::describe(&mut connection, &self.dialect, &descriptor.table).await?;
+            let after_descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &descriptor.table).await?;
             if descriptor != after_descriptor {
                 return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());
             }

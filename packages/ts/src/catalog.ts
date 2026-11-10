@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
 import { driverError, openDriver, parseDsn, sqlitePath, sqliteStoredCells, sqliteStoredRead, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
+import { mariadbDefault } from './dbspec/introspect_mysql.js';
 import { openMarkdown } from './markdown.js';
 import { OrmError } from './runtime_error.js';
 
@@ -216,7 +217,6 @@ function messageOf(error: unknown): string {
  * 1-based position (atColumn).
  */
 const RULES = {
-  year: [CODE_VALUE, 'MySQL YEAR has no grid cell'],
   timestamp: [CODE_VALUE, 'MySQL TIMESTAMP follows a time zone'],
   zoned: [CODE_VALUE, 'PostgreSQL timestamptz and timetz are unsupported'],
   numeric: [CODE_VALUE, 'PostgreSQL numeric is not finite'],
@@ -262,7 +262,7 @@ function atColumn(index: number, error: unknown): unknown {
 
 /**
  * The cell kind of a native type of a MySQL or PostgreSQL result column, as its driver names it (driver.ts mysqlColumn and pgColumn):
- * the kinds of INT-185, the refused types of INT-166 to INT-168, `none` for a type with no cell (INT-170), and `resolve` for a
+ * the kinds of INT-185, `year` for a MySQL YEAR (INT-166), the refused types of INT-167 and INT-168, `none` for a type with no cell (INT-170), and `resolve` for a
  * PostgreSQL type that only the server's catalog describes (an array, a range, a multirange, an enum, a composite, a pseudo-type).
  */
 type CellClass = 'integer' | 'unsigned' | 'float32' | 'float64' | 'decimal' | 'text' | 'boolean' | 'binary' | 'date' | 'time' | 'datetime' | 'year' | 'timestamp' | 'zoned' | 'none' | 'resolve';
@@ -751,11 +751,13 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
       const text = hostText(value);
       return typeof text === 'string' ? { kind: 'text', value: text } : { kind: 'binary', value: text };
     }
+    case 'year':
+      // The server flags a YEAR UNSIGNED, which does not make it an unsigned cell (INT-166).
+      return { kind: 'integer', value: checkedInteger(value, false) };
     case 'date':
     case 'time':
     case 'datetime':
       return { kind, value: driverTemporal(value, kind) };
-    case 'year':
     case 'timestamp':
     case 'zoned':
       throw refuse(kind);
@@ -806,7 +808,7 @@ function plainValue(value: unknown, column: DriverColumn, dialect: DriverName): 
 }
 
 /**
- * A value of a described table (INT-165): the refused types of INT-166 to INT-170, a non-finite PostgreSQL numeric (INT-169), a boolean
+ * A value of a described table (INT-165): the refused types of INT-167 to INT-170, a non-finite PostgreSQL numeric (INT-169), a boolean
  * column (INT-182), the declared precision of a MySQL or PostgreSQL temporal column (INT-103) and the dbspec text of a SQLite one.
  */
 function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
@@ -820,7 +822,6 @@ function describedValue(value: unknown, column: DriverColumn, described: Catalog
   if (value === null) return null;
   const kind = cellClass(dialect, column.type);
   switch (kind) {
-    case 'year':
     case 'timestamp':
     case 'zoned':
       throw refuse(kind);
@@ -1252,7 +1253,10 @@ const KIND_SQL: Record<DriverName, string> = {
 
 /** The columns of a relation in physical order: name, native type, nullable, generated, primary-key ordinal, automatic key, default and whether the default is an expression. */
 const COLUMNS_SQL: Record<DriverName, string> = {
-  mysql: "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+  // The key ordinal is a correlated subquery that names the table by constants: a join of KEY_COLUMN_USAGE makes MariaDB open every
+  // table of every database (DIA-210). The parameters are the namespace and the name, twice. The native type is COLUMN_TYPE in
+  // the form of MySQL 8.4, which MariaDB writes with an integer display width (DIA-204).
+  mysql: "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint','smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE '%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
   postgres: 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>\'\' OR a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum',
   sqlite: 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
 };
@@ -1305,7 +1309,8 @@ class Session {
   /** The PostgreSQL output settings when the transaction began (INT-186); undefined on MySQL and SQLite. */
   private settings: string[] | undefined;
 
-  public constructor(public readonly dialect: DriverName, private readonly session: DriverSession) {}
+  /** server is the server of a mysql connection, which the connection read by VERSION() (DIA-201); postgres or sqlite otherwise. */
+  public constructor(public readonly dialect: DriverName, private readonly session: DriverSession, private readonly server: DriverPool['server']) {}
 
   /** Fixes the PostgreSQL output settings for the transaction and reads the seven of INT-186 as the baseline of every read of cells. */
   public async fixOutputSettings(): Promise<void> {
@@ -1561,7 +1566,8 @@ class Session {
     const kind = catalogKind(this.dialect, nativeKind);
 
     // SQLite table-valued pragmas take the table name first and the schema second.
-    const args = this.dialect === 'sqlite' ? [ref.name, ref.namespace] : [ref.namespace, ref.name];
+    // The mysql query names the table twice, in its key-ordinal subquery and in its WHERE (DIA-210).
+    const args = this.dialect === 'sqlite' ? [ref.name, ref.namespace] : this.dialect === 'mysql' ? [ref.namespace, ref.name, ref.namespace, ref.name] : [ref.namespace, ref.name];
     const rows = (await this.plainRows(COLUMNS_SQL[this.dialect], args, METADATA_ROWS, METADATA_BYTES)).rows;
 
     const columns: CatalogColumn[] = [];
@@ -1573,7 +1579,20 @@ class Session {
       if (columns.some(existing => existing.name === name)) throw err(CODE_METADATA, `duplicate column "${name}"`);
       const ordinal = intOf(row[4], 'key ordinal');
       if (ordinal < 0) throw err(CODE_METADATA, 'negative key ordinal');
-      const defaultExpression = row[6] === null ? null : textOf(row[6], `default of column "${name}"`);
+      let defaultExpression = row[6] === null ? null : textOf(row[6], `default of column "${name}"`);
+      let expressionDefault = boolOf(row[7], 'expression default');
+      // MariaDB writes COLUMN_DEFAULT as SQL text and no DEFAULT_GENERATED, so the default is read in MySQL's form by the rule of the
+      // dbspec introspection, whose EXTRA is empty here: the query reads the DEFAULT_GENERATED flag, which MariaDB never sets (DIA-205).
+      if (this.server === 'mariadb') {
+        let read: { dflt: string | null; extra: string };
+        try {
+          read = mariadbDefault(defaultExpression, '');
+        } catch (error) {
+          throw err(CODE_METADATA, `column "${name}": ${error instanceof Error ? error.message : String(error)}`, error);
+        }
+        defaultExpression = read.dflt;
+        expressionDefault = read.extra === 'DEFAULT_GENERATED';
+      }
       const column: CatalogColumn = {
         name,
         nativeType: textOf(row[1], `native type of column "${name}"`),
@@ -1581,7 +1600,7 @@ class Session {
         generated: boolOf(row[3], 'generated'),
         automaticKey: boolOf(row[5], 'automatic key'),
         defaultExpression,
-        expressionDefault: boolOf(row[7], 'expression default'),
+        expressionDefault,
         checkPrecision: null,
       };
       if (ordinal > 0) keys.push({ ordinal, index: columns.length });
@@ -1644,11 +1663,13 @@ class Session {
     return raw.rows;
   }
 
-  /** Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger from the account (INT-119). */
+  /**
+   * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger from the account (INT-119).
+   * The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
+   */
   public async mysqlPartialRevokesOff(): Promise<void> {
-    const partial = (await this.rawRows('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096)).rows;
-    const [partialRow] = partial;
-    if (partial.length !== 1 || partialRow === undefined || partialRow.length !== 1 || Number(partialRow[0]) !== 0) {
+    const partial = (await this.rawRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", [], 1, 4096)).rows;
+    if (partial.length !== 0) {
       throw err(CODE_UNSUPPORTED, 'MySQL partial-revoke visibility requires verification');
     }
   }
@@ -1766,7 +1787,7 @@ export class CatalogConnection {
 
   private async begin(readOnly: boolean): Promise<Session> {
     this.ensureOpen();
-    const session = new Session(this.dialect, await this.reserveConnection());
+    const session = new Session(this.dialect, await this.reserveConnection(), this.pool.server);
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);

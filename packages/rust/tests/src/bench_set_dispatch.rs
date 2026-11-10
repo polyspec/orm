@@ -6,6 +6,7 @@
 use polyspec_orm::Db;
 use polyspec_orm_tests::bench_models::{bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
+use polyspec_orm_tests::recipe::ModelError;
 use serde_json::{json, Value};
 
 use crate::model::{Author, NoteReader, SharedNote, User, SCHEMA};
@@ -19,22 +20,22 @@ pub fn models() -> Box<dyn ModelDispatcher> {
 pub struct BenchSet;
 
 impl BenchModels for BenchSet {
-    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
         run(db, op, step).await
     }
 }
 
 /// The op of `step` on `db`, routed by the model that the step names; its fields are what the expect of the step compares.
-async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     match polyspec_orm_tests::recipe_reads::read(step, "model")["model"].as_str() {
         Some("Author") => author_op(db, op, step).await,
         Some("User") => user_op(db, op, step).await,
         Some("NoteReader") => note_reader_op(db, op, step).await,
-        other => Err(format!("model {other:?} has no recipe entry")),
+        other => Err(format!("model {other:?} has no recipe entry").into()),
     }
 }
 
-async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.count" => {
             let count = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
@@ -54,7 +55,7 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             for column in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {
                 query = match column.as_str() {
                     Some("seq") => query.order_by_seq_asc(),
-                    other => return Err(format!("Author column {other:?} has no recipe order")),
+                    other => return Err(format!("Author column {other:?} has no recipe order").into()),
                 };
             }
             let limit = polyspec_orm_tests::recipe_reads::read(step, "limit")["limit"].as_u64().unwrap_or(0);
@@ -82,24 +83,24 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 row = match column.as_str() {
                     "like_count" => row.set_like_count(i32::try_from(int(value)?).map_err(|e| e.to_string())?),
                     "uuid" => row.set_uuid(text(value)?),
-                    other => return Err(format!("Author column {other} has no recipe update")),
+                    other => return Err(format!("Author column {other} has no recipe update").into()),
                 };
             }
             row.update(false).await.map_err(fail)?;
             Ok(json!({}))
         }
-        other => Err(format!("OP_UNKNOWN {other}")),
+        other => Err(format!("OP_UNKNOWN {other}").into()),
     }
 }
 
-async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.delete" => {
             let mut query = User::new().connect(db);
             for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "where")["where"])? {
                 query = match column.as_str() {
                     "seq" => query.seq(int(value)?),
-                    other => return Err(format!("User column {other} has no recipe condition")),
+                    other => return Err(format!("User column {other} has no recipe condition").into()),
                 };
             }
             let rows = query.gets().await.map_err(fail)?;
@@ -108,18 +109,18 @@ async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             }
             Ok(json!({}))
         }
-        other => Err(format!("OP_UNKNOWN {other}")),
+        other => Err(format!("OP_UNKNOWN {other}").into()),
     }
 }
 
 /// model.query on NoteReader with its relation to the external SharedNote model: each row is the seq of the reader and the
 /// title of its shared note, and a reader whose note is missing has no row.
-async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.query" => {
             let relation = &polyspec_orm_tests::recipe_reads::read(step, "relation")["relation"];
             if relation["model"].as_str() != Some("SharedNote") || names_of_pairs(&relation["match"]) != [["shared_note_seq", "seq"]] {
-                return Err(format!("NoteReader relation {relation} has no recipe entry"));
+                return Err(format!("NoteReader relation {relation} has no recipe entry").into());
             }
             if names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]) != ["seq"]
                 || names(&relation["columns"]) != ["title"]
@@ -128,7 +129,8 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String
                 return Err(format!(
                     "NoteReader columns {} with relation {relation} have no recipe entry",
                     polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]
-                ));
+                )
+                .into());
             }
             let rows =
                 NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.map_err(fail)?;
@@ -142,7 +144,7 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String
             }
             Ok(json!({ "rows": out }))
         }
-        other => Err(format!("OP_UNKNOWN {other}")),
+        other => Err(format!("OP_UNKNOWN {other}").into()),
     }
 }
 
@@ -179,7 +181,7 @@ fn filter_author(db: &Db, where_: &Value) -> Result<Author, String> {
     Ok(query)
 }
 
-fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
+fn author_cell(row: &Author, column: &str) -> Result<Value, ModelError> {
     match column {
         "seq" => Ok(json!({ "int": row.get_seq().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
@@ -189,7 +191,7 @@ fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
             Some(uuid) => json!({ "text": uuid }),
             None => json!({ "null": "text" }),
         }),
-        other => Err(format!("Author column {other} has no recipe getter")),
+        other => Err(format!("Author column {other} has no recipe getter").into()),
     }
 }
 

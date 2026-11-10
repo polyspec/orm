@@ -30,7 +30,7 @@ func watchRollback(conn *sql.Conn) (*rollbackWatch, error) {
 		return hook(driverConn, func() { w.rolled.Store(true) })
 	})
 	if err != nil {
-		return w, mapDriverErr(err)
+		return w, mapDriverErr(err, "")
 	}
 	w.set = !markdown
 	return w, nil
@@ -50,7 +50,7 @@ func (w *rollbackWatch) stop(conn *sql.Conn) error {
 	w.set = false
 	hook := registeredSQLiteRollbackHook()
 	if err := conn.Raw(func(driverConn any) error { return hook(driverConn, nil) }); err != nil {
-		return mapDriverErr(err)
+		return mapDriverErr(err, "")
 	}
 	return nil
 }

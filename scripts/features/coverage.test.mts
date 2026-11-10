@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { before } from 'node:test';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { setup } from '@polyspec/kit/test-hooks';
 import { execFileSync } from 'node:child_process';
@@ -31,7 +32,9 @@ type Reports = Record<string, Report[]>;
 // The sample crate is not the orm workspace, so it does not use the test feature of the orm workspace that the Makefile sets.
 delete process.env.ORM_RUST_TEST_FEATURES;
 // A node --test of a sample entry would take this variable of the run around these cases and report to it instead of running the file.
-delete process.env.NODE_TEST_CONTEXT;
+// It is removed in a hook: registering the hook starts the test harness of this file, which reads the variable first and so
+// reports these cases to the run around them; removed before, the cases report to a harness of their own and the run sees none.
+before(() => { delete process.env.NODE_TEST_CONTEXT; });
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',

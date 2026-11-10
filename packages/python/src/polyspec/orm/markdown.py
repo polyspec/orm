@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
+from polyspec.orm.dbspec.parse import goq
 
 __all__ = ["MarkdownDsn", "parse_markdown_dsn"]
 
@@ -42,7 +43,7 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
     if url.hostname != "127.0.0.1":
         raise OrmError(
             codes.CONFIG,
-            f"{_FORM}; host {url.hostname!r}: a flowmark server listens on 127.0.0.1 only",
+            f"{_FORM}; host {goq(url.hostname or '')}: a flowmark server listens on 127.0.0.1 only",
         )
     try:
         port = url.port
@@ -52,14 +53,14 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
         given = url.netloc.rpartition(":")[2] if ":" in url.netloc else ""
         raise OrmError(
             codes.CONFIG,
-            f"{_FORM}; port {given!r} is not 1 to 65535: give the port that flowmark serve "
+            f"{_FORM}; port {goq(given)} is not 1 to 65535: give the port that flowmark serve "
             f"printed",
         )
     corpus = url.path[1:] if url.path.startswith("/") else url.path
     if corpus == "" or "/" in corpus:
         raise OrmError(
             codes.CONFIG,
-            f"{_FORM}; the path {url.path!r} is not one corpus name: give the corpus root's "
+            f"{_FORM}; the path {goq(url.path)} is not one corpus name: give the corpus root's "
             f"directory name",
         )
     parameters = parse_qsl(url.query, keep_blank_values=True)
@@ -146,7 +147,7 @@ class MarkdownSession:
             self.close()
             raise OrmError(
                 codes.INTERNAL,
-                f"the flowmark server answered {answer!r}, not a JSON object",
+                f"the flowmark server answered {goq(answer.decode('utf-8', 'backslashreplace'))}, not a JSON object",
             )
         if "error" in probe:
             e = probe["error"]

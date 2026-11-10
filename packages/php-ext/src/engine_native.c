@@ -361,16 +361,19 @@ ZEND_METHOD(Polyspec_Orm_Assemble, cells)
 
 /* ---- Engine ---- */
 
-/* new Engine($model, $dialect, $cacheSize): a Validator of the model and a Planner of the model and the Dialect. */
-static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size)
+/* new Engine($model, $dialect, $cacheSize, $server): a Validator of the model and a Planner of the model and the Dialect of the
+ * server (DIA-209). */
+static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size, zend_string *server)
 {
-    zval validator, planner, dialect_object, name;
+    zval validator, planner, dialect_object, dialect_args[2];
     if (!engine_new("Polyspec\\Orm\\Validator", &validator, 1, model)) {
         return false;
     }
-    ZVAL_STR_COPY(&name, dialect);
-    bool ok = engine_new("Polyspec\\Orm\\Dialect", &dialect_object, 1, &name);
-    zval_ptr_dtor(&name);
+    ZVAL_STR_COPY(&dialect_args[0], dialect);
+    if (server != NULL) ZVAL_STR_COPY(&dialect_args[1], server); else ZVAL_NULL(&dialect_args[1]);
+    bool ok = engine_new("Polyspec\\Orm\\Dialect", &dialect_object, 2, dialect_args);
+    zval_ptr_dtor(&dialect_args[0]);
+    zval_ptr_dtor(&dialect_args[1]);
     if (!ok) {
         zval_ptr_dtor(&validator);
         return false;
@@ -398,28 +401,34 @@ static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend
 ZEND_METHOD(Polyspec_Orm_Engine, __construct)
 {
     zval *model;
-    zend_string *dialect;
+    zend_string *dialect, *server = NULL;
     zend_long cache_size;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    ZEND_PARSE_PARAMETERS_START(3, 4)
         Z_PARAM_OBJECT_OF_CLASS(model, polyspec_runtime_model_ce)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_STR_OR_NULL(server)
     ZEND_PARSE_PARAMETERS_END();
-    if (!engine_construct(ZEND_THIS, model, dialect, cache_size)) {
+    if (!engine_construct(ZEND_THIS, model, dialect, cache_size, server)) {
         RETURN_THROWS();
     }
 }
 
-/* Engine::for: the engine shared by the generated model of a manifest hash and by the dialect. */
+/* Engine::for: the engine shared by the generated model of a manifest hash, by the dialect and by the server, whose plans may
+ * differ on one dialect (DIA-209), so a plan of one server never serves another. */
 ZEND_METHOD(Polyspec_Orm_Engine, for)
 {
-    zend_string *hash, *dialect;
+    zend_string *hash, *dialect, *server = NULL;
     zend_long cache_size;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    ZEND_PARSE_PARAMETERS_START(3, 4)
         Z_PARAM_STR(hash)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_STR_OR_NULL(server)
     ZEND_PARSE_PARAMETERS_END();
+    if (server == NULL) server = dialect;
     zval *engines = zend_read_static_property(polyspec_engine_ce, "engines", sizeof("engines") - 1, 0);
     if (engines == NULL || Z_TYPE_P(engines) != IS_ARRAY) {
         zend_throw_error(NULL, "Polyspec\\Orm\\Engine::$engines is not an array");
@@ -429,6 +438,8 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
     smart_str_append(&key, hash);
     smart_str_appendc(&key, '\0');
     smart_str_append(&key, dialect);
+    smart_str_appendc(&key, '\0');
+    smart_str_append(&key, server);
     zend_string *k = smart_str_extract(&key);
     zval *found = zend_symtable_find(Z_ARRVAL_P(engines), k);
     if (found != NULL) {
@@ -448,7 +459,7 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
         RETURN_THROWS();
     }
     object_init_ex(&engine, polyspec_engine_ce);
-    if (!engine_construct(&engine, &model, dialect, cache_size)) {
+    if (!engine_construct(&engine, &model, dialect, cache_size, server)) {
         zval_ptr_dtor(&engine);
         zval_ptr_dtor(&model);
         zend_string_release(k);

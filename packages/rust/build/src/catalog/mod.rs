@@ -67,6 +67,8 @@ pub struct CatalogConnection {
     connection: Option<Conn>,
     pool: Pool,
     dialect: String,
+    /// The server, which the connection reads once when it connects (DIA-201).
+    server: polyspec_orm_schema::dbspec::Server,
     /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
     reopen_until: std::sync::Mutex<std::time::Instant>,
 }
@@ -105,12 +107,16 @@ impl CatalogConnection {
             ConnectOptions::Markdown(dsn) => Pool::Markdown(polyspec_orm::markdown::MarkdownPool::connect(dsn, 4).await.map_err(catalog_write_error)?),
         };
         let mut connection = Some(Conn::acquire(&pool).await.map_err(connect_error)?);
+        let server = match connection.as_mut() {
+            Some(connection) => metadata::server(connection, &dialect).await?,
+            None => return Err("CATALOG_CONNECTION: the connection of the connect is missing".into()),
+        };
         let mut reopen_until = std::time::Instant::now();
         if dialect == "mysql" {
             drop(connection.take());
             reopen_until += REOPEN_AFTER_CLOSE;
         }
-        Ok(Self { connection, pool, dialect, reopen_until: std::sync::Mutex::new(reopen_until) })
+        Ok(Self { connection, pool, dialect, server, reopen_until: std::sync::Mutex::new(reopen_until) })
     }
     pub fn dialect(&self) -> &str {
         &self.dialect
@@ -122,14 +128,14 @@ impl CatalogConnection {
     }
     pub async fn describe_table(&mut self, table: &TableRef) -> Result<TableMetadata, CatalogError> {
         let mut connection = self.read_only_connection("SELECT 1").await?;
-        let result = metadata::describe(&mut connection, &self.dialect, table).await;
+        let result = metadata::describe(&mut connection, &self.dialect, self.server, table).await;
         self.end_read(connection, result).await
     }
     /// Reads one bounded table page; this does not authorize row mutations.
     pub async fn table_page(&mut self, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, CatalogError> {
         page::validate_request(table, limit, offset)?;
         let mut connection = self.read_only_connection("SELECT 1").await?;
-        let result = page::read(&mut connection, &self.dialect, table, limit, offset).await;
+        let result = page::read(&mut connection, &self.dialect, self.server, table, limit, offset).await;
         self.end_read(connection, result).await
     }
     /// Executes one caller-authorized statement; this does not impose read-only isolation.

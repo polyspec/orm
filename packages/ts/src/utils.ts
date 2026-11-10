@@ -1,7 +1,7 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Runner, type Schema, type TxFrame } from './database.js';
-import { driverValue, type DriverName, type DriverSession, type DriverValue, type PoolStats } from './driver.js';
+import { driverValue, type DriverPool, type DriverSession, type DriverValue, type PoolStats } from './driver.js';
 import type { StatementKind } from './events.js';
 import { AesKeyring, storedVersion } from './aes.js';
 import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspecStatements, type DbspecDocument } from './dbspec/index.js';
@@ -72,17 +72,20 @@ function externalTexts(model: RuntimeModel): Record<string, string> {
   return Object.fromEntries(model.documents.filter(d => d.external === true).map(d => [d.name, emitDbspec(d)]));
 }
 
-/** Introspects the connection's database. run sends the connection's statements. A catalog query is a schema statement that does not point to a table. */
-async function introspect(run: Runner, driver: DriverName): Promise<DbspecIntrospection> {
-  return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values)), driver, 'schema');
+/**
+ * Introspects the connection's database by the dialect of pool and the server that its connection read at connect (DIA-203). run
+ * sends the connection's statements. A catalog query is a schema statement that does not point to a table.
+ */
+async function introspect(run: Runner, pool: DriverPool): Promise<DbspecIntrospection> {
+  return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values)), pool.name, pool.server, 'schema');
 }
 
 /**
  * Introspects the connection's database, and if a table that the set writes through an external document differs from that document, it is CONFIG (docs/spec/dbspec.md
  * "External documents").
  */
-async function introspectSet(run: Runner, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
-  const live = await introspect(run, driver);
+async function introspectSet(run: Runner, pool: DriverPool, model: RuntimeModel): Promise<DbspecIntrospection> {
+  const live = await introspect(run, pool);
   const differences = externalDifferences(live.document, model.documents);
   if (differences.length > 0) throw externalError(differences);
   return live;
@@ -271,13 +274,13 @@ export class SchemaUtils {
     // MySQL commits schema statements implicitly, so they run outside a transaction.
     if (driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
     const apply = async (run: Runner): Promise<void> => {
-      let live = await introspectSet(run, driver, model);
+      let live = await introspectSet(run, this.u.db.pool, model);
       const found = new Set([...live.document.tables.map(t => t.name), ...live.unsupported.map(u => u.table)]);
       const present = target.tables.filter(t => found.has(t.name)).map(t => t.name);
       if (present.length > 0 && present.length < target.tables.length) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
       if (present.length === 0) {
         for (const statement of statements) await run('schema', [statement.table], statement.sql);
-        live = await introspect(run, driver);
+        live = await introspect(run, this.u.db.pool);
       }
       verifySet(installedDifferences(live.document, live.unsupported, target));
     };
@@ -305,13 +308,13 @@ export class SchemaUtils {
     const target = schemaTarget(model);
     const driver = this.u.db.pool.name;
     const apply = async (run: Runner): Promise<string[]> => {
-      let live = await introspectSet(run, driver, model);
+      let live = await introspectSet(run, this.u.db.pool, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
       if (differences.length > 0) throw new OrmError(codes.SCHEMA_DIFFERS, `the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ${differences.join('; ')}`);
       // The statements of a step create or change the tables that its effect points to.
       for (const step of steps) await run('schema', step.effect.table === '' ? [] : [step.effect.table], step.statement);
       // Reads the database again after running the step to check that it equals the set.
-      if (steps.length > 0) live = await introspect(run, driver);
+      if (steps.length > 0) live = await introspect(run, this.u.db.pool);
       verifySet(installedDifferences(live.document, live.unsupported, target));
       return [...added];
     };

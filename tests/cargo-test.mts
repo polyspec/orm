@@ -18,8 +18,9 @@
 //            (Runs under the lease: builds, copies the test binary and dep-info to <run dir>, and records them in binaries.json.
 //             Also used by scripts/features/coverage.mts.)
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
+import { errorCode } from './errors.mts';
 import { runLong, stepLines, type Step } from './testcase.mts';
 import { cloneFile } from '../scripts/clone-file.mts';
 import { parseCargoMessage } from '../scripts/json/formats.mts';
@@ -27,6 +28,24 @@ import { readJsonFile } from '../scripts/json/schema.mts';
 
 /** binaries.json of a --copy run: the copied test binaries and the copied package programs by name. */
 export type Binaries = { tests: { executable: string; manifestDir: string; target: string; copy: string }[]; programs: Record<string, string> };
+
+// removeEndedRuns removes from <runs> the folder of each direct run (cargo-test-direct-<pid>-<suffix>, started with no ORM_STEP)
+// whose process has exited, and returns their names. Such a run that ends by a signal never runs its finally, no runner removes
+// its folder, and the folder keeps a copy of every test binary it ran. The pid is in the name, so this is one read of the
+// declared place at start, not a search; a folder whose process runs is kept, and so is the folder of a step, which the check
+// runner reports and removes when the step ends.
+export function removeEndedRuns(runs: string): string[] {
+  const removed: string[] = [];
+  for (const name of readdirSync(runs)) {
+    const pid = Number(/^cargo-test-direct-([1-9]\d*)-[A-Za-z0-9]{6}$/.exec(name)?.[1]);
+    if (!Number.isSafeInteger(pid) || pid === process.pid) continue;
+    try { process.kill(pid, 0); continue; }
+    catch (error) { if (errorCode(error) !== 'ESRCH') continue; }
+    rmSync(join(runs, name), { recursive: true, force: true });
+    removed.push(name);
+  }
+  return removed;
+}
 
 /** readBinaries reads binaries.json of a --copy run directory against its schema (scripts/schema/binaries.schema.json). */
 export function readBinaries(runDir: string): Binaries {
@@ -162,6 +181,7 @@ async function main() {
   // the runner finds and removes it when the step ends.
   const runs = resolve(new URL('..', import.meta.url).pathname, '.runtime/run');
   mkdirSync(runs, { recursive: true });
+  for (const name of removeEndedRuns(runs)) console.log(`cargo-test: removed ${join(runs, name)}, the folder of a run that has ended`);
   const runDir = mkdtempSync(join(runs, `cargo-test-${process.env.ORM_STEP ?? 'direct'}-${process.pid}-`));
   try {
     let built = false;

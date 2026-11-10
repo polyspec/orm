@@ -104,12 +104,12 @@ type OutCol struct {
 	Precision int  `json:"precision,omitempty"`
 	Scale     *int `json:"scale,omitempty"`
 	// SumParts are the cells of the sums of the four 16-bit parts of that column, highest first, and NonInteger the cell
-	// that reports a value that is not an integer, on SQLite and markdown (DIA-202, PRT-84).
+	// that reports a value that is not an integer, on SQLite and markdown (DIA-218, PRT-84).
 	SumParts   []int `json:"sum_parts,omitempty"`
 	NonInteger *int  `json:"non_integer,omitempty"`
 }
 
-// Cells is the number of cells of the row that the column reads: one, or the cells of a split sum (DIA-202).
+// Cells is the number of cells of the row that the column reads: one, or the cells of a split sum (DIA-218).
 func (c OutCol) Cells() int {
 	if len(c.SumParts) == 0 {
 		return 1

@@ -8,11 +8,12 @@
 # wall-clock time: it is a timer that ends a stalled case, not a limit on the case's own computation. Python cannot
 # interrupt a running thread, so a case that is still running GRACE after its deadline gets a line on stderr and the
 # process ends with exit code 1, as the other implementations end a case that did not stop; the later cases do not run.
+import contextlib
 import os
 import sys
 import threading
 import unittest
-from typing import Any, Optional, TextIO
+from typing import Any, Callable, Iterator, Optional, TextIO
 
 # The deadline classes. A case uses the class of the work it does; a case that takes longer than its class states its own
 # deadline with the reason in a comment.
@@ -27,6 +28,18 @@ DATABASE = 120.0
 PROCESS = 300.0
 # GRACE: how long after its deadline a case still running is failed and the process ended.
 GRACE = 5.0
+# STEP_BUDGET and FIXED_BUDGET: the deadline of a case that applies its steps one after another is STEP_BUDGET for each step
+# plus FIXED_BUDGET for the work around them (the Go testcase package's StepBudget). The MySQL stress plan applies its steps at
+# 28 to 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: an upper bound, and a stuck step
+# is found by StepGuard long before.
+STEP_BUDGET = 0.25
+FIXED_BUDGET = 60.0
+
+
+def step_budget(steps: int) -> float:
+    """The deadline of a case that applies `steps` steps one after another."""
+    return steps * STEP_BUDGET + FIXED_BUDGET
+
 
 _output = threading.Lock()
 
@@ -63,6 +76,62 @@ def duration(seconds: float) -> str:
     return f"{f'{hours}h' if hours else ''}{minutes}m{_trim(rest)}s"
 
 
+# The cleanups of the process that ends a stalled case (ending): a case past its deadline or ended by its StepGuard ends
+# the process with os._exit, which runs no finally block and no context exit, so a database, a corpus server or a file
+# that the case made would stay. Each cleanup runs on that path, the latest first; each gets CLEANUP seconds, so a cleanup
+# that waits for the stuck statement cannot keep the process from ending.
+CLEANUP = 30.0
+_cleanups: list[tuple[str, Callable[[], None]]] = []
+_cleanups_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def ending(name: str, cleanup: Callable[[], None]) -> Iterator[None]:
+    """Runs cleanup if the process ends a stalled case inside the block (a deadline or a StepGuard). A block that ends
+    by itself runs its own cleanup, so cleanup is withdrawn when the block ends."""
+    entry = (name, cleanup)
+    with _cleanups_lock:
+        _cleanups.append(entry)
+    try:
+        yield
+    finally:
+        with _cleanups_lock:
+            if entry in _cleanups:
+                _cleanups.remove(entry)
+
+
+def _end_process(line: str) -> None:
+    """Writes line on stderr, runs the cleanups of ending, the latest first, and ends the process with exit code 1."""
+    with _output:
+        sys.stderr.write(line + "\n")
+        sys.stderr.flush()
+    with _cleanups_lock:
+        pending = list(reversed(_cleanups))
+        _cleanups.clear()
+    for name, cleanup in pending:
+        failure: list[BaseException] = []
+
+        def run(cleanup: Callable[[], None] = cleanup) -> None:
+            try:
+                cleanup()
+            except BaseException as error:  # noqa: BLE001 - every failure of a cleanup is written, none stops the others
+                failure.append(error)
+
+        worker = threading.Thread(target=run, daemon=True)
+        worker.start()
+        worker.join(CLEANUP)
+        problem = (
+            f"did not end within {_trim(CLEANUP)}s"
+            if worker.is_alive()
+            else (f"failed: {failure[0]!r}" if failure else "")
+        )
+        if problem:
+            with _output:
+                sys.stderr.write(f"cleanup {name} {problem}\n")
+                sys.stderr.flush()
+    os._exit(1)
+
+
 class _Running:
     def __init__(self, name: str, deadline: float) -> None:
         self.name = name
@@ -71,15 +140,66 @@ class _Running:
         self.watchdog.daemon = True
 
     def _expire(self) -> None:
-        with _output:
-            sys.stderr.write(
-                f"{self.name}: deadline {duration(self.deadline)} exceeded and the case did not stop\n"
-            )
-            sys.stderr.flush()
-        os._exit(1)
+        _end_process(
+            f"{self.name}: deadline {duration(self.deadline)} exceeded and the case did not stop"
+        )
 
 
 _current: Optional[_Running] = None
+
+
+def stall_text(limit: float) -> str:
+    """The failure text of a case whose StepGuard saw no step within `limit` seconds; every runtime writes the same text."""
+    return f"no step was applied within {_trim(limit)}s"
+
+
+def budget_text(budget: float) -> str:
+    """The failure text of a case that kept applying steps past its step `budget` seconds (StepGuard); every runtime
+    writes the same text."""
+    return f"step budget {_trim(budget)}s exceeded"
+
+
+class StepGuard:
+    """Ends a case with a step deadline (the Go testcase package's StepGuard): at its step `budget` seconds, and when
+    progress is not called within `stall` seconds. Each progress restarts the stall limit, so a long case that keeps applying
+    steps is ended only by its budget, while a stuck step is ended by the stall limit. Python cannot interrupt the running
+    thread, so the guard writes `<name>: <text>` on stderr and ends the process, as a case past its deadline ends, after the
+    cleanups of ending; stop releases the guard."""
+
+    def __init__(self, name: str, budget: float, stall: float) -> None:
+        self.name = name
+        self.stall = stall
+        self._lock = threading.Lock()
+        self._stalled: Optional[threading.Timer] = None
+        self._spent: Optional[threading.Timer] = threading.Timer(
+            budget, self._expire, (budget_text(budget),)
+        )
+        self._spent.daemon = True
+        self._spent.start()
+        self.progress()
+
+    def _expire(self, text: str) -> None:
+        _end_process(f"{self.name}: {text}")
+
+    def progress(self) -> None:
+        with self._lock:
+            if self._spent is None:
+                return
+            if self._stalled is not None:
+                self._stalled.cancel()
+            self._stalled = threading.Timer(
+                self.stall, self._expire, (stall_text(self.stall),)
+            )
+            self._stalled.daemon = True
+            self._stalled.start()
+
+    def stop(self) -> None:
+        with self._lock:
+            for timer in (self._stalled, self._spent):
+                if timer is not None:
+                    timer.cancel()
+            self._stalled = None
+            self._spent = None
 
 
 def step(text: str) -> None:

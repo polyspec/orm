@@ -62,9 +62,9 @@ final class PlanApply
                 . 'AND TABLE_NAME = ? AND COLUMN_NAME = ?',
             'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() '
                 . 'AND TABLE_NAME = ? AND INDEX_NAME = ?',
-            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '
+            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = '
                 . 'DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
-            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() '
+            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() '
                 . 'AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?',
         ],
         'postgres' => [
@@ -109,10 +109,12 @@ final class PlanApply
     private function __construct(
         private readonly \PDO $c,
         string $dialect,
+        private readonly string $server,
         array $plans,
         private readonly \Closure $now,
         private readonly ?\Closure $events
     ) {
+        Dbspec::checkServer($dialect, $server);
         $this->r = new Renderer($dialect);
         if ($c->getAttribute(\PDO::ATTR_ERRMODE) !== \PDO::ERRMODE_EXCEPTION) {
             throw new \InvalidArgumentException('apply needs a connection whose error mode is PDO::ERRMODE_EXCEPTION');
@@ -130,9 +132,15 @@ final class PlanApply
      * @param PlanClock $now as for Dbspec::apply
      * @param PlanEventHandler|null $events as for Dbspec::apply
      */
-    public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
-    {
-        self::inSession($c, $dialect, $plans, $now, $events, self::applyRemaining(...));
+    public static function apply(
+        \PDO $c,
+        string $dialect,
+        string $server,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
+        self::inSession($c, $dialect, $server, $plans, $now, $events, self::applyRemaining(...));
     }
 
     /**
@@ -140,9 +148,15 @@ final class PlanApply
      * @param PlanClock $now as for Dbspec::recover
      * @param PlanEventHandler|null $events as for Dbspec::recover
      */
-    public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
-    {
-        self::inSession($c, $dialect, $plans, $now, $events, self::recoverLastPlan(...));
+    public static function recover(
+        \PDO $c,
+        string $dialect,
+        string $server,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
+        self::inSession($c, $dialect, $server, $plans, $now, $events, self::recoverLastPlan(...));
     }
 
     /**
@@ -150,9 +164,15 @@ final class PlanApply
      * @param PlanClock $now as for Dbspec::rollback
      * @param PlanEventHandler|null $events as for Dbspec::rollback
      */
-    public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
-    {
-        self::inSession($c, $dialect, $plans, $now, $events, self::rollbackLastPlan(...));
+    public static function rollback(
+        \PDO $c,
+        string $dialect,
+        string $server,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
+        self::inSession($c, $dialect, $server, $plans, $now, $events, self::rollbackLastPlan(...));
     }
 
     /**
@@ -160,9 +180,15 @@ final class PlanApply
      * @param PlanClock $now as for Dbspec::finalize
      * @param PlanEventHandler|null $events as for Dbspec::finalize
      */
-    public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
-    {
-        self::inSession($c, $dialect, $plans, $now, $events, self::finalizeApplied(...));
+    public static function finalize(
+        \PDO $c,
+        string $dialect,
+        string $server,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
+        self::inSession($c, $dialect, $server, $plans, $now, $events, self::finalizeApplied(...));
     }
 
     private static function applyRemaining(self $a): void
@@ -278,12 +304,13 @@ final class PlanApply
     private static function inSession(
         \PDO $c,
         string $dialect,
+        string $server,
         array $plans,
         \Closure $now,
         ?\Closure $events,
         \Closure $operation
     ): void {
-        $apply = new self($c, $dialect, $plans, $now, $events);
+        $apply = new self($c, $dialect, $server, $plans, $now, $events);
         $apply->session(static function () use ($apply, $operation): void {
             $operation($apply);
         });
@@ -668,7 +695,7 @@ final class PlanApply
      */
     private function mismatch(string $want): string
     {
-        $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
+        $result = Dbspec::introspect($this->c, $this->r->dialect, $this->server, 'schema');
         if ($result->unsupported !== []) {
             $u = $result->unsupported[0];
             return sprintf(
@@ -994,6 +1021,6 @@ final class PlanApply
      */
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool
     {
-        return (new self($c, $dialect, [], static fn() => new \DateTimeImmutable(), null))->effectHolds($e);
+        return (new self($c, $dialect, $dialect, [], static fn() => new \DateTimeImmutable(), null))->effectHolds($e);
     }
 }

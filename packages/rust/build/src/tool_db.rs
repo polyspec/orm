@@ -206,9 +206,9 @@ macro_rules! grid_mysql {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
         match row.columns()[i].type_info().name() {
-            // A YEAR() result is a MySQL YEAR field, which has no grid cell (INT-166), and a TIMESTAMP follows the time zone of
-            // the session (INT-167); a NULL of either is a null cell.
-            "YEAR" => grid::mysql_value(row, i).and_then(|value| value.map_or(Ok(GridCell::Null), |_| Err(value::refuse(value::MYSQL_YEAR)))),
+            // A YEAR value is its integer, whichever type the server reports for it (INT-166), and a TIMESTAMP follows the time
+            // zone of the session (INT-167); a NULL of either is a null cell.
+            "YEAR" => grid::mysql_year(row, i),
             "TIMESTAMP" => grid::mysql_value(row, i).and_then(|value| value.map_or(Ok(GridCell::Null), |_| Err(value::refuse(value::MYSQL_TIMESTAMP)))),
             "DECIMAL" => row
                 .try_get::<Option<bigdecimal::BigDecimal>, _>(i)

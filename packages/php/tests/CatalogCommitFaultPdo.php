@@ -9,14 +9,15 @@ use PDOException;
 
 /**
  * An in-memory SQLite PDO whose next COMMIT throws $commitFailure when $failCommit is set, and whose next ROLLBACK
- * throws $rollbackFailure when $failRollback is set; every other statement runs normally.
+ * throws $rollbackFailure (a driver error unless a test sets another throwable) when $failRollback is set; every other
+ * statement runs normally.
  */
 final class CatalogCommitFaultPdo extends PDO
 {
     public bool $failCommit = false;
     public bool $failRollback = false;
     public PDOException $commitFailure;
-    public PDOException $rollbackFailure;
+    public \Throwable $rollbackFailure;
 
     public function __construct()
     {

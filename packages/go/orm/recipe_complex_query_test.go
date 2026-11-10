@@ -18,6 +18,13 @@ func TestRecipeComplexQueryMysql(t *testing.T) {
 	recipe.Run(t, complexQueryRecipe, "mysql")
 }
 
+// TestRecipeComplexQueryMariadb runs the complex_query recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeComplexQueryMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, complexQueryRecipe, "mariadb")
+}
+
 // TestRecipeComplexQueryPostgres runs the complex_query recipe on PostgreSQL, each case on a case database (FCV-3).
 func TestRecipeComplexQueryPostgres(t *testing.T) {
 	testcase.Group(t)

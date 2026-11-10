@@ -187,8 +187,25 @@ static zend_string *mysql_code(zend_long number, bool has_number, zend_string *s
     else if (has_number && (number == 1451 || number == 1452)) code = "FOREIGN_KEY";
     else if (has_number && (number == 1205 || number == 1317 || number == 3024)) code = "CANCELED";
     else if (has_number && (number == 1290 || number == 1792)) code = "READ_ONLY";
-    else if (has_number && (number == 3819 || number == 4025)) code = "CONSTRAINT";
+    /* MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, which is DRIVER (DIA-201). */
+    else if (has_number && number == 3819) code = "CONSTRAINT";
     else if (has_number && (number == 2006 || number == 2013 || number == 4031)) code = "CONNECTION_LOST";
+    return zend_string_init(code, strlen(code), 0);
+}
+
+/* The code of a MariaDB error by its error number, or by its SQLSTATE when the number is not known (DIA-201): MariaDB numbers
+ * its errors above 1999 otherwise than MySQL. It has no 3572, 3819, 3024 or 4031 of MySQL; its 4025 is ER_CONSTRAINT_FAILED and
+ * its 1969 ER_STATEMENT_TIMEOUT. */
+static zend_string *mariadb_code(zend_long number, bool has_number, zend_string *state)
+{
+    const char *code = "DRIVER";
+    if ((has_number && number == 1213) || zend_string_equals_literal(state, "40001")) code = "DEADLOCK";
+    else if ((has_number && number == 1062) || (!has_number && zend_string_equals_literal(state, "23000"))) code = "DUPLICATE_KEY";
+    else if (has_number && (number == 1451 || number == 1452)) code = "FOREIGN_KEY";
+    else if (has_number && (number == 1205 || number == 1317 || number == 1969)) code = "CANCELED";
+    else if (has_number && (number == 1290 || number == 1792)) code = "READ_ONLY";
+    else if (has_number && number == 4025) code = "CONSTRAINT";
+    else if (has_number && (number == 2006 || number == 2013)) code = "CONNECTION_LOST";
     return zend_string_init(code, strlen(code), 0);
 }
 
@@ -203,7 +220,8 @@ static zend_string *postgres_code(zend_string *state)
     else if (zend_string_equals_literal(state, "25006")) code = "READ_ONLY";
     else if (zend_string_equals_literal(state, "23514")) code = "CONSTRAINT";
     else if (ZSTR_LEN(state) >= 2 && ZSTR_VAL(state)[0] == '0' && ZSTR_VAL(state)[1] == '8') code = "CONNECTION_LOST";
-    else if (zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02") || zend_string_equals_literal(state, "57P05")) code = "CONNECTION_LOST";
+    else if (zend_string_equals_literal(state, "25P03") || zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02")
+             || zend_string_equals_literal(state, "57P05")) code = "CONNECTION_LOST";
     return zend_string_init(code, strlen(code), 0);
 }
 
@@ -217,6 +235,18 @@ ZEND_METHOD(Polyspec_Orm_OrmException, mysqlCode)
         Z_PARAM_STR(state)
     ZEND_PARSE_PARAMETERS_END();
     RETURN_STR(mysql_code(number, !is_null, state));
+}
+
+ZEND_METHOD(Polyspec_Orm_OrmException, mariadbCode)
+{
+    zend_long number = 0;
+    zend_string *state;
+    bool is_null = false;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_LONG_OR_NULL(number, is_null)
+        Z_PARAM_STR(state)
+    ZEND_PARSE_PARAMETERS_END();
+    RETURN_STR(mariadb_code(number, !is_null, state));
 }
 
 ZEND_METHOD(Polyspec_Orm_OrmException, postgresCode)
@@ -310,8 +340,8 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
     zend_string *code = NULL;
     if (zend_string_equals_literal(driver, "postgres")) {
         bool connection_lost = (ZSTR_LEN(state) >= 2 && ZSTR_VAL(state)[0] == '0' && ZSTR_VAL(state)[1] == '8')
-            || zend_string_equals_literal(state, "57P01") || zend_string_equals_literal(state, "57P02")
-            || zend_string_equals_literal(state, "57P05");
+            || zend_string_equals_literal(state, "25P03") || zend_string_equals_literal(state, "57P01")
+            || zend_string_equals_literal(state, "57P02") || zend_string_equals_literal(state, "57P05");
         if (!connection_lost && zend_string_equals_literal(state, "HY000")) {
             zend_class_entry *pgsql = lookup_class_literal("Pdo\\Pgsql");
             if (pgsql != NULL && instanceof_function(Z_OBJCE_P(pdo_value), pgsql)) {
@@ -341,6 +371,8 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
         else if (has_number && number == 9) mapped = "CANCELED";
         else if (has_number && primary == 8) mapped = "READ_ONLY";
         code = zend_string_init(mapped, strlen(mapped), 0);
+    } else if (zend_string_equals_literal(driver, "mariadb")) {
+        code = mariadb_code(number, has_number, state);
     } else {
         code = mysql_code(number, has_number, state);
     }

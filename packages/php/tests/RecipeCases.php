@@ -45,6 +45,16 @@ trait RecipeCases
         return Recipe::casesOn(static::recipe(), 'markdown');
     }
 
+    /**
+     * The cases that run on MariaDB, a server of the MySQL dialect: those that run on MySQL (DIA-200, FCV-3).
+     *
+     * @return array<string, array{string}>
+     */
+    public static function casesOnMariadb(): array
+    {
+        return Recipe::casesOn(static::recipe(), 'mariadb');
+    }
+
     /** Sets the memory limit that the recipe of the test class declares it needs. */
     private static function requireMemoryLimit(string $limit): void
     {

@@ -54,7 +54,8 @@
     "INT-182",
     "INT-183",
     "INT-184",
-    "INT-185"
+    "INT-185",
+    "DIA-211"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -5121,6 +5122,321 @@
       ]
     },
     {
+      "id": "catalog_describe_integer_width",
+      "requirements": [
+        "DIA-204"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "integer types with and without a display width, unsigned and zerofill, and a YEAR",
+          "sql": "CREATE TABLE catalog_integer_width (id BIGINT NOT NULL PRIMARY KEY, a TINYINT, b TINYINT(1), c TINYINT(1) UNSIGNED, d SMALLINT(3), e INT(5) UNSIGNED ZEROFILL, f BIGINT UNSIGNED, g YEAR)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "only": [
+            "mysql"
+          ],
+          "table": "catalog_integer_width",
+          "expect": {
+            "mysql": {
+              "namespace": {
+                "ref": "database"
+              },
+              "columns": [
+                "id",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "native_types": [
+                "bigint",
+                "tinyint",
+                "tinyint(1)",
+                "tinyint unsigned",
+                "smallint",
+                "int(5) unsigned zerofill",
+                "bigint unsigned",
+                "year"
+              ],
+              "nullable": [
+                false,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "generated": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+              ],
+              "automatic_keys": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+              ],
+              "defaults": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_describe_column_defaults",
+      "requirements": [
+        "DIA-205",
+        "INT-101"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a column of each default form that the server writes: none, NULL, a quoted literal with an escaped quote and a backslash, the text NULL, a decimal, a negative number, the clock with and without a precision, and an expression; MySQL writes an expression with the character set of each literal and its quotes escaped, MariaDB as written without spaces, and the introspection keeps the text of its server (DIA-205)",
+          "sql": "CREATE TABLE catalog_column_default (id BIGINT NOT NULL PRIMARY KEY, a VARCHAR(10) NULL DEFAULT NULL, b VARCHAR(10) NOT NULL DEFAULT 'it''s', c VARCHAR(10) NOT NULL DEFAULT 'NULL', d DECIMAL(5,2) NOT NULL DEFAULT 0.00, e INT NOT NULL DEFAULT -3, f DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), g DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, h VARCHAR(10) NOT NULL DEFAULT (concat('a', 'b')), i VARCHAR(10) NOT NULL DEFAULT 'a\\\\b')"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_column_default",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "default_texts": [
+                null,
+                null,
+                "it's",
+                "NULL",
+                "0.00",
+                "-3",
+                "CURRENT_TIMESTAMP(6)",
+                "CURRENT_TIMESTAMP",
+                "concat(_utf8mb4\\'a\\',_utf8mb4\\'b\\')",
+                "a\\b"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                true,
+                false
+              ]
+            },
+            "mariadb": {
+              "columns": [
+                "id",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "default_texts": [
+                null,
+                null,
+                "it's",
+                "NULL",
+                "0.00",
+                "-3",
+                "CURRENT_TIMESTAMP(6)",
+                "CURRENT_TIMESTAMP",
+                "concat('a','b')",
+                "a\\b"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                true,
+                false
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_describe_default_text_and_expression_flag",
+      "requirements": [
+        "INT-101",
+        "INT-123"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "an automatic key, a text literal default, a number default and an expression default, as each database writes them; the descriptor marks only an expression default on MySQL, whose literal default keys insert by DEFAULT(column), and every default on PostgreSQL and SQLite, which insert by RETURNING (INT-123)",
+          "sql": {
+            "mysql": "CREATE TABLE described_default (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token VARCHAR(36) NOT NULL DEFAULT (uuid())) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE described_default (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token TEXT NOT NULL DEFAULT (gen_random_uuid()::text))",
+            "sqlite": "CREATE TABLE described_default (id INTEGER PRIMARY KEY AUTOINCREMENT, label VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 7, token TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))))"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "described_default",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "generated",
+                "7",
+                "uuid()"
+              ],
+              "expression_defaults": [
+                false,
+                false,
+                false,
+                true
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "'generated'::character varying",
+                "7",
+                "(gen_random_uuid())::text"
+              ],
+              "expression_defaults": [
+                false,
+                true,
+                true,
+                true
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "label",
+                "n",
+                "token"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "automatic_keys": [
+                true,
+                false,
+                false,
+                false
+              ],
+              "default_texts": [
+                null,
+                "'generated'",
+                "7",
+                "lower(hex(randomblob(16)))"
+              ],
+              "expression_defaults": [
+                false,
+                true,
+                true,
+                true
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "catalog_read_binds",
       "requirements": [
         "INT-104"
@@ -5559,8 +5875,13 @@
           "sql": "SELECT YEAR('2020-01-02')",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -10387,7 +10708,8 @@
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
-        "CFG-35"
+        "CFG-35",
+        "DIA-211"
       ],
       "only": [
         "mysql"
@@ -10409,11 +10731,6 @@
           "sql": "CALL one_connection_user('create')"
         },
         {
-          "op": "sql.exec",
-          "reason": "the refusals that the server has counted for that name until now",
-          "sql": "CREATE TABLE refusals_before AS SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226"
-        },
-        {
           "op": "sql.hold_connection",
           "user_from_database": "o1_"
         },
@@ -10421,25 +10738,11 @@
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
           "refused_code": "DRIVER",
-          "refused_message": "max_user_connections"
+          "refused_message": "max_user_connections",
+          "connects": 1
         },
         {
           "op": "sql.release_connection"
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT CAST(refused.n - before_it.n AS CHAR) AS refusals FROM (SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226) refused CROSS JOIN refusals_before before_it",
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "text": "1"
-                  }
-                ]
-              ]
-            }
-          }
         },
         {
           "op": "catalog.close"
@@ -14707,8 +15010,8 @@
           "only": [
             "mysql"
           ],
-          "reason": "a year and a NULL",
-          "sql": "INSERT INTO value_rule_year VALUES (1, 2020), (2, NULL)"
+          "reason": "a year, a NULL and the zero year",
+          "sql": "INSERT INTO value_rule_year VALUES (1, 2020), (2, NULL), (3, 0)"
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -14718,8 +15021,34 @@
           "sql": "SELECT y FROM value_rule_year WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT id, y AS year_value FROM value_rule_year WHERE id = 3",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -14742,6 +15071,29 @@
           }
         },
         {
+          "op": "catalog.read_only_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT y FROM value_rule_year WHERE id IN (1, 3) ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ],
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
           "op": "catalog.table_page",
           "only": [
             "mysql"
@@ -14754,8 +15106,21 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: MySQL YEAR has no grid cell"
+              "columns": [
+                "id",
+                "y"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -14779,8 +15144,147 @@
               "order_by": [
                 "id"
               ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_year",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "y"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "y"
+              ],
+              "order_by": [
+                "id"
+              ],
               "has_more": false,
               "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_value_zerofill",
+      "requirements": [
+        "INT-102",
+        "INT-153",
+        "INT-165"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a ZEROFILL column, which is UNSIGNED and which the server writes padded to its display width",
+          "sql": "CREATE TABLE value_rule_zerofill (id BIGINT NOT NULL PRIMARY KEY, z INT(5) ZEROFILL NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a value shorter than the width and a NULL",
+          "sql": "INSERT INTO value_rule_zerofill VALUES (1, 42), (2, NULL)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT z FROM value_rule_zerofill ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "uint": "42"
+                  }
+                ],
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT z FROM value_rule_zerofill ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  }
+                ],
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_zerofill",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "z"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "z"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  }
+                ],
                 [
                   {
                     "null": "null"
@@ -14812,8 +15316,24 @@
           "only": [
             "mysql"
           ],
-          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month",
-          "sql": "INSERT /*+ SET_VAR(sql_mode = 'ALLOW_INVALID_DATES') */ INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03')"
+          "reason": "ALLOW_INVALID_DATES stores a day past the end of its month: the procedure sets it for its session and inserts, and the server restores the sql_mode of the caller when the procedure returns, a form that both servers accept with the same result",
+          "sql": "CREATE PROCEDURE value_rule_calendar_rows() BEGIN SET SESSION sql_mode = 'ALLOW_INVALID_DATES'; INSERT INTO value_rule_calendar VALUES (1, '2024-02-30', NULL), (2, NULL, '2024-02-30 01:02:03'); END"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "the rows that are no calendar dates",
+          "sql": "CALL value_rule_calendar_rows()"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "the procedure has done its work",
+          "sql": "DROP PROCEDURE value_rule_calendar_rows"
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -15808,8 +16328,8 @@
           "only": [
             "mysql"
           ],
-          "reason": "its row",
-          "sql": "INSERT INTO value_rule_text VALUES (1, 'y', 'a,b', '{\"b\": 1, \"a\": 2}', b'101', ST_GeomFromText('POINT(1 2)'))"
+          "reason": "its row; the JSON object is written in the order of its keys that MySQL keeps, so MySQL, which stores JSON in its own form, and MariaDB, whose JSON is LONGTEXT that keeps the text as written, return one text",
+          "sql": "INSERT INTO value_rule_text VALUES (1, 'y', 'a,b', '{\"a\": 2, \"b\": 1}', b'101', ST_GeomFromText('POINT(1 2)'))"
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -20515,8 +21035,11 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts",
-          "sql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts; a MySQL role is a locked account that the user is granted, a MariaDB role a role of its own with no host, made the default by SET DEFAULT ROLE; no one body serves both servers (docs/spec/dialects.md DIA-214)",
+          "sql": {
+            "mysql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END",
+            "mariadb": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP ROLE IF EXISTS `', grouped, '`'); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE ROLE `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT `', grouped, '` TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('SET DEFAULT ROLE `', grouped, '` FOR ''', account, '''@''%'''); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+          }
         },
         {
           "op": "sql.exec",
@@ -20763,6 +21286,10 @@
                   }
                 ]
               ]
+            },
+            "mariadb": {
+              "error": "DRIVER",
+              "message_holds": "partial_revokes"
             }
           }
         },
@@ -20842,6 +21369,10 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },
@@ -20862,6 +21393,10 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },
@@ -20874,6 +21409,10 @@
             "mysql": {
               "error": "ROW_MUTATION_UNSUPPORTED",
               "message_holds": "partial-revoke"
+            },
+            "mariadb": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
             }
           }
         },

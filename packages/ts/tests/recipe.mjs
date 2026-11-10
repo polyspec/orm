@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { connect as connectSocket, createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
@@ -33,10 +33,10 @@ import { connectDsn, modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
 import { introspectStep, planPhysicalStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
-import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
+import { nativeQuery, nativeSession } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
-import { caseTest, COMPUTE, DATABASE, PROCESS } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE, DATABASE, PROCESS, stepBudget, stepGuard } from '../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
@@ -47,6 +47,22 @@ function reportCase(id, database) {
   const path = process.env.ORM_RECIPE_RESULTS;
   if (!path) return;
   appendFileSync(path, database === NONE ? `CASE ${id} PASS\n` : `CASE ${id} [${database}] PASS\n`);
+}
+
+// caseDeadline is the deadline of a database case: DATABASE, or the step budget of the steps that its deadline states (FCV-4).
+function caseDeadline(recipeCase) {
+  return recipeCase.deadline === undefined ? DATABASE : stepBudget(recipeCase.deadline.steps);
+}
+
+// guarded runs work with the step guard of a case with a step deadline, armed at the start of the case: the guard ends the case at
+// its step budget, or when no apply event comes within DATABASE (FCV-4). A case without a step deadline gets none.
+async function guarded(recipeCase, work) {
+  const guard = recipeCase.deadline === undefined ? undefined : stepGuard(caseDeadline(recipeCase), DATABASE);
+  try {
+    return await work(guard);
+  } finally {
+    guard?.stop();
+  }
 }
 
 // registerRecipeCase registers one case of a recipe with node:test.
@@ -121,7 +137,7 @@ export function runRecipe(path, database) {
 
 // connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
 // driver: the one implementation of dsn.connect (FCV-4).
-async function connectDriver(dsn, config = {}) {
+async function connectDriver(dsn, config = {}, database = NONE) {
   const db = await Db.connect(dsn, {
     ...(config.pool_size === undefined ? {} : { poolSize: config.pool_size }),
     ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
@@ -137,8 +153,12 @@ async function connectDriver(dsn, config = {}) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
     if (config.session_read !== undefined) {
-      const read = await db.utils().run(async frame => frame.run('utility', [], config.session_read.sql));
-      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], config.session_read.sql);
+      // The statement of the read is one text, or an object keyed by database that the case database reads by its key (DIA-208).
+      const given = config.session_read.sql;
+      const sql = typeof given === 'string' ? given : given[dialectKey(database, given)];
+      if (typeof sql !== 'string') throw new Error(`session_read names no statement for ${database}`);
+      const read = await db.utils().run(async frame => frame.run('utility', [], sql));
+      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], sql);
     }
     if (config.tls_version === true) {
       const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
@@ -151,11 +171,28 @@ async function connectDriver(dsn, config = {}) {
   }
 }
 
+// messageHoldsTexts reads a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+// array is its texts; an empty array or any other value is a recipe error, as it would check nothing.
+function messageHoldsTexts(holds) {
+  if (holds === undefined) return [];
+  if (typeof holds === 'string') return [holds];
+  if (Array.isArray(holds) && holds.length > 0 && holds.every(text => typeof text === 'string')) return holds;
+  if (Array.isArray(holds) && holds.length === 0) throw new Error('message_holds is an empty array, which checks nothing');
+  throw new Error(`message_holds is ${JSON.stringify(holds)}, want a string or an array of strings`);
+}
+
+// checkMessageHolds throws an error that names the first text of the message_holds field that message does not hold.
+export function checkMessageHolds(message, holds) {
+  for (const text of messageHoldsTexts(holds)) {
+    if (!message.includes(text)) throw new Error(`message ${message}, want one that holds ${text}`);
+  }
+}
+
 // checkMarkdownFailure compares what the listener of a markdown op received and the failure of the op with the step and its expect.
 function checkMarkdownFailure(received, messages, failure, expect) {
   if (!isDeepStrictEqual(received, messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
-  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+  checkMessageHolds(failure.message, expect.message_holds);
 }
 
 // checkMarkdownConnect runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the
@@ -231,7 +268,7 @@ async function checkDsnConnect(step, database) {
   let code = '';
   let message = '';
   try {
-    driver = await connectDriver(step.dsn, step.config);
+    driver = await connectDriver(step.dsn, step.config, database);
   } catch (error) {
     code = error?.code ?? '';
     message = error?.message ?? '';
@@ -242,7 +279,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
-    if (!message.includes(expect.message_holds ?? '')) throw new Error(`message ${message}, want one that holds ${expect.message_holds}`);
+    checkMessageHolds(message, expect.message_holds);
     return;
   }
   if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -524,24 +561,38 @@ function equal(got, want, ordered) {
 
 // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown']);
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb']);
 
-/** Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it too (FCV-3). */
+/**
+ * Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it
+ * too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3, DIA-200).
+ */
 function onDatabase(only, database) {
-  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'));
+  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'))
+    || (database === 'mariadb' && only.includes('mysql'));
+}
+
+/** The SQL dialect of a database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
+function dialectOfDatabase(database) {
+  return { markdown: 'sqlite', mariadb: 'mysql' }[database] ?? database;
 }
 
 /**
- * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads the SQLite
- * entry unless the value states its own.
+ * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect unless the
+ * value states its own (FCV-3).
  */
 function dialectKey(database, entries) {
-  return database === 'markdown' && !Object.hasOwn(entries ?? {}, 'markdown') ? 'sqlite' : database;
+  return Object.hasOwn(entries ?? {}, database) ? database : dialectOfDatabase(database);
 }
 
-/** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+/** The SQL dialect of the case database. */
 function dialectOf(context) {
-  return context.database === 'markdown' ? 'sqlite' : context.database;
+  return dialectOfDatabase(context.database);
+}
+
+/** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+function serverVariable(name, database) {
+  return database === 'mariadb' && name.startsWith('ORM_TEST_MYSQL_') ? `ORM_TEST_MARIADB_${name.slice('ORM_TEST_MYSQL_'.length)}` : name;
 }
 
 /** Makes the directories of the corpus at root ones the process may only read, or writable again. */
@@ -572,12 +623,12 @@ async function databaseRecipe(path, database) {
     if (markdown) {
       // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus of no table.
       const setPath = fixture !== NONE_FIXTURE && recipeCase.install !== false ? resolve(root, fixture) : null;
-      registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
-        withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
+      registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
+        guarded(recipeCase, guard => withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
       continue;
     }
-    registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
-      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
+    registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
+      guarded(recipeCase, guard => withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
   }
 }
 
@@ -635,7 +686,34 @@ export async function prepareRecipeDatabase(path, database, dsn) {
   }
 }
 
-async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
+// endCaseSessions ends, on the server, every other session on the database of dsn: the catalog, the model connections, the
+// native ones of sql.exec and the dbspec sessions of a case. A case that its step guard ended stops its running statement so, and
+// its cleanup does not wait for that statement (FCV-4), as Go cancels the context of the statement and Python and Rust end the
+// case. A corpus and SQLite run their statements in this process, so none is running when the guard ends the case.
+async function endCaseSessions(database, dsn) {
+  if (dialectOfDatabase(database) === 'mysql') {
+    const session = await nativeSession(database, dsn);
+    try {
+      const sessions = await session.query('SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()');
+      for (const { ID } of sessions) {
+        // A session that ended after the list was read is no thread any more (ER_NO_SUCH_THREAD).
+        await session.query(`KILL ${Number(ID)}`).catch(error => { if (error?.code !== 'ER_NO_SUCH_THREAD') throw error; });
+      }
+    } finally {
+      await session.close();
+    }
+  } else if (database === 'postgres') {
+    await nativeQuery(database, dsn, ['SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()']);
+  }
+}
+
+async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }) {
+  // The sessions of a case that its step guard ended are ended at that event. Such a case has failed with the text of its guard,
+  // so a failure to end them is a line of that case, which keeps the text of the guard as its failure.
+  let ending;
+  guard?.ended.then(() => {
+    ending = endCaseSessions(database, caseDatabase.dsn).then(() => undefined, error => error);
+  });
   const db = await Db.connect(caseDatabase.dsn);
   try {
     // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
@@ -647,9 +725,11 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
-    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db });
+    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard });
   } finally {
     await db.close();
+    const unended = await ending;
+    if (unended !== undefined) step(`the sessions of the case could not be ended: ${unended.message}`);
   }
 }
 
@@ -666,7 +746,7 @@ async function runCaseSteps({ name, recipeCase, database, context, step }) {
   }
 }
 
-async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db }) {
+async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard }) {
   const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
   let context;
@@ -674,7 +754,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path, guard };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -688,6 +768,8 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     await runCaseSteps({ name, recipeCase, database, context, step });
   } finally {
     for (const close of closers) await close();
+    // A case that failed before its sql.release_connection still holds that native connection, which would keep the process open.
+    if (context?.held !== undefined) await context.held.close();
     if (context === undefined) await catalog.close();
     else if (!context.closed) await context.catalog.close();
   }
@@ -757,17 +839,49 @@ function userFromDatabaseDsn(dsn, prefix) {
   return dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${prefix}${database.slice(-28)}@`);
 }
 
+
+// connectRelay is the TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection it
+// accepts to the host and port of the DSN, copying the bytes both ways, and counts the connections it accepted. A client learns
+// that its connect is refused only from bytes that the server sends through an accepted connection, so when a refused reconnect
+// has returned, every connection that the client opened for it has been counted.
+async function connectRelay(dsn) {
+  const match = /^([a-z]+:\/\/[^@/]+@)([^/?]+)(.*)$/.exec(dsn);
+  if (match === null) throw new Error(`catalog.reconnect connects: the DSN names no host and port: ${dsn}`);
+  const [host, port] = [match[2].slice(0, match[2].lastIndexOf(':')), Number(match[2].slice(match[2].lastIndexOf(':') + 1))];
+  const sockets = new Set();
+  const relay = { accepted: 0 };
+  const server = createServer(client => {
+    relay.accepted += 1;
+    const upstream = connectSocket({ host, port });
+    for (const socket of [client, upstream]) {
+      sockets.add(socket);
+      socket.on('error', () => { client.destroy(); upstream.destroy(); });
+      socket.on('close', () => { sockets.delete(socket); client.destroy(); upstream.destroy(); });
+    }
+    client.pipe(upstream);
+    upstream.pipe(client);
+  });
+  await new Promise((done, failed) => { server.once('error', failed); server.listen(0, '127.0.0.1', done); });
+  relay.dsn = `${match[1]}127.0.0.1:${server.address().port}${match[3]}`;
+  relay.close = () => new Promise(done => {
+    for (const socket of sockets) socket.destroy();
+    server.close(() => done());
+  });
+  return relay;
+}
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
     if (s.dsn.startsWith('env:')) {
-      const dsn = process.env[s.dsn.slice(4)];
-      if (!dsn) throw new Error(`dsn.connect: ${s.dsn.slice(4)} is unset; run make orm-test-servers`);
-      return { value: { text: await connectDriver(dsn, s.config) } };
+      const variable = serverVariable(s.dsn.slice(4), context.database);
+      const dsn = process.env[variable];
+      if (!dsn) throw new Error(`dsn.connect: ${variable} is unset; run make orm-test-servers`);
+      return { value: { text: await connectDriver(dsn, s.config, context.database) } };
     }
-    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
+    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config, context.database) } };
     const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
-    return { value: { text: await connectDriver(dsn, s.config) } };
+    return { value: { text: await connectDriver(dsn, s.config, context.database) } };
   },
   // dsn.sqlite_file (FCV-4, CFG-11, CFG-26): the names in a new directory, other than the journals of a file of it, after a connection
   // to a file of it with the query, if any.
@@ -817,10 +931,16 @@ const OPS = {
     const base = s.dsn === undefined ? context.dsn : connectDsn(s.dsn, context.database, context.dsn);
     const dsn = s.user_from_database === undefined ? base : userFromDatabaseDsn(base, s.user_from_database);
     if (s.refused_message !== undefined) {
-      const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
-      if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
-      if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
-      if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+      const relay = s.connects === undefined ? undefined : await connectRelay(dsn);
+      try {
+        const refused = await connectCatalog(relay?.dsn ?? dsn).then(catalog => catalog.close().then(() => null), error => error);
+        if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
+        if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+        if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+        if (relay !== undefined && relay.accepted !== s.connects) throw new Error(`the client opened ${relay.accepted} connections for the refused reconnect, want ${s.connects}`);
+      } finally {
+        await relay?.close();
+      }
       return {};
     }
     // A committed mutation leaves its connection in the pool of the catalog that this step replaces (INT-106d).
@@ -841,7 +961,9 @@ const OPS = {
     return { value: { int: String(rows[0][0]) } };
   },
   async 'sql.release_connection'(_, context) {
-    await context.held.close();
+    const held = context.held;
+    context.held = undefined;
+    await held.close();
     return {};
   },
   async 'catalog.revision'(s, context) {
@@ -870,6 +992,8 @@ const OPS = {
       generated: metadata.columns.map(c => c.generated),
       automatic_keys: metadata.columns.map(c => c.automaticKey),
       defaults: metadata.columns.map(c => c.defaultExpression !== null),
+      default_texts: metadata.columns.map(c => c.defaultExpression),
+      expression_defaults: metadata.columns.map(c => c.expressionDefault),
     };
   },
   async 'catalog.table_page'(s, { catalog, namespace }) {
@@ -972,10 +1096,14 @@ const OPS = {
       if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
       return {};
     }
-    const replica = process.env.ORM_TEST_MYSQL_REPLICA_DSN;
-    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it');
-    const [[status]] = await nativeQuery('mysql', context.dsn, ['SHOW BINARY LOG STATUS']);
-    const [[row]] = await nativeQuery('mysql', replica, [`SELECT SOURCE_POS_WAIT('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
+    // MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+    const variable = serverVariable('ORM_TEST_MYSQL_REPLICA_DSN', context.database);
+    const replica = process.env[variable];
+    if (!replica) throw new Error(`replica.await: ${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    const mariadb = context.database === 'mariadb';
+    const [[status]] = await nativeQuery('mysql', context.dsn, [mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS']);
+    const wait = mariadb ? 'MASTER_POS_WAIT' : 'SOURCE_POS_WAIT';
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
     if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
@@ -1035,12 +1163,15 @@ const OPS = {
     if (!server) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
     const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
     const postgres = context.database === 'postgres';
-    const [rows] = await nativeQuery(context.database, session, [postgres
+    // On MySQL and MariaDB alike, the session is the one, other than this one, that holds a granted transaction metadata lock on the
+    // table (performance_schema.metadata_locks): MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is a
+    // cache that stays stale while other connections keep reading it.
+    const [rows] = await nativeQuery(dialectOf(context), session, [postgres
       ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
-      : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
-    await nativeQuery(context.database, session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
     return {};
   },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
@@ -1122,9 +1253,6 @@ const OPS = {
 // The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
 const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
 
-// OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
-const OP_DEADLINE_MS = 20000;
-
 async function runStep(rawStep, context) {
   const reads = readStep(rawStep, dialectKey(context.database, rawStep.expect));
   const s = reads.step;
@@ -1135,14 +1263,17 @@ async function runStep(rawStep, context) {
   if (!onDatabase(s.only, context.database)) return;
   if (s.expect !== undefined) {
     const only = s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite'];
-    const servers = names => names.filter(each => each !== 'markdown').sort().join(',');
+    const servers = names => names.filter(each => each !== 'markdown' && each !== 'mariadb').sort().join(',');
     const named = Object.keys(s.expect);
-    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
+    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
   }
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;
   try {
-    actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
+    // An op is bounded by the deadline of its case alone, as in every runtime: the step guard of a case with a step deadline, and
+    // otherwise the case deadline (caseTest).
+    const work = Promise.resolve().then(() => op(s, context));
+    actual = await (context.guard === undefined ? work : Promise.race([work, context.guard.ended.then(error => { throw error; })]));
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;
@@ -1150,7 +1281,7 @@ async function runStep(rawStep, context) {
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
     if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
     if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
-    if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    checkMessageHolds(error.message, expected.message_holds);
     if (expected.rollback !== undefined) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
       assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
@@ -2697,13 +2828,16 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.introspect_refusal': {
+      // A dialect of no reader, or a server that is not a server of the dialect, is refused with a message that names the dialect
+      // or the server (DBS-174); without a server the call passes the dialect's name.
+      const server = step.server ?? step.dialect;
       const connection = new DatabaseSync(':memory:');
       try {
-        await assert.rejects(introspectDbspec(connection, step.dialect, 'introspected'), { name: 'TypeError', message: new RegExp(step.dialect) });
+        await assert.rejects(introspectDbspec(connection, step.dialect, server, 'introspected'), { name: 'TypeError', message: new RegExp(server) });
       } finally {
         connection.close();
       }
-      assert.deepEqual({ refused: step.dialect }, expect, 'refused dialect');
+      assert.deepEqual({ refused: server }, expect, 'refused dialect or server');
       break;
     }
     case 'dbspec.render': {
@@ -2926,7 +3060,7 @@ async function checkApplyFault(step, bound, database) {
     },
   };
   try {
-    if (step.applied_first) await applyPlans(connection, 'sqlite', plans, now, null);
+    if (step.applied_first) await applyPlans(connection, 'sqlite', 'sqlite', plans, now, null);
     for (const statement of step.sql ?? []) db.exec(statement);
     if (step.fail_catalog_read !== undefined) {
       cause = new Error('catalog read failed');
@@ -2943,7 +3077,7 @@ async function checkApplyFault(step, bound, database) {
       kinds.push(event.kind);
       if (step.stop_on_applied !== undefined && event.kind === 'applied') throw new Error(step.stop_on_applied);
     };
-    const error = await call(connection, 'sqlite', plans, now, events).then(() => null, failed => failed);
+    const error = await call(connection, 'sqlite', 'sqlite', plans, now, events).then(() => null, failed => failed);
     assert.notEqual(error, null, 'the call succeeded');
     // An AggregateError holds the failure, then the cleanup errors in order (PLN-99, PLN-106).
     const [failure, ...cleanup] = error instanceof AggregateError ? error.errors : [error];
@@ -2976,7 +3110,7 @@ function checkReadSet(step, database) {
       assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), expect.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
       result.errors.forEach((e, i) => {
         assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
-        assert.ok(e.message.includes(expect.errors[i].message_holds ?? ''), `the message holds the text: ${e.message}`);
+        checkMessageHolds(e.message, expect.errors[i].message_holds);
       });
       return;
     }
@@ -3025,10 +3159,10 @@ async function checkIntrospectShown(step, dir, database) {
   const connection = { query: async ({ sql }) => [shownCatalogRows(sql, vectors.catalog, vector)] };
   const expect = step.expect[dialectKey(database, step.expect)];
   if (expect.error !== undefined) {
-    await assert.rejects(introspectDbspec(connection, 'mysql', 'introspected'), error => error.message === expect.error);
+    await assert.rejects(introspectDbspec(connection, 'mysql', 'mysql', 'introspected'), error => error.message === expect.error);
     return;
   }
-  const result = await introspectDbspec(connection, 'mysql', 'introspected');
+  const result = await introspectDbspec(connection, 'mysql', 'mysql', 'introspected');
   const checks = emitDbspec(result.document).split('\n').map(line => line.trim()).filter(line => line.startsWith('check '));
   const unsupported = result.unsupported.map(item => `${item.kind} ${item.name}: ${item.reason.split(': ', 1)[0]}`);
   assert.deepEqual(checks, expect.checks, 'introspected checks');
@@ -3041,7 +3175,7 @@ async function checkIntrospectSqlite(step, database) {
   const connection = new DatabaseSync(':memory:');
   try {
     for (const statement of step.sql) connection.exec(statement);
-    const result = await introspectDbspec(connection, 'sqlite', 'introspected');
+    const result = await introspectDbspec(connection, 'sqlite', 'sqlite', 'introspected');
     const got = result.unsupported.map(({ kind, table, name, reason }) => ({ kind, table, name, reason }));
     assert.deepEqual(got, step.expect[dialectKey(database, step.expect)].unsupported);
   } finally {

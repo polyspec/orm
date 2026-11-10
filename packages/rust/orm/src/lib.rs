@@ -125,24 +125,98 @@ fn mysql_code(number: u16) -> Option<&'static str> {
         1451 | 1452 => codes::FOREIGN_KEY,
         1205 | 1317 | 3024 => codes::CANCELED,
         1290 | 1792 => codes::READ_ONLY,
-        3819 | 4025 => codes::CONSTRAINT,
+        // MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, which is DRIVER (DIA-201).
+        3819 => codes::CONSTRAINT,
         // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection.
         4031 => codes::CONNECTION_LOST,
         _ => return None,
     })
 }
 
+/// The catalog code of a MariaDB error number (DIA-201), which MariaDB numbers otherwise than MySQL above 1999: it has no
+/// 3572, 3819, 3024 or 4031 of MySQL; its 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
+fn mariadb_code(number: u16) -> Option<&'static str> {
+    Some(match number {
+        1213 => codes::DEADLOCK,
+        1062 => codes::DUPLICATE_KEY,
+        1451 | 1452 => codes::FOREIGN_KEY,
+        1205 | 1317 | 1969 => codes::CANCELED,
+        1290 | 1792 => codes::READ_ONLY,
+        4025 => codes::CONSTRAINT,
+        _ => return None,
+    })
+}
+
+/// The catalog code of a MariaDB error `number` with SQLSTATE `state` of a statement that took the row lock `lock`, empty for
+/// none (DIA-201, DIA-209): 1205 of a `*_nowait` lock is LOCK_NOT_AVAILABLE, and every other error is read by MariaDB's
+/// table, SQLSTATE 40001 is DEADLOCK, and any other is DRIVER.
+fn mariadb_statement_code(number: u16, state: Option<&str>, lock: &str) -> &'static str {
+    if number == 1205 && matches!(lock, "update_nowait" | "share_nowait") {
+        return codes::LOCK_NOT_AVAILABLE;
+    }
+    mariadb_code(number).or((state == Some("40001")).then_some(codes::DEADLOCK)).unwrap_or(codes::DRIVER)
+}
+
+/// The server of a mysql connection, which the connection reads once by `VERSION()` (DIA-201).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MySqlServer {
+    MySql,
+    MariaDb,
+}
+
+impl MySqlServer {
+    /// The server that a `VERSION()` names: one that contains `-MariaDB` is MariaDB, and any other is MySQL (DIA-201).
+    pub(crate) fn of_version(version: &str) -> MySqlServer {
+        if version.contains("-MariaDB") {
+            MySqlServer::MariaDb
+        } else {
+            MySqlServer::MySql
+        }
+    }
+
+    /// The statement that sets the statement timeout of `ms` milliseconds on a connection of the server (DIA-208): MySQL
+    /// bounds a SELECT by `max_execution_time` in milliseconds, and MariaDB every statement by `max_statement_time` in
+    /// seconds, written with three fraction digits.
+    pub(crate) fn statement_timeout(self, ms: u32) -> String {
+        match self {
+            MySqlServer::MySql => format!("SET SESSION max_execution_time = {ms}"),
+            MySqlServer::MariaDb => format!("SET SESSION max_statement_time = {}.{:03}", ms / 1000, ms % 1000),
+        }
+    }
+}
+
+impl Error {
+    /// The error with the code that the table of its server gives a MySQL error number (DIA-201): `From<sqlx::Error>` reads
+    /// a number by MySQL's table, so on MariaDB a database error of a mysql connection is read again by MariaDB's. `lock` is
+    /// the row lock that the failing statement took, empty for a statement with none: MariaDB fails a NOWAIT lock that it
+    /// cannot take at once with 1205, its lock wait timeout, so 1205 of a statement of a `*_nowait` lock is
+    /// LOCK_NOT_AVAILABLE, as MySQL's 3572 is, and 1205 of any other statement stays CANCELED (DIA-209).
+    pub(crate) fn for_server(self, server: MySqlServer, lock: &str) -> Error {
+        if server != MySqlServer::MariaDb {
+            return self;
+        }
+        match self {
+            Error::Driver { code: _, msg, source: sqlx::Error::Database(d) } if d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().is_some() => {
+                let m = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().expect("a MySQL database error");
+                let code = mariadb_statement_code(m.number(), m.code(), lock);
+                Error::Driver { code: code.into(), msg, source: sqlx::Error::Database(d) }
+            }
+            other => other,
+        }
+    }
+}
+
 /// Driver errors: the codes the catalog names (docs/spec/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
-/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
+/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 (MariaDB 4025, read by `Error::for_server`), PostgreSQL 23514, SQLite 275 — maps
 /// to CONSTRAINT. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
 /// MySQL 1290 / 1792, PostgreSQL 25006, SQLite READONLY (8, primary code of any extended form) — maps
 /// to READ_ONLY. A connection the server ended or that broke — MySQL 4031, PostgreSQL SQLSTATE class 08 and
-/// 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
+/// 25P03 / 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
 /// broken pipe, not connected) — maps to CONNECTION_LOST. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
 /// driver message. Each keeps the driver error as its source.
 impl From<sqlx::Error> for Error {
@@ -178,8 +252,8 @@ impl From<sqlx::Error> for Error {
                     "25006" => Some((codes::READ_ONLY, msg())),
                     "23514" => Some((codes::CONSTRAINT, msg())),
                     // Class 08 is connection exception. 57P01 (admin_shutdown), 57P02 (crash_shutdown),
-                    // and 57P05 (idle_session_timeout) are sent when the server ends a session.
-                    c if c.starts_with("08") || matches!(c, "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
+                    // 57P05 (idle_session_timeout) and 25P03 (idle_in_transaction_session_timeout) are sent when the server ends a session.
+                    c if c.starts_with("08") || matches!(c, "25P03" | "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
                     _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {

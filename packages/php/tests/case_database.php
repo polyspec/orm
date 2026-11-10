@@ -78,7 +78,16 @@ final class CaseDatabase
         }
         try {
             $pdo = case_admin($this->admin);
-            $pdo->exec("DROP DATABASE {$this->name}" . ($this->driver === 'postgres' ? ' WITH (FORCE)' : ''));
+            if ($this->driver === 'postgres') {
+                $pdo->exec("DROP DATABASE {$this->name} WITH (FORCE)");
+            } else {
+                // One session with foreign_key_checks = 0 (DIA-212): a DROP DATABASE that MariaDB cannot finish logs
+                // the tables it dropped as one DROP TABLE list under the checks of the session.
+                // The session ends with the drop: $pdo is this call's own connection, closed when it is released.
+                $pdo->exec('SET SESSION foreign_key_checks = 0');
+                $pdo->exec("DROP DATABASE {$this->name}");
+            }
+            $pdo = null;
         } catch (Throwable $e) {
             throw new RuntimeException("drop database {$this->name}: {$e->getMessage()}", 0, $e);
         }
@@ -126,7 +135,9 @@ function case_database(string $driver, callable $step): CaseDatabase
         $step("database file $path created");
         return new CaseDatabase($driver, $path, "sqlite://$path", null, $step);
     }
-    if (!in_array($driver, ['mysql', 'postgres'], true)) {
+    // MariaDB is a server of the MySQL dialect (DIA-200): its case database is a MySQL one on the server of
+    // ORM_TEST_MARIADB_DSN.
+    if (!in_array($driver, ['mysql', 'mariadb', 'postgres'], true)) {
         throw new InvalidArgumentException("case database of driver $driver");
     }
     $env = 'ORM_TEST_' . strtoupper($driver) . '_DSN';
@@ -178,4 +189,30 @@ function with_case_database(string $driver, callable $step, callable $body): mix
     }
     $database->drop();
     return $result;
+}
+
+/**
+ * The case of the drop of a case database of $driver (mysql or mariadb): it creates and drops a case database and
+ * returns the foreign_key_checks of the next session of case_admin. The drop turns the checks of its session off
+ * (DIA-212), and that session ends with the drop, so the next one has them on: CaseDatabaseMysqlTest and
+ * CaseDatabaseMariadbTest assert 1 on the two servers of the MySQL dialect (DIA-200).
+ *
+ * @param callable(string): void $step
+ */
+function case_database_next_admin_checks(string $driver, callable $step): int
+{
+    case_database($driver, $step)->drop();
+    $admin = getenv('ORM_TEST_' . strtoupper($driver) . '_DSN');
+    if ($admin === false || $admin === '') {
+        $servers = $driver === 'mariadb' ? 'orm-test-mariadb' : 'orm-test-servers';
+        throw new RuntimeException(
+            'ORM_TEST_' . strtoupper($driver)
+                . "_DSN is required; run make {$servers}, which starts the servers and writes it"
+        );
+    }
+    $checks = case_admin($admin)->query('SELECT @@SESSION.foreign_key_checks');
+    if ($checks === false) {
+        throw new RuntimeException('read foreign_key_checks: no result');
+    }
+    return (int) $checks->fetchColumn();
 }

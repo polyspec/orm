@@ -8,11 +8,11 @@ import (
 func catalogExecSingleInsert(s *catalogSession, query string, args []any) (sql.Result, error) {
 	result, err := s.conn.ExecContext(s.ctx, query, args...)
 	if err != nil {
-		return nil, mapDriverErrContext(err, s.ctx)
+		return nil, mapDriverErrContext(err, s.ctx, s.server)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErr(err, s.server)
 	}
 	if affected != 1 {
 		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
@@ -144,7 +144,7 @@ func catalogMySQLInsertKeys(
 	if len(omittedAutomaticKeys) != 0 {
 		identity, err = result.LastInsertId()
 		if err != nil {
-			return nil, mapDriverErr(err)
+			return nil, mapDriverErr(err, s.server)
 		}
 		if identity <= 0 {
 			return nil, catalogErr(catalogCodeRowWrite, "insert acknowledgement did not return a positive generated identity")

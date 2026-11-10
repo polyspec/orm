@@ -58,7 +58,13 @@
     // the PostgreSQL command that creates the cluster of the replica tests (scripts/test-servers.test.mts)
     "initdb",
     // the PostgreSQL command that copies the primary into the replica (scripts/test-servers.test.mts)
-    "pg_basebackup"
+    "pg_basebackup",
+    // the MariaDB server, client and time zone loader that make orm-test-mariadb runs (scripts/test-servers-mariadb.mts)
+    "mariadbd",
+    "mariadb",
+    "mariadb-tzinfo-to-sql",
+    // the tool that names the fmt headers for the MariaDB build of make orm-install-mariadb (scripts/mariadb-build.mts)
+    "pkg-config"
   ],
   "ignoreDependencies": [
     // the Vue of VitePress, which the site theme (docs/.vitepress/theme/index.ts) imports; vitepress pins it

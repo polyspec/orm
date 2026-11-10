@@ -40,7 +40,7 @@ function dsnOf(dialect) {
  * it installs the schema and runs up to several hundred statements. A case past its deadline ends the process through
  * execute() of tests/testcase.mts.
  */
-function modelCase(name, dialects, body) {
+export function modelCase(name, dialects, body) {
   caseTest(name, DATABASE * dialects.length, async ({ step }) => {
     const before = failures;
     for (const dialect of dialects) {
@@ -54,6 +54,9 @@ function modelCase(name, dialects, body) {
   });
 }
 const DIALECTS = ['sqlite', 'mysql', 'postgres'];
+// model.mjs registers its cases when it runs as the program; an entry that imports it, such as model-mariadb.test.mjs,
+// registers with modelCase only the cases that it names.
+const programCase = (name, dialects, body) => { if (import.meta.main) modelCase(name, dialects, body); };
 
 /** Installs the schema twice through a connection to the new case database, which must be empty first. */
 async function install(dsn) {
@@ -101,7 +104,7 @@ const names = rows => rows.values().map(b => b.getName()).join(',');
  * The returned function rolls back that transaction and closes the connection; a second call does nothing.
  */
 async function holdRows(dialect, dsn, table) {
-  if (dialect === 'mysql') {
+  if (dialect === 'mysql' || dialect === 'mariadb') {
     const connection = await mysqlConnection(dsn);
     await connection.query('START TRANSACTION');
     await connection.query(`UPDATE \`${table}\` SET \`seq\` = \`seq\``);
@@ -313,9 +316,13 @@ const failureMessage = async promise => { try { await promise; return 'no error'
 // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
 const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
 
-for (const [name, fn] of Object.entries(cases)) modelCase(name, DIALECTS, installed(fn));
+for (const [name, fn] of Object.entries(cases)) programCase(name, DIALECTS, installed(fn));
+/**
+ * The cancellation case, on SQLite and PostgreSQL here and on the two servers of the MySQL dialect in model-mysql.test.mjs and
+ * model-mariadb.test.mjs (DIA-200).
+ */
 // Requirements: CFG-9.
-modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
+export const cancellation = installed(async (db, dsn, dialect) => {
   const fixture = await seed(db);
   const before = new AbortController();
   before.abort();
@@ -337,12 +344,13 @@ modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
     } finally { await release(); }
   }
   check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
-}));
+});
+programCase('cancellation', ['sqlite', 'postgres'], cancellation);
 // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
 // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
 // The real server does not reject the reset, so the control of the transaction connection makes only the reset fail.
 // Requirements: INT-72.
-modelCase('failedLocalReset', ['mysql'], async () => {
+programCase('failedLocalReset', ['mysql'], async () => {
   const db = await connectBench(dsnOf('mysql'));
   try {
     const failReset = () => {
@@ -366,7 +374,7 @@ modelCase('failedLocalReset', ['mysql'], async () => {
 // report that error, and that connection is not returned to the pool (mysql/failedEndDiscards). The real server does not reject RELEASE_LOCK, so
 // the control of the transaction connection makes only RELEASE_LOCK fail.
 // Requirements: INT-72.
-modelCase('failedLockRelease', ['mysql'], async () => {
+programCase('failedLockRelease', ['mysql'], async () => {
   const db = await connectBench(dsnOf('mysql'));
   try {
     const key = name => `orm_test.${name}.${process.pid}`;
@@ -388,7 +396,7 @@ modelCase('failedLockRelease', ['mysql'], async () => {
 // if the next transaction gets the same session (CONNECTION_ID), the connection came back, and a lock that was not released stays
 // on that session. A transaction that ended cleanly reuses the same session.
 // Requirements: INT-72.
-modelCase('failedEndDiscards', ['mysql'], async () => {
+programCase('failedEndDiscards', ['mysql'], async () => {
   const db = await connectBench(dsnOf('mysql'), { poolSize: 1 });
   const other = await connectBench(dsnOf('mysql'));
   try {
@@ -426,7 +434,7 @@ modelCase('failedEndDiscards', ['mysql'], async () => {
 // together with its cause. The real SQLite does not reject this statement, so the connection's statement preparation makes it fail.
 // The rollback returns the failure after actually finishing.
 // Requirements: INT-72.
-modelCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
+programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
   const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
   try {
     const state = db.pool.state;
@@ -462,7 +470,7 @@ modelCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-mod
 // reports its error together with that error, and a successful callback reports the failed RELEASE SAVEPOINT. The real SQLite
 // does not reject this statement, so the control of the transaction connection makes it fail.
 // Requirements: DIA-181, PLN-17.
-modelCase('failedSavepointEnd', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
+programCase('failedSavepointEnd', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
   const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
   try {
     const nested = (rejects, callback) => failureMessage(db.transaction(async () => {

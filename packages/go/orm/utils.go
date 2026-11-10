@@ -84,7 +84,7 @@ func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...an
 	}
 	rs, err := r.q.QueryContext(f.t.ctx, sqlText, params...)
 	if err != nil {
-		return StatementResult{}, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
+		return StatementResult{}, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx, r.d.server))
 	}
 	var out StatementResult
 	cols, err := rs.ColumnTypes()
@@ -110,7 +110,7 @@ func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...an
 	if closeErr := rs.Close(); err == nil {
 		err = closeErr
 	}
-	return out, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
+	return out, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx, r.d.server))
 }
 
 // frameCell is one cell of a statement result. The MySQL driver scans every text and decimal column as bytes, so a cell of
@@ -389,8 +389,8 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 					return err
 				}
 			}
-			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
-				return mapDriverErrContext(err, ctx)
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, s.u.db.dbspecServer(), "schema"); err != nil {
+				return mapDriverErrContext(err, ctx, s.u.db.server)
 			}
 		}
 		return setDiffers(dbspec.InstalledDifferences(live, unsupported, target))
@@ -455,8 +455,8 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		}
 		// After running the steps, it rereads the database and checks that it matches the set.
 		if len(steps) > 0 {
-			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
-				return mapDriverErrContext(err, ctx)
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, s.u.db.dbspecServer(), "schema"); err != nil {
+				return mapDriverErrContext(err, ctx, s.u.db.server)
 			}
 		}
 		if err := setDiffers(dbspec.InstalledDifferences(live, unsupported, target)); err != nil {
@@ -485,20 +485,29 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	return added, nil
 }
 
+// dbspecServer is the server of the connection that introspection reads by (DIA-203): the server that open read on a
+// mysql connection, and the driver's own on PostgreSQL and SQLite.
+func (d *DB) dbspecServer() dbspec.Server {
+	if d.driver == "mysql" {
+		return dbspec.Server(d.server)
+	}
+	return dbspec.Server(d.driver)
+}
+
 // introspectSet introspects the connection's database, and if the set uses a table from an external document
 // and that table differs from the external document, it is CONFIG (docs/spec/dbspec.md "External documents").
 // introspectObserved introspects the schema of m through the runner r as a
 // schema statement; it returns the observer too, for the statements that follow.
 func introspectObserved(ctx context.Context, r runner, dialect dbspec.Dialect, m *runtimemodel.Model) (*observed, *dbspec.Document, []dbspec.Unsupported, error) {
 	q := &observed{r: r, kind: KindSchema, tables: noTables}
-	live, unsupported, err := introspectSet(ctx, q, dialect, m)
+	live, unsupported, err := introspectSet(ctx, q, dialect, m, r.d)
 	return q, live, unsupported, err
 }
 
-func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
-	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
+func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model, d *DB) (*dbspec.Document, []dbspec.Unsupported, error) {
+	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, d.dbspecServer(), "schema")
 	if err != nil {
-		return nil, nil, mapDriverErrContext(err, ctx)
+		return nil, nil, mapDriverErrContext(err, ctx, d.server)
 	}
 	if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
 		return nil, nil, externalErr(differences)
@@ -551,7 +560,7 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) erro
 	ctx := d.ctx
 	conn, err := d.sql.Conn(ctx)
 	if err != nil {
-		return mapDriverErr(err)
+		return mapDriverErr(err, d.server)
 	}
 	restored := false
 	defer func() {
@@ -560,7 +569,7 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) erro
 			err = errors.Join(err, conn.Raw(func(any) error { return driver.ErrBadConn }))
 		}
 		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, driver.ErrBadConn) {
-			err = errors.Join(err, mapDriverErr(closeErr))
+			err = errors.Join(err, mapDriverErr(closeErr, d.server))
 		}
 	}()
 	outside := runner{d: d, q: conn}
@@ -806,7 +815,7 @@ func (a *AESUtils) Status(m Model, keyring AESKeyring) (AESRotationStatus, error
 			var raw cell
 			var count int64
 			if err := scan(&raw, &count); err != nil {
-				return mapDriverErr(err)
+				return mapDriverErr(err, a.u.db.server)
 			}
 			stored, err := rowVersion(raw.v)
 			if err != nil {
@@ -868,7 +877,7 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 					dest[i] = &cells[i]
 				}
 				if err := scan(dest...); err != nil {
-					return mapDriverErr(err)
+					return mapDriverErr(err, a.u.db.server)
 				}
 				row := map[string]any{}
 				for i, k := range spec.keys {

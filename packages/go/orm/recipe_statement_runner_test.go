@@ -18,6 +18,13 @@ func TestRecipeStatementRunnerMysql(t *testing.T) {
 	recipe.Run(t, statementRunnerRecipe, "mysql")
 }
 
+// TestRecipeStatementRunnerMariadb runs the statement_runner recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeStatementRunnerMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, statementRunnerRecipe, "mariadb")
+}
+
 // TestRecipeStatementRunnerPostgres runs the statement_runner recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: INT-150, INT-77.
 func TestRecipeStatementRunnerPostgres(t *testing.T) {

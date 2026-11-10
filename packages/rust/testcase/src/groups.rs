@@ -18,6 +18,13 @@ impl Group {
         Self { name, trials, in_order: false, after: None }
     }
 
+    /// The group `name` of the cases of a recipe on a database, which run [in order](Self::in_order) on every database: the
+    /// cases create and drop databases, and DDL of two cases at once on MariaDB can leave a trigger backup that fails a later
+    /// `DROP DATABASE` (docs/spec/dialects.md DIA-212). A case whose subject is concurrency makes its concurrency inside the case.
+    pub fn recipe(name: &'static str, trials: fn() -> Vec<Trial>) -> Self {
+        Self::new(name, trials).in_order()
+    }
+
     /// The trials share a database or a server: unless the command line gives `--test-threads`, they run one after another, in
     /// the order of the file.
     pub fn in_order(mut self) -> Self {
@@ -170,6 +177,13 @@ mod tests {
         assert!(may_select("dsn_connection_mysql", "dsn_connection_mysql::x", true));
         assert!(!may_select("dsn_connection_mysql", "mysql::x", true));
         assert!(!may_select("dsn_connection_mysql", "dsn_connection_mysql", true));
+    }
+
+    #[test]
+    fn a_recipe_group_runs_its_trials_in_order() {
+        let _case = crate::case!(crate::COMPUTE);
+        assert!(Group::recipe("aes_rotation_mysql", Vec::new).in_order);
+        assert!(!Group::new("aes_keys", Vec::new).in_order);
     }
 
     #[test]

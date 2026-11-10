@@ -10,7 +10,7 @@ use std::pin::Pin;
 use polyspec_orm::{Config, Db, Schema};
 use serde_json::{json, Map, Value};
 
-use crate::recipe::{ModelDispatcher, ModelFuture, CASE_CONNECTION};
+use crate::recipe::{ModelDispatcher, ModelError, ModelFuture, CASE_CONNECTION};
 
 /// The connections that model.connect opened in one case, by name.
 #[derive(Default)]
@@ -46,7 +46,7 @@ pub trait CaseModels: Send + 'static {
     const TABLE_PATH: bool = false;
 
     /// model.connect: opens the connection `name` on `dsn` with `pool_size` connections.
-    fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> impl Future<Output = Result<Value, String>>;
+    fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> impl Future<Output = Result<Value, ModelError>>;
     /// model.connect with aes_keyring; a recipe without AES models refuses it by name.
     fn connect_keyring(
         &mut self,
@@ -55,9 +55,9 @@ pub trait CaseModels: Send + 'static {
         _dsn: &str,
         _pool_size: u32,
         _keyring: &Value,
-    ) -> impl Future<Output = Result<Value, String>> {
+    ) -> impl Future<Output = Result<Value, ModelError>> {
         let refusal = format!("model.connect {name}: this recipe binds no AES models");
-        async move { Err(refusal) }
+        async move { Err(refusal.into()) }
     }
     /// model.connect with statement_timeout_ms (FCV-4, CFG-6); a recipe on generated models refuses it by name.
     fn connect_bounded(
@@ -67,9 +67,9 @@ pub trait CaseModels: Send + 'static {
         _dsn: &str,
         _pool_size: u32,
         _ms: u32,
-    ) -> impl Future<Output = Result<Value, String>> {
+    ) -> impl Future<Output = Result<Value, ModelError>> {
         let refusal = format!("model.connect {name}: this recipe binds no bounded connection");
-        async move { Err(refusal) }
+        async move { Err(refusal.into()) }
     }
     /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
     fn connect_audited(
@@ -79,12 +79,12 @@ pub trait CaseModels: Send + 'static {
         _dsn: &str,
         _pool_size: u32,
         _source: &Value,
-    ) -> impl Future<Output = Result<Value, String>> {
+    ) -> impl Future<Output = Result<Value, ModelError>> {
         let refusal = format!("model.connect {name}: this recipe binds no audited models");
-        async move { Err(refusal) }
+        async move { Err(refusal.into()) }
     }
     /// The model op `op` of `step` on `connection`: its fields, which the expect of the step compares.
-    fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> impl Future<Output = Result<Value, String>>;
+    fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> impl Future<Output = Result<Value, ModelError>>;
     /// Drops what the case holds besides its connections, before they close.
     fn clear(&mut self) {}
 }
@@ -148,11 +148,11 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 /// The model ops of one recipe on the generated models of the bench set, each on the connection that its step names.
 pub trait BenchModels: Send + 'static {
     /// The op `op` of `step` on `db`: its fields, which the expect of the step compares.
-    fn run(&self, db: &Db, op: &str, step: &Value) -> impl Future<Output = Result<Value, String>>;
+    fn run(&self, db: &Db, op: &str, step: &Value) -> impl Future<Output = Result<Value, ModelError>>;
     /// The op `op` of a `step` whose model is built with no connection (PLN-16); no recipe has one by default.
-    fn run_unconnected(&self, op: &str, _step: &Value) -> impl Future<Output = Result<Value, String>> {
+    fn run_unconnected(&self, op: &str, _step: &Value) -> impl Future<Output = Result<Value, ModelError>> {
         let message = format!("{op} has no unconnected form");
-        async move { Err(message) }
+        async move { Err(message.into()) }
     }
 }
 
@@ -173,11 +173,11 @@ pub fn bench_config() -> Config {
 }
 
 impl<M: BenchModels> CaseModels for Bench<M> {
-    async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, String> {
+    async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, ModelError> {
         connections.open(name, dsn, self.schema, pool_size, bench_config()).await.map_err(fail)
     }
 
-    async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+    async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, ModelError> {
         if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
             return self.models.run_unconnected(op, step).await;
         }
@@ -186,13 +186,13 @@ impl<M: BenchModels> CaseModels for Bench<M> {
     }
 }
 
-/// The message of an error of the client.
-pub fn fail(error: polyspec_orm::Error) -> String {
-    crate::recipe::failure_text(&error)
+/// The error of the client, as its call returned it.
+pub fn fail(error: polyspec_orm::Error) -> ModelError {
+    ModelError::Orm(error)
 }
 
 /// One row of the cells of `columns`, each read by `cell`.
-pub fn cells(columns: &[String], cell: impl Fn(&str) -> Result<Value, String>) -> Result<Value, String> {
+pub fn cells<E>(columns: &[String], cell: impl Fn(&str) -> Result<Value, E>) -> Result<Value, E> {
     columns.iter().map(|column| cell(column)).collect::<Result<Vec<_>, _>>().map(Value::Array)
 }
 

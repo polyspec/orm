@@ -439,6 +439,8 @@ async function dialStatements(dsn: MarkdownDsn, signal: AbortSignal | undefined)
  */
 class MarkdownPoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
+  // A flowmark server answers SQL in SQLite's dialect, as its server (DIA-185, DIA-203).
+  public readonly server = 'sqlite' as const;
   public constructor(private readonly pool: MarkdownPool) {}
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     const s = await this.pool.acquire(signal);

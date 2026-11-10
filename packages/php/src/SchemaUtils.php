@@ -63,7 +63,7 @@ final class SchemaUtils
             $tx,
             static function () use ($db, $pdo, $tx, $statements, $driver, $documents, $target): void {
                 try {
-                    $live = self::introspectSet($pdo, $driver, $documents);
+                    $live = self::introspectSet($pdo, $driver, $db->server(), $documents);
                     $found = [];
                     foreach ($live->document->tables as $table) {
                         $found[$table->name] = true;
@@ -90,7 +90,7 @@ final class SchemaUtils
                         foreach ($statements as [$statement, $table]) {
                             $db->run(StatementEvent::SCHEMA, [$table], $tx, $statement);
                         }
-                        $live = Dbspec::introspect($pdo, $driver, 'schema');
+                        $live = Dbspec::introspect($pdo, $driver, $db->server(), 'schema');
                     }
                     self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $target));
                 } catch (\PDOException $e) {
@@ -140,7 +140,7 @@ final class SchemaUtils
             $tx,
             static function () use ($db, $pdo, $tx, $driver, $document, $documents): array {
                 try {
-                    $live = self::introspectSet($pdo, $driver, $documents);
+                    $live = self::introspectSet($pdo, $driver, $db->server(), $documents);
                     [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps(
                         $live->document,
                         $live->unsupported,
@@ -167,7 +167,7 @@ final class SchemaUtils
                     }
                     // Reads the database again after the steps and checks that it matches the set.
                     if ($steps !== []) {
-                        $live = Dbspec::introspect($pdo, $driver, 'schema');
+                        $live = Dbspec::introspect($pdo, $driver, $db->server(), 'schema');
                     }
                     self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $document));
                     return $added;
@@ -222,9 +222,10 @@ final class SchemaUtils
     private static function introspectSet(
         \PDO $pdo,
         string $driver,
+        string $server,
         array $documents
     ): \Polyspec\Orm\Dbspec\IntrospectResult {
-        $live = Dbspec::introspect($pdo, $driver, 'schema');
+        $live = Dbspec::introspect($pdo, $driver, $server, 'schema');
         $differences = Dbspec::externalDifferences($live->document, $documents);
         if ($differences !== []) {
             throw self::externalError($differences);

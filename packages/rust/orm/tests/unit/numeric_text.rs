@@ -12,7 +12,7 @@ fn numeric(digits: &[u16], weight: i16, sign: u16, dscale: u16) -> Vec<u8> {
     bytes
 }
 
-// Requirements: DIA-203.
+// Requirements: DIA-219.
 #[test]
 fn a_binary_numeric_is_its_exact_decimal_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -35,7 +35,7 @@ fn a_binary_numeric_is_its_exact_decimal_text() {
     assert_eq!(numeric_binary_text(&numeric(&[], 0, 0xF000, 0)).as_deref(), Some("-Infinity"));
 }
 
-// Requirements: DIA-203.
+// Requirements: DIA-219.
 #[test]
 fn a_malformed_binary_numeric_has_no_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -49,7 +49,7 @@ fn a_malformed_binary_numeric_has_no_text() {
     assert_eq!(numeric_binary_text(&numeric(&[1], 0, 0x1234, 0)), None);
 }
 
-// Requirements: DIA-203.
+// Requirements: DIA-219.
 #[test]
 fn a_numeric_text_binds_as_its_exact_binary_numeric() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

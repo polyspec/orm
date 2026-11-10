@@ -738,10 +738,9 @@ func (w *planWriter) createTriggers(t *Table) {
 	}
 }
 
+// dropCheck drops a check by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read
+// alike (probes mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206).
 func (w *planWriter) dropCheck(table, name string) string {
-	if w.r.d == DialectMySQL {
-		return "ALTER TABLE " + w.q(table) + " DROP CHECK " + w.q(name)
-	}
 	return "ALTER TABLE " + w.q(table) + " DROP CONSTRAINT " + w.q(name)
 }
 

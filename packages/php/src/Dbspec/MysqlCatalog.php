@@ -19,24 +19,39 @@ IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EX
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec\$%' ORDER BY "
     . "TABLE_NAME, ORDINAL_POSITION";
     private const INDEXES = "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),
-SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS
+SUB_PART IS NOT NULL, COLUMN_NAME IS NULL, INDEX_TYPE FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX";
+    // MariaDB reads an information_schema table of one database only by the schema column of its table (TABLE_SCHEMA,
+    // EVENT_OBJECT_SCHEMA), so each read names it; a constraint and a trigger are in the schema of their table, so
+    // MySQL gives the same rows (DIA-213).
     private const FOREIGN_KEYS = 'SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, '
         . 'rc.UPDATE_RULE,
 rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
-AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
+AND k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION';
     // The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of
     // tables (at 2000 tables
     // Read by two queries (60 seconds or more) and joined by name. A MySQL CHECK name is unique within a database.
     private const CHECK_CLAUSES = 'SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME';
+    // MariaDB scopes a CHECK name to its table (probe mariadb.check.name_schema_scope), so its clauses are read by
+    // table and name (DIA-203).
+    private const MARIADB_CHECK_CLAUSES = 'SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM '
+        . 'information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME';
     private const CHECKS = "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
-WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
+    // MariaDB has no NOT ENFORCED CHECK and no ENFORCED column, so each of its checks is enforced (DIA-203).
+    private const MARIADB_CHECKS = "SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
+    /** A number literal of COLUMN_DEFAULT. */
+    private const NUMBER = '/^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$/D';
+    /** A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p). */
+    private const MARIADB_CLOCK = '/^current_timestamp\(([1-6]?)\)$/D';
     private const TRIGGERS = 'SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, '
         . 'ACTION_STATEMENT
-FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME';
+FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME';
     private const ROUTINES = 'SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() '
         . 'ORDER BY ROUTINE_NAME';
     private const EVENTS = 'SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY '
@@ -44,8 +59,13 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     private const TYPE = '/^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time'
         . '|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/D';
 
-    public static function read(\PDO $connection): Catalog
+    /**
+     * $server is mysql or mariadb, the server that the connection reached, which the caller read when it connected
+     * (DIA-203).
+     */
+    public static function read(\PDO $connection, string $server): Catalog
     {
+        $mariadb = $server === 'mariadb';
         $c = new Catalog();
         foreach (CatalogRows::namedRows($connection, self::TABLES) as [$name, $kind, $row]) {
             $options = CatalogRows::text($row, 2, self::TABLES);
@@ -77,6 +97,13 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if ($generation !== '') {
                 $c->report('column', $table, $name, 'a generated column has no dbspec definition');
                 continue;
+            }
+            if ($mariadb) {
+                try {
+                    [$default, $extra] = self::mariadbDefault($default, $extra);
+                } catch (\RuntimeException $e) {
+                    throw new \RuntimeException("column $table.$name: {$e->getMessage()}", 0, $e);
+                }
             }
             $type = self::type($columnType, $charset, $collation);
             if ($type === null) {
@@ -111,17 +138,32 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         self::readIndexes($connection, $c);
         self::readForeignKeys($connection, $c);
         $checked = [];
+        // Each CHECK_CLAUSE by checkKey, in the escaped form of MySQL's CHECK_CLAUSE.
         $clauses = [];
-        foreach (CatalogRows::read($connection, self::CHECK_CLAUSES) as $row) {
-            $clauses[CatalogRows::text($row, 0, self::CHECK_CLAUSES)] = CatalogRows::text($row, 1, self::CHECK_CLAUSES);
+        if ($mariadb) {
+            $q = self::MARIADB_CHECK_CLAUSES;
+            foreach (CatalogRows::read($connection, $q) as $row) {
+                // MariaDB writes CHECK_CLAUSE as SQL text, escaping a string literal once (probes
+                // mariadb.check.catalog_text, mariadb.check.string_escaped_twice), and MySQL escapes it once more; the
+                // MariaDB text takes that escape so that one reader reads both (DIA-203).
+                $clauses[self::checkKey($server, CatalogRows::text($row, 0, $q), CatalogRows::text($row, 1, $q))]
+                    = self::escapeClause(CatalogRows::text($row, 2, $q));
+            }
+        } else {
+            foreach (CatalogRows::read($connection, self::CHECK_CLAUSES) as $row) {
+                $clauses[CatalogRows::text($row, 0, self::CHECK_CLAUSES)]
+                    = CatalogRows::text($row, 1, self::CHECK_CLAUSES);
+            }
         }
         $shown = [];
-        foreach (CatalogRows::read($connection, self::CHECKS) as $row) {
+        $checks = $mariadb ? self::MARIADB_CHECKS : self::CHECKS;
+        foreach (CatalogRows::read($connection, $checks) as $row) {
             [$table, $name, $enforced] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS),
+                static fn(int $i): string => CatalogRows::text($row, $i, $checks),
                 [0, 1, 2]
             );
-            $clause = $clauses[$name] ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
+            $clause = $clauses[self::checkKey($server, $table, $name)]
+                ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
             if (self::hasNonAscii($clause)) {
                 $clause = self::shownCheck($connection, $table, $name, $shown);
             }
@@ -138,7 +180,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 $known = $column === null ? null : $columns[$table][$column];
                 if (
                     $known === null
-                    || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))
+                    || self::withoutIntroducers($clause)
+                        !== self::withoutIntroducers(self::rendererCheck($server, $known))
                 ) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
@@ -197,9 +240,12 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         }
         $precision = $g(2) === '' ? 0 : (int) $g(2);
         [$type, $needsCheck, $ok] = match ($g(1)) {
-            'smallint' => [new ColumnType('i16'), '', $g(2) === ''],
-            'int' => [new ColumnType('i32'), '', $g(2) === ''],
-            'bigint' => [new ColumnType('i64'), '', $g(2) === ''],
+            // An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it
+            // (probes mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width
+            // (DIA-204).
+            'smallint' => [new ColumnType('i16'), '', true],
+            'int' => [new ColumnType('i32'), '', true],
+            'bigint' => [new ColumnType('i64'), '', true],
             'tinyint(1)' => [new ColumnType('bool'), $columnType, true],
             'double' => [new ColumnType('f64'), '', $g(2) === ''],
             'longtext' => [new ColumnType('text'), '', $text],
@@ -287,7 +333,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 } elseif ($c === '(') {
                     $depth++;
                 } elseif ($c === ')' && --$depth === 0) {
-                    $checks[$name] = str_replace(["\\", "'"], ["\\\\", "\\'"], substr($create, $start, $i - $start));
+                    $checks[$name] = self::escapeClause(substr($create, $start, $i - $start));
                     break;
                 }
             }
@@ -295,13 +341,94 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         return $checks;
     }
 
-    /** The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). */
-    private static function rendererCheck(array $column): string
+    /** The inverse of the CHECK_CLAUSE unescape of CheckDecoder: it escapes `\` and `'`. */
+    private static function escapeClause(string $text): string
+    {
+        return str_replace(["\\", "'"], ["\\\\", "\\'"], $text);
+    }
+
+    /**
+     * The key of a check in the clauses of read: its name on MySQL, whose CHECK names are unique in the database, and
+     * its table and name on MariaDB, which scopes a CHECK name to its table (probes mysql.check.name_schema_scope,
+     * mariadb.check.name_schema_scope).
+     */
+    private static function checkKey(string $server, string $table, string $name): string
+    {
+        return $server === 'mariadb' ? "$table\0$name" : $name;
+    }
+
+    /**
+     * Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL
+     * text: NULL for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number
+     * as written, and an expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe
+     * mariadb.default.catalog_text). MySQL gives a NULL default as SQL NULL, a literal without quotes and escapes, and
+     * an expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among them, with EXTRA DEFAULT_GENERATED (probe
+     * mysql.default.catalog_text). A quoted text that is not one whole literal is a RuntimeException.
+     *
+     * @return array{0: ?string, 1: string}
+     */
+    private static function mariadbDefault(?string $default, string $extra): array
+    {
+        if ($default === null || $extra !== '') {
+            return [$default, $extra];
+        }
+        if ($default === 'NULL') {
+            return [null, $extra];
+        }
+        if (str_starts_with($default, "'")) {
+            try {
+                [$value, $length] = CheckDecoder::sqlString('mysql', $default);
+            } catch (CheckDecodeFailure) {
+                $length = -1;
+            }
+            if ($length !== strlen($default)) {
+                throw new \RuntimeException("default $default is not one string literal");
+            }
+            return [$value, $extra];
+        }
+        if (preg_match(self::NUMBER, $default) === 1) {
+            return [$default, $extra];
+        }
+        if (preg_match(self::MARIADB_CLOCK, $default, $m) === 1) {
+            return [$m[1] === '' ? 'CURRENT_TIMESTAMP' : "CURRENT_TIMESTAMP({$m[1]})", 'DEFAULT_GENERATED'];
+        }
+        return [$default, 'DEFAULT_GENERATED'];
+    }
+
+    /**
+     * The default of a MariaDB COLUMN_DEFAULT in the MySQL form, for the table descriptor of the catalog connection,
+     * which reads no EXTRA (DIA-205): the default text, null for none, and whether it is an expression. A quoted text
+     * that is not one whole literal is a RuntimeException.
+     *
+     * @internal
+     * @return array{0: ?string, 1: bool}
+     */
+    public static function mariadbCatalogDefault(?string $default): array
+    {
+        [$text, $extra] = self::mariadbDefault($default, '');
+        return [$text, $extra === 'DEFAULT_GENERATED'];
+    }
+
+    /**
+     * The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks").
+     * MariaDB writes it without the outer parentheses and the introducers, in the escaped form that read gives its
+     * CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check,
+     * mariadb.render.time_of_day_check; DIA-203).
+     */
+    private static function rendererCheck(string $server, array $column): string
     {
         $c = "`{$column['name']}`";
+        if ($server === 'mariadb') {
+            return match ($column['type']->name) {
+                'bool' => "$c in (0,1)",
+                'uuid' => "$c regexp \\'" . Renderer::UUID_PATTERN . "\\'",
+                'time' => "$c >= \\'00:00:00\\' and $c < \\'24:00:00\\'",
+                default => '',
+            };
+        }
         return match ($column['type']->name) {
             'bool' => "($c in (0,1))",
-            'uuid' => "regexp_like($c,_utf8mb4\\'" . Renderer::UUID_PATTERN . "\\',_utf8mb4\\'c\\')",
+            'uuid' => "regexp_like($c,_utf8mb4\\'" . Renderer::UUID_PATTERN . "\\')",
             'time' => "(($c >= _utf8mb4\\'00:00:00\\') and ($c < _utf8mb4\\'24:00:00\\'))",
             default => '',
         };

@@ -3,11 +3,13 @@
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
 import atexit
+import contextlib
 import dataclasses
 import json
 import math
 import os
 import re
+import select
 import shutil
 import socket
 import sqlite3
@@ -1233,7 +1235,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
     fault = _FaultConnection()
     try:
         if step.get("applied_first"):
-            apply_plans(fault, "sqlite", plans, now)
+            apply_plans(fault, "sqlite", "sqlite", plans, now)
         for statement in step.get("sql", []):
             fault.execute(statement, [])
         if "fail_catalog_read" in step:
@@ -1254,7 +1256,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
 
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
-            call(fault, "sqlite", plans, now, events)
+            call(fault, "sqlite", "sqlite", plans, now, events)
         except Exception as error:
             if "code" in expect and getattr(error, "code", None) != expect["code"]:
                 raise AssertionError(
@@ -1338,10 +1340,7 @@ def _dbspec_read_set(step: dict, database: str) -> None:
                     raise AssertionError(
                         f"the message {error.message!r} does not name {error.path!r}"
                     )
-                if wanted.get("message_holds", "") not in error.message:
-                    raise AssertionError(
-                        f"the message {error.message!r} does not hold {wanted['message_holds']!r}"
-                    )
+                _check_message_holds(error.message, wanted.get("message_holds"))
             return
         _expect_equal([(error.rule, error.path) for error in errors], [], "errors")
         for files, paths, name in (
@@ -1406,7 +1405,7 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
     expect = step["expect"][database]
     if "error" in expect:
         try:
-            introspect_dbspec(connection, "mysql", "introspected")
+            introspect_dbspec(connection, "mysql", "mysql", "introspected")
         except ValueError as error:
             if str(error) != expect["error"]:
                 raise AssertionError(
@@ -1414,7 +1413,7 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
                 ) from error
             return
         raise AssertionError(f"no error, want {expect['error']}")
-    result = introspect_dbspec(connection, "mysql", "introspected")
+    result = introspect_dbspec(connection, "mysql", "mysql", "introspected")
     checks = [
         line.strip()
         for line in emit_dbspec(result["document"]).splitlines()
@@ -1449,7 +1448,7 @@ def _dbspec_introspect_sqlite(step: dict, database: str) -> None:
         for statement in step["sql"]:
             connection.execute(statement)
         result = introspect_dbspec(
-            _SqliteCatalogConnection(connection), "sqlite", "introspected"
+            _SqliteCatalogConnection(connection), "sqlite", "sqlite", "introspected"
         )
     finally:
         connection.close()
@@ -1809,7 +1808,7 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
     elif op == "dbspec.introspect_refusal":
-        got = _introspect_refusal(step["dialect"])
+        got = _introspect_refusal(step["dialect"], step.get("server"))
     elif op == "dbspec.plan_steps" and step["dialect"] not in (
         "mysql",
         "postgres",
@@ -2033,9 +2032,10 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
-def _connect_driver(dsn: str, config: dict | None = None) -> str:
+def _connect_driver(dsn: str, config: dict | None = None, database: str = "") -> str:
     """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
-    driver: the one implementation of dsn.connect (FCV-4)."""
+    driver: the one implementation of dsn.connect (FCV-4). database is the case database, which reads a session_read
+    SQL keyed by database."""
     names = {
         "pool_size": "poolSize",
         "pool_idle_size": "poolIdleSize",
@@ -2065,12 +2065,18 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
             )
         session_read = (config or {}).get("session_read")
         if session_read is not None:
-            read = db.utils().run(
-                lambda frame: frame.run(session_read["sql"], [], "utility")
-            )["rows"]
+            # The SQL is one text, or an object keyed by database that a server reads by the dialect-key rule.
+            sql = session_read["sql"]
+            if isinstance(sql, dict):
+                if not database:
+                    raise AssertionError(
+                        "dsn.connect: a session_read SQL keyed by database needs the case database"
+                    )
+                sql = sql[_dialect_key(database, sql)]
+            read = db.utils().run(lambda frame: frame.run(sql, [], "utility"))["rows"]
             if [[str(cell) for cell in row] for row in read] != [session_read["row"]]:
                 raise AssertionError(
-                    f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}"
+                    f"{sql} returned {read!r}, want {session_read['row']!r}"
                 )
         if (config or {}).get("tls_version"):
             status = db.utils().run(
@@ -2097,6 +2103,29 @@ def _markdown_listener(answer) -> tuple[socket.socket, threading.Thread, int]:
     server = threading.Thread(target=serve, daemon=True)
     server.start()
     return listener, server, listener.getsockname()[1]
+
+
+def _message_holds_texts(holds: Any) -> list[str]:
+    """The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+    array is its texts; an empty array or any other value is a recipe error, as it would check nothing."""
+    if holds is None:
+        return []
+    if isinstance(holds, str):
+        return [holds]
+    if isinstance(holds, list) and not holds:
+        raise ValueError("message_holds is an empty array, which checks nothing")
+    if isinstance(holds, list) and all(isinstance(text, str) for text in holds):
+        return holds
+    raise ValueError(
+        f"message_holds is {holds!r}, want a string or an array of strings"
+    )
+
+
+def _check_message_holds(message: str, holds: Any) -> None:
+    """Raises an AssertionError that names the first text of the message_holds field that message does not hold."""
+    for text in _message_holds_texts(holds):
+        if text not in message:
+            raise AssertionError(f"message {message!r}, want one that holds {text!r}")
 
 
 def _markdown_connect(step: dict, database: str) -> None:
@@ -2128,10 +2157,7 @@ def _markdown_connect(step: dict, database: str) -> None:
         )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
-    if outcome.get("message_holds", "") not in message:
-        raise AssertionError(
-            f"message {message}, want one that holds {outcome['message_holds']}"
-        )
+    _check_message_holds(message, outcome.get("message_holds"))
 
 
 def _markdown_session(step: dict, database: str) -> None:
@@ -2192,10 +2218,7 @@ def _markdown_session(step: dict, database: str) -> None:
         )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
-    if outcome.get("message_holds", "") not in message:
-        raise AssertionError(
-            f"message {message}, want one that holds {outcome['message_holds']}"
-        )
+    _check_message_holds(message, outcome.get("message_holds"))
 
 
 def _dsn_connect(step: dict, database: str) -> None:
@@ -2208,17 +2231,14 @@ def _dsn_connect(step: dict, database: str) -> None:
     message = ""
     driver = None
     try:
-        driver = _connect_driver(step["dsn"], step.get("config"))
+        driver = _connect_driver(step["dsn"], step.get("config"), database)
     except OrmError as error:
         got = error.code
         message = str(error)
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
-        if outcome.get("message_holds", "") not in message:
-            raise AssertionError(
-                f"message {message}, want one that holds {outcome['message_holds']}"
-            )
+        _check_message_holds(message, outcome.get("message_holds"))
         return
     if got is not None:
         raise AssertionError(f"unexpected error {got}")
@@ -2543,32 +2563,54 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
 
 
 # The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-DATABASES = ("mysql", "postgres", "sqlite", "markdown")
+DATABASES = ("mysql", "postgres", "sqlite", "markdown", "mariadb")
+# The SQL dialect of a database that is not a dialect of its own: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in
+# MySQL's (DIA-200).
+_DIALECT_OF = {"markdown": "sqlite", "mariadb": "mysql"}
 
 
 def _on_database(only, database: str) -> bool:
     """Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names
-    sqlite names it too (FCV-3)."""
-    return not only or database in only or (database == "markdown" and "sqlite" in only)
+    sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3)."""
+    return (
+        not only
+        or database in only
+        or (database == "markdown" and "sqlite" in only)
+        or (database == "mariadb" and "mysql" in only)
+    )
 
 
 def _dialect_key(database: str, entries) -> str:
-    """The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it
-    reads the SQLite entry unless the value states its own."""
-    if database == "markdown" and "markdown" not in (entries or {}):
-        return "sqlite"
+    """The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their
+    dialect unless the value states its own (FCV-3)."""
+    if database not in (entries or {}):
+        return _DIALECT_OF.get(database, database)
     return database
 
 
 def _dialect_of(context: dict) -> str:
-    """The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185)."""
-    return "sqlite" if context["database"] == "markdown" else context["database"]
+    """The SQL dialect of the case database."""
+    return _DIALECT_OF.get(context["database"], context["database"])
+
+
+def _server_variable(name: str, database: str) -> str:
+    """The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_
+    (FCV-3)."""
+    if database == "mariadb" and name.startswith("ORM_TEST_MYSQL_"):
+        return "ORM_TEST_MARIADB_" + name[len("ORM_TEST_MYSQL_") :]
+    return name
 
 
 class DatabaseRecipeCase(VectorCase):
     """A case of a recipe on a database: it creates and drops a database and runs a bounded number of statements."""
 
     deadline = testcase.DATABASE
+
+    def __init__(self, case_id, check, case) -> None:
+        super().__init__(case_id, check, case)
+        # A case that states its steps gets their step budget instead of DATABASE (FCV-4).
+        if "deadline" in case:
+            self.deadline = testcase.step_budget(case["deadline"]["steps"])
 
 
 def _database_recipe_tests(path: str, database: str):
@@ -2588,20 +2630,44 @@ def _database_recipe_tests(path: str, database: str):
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
+        # A case with a step deadline gets its step guard at its start: it ends the case at the step budget, or when no
+        # apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply).
+        guard = (
+            testcase.StepGuard(test.id(), test.deadline, testcase.DATABASE)
+            if "deadline" in case
+            else None
+        )
+        try:
+            _check_case(test, case, guard)
+        finally:
+            if guard is not None:
+                guard.stop()
+
+    def _check_case(test: unittest.TestCase, case: dict, guard) -> None:
         if markdown:
             # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
             # corpus of no table.
             installed = fixture != NONE and case.get("install", True) is not False
             with case_corpus(ROOT / fixture if installed else None) as (dsn, corpus):
                 _run_case(
-                    path, recipe, case, database, schema, dsn, install_first, corpus
+                    path,
+                    recipe,
+                    case,
+                    database,
+                    schema,
+                    dsn,
+                    install_first,
+                    corpus,
+                    guard,
                 )
             return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
         ):
-            _run_case(path, recipe, case, database, schema, dsn, install_first)
+            _run_case(
+                path, recipe, case, database, schema, dsn, install_first, guard=guard
+            )
 
     cases = [
         case
@@ -2662,6 +2728,7 @@ def _run_case(
     dsn: str,
     install_first: list,
     corpus: Path | None = None,
+    guard: testcase.StepGuard | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
@@ -2672,7 +2739,7 @@ def _run_case(
             else:
                 for shared in [*install_first, schema]:
                     db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
+        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus, guard)
     finally:
         db.close()
 
@@ -2697,6 +2764,7 @@ def _run_case_on(
     dsn: str,
     db: Db,
     corpus: Path | None = None,
+    guard: testcase.StepGuard | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2717,6 +2785,8 @@ def _run_case_on(
         "fields": {},
         "records": [],
         "hook_bases": {},
+        # The step guard of a case with a step deadline, which each apply event restarts (recipe_apply).
+        "guard": guard,
     }
     try:
         namespace = catalog.current_namespace()
@@ -2775,6 +2845,8 @@ def _op_describe_table(step: dict, context: dict) -> dict:
         "generated": [column.generated for column in columns],
         "automatic_keys": [column.automatic_key for column in columns],
         "defaults": [column.default_expression is not None for column in columns],
+        "default_texts": [column.default_expression for column in columns],
+        "expression_defaults": [column.expression_default for column in columns],
     }
 
 
@@ -2853,6 +2925,78 @@ def _user_from_database_dsn(dsn: str, prefix: str) -> str:
     return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
 
 
+class _ConnectRelay:
+    """The TCP listener of catalog.reconnect {connects} (DIA-211): it listens on 127.0.0.1, relays each connection
+    it accepts to the host and port of the DSN, copying the bytes both ways, and counts the connections it accepted.
+    A client learns that its connect is refused only from bytes that the server sends through an accepted
+    connection, so when a refused reconnect has returned, every connection that the client opened for it has been
+    counted."""
+
+    def __init__(self, dsn: str) -> None:
+        match = re.match(r"^([a-z]+://[^@/]+@)([^/?]+)(.*)$", dsn)
+        if match is None:
+            raise AssertionError(
+                f"catalog.reconnect connects: the DSN names no host and port: {dsn}"
+            )
+        host, _, port = match.group(2).rpartition(":")
+        self._target = (host, int(port))
+        self._listener = socket.create_server(("127.0.0.1", 0))
+        # close wakes the accept loop through this pair, since closing a listener does not wake an accept on every platform.
+        self._wake, self._woken = socket.socketpair()
+        self._sockets: list[socket.socket] = []
+        self._lock = threading.Lock()
+        self._threads: list[threading.Thread] = []
+        self.accepted = 0
+        self.dsn = f"{match.group(1)}127.0.0.1:{self._listener.getsockname()[1]}{match.group(3)}"
+        self._start(self._serve)
+
+    def _start(self, target, *args) -> None:
+        thread = threading.Thread(target=target, args=args, daemon=True)
+        with self._lock:
+            self._threads.append(thread)
+        thread.start()
+
+    def _serve(self) -> None:
+        while True:
+            ready, _, _ = select.select([self._listener, self._woken], [], [])
+            if self._woken in ready:
+                return
+            client, _ = self._listener.accept()
+            self.accepted += 1
+            try:
+                server = socket.create_connection(self._target)
+            except OSError:
+                client.close()
+                continue
+            with self._lock:
+                self._sockets += [client, server]
+            self._start(self._copy, client, server)
+            self._start(self._copy, server, client)
+
+    @staticmethod
+    def _copy(source: socket.socket, sink: socket.socket) -> None:
+        # Copies one direction and shuts both ends when it ends, which ends the other direction.
+        with contextlib.suppress(OSError):
+            while data := source.recv(65536):
+                sink.sendall(data)
+        for end in (source, sink):
+            with contextlib.suppress(OSError):
+                end.shutdown(socket.SHUT_RDWR)
+
+    def close(self) -> None:
+        """Stops the relay, closes every relayed connection and returns when no thread of it runs."""
+        self._wake.send(b"x")
+        with self._lock:
+            sockets, threads = list(self._sockets), list(self._threads)
+        for end in sockets:
+            with contextlib.suppress(OSError):
+                end.shutdown(socket.SHUT_RDWR)
+        for thread in threads:
+            thread.join()
+        for end in [*sockets, self._listener, self._wake, self._woken]:
+            end.close()
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "dsn" in step:
@@ -2860,21 +3004,31 @@ def _op_reconnect(step: dict, context: dict) -> dict:
     if "user_from_database" in step:
         dsn = _user_from_database_dsn(dsn, step["user_from_database"])
     if "refused_message" in step:
+        relay = _ConnectRelay(dsn) if "connects" in step else None
         try:
-            connect_catalog(dsn).current_namespace()
-        except Exception as error:
-            if step["refused_message"] not in str(error).lower():
-                raise AssertionError(
-                    f"the server refused the connection for another reason: {error}"
-                ) from error
-            if getattr(error, "code", None) != step["refused_code"]:
-                raise AssertionError(
-                    f"the refused connection has another code than {step['refused_code']}: {error}"
-                ) from error
-            return {}
-        raise AssertionError(
-            "the server accepted the connection that the step expects it to refuse"
-        )
+            try:
+                connect_catalog(relay.dsn if relay else dsn).current_namespace()
+            except Exception as error:
+                if step["refused_message"] not in str(error).lower():
+                    raise AssertionError(
+                        f"the server refused the connection for another reason: {error}"
+                    ) from error
+                if getattr(error, "code", None) != step["refused_code"]:
+                    raise AssertionError(
+                        f"the refused connection has another code than {step['refused_code']}: {error}"
+                    ) from error
+                if relay is not None and relay.accepted != step["connects"]:
+                    raise AssertionError(
+                        f"the client opened {relay.accepted} connections for the refused reconnect, "
+                        f"want {step['connects']}"
+                    ) from error
+                return {}
+            raise AssertionError(
+                "the server accepted the connection that the step expects it to refuse"
+            )
+        finally:
+            if relay is not None:
+                relay.close()
     # A committed mutation leaves its connection in the catalog that this step replaces (INT-106e).
     if not context.get("closed"):
         context["catalog"].close()
@@ -3095,17 +3249,25 @@ def _op_replica_await(step: dict, context: dict) -> dict:
                 f"synchronous_commit of the barrier transaction is {mode}"
             )
         return {}
-    replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
+    # MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+    variable = _server_variable("ORM_TEST_MYSQL_REPLICA_DSN", context["database"])
+    replica = os.environ.get(variable)
     if not replica:
         raise AssertionError(
-            "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it"
+            f"replica.await: {variable} is required; run make orm-test-servers, which starts the databases and writes it"
         )
-    status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
+    mariadb = context["database"] == "mariadb"
+    status = native_query(
+        "mysql",
+        context["dsn"],
+        ["SHOW BINLOG STATUS" if mariadb else "SHOW BINARY LOG STATUS"],
+    )[0][0]
     file, position = status["File"], int(status["Position"])
+    wait = "MASTER_POS_WAIT" if mariadb else "SOURCE_POS_WAIT"
     waited = native_query(
         "mysql",
         replica,
-        [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"],
+        [f"SELECT {wait}('{file}', {position}, 60) AS waited"],
     )[0][0]["waited"]
     if waited is None or int(waited) < 0:
         raise AssertionError(f"the replica did not reach {file}:{position}")
@@ -3212,7 +3374,10 @@ def _op_session_end(step: dict, context: dict) -> dict:
     query = (
         f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
         if database == "postgres"
-        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
+        # One form on MySQL and MariaDB, which has no performance_schema.data_locks: the session other than this one
+        # whose transaction holds a granted metadata lock on the table; the metadata lock view is live, where
+        # information_schema.INNODB_TRX is a cache that can miss a transaction that has just begun.
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '{table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1"
     )
     rows = native_query(database, session, [query])[0]
     if len(rows) != 1:
@@ -3313,13 +3478,15 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         if "query" in step:
             dsn += ("&" if "?" in dsn else "?") + step["query"]
     if dsn.startswith("env:"):
-        name = dsn[len("env:") :]
+        name = _server_variable(dsn[len("env:") :], context["database"])
         dsn = os.environ.get(name, "")
         if not dsn:
             raise AssertionError(
                 f"dsn.connect: {name} is unset; run make orm-test-servers"
             )
-    return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
+    return {
+        "value": {"text": _connect_driver(dsn, step.get("config"), context["database"])}
+    }
 
 
 def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
@@ -4773,11 +4940,10 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error cause {error.cause!r}, want {cause!r}"
             ) from error
-        holds = expected.get("message_holds")
-        if holds is not None and holds not in str(error):
-            raise AssertionError(
-                f"error message {str(error)!r} does not hold {holds!r}"
-            ) from error
+        try:
+            _check_message_holds(str(error), expected.get("message_holds"))
+        except AssertionError as fault:
+            raise fault from error
         if "rollback" in expected:
             rollback = error.rollback
             if rollback.code != expected["rollback"] or str(rollback) not in str(error):

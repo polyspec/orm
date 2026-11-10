@@ -259,7 +259,7 @@ func groupCell(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field
 
 // addedColumnValue decodes an added column by the type its plan column states (INT-160), from its cell raw of the row. The
 // sum of an exact column is the exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a
-// value which its type does not hold is refused by that column (DIA-202, PRT-84). Other types keep the driver value.
+// value which its type does not hold is refused by that column (DIA-218, PRT-84). Other types keep the driver value.
 func addedColumnValue(col plan.OutCol, raw any, row []any) (any, error) {
 	if len(col.SumParts) > 0 {
 		if col.NonInteger == nil {
@@ -318,7 +318,7 @@ func addedColumnValue(col plan.OutCol, raw any, row []any) (any, error) {
 
 // sumHoldsItsType reports whether the sum cell raw of an integer or decimal column of the scale holds only values of its
 // type: the split sum reports a value that is not an integer, and the text of MySQL and PostgreSQL has more fraction digits
-// than the scale when the column holds one (DIA-202, PRT-84).
+// than the scale when the column holds one (DIA-218, PRT-84).
 func sumHoldsItsType(raw any, scale int) bool {
 	if _, ok := raw.(nonInteger); ok {
 		return false

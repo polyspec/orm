@@ -94,7 +94,7 @@ func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
 	stopAt := stopAfterApplied(stop)
 	release := errors.New("release failed")
 	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA locking_mode = normal": release}}
-	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
+	_, err := Apply(ctx, c, DialectSQLite, ServerSQLite, plans, now, stopAt)
 	if want := stop.Error() + "\n" + release.Error(); err == nil || err.Error() != want {
 		t.Errorf("apply stopped by an event with a failing lock release: %v, want %q", err, want)
 	}

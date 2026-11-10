@@ -81,7 +81,7 @@ class DbspecApplyTest(unittest.TestCase):
                     busy_during_apply.append(conn.value("PRAGMA busy_timeout"))
 
             with self.assertRaises(DbspecApplyError) as raised:
-                apply_plans(conn, "sqlite", plans, lambda: NOW, observe)
+                apply_plans(conn, "sqlite", "sqlite", plans, lambda: NOW, observe)
             self.assertEqual(busy_during_apply, [5000])
             self.assertIn("PRAGMA busy_timeout = 5000", statements)
             self.assertEqual(raised.exception.code, "failed")
@@ -115,7 +115,7 @@ class DbspecApplyTest(unittest.TestCase):
                 connection.execute = release_blocker_after_wait
                 started = time.monotonic()
                 with self.assertRaises(DbspecApplyError) as raised:
-                    apply_plans(connection, "sqlite", [], lambda: NOW)
+                    apply_plans(connection, "sqlite", "sqlite", [], lambda: NOW)
                 elapsed = time.monotonic() - started
                 self.assertIn("PRAGMA busy_timeout = 5000", statements)
                 self.assertEqual(raised.exception.code, "locked")

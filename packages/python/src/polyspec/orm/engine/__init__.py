@@ -35,13 +35,15 @@ class Engine:
     """The statement compiler of one runtime model and one database (dialect mysql, postgres or
     sqlite): compile validates a request and returns its plan."""
 
-    def __init__(self, model: RuntimeModel, dialect: str):
+    def __init__(self, model: RuntimeModel, dialect: str, server: str = "mysql"):
+        """server is the server of the connection: on the mysql dialect mysql or mariadb, which renders the row lock
+        share_nowait (DIA-209), MySQL when not given; the other dialects have one server."""
         d = dialect_of(dialect)
         if d is None:
             raise OrmError(codes.DIALECT_UNKNOWN, dialect)
         self.model = model
         self.dialect = dialect
-        self._planner = Planner(model, d())
+        self._planner = Planner(model, d(server) if dialect == "mysql" else d())
 
     @property
     def manifest_hash(self) -> str:

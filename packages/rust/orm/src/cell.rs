@@ -310,7 +310,7 @@ pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
 
 /// The cell of the added column col from its cell value of the row (INT-160): the sum of an integer or decimal column is the
 /// exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not
-/// hold is refused by that column (DIA-202, PRT-84); a decimal is its exact text of its scale, and another cell is read as
+/// hold is refused by that column (DIA-218, PRT-84); a decimal is its exact text of its scale, and another cell is read as
 /// `added_cell` reads it.
 pub(crate) fn added_column(col: &crate::plan::OutCol, value: Val, row: &[Val]) -> Result<Val> {
     use crate::aggregate::{non_integer_refusal, split_sum, Split};

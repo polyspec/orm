@@ -3779,7 +3779,7 @@
         {
           "op": "catalog.read_only_query",
           "sql": {
-            "mysql": "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()",
+            "mysql": "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE()",
             "postgres": "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema()",
             "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'"
           },

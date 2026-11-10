@@ -49,6 +49,12 @@ fn unescape_mysql_clause(text: &str) -> String {
     out
 }
 
+/// Adds the second escape that MySQL's CHECK_CLAUSE gives string literals, the inverse of [`unescape_mysql_clause`]: `\` becomes
+/// `\\` and `'` becomes `\'`.
+pub(super) fn escape_mysql_clause(text: &str) -> String {
+    text.replace('\\', "\\\\").replace('\'', "\\'")
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum TokenKind {
     Ident,
@@ -132,7 +138,7 @@ fn tokens(dialect: Dialect, text: &str) -> Result<Vec<Token>, String> {
 
 /// Reads the string literal at the start of text and returns its value and byte length. PostgreSQL and
 /// SQLite only escapes `''`; MySQL also uses backslash escapes.
-fn read_sql_string(dialect: Dialect, text: &str) -> Result<(String, usize), String> {
+pub(super) fn read_sql_string(dialect: Dialect, text: &str) -> Result<(String, usize), String> {
     let mut out = String::new();
     let mut chars = text.char_indices().skip(1).peekable();
     while let Some((i, ch)) = chars.next() {

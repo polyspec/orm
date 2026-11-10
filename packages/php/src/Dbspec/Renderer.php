@@ -385,7 +385,9 @@ final class Renderer
         if ($this->dialect === 'mysql') {
             return match ($t->name) {
                 'bool' => "$q IN (0, 1)",
-                'uuid' => "REGEXP_LIKE($q, '" . self::UUID_PATTERN . "', 'c')",
+                // REGEXP on an ascii_bin column matches by case on MySQL and MariaDB, which has no REGEXP_LIKE (probes
+                // mysql.render.uuid_check, mariadb.render.uuid_check; DIA-48).
+                'uuid' => "$q REGEXP '" . self::UUID_PATTERN . "'",
                 'time' => "$q >= '00:00:00' AND $q < '24:00:00'",
                 default => '',
             };

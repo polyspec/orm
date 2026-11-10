@@ -57,8 +57,8 @@ fn a_library_failure_keeps_its_cause() {
 #[test]
 fn a_refusal_takes_the_position_of_its_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let error = at_column(value::refuse(value::MYSQL_YEAR), 4);
-    assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 5: MySQL YEAR has no grid cell");
+    let error = at_column(value::refuse(value::MYSQL_TIMESTAMP), 4);
+    assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 5: MySQL TIMESTAMP follows a time zone");
     assert_eq!(ValueRefusal::new(value::TIME_OF_DAY, 1).to_string(), "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999");
 }
 

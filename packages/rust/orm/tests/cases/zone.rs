@@ -59,15 +59,19 @@ fn event(db: &Db) -> ZoneEvent {
 }
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
-// Requirements: CFG-19, CFG-20, CFG-37.
+// Requirements: CFG-19, CFG-20, CFG-37, DIA-202.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
     let polyspec_orm::db::ConnectOptions::Postgres(options) = parsed.options else { panic!("not postgres://") };
     assert_eq!(options.get_application_name(), Some("orm"), "application_name reaches sqlx");
+    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?socket=/run/mysqld/mysqld.sock").expect("mysql DSN");
+    let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
+    assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/mysqld/mysqld.sock"), "socket reaches sqlx");
+    // The connection character set is the engine's own, utf8mb4, whatever the DSN names (DIA-202).
     let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?charset=latin1").expect("mysql DSN");
     let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
-    assert_eq!(options.get_charset(), "latin1", "charset reaches sqlx");
+    assert_eq!(options.get_charset(), "utf8mb4", "charset is fixed to utf8mb4");
 }
 
 /// A Rust pool opened without `pool_lifetime_ms` keeps the 30-minute lifetime of its pool (CFG-5), which no other client has.
@@ -229,11 +233,24 @@ async fn postgres_float_round_trip() {
 /// Dropping the future of a statement cancels the statement, and the
 /// connection it ran on stays usable. The statement is an update of a row
 /// that another connection holds, so it waits until its future is dropped.
+/// `dropping_a_query_cancels_it_mariadb` is the case on MariaDB, a server of the
+/// MySQL dialect (DIA-200), which the program mariadb runs (mariadb_trials).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
 async fn dropping_a_query_cancels_it() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for driver in ["mysql", "postgres"] {
+    dropping_a_query_cancels_it_on(&["mysql", "postgres"]).await;
+}
+
+#[tokio::main(flavor = "current_thread")]
+// Requirements: CFG-9.
+async fn dropping_a_query_cancels_it_mariadb() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    dropping_a_query_cancels_it_on(&["mariadb"]).await;
+}
+
+async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
+    for &driver in drivers {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
@@ -265,13 +282,25 @@ async fn dropping_a_query_cancels_it() {
 }
 
 /// Dropping a transaction future closes its checked-out connection instead
-/// of waiting for SQLx's five-second close-on-drop path. On MySQL and
+/// of waiting for SQLx's five-second close-on-drop path. On MySQL, MariaDB and
 /// PostgreSQL the transaction waits for a row that another connection holds.
+/// `dropping_a_transaction_frees_a_single_connection_mariadb` is the case on MariaDB (DIA-200).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for driver in ["sqlite", "mysql", "postgres"] {
+    dropping_a_transaction_frees_a_single_connection_on(&["sqlite", "mysql", "postgres"]).await;
+}
+
+#[tokio::main(flavor = "current_thread")]
+// Requirements: INT-67.
+async fn dropping_a_transaction_frees_a_single_connection_mariadb() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    dropping_a_transaction_frees_a_single_connection_on(&["mariadb"]).await;
+}
+
+async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
+    for &driver in drivers {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
@@ -322,4 +351,9 @@ async fn dropping_a_transaction_frees_a_single_connection() {
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+}
+
+/// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).
+pub fn mariadb_trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("zone_mariadb": dropping_a_query_cancels_it_mariadb, dropping_a_transaction_frees_a_single_connection_mariadb)
 }

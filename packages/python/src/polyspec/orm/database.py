@@ -52,6 +52,7 @@ from polyspec.orm.schema import Schema
 from typing import Callable, TypeVar
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
+from polyspec.orm.dbspec.parse import goq
 
 T = TypeVar("T")
 
@@ -656,28 +657,42 @@ def _driver_limit(driver: str) -> int:
 # The table of driver error codes (docs/spec/protocol.md "Errors", docs/spec/errors.yaml). It uses the same conditions as driverError in the TypeScript client
 # (packages/ts/src/driver.ts) and OrmException::fromDriver in the PHP client. A driver error that is not in the table
 # is DRIVER. A write rejected by an audit or immutable trigger is also DRIVER.
-_MYSQL_CODES = {
-    # 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the connection, and 4031
-    # means the server ended an idle connection.
+# A mysql error number is read by the table of its server, which the connection reads once by VERSION() (DIA-201): MariaDB
+# numbers its errors above 1999 otherwise than MySQL. MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE and MariaDB's
+# ER_CONSTRAINT_FAILED; MariaDB has no 3572, 3819, 3024 or 4031 of MySQL and reports a statement timeout as 1969.
+_MYSQL_SHARED_CODES = {
+    # 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the connection.
     2006: codes.CONNECTION_LOST,
     2013: codes.CONNECTION_LOST,
-    4031: codes.CONNECTION_LOST,
-    3572: codes.LOCK_NOT_AVAILABLE,
     1205: codes.CANCELED,
     1317: codes.CANCELED,
-    3024: codes.CANCELED,
     1062: codes.DUPLICATE_KEY,
     1451: codes.FOREIGN_KEY,
     1452: codes.FOREIGN_KEY,
     1213: codes.DEADLOCK,
     1290: codes.READ_ONLY,
     1792: codes.READ_ONLY,
-    3819: codes.CONSTRAINT,
-    4025: codes.CONSTRAINT,
+}
+_MYSQL_CODES = {
+    "mysql": {
+        **_MYSQL_SHARED_CODES,
+        # 4031 means the server ended an idle connection.
+        4031: codes.CONNECTION_LOST,
+        3572: codes.LOCK_NOT_AVAILABLE,
+        3024: codes.CANCELED,
+        3819: codes.CONSTRAINT,
+    },
+    "mariadb": {
+        **_MYSQL_SHARED_CODES,
+        1969: codes.CANCELED,
+        4025: codes.CONSTRAINT,
+    },
 }
 _POSTGRES_CODES = {
-    # 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) are sent when the server ends a session.
+    # 57P01 (admin_shutdown), 57P02 (crash_shutdown), 57P05 (idle_session_timeout) and 25P03
+    # (idle_in_transaction_session_timeout) are sent when the server ends a session.
     # Class 08 (connection exception) is chosen by _postgres_code.
+    "25P03": codes.CONNECTION_LOST,
     "57P01": codes.CONNECTION_LOST,
     "57P02": codes.CONNECTION_LOST,
     "57P05": codes.CONNECTION_LOST,
@@ -727,7 +742,7 @@ def _postgres_code(sqlstate, lost: bool) -> str:
 
 
 def _driver_error(
-    driver: str, error: BaseException, lost: bool = False
+    driver: str, error: BaseException, lost: bool = False, server: str = "mysql"
 ) -> BaseException:
     """Converts a driver error to an OrmError with the catalog's code. The message is `<driver>: <driver message>`, and
     the cause is the driver error. A non-driver error is returned as is. lost tells whether the PostgreSQL connection was closed after the error
@@ -751,7 +766,7 @@ def _driver_error(
         code = (
             codes.CONNECTION_LOST
             if isinstance(error, pymysql.err.InterfaceError)
-            else _MYSQL_CODES.get(number, codes.DRIVER)
+            else _MYSQL_CODES[server].get(number, codes.DRIVER)
         )
         return OrmError(code, f"mysql: {message}", error)
     import psycopg
@@ -763,14 +778,36 @@ def _driver_error(
     return OrmError(_postgres_code(error.sqlstate, lost), f"postgres: {message}", error)
 
 
+def _lock_error(error: BaseException, server: str, lock: str) -> BaseException:
+    """The error of a statement that carries the row lock lock (DIA-209): MariaDB fails a NOWAIT lock that it cannot
+    take at once with 1205, the number of its lock wait timeout, where MySQL gives 3572, so on MariaDB the 1205 of a
+    statement of a *_nowait lock is LOCK_NOT_AVAILABLE, as on MySQL (INT-49). The 1205 of any other statement, and
+    every other error, is returned as it is: a lock wait timeout stays CANCELED (CFG-6)."""
+    if (
+        server != "mariadb"
+        or not lock.endswith("_nowait")
+        or not isinstance(error, OrmError)
+        or error.code != codes.CANCELED
+    ):
+        return error
+    cause = error.cause
+    args = getattr(cause, "args", ())
+    if not args or args[0] != 1205 or not _is_driver_error("mysql", cause):
+        return error
+    return OrmError(codes.LOCK_NOT_AVAILABLE, str(error).partition(": ")[2], cause)
+
+
 def _is_driver_error(driver: str, error: Exception) -> bool:
     """Whether the error is an error class of the driver, which the handlers map; any other error is raised as it is."""
     return _driver_error(driver, error) is not error
 
 
-def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
-    """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is."""
-    mapped = _driver_error(driver, error, lost)
+def _raise_driver_error(
+    driver: str, error: Exception, lost: bool = False, server: str = "mysql"
+):
+    """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is.
+    server is the server of a mysql connection (DIA-201)."""
+    mapped = _driver_error(driver, error, lost, server)
     if mapped is error:
         raise error
     raise mapped from error
@@ -885,6 +922,29 @@ def _tls_failure(error: BaseException) -> bool:
     return False
 
 
+# Every MySQL connection sends this statement when it connects (DIA-202): the character set utf8mb4, with no collation,
+# which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin with 1115). A text column that
+# the renderer writes compares under its own utf8mb4_0900_bin, and SQL that compares text with no such column states
+# COLLATE utf8mb4_0900_bin, which MySQL and MariaDB both accept with the same result.
+MYSQL_SET_NAMES = "SET NAMES utf8mb4"
+
+
+def _mysql_statement_timeout(server: str, timeout_ms: int) -> str:
+    """The session setting of a statement timeout of timeout_ms on the server of a mysql connection (DIA-208): MySQL
+    bounds a SELECT by max_execution_time in milliseconds and has no max_statement_time; MariaDB has no
+    max_execution_time and bounds every statement by max_statement_time in seconds, written with three fraction
+    digits. A server that is neither is INTERNAL: the connection reads its server by VERSION() (DIA-201)."""
+    if server == "mysql":
+        return f"SESSION max_execution_time = {timeout_ms}"
+    if server == "mariadb":
+        return (
+            f"SESSION max_statement_time = {timeout_ms // 1000}.{timeout_ms % 1000:03d}"
+        )
+    raise OrmError(
+        codes.INTERNAL, f"mysql server {goq(server)} has no statement timeout"
+    )
+
+
 class _MysqlConnection:
     """One PyMySQL connection. Imported when needed."""
 
@@ -898,7 +958,9 @@ class _MysqlConnection:
             ) from None
         url = parsed.url
         socket = dict(parse_qsl(url.query, keep_blank_values=True)).get("socket")
-        tls = {}
+        # A DSN without ssl-mode connects without TLS (CFG-44): PyMySQL would otherwise start TLS, unverified, with
+        # any server that offers it.
+        tls: dict = {"ssl_disabled": True}
         if parsed.ssl_ca is not None:
             if not os.path.isfile(parsed.ssl_ca) or not os.access(
                 parsed.ssl_ca, os.R_OK
@@ -927,18 +989,24 @@ class _MysqlConnection:
             )
             self.connection = pymysql.connect(**self._connect_options)
         except Exception as error:
-            if tls and _tls_failure(error):
+            if "ssl" in tls and _tls_failure(error):
                 raise OrmError(
                     codes.CONFIG, f"mysql TLS connection failed: SSL: {error}"
                 ) from error
             if not _is_driver_error("mysql", error):
                 raise
             _raise_driver_error("mysql", error)
-        # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
+        # The server is read once by VERSION(), never by the handshake (DIA-201); an error before it is read is MySQL's.
+        self.server = "mysql"
+        self.execute(MYSQL_SET_NAMES, [])
+        version = self.execute("SELECT VERSION()", [])["rows"][0][0]
+        self.server = "mariadb" if "-MariaDB" in str(version) else "mysql"
+        # The session settings are one statement, sent after the server is read and before any statement of the
+        # caller; the statement timeout takes the variable of the server (DIA-208).
         self.execute(
             f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'"
             + (
-                f", SESSION max_execution_time = {statement_timeout_ms}"
+                f", {_mysql_statement_timeout(self.server, statement_timeout_ms)}"
                 if statement_timeout_ms > 0
                 else ""
             ),
@@ -956,7 +1024,7 @@ class _MysqlConnection:
         except Exception as error:
             if not _is_driver_error("mysql", error):
                 raise
-            _raise_driver_error("mysql", error)
+            _raise_driver_error("mysql", error, server=self.server)
         finally:
             cursor.close()
         return {"rows": rows, "insert_id": insert_id, "affected": affected}
@@ -1797,7 +1865,14 @@ class Db:
         self._shared.pool = _Pool(self._open, self.pool_config)
         # The first connection opens now, so a DSN that does not connect fails here; a markdown session checks that
         # the server accepts the corpus and token.
-        self._shared.pool.release(self._shared.pool.acquire())
+        first = self._shared.pool.acquire()
+        # The server of the connection, which a mysql connection read once by VERSION() when it connected (DIA-201), and
+        # the dialect's own on PostgreSQL and SQLite; the introspection reads by it (DIA-203).
+        self._server = first.server if self.sql_driver == "mysql" else self.sql_driver
+        if self.sql_driver == "mysql":
+            # The mysql dialect renders a row lock by the server (DIA-209).
+            self.dialect = dialect_class(self._server)
+        self._shared.pool.release(first)
         self._connection = _Leased(self)
 
     def utils(self) -> Utils:
@@ -1876,7 +1951,9 @@ class Db:
         """Registers the runtime model of the manifest for validation and planning. A set that is already registered is not changed."""
         self.schemas.setdefault(manifest_hash, model)
         if manifest_hash not in self.engines:
-            self.engines[manifest_hash] = Engine(model, self.sql_driver)
+            # The engine of a mysql connection renders by its server (DIA-209), and the plan cache of the connection
+            # holds the plans of that engine alone, so a plan of one server never serves another.
+            self.engines[manifest_hash] = Engine(model, self.sql_driver, self._server)
 
     @property
     def closed(self) -> bool:
@@ -2109,21 +2186,30 @@ class Db:
         )
         connection = ex.frame.connection if ex.frame is not None else self._connection
         transaction = ex.frame.number if ex.frame is not None else None
-        return self.events.send(
-            statement_kind(sql),
-            step.get("tables", ()),
-            transaction,
-            resolved["masked"],
-            sql,
-            lambda: self._sent(
-                lambda: (
+
+        def run():
+            try:
+                return (
                     _execute_cancellable(
                         connection, sql, resolved["values"], self._cancellation
                     )
                     if ex.frame is not None
                     else connection.execute(sql, resolved["values"], self._cancellation)
                 )
-            ),
+            except OrmError as error:
+                # The lock mode of the step, which the planner records, chooses the code of MariaDB's 1205 (DIA-209).
+                mapped = _lock_error(error, self._server, step.get("lock") or "")
+                if mapped is error:
+                    raise
+                raise mapped from error.cause
+
+        return self.events.send(
+            statement_kind(sql),
+            step.get("tables", ()),
+            transaction,
+            resolved["masked"],
+            sql,
+            lambda: self._sent(run),
         )
 
     def _sent(self, run):
@@ -3189,7 +3275,7 @@ def scalar(ex: Executor, request: dict, params):
         return cells(db._send_step(ex, step["sql"], step, params))
 
     def cells(result):
-        # A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        # A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other
         # scalar statement reads one cell.
         if request["kind"] in ("avg", "sum"):
             return tuple(result["rows"][0])

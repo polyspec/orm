@@ -4,23 +4,236 @@
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
 
-- **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 10.2+: `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
-- **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 10.2+: `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
-- **DIA-3** LIMIT — MySQL 8.0.2+ / MariaDB 10.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
-- **DIA-4** `Lk` — MySQL 8.0.2+ / MariaDB 10.2+: `F(col) LIKE F(?)`, F는 `A`–`Z` 각각을 소문자로 바꾸는 `REPLACE` 26겹: column의 `utf8mb4_0900_bin`은 code point로 비교하고, `LOWER`나 `_ci` collation은 ASCII 밖까지 접는다(probe `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`); PostgreSQL 12+: `COLLATE "C"` 아래의 `ILIKE`(probe `postgres.ilike.c_collation_ascii_only`); SQLite 3.46+: `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음, probe `sqlite.like.ascii_only`)
-- **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 10.2+: `LIKE` (binary collation `utf8mb4_0900_bin`, code point로 비교한다. `LIKE BINARY`는 MySQL 8.0.27부터 deprecated다. probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
-- **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+ / MariaDB 10.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, 값은 transform 없이 그대로 bind한다. 두 함수 모두 항 주변의 공백을 건너뛰기 때문이다; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)
-- **DIA-7** `forceIndex<Name>` — MySQL 8.0.2+ / MariaDB 10.2+: `FORCE INDEX (name)`; PostgreSQL 12+: ignored (no hints); SQLite 3.46+: `INDEXED BY "name"`
-- **DIA-8** insert id — MySQL 8.0.2+ / MariaDB 10.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`; 여러 행 insert(`rows`, PRT-5)는 insert id를 알리지 않으므로 `RETURNING`이 없다
-- **DIA-9** `duplication(model)` — MySQL 8.0.2+ / MariaDB 10.2+: `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다. MySQL은 아무 unique key에서나 행과 만나며(`mysql.upsert.any_unique_key`), NOT NULL unique key가 먼저다(`mysql.upsert.not_null_unique_first`)); PostgreSQL 12+: `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다. 다른 unique key에서 만나는 행은 unique 위반이다, `postgres.upsert.other_key_conflicts`); SQLite 3.46+: PostgreSQL과 같다(`sqlite.upsert.other_key_conflicts`). conformance vector `upsert_one_key`는 세 database에서 같은 결과를 준다
-- **DIA-10** `groupLimit(n)` — MySQL 8.0.2+ / MariaDB 10.2+: `ROW_NUMBER() OVER (…)`; PostgreSQL 12+: same; SQLite 3.46+: same
-- **DIA-11** `tuple<ColA>With<ColB>` — MySQL 8.0.2+ / MariaDB 10.2+: `(a, b) IN ((?, ?), …)`; PostgreSQL 12+: same; SQLite 3.46+: `(a, b) IN (VALUES (?, ?), …)`
-- **DIA-12** `orderByRandom()` — MySQL 8.0.2+ / MariaDB 10.2+: `RAND()`; PostgreSQL 12+: `random()`; SQLite 3.46+: `random()`
-- **DIA-13** nullable 컬럼의 `orderBy<Col>Asc()` / `Desc()` — MySQL 8.0.2+ / MariaDB 10.2+: 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`mysql.order.null_first_asc`); PostgreSQL 12+: `ASC NULLS FIRST` / `DESC NULLS LAST`: 이것 없이는 오름차순 NULL 나중 (`postgres.order.null_last_asc`); SQLite 3.46+: 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`sqlite.order.null_first_asc`)
-- **DIA-14** ORM 함수 — MySQL 8.0.2+ / MariaDB 10.2+: [DSL](dsl.ko.md) 10절 참고
-- **DIA-15** `aes`/`hex` styles — MySQL 8.0.2+ / MariaDB 10.2+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; PostgreSQL 12+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; SQLite 3.46+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다
-- **DIA-16** `ip` style — MySQL 8.0.2+ / MariaDB 10.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: client-side (16-byte packed, `bytea`); SQLite 3.46+: client-side (16-byte packed). SQL은 write 순서의 마지막 단계, 즉 모든 client-side 단계 뒤의 단계만 감싸므로, 한 단계는 그 column의 모든 뒤 단계도 SQL에서 실행될 때만 SQL에서 실행된다: `ip hex` column은 MySQL에서도 주소를 client에서 pack하고 unpack하며(16-byte packed 뒤 hex text), 그 placeholder는 저장되는 hex text를 받는다(planner case `planner_ip_hex_insert`와 `planner_ip_hex_select`)
-- **DIA-18** update 시각과 soft delete가 쓰는 clock — MySQL 8.0.2+ / MariaDB 10.2+: `p > 0`인 `datetime(p)` column은 `CURRENT_TIMESTAMP(p)`, 그 밖에는 `CURRENT_TIMESTAMP`; PostgreSQL 12+: executor가 bind한, p로 자른 텍스트(`now` bind slot); SQLite 3.46+: executor가 bind한, p로 자른 텍스트(`now` bind slot)
+- **DIA-200** MariaDB는 `mysql` dialect의 server이며 dialect가 따로 있지 않다. Dialect는 DSN의 scheme이 고르고,
+  scheme `mysql://`([config](config.ko.md))은 MySQL에 닿듯 MariaDB server에도 닿는다. Dialect는 다음 규칙을 이 순서로
+  적용해 두 server의 결과를 하나로 맞춘다.
+  1. `mysql` dialect는 두 server가 같은 결과로 받는 SQL 하나를 render한다. MySQL에만 있는 형식이 MariaDB에서 실패함을
+     probe가 보이고, 두 server가 같은 결과로 받는 형식(예: 두 server에 모두 있고 비교가 같은 collation)이 있으면, dialect는
+     두 server에서 그 형식을 render한다.
+  2. 공통 형식이 없는 곳에서만 클라이언트는 연결할 때 한 번 `VERSION()`으로 server의 정체와 version을 읽고(handshake는
+     읽지 않는다) 그 server의 형식을 render한다. 그런 곳은 각각 이 문서의 번호 있는 규칙이며 그것을 증명하는 probe를 적는다. 별도의
+     dialect도 아니고 복사한 recipe도 아니다.
+  3. MariaDB가 전혀 지닐 수 없는 동작은 MariaDB에서 [errors](errors.yaml)의 정해진 error code로 거부하며, 모든 runtime에서
+     같고, 다른 결과를 낼 문보다 먼저 거부한다. 조용한 차이는 없다.
+  4. server 자신의 답에 있는 차이(server error의 문구, introspect한 type 이름 등)는 그 server에서 그 case의 결과이며, recipe는
+     그것을 case의 `mariadb` expect로 적는다(FCV-3).
+
+- **DIA-201** server와 그 error 번호 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.env.server`,
+  `mariadb.env.server`): `mysql` dialect의 클라이언트는 연결할 때 한 번 `SELECT VERSION()`으로 server를 읽는다.
+  `-MariaDB`를 담은 version은 MariaDB이고 그 밖은 MySQL이며, pool의 모든 연결은 그 pool의 server를 읽는다. 두 server는
+  서로 다른 error에 같은 번호를 주므로 공통 표가 없다(DIA-200, 규칙 2). 4025는 MariaDB의 CHECK 위반(SQLSTATE 23000)이고
+  MySQL에서는 범위 밖의 `AUTOEXTEND_SIZE`(HY000)이며, MySQL의 CHECK 위반은 3819다(probe
+  `mysql.check.number_4025_not_a_check`, `mariadb.check.number_4025_not_a_check`). 그래서 server error 번호는 그 연결의
+  server의 표([errors](errors.yaml))로 읽으며 모든 runtime에서 같다. MySQL은 3819를 `CONSTRAINT`로 바꾸고 4025는 `DRIVER`
+  error로 두며, MariaDB는 4025를 `CONSTRAINT`로, statement timeout인 1969를 `CANCELED`로 바꾼다. MySQL의 idle 연결 끊김인
+  4031은 MySQL에서만 `CONNECTION_LOST`다(statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
+  CHECK 위반과 거부되는 table option은 database마다 다르게 쓰므로 그 statement는 dialect마다 하나이며, MariaDB는 `mysql`의
+  statement를 실행한다. MariaDB의 CHECK 위반은 4025로 `CONSTRAINT`로 읽히고, MariaDB에는 `AUTOEXTEND_SIZE`가 없어 그
+  statement를 1064, 곧 `DRIVER` error로 거부하며 MySQL도 그 4025에 `DRIVER`를 주므로, dialect의 expect 하나가 두 server를
+  지킨다(DIA-200, 규칙 1).
+
+- **DIA-202** 연결의 collation — MySQL 8.4 / MariaDB 11.8 (probe `mysql.collation.literal_collate`,
+  `mariadb.collation.literal_collate`): catalog 연결을 포함해 `mysql` dialect의 모든 연결은 모든 runtime에서 연결할 때
+  `SET NAMES utf8mb4`를 실행하고 collation은 지정하지 않는다. 그러면 연결의 collation은 server의 utf8mb4 기본값, 곧 MySQL은
+  `utf8mb4_0900_ai_ci`, MariaDB는 `utf8mb4_uca1400_ai_ci`가 된다(probe `mysql.collation.default_accent_case_insensitive`,
+  `mariadb.collation.default_accent_case_insensitive`). 어떤 문장도 이 값에 기대지 않는다. renderer가 쓴 text column은 자기
+  `utf8mb4_0900_bin`으로 비교하며(DIA-119, DIA-90), 그 collation이 literal이나 parameter의 collation보다 우선한다. 그런 column 없이
+  text를 비교하는 SQL은 `COLLATE utf8mb4_0900_bin`을 적는다. 두 server 모두 이 한 이름을 알고(id 309, MariaDB 11.8은 자기
+  `utf8mb4_nopad_bin` 옆에 이를 둔다), 그 아래에서 padding 없이 code point로 비교하며, 직접 연결과 ProxySQL을 거친 연결에서
+  결과가 같다. `'a' = 'A'`, `'a' = 'a '`, `'a' = 'á'`는 거짓이고 `'B' < 'a'`는 참이다(DIA-200, 규칙 1). `SET NAMES`에
+  collation을 적는 연결은 공통 형식이 아니다. ProxySQL 3.0.9는 id 307보다 큰 collation을 몰라 `SET NAMES utf8mb4 COLLATE
+  utf8mb4_0900_bin`을 1115로 거부하므로 pooler lane이 연결하지 못했다. Statement runner case
+  `a_text_literal_compares_by_code_point_under_the_collation_it_states`가 모든 database에서 이를 지킨다. PostgreSQL은
+  `COLLATE "C"`로, SQLite는 `BINARY`로 비교하며 결과가 같다. `COLLATE utf8mb4_0900_bin`, `@@character_set_connection`,
+  `@@character_set_results`는 `mysql` dialect의 것이고, PostgreSQL은 비교를 boolean으로 주어 integer로 cast하며 encoding을
+  `current_setting('client_encoding')`으로, SQLite는 `pragma_encoding`으로 읽으므로 그 query는 dialect마다 하나다. MariaDB는
+  `mysql`의 query를 실행해 MySQL과 같은 결과를 준다(DIA-200, 규칙 1).
+
+- **DIA-203** introspection의 server — MySQL 8.4 / MariaDB 11.8 (probe `mysql.check.not_enforced_option`,
+  `mariadb.check.not_enforced_option`, `mysql.check.name_schema_scope`, `mariadb.check.name_schema_scope`,
+  `mysql.check.catalog_text`, `mariadb.check.catalog_text`, `mariadb.check.string_escaped_twice`): dbspec의
+  introspection과, introspect하는 apply의 검증은 모든 runtime에서 dialect와 함께 연결이 연결할 때 읽은 server(DIA-201)를
+  받으며 스스로 version을 읽지 않는다. dialect의 server가 아닌 server는 알 수 없는 dialect처럼 거부된다(DBS-174). MySQL은
+  적용되지 않는 CHECK를 `TABLE_CONSTRAINTS.ENFORCED`에 적는다. MariaDB에는 `NOT ENFORCED` CHECK도 `ENFORCED` column(1054)도
+  없으므로 공통 query가 없고(DIA-200, 규칙 2) MariaDB의 모든 CHECK는 적용되는 것으로 읽는다. MariaDB는 CHECK 이름의 범위를
+  table로 정하므로 그 `CHECK_CLAUSE`는 table과 CHECK 이름의 쌍을 key로 읽는다. 또 `CHECK_CLAUSE`를 바깥 괄호와 introducer 없이, string
+  literal에 escape를 한 번 붙인 SQL text로 쓴다. 그 text에 MySQL `CHECK_CLAUSE`의 두 번째 escape를 붙이면 한 reader가 두
+  server의 clause를 읽는다(DIA-146). MariaDB의 renderer CHECK는 `` `c` in (0,1) ``, `` `c` regexp '^…$' ``,
+  `` `c` >= '00:00:00' and `c` < '24:00:00' ``이다(probe `mariadb.render.bool_check`, `mariadb.render.uuid_check`,
+  `mariadb.render.time_of_day_check`; DIA-144).
+
+- **DIA-204** 정수 display width — MySQL 8.4 / MariaDB 11.8 (probe `mysql.int.display_width_dropped`,
+  `mariadb.int.display_width_dropped`): MySQL은 `smallint`, `int`, `bigint`의 `COLUMN_TYPE`을 display width 없이 쓰고
+  MariaDB는 width와 함께 쓴다(`smallint(6)`, `int(11)`, `bigint(20)`). width는 값을 바꾸지 않으므로 두 server의
+  introspection은 width가 있든 없든 정수 type을 같은 type으로 읽는다(DIA-200, 규칙 1). `tinyint(1)`은 두 server에서 모두
+  `bool`이다. catalog 연결의 테이블 descriptor(`describeTable`)의 네이티브 타입은 두 server에서 MySQL 8.4 형식의
+  `COLUMN_TYPE`이며, 모든 runtime에서 query 하나다(DIA-200, 규칙 1). MySQL 8.0.17부터 정수의 display width는 그 type의
+  일부가 아니기 때문이다: 정수 type(`tinyint`, `smallint`, `mediumint`, `int`, `bigint`)은 width가 없고 `unsigned`는
+  남는다(MariaDB `int(10) unsigned`는 `int unsigned`). 다만 MySQL 8.4도 width를 남기는 `tinyint(1)`과 `zerofill` type은
+  예외다(`tinyint(1)`, `int(5) unsigned zerofill`). `tinyint(1) unsigned`는 두 server에서 `tinyint unsigned`이고, MariaDB
+  `year(4)`는 `year`다. MariaDB `year(2)`는 MySQL 8.4 형식이 없으므로 그대로 둔다. 사례 `catalog_describe_integer_width`가
+  두 server에서 이를 확인한다.
+
+- **DIA-205** catalog의 column default — MySQL 8.4 / MariaDB 11.8 (probe `mysql.default.catalog_text`,
+  `mariadb.default.catalog_text`): MySQL은 `COLUMN_DEFAULT`에 literal을 따옴표 없이, `NULL` default를 SQL `NULL`로 주고,
+  `CURRENT_TIMESTAMP(p)`를 포함한 식 default에는 `EXTRA` `DEFAULT_GENERATED`를 준다. MariaDB는 `COLUMN_DEFAULT`를 SQL
+  text로 쓴다. `NULL` default는 `NULL`, string과 시간 literal은 SQL escape를 붙여 따옴표로 감싸고, 숫자는 쓴 그대로, 식은
+  그 text로, 시계는 `current_timestamp()`나 `current_timestamp(p)`로 쓰며, `EXTRA`에는 `DEFAULT_GENERATED`가 없다. 두 형식을
+  함께 주는 query가 없으므로(DIA-200, 규칙 2) introspection은 MariaDB text를 MySQL 형식으로 읽는다. `NULL`은 default가
+  없는 것이고, 따옴표로 감싼 literal은 escape를 푼 그 값이며, 숫자는 그 자신이고, 다른 text는 시계를 포함해 MySQL이 표시하는
+  것과 같은 식 default다. 하나의 온전한 literal이 아닌 따옴표 text는 error다. catalog connection의 table descriptor
+  (`describeTable`)도 같은 text를 같은 규칙으로 읽는다. 그 default 식은 MySQL 형식이고 `NULL`이면 없으며, 식 표시는 MySQL이
+  표시하는 것과 같다. 식의 text는 그 서버의 text로 남는다. MySQL은 `(concat('a', 'b'))`를 literal마다 문자 집합을 붙이고
+  따옴표를 escape해 `concat(_utf8mb4\'a\',_utf8mb4\'b\')`로, MariaDB는 `concat('a','b')`로 쓴다. recipe catalog_connection의
+  case `catalog_describe_column_defaults`가 두 서버에서 각 형식을 읽는다. 하나의 온전한 literal이 아닌 따옴표 text는 어느
+  서버도 쓰지 않으므로 FCV-2의 native 시험이 맡는다.
+
+- **DIA-206** CHECK 삭제 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.check.drop_constraint`,
+  `mariadb.check.drop_constraint`, `mysql.check.drop_constraint_shared_name`, `mariadb.check.drop_constraint_shared_name`):
+  plan은 두 server가 같은 결과로 받는 `ALTER TABLE t DROP CONSTRAINT c`로 CHECK를 지운다. MariaDB에는 `DROP CHECK`가
+  없다(1064)(DIA-200, 규칙 1). MySQL은 CHECK가 그 표의 foreign key와 이름을 나누는 것을 허용하고, 그때 그 이름의
+  `DROP CONSTRAINT`는 모호하다(3939). MariaDB는 나눈 이름을 거부한다(1826). 어떤 plan도 그런 표를 만나지 않는다. 문서는
+  모든 check, foreign key, unique key, index의 이름을 서로 다르게 짓고(DBS-34, vector `check-and-foreign-key-share-a-name`),
+  plan은 바뀌는 foreign key와 check를 무엇을 더하기 전에 지우므로(PLN-74, PLN-75, PLN-80, PLN-81), plan이 지우는 CHECK는
+  그 표의 어떤 constraint와도 이름을 나누지 않는다.
+
+- **DIA-207** Partial revoke — MySQL 8.4 / MariaDB 11.8 (probe `mysql.session.partial_revokes_listed`,
+  `mariadb.session.partial_revokes_listed`): catalog은 partial revoke가 켜진 server에서 row 변경을 거부하며(INT-119), 모든
+  runtime에서 `SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'`로 읽고 row가 하나라도
+  나오면 거부한다. MySQL은 설정이 켜져 있을 때 그 설정을 내놓고, MariaDB에는 partial revoke도 `partial_revokes`도 없어
+  (1193) row를 내놓지 않으므로, 이 한 형식이 두 server에 같은 결과로 답한다(DIA-200, 규칙 1). catalog recipe의 case
+  `row_change_with_partial_revokes_enabled`는 MariaDB에서 이 검사가 아무것도 거부하지 않음을 관측한다. 두 replica는 같은
+  방식으로 쓰기를 거부한다: MySQL의 replica는 `super_read_only`로, MariaDB의 replica는 `read_only`에 DSN 계정의 `READ ONLY ADMIN`
+  없이 돌아, 둘 다 그 계정의 쓰기를 1290(`READ_ONLY`)으로 거부한다. MySQL에서는 검사가 먼저 `ROW_MUTATION_UNSUPPORTED`로
+  답하고, MariaDB에서는 insert, update, delete가 검사를 통과해 replica의 1290(`READ_ONLY`)을 만나며 row는 그대로다.
+  MariaDB에는 partial revoke가 없으므로 그 case의 전제, 곧 partial revoke가 켜진 server는 MariaDB에서 성립하지 않는다.
+  case는 두 server에서 돌고, 그 `mariadb` expect는 MariaDB replica의 답을 적는다(DIA-200, 규칙 4): `@@GLOBAL.partial_revokes`의
+  1193은 `DRIVER`로, 각 변경의 1290은 `READ_ONLY`로.
+
+- **DIA-208** Statement timeout — MySQL 8.4 / MariaDB 11.8 (probe `mysql.session.statement_timeout`,
+  `mariadb.session.statement_timeout`): MySQL은 SELECT를 millisecond 단위의 `max_execution_time`으로 제한하고(3024)
+  `max_statement_time`이 없다(1193). MariaDB는 `max_execution_time`이 없고(1193) 모든 statement를 초 단위의
+  `max_statement_time`으로 제한한다(1969). 두 server에 모두 통하는 설정이 없으므로(DIA-200, 규칙 2), `statementTimeoutMs`
+  (CFG-6)를 가진 연결은 모든 runtime에서, pool의 모든 연결에서, server를 읽은 뒤(DIA-201) 다른 statement보다 먼저 MySQL에서는
+  `SESSION max_execution_time = <ms>`를, MariaDB에서는 소수 세 자리로 적은 `SESSION max_statement_time = <ms / 1000>`을
+  설정한다. MariaDB가 멈춘 statement는 `CANCELED`를 돌려주므로(1969, DIA-201), MariaDB는 PostgreSQL처럼 write도 제한한다.
+  recipe dsn_connection의 case `mysql_session_settings`가 각 server의 설정을 읽는다. 각 server에는 다른 server의 변수가
+  없으므로(1193) 그 `session_read`는 MySQL에서 `@@SESSION.max_execution_time`을, MariaDB에서
+  `CAST(@@SESSION.max_statement_time * 1000 AS SIGNED)`를 읽고, 둘 다 기대한 한 row를 준다.
+
+- **DIA-209** Row lock — MySQL 8.4 / MariaDB 11.8 (probe `mysql.lock.share_clause`, `mariadb.lock.share_clause`,
+  `mysql.lock.nowait_held`, `mariadb.lock.nowait_held`): lock `share`는 두 server가 공유 row lock으로 읽는
+  ` LOCK IN SHARE MODE`로 render한다. MariaDB에는 `FOR SHARE`가 없다(1064). `update_nowait`는 두 server가 똑같이 읽는
+  ` FOR UPDATE NOWAIT`로 render한다(DIA-200, 규칙 1). `share_nowait`에는 공통 형식이 없다. MySQL은 `FOR SHARE` 뒤에만,
+  MariaDB는 `LOCK IN SHARE MODE` 뒤에만 NOWAIT를 받으므로(그 밖에는 1064), planner는 연결의 server에 따라(DIA-201;
+  DIA-200, 규칙 2) MySQL에서는 ` FOR SHARE NOWAIT`를, MariaDB에서는 ` LOCK IN SHARE MODE NOWAIT`를 render한다. MariaDB는
+  바로 잡지 못한 NOWAIT lock을 lock wait timeout의 번호인 1205로 실패시키고 MySQL은 3572를 준다. MariaDB에서 `*_nowait`
+  lock의 statement가 1205로 실패하면 MySQL처럼 `LOCK_NOT_AVAILABLE`을 돌려주고(INT-49), 다른 statement의 1205는 그대로
+  `CANCELED`다(CFG-6). recipe transactions의 case `nowait_lock_held_by_another_transaction`가 MySQL, MariaDB, PostgreSQL 서버에서 이를
+  확인한다. SQLite는 한 번에 쓰기 transaction 하나만 받으므로 두 번째 transaction이 `BEGIN IMMEDIATE`에서 기다리고 lock에 닿지
+  않아 이 case에서 빠진다(INT-49의 SQLite lock row는 `sqlite-row-lock-restoration`이 확인한다).
+
+- **DIA-210** catalog descriptor의 primary key 순번 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.catalog.key_ordinal_by_name`,
+  `mariadb.catalog.key_ordinal_by_name`): MariaDB는 `information_schema` table을 그 자신의 조건에 있는 상수로만 table 이름으로
+  읽으므로, `COLUMNS`의 column에 `KEY_COLUMN_USAGE`를 join하면 모든 database의 모든 table을 연다("Scanned all databases").
+  case database가 있는 server에서 describe 하나에 약 1초가 걸린다. catalog connection의 descriptor는 column의 순번을 table을
+  상수로 이름 짓는 subquery `COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE
+  k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0)`로 읽는다.
+  이 subquery는 두 server에서 join과 같은 row를 주고 그 table만 읽는다(DIA-200, 규칙 1).
+
+- **DIA-211** 거부된 연결의 수 — MySQL 8.4 / MariaDB 11.8: catalog recipe의 case
+  `plain_connect_on_a_held_place_is_refused_once`는 client가 `max_user_connections`가 거부한 연결을 다시 시도하지 않는다는
+  것(CFG-35)을 지키는데, 두 server는 그 거부를 공통된 형태로 세지 않는다. MySQL은 그것을 그 user의 오류 1226으로
+  `performance_schema.events_errors_summary_by_user_by_error`에 기록하고 `performance_schema.users`에서 센다. MariaDB에는 오류
+  요약이 없고, `performance_schema.users`는 받아들인 연결만 세며, `USER_STATISTICS`는 `DENIED_CONNECTIONS`를 0으로 두고,
+  `Aborted_connects`는 global이다. MariaDB의 server_audit plugin은 거부된 연결을 `FAILED_CONNECT` 줄로 쓰지만 거부를 보낸
+  뒤에야 쓰므로(`login_connection`, sql/sql_connect.cc는 `end_statement`에서 오류를 보내고 그 뒤에
+  `mysql_audit_notify_connection_connect`를 부른다), 거부 직후 읽으면 11.8.6에서 run 10번 중 6번 그 줄을 놓쳤다. 그래서 수는
+  server가 아니라 client의 것이다. step `catalog.reconnect {connects}`는 재연결을 server 앞에 둔 runner의 TCP listener로
+  중계하고, listener는 받아들인 연결을 센다. 각 runtime은 두 server에서 같은 형태로 1을 준다(DIA-200, 규칙 1).
+
+- **DIA-212** case database의 삭제 — MySQL 8.4 / MariaDB 11.8: MariaDB의 `DROP DATABASE`가 database의 표는 지웠지만 폴더에
+  어느 표의 것도 아닌 파일(audit recipe의 한 run이 남긴 trigger 파일 `card.TRG-`)이 있어 폴더를 지우지 못하면, 1010
+  "Directory not empty"로 실패하고 지운 표들을 `DROP TABLE IF EXISTS` 목록 하나로 binary log에 남긴다. 그 error code는
+  0이고 session의 `foreign_key_checks`를 따른다. 검사를 켠 채 그 목록을 적용하는 replica는 foreign key의 부모를 1451로
+  거부하고 SQL thread를 멈추며, 그 run의 뒤따르는 `replica.await`는 모두 실패한다. 같은 목록을
+  `foreign_key_checks = 0`으로 적용하면 표가 모두 지워진다. 각 runtime의 harness는 두 server에서 case database를
+  `DROP DATABASE`의 session에 `SET SESSION foreign_key_checks = 0`을 두고 지운다(DIA-200, 규칙 1). `DROP DATABASE`는
+  foreign key와 상관없이 database의 표를 지우므로 성공하는 삭제는 같고, 1010으로 실패하는 삭제는 여전히 그 case를
+  실패시킨다. 그 session은 삭제와 함께 끝나고 어느 pool로도 돌아가지 않으므로, harness의 뒤따르는 statement는 모두
+  검사를 켠 채 실행된다. 모든 runtime에서 harness의 시험이 case database를 지운 뒤 다음 admin session에서
+  `foreign_key_checks` 1을 읽으며, 두 server 모두에서 그렇다. 삭제는 자기 대기 한도를 두지 않고, 끝나지 않는 삭제는 그
+  case의 deadline이 끝낸다. 그 파일은 MariaDB 자신이 남긴다. trigger가 이미 있는 표에 `CREATE TRIGGER`를 하면
+  `<table>.TRG`를 crash 대비 사본 `<table>.TRG-`로 복사하고, 그 사본의 삭제를 statement의 execute entry에 묶어 DDL
+  log에 적는다(`Table_triggers_list::create_trigger`, sql/sql_trigger.cc). statement가 성공하면
+  `mysql_create_or_drop_trigger`는 그 entry를 먼저 놓고(`ddl_log_complete`) 그다음 삭제를 실행하는데, 삭제는 놓은
+  위치의 entry가 활성이면 사본을 남긴다(`DDL_LOG_DELETE_TMP_FILE_ACTION`, sql/ddl_log.cc). 그 사이에 다른 session의
+  DDL statement가 그 위치를 차지하면 사본은 그대로 남는다. 여덟 session이 각자의 database에서 표 넷의 trigger 열둘을
+  만들고 database를 지우자 11.8.6에서 사본 960개 중 하나가 남았고, 그 삭제는 1010으로 실패했다. 12.2와 main의 code도
+  같다. 이것은 server의 결함이고, test server는 MariaDB release를 그대로 쓴다. 11.8.6에서 각 스물다섯 database의 열여섯
+  session이 사본 3200개를 만들었고, 그중 5개가 남아 삭제 5개가 1010으로 실패했다. 삭제가 1010으로 실패한 case는 그 오류로
+  실패하고, 모든 runtime의 client는 같은 부하의 사용자 MariaDB에서처럼 그 오류를 server가 준 그대로 돌려준다. 그 위치는 server
+  전체에 하나이므로, 사본은 어느 database에서든 다른 session의 DDL statement가 동시에 실행될 때만 남는다. 동시에 실행되는 DDL이
+  없으면 사본은 남지 않는다. 11.8.6에서 한 session이 database 이백 개로 사본 1600개를 만들었고, 하나도 남지 않았다. 그래서
+  모든 runtime의 recipe run은 모든 database(MySQL, MariaDB, PostgreSQL, SQLite, markdown)에서 같은 정책 하나로 case를
+  한 번에 하나씩 실행한다. Go, Python, PHP는 recipe target의 case를 차례로 실행하고, 모든 TypeScript recipe target은
+  파일을 `--test-concurrency=1`로 실행하며(Makefile의 `RECIPE_TS_TEST`), Rust program all과 mariadb에서 recipe의 모든
+  group은 trial을 차례로 실행하는 recipe group(`Group::recipe`)이고 모든 Rust recipe target은 `--no-fail-fast`로
+  실행하며(`RECIPE_RUST_TEST`), suite(scripts/suite-test.mts)는 contracts/fixtures recipe의 파일을 다른 파일 뒤에 한 번에
+  하나씩 실행한다. 동시 session이나 lock 대기처럼 동시성이 주제인 case는 그 동시성을 case 안에서 만든다. 이것은 case의
+  순서만 바꾸고, 빠지는 case는 없다.
+  한 machine에서 여러 agent가 돌리는 run처럼 server 하나를 나누어 쓰는 run은 여전히 DDL을 동시에 실행한다. 그런 run의
+  1010은 원인으로 DIA-212를 짚고, 그 case를 단독으로 다시 돌려 판정한다.
+
+- **DIA-213** introspection 읽기의 database — MySQL 8.4 / MariaDB 11.8: MariaDB는 조건이 row가 설명하는 table의 schema
+  column인 `TABLE_SCHEMA`(`TRIGGERS`에서는 `EVENT_OBJECT_SCHEMA`)를 이름 지을 때만 `information_schema` table을 한 database에서
+  읽는다. `CONSTRAINT_SCHEMA`나 `TRIGGER_SCHEMA`만의 조건, 또는 `CONSTRAINT_SCHEMA`로 `KEY_COLUMN_USAGE`를 join하면 모든
+  database의 모든 table을 연다. test server의 MariaDB primary에서 `EXPLAIN`은 `CONSTRAINT_SCHEMA`로 읽는 `TABLE_CONSTRAINTS`의
+  check 목록, `TRIGGER_SCHEMA`로 읽는 `TRIGGERS`의 trigger 목록, foreign key join의 `KEY_COLUMN_USAGE` 쪽에 "Scanned all
+  databases"를 주고, 각각 `TABLE_SCHEMA`나 `EVENT_OBJECT_SCHEMA`를 이름 지으면 "Scanned 1 database"를 준다. plan apply의
+  constraint와 trigger 존재 probe는 "Scanned 1 database"에서 "Scanned 0 databases"로 바뀐다. constraint와 trigger는 그
+  table의 schema에 있으므로, 모든 runtime의 introspection은 check를 `WHERE TABLE_SCHEMA = DATABASE()`로, trigger를
+  `WHERE EVENT_OBJECT_SCHEMA = DATABASE()`로 읽고, `KEY_COLUMN_USAGE` join에 `k.TABLE_SCHEMA = DATABASE()`를 더하며, apply
+  probe도 같은 방식으로 읽는다. check 하나, column 두 개의 foreign key 하나, trigger 하나가 있는 database에서 MySQL 8.4와
+  MariaDB 11.8 모두 예전 형태와 새 형태가 같은 row를 준다(DIA-200, 규칙 1).
+
+- **DIA-214** case 계정의 role — MySQL 8.4 / MariaDB 11.8: catalog recipe의 case `row_change_on_a_role_only_trigger_grant`는
+  그 user에게 role로만 TRIGGER를 주며(INT-119), 두 server에서 그 role을 만드는 procedure 하나는 없다. 한 server의 runner들은
+  그 계정을 나눠 쓰므로 user와 role은 case database에서 이름을 얻고, case의 procedure는 각 statement를 `PREPARE`로 실행한다.
+  MySQL은 prepared statement에서 `CREATE ROLE`과 `DROP ROLE`을 거부하므로(1295), 그 role은 잠긴 계정
+  `CREATE USER ... ACCOUNT LOCK`이며 `DROP USER`로 지우고 `ALTER USER ... DEFAULT ROLE ALL`로 기본 role로 만든다. MariaDB의
+  role은 계정이 아니고 host가 없다: `CREATE ROLE`로 만들고 `DROP ROLE`로 지우며 `SET DEFAULT ROLE r FOR u`로만 기본 role로
+  만든다. MariaDB는 `ALTER USER ... DEFAULT ROLE`과 `SET DEFAULT ROLE r TO u`를 거부하고(1064), MySQL은
+  `SET DEFAULT ROLE r FOR u`를 거부한다(1064). 그래서 case는 procedure를 server마다 한 번씩 쓰며, 다른 step과 expect는 두
+  server에서 같다.
+
+- **DIA-215** replica 기다리기 — MySQL 8.4 / MariaDB 11.8: harness의 step `replica.await`(CFG-23)는 primary의 binary log
+  위치를 읽고 replica가 그 위치를 적용할 때까지 replica에서 기다리며, 두 부분 어느 쪽에도 두 server에 통하는 statement가
+  없다. MySQL은 위치를 `SHOW BINARY LOG STATUS`로 읽는데 MariaDB는 이를 거부하고(1064), MariaDB는 `SHOW BINLOG STATUS`나
+  `SHOW MASTER STATUS`로 읽는데 MySQL 8.4는 이를 거부한다(1064). MySQL은 `SOURCE_POS_WAIT`로 기다리는데 MariaDB에는 그
+  함수가 없다(1305). MySQL 8.4는 MariaDB의 이름인 `MASTER_POS_WAIT`도 실행하지만 그 이름이 없어질 것이라는 warning 1287을
+  함께 내므로, harness는 이를 공통 형식으로 쓰지 않는다. GTID로 기다리는 공통 형식도 없다: MySQL 시험 server는
+  `gtid_mode = OFF`로 돌아 `WAIT_FOR_EXECUTED_GTID_SET`이 실패하고(3062), `MASTER_GTID_WAIT`는 MariaDB에만 있다. 그래서 모든
+  runtime의 harness는 case의 database에 따라 MySQL에서 `SHOW BINARY LOG STATUS`와 `SOURCE_POS_WAIT`를, MariaDB에서
+  `SHOW BINLOG STATUS`와 `MASTER_POS_WAIT`를 실행하며, 기다림과 그 기한은 두 server에서 같다.
+
+- **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
+- **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
+- **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
+- **DIA-4** `Lk` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `F(col) LIKE F(?)`, F는 `A`–`Z` 각각을 소문자로 바꾸는 `REPLACE` 26겹: column의 `utf8mb4_0900_bin`은 code point로 비교하고, `LOWER`나 `_ci` collation은 ASCII 밖까지 접는다(probe `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`); PostgreSQL 12+: `COLLATE "C"` 아래의 `ILIKE`(probe `postgres.ilike.c_collation_ascii_only`); SQLite 3.46+: `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음, probe `sqlite.like.ascii_only`)
+- **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.binary_collation_code_point`): `LIKE` (binary collation `utf8mb4_0900_bin`, code point로 비교한다. `LIKE BINARY`는 MySQL 8.0.27부터 deprecated다. probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
+- **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, 값은 transform 없이 그대로 bind한다. 두 함수 모두 항 주변의 공백을 건너뛰기 때문이다; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)
+- **DIA-7** `forceIndex<Name>` — MySQL 8.0.2+: `FORCE INDEX (name)`; PostgreSQL 12+: ignored (no hints); SQLite 3.46+: `INDEXED BY "name"`
+- **DIA-8** insert id — MySQL 8.0.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`; 여러 행 insert(`rows`, PRT-5)는 insert id를 알리지 않으므로 `RETURNING`이 없다
+- **DIA-9** `duplication(model)` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.upsert.any_unique_key`): `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다. MySQL은 아무 unique key에서나 행과 만나며(`mysql.upsert.any_unique_key`), NOT NULL unique key가 먼저다(`mysql.upsert.not_null_unique_first`)); PostgreSQL 12+: `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다. 다른 unique key에서 만나는 행은 unique 위반이다, `postgres.upsert.other_key_conflicts`); SQLite 3.46+: PostgreSQL과 같다(`sqlite.upsert.other_key_conflicts`). conformance vector `upsert_one_key`는 세 database에서 같은 결과를 준다
+- **DIA-10** `groupLimit(n)` — MySQL 8.0.2+: `ROW_NUMBER() OVER (…)`; PostgreSQL 12+: same; SQLite 3.46+: same
+- **DIA-11** `tuple<ColA>With<ColB>` — MySQL 8.0.2+: `(a, b) IN ((?, ?), …)`; PostgreSQL 12+: same; SQLite 3.46+: `(a, b) IN (VALUES (?, ?), …)`
+- **DIA-12** `orderByRandom()` — MySQL 8.0.2+: `RAND()`; PostgreSQL 12+: `random()`; SQLite 3.46+: `random()`
+- **DIA-13** nullable 컬럼의 `orderBy<Col>Asc()` / `Desc()` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.order.null_first_asc`): 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`mysql.order.null_first_asc`); PostgreSQL 12+: `ASC NULLS FIRST` / `DESC NULLS LAST`: 이것 없이는 오름차순 NULL 나중 (`postgres.order.null_last_asc`); SQLite 3.46+: 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`sqlite.order.null_first_asc`)
+- **DIA-14** ORM 함수 — MySQL 8.0.2+: [DSL](dsl.ko.md) 10절 참고
+- **DIA-15** `aes`/`hex` styles — MySQL 8.0.2+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; PostgreSQL 12+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; SQLite 3.46+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다
+- **DIA-16** `ip` style — MySQL 8.0.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: client-side (16-byte packed, `bytea`); SQLite 3.46+: client-side (16-byte packed). SQL은 write 순서의 마지막 단계, 즉 모든 client-side 단계 뒤의 단계만 감싸므로, 한 단계는 그 column의 모든 뒤 단계도 SQL에서 실행될 때만 SQL에서 실행된다: `ip hex` column은 MySQL에서도 주소를 client에서 pack하고 unpack하며(16-byte packed 뒤 hex text), 그 placeholder는 저장되는 hex text를 받는다(planner case `planner_ip_hex_insert`와 `planner_ip_hex_select`)
+- **DIA-18** update 시각과 soft delete가 쓰는 clock — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.now.precision_truncates`): `p > 0`인 `datetime(p)` column은 `CURRENT_TIMESTAMP(p)`, 그 밖에는 `CURRENT_TIMESTAMP`; PostgreSQL 12+: executor가 bind한, p로 자른 텍스트(`now` bind slot); SQLite 3.46+: executor가 bind한, p로 자른 텍스트(`now` bind slot)
 
 - **DIA-19** Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
@@ -50,10 +263,10 @@ import (
 - **DIA-33** AES column이 있는 entity는 `aes_version` setting으로 key version column을 선언한다. 읽기는 그 column을 한 번만 고른다. request가 고른 column이면 그것을, 아니면 숨은 column을 쓰며, 저장된 version으로 설정된 key version에서 key를 선택한다. key가 없으면 `CONFIG`를, ciphertext가 유효하지 않으면 `CODEC_DECODE`를 반환하며 이전 version에 current key를 사용하지 않는다.
 - **DIA-35** `contains`는 모든 database에서 substring을 찾고, ASCII 글자는 대소문자 구분 없이, 다른 모든 문자는 code point로 비교한다: MySQL은 두 피연산자의 A–Z를 중첩 `REPLACE`로 접고(위 `Lk`), PostgreSQL `COLLATE "C"` 아래의 `ILIKE`와 SQLite `LIKE`는 ASCII 글자만 접는다. conformance vector `contains_ascii_fold`가 결과를 고정한다.
 - **DIA-36** 상대 시간 함수(`seconds_ago`부터 `months_later`까지)는 결과가 0001-01-01 00:00:00부터 9999-12-31 23:59:59.999999 밖이거나 interval이 그 범위의 폭(315537897600초, 5258964960분, 87649416시간, 3652059일, 119988개월)을 넘으면 NULL이다. 그래서 그 함수와의 비교와 그 비교의 부정이 모두 어떤 행과도 맞지 않는다. 범위를 넘으면 MySQL과 SQLite는 NULL을, 범위 아래에서는 0000년을 준다(`mysql.relative.out_of_range_null`, `sqlite.relative.out_of_range_null`). PostgreSQL은 표현할 수 없는 interval에서 실패하고 범위를 넘으면 10000년을 준다(`postgres.relative.interval_out_of_range`). 그래서 모든 dialect는 interval을 `CASE WHEN <interval> BETWEEN -<폭> AND <폭> THEN <interval> END`로 감싸되 상수 접기가 표현할 수 없는 interval을 계산하지 않도록 함수 안에서 감싸고, 결과를 `CASE WHEN <결과> BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN <결과> END`로 감싼다. SQLite는 적용할 수 없는 interval에 이미 NULL을 주므로 결과 guard만 쓴다. conformance vector `relative_time_out_of_range`가 각 비교의 양쪽을 실행한다. 월 연산은 대상 월의 마지막 유효한 날을 유지한다([DSL-142](dsl.md)). MySQL `DATE_ADD`와 `DATE_SUB`, PostgreSQL `make_interval(months => n)`은 스스로 그렇게 하고(`mysql.relative.month_end_kept`, `postgres.relative.month_end_kept`), SQLite `datetime`은 대상 월의 끝을 넘는 날을 다음 달로 넘기므로 그 형태에 `floor` modifier를 더한다(`sqlite.relative.month_floor`).
-- **DIA-200** 결과가 유한한 binary64 범위를 벗어나는 `f64` 컬럼의 `SUM`이나 `AVG`는 모든 데이터베이스에서 한 사실, 즉 타입의 범위를 벗어난 합이나 평균(DSL-66)이며, text `aggregate scalar is not a finite number`와 함께 `CODEC_DECODE`다. SQLite와 markdown은 무한대 real을 반환하고 executor가 그렇게 거부한다. PostgreSQL은 statement를 SQLSTATE 22003(`value out of range: overflow`)으로 거부한다. MySQL은 무한대 double을 binary protocol에서는 그대로 반환하고 text protocol에서는 유한한 합인 0으로 쓴다. 그래서 planner는 MySQL에서 `f64` 컬럼에 `SUM(c) + 0`을 선택하며, MySQL은 합이 유한하지 않으면 이를 1690(SQLSTATE 22003)으로 거부하고 그렇지 않으면 합 그대로다. executor는 MySQL과 PostgreSQL에서 `getSum()`이나 `getAvg()`의 statement가 받은 SQLSTATE 22003을 그 `CODEC_DECODE`로 보고하고 driver 오류를 cause로 유지한다. transaction 밖에서는 PostgreSQL statement가 먼저 한 번 더 실행된다(CFG-28). transaction 안에서는 PostgreSQL이 거부한 모든 statement처럼 transaction을 중단한 상태다.
-- **DIA-201** 유한한 `f64` parameter는 모든 데이터베이스에서 호출자가 준 binary64 값이다. PDO는 float를 텍스트로 bind하며, PHP는 그 텍스트를 `precision` 설정(기본값은 유효 숫자 14자리)으로 쓰므로 그 텍스트는 다른 binary64 값이 된다. 그래서 PHP 클라이언트 `polyspec/orm`과 PHP 확장 클라이언트 `polyspec/orm-php-ext`는 MySQL, PostgreSQL, SQLite에서 유한한 float를 그 설정과 상관없이 같은 값으로 다시 읽히는 가장 짧은 십진 텍스트로 bind한다. markdown 연결은 float로 bind한다(PRT-67).
-- **DIA-202** SQLite는 정수를 부호 있는 64비트 정수로 더하고 그 범위를 넘는 합을 `integer overflow`로 거부하지만, MySQL과 PostgreSQL은 정확한 합을 반환한다. 그래서 SQLite와, statement를 SQLite에서 실행하는 markdown에서는 정확한 컬럼(DSL-161)의 합, 곧 정수 컬럼의 정수나 `decimal(P,S)` 컬럼의 scale된 정수(DIA-25)의 합을 값의 16비트 네 부분의 합과 셀 하나로 계획한다: `>>`가 부호와 함께 미는 상위 부분의 합 `SUM(c >> 48)`은 [-2^15, 2^15)의 값을, 나머지 세 부분의 합 `SUM((c >> 32) & 65535)`, `SUM((c >> 16) & 65535)`, `SUM(c & 65535)`은 [0, 2^16)의 값을 더하며, `MAX(typeof(c) NOT IN ('integer', 'null'))`은 정수가 아닌 값이 있으면 1이다. 합은 네 합을 각각 `COALESCE(<합>, 0)`로, 그리고 그 셀을 선택하고, 평균은 네 합과 그 셀과 `COUNT(c)`를 선택한다. executor는 네 합 p3, p2, p1, p0을 한계 없이 담는 정확한 정수 ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0으로 합치며, 그 정수가 DSL-161의 정확한 합이고 DSL-66이 그것을 한 번 변환한다. 그래서 `getSum()`과 `getAvg()`는 i64 범위를 위나 아래로 넘는 합을 포함해 모든 데이터베이스에서 같은 값 하나를, 모든 runtime에서 DSL-66의 host 타입으로 준다. SQLite가 담을 수 있는 표에서 네 합은 어느 것도 i64 범위를 벗어나지 않으므로, 이 분할에는 데이터베이스가 닿는 한계가 없다: 한 부분은 [-2^15, 2^16)에 있으므로 n개 부분의 합은 n이 2^47 이하이면 (-2^62, 2^63)에 있다. 그리고 데이터베이스 파일은 많아야 65536 byte인 page를 많아야 4294967294개(SQLITE_MAX_PAGE_COUNT, 2^32 - 2) 가지므로([SQLite limits](https://www.sqlite.org/limits.html)) 2^48 byte보다 작고, 행 하나는 적어도 그 b-tree page의 cell pointer 배열 항목 2 byte를 차지하므로([SQLite file format](https://www.sqlite.org/fileformat2.html)) 표는 2^47개보다 적은 행을 담는다. markdown은 같은 한계 아래 SQLite에서 statement를 실행한다. 정수가 아닌 값은 컬럼의 CHECK가 거부하므로 스키마 뒤에서 바뀐 표만 담는데, `>>`와 `&`에서 소수부를 잃을 것이다. 마지막 셀이 이를 알리며, executor는 합과 평균을 DSL-66의 `CODEC_DECODE` `column <column> holds a value that is not an integer`로, `decimal(P,S)` 컬럼이면 `column <column> holds a value that is not a decimal of scale <S>`로 거부한다. 이는 그런 컬럼에 대해 MySQL과 PostgreSQL이 정수 컬럼이면 소수부가 있는, decimal 컬럼이면 소수 자릿수가 S보다 많은 decimal text로 반환하는 합의 거부이기도 하므로, 그런 컬럼의 합은 모든 데이터베이스에서 같게 실패한다. case `added_sum_fractional`이 이를 지킨다. recipe `conformance_verification`의 case `aggregate_of_an_integer_column_past_the_i64_range_is_exact`와 `sum_parts_of_i64_boundary_values_are_exact`가 모든 데이터베이스에서 범위를 위와 아래로 넘는 합과 평균, 범위를 넘었다가 돌아오는 누적 합, 그리고 부분끼리 올림이 넘어가는 범위 양 끝의 값을 지킨다.
-- **DIA-203** 모든 클라이언트는 MySQL `DECIMAL`과 PostgreSQL `NUMERIC` 셀을 자릿수와 관계없이 정확한 decimal text로 읽는다. catalog 컬럼은 많아야 18자리(DIA-25)를 담지만 DSL-161의 합과 raw statement의 셀은 더 많은 자리를 담을 수 있으며, 어떤 클라이언트도 이를 반올림하는 고정 폭 decimal로 읽지 않는다. Rust의 128비트 decimal은 유효 숫자 28자리를 담고 더 긴 값을 반올림하므로, Rust는 MySQL이 보내는 text를 읽고 PostgreSQL의 binary NUMERIC을 부호, weight, display scale과 10000진 숫자로부터 해독한다. 어떤 정확한 컬럼도 담지 않는 NUMERIC NaN과 무한대는 `CODEC_DECODE`이다. decimal field 매개변수는 많아야 18자리(COD-2)를 담지만, schema 변경 뒤에 문이 다시 실행될 때(CFG-28) PostgreSQL이 `NUMERIC`으로 타입을 정하는 매개변수는 다른 타입 field의 text이며 자릿수에 제한이 없다. 모든 클라이언트는 그것을 PostgreSQL 17이 그 text에서 읽는 수(numeric_in)로 bind하며, Rust는 자체 폭 없이 같은 규칙으로 그 text의 binary NUMERIC을 인코딩한다: 앞뒤 공백, 부호 하나, 대소문자와 관계없는 `NaN`과 무한대, 16진·8진·2진 정수, 숫자 사이의 밑줄, 지수. PostgreSQL이 numeric으로 읽지 않는 text는 모든 클라이언트에서 PostgreSQL이 거부하는 대로 실패한다. numeric이 아닌 text는 SQLSTATE `22P02`, 범위를 넘는 numeric은 `22003`의 `DRIVER`이며, Rust는 타입이 바뀐 매개변수의 text를 server가 읽게 하며(CFG-28), 인코더는 decimal field의 값과 numeric으로 bind하는 정수와 실수를 bind한다. recipe `conformance_verification`의 case `decimal_text_past_28_digits_reads_exactly`가 MySQL과 PostgreSQL에서 40자리 decimal과 소수 30자리 decimal을 읽고, recipe `parameter_chunking`의 case `model_decimal_text_parameter_after_schema_change`가 PostgreSQL이 `NUMERIC`으로 바꾼 column에 30자리, 소수 29자리, 지수가 있는 text를 쓰고 비교한다. 같은 recipe의 case `model_numeric_text_parameter_refused_after_schema_change`는 PostgreSQL이 거부하는 numeric이 아닌 text와 범위를 넘는 text를 쓴다. 여기서 database는 각자의 규칙대로 다르고, 각 case는 그 각각을 기대한다. strict mode의 MySQL은 column 타입의 값이 아니거나 범위를 넘는 text를 문의 오류(1366, 1292, 1264)로 거부하므로 쓰기는 PostgreSQL처럼 `DRIVER`이다. SQLite와 그것을 거치는 markdown은 column의 affinity(INTEGER, NUMERIC)가 수로 바꾸지 않는 text를 그 text로 저장하므로 쓰기는 성공하고 행은 그 text를 담는다. case `model_text_parameter_refused_after_schema_change`가 정수와 날짜로 바뀐 column에 text `seven`과 `2026-02-30`을 이 결과로 쓴다.
+- **DIA-216** 결과가 유한한 binary64 범위를 벗어나는 `f64` 컬럼의 `SUM`이나 `AVG`는 모든 데이터베이스에서 한 사실, 즉 타입의 범위를 벗어난 합이나 평균(DSL-66)이며, text `aggregate scalar is not a finite number`와 함께 `CODEC_DECODE`다. SQLite와 markdown은 무한대 real을 반환하고 executor가 그렇게 거부한다. PostgreSQL은 statement를 SQLSTATE 22003(`value out of range: overflow`)으로 거부한다. MySQL은 무한대 double을 binary protocol에서는 그대로 반환하고 text protocol에서는 유한한 합인 0으로 쓴다. 그래서 planner는 MySQL에서 `f64` 컬럼에 `SUM(c) + 0`을 선택하며, MySQL은 합이 유한하지 않으면 이를 1690(SQLSTATE 22003)으로 거부하고 그렇지 않으면 합 그대로다. executor는 MySQL과 PostgreSQL에서 `getSum()`이나 `getAvg()`의 statement가 받은 SQLSTATE 22003을 그 `CODEC_DECODE`로 보고하고 driver 오류를 cause로 유지한다. transaction 밖에서는 PostgreSQL statement가 먼저 한 번 더 실행된다(CFG-28). transaction 안에서는 PostgreSQL이 거부한 모든 statement처럼 transaction을 중단한 상태다.
+- **DIA-217** 유한한 `f64` parameter는 모든 데이터베이스에서 호출자가 준 binary64 값이다. PDO는 float를 텍스트로 bind하며, PHP는 그 텍스트를 `precision` 설정(기본값은 유효 숫자 14자리)으로 쓰므로 그 텍스트는 다른 binary64 값이 된다. 그래서 PHP 클라이언트 `polyspec/orm`과 PHP 확장 클라이언트 `polyspec/orm-php-ext`는 MySQL, PostgreSQL, SQLite에서 유한한 float를 그 설정과 상관없이 같은 값으로 다시 읽히는 가장 짧은 십진 텍스트로 bind한다. markdown 연결은 float로 bind한다(PRT-67).
+- **DIA-218** SQLite는 정수를 부호 있는 64비트 정수로 더하고 그 범위를 넘는 합을 `integer overflow`로 거부하지만, MySQL과 PostgreSQL은 정확한 합을 반환한다. 그래서 SQLite와, statement를 SQLite에서 실행하는 markdown에서는 정확한 컬럼(DSL-161)의 합, 곧 정수 컬럼의 정수나 `decimal(P,S)` 컬럼의 scale된 정수(DIA-25)의 합을 값의 16비트 네 부분의 합과 셀 하나로 계획한다: `>>`가 부호와 함께 미는 상위 부분의 합 `SUM(c >> 48)`은 [-2^15, 2^15)의 값을, 나머지 세 부분의 합 `SUM((c >> 32) & 65535)`, `SUM((c >> 16) & 65535)`, `SUM(c & 65535)`은 [0, 2^16)의 값을 더하며, `MAX(typeof(c) NOT IN ('integer', 'null'))`은 정수가 아닌 값이 있으면 1이다. 합은 네 합을 각각 `COALESCE(<합>, 0)`로, 그리고 그 셀을 선택하고, 평균은 네 합과 그 셀과 `COUNT(c)`를 선택한다. executor는 네 합 p3, p2, p1, p0을 한계 없이 담는 정확한 정수 ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0으로 합치며, 그 정수가 DSL-161의 정확한 합이고 DSL-66이 그것을 한 번 변환한다. 그래서 `getSum()`과 `getAvg()`는 i64 범위를 위나 아래로 넘는 합을 포함해 모든 데이터베이스에서 같은 값 하나를, 모든 runtime에서 DSL-66의 host 타입으로 준다. SQLite가 담을 수 있는 표에서 네 합은 어느 것도 i64 범위를 벗어나지 않으므로, 이 분할에는 데이터베이스가 닿는 한계가 없다: 한 부분은 [-2^15, 2^16)에 있으므로 n개 부분의 합은 n이 2^47 이하이면 (-2^62, 2^63)에 있다. 그리고 데이터베이스 파일은 많아야 65536 byte인 page를 많아야 4294967294개(SQLITE_MAX_PAGE_COUNT, 2^32 - 2) 가지므로([SQLite limits](https://www.sqlite.org/limits.html)) 2^48 byte보다 작고, 행 하나는 적어도 그 b-tree page의 cell pointer 배열 항목 2 byte를 차지하므로([SQLite file format](https://www.sqlite.org/fileformat2.html)) 표는 2^47개보다 적은 행을 담는다. markdown은 같은 한계 아래 SQLite에서 statement를 실행한다. 정수가 아닌 값은 컬럼의 CHECK가 거부하므로 스키마 뒤에서 바뀐 표만 담는데, `>>`와 `&`에서 소수부를 잃을 것이다. 마지막 셀이 이를 알리며, executor는 합과 평균을 DSL-66의 `CODEC_DECODE` `column <column> holds a value that is not an integer`로, `decimal(P,S)` 컬럼이면 `column <column> holds a value that is not a decimal of scale <S>`로 거부한다. 이는 그런 컬럼에 대해 MySQL과 PostgreSQL이 정수 컬럼이면 소수부가 있는, decimal 컬럼이면 소수 자릿수가 S보다 많은 decimal text로 반환하는 합의 거부이기도 하므로, 그런 컬럼의 합은 모든 데이터베이스에서 같게 실패한다. case `added_sum_fractional`이 이를 지킨다. recipe `conformance_verification`의 case `aggregate_of_an_integer_column_past_the_i64_range_is_exact`와 `sum_parts_of_i64_boundary_values_are_exact`가 모든 데이터베이스에서 범위를 위와 아래로 넘는 합과 평균, 범위를 넘었다가 돌아오는 누적 합, 그리고 부분끼리 올림이 넘어가는 범위 양 끝의 값을 지킨다.
+- **DIA-219** 모든 클라이언트는 MySQL `DECIMAL`과 PostgreSQL `NUMERIC` 셀을 자릿수와 관계없이 정확한 decimal text로 읽는다. catalog 컬럼은 많아야 18자리(DIA-25)를 담지만 DSL-161의 합과 raw statement의 셀은 더 많은 자리를 담을 수 있으며, 어떤 클라이언트도 이를 반올림하는 고정 폭 decimal로 읽지 않는다. Rust의 128비트 decimal은 유효 숫자 28자리를 담고 더 긴 값을 반올림하므로, Rust는 MySQL이 보내는 text를 읽고 PostgreSQL의 binary NUMERIC을 부호, weight, display scale과 10000진 숫자로부터 해독한다. 어떤 정확한 컬럼도 담지 않는 NUMERIC NaN과 무한대는 `CODEC_DECODE`이다. decimal field 매개변수는 많아야 18자리(COD-2)를 담지만, schema 변경 뒤에 문이 다시 실행될 때(CFG-28) PostgreSQL이 `NUMERIC`으로 타입을 정하는 매개변수는 다른 타입 field의 text이며 자릿수에 제한이 없다. 모든 클라이언트는 그것을 PostgreSQL 17이 그 text에서 읽는 수(numeric_in)로 bind하며, Rust는 자체 폭 없이 같은 규칙으로 그 text의 binary NUMERIC을 인코딩한다: 앞뒤 공백, 부호 하나, 대소문자와 관계없는 `NaN`과 무한대, 16진·8진·2진 정수, 숫자 사이의 밑줄, 지수. PostgreSQL이 numeric으로 읽지 않는 text는 모든 클라이언트에서 PostgreSQL이 거부하는 대로 실패한다. numeric이 아닌 text는 SQLSTATE `22P02`, 범위를 넘는 numeric은 `22003`의 `DRIVER`이며, Rust는 타입이 바뀐 매개변수의 text를 server가 읽게 하며(CFG-28), 인코더는 decimal field의 값과 numeric으로 bind하는 정수와 실수를 bind한다. recipe `conformance_verification`의 case `decimal_text_past_28_digits_reads_exactly`가 MySQL과 PostgreSQL에서 40자리 decimal과 소수 30자리 decimal을 읽고, recipe `parameter_chunking`의 case `model_decimal_text_parameter_after_schema_change`가 PostgreSQL이 `NUMERIC`으로 바꾼 column에 30자리, 소수 29자리, 지수가 있는 text를 쓰고 비교한다. 같은 recipe의 case `model_numeric_text_parameter_refused_after_schema_change`는 PostgreSQL이 거부하는 numeric이 아닌 text와 범위를 넘는 text를 쓴다. 여기서 database는 각자의 규칙대로 다르고, 각 case는 그 각각을 기대한다. strict mode의 MySQL은 column 타입의 값이 아니거나 범위를 넘는 text를 문의 오류(1366, 1292, 1264)로 거부하므로 쓰기는 PostgreSQL처럼 `DRIVER`이다. SQLite와 그것을 거치는 markdown은 column의 affinity(INTEGER, NUMERIC)가 수로 바꾸지 않는 text를 그 text로 저장하므로 쓰기는 성공하고 행은 그 text를 담는다. case `model_text_parameter_refused_after_schema_change`가 정수와 날짜로 바뀐 column에 text `seven`과 `2026-02-30`을 이 결과로 쓴다.
 - **DIA-37** recipe `conformance_verification`은 각 case의 expect를 방언마다 적으며, case의 결과는 세 database에서 같아야 한다. `get_query`는 방언 SQL을 반환한다.
 
 ## Schema definitions
@@ -89,9 +302,9 @@ import (
 - **DIA-45** `text` — MySQL 8.4: `TEXT`는 65535바이트 이하(1406), `LONGTEXT`는 4 GiB 이하. 리터럴 기본값은 `DEFAULT ('x')`가 필요하고(1101) index는 prefix가 필요하다(1170); PostgreSQL 17: 길이 없는 `text`. Probe에서 1 MiB를 저장했다. 필드 한도는 1 GB; SQLite: `TEXT`, `SQLITE_MAX_LENGTH`(기본 10^9바이트) 한도; Probe: `mysql.text.max_bytes`, `mysql.text.literal_default_needs_expression`, `mysql.text.index_needs_prefix`, `postgres.text.unlimited`; 결정과 중립 rendering: **Decision:** `text`로 지원한다. MySQL `LONGTEXT`, PostgreSQL `text`, SQLite `TEXT`. `text` 컬럼은 key나 index에 포함할 수 없다. 최대 값은 PostgreSQL 1 GB 필드 한도, SQLite `SQLITE_MAX_LENGTH`, MySQL `max_allowed_packet` 중 가장 작은 값이다. Ordered JSON은 codec setting을 가진 `text`다; Introspection: MySQL `DATA_TYPE`, PostgreSQL `atttypid`, SQLite 선언 타입
 - **DIA-46** text의 U+0000 — MySQL 8.4: 저장한다; PostgreSQL 17: 거부한다(22021); SQLite: 저장하며 `length()`는 그 앞에서 멈춘다; Probe: `mysql.text.nul_preserved`, `postgres.text.nul_rejected`, `sqlite.text.nul_preserved`; 결정과 중립 rendering: **Decision:** U+0000은 중립 text 값이 아니다. 모든 데이터베이스에서 클라이언트가 `text`와 `varchar`의 U+0000을 어떤 statement보다 먼저 `CODEC_ENCODE`로 거부한다(conformance vector `text_nul_rejected`); Introspection: 해당 없음
 - **DIA-47** Bytes — MySQL 8.4: `BINARY(n)`은 0바이트로 채우고 `VARBINARY(n)`은 길이를 검사한다(1406). `LONGBLOB`; PostgreSQL 17: `bytea`는 길이가 없다(42601); SQLite: `BLOB`은 길이가 없다; Probe: `mysql.binary.zero_padded`, `mysql.varbinary.length_enforced`, `postgres.bytea.no_length`; 결정과 중립 rendering: **Decision:** 길이 없는 `bytes`를 지원한다. MySQL `LONGBLOB`, PostgreSQL `bytea`, SQLite `BLOB`. 채움과 길이는 MySQL에만 있으므로 `binary(n)`과 `varbinary(n)`은 지원하지 않는다; Introspection: MySQL `DATA_TYPE`, PostgreSQL `atttypid`, SQLite 선언 타입
-- **DIA-48** UUID — MySQL 8.4: 타입이 없다(1064); PostgreSQL 17: `uuid`는 중괄호와 대문자를 받고 소문자를 반환한다; SQLite: 타입이 없다; Probe: `mysql.uuid.no_type`, `postgres.uuid.native_normalized`, `mysql.render.uuid_check`, `sqlite.render.uuid_check`; 결정과 중립 rendering: **Decision:** 소문자 표준 텍스트를 담는 `uuid`로 지원한다. PostgreSQL `uuid`, MySQL `char(36) CHARACTER SET ascii COLLATE ascii_bin`과 renderer CHECK `REGEXP_LIKE(u, '^[0-9a-f]{8}-…$', 'c')`, SQLite `TEXT`와 문자 class 36개의 renderer CHECK `u GLOB`. 클라이언트는 소문자 표준 텍스트를 쓰고 다른 형식은 어떤 statement보다 먼저 `CODEC_ENCODE`로 거부하므로(conformance vector `uuid_form_rejected`) PostgreSQL의 다른 입력 형식 변환은 쓰지 않는다; Introspection: PostgreSQL `uuid`, MySQL과 SQLite 타입과 CHECK 텍스트
+- **DIA-48** UUID — MySQL 8.4: 타입이 없다(1064); PostgreSQL 17: `uuid`는 중괄호와 대문자를 받고 소문자를 반환한다; SQLite: 타입이 없다; Probe: `mysql.uuid.no_type`, `postgres.uuid.native_normalized`, `mysql.render.uuid_check`, `mariadb.render.uuid_check`, `mariadb.check.alter_rewrites_introducers`, `sqlite.render.uuid_check`; 결정과 중립 rendering: **Decision:** 소문자 표준 텍스트를 담는 `uuid`로 지원한다. PostgreSQL `uuid`, MySQL `char(36) CHARACTER SET ascii COLLATE ascii_bin`과 renderer CHECK `u REGEXP '^[0-9a-f]{8}-…$'`(MySQL과 MariaDB 모두 그 `ascii_bin` column에서 대소문자를 구별해 맞추며, MariaDB에는 `REGEXP_LIKE`가 없다(1305, CHECK 안에서 1901)), SQLite `TEXT`와 문자 class 36개의 renderer CHECK `u GLOB`. 클라이언트는 소문자 표준 텍스트를 쓰고 다른 형식은 어떤 statement보다 먼저 `CODEC_ENCODE`로 거부하므로(conformance vector `uuid_form_rejected`) PostgreSQL의 다른 입력 형식 변환은 쓰지 않는다; Introspection: PostgreSQL `uuid`, MySQL과 SQLite 타입과 CHECK 텍스트
 - **DIA-49** Enum — MySQL 8.4: `ENUM`은 목록 밖의 값을 거부하고(1265), 생략한 NOT NULL 컬럼에 첫 값을 저장하며, 목록 위치로 정렬한다; PostgreSQL 17: `CREATE TYPE … AS ENUM`은 별도 타입 객체(`USER-DEFINED`, `pg_enum`)이며 목록 밖의 값을 거부하고(22P02) 목록 위치로 정렬한다; SQLite: `enum('a','b')`는 문법 오류다; Probe: `mysql.enum.rejects_unknown`, `mysql.enum.not_null_first_value_default`, `mysql.enum.sorts_by_position`, `postgres.enum.type_object`, `sqlite.enum.type_name_rejected`; 결정과 중립 rendering: **Decision:** native enum은 지원하지 않는다. 값 목록은 `in` CHECK 정의를 가진 `varchar(n)` 컬럼이며 모든 데이터베이스에서 텍스트로 정렬한다; Introspection: MySQL `ENUM` 컬럼과 PostgreSQL enum 타입은 미지원으로 보고한다
-- **DIA-50** JSON — MySQL 8.4: `JSON`은 마지막 중복 키를 남기고 멤버 순서를 바꾼다; PostgreSQL 17: `json`은 텍스트를 유지하고 `jsonb`는 마지막 중복 키를 남기며 순서를 바꾼다; SQLite: 텍스트다. `json()`은 중복 키를 유지한다; Probe: `mysql.json.normalizes`, `postgres.json.text_jsonb_normalized`, `sqlite.json.text_kept`; 결정과 중립 rendering: **Decision:** native JSON 타입은 지원하지 않는다. Ordered JSON은 ordered-json codec setting을 가진 `text` 컬럼이다; Introspection: MySQL `JSON`, PostgreSQL `json`/`jsonb` 컬럼은 미지원으로 보고한다
+- **DIA-50** JSON — MySQL 8.4: `JSON`은 마지막 중복 키를 남기고 멤버 순서를 바꾼다; PostgreSQL 17: `json`은 텍스트를 유지하고 `jsonb`는 마지막 중복 키를 남기며 순서를 바꾼다; MariaDB 11.8: `JSON`은 컬럼 `c`의 이름을 단 `CHECK (json_valid(c))`를 가진 `utf8mb4_bin`의 `LONGTEXT`이며, 멤버 순서와 중복 키를 포함해 텍스트를 쓴 그대로 유지한다; SQLite: 텍스트다. `json()`은 중복 키를 유지한다; Probe: `mysql.json.normalizes`, `mariadb.json.normalizes`, `postgres.json.text_jsonb_normalized`, `sqlite.json.text_kept`; 결정과 중립 rendering: **Decision:** native JSON 타입은 지원하지 않는다. Ordered JSON은 ordered-json codec setting을 가진 `text` 컬럼이다; Introspection: MySQL `JSON`, PostgreSQL `json`/`jsonb` 컬럼은 미지원으로 보고한다. MariaDB에서는 컬럼과 그 `json_valid` CHECK를 각각 미지원으로 보고하므로, `tests/dbspec/introspect.json`의 vector `mysql-unsupported`는 그 `mariadb` 결과에 CHECK `doc`을 적는다(DIA-200, 규칙 4)
 
 출처: [MySQL numeric types](https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html), [MySQL string types](https://dev.mysql.com/doc/refman/8.4/en/string-types.html), [MySQL storage requirements](https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html), [MySQL ENUM](https://dev.mysql.com/doc/refman/8.4/en/enum.html), [MySQL JSON](https://dev.mysql.com/doc/refman/8.4/en/json.html), [PostgreSQL numeric types](https://www.postgresql.org/docs/17/datatype-numeric.html), [PostgreSQL character types](https://www.postgresql.org/docs/17/datatype-character.html), [PostgreSQL binary data](https://www.postgresql.org/docs/17/datatype-binary.html), [PostgreSQL UUID](https://www.postgresql.org/docs/17/datatype-uuid.html), [PostgreSQL enum](https://www.postgresql.org/docs/17/datatype-enum.html), [PostgreSQL JSON](https://www.postgresql.org/docs/17/datatype-json.html), [SQLite datatypes](https://www.sqlite.org/datatype3.html), [SQLite STRICT tables](https://www.sqlite.org/stricttables.html), [SQLite limits](https://www.sqlite.org/limits.html).
 
@@ -118,7 +331,7 @@ import (
 
 - **DIA-60** NOT NULL — MySQL 8.4: 기본값 없는 NOT NULL 컬럼을 생략하면 실패한다(1364); PostgreSQL 17: 실패한다(23502); SQLite: 실패한다. rowid table의 INTEGER가 아닌 PRIMARY KEY 컬럼은 NOT NULL을 선언하지 않으면 NULL을 받는다; Probe: `mysql.not_null.missing_value_rejected`, `postgres.not_null.missing_value_rejected`, `sqlite.not_null.missing_value_rejected`, `sqlite.pk.nullable_non_integer`; 결정과 중립 rendering: **Decision:** 지원한다. Primary key 컬럼은 모든 데이터베이스에서 `NOT NULL`을 명시해 생성한다; Introspection: MySQL `IS_NULLABLE`, PostgreSQL `attnotnull`, SQLite `pragma_table_info.notnull`
 - **DIA-61** 리터럴 기본값 — MySQL 8.4: `COLUMN_DEFAULT`는 따옴표 없는 리터럴이다. `TEXT`/`BLOB` 기본값은 `DEFAULT ('x')`가 필요하며 `DEFAULT_GENERATED`와 함께 `_utf8mb4\'x\'`로 기록한다; PostgreSQL 17: `pg_get_expr`는 cast를 추가한다: `'x'::character varying`, `'y'::text`; SQLite: `dflt_value`는 쓴 텍스트다: `'x'`, `0`; Probe: `mysql.default.catalog_text`, `mysql.text.literal_default_needs_expression`, `postgres.default.catalog_text`, `sqlite.default.catalog_text`; 결정과 중립 rendering: **Decision:** 컬럼의 중립 타입 리터럴을 지원한다. Introspection은 dialect별 catalog 형식을 리터럴로 정규화한다. MySQL `text` 리터럴은 식 형식을 쓴다; Introspection: MySQL `COLUMN_DEFAULT`와 `EXTRA`, PostgreSQL `pg_attrdef`와 `pg_get_expr`, SQLite `pragma_table_info.dflt_value`
-- **DIA-62** 식 기본값 — MySQL 8.4: `DEFAULT (expr)`, 예: `(uuid())`, `DEFAULT_GENERATED`로 기록한다; PostgreSQL 17: 모든 식을 정규화한다: `(1 + 1)`, `now()`, `CURRENT_TIMESTAMP`; SQLite: 괄호가 있는 `DEFAULT (expr)`만 받는다. 바깥 괄호를 뺀 쓴 텍스트를 유지한다; Probe: `mysql.default.catalog_text`, `postgres.default.catalog_text`, `sqlite.default.catalog_text`, `sqlite.default.expression_needs_parentheses`; 결정과 중립 rendering: **Decision:** 시간 결정에 따른 시각 기본값만 지원한다. UUID 생성기(MySQL `uuid()`, PostgreSQL `gen_random_uuid()`, SQLite 없음)를 포함한 다른 식 기본값은 지원하지 않는다; Introspection: 리터럴 기본값과 같다
+- **DIA-62** 식 기본값 — MySQL 8.4: `DEFAULT (expr)`, 예: `(uuid())`, `DEFAULT_GENERATED`로 기록한다; PostgreSQL 17: 모든 식을 정규화한다: `(1 + 1)`, `now()`, `CURRENT_TIMESTAMP`; SQLite: 괄호가 있는 `DEFAULT (expr)`만 받는다. 바깥 괄호를 뺀 쓴 텍스트를 유지한다; Probe: `mysql.default.catalog_text`, `postgres.default.catalog_text`, `sqlite.default.catalog_text`, `sqlite.default.expression_needs_parentheses`; 결정과 중립 rendering: **Decision:** 시간 결정에 따른 시각 기본값만 지원한다. UUID 생성기(MySQL `uuid()`, PostgreSQL `gen_random_uuid()`, SQLite 없음)를 포함한 다른 식 기본값은 지원하지 않는다. binary log가 켜진 MySQL 8.4는 `(uuid())`처럼 결정적이지 않은 기본값을 둔 `ALTER TABLE … ADD COLUMN`을 `binlog_format=ROW`에서도 error 1674로 거부한다. 그 문장이 표의 행을 채우고 replica는 다른 값을 계산하기 때문이다. `CREATE TABLE`은 받고, MariaDB 11.8은 둘 다 받는다; Introspection: 리터럴 기본값과 같다
 - **DIA-63** 자동 key — MySQL 8.4: Key 컬럼의 `AUTO_INCREMENT`(아니면 1075). 명시한 더 큰 key는 counter를 올린다. Rollback한 insert는 간격을 남긴다; PostgreSQL 17: `GENERATED BY DEFAULT AS IDENTITY`는 명시한 key 뒤로 진행하지 않아 다음 생성 key가 충돌한다(23505). `ALWAYS`는 명시한 key를 거부한다(428C9). `serial`은 identity가 아닌 sequence 기본값이다. Rollback은 간격을 남긴다; SQLite: `INTEGER PRIMARY KEY AUTOINCREMENT`는 `INTEGER PRIMARY KEY`에만 쓸 수 있다. 명시한 key는 counter를 올린다. Rollback은 간격을 남기지 않는다. `AUTOINCREMENT`가 없으면 삭제한 가장 큰 key를 다시 쓴다; Probe: `mysql.auto_increment.explicit_value_advances`, `mysql.auto_increment.rollback_leaves_gap`, `mysql.auto_increment.requires_key`, `postgres.identity.by_default_not_advanced`, `postgres.identity.always_rejects_explicit`, `postgres.identity.rollback_leaves_gap`, `postgres.serial.sequence_default`, `sqlite.autoincrement.explicit_value_advances`, `sqlite.autoincrement.rollback_no_gap`, `sqlite.rowid.reused_without_autoincrement`, `sqlite.autoincrement.integer_only`; 결정과 중립 rendering: **Decision:** 생략하면 생성하는 단일 컬럼 부호 있는 `i64` primary key로 지원한다. MySQL `BIGINT AUTO_INCREMENT`, PostgreSQL `bigint GENERATED BY DEFAULT AS IDENTITY`, SQLite `INTEGER PRIMARY KEY AUTOINCREMENT`. Key는 다시 쓰지 않는다. 클라이언트는 이 컬럼의 명시 값을 거부하며, PostgreSQL에서 명시 key를 쓰는 apply 단계는 identity sequence를 가장 큰 key로 맞춘다. 간격은 의미에 포함하지 않는다; Introspection: MySQL `EXTRA` `auto_increment`, PostgreSQL `attidentity`/`identity_generation`, SQLite `sqlite_master.sql`의 `AUTOINCREMENT`와 `sqlite_sequence`
 - **DIA-64** 생성 컬럼 — MySQL 8.4: `VIRTUAL`과 `STORED`. 식을 정규화해 기록한다(예: ``(`a` + 1)``). 명시 값은 실패한다(3105); PostgreSQL 17: 17은 `STORED`만 있다(`VIRTUAL`은 42601). `pg_get_expr`는 `(a + 1)`로 정규화한다. 명시 값은 실패한다(428C9); SQLite: `VIRTUAL`과 `STORED`. `pragma_table_xinfo.hidden`은 2 또는 3이며 식은 `sqlite_master.sql`에만 있다; Probe: `mysql.generated.catalog_expression`, `mysql.generated.explicit_value_rejected`, `postgres.generated.stored_only`, `postgres.generated.explicit_value_rejected`, `sqlite.generated.virtual_and_stored`, `sqlite.generated.explicit_value_rejected`; 결정과 중립 rendering: **Decision:** 지원하지 않는다. PostgreSQL 17에는 `VIRTUAL`이 없고, `STORED` 식에는 T8.1이 CHECK에만 정의하는 중립 식 집합과 dialect별 catalog 정규화가 필요하다. 어느 client도 MySQL 생성 컬럼의 식 text를 읽지 않는다. `GENERATION_EXPRESSION`은 non-ASCII literal의 UTF-8 byte를 한 번 더 인코딩한 값(`cafÃ©`)을 담고, 모든 client는 그 text를 쓰기 전에 열을 보고한다. 그래서 dbspec은 생성 컬럼을 만들지 않는다; Introspection: 미지원으로 보고한다
 
@@ -131,7 +344,7 @@ import (
 - **DIA-67** Key 순서 — MySQL 8.4: `DESC`를 저장한다(`COLLATION` `D`); PostgreSQL 17: `DESC`를 저장한다(`pg_get_indexdef`); SQLite: `DESC`를 저장한다(`pragma_index_xinfo.desc`); Probe: `mysql.index.descending`, `postgres.index.descending_partial_expression`, `sqlite.index.descending`; 결정과 중립 rendering: **Decision:** 컬럼별 오름차순·내림차순을 지원한다. NULLS FIRST/LAST 선택지는 없다; Introspection: 표에 적은 대로
 - **DIA-68** Prefix key — MySQL 8.4: `v(10)`을 `SUB_PART`로 기록한다; PostgreSQL 17: 해당 문법이 없다(42883); SQLite: 해당 문법이 없다; Probe: `mysql.index.prefix`, `postgres.index.prefix_rejected`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: MySQL `SUB_PART`는 미지원으로 보고한다
 - **DIA-69** Partial index — MySQL 8.4: 없다(1064); PostgreSQL 17: `WHERE` 조건(`pg_index.indpred`); SQLite: `WHERE` 조건(`pragma_index_list.partial`, 텍스트는 `sqlite_master.sql`); Probe: `mysql.index.partial_rejected`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: 미지원으로 보고한다
-- **DIA-70** 식 index — MySQL 8.4: Functional key part: `COLUMN_NAME` NULL, 정규화한 `EXPRESSION`; PostgreSQL 17: 식 key(`pg_index.indkey` 0); SQLite: 식 key(`pragma_index_info.cid` -2, 이름 NULL); Probe: `mysql.index.functional`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 생성 컬럼과 같은 이유로 지원하지 않는다; Introspection: 미지원으로 보고한다
+- **DIA-70** 식 index — MySQL 8.4: Functional key part: `COLUMN_NAME` NULL, 정규화한 `EXPRESSION`; MariaDB 11.8: functional key part가 없으므로(1064) `COLUMN_NAME`은 NULL이 아니고, `STATISTICS`에는 `EXPRESSION` column이 없다(1054); PostgreSQL 17: 식 key(`pg_index.indkey` 0); SQLite: 식 key(`pragma_index_info.cid` -2, 이름 NULL); Probe: `mysql.index.functional`, `mariadb.index.functional`, `postgres.index.descending_partial_expression`, `sqlite.index.partial_expression`; 결정과 중립 rendering: **Decision:** 생성 컬럼과 같은 이유로 지원하지 않는다; Introspection: 미지원으로 보고한다. key part는 `COLUMN_NAME`이 NULL일 때 functional이며, 이는 MySQL과 MariaDB가 같은 결과로 읽는 한 형식이다(DIA-200, 규칙 1). MariaDB는 vector `mysql-functional-index`의 statement를 거부하므로(1064), recipe dbspec_introspect의 case `mysql_functional_index`는 그 거부, 곧 server의 답을 `mariadb` 결과로 적는다(DIA-200, 규칙 4)
 - **DIA-71** Full-text index — MySQL 8.4: `FULLTEXT` index; PostgreSQL 17: 해당 index가 없고 `to_tsvector` 식에 대한 GIN을 쓴다; SQLite: FTS5 virtual table만 있다; Probe: (manual); 결정과 중립 rendering: **Decision:** 지원하지 않는다. SQLite에는 table의 full-text index가 없고 PostgreSQL 형식은 식 index다; Introspection: 미지원으로 보고한다
 - **DIA-72** Key 길이 — MySQL 8.4: Index key는 3072바이트 이하다. utf8mb4 `varchar(768)`은 받고 `varchar(769)`는 거부한다(1071); PostgreSQL 17: 2704바이트를 넘는 B-tree 항목은 insert에서 실패한다(54000). 4바이트 문자 640개는 들어간다; SQLite: 한도가 없다; Probe: `mysql.index.max_key_bytes`, `postgres.index.btree_entry_limit`, `postgres.index.varchar_640_four_byte_fits`; 결정과 중립 rendering: **Decision:** 한 index의 `varchar` 컬럼 선언 길이 합은 640자 이하다. utf8mb4로 2560바이트이며 두 한도 안에 있다. `postgres.index.varchar_640_four_byte_fits`는 아직 실행하지 않았다; Introspection: 해당 없음
 - **DIA-73** Index와 unique 이름 — MySQL 8.4: Index 이름은 table 범위이고 64자 이하다(1059). `PRIMARY`는 예약어다(1280); PostgreSQL 17: Index와 unique 제약 이름은 schema 이름공간을 공유한다(42P07); SQLite: Index 이름은 database에서 고유하다; Probe: `mysql.index.name_table_scope`, `mysql.index.name_max_length`, `mysql.index.primary_name_reserved`, `postgres.index.name_schema_scope`, `postgres.unique.name_schema_scope`, `sqlite.index.name_database_scope`; 결정과 중립 rendering: **Decision:** 이름은 아래 식별자 규칙을 따르고 index와 unique key 전체에서 schema 안에 고유하다. `primary`는 유효한 이름이 아니다; Introspection: MySQL `STATISTICS.INDEX_NAME`, PostgreSQL index의 `pg_class`, SQLite `pragma_index_list.name`
@@ -141,7 +354,7 @@ import (
 ### Foreign keys
 
 - **DIA-74** 동작 — MySQL 8.4: `RESTRICT`, `NO ACTION`(둘 다 즉시), `CASCADE`, `SET NULL`. Catalog는 생략한 동작을 `NO ACTION`으로, 쓴 동작은 쓴 대로 기록한다; PostgreSQL 17: 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다; SQLite: 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다; Probe: `mysql.fk.rule_catalog`, `mysql.fk.restrict_row_order`, `sqlite.fk.restrict_row_order`, `postgres.fk.restrict_statement_end`; 결정과 중립 rendering: **Decision:** delete와 update에 `restrict`, `cascade`, `set_null`을 지원하며 명시 keyword `RESTRICT`, `CASCADE`, `SET NULL`로 생성한다. MySQL은 `NO ACTION`을 즉시 검사하므로 `NO ACTION`은 지원하지 않는다. 하나의 `DELETE`가 참조되는 행과 그 행을 참조하는 행을 함께 지우면, MySQL과 SQLite는 참조되는 행이 행 순서에서 먼저 나올 때 거부하고 PostgreSQL은 받아들인다; 이식 가능한 코드는 참조하는 행을 먼저 지운다.; Introspection: MySQL `REFERENTIAL_CONSTRAINTS.UPDATE_RULE`/`DELETE_RULE`, PostgreSQL `pg_constraint.confupdtype`/`confdeltype`, SQLite `pragma_foreign_key_list.on_update`/`on_delete`
-- **DIA-75** `SET DEFAULT` — MySQL 8.4: 받아서 기록하지만 부모 삭제는 실패한다(1451); PostgreSQL 17: 지원한다; SQLite: 지원한다; Probe: `mysql.fk.set_default_acts_as_restrict`, `postgres.fk.set_default`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: 미지원으로 보고한다
+- **DIA-75** `SET DEFAULT` — MySQL 8.4: 받아서 기록하지만 부모 삭제는 실패한다(1451); MariaDB 11.8: InnoDB는 `SET DEFAULT`를 받아 `REFERENTIAL_CONSTRAINTS`에 `RESTRICT`로 기록하고 부모 삭제를 거부한다(1451); PostgreSQL 17: 지원한다; SQLite: 지원한다; Probe: `mysql.fk.set_default_acts_as_restrict`, `mariadb.fk.set_default_acts_as_restrict`, `postgres.fk.set_default`; 결정과 중립 rendering: **Decision:** 지원하지 않는다; Introspection: 미지원으로 보고한다. MariaDB에는 읽을 `SET DEFAULT`가 남지 않으므로 그 introspection은 server가 기록한 `restrict` key를 읽고, `tests/dbspec/introspect.json`의 vector `mysql-fk-set-default`는 그 key와 미지원 객체 없음을 `mariadb` 결과로 적는다(DIA-200, 규칙 4)
 - **DIA-76** Deferrable — MySQL 8.4: 없다(1064); PostgreSQL 17: `DEFERRABLE INITIALLY DEFERRED`는 COMMIT에서 검사한다(23503); SQLite: 같다; Probe: `mysql.fk.deferrable_rejected`, `postgres.fk.deferrable`, `sqlite.fk.deferrable`; 결정과 중립 rendering: **Decision:** 지원하지 않는다. 순환은 nullable 컬럼과 이후 update로 만든다; Introspection: 미지원으로 보고한다
 - **DIA-77** `MATCH` — MySQL 8.4: `MATCH FULL`은 `MATCH_OPTION FULL`로 기록하지만 `SHOW CREATE TABLE`에서 빠지며 검사하지 않는다; PostgreSQL 17: `MATCH FULL`은 일부가 NULL인 key를 거부한다(23503); SQLite: 받지만 `NONE`으로 기록하고 검사하지 않는다; Probe: `mysql.fk.match_full_not_enforced`, `postgres.fk.match_full`, `sqlite.fk.match_not_enforced`; 결정과 중립 rendering: **Decision:** 기본 `MATCH SIMPLE`만 지원한다; Introspection: MySQL `MATCH_OPTION`, PostgreSQL `confmatchtype`, SQLite `pragma_foreign_key_list.match`
 - **DIA-78** 검사 스위치 — MySQL 8.4: 항상 켜져 있다; PostgreSQL 17: 항상 켜져 있다; SQLite: 각 연결에서 `PRAGMA foreign_keys = ON` 전까지 꺼져 있으며 transaction 안에서는 무시한다; Probe: `sqlite.fk.off_by_default`, `sqlite.fk.pragma_ignored_in_transaction`; 결정과 중립 rendering: **Decision:** 모든 SQLite 연결이 첫 transaction 전에 `foreign_keys`를 켠다는 규칙으로 지원한다(Go DSN pragma, PHP `PRAGMA`, Node `node:sqlite`와 sqlx 기본값이 켠다); Introspection: 연결별 `PRAGMA foreign_keys`
@@ -282,7 +495,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 | `decimal(p,s)` | | | `typeof(c) IN ('integer', 'null') AND c BETWEEN -(10^p − 1) AND 10^p − 1` |
 | `f64` | | | `typeof(c) IN ('real', 'null')` |
 | `varchar(n)` | | | `length(c) <= n` |
-| `uuid` | `REGEXP_LIKE(c, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')` | | `c GLOB` 문자 class 36개 |
+| `uuid` | `c REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'` | | `c GLOB` 문자 class 36개 |
 | `date` | | | `c IS date(c)` |
 | `time(0)` | `c >= '00:00:00' AND c < '24:00:00'` | `c < '24:00:00'` | `c IS time(c) AND c < '24:00:00'` |
 | `time(p)`, p > 0 | `time(0)`과 같음 | `time(0)`과 같음 | `length(c) = 9 + p AND substr(c, 1, 8) IS time(substr(c, 1, 8)) AND substr(c, 1, 8) < '24:00:00' AND substr(c, 9, 1) = '.' AND substr(c, 10) GLOB` 숫자 class p개 |
@@ -301,7 +514,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ## Introspection
 
-- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. recipe `contracts/fixtures/dbspec_introspect/dbspec_introspect.json`은 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. 실패한 catalog query는 호출의 error다. recipe case `catalog_query_failure`는 빈 SQLite database를 MySQL의 catalog query로 introspect한다. `make dbspec-introspect-<client>-check`는 recipe를 클라이언트 하나로 실행하고, Go 시험 suite가 그 entry를 실행한다. `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
+- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. recipe `contracts/fixtures/dbspec_introspect/dbspec_introspect.json`은 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `mysql` dialect의 case는 MariaDB server의 답이 다른 곳에서 그 server의 결과로 자기 `document`와 `unsupported`를 가진 `mariadb` member를 둘 수 있으며(DIA-200, 규칙 4), 그런 차이마다 그 DIA 규칙이 그 vector를 적는다(DIA-50, DIA-75). 실패한 catalog query는 호출의 error다. recipe case `catalog_query_failure`는 빈 SQLite database를 MySQL의 catalog query로 introspect한다. `make dbspec-introspect-<client>-check`는 recipe를 클라이언트 하나로 실행하고, Go 시험 suite가 그 entry를 실행한다. `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
 
 ### 문서
 
@@ -339,7 +552,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ### Check
 
-- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` regexp_like(`c`,_utf8mb4\'^…$\',_utf8mb4\'c\') ``, `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 uuid pattern에 `_ascii` introducer를 주고 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다.
+- **DIA-144** `<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` regexp_like(`c`,_utf8mb4\'^…$\') ``, `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``이고 MariaDB에서는 DIA-203의 형식이며, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. MySQL은 table의 `ALTER TABLE`마다 `CHECK_CLAUSE`를 다시 써서 uuid pattern에 `_ascii` introducer를 주고 time literal의 introducer를 뺀다(`mysql.check.alter_rewrites_introducers`). 또 `time(p)` column과 만나는 time literal을 0으로 된 `p` 자리 소수와 함께 쓴다(`mysql.check.alter_writes_time_precision`). 그래서 MySQL clause는 character set introducer와 time literal의 0인 소수를 뺀 뒤 비교한다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 비교는 의미를 지킨다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다.
 
 - **DIA-145** 그 밖의 check는 [dbspec](dbspec.md#checks)의 predicate로 읽어 canonical form으로 쓴다.
 
@@ -364,6 +577,143 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-198** introspection의 catalog query 수는 dialect별로 고정되어 table 수에 좌우되지 않는다.
 - **DIA-133a** PHP와 PHP extension: 실패한 catalog query는 PDO connection의 모든 error mode에서, silent mode에서도 호출의 error다.
 - **DIA-133b** PHP-extension package `polyspec/orm-php-ext`은 `Dbspec::introspect`를 native로 구현하고, 그 method가 library의 method를 대신한다.
+
+## MariaDB 11.8 probe
+
+MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.<topic>.<fact>`가 있고, `TestDialectFactsMariadb`가
+이것을 `make orm-test-mariadb`의 MariaDB 11.8.6에서 실행한다(`make dialect-facts-mariadb-check`, DIA-200). MySQL의 fact가 성립하는
+곳에서 probe는 그 쌍이며 MariaDB 11.8에서 그 fact를 증명한다. MariaDB가 다르게 답하는 곳에서 그 ID의 probe는 MariaDB의 fact를
+적고(`packages/go/internal/dialects/probes_mariadb.go`), 표가 그 fact를 옮긴다. 모든 MariaDB probe는 MariaDB 11.8.6에서 통과한다.
+이 문서의 규칙은 MariaDB probe가 그 형식을 증명하는 곳에서만 MariaDB 11.8을 적고 그 probe를 적는다. MySQL만 적은 규칙은
+아직 MariaDB에서 증명되지 않았다.
+
+| Probe | MariaDB 11.8.6에서 |
+|---|---|
+| `mariadb.auto_increment.explicit_value_advances` | MySQL의 fact가 성립한다 |
+| `mariadb.auto_increment.requires_key` | MySQL의 fact가 성립한다 |
+| `mariadb.auto_increment.rollback_leaves_gap` | MySQL의 fact가 성립한다 |
+| `mariadb.binary.zero_padded` | MySQL의 fact가 성립한다 |
+| `mariadb.bool.alias_tinyint` | MySQL의 fact가 성립한다 |
+| `mariadb.catalog.key_ordinal_by_name` | table을 상수로 이름 짓는 subquery가 join처럼 primary key 순번을 읽고, join만 모든 database의 모든 table을 연다 |
+| `mariadb.char.trailing_spaces_removed` | MySQL의 fact가 성립한다 |
+| `mariadb.check.alter_rewrites_introducers` | MariaDB에는 REGEXP_LIKE가 없고(CHECK 밖에서 1305, 안에서 1901), ALTER TABLE은 CHECK_CLAUSE를 그대로 둔다 |
+| `mariadb.check.alter_writes_time_precision` | ALTER TABLE은 time(p) column과 만나는 time literal을 쓴 그대로 둔다 |
+| `mariadb.check.between_kept` | CHECK_CLAUSE는 BETWEEN을 유지하고 음수 literal을 -n으로 쓴다 |
+| `mariadb.check.bool_column_rejected` | bool column 하나만으로 CHECK 식이 되고, 그 CHECK는 0을 거부한다(4025) |
+| `mariadb.check.catalog_text` | CHECK_CLAUSE는 바깥 괄호와 character set introducer가 없는 식이다 |
+| `mariadb.check.drop_constraint` | MySQL의 fact가 성립한다 |
+| `mariadb.check.drop_constraint_shared_name` | CHECK는 그 표의 foreign key나 unique key와 이름을 나눌 수 없어(1826), DROP CONSTRAINT는 constraint 하나를 가리킨다 |
+| `mariadb.check.enforced_null_passes` | CHECK는 적용되고(4025, SQLSTATE 23000) NULL은 통과한다 |
+| `mariadb.check.fk_action_column_rejected` | 참조 action이 있는 foreign key의 column은 CHECK에 나올 수 없다(1901) |
+| `mariadb.check.name_schema_scope` | CHECK 이름의 범위는 그 table이다: 두 table이 각각 CHECK ck를 가질 수 있다 |
+| `mariadb.check.nondeterministic_rejected` | CHECK는 NOW()를 부를 수 없다(1901) |
+| `mariadb.check.not_enforced_option` | MariaDB에는 NOT ENFORCED CHECK가 없고(1064), TABLE_CONSTRAINTS에는 ENFORCED column이 없다(1054) |
+| `mariadb.check.not_pushed_down` | CHECK_CLAUSE는 NOT을 비교와 IS NULL 안으로 밀어 넣고 안쪽 괄호를 쓰지 않는다 |
+| `mariadb.check.string_escaped_twice` | CHECK_CLAUSE는 string literal을 MariaDB text로 한 번만 escape한다 |
+| `mariadb.collation.default_accent_case_insensitive` | 기본 utf8mb4 collation utf8mb4_uca1400_ai_ci는 unique key에서 a = A = á로 만든다(1062) |
+| `mariadb.collation.utf8mb4_0900_bin_codepoint` | MySQL의 fact가 성립한다 |
+| `mariadb.collation.utf8mb4_bin_pads` | MySQL의 fact가 성립한다 |
+| `mariadb.comment.column_limit` | MySQL의 fact가 성립한다 |
+| `mariadb.comment.table_limit` | MySQL의 fact가 성립한다 |
+| `mariadb.context.user_variable_session_scope` | MySQL의 fact가 성립한다 |
+| `mariadb.current_timestamp.session_time_zone` | MySQL의 fact가 성립한다 |
+| `mariadb.date.zero_rejected` | MariaDB의 기본 sql_mode는 0000-00-00을 받고, strict mode와 NO_ZERO_DATE는 그것을 거부한다(1292) |
+| `mariadb.datetime.default_precision_must_match` | (6) 없는 DATETIME(6) DEFAULT CURRENT_TIMESTAMP를 CURRENT_TIMESTAMP(6)로 받고, COLUMN_DEFAULT가 그것을 보고한다 |
+| `mariadb.datetime.fraction_rounds` | DATETIME(0)은 .5초를 버린다 |
+| `mariadb.datetime.max_precision` | MySQL의 fact가 성립한다 |
+| `mariadb.datetime.no_conversion` | MySQL의 fact가 성립한다 |
+| `mariadb.datetime.offset_literal_converted` | DATETIME은 offset을 가진 literal을 거부한다(1292) |
+| `mariadb.datetime.range` | MySQL의 fact가 성립한다 |
+| `mariadb.ddl.atomic_statement` | 하나가 없는 두 table의 DROP TABLE은 있는 table을 지우고 실패한다(1051) |
+| `mariadb.ddl.implicit_commit` | MySQL의 fact가 성립한다 |
+| `mariadb.decimal.overflow_rejected` | MySQL의 fact가 성립한다 |
+| `mariadb.decimal.precision_limits` | DECIMAL의 정밀도는 최대 65(1426), scale은 최대 38(1425)이므로 DECIMAL(65,31)을 받는다 |
+| `mariadb.decimal.scale_rounds` | MySQL의 fact가 성립한다 |
+| `mariadb.default.catalog_text` | COLUMN_DEFAULT는 literal을 SQL escape와 함께 따옴표로 감싸고, NULL default를 NULL로, 식 default를 그 text로, 시계를 current_timestamp(p)로 쓰며, EXTRA에는 DEFAULT_GENERATED가 없다 |
+| `mariadb.enum.not_null_first_value_default` | MySQL의 fact가 성립한다 |
+| `mariadb.enum.rejects_unknown` | MySQL의 fact가 성립한다 |
+| `mariadb.enum.sorts_by_position` | MySQL의 fact가 성립한다 |
+| `mariadb.env.server` | 서버는 strict mode이고 lower_case_table_names=1인 MariaDB 11.8이다 |
+| `mariadb.fault.check_before_unique` | CHECK와 unique key를 모두 깨는 행은 CHECK fault, SQLSTATE 23000의 4025로 거부된다 |
+| `mariadb.fault.fk_statement_end` | MySQL의 fact가 성립한다 |
+| `mariadb.fk.cascade_skips_triggers` | MySQL의 fact가 성립한다 |
+| `mariadb.fk.child_index_created` | MySQL의 fact가 성립한다 |
+| `mariadb.fk.deferrable_rejected` | MySQL의 fact가 성립한다 |
+| `mariadb.fk.match_full_not_enforced` | MATCH FULL은 MATCH_OPTION NONE으로 기록되고 SHOW CREATE TABLE에서 빠지며, 일부가 NULL인 key를 받는다 |
+| `mariadb.fk.name_schema_scope` | foreign key 이름은 database 안에서 유일하다: 두 번째 fk는 1005(errno 121)로 거부된다 |
+| `mariadb.fk.restrict_row_order` | MySQL의 fact가 성립한다 |
+| `mariadb.fk.rule_catalog` | REFERENTIAL_CONSTRAINTS는 생략된 action을 RESTRICT로, 쓴 RESTRICT를 RESTRICT로 보고한다 |
+| `mariadb.fk.set_default_acts_as_restrict` | InnoDB는 ON DELETE SET DEFAULT를 받아 RESTRICT로 기록하고 부모 삭제를 거부한다(1451) |
+| `mariadb.fk.type_mismatch_rejected` | INT column은 BIGINT key를 참조할 수 없다: 1005(errno 150) |
+| `mariadb.float.no_infinity` | MySQL의 fact가 성립한다 |
+| `mariadb.float.single_precision` | MySQL의 fact가 성립한다 |
+| `mariadb.generated.catalog_expression` | VIRTUAL과 STORED generated column은 바깥 괄호 없는 식으로 보고된다 |
+| `mariadb.generated.explicit_value_rejected` | strict mode에서 generated column의 명시 값은 거부된다(1906) |
+| `mariadb.ident.column_case_insensitive` | MySQL의 fact가 성립한다 |
+| `mariadb.ident.max_length` | table 이름은 최대 64문자이다(1103) |
+| `mariadb.ident.table_case_server_setting` | MySQL의 fact가 성립한다 |
+| `mariadb.index.descending` | MySQL의 fact가 성립한다 |
+| `mariadb.index.functional` | MariaDB에는 functional index key가 없고(1064), STATISTICS에는 EXPRESSION column이 없다(1054) |
+| `mariadb.index.max_key_bytes` | 3072 byte를 넘는 utf8mb4 VARCHAR(769)의 index를 받는다 |
+| `mariadb.index.name_max_length` | MySQL의 fact가 성립한다 |
+| `mariadb.index.name_table_scope` | MySQL의 fact가 성립한다 |
+| `mariadb.index.partial_rejected` | MySQL의 fact가 성립한다 |
+| `mariadb.index.prefix` | MySQL의 fact가 성립한다 |
+| `mariadb.index.primary_name_reserved` | MySQL의 fact가 성립한다 |
+| `mariadb.int.bigint_unsigned_exceeds_signed` | MySQL의 fact가 성립한다 |
+| `mariadb.int.display_width_dropped` | COLUMN_TYPE은 정수의 표시 폭을 유지한다: int(11), tinyint(1), bigint(20) |
+| `mariadb.int.tinyint_range` | MySQL의 fact가 성립한다 |
+| `mariadb.int.unsigned_rejects_negative` | MySQL의 fact가 성립한다 |
+| `mariadb.json.normalizes` | JSON은 JSON_VALID CHECK를 가진 LONGTEXT이다: 중복 key와 member 순서까지 쓴 그대로 남는다 |
+| `mariadb.like.ascii_fold_replace` | MySQL의 fact가 성립한다 |
+| `mariadb.like.binary_collation_case_sensitive` | MySQL의 fact가 성립한다 |
+| `mariadb.like.binary_collation_code_point` | MySQL의 fact가 성립한다 |
+| `mariadb.lock.nowait_held` | 다른 transaction이 잠근 row의 NOWAIT 읽기는 lock wait timeout의 번호인 1205로 바로 실패한다 |
+| `mariadb.lock.share_clause` | LOCK IN SHARE MODE는 공유 row lock을 잡고 NOWAIT를 받으며, MariaDB에는 FOR SHARE가 없다(1064) |
+| `mariadb.not_null.missing_value_rejected` | MySQL의 fact가 성립한다 |
+| `mariadb.now.compare_six_digits` | MySQL의 fact가 성립한다 |
+| `mariadb.now.precision_truncates` | MySQL의 fact가 성립한다 |
+| `mariadb.on_update.explicit_value_kept` | MySQL의 fact가 성립한다 |
+| `mariadb.on_update.fires_on_change` | MySQL의 fact가 성립한다 |
+| `mariadb.on_update.skipped_when_unchanged` | MySQL의 fact가 성립한다 |
+| `mariadb.order.null_first_asc` | MySQL의 fact가 성립한다 |
+| `mariadb.pk.name_is_primary` | MySQL의 fact가 성립한다 |
+| `mariadb.relative.month_end_kept` | MySQL의 fact가 성립한다 |
+| `mariadb.relative.out_of_range_null` | MySQL의 fact가 성립한다 |
+| `mariadb.render.bool_check` | CHECK (b IN (0,1))를 가진 TINYINT(1)은 2를 거부한다(4025) |
+| `mariadb.render.datetime_utc_session` | MySQL의 fact가 성립한다 |
+| `mariadb.render.time_of_day_check` | CHECK (v >= '00:00:00' AND v < '24:00:00')를 가진 TIME(6)은 하루 안의 시각만 받는다(4025) |
+| `mariadb.render.timestamp_conversion` | MySQL의 fact가 성립한다 |
+| `mariadb.render.uuid_check` | REGEXP CHECK를 가진 CHAR(36) ascii_bin은 소문자 canonical UUID text만 받고(4025), REGEXP_LIKE는 거부된다(1901) |
+| `mariadb.sequence.unsupported` | MariaDB에는 CREATE SEQUENCE가 있고, sequence는 그 자체 종류의 table이다 |
+| `mariadb.session.partial_revokes_listed` | MariaDB에는 partial_revokes가 없고(1193), SHOW GLOBAL VARIABLES는 그 row를 내놓지 않는다 |
+| `mariadb.session.sql_mode_set` | MySQL의 fact가 성립한다 |
+| `mariadb.session.statement_timeout` | MariaDB에는 max_execution_time이 없고(1193), SESSION max_statement_time이 모든 statement를 초 단위로 제한한다(1969) |
+| `mariadb.text.index_needs_prefix` | prefix 길이 없는 TEXT index를 768문자 prefix로 받고, STATISTICS는 이를 SUB_PART로 보고한다 |
+| `mariadb.text.literal_default_needs_expression` | TEXT는 DEFAULT 'x'와 DEFAULT ('x')를 모두 받고, COLUMN_DEFAULT는 둘 다 따옴표 친 literal로 보고한다 |
+| `mariadb.text.max_bytes` | MySQL의 fact가 성립한다 |
+| `mariadb.text.nul_preserved` | MySQL의 fact가 성립한다 |
+| `mariadb.time.interval_range` | MySQL의 fact가 성립한다 |
+| `mariadb.timestamp.range_2038` | TIMESTAMP는 UTC 1970-01-01 00:00:01..2106-02-07 06:28:15를 받고 1970-01-01 00:00:00과 2106-02-07 06:28:16을 거부한다(1292) |
+| `mariadb.timestamp.session_time_zone` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.binlog_privilege_1419` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.body_catalog_verbatim` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.name_schema_scope` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.new_assignable` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.no_statement_level` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.no_truncate_event` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.truncate_skips_delete_trigger` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.update_fires_when_unchanged` | MySQL의 fact가 성립한다 |
+| `mariadb.trigger.zero_rows_not_fired` | MySQL의 fact가 성립한다 |
+| `mariadb.unique.nulls_distinct` | MySQL의 fact가 성립한다 |
+| `mariadb.upsert.any_unique_key` | MySQL의 fact가 성립한다 |
+| `mariadb.upsert.not_null_unique_first` | MySQL의 fact가 성립한다 |
+| `mariadb.uuid.no_type` | MariaDB에는 UUID type이 있고 DATA_TYPE uuid로 보고된다 |
+| `mariadb.varbinary.length_enforced` | MySQL의 fact가 성립한다 |
+| `mariadb.varchar.length_in_characters` | MySQL의 fact가 성립한다 |
+| `mariadb.varchar.max_length` | MySQL의 fact가 성립한다 |
+| `mariadb.varchar.trailing_spaces_truncated` | MySQL의 fact가 성립한다 |
+| `mariadb.view.definition_rewritten` | VIEW_DEFINITION은 qualified name과 alias로 다시 쓰이고, 조건을 괄호로 감싸지 않는다 |
 
 ## Markdown corpus
 

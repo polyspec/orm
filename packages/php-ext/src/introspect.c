@@ -47,7 +47,8 @@ static bool catalog_publish(zval *pdo, str query, zend_long start, zend_object *
             zval argument;
             ZVAL_COPY(&argument, &error);
             zval converted;
-            bool converted_ok = scall("Polyspec\\Orm\\Db::driverError", &converted, 1, &argument);
+            /* Db::driverError is a method of the connection that ran the query, so the mapped error carries its driver. */
+            bool converted_ok = pdo_call(catalog_observer_current->db, "driverError", &converted, 1, &argument, NULL);
             zval_ptr_dtor(&argument);
             zval_ptr_dtor(&error);
             if (!converted_ok) return false;
@@ -1325,19 +1326,29 @@ static const char MYSQL_COLUMNS[] = "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
     "IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EXPRESSION, '')\n"
     "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME, ORDINAL_POSITION";
 static const char MYSQL_INDEXES[] = "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),\n"
-    "SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS\n"
+    "SUB_PART IS NOT NULL, COLUMN_NAME IS NULL, INDEX_TYPE FROM information_schema.STATISTICS\n"
     "WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX";
+/* MariaDB reads an information_schema table of one database only by the schema column of its table (TABLE_SCHEMA,
+ * EVENT_OBJECT_SCHEMA), so each read names it; a constraint and a trigger are in the schema of their table, so MySQL gives
+ * the same rows (DIA-213). */
 static const char MYSQL_FOREIGN_KEYS[] = "SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, rc.UPDATE_RULE,\n"
     "rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc\n"
     "JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA\n"
-    "AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME\n"
+    "AND k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME\n"
     "WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION";
 static const char MYSQL_CHECK_CLAUSES[] = "SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS\n"
     "WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME";
+/* MariaDB scopes a CHECK name to its table (probe mariadb.check.name_schema_scope), so its clauses are read by table and name
+ * (DIA-203). */
+static const char MARIADB_CHECK_CLAUSES[] = "SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS\n"
+    "WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME";
 static const char MYSQL_CHECKS[] = "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS\n"
-    "WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
+    "WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
+/* MariaDB has no NOT ENFORCED CHECK and no ENFORCED column, so each of its checks is enforced (DIA-203). */
+static const char MARIADB_CHECKS[] = "SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS\n"
+    "WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
 static const char MYSQL_TRIGGERS[] = "SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT\n"
-    "FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME";
+    "FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME";
 static const char MYSQL_ROUTINES[] = "SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME";
 static const char MYSQL_EVENTS[] = "SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME";
 
@@ -1401,9 +1412,11 @@ static ctype *mysql_type(str column_type, str charset, str collation, str *needs
     }
     zend_long precision = digits.n == 0 ? 0 : parse_long(digits);
     bool none = digits.n == 0;
-    if (str_eqc(word, "smallint")) return none ? simple_type("i16") : NULL;
-    if (str_eqc(word, "int")) return none ? simple_type("i32") : NULL;
-    if (str_eqc(word, "bigint")) return none ? simple_type("i64") : NULL;
+    /* An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it (probes
+     * mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width (DIA-204). */
+    if (str_eqc(word, "smallint")) return simple_type("i16");
+    if (str_eqc(word, "int")) return simple_type("i32");
+    if (str_eqc(word, "bigint")) return simple_type("i64");
     if (str_eqc(word, "tinyint(1)")) {
         *needs = column_type;
         return simple_type("bool");
@@ -1572,14 +1585,139 @@ static str without_introducers(str clause)
     return sb_str(&c);
 }
 
-/* Format in which the renderer CHECK remains in CHECK_CLAUSE */
-static str mysql_renderer_check(const icolumn *column)
+#define MYSQL_UUID_PATTERN "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+/* Format in which the renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it
+ * without the outer parentheses and the introducers, in the escaped form that mysql_read gives its CHECK_CLAUSE (probes
+ * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203). */
+static str mysql_renderer_check(bool mariadb, const icolumn *column)
 {
     str c = fmt("`%S`", column->name);
+    if (mariadb) {
+        if (str_eqc(column->type->name, "bool")) return fmt("%S in (0,1)", c);
+        if (str_eqc(column->type->name, "uuid")) return fmt("%S regexp \\'" MYSQL_UUID_PATTERN "\\'", c);
+        if (str_eqc(column->type->name, "time")) return fmt("%S >= \\'00:00:00\\' and %S < \\'24:00:00\\'", c, c);
+        return SL("");
+    }
     if (str_eqc(column->type->name, "bool")) return fmt("(%S in (0,1))", c);
-    if (str_eqc(column->type->name, "uuid")) return fmt("regexp_like(%S,_utf8mb4\\'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\\',_utf8mb4\\'c\\')", c);
+    if (str_eqc(column->type->name, "uuid")) return fmt("regexp_like(%S,_utf8mb4\\'" MYSQL_UUID_PATTERN "\\')", c);
     if (str_eqc(column->type->name, "time")) return fmt("((%S >= _utf8mb4\\'00:00:00\\') and (%S < _utf8mb4\\'24:00:00\\'))", c, c);
     return SL("");
+}
+
+/* The key of a check in the clauses of mysql_read: its name on MySQL, whose CHECK names are unique in the database, and its table
+ * and name on MariaDB, which scopes a CHECK name to its table (probes mysql.check.name_schema_scope,
+ * mariadb.check.name_schema_scope). */
+static str check_key(bool mariadb, str table, str name)
+{
+    if (!mariadb) {
+        return name;
+    }
+    sbuf b = {0};
+    sb_s(&b, table);
+    sb_ch(&b, '\0');
+    sb_s(&b, name);
+    return sb_str(&b);
+}
+
+/* A number literal of COLUMN_DEFAULT: ^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$ */
+static bool mysql_number(str s)
+{
+    size_t i = s.n > 0 && s.s[0] == '-' ? 1 : 0;
+    size_t start = i;
+    while (i < s.n && cdigit(s.s[i])) i++;
+    if (i == start) return false;
+    if (i < s.n && s.s[i] == '.') {
+        start = ++i;
+        while (i < s.n && cdigit(s.s[i])) i++;
+        if (i == start) return false;
+    }
+    if (i < s.n && s.s[i] == 'e') {
+        i++;
+        if (i < s.n && (s.s[i] == '-' || s.s[i] == '+')) i++;
+        start = i;
+        while (i < s.n && cdigit(s.s[i])) i++;
+        if (i == start) return false;
+    }
+    return i == s.n;
+}
+
+/* Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL for a
+ * column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as written, and an expression
+ * default as its text, and its EXTRA has no DEFAULT_GENERATED (probe mariadb.default.catalog_text). MySQL gives a NULL default as
+ * SQL NULL, a literal without quotes and escapes, and an expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among
+ * them, with EXTRA DEFAULT_GENERATED (probe mysql.default.catalog_text). A quoted text that is not one whole literal is a
+ * RuntimeException and false. */
+/* The DIA-205 reading of one MariaDB COLUMN_DEFAULT, which mariadb_default and the catalog descriptor share: false when a quoted
+ * text is not one whole literal, which each caller reports in its own error. */
+static bool mariadb_default_read(bool *def_null, str *def, str *extra)
+{
+    if (*def_null || extra->n > 0) {
+        return true;
+    }
+    str text = *def;
+    if (str_eqc(text, "NULL")) {
+        *def_null = true;
+        *def = SL("");
+        return true;
+    }
+    if (text.n > 0 && text.s[0] == '\'') {
+        cdecoder d = {.d = D_MYSQL};
+        str value;
+        size_t length = 0;
+        if (!sql_string(&d, text, &value, &length) || length != text.n) {
+            return false;
+        }
+        *def = value;
+        return true;
+    }
+    if (mysql_number(text)) {
+        return true;
+    }
+    /* ^current_timestamp\(([1-6]?)\)$ */
+    static const char clock[] = "current_timestamp(";
+    size_t n = sizeof(clock) - 1;
+    if (text.n >= n + 1 && memcmp(text.s, clock, n) == 0 && text.s[text.n - 1] == ')'
+        && (text.n == n + 1 || (text.n == n + 2 && text.s[n] >= '1' && text.s[n] <= '6'))) {
+        *def = text.n == n + 1 ? SL("CURRENT_TIMESTAMP") : fmt("CURRENT_TIMESTAMP(%S)", str_sub(text, n, 1));
+    }
+    *extra = SL("DEFAULT_GENERATED");
+    return true;
+}
+
+static bool mariadb_default(str table, str name, bool *def_null, str *def, str *extra)
+{
+    str text = *def;
+    if (!mariadb_default_read(def_null, def, extra)) {
+        return dbs_throw(spl_ce_RuntimeException, fmt("column %S.%S: default %S is not one string literal", table, name, text));
+    }
+    return true;
+}
+
+/* The default of a MariaDB COLUMN_DEFAULT in the MySQL form, for the table descriptor of the catalog connection, which reads no
+ * EXTRA (DIA-205): *out is the default text, NULL for none, and *expression whether it is an expression default. A quoted text
+ * that is not one whole literal returns false with *bad the message "default <text> is not one string literal". */
+bool dbspec_mariadb_catalog_default(zend_string *def, zend_string **out, bool *expression, zend_string **bad)
+{
+    *out = NULL;
+    *expression = false;
+    *bad = NULL;
+    if (def == NULL) {
+        return true;
+    }
+    dbs_arena arena, *saved;
+    dbs_enter(&arena, &saved);
+    bool def_null = false;
+    str text = str_z(def), extra = SL("");
+    bool ok = mariadb_default_read(&def_null, &text, &extra);
+    if (!ok) {
+        *bad = str_zend(fmt("default %S is not one string literal", str_z(def)));
+    } else if (!def_null) {
+        *out = str_zend(text);
+        *expression = str_eqc(extra, "DEFAULT_GENERATED");
+    }
+    dbs_leave(&arena, saved);
+    return ok;
 }
 
 static str mysql_default_literal(str value, const ctype *type)
@@ -1783,7 +1921,7 @@ static bool mysql_foreign_keys(zval *pdo, catalog *c)
     return true;
 }
 
-static catalog *mysql_read(zval *pdo)
+static catalog *mysql_read(zval *pdo, bool mariadb)
 {
     catalog *c = dbs_alloc(sizeof *c);
     zval rows, *row;
@@ -1829,6 +1967,10 @@ static catalog *mysql_read(zval *pdo)
                 catalog_report(c, SL("column"), table, name, SL("a generated column has no dbspec definition"));
                 continue;
             }
+            if (mariadb && !mariadb_default(table, name, &def_null, &def, &extra)) {
+                ok = false;
+                break;
+            }
             str needs;
             ctype *type = mysql_type(column_type, charset, collation, &needs);
             if (type == NULL) {
@@ -1872,24 +2014,32 @@ static catalog *mysql_read(zval *pdo)
     TRY(mysql_foreign_keys(pdo, c));
     smap checked = {0};
     smap clauses = {0};
-    q = Q(MYSQL_CHECK_CLAUSES);
+    /* clauses holds each CHECK_CLAUSE by check_key, in the escaped form of MySQL's CHECK_CLAUSE. */
+    q = mariadb ? Q(MARIADB_CHECK_CLAUSES) : Q(MYSQL_CHECK_CLAUSES);
     ok = catalog_read(pdo, q, &rows);
     if (ok) {
         EACH_ROW(rows, row) {
-            str name, clause;
-            if (!(row_text(row, 0, q, &name) && row_text(row, 1, q, &clause))) {
+            str table = SL(""), name, clause;
+            if (mariadb ? !(row_text(row, 0, q, &table) && row_text(row, 1, q, &name) && row_text(row, 2, q, &clause))
+                        : !(row_text(row, 0, q, &name) && row_text(row, 1, q, &clause))) {
                 ok = false;
                 break;
             }
+            if (mariadb) {
+                /* MariaDB writes CHECK_CLAUSE as SQL text, escaping a string literal once (probes mariadb.check.catalog_text,
+                 * mariadb.check.string_escaped_twice), and MySQL escapes it once more; the MariaDB text takes that escape so that
+                 * one reader reads both (DIA-203). */
+                clause = escape_mysql_clause(clause);
+            }
             str *v = dbs_alloc(sizeof *v);
             *v = clause;
-            smap_set(&clauses, name, v);
+            smap_set(&clauses, check_key(mariadb, table, name), v);
         } ZEND_HASH_FOREACH_END();
     }
     zval_ptr_dtor(&rows);
     TRY(ok);
     smap creates = {0};
-    q = Q(MYSQL_CHECKS);
+    q = mariadb ? Q(MARIADB_CHECKS) : Q(MYSQL_CHECKS);
     ok = catalog_read(pdo, q, &rows);
     if (ok) {
         EACH_ROW(rows, row) {
@@ -1898,7 +2048,7 @@ static catalog *mysql_read(zval *pdo)
                 ok = false;
                 break;
             }
-            str *clause = smap_get(&clauses, name);
+            str *clause = smap_get(&clauses, check_key(mariadb, table, name));
             if (clause == NULL) {
                 dbs_throw(spl_ce_RuntimeException, fmt("check %S.%S has no CHECK_CLAUSE", table, name));
                 ok = false;
@@ -1926,7 +2076,7 @@ static catalog *mysql_read(zval *pdo)
                 smap *m = smap_get(&columns, table);
                 icolumn *known = rendered_column(table, name, m, &column_name) ? smap_get(m, column_name) : NULL;
                 bool renderer_check = known != NULL
-                    && str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(known)));
+                    && str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(mariadb, known)));
                 if (!catalog_record_renderer_check(c, &checked, table, name, column_name, *clause, renderer_check)) {
                     continue;
                 }
@@ -2956,9 +3106,15 @@ static catalog *sqlite_read(zval *pdo)
 /* ------------------------------------------------------------------ API */
 
 /* Reads the connection's database as one document and missing objects. A failure is a PHP exception and NULL. */
-document *dbs_introspect(zval *pdo, dialect d, str name, unsupportedv *out)
+/* server is the server that the connection reached, which the caller read when it connected (DIA-203); the introspection reads no
+ * version. A server that is not a server of the dialect is an InvalidArgumentException. */
+document *dbs_introspect(zval *pdo, dialect d, str server, str name, unsupportedv *out)
 {
-    catalog *c = d == D_MYSQL ? mysql_read(pdo) : d == D_POSTGRES ? pg_read(pdo) : sqlite_read(pdo);
+    bool mariadb;
+    if (!dbs_server(d, server, &mariadb)) {
+        return NULL;
+    }
+    catalog *c = d == D_MYSQL ? mysql_read(pdo, mariadb) : d == D_POSTGRES ? pg_read(pdo) : sqlite_read(pdo);
     if (c == NULL || dbs_failed()) {
         return NULL;
     }

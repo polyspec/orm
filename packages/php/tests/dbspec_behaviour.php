@@ -96,7 +96,7 @@ final class BehaviourScriptedPdo extends PDO
 function behaviour_introspected(PDO $pdo, string $dialect): array
 {
     try {
-        $result = Dbspec::introspect($pdo, $dialect, 'introspected');
+        $result = Dbspec::introspect($pdo, $dialect, $dialect, 'introspected');
         return [
             'returned',
             Dbspec::emit($result->document),
@@ -153,13 +153,13 @@ function behaviour_applied(array $chain, array $script): array
                 }
             };
             try {
-                Dbspec::$command($pdo, 'sqlite', array_slice($chain, 0, $count), $now, $events);
+                Dbspec::$command($pdo, 'sqlite', 'sqlite', array_slice($chain, 0, $count), $now, $events);
                 $log[] = "$command returned";
             } catch (Throwable $e) {
                 $log[] = behaviour_thrown($e);
             }
             $log[] = $pdo->query('SELECT * FROM "dbspec$plans" ORDER BY name')->fetchAll(PDO::FETCH_NUM);
-            $result = Dbspec::introspect($pdo, 'sqlite', 'x');
+            $result = Dbspec::introspect($pdo, 'sqlite', 'sqlite', 'x');
             $log[] = [
                 Dbspec::emit($result->document),
                 array_map(static fn(object $u): array => [$u->kind, $u->table, $u->name], $result->unsupported)
@@ -459,10 +459,10 @@ function dbspec_behaviour_cases(): array
         }
     }
     $cases['introspect/unknown-dialect'] = static fn(): array => behaviour_outcome(
-        static fn() => Dbspec::introspect(new PDO('sqlite::memory:'), 'oracle', 'x')
+        static fn() => Dbspec::introspect(new PDO('sqlite::memory:'), 'oracle', 'oracle', 'x')
     );
     $cases['introspect/not-a-pdo'] = static fn(): array => behaviour_outcome(
-        static fn() => Dbspec::introspect(new stdClass(), 'sqlite', 'x')
+        static fn() => Dbspec::introspect(new stdClass(), 'sqlite', 'sqlite', 'x')
     );
 
     // The argument errors of the apply commands.
@@ -471,6 +471,7 @@ function dbspec_behaviour_cases(): array
         $cases["apply-arguments/error-mode-$modeName"] = static fn(): array => behaviour_outcome(
             static fn() => Dbspec::apply(
                 new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]),
+                'sqlite',
                 'sqlite',
                 behaviour_chains()['main'],
                 $now,
@@ -485,11 +486,12 @@ function dbspec_behaviour_cases(): array
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
     $cases['apply-arguments/unknown-dialect'] = static fn(): array => behaviour_outcome(
-        static fn() => Dbspec::finalize($exceptions(), 'oracle', behaviour_chains()['main'], $now, null)
+        static fn() => Dbspec::finalize($exceptions(), 'oracle', 'oracle', behaviour_chains()['main'], $now, null)
     );
     $cases['apply-arguments/two-plans-from-empty'] = static fn(): array => behaviour_outcome(
         static fn() => Dbspec::apply(
             $exceptions(),
+            'sqlite',
             'sqlite',
             [behaviour_chains()['main'][0], behaviour_chains()['main'][0]],
             $now,
@@ -497,7 +499,14 @@ function dbspec_behaviour_cases(): array
         )
     );
     $cases['apply-arguments/clock-returns-text'] = static fn(): array => behaviour_outcome(
-        static fn() => Dbspec::apply($exceptions(), 'sqlite', behaviour_chains()['main'], static fn() => 'now', null)
+        static fn() => Dbspec::apply(
+            $exceptions(),
+            'sqlite',
+            'sqlite',
+            behaviour_chains()['main'],
+            static fn() => 'now',
+            null
+        )
     );
 
     // The constructors of SetResult.

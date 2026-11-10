@@ -81,8 +81,8 @@ const (
 	CodeDeadlock                  = "DEADLOCK"                     // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions
 	CodeDuplicateKey              = "DUPLICATE_KEY"                // driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
 	CodeForeignKey                = "FOREIGN_KEY"                  // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
-	CodeConstraint                = "CONSTRAINT"                   // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
+	CodeConstraint                = "CONSTRAINT"                   // driver: MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201)
 	CodeReadOnly                  = "READ_ONLY"                    // driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
-	CodeConnectionLost            = "CONNECTION_LOST"              // driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
+	CodeConnectionLost            = "CONNECTION_LOST"              // driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013, and 4031 of MySQL alone / PostgreSQL SQLSTATE class 08 and 25P03/57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
 	CodeDriver                    = "DRIVER"                       // driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
 )

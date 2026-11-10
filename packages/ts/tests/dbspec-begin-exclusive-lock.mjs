@@ -72,7 +72,7 @@ async function checkCode(code, locked) {
   cause.errcode = code;
   const sqlite = failingSqlite(cause, locked);
   // A lock result of the release read, which held no lock, adds no cleanup error.
-  await assert.rejects(applyPlans(sqlite, 'sqlite', plans, () => 0), error => {
+  await assert.rejects(applyPlans(sqlite, 'sqlite', 'sqlite', plans, () => 0), error => {
     if (locked) return error instanceof DbspecApplyError && error.code === 'locked' && error.cause === cause;
     return error === cause;
   });
@@ -89,7 +89,7 @@ caseTest('dbspec/begin-exclusive/non-lock-errors-preserve-identity', COMPUTE, as
   for (const code of [10, 8, 14, 23, 1]) await checkCode(code, false);
   for (const cause of [new Error('database is locked'), Object.assign(new Error('missing code'), { errcode: null })]) {
     const sqlite = failingSqlite(cause);
-    await assert.rejects(applyPlans(sqlite, 'sqlite', plans, () => 0), error => error === cause);
+    await assert.rejects(applyPlans(sqlite, 'sqlite', 'sqlite', plans, () => 0), error => error === cause);
     assertRestored(sqlite);
   }
 });

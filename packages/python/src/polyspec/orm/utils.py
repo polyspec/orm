@@ -14,6 +14,7 @@ from polyspec.orm.codec import CodecError
 from polyspec.orm.errors import OrmError, transaction_conflict
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
+from polyspec.orm.dbspec.parse import goq
 
 if TYPE_CHECKING:
     from polyspec.orm.database import DbStats
@@ -92,7 +93,7 @@ class Utils:
     def lock(self, key: str) -> None:
         frame = _active(self.db, "lock")
         if not valid_key(key):
-            raise OrmError(codes.CONFIG, f"lock key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"lock key {goq(key)} is invalid")
         driver = self.db.sql_driver
         if driver == "mysql":
             rows = frame.run("SELECT GET_LOCK(?, 50)", [key], "utility")["rows"]
@@ -107,7 +108,7 @@ class Utils:
     def set_local(self, key: str, value: str) -> None:
         frame = _active(self.db, "setLocal")
         if not valid_key(key):
-            raise OrmError(codes.CONFIG, f"local key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"local key {goq(key)} is invalid")
         if self.db.sql_driver == "postgres":
             frame.run(POSTGRES_SET_LOCAL, [key, value], "utility")
         elif self.db.sql_driver == "mysql":
@@ -187,9 +188,10 @@ class SchemaUtils:
         model = _schema_model(schema)
         target = _schema_target(model)
         driver = self.db.sql_driver
+        server = self.db._server
 
         def apply(run) -> list:
-            live = _introspect_set(run, driver, model)
+            live = _introspect_set(run, driver, server, model)
             result = add_tables_and_columns_steps(
                 live.document, live.unsupported, target, driver
             )
@@ -204,7 +206,7 @@ class SchemaUtils:
                 table = step["effect"]["table"]
                 run("schema", [] if table == "" else [table], step["statement"], [])
             if result["steps"]:
-                live = _introspect_set(run, driver, model)
+                live = _introspect_set(run, driver, server, model)
             differences = installed_differences(live.document, live.unsupported, target)
             if differences:
                 raise OrmError(
@@ -235,6 +237,7 @@ class SchemaUtils:
 
         model = _schema_model(schema)
         driver = self.db.sql_driver
+        server = self.db._server
         rendered = render_dbspec_statements(list(model.documents), driver)
         if rendered["statements"] is None:
             d = rendered["diagnostics"][0]
@@ -251,7 +254,7 @@ class SchemaUtils:
             )
 
         def apply(run) -> None:
-            live = _introspect_set(run, driver, model)
+            live = _introspect_set(run, driver, server, model)
             found = {t.name for t in live.tables} | {
                 u["table"] for u in live.unsupported
             }
@@ -265,7 +268,7 @@ class SchemaUtils:
             if not present:
                 for statement in statements:
                     run("schema", [statement["table"]], statement["sql"], [])
-                live = _introspect_set(run, driver, model)
+                live = _introspect_set(run, driver, server, model)
             differences = installed_differences(live, live.unsupported, target)
             if differences:
                 raise OrmError(
@@ -417,7 +420,9 @@ class PrivilegeUtils:
         r = self._role(role)
         upper = privilege.strip().upper()
         if upper not in _TABLE_PRIVILEGES:
-            raise OrmError(codes.CONFIG, f"unsupported table privilege {privilege!r}")
+            raise OrmError(
+                codes.CONFIG, f"unsupported table privilege {goq(privilege)}"
+            )
         self.utils._run(
             lambda: _frame_of(self.utils.db).run(
                 f"REVOKE {upper} ON {qualified} FROM {r}",
@@ -648,14 +653,15 @@ def _schema_target(model):
     return document
 
 
-def _introspect_set(run, driver: str, model):
+def _introspect_set(run, driver: str, server: str, model):
     """The live document of the connection's database, after the check that the tables the set uses
-    from external documents match them (CONFIG otherwise)."""
+    from external documents match them (CONFIG otherwise). server is the server that the connection read when it
+    connected (DIA-203)."""
     from polyspec.orm.dbspec import external_differences
     from polyspec.orm.dbspec.introspect import introspect_dbspec
     from polyspec.orm.errors import OrmError
 
-    live = introspect_dbspec(_Runner(run), driver, "schema")
+    live = introspect_dbspec(_Runner(run), driver, server, "schema")
     live_document = live["document"]
     differences = external_differences(live_document, model.documents)
     if differences:

@@ -91,10 +91,13 @@ type DB struct {
 	ctx    context.Context
 	root   *DB
 	// hook is the request hook of this handle. If nil, the request is planned as is.
-	hook     RequestHook
-	m        *dbMutable
-	cfg      Config
-	driver   string
+	hook   RequestHook
+	m      *dbMutable
+	cfg    Config
+	driver string
+	// server is the server of a mysql connection, serverMySQL or serverMariaDB, which open reads once by VERSION() (DIA-201);
+	// it is empty on PostgreSQL and SQLite.
+	server   string
 	location *time.Location
 
 	plans map[uint64]*cached
@@ -205,7 +208,7 @@ func (d *DB) register(s *Schema) error {
 	if d.m.schemas[s.Hash] != nil {
 		return nil
 	}
-	eng, err := engine.New(m, d.driver)
+	eng, err := engine.NewForServer(m, d.driver, d.server)
 	if err != nil {
 		return err
 	}
@@ -321,37 +324,67 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		}
 		return nil, configErr("%s", msg)
 	}
-	s, err := openSQL(sqlDriver, dsn)
-	if err != nil {
-		return nil, configErr("%s", err)
-	}
 	if cfg.PoolSize < 0 {
-		return nil, closeAfter(s, configErr("pool size must not be negative"))
+		return nil, configErr("pool size must not be negative")
 	}
 	if cfg.PoolSize == 0 {
 		cfg.PoolSize = defaultPoolSize
 	}
 	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
-		return nil, closeAfter(s, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize))
+		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
 	}
 	if cfg.PoolIdleSize == 0 {
 		cfg.PoolIdleSize = cfg.PoolSize
 	}
 	if cfg.PoolLifetimeMs < 0 {
-		return nil, closeAfter(s, configErr("pool lifetime must not be negative"))
+		return nil, configErr("pool lifetime must not be negative")
 	}
-	s.SetMaxOpenConns(cfg.PoolSize)
-	s.SetMaxIdleConns(cfg.PoolIdleSize)
-	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
-	if err := s.PingContext(ctx); err != nil {
-		return nil, closeAfter(s, mapDriverErr(err))
+	s, err := openPool(ctx, sqlDriver, dsn, cfg)
+	if err != nil {
+		return nil, err
 	}
 	if dsn.driver == "sqlite" {
 		if err := checkSQLite(); err != nil {
 			return nil, closeAfter(s, err)
 		}
 	}
-	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}, native: dsn.native}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	server := ""
+	if dsn.driver == "mysql" {
+		if server, err = readServer(ctx, s); err != nil {
+			return nil, closeAfter(s, err)
+		}
+		if dsn.statementTimeoutMs > 0 {
+			// The bound is the variable of the server just read (DIA-208): the pool that read it closes, and every
+			// connection of the pool that the caller uses sets the bound when it connects, before any statement of the caller.
+			if err := s.Close(); err != nil {
+				return nil, mapDriverErr(err, server)
+			}
+			dsn = dsn.withStatementTimeout(server)
+			if s, err = openPool(ctx, sqlDriver, dsn, cfg); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}, native: dsn.native}, cfg: cfg, driver: dsn.driver, server: server, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+}
+
+// The servers of the mysql dialect (DIA-200).
+const (
+	serverMySQL   = "mysql"
+	serverMariaDB = "mariadb"
+)
+
+// readServer reads the server of a mysql connection once, by VERSION() and never by the handshake, whose version a pooler
+// may state for itself (DIA-201): a version that names MariaDB is serverMariaDB, any other serverMySQL.
+func readServer(ctx context.Context, s *sql.DB) (string, error) {
+	var version string
+	if err := s.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
+		return "", mapDriverErr(err, "")
+	}
+	if strings.Contains(version, "-MariaDB") {
+		return serverMariaDB, nil
+	}
+	return serverMySQL, nil
 }
 
 // closeAfter closes c, which the failed call does not return, and returns err; a failed Close is joined to err.
@@ -519,6 +552,45 @@ func RegisterDeallocator(name string, deallocate func(ctx context.Context, drive
 // openSQL opens the database/sql pool. The MySQL driver reads datetime cells
 // in the connection time zone, so a cell arrives as the value localTime
 // returns unchanged.
+// mysqlSetNames is the statement that every MySQL connection sends when it connects (DIA-202): the character set utf8mb4,
+// with no collation, which a pooler in front of the server may not know (ProxySQL refuses utf8mb4_0900_bin with 1115). A
+// text column that the renderer writes compares under its own utf8mb4_0900_bin, and SQL that compares text with no such
+// column states COLLATE utf8mb4_0900_bin, which MySQL and MariaDB both accept with the same result.
+const mysqlSetNames = "SET NAMES utf8mb4"
+
+// namesConnector sends mysqlSetNames on each new connection of the pool, as every runtime sends it as a statement of its own.
+type namesConnector struct{ driver.Connector }
+
+func (c namesConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	conn, err := c.Connector.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	execer, ok := conn.(driver.ExecerContext)
+	if !ok {
+		return nil, errors.Join(fmt.Errorf("mysql connection %T sends no statement", conn), conn.Close())
+	}
+	if _, err := execer.ExecContext(ctx, mysqlSetNames, nil); err != nil {
+		return nil, errors.Join(err, conn.Close())
+	}
+	return conn, nil
+}
+
+// openPool opens the pool of dsn with the pool settings of cfg and checks that it connects.
+func openPool(ctx context.Context, sqlDriver string, dsn parsedDSN, cfg Config) (*sql.DB, error) {
+	s, err := openSQL(sqlDriver, dsn)
+	if err != nil {
+		return nil, configErr("%s", err)
+	}
+	s.SetMaxOpenConns(cfg.PoolSize)
+	s.SetMaxIdleConns(cfg.PoolIdleSize)
+	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
+	if err := s.PingContext(ctx); err != nil {
+		return nil, closeAfter(s, mapDriverErr(err, ""))
+	}
+	return s, nil
+}
+
 func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	if dsn.driver != "mysql" || sqlDriver != "mysql" {
 		return sql.Open(sqlDriver, dsn.native)
@@ -546,7 +618,7 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.OpenDB(connector), nil
+	return sql.OpenDB(namesConnector{connector}), nil
 }
 
 func lookupDriver(name string) (string, bool) {
@@ -565,13 +637,13 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	}
 	st, err := d.sql.PrepareContext(ctx, sqlText)
 	if err != nil {
-		return nil, mapDriverErrContext(err, ctx)
+		return nil, mapDriverErrContext(err, ctx, d.server)
 	}
 	d.m.stmMu.Lock()
 	defer d.m.stmMu.Unlock()
 	if prev, ok := d.stmts[sqlText]; ok {
 		if err := st.Close(); err != nil {
-			return nil, mapDriverErr(err)
+			return nil, mapDriverErr(err, d.server)
 		}
 		return prev, nil
 	}
@@ -595,7 +667,10 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 // mapDriverErr reports a driver error that the error catalog names with its code, and the rest
 // as DRIVER. An error with a code keeps the driver message and the driver
 // error as its cause.
-func mapDriverErr(err error) error {
+//
+// server selects the table of a mysql error number, which names another condition on each server (DIA-201): a number of
+// MySQL is mapped by mapMySQLErr, a number of MariaDB by mapMariaDBErr.
+func mapDriverErr(err error, server string) error {
 	if err == nil {
 		return nil
 	}
@@ -611,7 +686,10 @@ func mapDriverErr(err error) error {
 	driverMu.RUnlock()
 	// A mapper returns the error it was given when it does not name the condition, and an *ir.Error
 	// when it does. err holds no *ir.Error here, so a mapped error is one that holds one.
-	for _, m := range mappers {
+	for name, m := range mappers {
+		if name == "mysql" && server == serverMariaDB {
+			m = mapMariaDBErr
+		}
 		if mapped := m(err); errors.As(mapped, &coded) {
 			if coded.Cause == nil {
 				coded.Cause = err
@@ -634,8 +712,8 @@ func mapDriverErr(err error) error {
 
 // mapDriverErrContext keeps the context cause when a database reports a
 // server-side cancellation after honoring the canceled context.
-func mapDriverErrContext(err error, ctx context.Context) error {
-	mapped := mapDriverErr(err)
+func mapDriverErrContext(err error, ctx context.Context, server string) error {
+	mapped := mapDriverErr(err, server)
 	if ctx == nil || ctx.Err() == nil {
 		return mapped
 	}
@@ -644,6 +722,17 @@ func mapDriverErrContext(err error, ctx context.Context) error {
 		return &ir.Error{Code: coded.Code, Msg: coded.Msg, Cause: errors.Join(coded.Cause, ctx.Err())}
 	}
 	return mapped
+}
+
+// mapLockedErr maps the error of a statement that takes the row lock mode lock. MariaDB fails a NOWAIT lock that it cannot
+// take at once with 1205, the number of its lock wait timeout, where MySQL gives 3572 (DIA-209, probe mariadb.lock.nowait_held):
+// 1205 of a statement whose lock is a *_nowait mode is LOCK_NOT_AVAILABLE (INT-49), and of any other statement CANCELED (CFG-6).
+func mapLockedErr(err error, ctx context.Context, server, lock string) error {
+	var me *mysql.MySQLError
+	if server == serverMariaDB && strings.HasSuffix(lock, "_nowait") && errors.As(err, &me) && me.Number == 1205 {
+		return &ir.Error{Code: CodeLockNotAvailable, Msg: me.Error(), Cause: err}
+	}
+	return mapDriverErrContext(err, ctx, server)
 }
 
 func mapMySQLErr(err error) error {
@@ -665,7 +754,7 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
 	case me.Number == 1451 || me.Number == 1452:
 		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
-	case me.Number == 3819 || me.Number == 4025: // check constraint violated
+	case me.Number == 3819: // ER_CHECK_CONSTRAINT_VIOLATED; MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE (DIA-201)
 		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
 	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
@@ -673,6 +762,34 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection
 		return &ir.Error{Code: CodeConnectionLost, Msg: me.Error()}
+	}
+	return err
+}
+
+// mapMariaDBErr maps the error numbers of MariaDB (DIA-201), which differ from MySQL's above 1999: MariaDB has no 3572,
+// 3819, 3024 or 4031 of MySQL, its 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
+func mapMariaDBErr(err error) error {
+	if errors.Is(err, mysql.ErrInvalidConn) {
+		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error()}
+	}
+	var me *mysql.MySQLError
+	if !errors.As(err, &me) {
+		return err
+	}
+	state := string(me.SQLState[:])
+	switch {
+	case me.Number == 1213 || state == "40001":
+		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
+	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
+		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
+	case me.Number == 1451 || me.Number == 1452:
+		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
+	case me.Number == 4025: // ER_CONSTRAINT_FAILED: a CHECK constraint failed
+		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
+	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
+		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
+	case me.Number == 1205 || me.Number == 1969 || me.Number == 1317: // lock wait timeout / statement timeout / interrupted
+		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	}
 	return err
 }

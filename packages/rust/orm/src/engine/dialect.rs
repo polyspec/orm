@@ -161,19 +161,23 @@ impl Dialect {
         }
     }
 
-    /// The row lock suffix; SQLite locks through the executor.
-    pub fn row_lock(self, mode: &str) -> Option<&'static str> {
+    /// The row lock suffix on `server`, the server of a mysql connection (DIA-201); SQLite locks through the executor.
+    /// `share` renders ` LOCK IN SHARE MODE`, which both servers of the mysql dialect read as a shared row lock, and
+    /// `share_nowait` the form of the server: ` FOR SHARE NOWAIT` on MySQL and ` LOCK IN SHARE MODE NOWAIT` on MariaDB
+    /// (DIA-209).
+    pub(crate) fn row_lock(self, mode: &str, server: crate::MySqlServer) -> Option<&'static str> {
         if !matches!(mode, "update" | "share" | "update_nowait" | "share_nowait") {
             return None;
         }
-        if self == Dialect::Sqlite {
-            return Some("");
-        }
-        Some(match mode {
-            "update" => " FOR UPDATE",
-            "share" => " FOR SHARE",
-            "update_nowait" => " FOR UPDATE NOWAIT",
-            _ => " FOR SHARE NOWAIT",
+        Some(match (self, mode) {
+            (Dialect::Sqlite, _) => "",
+            (_, "update") => " FOR UPDATE",
+            (_, "update_nowait") => " FOR UPDATE NOWAIT",
+            (Dialect::MySql, "share") => " LOCK IN SHARE MODE",
+            (Dialect::MySql, _) if server == crate::MySqlServer::MariaDb => " LOCK IN SHARE MODE NOWAIT",
+            (Dialect::MySql, _) => " FOR SHARE NOWAIT",
+            (Dialect::Postgres, "share") => " FOR SHARE",
+            (Dialect::Postgres, _) => " FOR SHARE NOWAIT",
         })
     }
 

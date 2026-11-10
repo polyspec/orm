@@ -43,7 +43,7 @@ func run() (code int) {
 		}
 	}()
 	start := time.Now()
-	document, unsupported, err := dbspec.Introspect(context.Background(), db, dbspec.Dialect(dialect), "introspected")
+	document, unsupported, err := dbspec.Introspect(context.Background(), db, dbspec.Dialect(dialect), dbspec.Server(dialect), "introspected")
 	if err != nil {
 		fail(err)
 	}

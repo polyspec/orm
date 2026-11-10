@@ -5212,6 +5212,196 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_server_error_number_is_read_by_the_table_of_its_server",
+      "requirements": [
+        "DIA-201",
+        "INT-150"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "CREATE TABLE ck_probe (n INT, CONSTRAINT ck_probe_n CHECK (n > 0))"
+            }
+          ]
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "insert",
+              "tables": [],
+              "sql": "INSERT INTO ck_probe (n) VALUES (0)"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONSTRAINT"
+            },
+            "postgres": {
+              "error": "CONSTRAINT"
+            },
+            "sqlite": {
+              "error": "CONSTRAINT"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "CREATE TABLE ae_probe (n INT) AUTOEXTEND_SIZE=1M",
+                "postgres": "CREATE TABLE ae_probe (n INT) WITH (fillfactor = 1)",
+                "sqlite": "CREATE TABLE ae_probe (n INT) WITHOUT ROWID"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "error": "DRIVER"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_text_literal_compares_by_code_point_under_the_collation_it_states",
+      "requirements": [
+        "DIA-202",
+        "INT-150"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 'a' = 'A' COLLATE utf8mb4_0900_bin, 'a' = 'a ' COLLATE utf8mb4_0900_bin, 'a' = 'á' COLLATE utf8mb4_0900_bin, 'B' < 'a' COLLATE utf8mb4_0900_bin, @@character_set_connection = 'utf8mb4', @@character_set_results = 'utf8mb4'",
+                "postgres": "SELECT CAST('a' = 'A' AS int), CAST('a' = 'a ' AS int), CAST('a' = 'á' AS int), CAST('B' < 'a' COLLATE \"C\" AS int), 1, CAST(current_setting('client_encoding') = 'UTF8' AS int)",
+                "sqlite": "SELECT 'a' = 'A', 'a' = 'a ', 'a' = 'á', 'B' < 'a', 1, (SELECT encoding = 'UTF-8' FROM pragma_encoding)"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

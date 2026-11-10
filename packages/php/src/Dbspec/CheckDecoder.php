@@ -139,11 +139,12 @@ final class CheckDecoder
 
     /**
      * Reads the string literal at the start of the text, and returns its value and length. PostgreSQL and
-     * SQLite escape only '', while MySQL also uses backslash escapes.
+     * SQLite escape only '', while MySQL also uses backslash escapes. MysqlCatalog reads a MariaDB column default
+     * by it too (DIA-205). An unclosed literal is a CheckDecodeFailure.
      *
      * @return array{0: string, 1: int}
      */
-    private static function sqlString(string $dialect, string $text): array
+    public static function sqlString(string $dialect, string $text): array
     {
         $out = '';
         $n = strlen($text);

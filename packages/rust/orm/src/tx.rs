@@ -1033,7 +1033,7 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
             let binds = [Param::Str(key.clone())];
             let start = std::time::Instant::now();
             let r = sqlx::query_scalar::<_, Option<i64>>(release).bind(&key).fetch_one(&mut *conn).await.map_err(Error::from);
-            match db.statement_done(Sent { sql: release, binds: &binds, kind: KIND_UTILITY, tables: &[], transaction: number }, start, r) {
+            match db.statement_done(Sent { sql: release, binds: &binds, kind: KIND_UTILITY, tables: &[], transaction: number, lock: "" }, start, r) {
                 Ok(Some(1)) => {}
                 Ok(_) => errors.push(Error::Config(format!("lock {key} was not held at transaction end"))),
                 Err(error) => errors.push(error),

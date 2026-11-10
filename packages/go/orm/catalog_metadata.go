@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
 )
 
 // CatalogTableRef names a table by its namespace (the schema, or the database of MySQL) and its name.
@@ -66,9 +68,12 @@ var catalogKindSQL = map[string]string{
 }
 
 // catalogColumnsSQL selects the columns of a relation, in physical order: name, native type, nullable, generated,
-// primary-key ordinal, automatic key, default expression and whether the default is an expression.
+// primary-key ordinal, automatic key, default expression and whether the default is an expression. A MariaDB server writes the
+// default as SQL text and marks no expression, which the descriptor reads in the MySQL form (DIA-205). The mysql key ordinal is
+// a subquery that names its table by constants, which MariaDB reads by name where a join opens every table (DIA-210). The
+// native type is COLUMN_TYPE in the form of MySQL 8.4, which MariaDB writes with an integer display width (DIA-204).
 var catalogColumnsSQL = map[string]string{
-	"mysql":    "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+	"mysql":    "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint','smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE '%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
 	"postgres": "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
 	"sqlite":   `SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid`,
 }
@@ -118,7 +123,12 @@ func (s *catalogSession) describe(ref CatalogTableRef) (CatalogTableMetadata, er
 	if s.dialect == "sqlite" {
 		args = []any{ref.Name, ref.Namespace}
 	}
-	raw, err := s.queryRaw(catalogColumnsSQL[s.dialect], args, catalogMetadataRows, catalogMetadataBytes)
+	columnArgs := args
+	if s.dialect == "mysql" {
+		// The key ordinal names its table by constants too (DIA-210).
+		columnArgs = []any{ref.Namespace, ref.Name, ref.Namespace, ref.Name}
+	}
+	raw, err := s.queryRaw(catalogColumnsSQL[s.dialect], columnArgs, catalogMetadataRows, catalogMetadataBytes)
 	if err != nil {
 		return CatalogTableMetadata{}, err
 	}
@@ -140,6 +150,11 @@ func (s *catalogSession) describe(ref CatalogTableRef) (CatalogTableMetadata, er
 		column, err := catalogColumnRow(row)
 		if err != nil {
 			return CatalogTableMetadata{}, err
+		}
+		if s.server == serverMariaDB {
+			if column.DefaultExpression, column.ExpressionDefault, err = dbspec.MariaDBCatalogDefault(column.DefaultExpression); err != nil {
+				return CatalogTableMetadata{}, catalogErr(catalogCodeMetadata, "column %q: %v", column.Name, err)
+			}
 		}
 		for _, existing := range columns {
 			if existing.Name == column.Name {

@@ -34,12 +34,17 @@ type Unsupported struct {
 // Introspect reads the connection's current database, schema, or main database
 // and returns a dbspec document named name and the list of objects it could not read. The number of queries is
 // unrelated to the number of tables. A query failure, or a catalog from which no document can be made, is an error.
-func Introspect(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error) {
+//
+// server is the server that the connection reached, which the caller read when it connected (DIA-203); Introspect reads
+// no version. A dialect other than the three constants, and a server that is not a server of the dialect, are programming
+// errors and panic.
+func Introspect(ctx context.Context, q Querier, dialect Dialect, server Server, name string) (*Document, []Unsupported, error) {
+	checkServer(dialect, server)
 	var cat *catalog
 	var err error
 	switch dialect {
 	case DialectMySQL:
-		cat, err = readMySQL(ctx, q)
+		cat, err = readMySQL(ctx, q, server)
 	case DialectPostgres:
 		cat, err = readPostgres(ctx, q)
 	case DialectSQLite:
@@ -51,6 +56,44 @@ func Introspect(ctx context.Context, q Querier, dialect Dialect, name string) (*
 		return nil, nil, err
 	}
 	return cat.document(name)
+}
+
+// Server names the database server that a connection reached (DIA-200): MySQL and MariaDB are the servers of the mysql
+// dialect, PostgreSQL and SQLite each the server of its own.
+type Server string
+
+// The servers of the dialects.
+const (
+	ServerMySQL    Server = "mysql"
+	ServerMariaDB  Server = "mariadb"
+	ServerPostgres Server = "postgres"
+	ServerSQLite   Server = "sqlite"
+)
+
+// Dialect is the dialect of the server, or "" for a name that is none of the four servers.
+func (s Server) Dialect() Dialect {
+	switch s {
+	case ServerMySQL, ServerMariaDB:
+		return DialectMySQL
+	case ServerPostgres:
+		return DialectPostgres
+	case ServerSQLite:
+		return DialectSQLite
+	}
+	return ""
+}
+
+// checkServer panics on a dialect other than the three constants, naming the dialect, and on a server that is not a
+// server of the dialect, naming the server (DBS-174).
+func checkServer(dialect Dialect, server Server) {
+	switch dialect {
+	case DialectMySQL, DialectPostgres, DialectSQLite:
+	default:
+		panic("dbspec: unknown dialect " + string(dialect))
+	}
+	if server.Dialect() != dialect {
+		panic("dbspec: server " + string(server) + " is not a server of the dialect " + string(dialect))
+	}
 }
 
 // catalog is the neutral intermediate model that the dialect reader fills. type is Type, and

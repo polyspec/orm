@@ -85,6 +85,8 @@ type step struct {
 	Source       json.RawMessage   `json:"source"`
 	Target       json.RawMessage   `json:"target"`
 	Dialect      string            `json:"dialect"`
+	// Server is the server that dbspec.introspect_refusal passes with Dialect; without it the call passes the dialect's name.
+	Server string `json:"server"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
 	Documents []string  `json:"documents"`
 	Document  string    `json:"document"`
@@ -385,7 +387,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		r.cell, r.err = orm.BlindIndex(value, key(s))
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
-		r.cell, r.err = connectDriver(s.k("dsn").DSN, s.k("config").Config)
+		r.cell, r.err = connectDriver(s.k("dsn").DSN, "", s.k("config").Config)
 	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
 	case "markdown.connect":
 		r.err = markdownConnect(s)
@@ -420,9 +422,40 @@ type dsnConfig struct {
 	AESVersion         int32            `json:"aes_version"`
 	AESKeys            map[int32]string `json:"aes_keys"`
 	SessionRead        *struct {
-		SQL string   `json:"sql"`
-		Row []string `json:"row"`
+		SQL databaseSQL `json:"sql"`
+		Row []string    `json:"row"`
 	} `json:"session_read"`
+}
+
+// databaseSQL is a statement text, one for every database or one per database by the dialect-key rule (dialectKey): the
+// session_read of a MariaDB connection reads the variable of its server (DIA-208).
+type databaseSQL map[string]string
+
+// UnmarshalJSON reads a text, which every database runs, or an object of texts keyed by database.
+func (d *databaseSQL) UnmarshalJSON(raw []byte) error {
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		*d = databaseSQL{"": text}
+		return nil
+	}
+	var entries map[string]string
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return err
+	}
+	*d = entries
+	return nil
+}
+
+// of is the text that database runs.
+func (d databaseSQL) of(database string) (string, error) {
+	if text, every := d[""]; every {
+		return text, nil
+	}
+	text, ok := d[dialectKey(database, d)]
+	if !ok {
+		return "", fmt.Errorf("the statement names no text for %s", database)
+	}
+	return text, nil
 }
 
 // sqliteFileName opens a SQLite DSN with the query, if any, on a new file called name, and returns the names in its
@@ -437,7 +470,7 @@ func sqliteFileName(name, query string, config dsnConfig) (_ string, err error) 
 	if query != "" {
 		dsn += "?" + query
 	}
-	_, refused := connectDriver(dsn, config)
+	_, refused := connectDriver(dsn, "sqlite", config)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return "", err
@@ -485,7 +518,7 @@ func markdownConnect(s step) (err error) {
 		return err
 	}
 	defer func() { err = closeFirst(err, listener.Close()) }()
-	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), dsnConfig{})
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), "markdown", dsnConfig{})
 	if err := <-listener.served; err != nil {
 		return err
 	}
@@ -599,7 +632,7 @@ func listenOnce(serve func(conn net.Conn) error) (*onceListener, error) {
 
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
 // and returns its driver: the one implementation of dsn.connect (FCV-4).
-func connectDriver(dsn string, config dsnConfig) (string, error) {
+func connectDriver(dsn, database string, config dsnConfig) (string, error) {
 	db, err := orm.Connect(dsn, orm.Config{
 		PoolSize:           config.PoolSize,
 		PoolIdleSize:       config.PoolIdleSize,
@@ -629,12 +662,16 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
 		}
 		if config.SessionRead != nil {
-			read, err := f.Run(orm.KindUtility, nil, config.SessionRead.SQL)
+			text, err := config.SessionRead.SQL.of(database)
+			if err != nil {
+				return err
+			}
+			read, err := f.Run(orm.KindUtility, nil, text)
 			if err != nil {
 				return err
 			}
 			if len(read.Rows) != 1 || len(read.Rows[0]) != len(config.SessionRead.Row) {
-				return fmt.Errorf("%s returned %v, want %v", config.SessionRead.SQL, read.Rows, config.SessionRead.Row)
+				return fmt.Errorf("%s returned %v, want %v", text, read.Rows, config.SessionRead.Row)
 			}
 			for i, want := range config.SessionRead.Row {
 				cell := read.Rows[0][i]
@@ -642,7 +679,7 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 					cell = string(text)
 				}
 				if fmt.Sprint(cell) != want {
-					return fmt.Errorf("%s cell %d is %v, want %s", config.SessionRead.SQL, i, cell, want)
+					return fmt.Errorf("%s cell %d is %v, want %s", text, i, cell, want)
 				}
 			}
 		}
@@ -679,13 +716,66 @@ func key(s step) string {
 	return *s.k("key").Key
 }
 
+// messageHolds is a message_holds field (FCV-4): one text, or a non-empty array of texts, each of which the message holds.
+// An absent field holds nothing to check; an empty array is a recipe error, as it would check nothing.
+type messageHolds []string
+
+// UnmarshalJSON reads a string or a non-empty array of strings.
+func (m *messageHolds) UnmarshalJSON(raw []byte) error {
+	holds, err := messageHoldsOf(json.RawMessage(raw))
+	if err != nil {
+		return err
+	}
+	*m = holds
+	return nil
+}
+
+// messageHoldsOf reads a message_holds field from its JSON or from its decoded value: nil, a string, or an array of strings.
+func messageHoldsOf(value any) (messageHolds, error) {
+	if raw, ok := value.(json.RawMessage); ok {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, err
+		}
+	}
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case string:
+		return messageHolds{v}, nil
+	case []any:
+		if len(v) == 0 {
+			return nil, errors.New("message_holds is an empty array, which checks nothing")
+		}
+		holds := make(messageHolds, len(v))
+		for i, item := range v {
+			text, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("message_holds item %d is %T, want a string", i, item)
+			}
+			holds[i] = text
+		}
+		return holds, nil
+	}
+	return nil, fmt.Errorf("message_holds is %T, want a string or an array of strings", value)
+}
+
+// check returns an error that names the first text of m that message does not hold.
+func (m messageHolds) check(message string) error {
+	for _, text := range m {
+		if !strings.Contains(message, text) {
+			return fmt.Errorf("error message %q does not hold %q", message, text)
+		}
+	}
+	return nil
+}
+
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
 		Value        json.RawMessage `json:"value"`
 		Error        string          `json:"error"`
 		Message      string          `json:"message"`
-		MessageHolds string          `json:"message_holds"`
+		MessageHolds messageHolds    `json:"message_holds"`
 		BytesPrefix  string          `json:"bytes_prefix_hex"`
 		BytesLength  int             `json:"bytes_length"`
 		LibraryCause bool            `json:"library_cause"`
@@ -705,10 +795,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 		if outcome.Message != "" && r.err.Error() != outcome.Message {
 			return fmt.Errorf("error message %q, want %q", r.err.Error(), outcome.Message)
 		}
-		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
-			return fmt.Errorf("error %q, want a message that holds %q", r.err.Error(), outcome.MessageHolds)
-		}
-		return nil
+		return outcome.MessageHolds.check(r.err.Error())
 	}
 	if r.err != nil {
 		return fmt.Errorf("unexpected error %w", r.err)
@@ -2086,7 +2173,7 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 			return err
 		}
 	}
-	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, dbspec.ServerSQLite, "introspected")
 	if err != nil {
 		return err
 	}

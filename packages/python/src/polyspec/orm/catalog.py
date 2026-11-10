@@ -33,9 +33,11 @@ from polyspec.orm.database import (
     _sqlite_path,
     parse_dsn,
 )
+from polyspec.orm.dbspec.introspect_mysql import mariadb_catalog_default
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import MarkdownConnection
 from polyspec.orm.placeholders import for_mysql, for_postgres
+from polyspec.orm.dbspec.parse import goq
 
 T = TypeVar("T")
 
@@ -93,9 +95,10 @@ _KIND_SQL = {
 }
 
 # The columns of a relation in physical order: name, native type, nullable, generated, primary-key ordinal, automatic key,
-# default expression and whether the default is an expression.
+# default expression and whether the default is an expression. The native type is COLUMN_TYPE in the form of MySQL 8.4,
+# which MariaDB writes with an integer display width (DIA-204).
 _COLUMNS_SQL = {
-    "mysql": "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+    "mysql": "SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint','smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE '%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
     "postgres": "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
     "sqlite": 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
 }
@@ -291,7 +294,7 @@ def _temporal_write_value(
         if temporal is not None:
             raise _error(
                 code,
-                f"column {column.name!r} takes the dbspec text of a {temporal[0]}, not a datetime",
+                f"column {goq(column.name)} takes the dbspec text of a {temporal[0]}, not a datetime",
             )
 
 
@@ -493,7 +496,7 @@ def _kind(dialect: str, native: str) -> str:
     kind = table.get((dialect, native))
     if kind is None:
         raise _error(
-            codes.TABLE_KIND_UNSUPPORTED, f"relation kind {native!r} of {dialect}"
+            codes.TABLE_KIND_UNSUPPORTED, f"relation kind {goq(native)} of {dialect}"
         )
     return kind
 
@@ -647,7 +650,8 @@ def _check_cells(metadata: CatalogTableMetadata, cells: list) -> None:
     for column, cell in zip(metadata.columns, cells):
         if cell is None and not column.nullable:
             raise _error(
-                codes.ROW_SNAPSHOT_INVALID, f"NULL in non-null column {column.name!r}"
+                codes.ROW_SNAPSHOT_INVALID,
+                f"NULL in non-null column {goq(column.name)}",
             )
         _cell_key(cell)
 
@@ -729,14 +733,14 @@ def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) ->
             None,
         )
         if index is None:
-            raise _error(code, f"unknown column {name!r}")
+            raise _error(code, f"unknown column {goq(name)}")
         column = metadata.columns[index]
         if name in seen:
-            raise _error(code, f"duplicate column {name!r}")
+            raise _error(code, f"duplicate column {goq(name)}")
         if column.generated:
-            raise _error(code, f"generated column {name!r} is not writable")
+            raise _error(code, f"generated column {goq(name)} is not writable")
         if value is None and not column.nullable:
-            raise _error(code, f"NULL in non-null column {name!r}")
+            raise _error(code, f"NULL in non-null column {goq(name)}")
         _temporal_write_value(column, value, dialect, code)
         if _exceeds_declared_capacity(column, value):
             raise _error(
@@ -802,7 +806,7 @@ class GridCell:
 # The MySQL NEWDATE field type, which a server may report for a DATE result.
 _MYSQL_NEWDATE = 14
 _MYSQL_DECIMAL, _MYSQL_NEWDECIMAL, _MYSQL_UNSIGNED_FLAG = 0, 246, 32
-# The MySQL YEAR field type, which a YEAR() result has: it has no grid cell (the spec's unsupported types).
+# The MySQL YEAR field type, which a YEAR column and a MySQL YEAR() result have.
 _MYSQL_YEAR = 13
 # The PostgreSQL type OIDs of real and of the temporal types that a plain query reads as text; _PG_CLASSES holds the
 # class of every OID with a cell.
@@ -848,7 +852,6 @@ def _budget_size(value) -> int:
 # every runtime. A refusal is `<CODE>: column <n>: <text>`, n the 1-based position of the column in the result (a described
 # read selects the columns of its table in physical order), and its text names no value, no column label and no driver
 # type.
-_YEAR_TEXT = "MySQL YEAR has no grid cell"
 _TIMESTAMP_TEXT = "MySQL TIMESTAMP follows a time zone"
 _ZONED_TEXT = "PostgreSQL timestamptz and timetz are unsupported"
 _NUMERIC_TEXT = "PostgreSQL numeric is not finite"
@@ -1114,19 +1117,23 @@ def _pg_cell(raw, cls: str, position: int) -> GridCell:
     raise _driver_value(position)
 
 
-# MySQL field types (pymysql.constants.FIELD_TYPE) and the cell of each (INT-185). TIMESTAMP and YEAR keep their rules
-# (INT-167, INT-166); BIT and GEOMETRY are bytes cells; JSON, ENUM and SET are text cells, which pymysql reports as JSON and
-# STRING; a string or blob type is a text cell, or a bytes cell when its character set is binary.
+# MySQL field types (pymysql.constants.FIELD_TYPE) and the cell of each (INT-185). TIMESTAMP keeps its rule (INT-167); a
+# YEAR value is its integer (INT-166); BIT and GEOMETRY are bytes cells; JSON, ENUM and SET are text cells, which pymysql
+# reports as JSON and STRING; a string or blob type is a text cell, or a bytes cell when its character set is binary.
 _MYSQL_INTEGERS = (1, 2, 3, 8, 9)
 _MYSQL_STRINGS = (15, 245, 247, 248, 249, 250, 251, 252, 253, 254)
 _MYSQL_BYTES = (16, 255)
 
 
 def _mysql_cell(value, code, unsigned: bool, position: int) -> GridCell:
-    if code == _MYSQL_YEAR:
-        raise _value_error(codes.CATALOG_VALUE, position, _YEAR_TEXT)
     if code == _MYSQL_TIMESTAMP:
         raise _value_error(codes.CATALOG_VALUE, position, _TIMESTAMP_TEXT)
+    if code == _MYSQL_YEAR:
+        # pymysql reads a YEAR as an int, 0 for the zero year 0000; the server flags it UNSIGNED, which does not make it an
+        # unsigned cell.
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise _driver_value(position)
+        return GridCell("integer", value)
     if code in _MYSQL_INTEGERS:
         if isinstance(value, bool) or not isinstance(value, int):
             raise _driver_value(position)
@@ -1447,6 +1454,8 @@ class _Session:
         self.dialect = dialect
         self.wrapper = wrapper
         self.raw = wrapper.connection
+        # The server of a mysql connection, which maps its error numbers (DIA-201).
+        self.server = getattr(wrapper, "server", "mysql")
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
@@ -1660,7 +1669,7 @@ class _Session:
             if not _is_driver_error(self.dialect, error):
                 raise
             lost = self.dialect == "postgres" and bool(self.raw.closed)
-            _raise_driver_error(self.dialect, error, lost)
+            _raise_driver_error(self.dialect, error, lost, self.server)
         finally:
             if self.abandoned:
                 pass
@@ -1759,7 +1768,12 @@ class _Session:
             if dialect == "sqlite"
             else [table["namespace"], table["name"]]
         )
-        rows = self.run(_COLUMNS_SQL[dialect], args, METADATA_ROWS, METADATA_BYTES).rows
+        # The mysql query names the table twice: its key ordinal is a subquery that names the table by constants, so
+        # MariaDB opens only that table (DIA-210).
+        column_args = args * 2 if dialect == "mysql" else args
+        rows = self.run(
+            _COLUMNS_SQL[dialect], column_args, METADATA_ROWS, METADATA_BYTES
+        ).rows
 
         columns: list = []
         keys: list = []
@@ -1770,13 +1784,25 @@ class _Session:
                 )
             name = _check_name(_text(row[0]))
             if any(existing.name == name for existing in columns):
-                raise _error(codes.TABLE_METADATA_INVALID, f"duplicate column {name!r}")
+                raise _error(
+                    codes.TABLE_METADATA_INVALID, f"duplicate column {goq(name)}"
+                )
             default = row[6]
             if default is not None and not isinstance(default, str):
                 raise _error(
                     codes.TABLE_METADATA_INVALID,
-                    f"default expression of column {name!r} is {type(default).__name__}",
+                    f"default expression of column {goq(name)} is not text",
                 )
+            expression = _bool(row[7])
+            if dialect == "mysql" and self.server == "mariadb":
+                # MariaDB writes its default as SQL text, read as the introspection reads it (DIA-205).
+                try:
+                    default, expression = mariadb_catalog_default(default)
+                except ValueError as error:
+                    raise _error(
+                        codes.TABLE_METADATA_INVALID,
+                        f"column {goq(name)}: {error}",
+                    ) from None
             column = CatalogColumn(
                 name=name,
                 native_type=_text(row[1]),
@@ -1784,7 +1810,7 @@ class _Session:
                 generated=_bool(row[3]),
                 automatic_key=_bool(row[5]),
                 default_expression=default,
-                expression_default=_bool(row[7]),
+                expression_default=expression,
             )
             ordinal = _int(row[4])
             if ordinal < 0:
@@ -1853,7 +1879,7 @@ class _Session:
         if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], str):
             raise _error(
                 codes.TABLE_METADATA_INVALID,
-                f"the definition of table {table['name']!r} is not one text",
+                f"the definition of table {goq(table['name'])} is not one text",
             )
         for column in temporal:
             column.check_precision = _check_precision(rows[0][0], column.name)
@@ -1873,11 +1899,15 @@ class _Session:
 
     def mysql_partial_revokes_off(self) -> None:
         """Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
-        hide a trigger from the account (INT-119)."""
+        hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
+        partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207)."""
         partial = self.run(
-            "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", [], 1, 4096
+            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
+            [],
+            1,
+            4096,
         ).rows
-        if len(partial) != 1 or partial[0][0] != 0:
+        if len(partial) != 0:
             raise _error(
                 codes.ROW_MUTATION_UNSUPPORTED,
                 "MySQL partial-revoke visibility requires verification",
@@ -2318,7 +2348,7 @@ class CatalogConnection:
                 if not column.automatic_key and column.default_expression is None:
                     raise _error(
                         codes.ROW_INSERT_IDENTITY_REQUIRED,
-                        f"primary key {column.name!r} has no generator",
+                        f"primary key {goq(column.name)} has no generator",
                     )
                 omitted_indexes.append(index)
         omitted_auto_keys = [
@@ -2583,7 +2613,7 @@ class CatalogConnection:
                 if not _same_row([after[0][index]], [updated[index]]):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
-                        f"stored ordinary values of {column.name!r} differ",
+                        f"stored ordinary values of {goq(column.name)} differ",
                     )
             return CatalogMutationResult(
                 columns=[c.name for c in descriptor.columns], rows=after

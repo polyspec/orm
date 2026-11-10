@@ -2,11 +2,12 @@
 // Every query reads the whole current database at once.
 import { present } from '../present.js';
 import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
-import { addCheck, markChecked } from './introspect_check.js';
+import { addCheck, CheckDecodeError, markChecked, readSQLString } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecType } from './model.js';
 import { UUID_PATTERN } from './render.js';
 import { renderedColumn } from './names.js';
+import type { DbspecServer } from './introspect.js';
 
 const TABLES_QUERY = `SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME`;
@@ -14,28 +15,39 @@ const COLUMNS_QUERY = `SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE,
 IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EXPRESSION, '')
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME, ORDINAL_POSITION`;
 const INDEXES_QUERY = `SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),
-SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS
+SUB_PART IS NOT NULL, COLUMN_NAME IS NULL, INDEX_TYPE FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX`;
+// MariaDB reads an information_schema table of one database only by the schema column of its table (TABLE_SCHEMA,
+// EVENT_OBJECT_SCHEMA), so each read names it; a constraint and a trigger are in the schema of their table, so MySQL
+// gives the same rows (DIA-213).
 const FOREIGN_KEYS_QUERY = `SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, rc.UPDATE_RULE,
 rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
-AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
+AND k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION`;
 // Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of tables (over
 // 60 seconds at 2000 tables), so two queries are read and joined by name. MySQL's CHECK names are unique within a database.
 const CHECK_CLAUSES_QUERY = `SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME`;
+// MariaDB scopes a CHECK name to its table (probe mariadb.check.name_schema_scope), so its clauses are read by table and name
+// (DIA-203).
+const MARIADB_CHECK_CLAUSES_QUERY = `SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME`;
 const CHECKS_QUERY = `SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
-WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`;
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`;
+// MariaDB has no NOT ENFORCED CHECK and no ENFORCED column, so each of its checks is enforced (DIA-203).
+const MARIADB_CHECKS_QUERY = `SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME`;
 const TRIGGERS_QUERY = `SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
-FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`;
+FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`;
 const ROUTINES_QUERY = `SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME`;
 const EVENTS_QUERY = `SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME`;
 
 const TYPE_PATTERN =
   /^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/;
 
-export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
+/** Reads the current database of a server of the mysql dialect; server is the server that the connection reached (DIA-203). */
+export async function readMySQL(query: CatalogQuery, server: DbspecServer): Promise<Catalog> {
   const c = new Catalog();
   for (const r of await query(TABLES_QUERY)) {
     const [name, kind, options] = [r.text(0), r.text(1), r.text(2)];
@@ -51,7 +63,8 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
   // table: column: renderer CHECK candidate types that are determined only when a CHECK exists
   const pending = new Map<string, Map<string, string>>();
   for (const r of await query(COLUMNS_QUERY)) {
-    const [table, name, columnType, nullable, dflt] = [r.text(0), r.text(1), r.text(2), r.text(3), r.nullableText(4)];
+    const [table, name, columnType, nullable] = [r.text(0), r.text(1), r.text(2), r.text(3)];
+    let dflt = r.nullableText(4);
     let extra = r.text(5);
     const [charset, collation, generation] = [r.text(6), r.text(7), r.text(8)];
     const t = c.table(table);
@@ -59,6 +72,13 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     if (generation !== '') {
       c.report('column', table, name, 'a generated column has no dbspec definition');
       continue;
+    }
+    if (server === 'mariadb') {
+      try {
+        ({ dflt, extra } = mariadbDefault(dflt, extra));
+      } catch (error) {
+        throw new Error(`column ${table}.${name}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+      }
     }
     const read = mysqlType(columnType, charset, collation);
     if (read === null) {
@@ -92,12 +112,20 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
   await readIndexes(query, c);
   await readForeignKeys(query, c);
   const checked = new Map<string, Set<string>>();
+  // clauses holds each CHECK_CLAUSE by checkKey, in the escaped form of MySQL's CHECK_CLAUSE.
   const clauses = new Map<string, string>();
-  for (const r of await query(CHECK_CLAUSES_QUERY)) clauses.set(r.text(0), r.text(1));
+  if (server === 'mariadb') {
+    // MariaDB writes CHECK_CLAUSE as SQL text, escaping a string literal once (probes mariadb.check.catalog_text,
+    // mariadb.check.string_escaped_twice), and MySQL escapes it once more; the MariaDB text takes that escape so that one reader
+    // reads both (DIA-203).
+    for (const r of await query(MARIADB_CHECK_CLAUSES_QUERY)) clauses.set(checkKey(server, r.text(0), r.text(1)), escapeMySQLClause(r.text(2)));
+  } else {
+    for (const r of await query(CHECK_CLAUSES_QUERY)) clauses.set(checkKey(server, '', r.text(0)), r.text(1));
+  }
   const shown = new Map<string, Map<string, string>>();
-  for (const r of await query(CHECKS_QUERY)) {
+  for (const r of await query(server === 'mariadb' ? MARIADB_CHECKS_QUERY : CHECKS_QUERY)) {
     const [table, name, enforced] = [r.text(0), r.text(1), r.text(2)];
-    const stored = clauses.get(name);
+    const stored = clauses.get(checkKey(server, table, name));
     if (stored === undefined) throw new Error(`check ${table}.${name} has no CHECK_CLAUSE`);
     const clause = hasNonAscii(stored) ? await shownCheck(query, table, name, shown) : stored;
     const t = c.table(table);
@@ -109,7 +137,7 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     if (name.includes('$')) {
       const column = renderedColumn(table, name, columns.get(table)?.keys() ?? []);
       const col = column === null ? undefined : columns.get(table)?.get(column);
-      if (column === null || col === undefined || withoutIntroducers(clause) !== withoutIntroducers(rendererCheck(col))) {
+      if (column === null || col === undefined || withoutIntroducers(clause) !== withoutIntroducers(rendererCheck(server, col))) {
         c.report('check', table, name, `the check ${clause} is not the renderer CHECK`);
         continue;
       }
@@ -153,12 +181,14 @@ function mysqlType(columnType: string, charset: string, collation: string): { ty
   if (g(6) === 'varchar') return result({ kind: 'varchar', length: Number(g(7)) }, '', text);
   const precision = g(2) === '' ? 0 : Number(g(2));
   switch (g(1)) {
+    // An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it (probes
+    // mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width (DIA-204).
     case 'smallint':
-      return result({ kind: 'i16' }, '', g(2) === '');
+      return result({ kind: 'i16' }, '', true);
     case 'int':
-      return result({ kind: 'i32' }, '', g(2) === '');
+      return result({ kind: 'i32' }, '', true);
     case 'bigint':
-      return result({ kind: 'i64' }, '', g(2) === '');
+      return result({ kind: 'i64' }, '', true);
     case 'tinyint(1)':
       return result({ kind: 'bool' }, columnType, true);
     case 'double':
@@ -246,18 +276,81 @@ export function createChecks(create: string): Map<string, string> {
   return checks;
 }
 
-/** The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). */
-function rendererCheck(col: IColumn): string {
+/**
+ * The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). MariaDB writes it
+ * without the outer parentheses and the introducers, in the escaped form that readMySQL gives its CHECK_CLAUSE (probes
+ * mariadb.check.catalog_text, mariadb.render.bool_check, mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203).
+ */
+function rendererCheck(server: DbspecServer, col: IColumn): string {
   const c = '`' + col.name + '`';
+  if (server === 'mariadb') {
+    switch (col.type.kind) {
+      case 'bool':
+        return `${c} in (0,1)`;
+      case 'uuid':
+        return `${c} regexp \\'${UUID_PATTERN}\\'`;
+      case 'time':
+        return `${c} >= \\'00:00:00\\' and ${c} < \\'24:00:00\\'`;
+    }
+    return '';
+  }
   switch (col.type.kind) {
     case 'bool':
       return `(${c} in (0,1))`;
     case 'uuid':
-      return `regexp_like(${c},_utf8mb4\\'${UUID_PATTERN}\\',_utf8mb4\\'c\\')`;
+      return `regexp_like(${c},_utf8mb4\\'${UUID_PATTERN}\\')`;
     case 'time':
       return `((${c} >= _utf8mb4\\'00:00:00\\') and (${c} < _utf8mb4\\'24:00:00\\'))`;
   }
   return '';
+}
+
+/** Escapes a CHECK_CLAUSE once more, as MySQL does: the inverse of the unescape of decodeCheck. */
+function escapeMySQLClause(text: string): string {
+  return text.replace(/[\\']/g, ch => (ch === '\\' ? '\\\\' : "\\'"));
+}
+
+/**
+ * The key of a check in the clauses of readMySQL: its name on MySQL, whose CHECK names are unique in the database, and its table and
+ * name on MariaDB, which scopes a CHECK name to its table (probes mysql.check.name_schema_scope, mariadb.check.name_schema_scope).
+ */
+function checkKey(server: DbspecServer, table: string, name: string): string {
+  return server === 'mariadb' ? `${table}\x00${name}` : name;
+}
+
+/** A number literal of COLUMN_DEFAULT. */
+const MYSQL_NUMBER = /^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?$/;
+
+/** A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p). */
+const MARIADB_CLOCK = /^current_timestamp\(([1-6]?)\)$/;
+
+/**
+ * Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL text: NULL for a column
+ * whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as written, and an expression default as
+ * its text, and its EXTRA has no DEFAULT_GENERATED (probe mariadb.default.catalog_text). MySQL gives a NULL default as SQL NULL, a
+ * literal without quotes and escapes, and an expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among them, with EXTRA
+ * DEFAULT_GENERATED (probe mysql.default.catalog_text). A quoted text that is not one whole literal is an error.
+ */
+export function mariadbDefault(dflt: string | null, extra: string): { dflt: string | null; extra: string } {
+  if (dflt === null || extra !== '') return { dflt, extra };
+  if (dflt === 'NULL') return { dflt: null, extra };
+  if (dflt.startsWith("'")) {
+    let read: [string, number] | null = null;
+    try {
+      read = readSQLString('mysql', dflt);
+    } catch (error) {
+      if (!(error instanceof CheckDecodeError)) throw error;
+    }
+    if (read === null || read[1] !== dflt.length) throw new Error(`default ${dflt} is not one string literal`);
+    return { dflt: read[0], extra };
+  }
+  if (MYSQL_NUMBER.test(dflt)) return { dflt, extra };
+  const clock = MARIADB_CLOCK.exec(dflt);
+  if (clock !== null) {
+    const precision = clock[1] ?? '';
+    return { dflt: precision === '' ? 'CURRENT_TIMESTAMP' : `CURRENT_TIMESTAMP(${precision})`, extra: 'DEFAULT_GENERATED' };
+  }
+  return { dflt, extra: 'DEFAULT_GENERATED' };
 }
 
 /** Tells whether a DEFAULT_GENERATED default is the renderer's time default for that column. */

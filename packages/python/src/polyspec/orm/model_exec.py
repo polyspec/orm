@@ -454,12 +454,12 @@ def _exact_aggregate(field) -> bool:
 
 
 # The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an
-# integer (DIA-202).
+# integer (DIA-218).
 _SPLIT_CELLS = 5
 
 
 class _NonInteger:
-    """The sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses by
+    """The sum of a column that holds a value that is not an integer (DIA-218), which the reader of the sum refuses by
     the name and the type of its column."""
 
 
@@ -468,7 +468,7 @@ _NON_INTEGER = _NonInteger()
 
 def _non_integer_refusal(column: str, type_: str, scale: int) -> OrmError:
     """The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an
-    integer, or a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66)."""
+    integer, or a decimal of more fraction digits than the scale of the column (DIA-218, DSL-66)."""
     if type_ == "decimal":
         return OrmError(
             codes.CODEC_DECODE,
@@ -482,7 +482,7 @@ def _non_integer_refusal(column: str, type_: str, scale: int) -> OrmError:
 def _split_sum_value(parts, flag):
     """The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, _NON_INTEGER when its
     last cell reports a value that is not an integer, and None when every part is SQL NULL, the sum of no value
-    (DIA-202)."""
+    (DIA-218)."""
     for cell in (flag, *parts):
         if cell is not None and (isinstance(cell, bool) or not isinstance(cell, int)):
             raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
@@ -501,7 +501,7 @@ def _split_sum_value(parts, flag):
 
 def _exact_sum(field, value) -> int:
     """The sum cell of the exact column field as the integer sum × 10^scale: an integer cell, or the integer of a split
-    sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a Decimal or a text cell is a
+    sum (DIA-218), is that integer (SQLite and markdown store a decimal so, DIA-25), a Decimal or a text cell is a
     decimal of at most scale fraction digits. A sum that holds a value which the type of the column does not hold, which
     the split sum reports and the text of MySQL and PostgreSQL shows by more fraction digits, is refused by its
     column."""
@@ -586,7 +586,7 @@ def aggregate_of(c: Core, kind: str) -> float | None:
 
 
 def _sum_of(cells):
-    """The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-202);
+    """The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-218);
     None is the sum of no value."""
     if len(cells) == 1:
         return cells[0]
@@ -601,7 +601,7 @@ def _aggregate_range_error(error: OrmError) -> OrmError:
     """The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003,
     and MySQL refuses it so through the planned addition of 0 (1690, which PyMySQL reports by its number), which is the
     nonfinite scalar that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver
-    error as its cause (DIA-200)."""
+    error as its cause (DIA-216)."""
     cause = error.cause
     mysql_range = (
         type(cause).__module__.startswith("pymysql")
@@ -1166,7 +1166,7 @@ def _group_rows(ex, c: Core, result: dict):
 def _added_column_value(col: dict, raw, row, zone: str):
     """An added column by the type its plan column states (INT-160), from its cell raw of the row; other types keep the
     driver value. The sum of an integer column is the exact integer of its split cells on SQLite and markdown, and a sum
-    of a column that holds a value which its type does not hold is refused by that column (DIA-202, PRT-84)."""
+    of a column that holds a value which its type does not hold is refused by that column (DIA-218, PRT-84)."""
     type_ = col["type"]
     scale = col.get("scale", 0)
     if col.get("sum_parts"):

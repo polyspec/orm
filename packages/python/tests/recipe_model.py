@@ -55,12 +55,14 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         return urlunsplit(urlsplit(replica)._replace(path=urlsplit(case_dsn).path))
     if dsn != "case-socket":
         return dsn
-    if database != "mysql":
+    # MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
+    if database not in ("mysql", "mariadb"):
         raise ValueError(f"dsn case-socket needs mysql, not {database}")
-    socket = socket if socket is not None else os.environ.get("ORM_TEST_MYSQL_SOCKET")
+    variable = f"ORM_TEST_{database.upper()}_SOCKET"
+    socket = socket if socket is not None else os.environ.get(variable)
     if not socket:
         raise ValueError(
-            "dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers"
+            f"dsn case-socket: {variable} is unset; run make orm-test-servers"
         )
     match = re.match(r"^mysql://([^@/]+)@[^/]+/([^?]+)", case_dsn)
     if match is None:
@@ -662,8 +664,10 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             [step["text"]],
         )
         built = author.core.build("count")
-        # A corpus runs SQL in SQLite's dialect (DIA-185).
-        dialect = "sqlite" if context["database"] == "markdown" else context["database"]
+        # A corpus runs SQL in SQLite's dialect (DIA-185), MariaDB in MySQL's (DIA-200).
+        dialect = {"markdown": "sqlite", "mariadb": "mysql"}.get(
+            context["database"], context["database"]
+        )
         plan = Engine(author.core.ent.model.runtime, dialect).compile(built.finish())
         # The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
         # fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).

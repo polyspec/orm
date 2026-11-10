@@ -2,6 +2,9 @@
 // query is cancelled. The written rows are only in composite_account, and the case deletes all of them when it ends.
 import assert from 'node:assert/strict';
 import { CompositeAccount, OrmError, connect } from '../dist/index.js';
+import { after } from 'node:test';
+import { installBench } from './bench-set.mjs';
+import { createCaseDatabase } from './case-database.mjs';
 import { runCasesOn, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
@@ -10,7 +13,8 @@ const tenant = 990003;
 async function withTenant({ driver, dsn }, body) {
   const db = await connect(dsn);
   try {
-    assert.equal(db.driver, driver);
+    // MariaDB is a server of the MySQL dialect, reached with the mysql driver (DIA-200).
+    assert.equal(db.driver, driver === 'mariadb' ? 'mysql' : driver);
     assert.equal(await new CompositeAccount().connect(db).tenantId(tenant).getCount(), 0, `no composite_account row of tenant ${tenant} before the case`);
     await withCleanup(() => body(db), async () => {
       await (await new CompositeAccount().connect(db).tenantId(tenant).gets()).delete();
@@ -20,7 +24,9 @@ async function withTenant({ driver, dsn }, body) {
 
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
-const cases = {
+/** The cases, on the bench databases of SQLite and PostgreSQL here and on a case database of MySQL and of MariaDB in
+ * coverage_transactions-mysql.test.mjs and coverage_transactions-mariadb.test.mjs (runOnCaseDatabase). */
+export const cases = {
   // Requirements: INT-67.
   async transaction_rollback(item) {
     await withTenant(item, async db => {
@@ -82,9 +88,25 @@ const cases = {
   },
 };
 
-// The cases write composite_account of the bench database of each server, which a recipe case database does not hold.
-for (const [database, name] of [['sqlite', 'BENCH_SQLITE_DSN'], ['mysql', 'BENCH_MYSQL_DSN'], ['postgres', 'BENCH_POSTGRES_DSN']]) {
-  const dsn = process.env[name];
-  if (!dsn) throw new Error(`${name} is required; run this test through make run-databases, which creates the bench databases`);
-  await runCasesOn(database, 'coverage_transactions.mjs', cases, 300_000, dsn);
+/**
+ * Runs the cases on a case database of dialect (mysql or mariadb, the two servers of the MySQL dialect, DIA-200) with the
+ * bench set installed, which is dropped when the file ends: the entries coverage_transactions-mysql.test.mjs and
+ * coverage_transactions-mariadb.test.mjs.
+ */
+export async function runOnCaseDatabase(dialect) {
+  const database = await createCaseDatabase(dialect, text => console.log(text));
+  after(() => database.drop(text => console.log(text)));
+  const db = await connect(database.dsn);
+  try { await installBench(db); } finally { await db.close(); }
+  await runCasesOn(dialect, `coverage_transactions-${dialect}.test.mjs`, cases, 300_000, database.dsn);
+}
+
+// The cases write composite_account of the bench database of SQLite and PostgreSQL, which a recipe case database does not
+// hold; the servers of the MySQL dialect run them in their entries (runOnCaseDatabase).
+if (import.meta.main) {
+  for (const [database, name] of [['sqlite', 'BENCH_SQLITE_DSN'], ['postgres', 'BENCH_POSTGRES_DSN']]) {
+    const dsn = process.env[name];
+    if (!dsn) throw new Error(`${name} is required; run this test through make run-databases, which creates the bench databases`);
+    await runCasesOn(database, 'coverage_transactions.mjs', cases, 300_000, dsn);
+  }
 }

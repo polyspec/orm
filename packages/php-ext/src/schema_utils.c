@@ -108,16 +108,21 @@ static bool schema_utils_target(zval *documents, zval *target)
     return true;
 }
 
+/* Introspects by the server of the connection (DIA-203), which Db::server gives: the server that Orm::connect read on a mysql
+ * connection (DIA-201), and the driver's own on PostgreSQL and SQLite. */
 static bool schema_utils_introspect(zval *db, zval *pdo, zval *driver, zval *transaction, zval *result)
 {
+    zval server;
+    if (!schema_utils_call(db, "server", &server, 0, NULL)) return false;
     catalog_observer_scope scope;
     dbs_catalog_observer_enter(&scope, db, transaction);
-    zval args[3];
+    zval args[4];
     ZVAL_COPY(&args[0], pdo);
     ZVAL_COPY(&args[1], driver);
-    ZVAL_STRING(&args[2], "schema");
-    bool ok = schema_utils_static("introspect", result, 3, args);
-    for (size_t i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+    ZVAL_COPY_VALUE(&args[2], &server);
+    ZVAL_STRING(&args[3], "schema");
+    bool ok = schema_utils_static("introspect", result, 4, args);
+    for (size_t i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
     dbs_catalog_observer_leave(&scope);
     return ok;
 }

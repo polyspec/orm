@@ -136,6 +136,12 @@ final class Db
         $this->state->listener = $open;
     }
 
+    /** @internal Records the server of a mysql connection, which Orm::connect reads by VERSION() (DIA-201). */
+    public function setServer(string $server): void
+    {
+        $this->state->server = $server;
+    }
+
     /** @internal Installs the private opener used after a cancellation ends the physical server connection. */
     public function setReconnect(\Closure $open): void
     {
@@ -180,10 +186,38 @@ final class Db
         return Listen::listen($this, $channel);
     }
 
+    /**
+     * @internal The server of the connection: on mysql, mysql or mariadb, which connect read by VERSION() (DIA-201);
+     * on postgres and sqlite, the driver's name.
+     */
+    public function server(): string
+    {
+        return $this->driver === 'mysql' ? $this->state->server : $this->driver;
+    }
+
+    /**
+     * The error of a statement whose plan step takes the row lock $lock. MariaDB fails a NOWAIT lock that it cannot
+     * take at once with 1205, the number of its lock wait timeout, so 1205 of a statement of a *_nowait lock is
+     * LOCK_NOT_AVAILABLE, as MySQL's 3572 is, and 1205 of any other statement stays CANCELED (DIA-209).
+     */
+    private function statementError(\PDOException $e, string $lock): OrmException
+    {
+        return self::nowaitLockError($this->server(), $lock, $e) ?? $this->driverError($e);
+    }
+
+    /** LOCK_NOT_AVAILABLE for MariaDB's 1205 of a statement of a *_nowait lock, else null (DIA-209). */
+    private static function nowaitLockError(string $server, string $lock, \PDOException $e): ?OrmException
+    {
+        return $server === 'mariadb' && str_ends_with($lock, '_nowait') && ($e->errorInfo[1] ?? null) === 1205
+            ? new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e)
+            : null;
+    }
+
     /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {
-        return OrmException::fromDriver($e, $this->driver, $this->handle());
+        // A mysql error number is read by the table of its server (DIA-201).
+        return OrmException::fromDriver($e, $this->server(), $this->handle());
     }
 
     /** The operations outside the query syntax. */
@@ -439,14 +473,15 @@ final class Db
      * $done publishes the event with the hrtime before the statement was sent and the error. A driver error
      * is mapped to an OrmException, attached to the event, and thrown. A statement whose $control is false
      * consumes an armed statement fault:
-     * it is not sent, and ends with that error (docs/spec/protocol.md 3.2).
+     * it is not sent, and ends with that error (docs/spec/protocol.md 3.2). $lock is the row lock of the plan step of
+     * the statement, '' for any other statement, which the error of a NOWAIT lock on MariaDB reads (DIA-209).
      *
      * @template T
      * @param \Closure(): T $send
      * @param \Closure(int, ?OrmException): void $done
      * @return T
      */
-    private function send(\Closure $send, \Closure $done, bool $control = false): mixed
+    private function send(\Closure $send, \Closure $done, bool $control = false, string $lock = ''): mixed
     {
         $start = hrtime(true);
         if (!$control && $this->state->statementFault !== null) {
@@ -465,7 +500,7 @@ final class Db
         } catch (\PDOException $e) {
             $error = $cancellation?->isCancelled()
                 ? new OrmException(Code::CANCELED, 'statement was cancelled', $e)
-                : $this->driverError($e);
+                : $this->statementError($e, $lock);
             if ($cancellation?->isCancelled()) {
                 $this->state->stmts = [];
                 $this->state->stmtOrder = [];
@@ -1230,7 +1265,8 @@ final class Db
         // The connection plans only the sets registered to it.
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
-        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
+        // The plans of a mysql connection are the ones of its server (DIA-209).
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize, $this->server());
         $r->canonicalize();
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
@@ -1288,7 +1324,7 @@ final class Db
             }
             return $total;
         }
-        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other
         // scalar statement reads one cell.
         return $this->scalar($plan['steps'][0], $r->params, in_array($r->ir['kind'], ['avg', 'sum'], true));
     }
@@ -1725,7 +1761,7 @@ final class Db
     /**
      * The arguments of a statement as the database reads them. PDO binds a float as its text, which PHP writes with the
      * `precision` setting (14 digits by default) and so names another binary64 value: a finite float binds as the
-     * shortest text that reads back as its own value (DIA-201). SQLite takes a text as a number only in a numeric form,
+     * shortest text that reads back as its own value (DIA-217). SQLite takes a text as a number only in a numeric form,
      * which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes
      * (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and Db::fetch both bind
      * through it, so a model write and a statement of Utils::run store the same value.
@@ -1747,7 +1783,7 @@ final class Db
         );
     }
 
-    /** The shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+    /** The shortest decimal text of a finite float that reads back as the same binary64 value (DIA-217). */
     private static function floatText(float $v): string
     {
         $precision = ini_set('precision', '-1');
@@ -1925,7 +1961,8 @@ final class Db
                 $st->closeCursor();
                 return $rows;
             });
-        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error), false,
+            (string) ($step['lock'] ?? ''));
         // An error from failing to free a row that was read is not the statement's error, so it is thrown
         // after the event.
         if ($step['decode'] !== []) {
@@ -1945,7 +1982,8 @@ final class Db
                 $st->closeCursor();
                 return $v;
             });
-        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error), false,
+            (string) ($step['lock'] ?? ''));
         return $v === false ? null : $v;
     }
 

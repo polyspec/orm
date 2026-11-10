@@ -73,9 +73,11 @@ func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
 	if c.dialect() == "sqlite" {
 		return dsn, nil
 	}
-	server := os.Getenv(applyServerEnv[c.dialect()])
+	// On MariaDB the variable of the MySQL dialect names the MariaDB server (FCV-3).
+	variable := serverVariable(applyServerEnv[c.dialect()], c.database)
+	server := os.Getenv(variable)
 	if server == "" {
-		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", applyServerEnv[c.dialect()])
+		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	return testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, dsn)), nil
 }
@@ -176,7 +178,7 @@ func applySchema(s databaseStep, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.dialect()], "x")
+	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.dialect()], c.server(), "x")
 	if err != nil {
 		return outcome{}, err
 	}
@@ -260,6 +262,9 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	events, kinds, ran := 0, map[string]int{}, false
 	handler := func(ev dbspec.ApplyEvent) error {
+		if c.progress != nil {
+			c.progress()
+		}
 		events++
 		kinds[ev.Kind]++
 		if s.k("on").On == nil || s.k("on").On.Event != ev.Kind || (ran && !s.k("on").On.Every) {
@@ -283,18 +288,18 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.k("op").Op {
 	case "dbspec.apply":
 		var res dbspec.ApplyResult
-		res, err = dbspec.Apply(c.ctx, conn, dialect, plans, applyNow, handler)
+		res, err = dbspec.Apply(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 		if err == nil && res.Failure != nil {
 			err = res.Failure
 		} else if err == nil && res.Stopped {
 			err = res.Stop
 		}
 	case "dbspec.recover":
-		err = dbspec.Recover(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Recover(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	case "dbspec.rollback":
-		err = dbspec.Rollback(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Rollback(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	case "dbspec.finalize":
-		err = dbspec.Finalize(c.ctx, conn, dialect, plans, applyNow, handler)
+		err = dbspec.Finalize(c.ctx, conn, dialect, c.server(), plans, applyNow, handler)
 	}
 	elapsed := time.Since(started).Milliseconds()
 	code := "ok"
@@ -313,6 +318,9 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("detail").Detail != "" && !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(s.k("detail").Detail)) {
 			return outcome{}, fmt.Errorf("the message %q does not hold %q", err.Error(), s.k("detail").Detail)
 		}
+		if err := s.k("message_holds").MessageHolds.check(err.Error()); err != nil {
+			return outcome{}, err
+		}
 	}
 	if s.k("elapsed").Elapsed != nil && (elapsed < s.k("elapsed").Elapsed.AtLeastMs || elapsed >= s.k("elapsed").Elapsed.BelowMs) {
 		return outcome{}, fmt.Errorf("the command took %d ms, want at least %d and below %d", elapsed, s.k("elapsed").Elapsed.AtLeastMs, s.k("elapsed").Elapsed.BelowMs)
@@ -323,6 +331,9 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	for _, kind := range s.k("count").Count {
 		members = append(members, []any{kind, map[string]any{"int": strconv.Itoa(kinds[kind])}})
+	}
+	if s.k("with_message").WithMessage && err != nil {
+		members = append(members, []any{"message", map[string]any{"text": err.Error()}})
 	}
 	return outcome{fields: map[string]any{"value": map[string]any{"object": members}}}, nil
 }

@@ -91,7 +91,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	defer testcase.Close(t, conn)
 	fault := &faultConn{Conn: conn}
 	if s.k("applied_first").AppliedFirst {
-		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, plans, now, nil)
+		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, dbspec.ServerSQLite, plans, now, nil)
 		if err != nil {
 			return err
 		}
@@ -129,9 +129,9 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	}
 	var failure error
 	if s.k("call").Call == "rollback" {
-		failure = dbspec.Rollback(ctx, fault, dbspec.DialectSQLite, plans, now, events)
+		failure = dbspec.Rollback(ctx, fault, dbspec.DialectSQLite, dbspec.ServerSQLite, plans, now, events)
 	} else {
-		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, plans, now, events)
+		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, dbspec.ServerSQLite, plans, now, events)
 		failure = err
 		if err == nil && result.Failure != nil {
 			failure = result.Failure

@@ -48,18 +48,30 @@ impl std::error::Error for IntrospectError {}
 /// Reads the current database (MySQL), the current schema (PostgreSQL) or the
 /// `main` database (SQLite) of `connection` into the dbspec document `name`
 /// and the objects it cannot read. The number of queries depends only on
-/// `dialect`, which must be the database of the connection.
-pub async fn introspect<Q: CatalogQuerier + ?Sized>(connection: &mut Q, dialect: Dialect, name: &str) -> Result<Introspection, IntrospectError> {
-    let queries = catalog_queries(dialect);
+/// `dialect`, which must be the database of the connection. `server` is the
+/// server that the connection reached, which the caller read when it connected
+/// (DIA-203); the introspection reads no version.
+///
+/// # Panics
+///
+/// When `server` is not a server of `dialect` (DBS-174, [`check_server`]),
+/// before any query runs.
+pub async fn introspect<Q: CatalogQuerier + ?Sized>(
+    connection: &mut Q,
+    dialect: Dialect,
+    server: Server,
+    name: &str,
+) -> Result<Introspection, IntrospectError> {
+    let queries = catalog_queries(dialect, server);
     let mut results = Vec::with_capacity(queries.len());
     for query in queries {
         results.push(connection.rows(query).await.map_err(IntrospectError::Query)?);
     }
-    let followups = catalog_followups(dialect, &results).map_err(IntrospectError::Catalog)?;
+    let followups = catalog_followups(dialect, server, &results).map_err(IntrospectError::Catalog)?;
     for query in &followups {
         results.push(connection.rows(query).await.map_err(IntrospectError::Query)?);
     }
-    read_catalog(dialect, &results, name).map_err(IntrospectError::Catalog)
+    read_catalog(dialect, server, &results, name).map_err(IntrospectError::Catalog)
 }
 
 fn decode_error(message: String) -> sqlx::Error {

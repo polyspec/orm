@@ -11,6 +11,7 @@
     "version"
   ],
   "case": [
+    "deadline",
     "id",
     "install",
     "not_through_pooler",
@@ -669,7 +670,8 @@
     "dbspec.introspect_refusal": [
       "dialect",
       "expect",
-      "op"
+      "op",
+      "server"
     ],
     "dbspec.add_tables_steps": [
       "dialect",
@@ -782,6 +784,7 @@
       "op"
     ],
     "catalog.reconnect": [
+      "connects",
       "dsn",
       "op",
       "refused_code",
@@ -1013,10 +1016,12 @@
       "elapsed",
       "expect",
       "message",
+      "message_holds",
       "on",
       "only",
       "op",
-      "plans"
+      "plans",
+      "with_message"
     ],
     "dbspec.recover": [
       "connection",
@@ -1025,10 +1030,12 @@
       "elapsed",
       "expect",
       "message",
+      "message_holds",
       "on",
       "only",
       "op",
-      "plans"
+      "plans",
+      "with_message"
     ],
     "dbspec.rollback": [
       "connection",
@@ -1037,10 +1044,12 @@
       "elapsed",
       "expect",
       "message",
+      "message_holds",
       "on",
       "only",
       "op",
-      "plans"
+      "plans",
+      "with_message"
     ],
     "dbspec.finalize": [
       "connection",
@@ -1049,10 +1058,12 @@
       "elapsed",
       "expect",
       "message",
+      "message_holds",
       "on",
       "only",
       "op",
-      "plans"
+      "plans",
+      "with_message"
     ],
     "dbspec.schema": [
       "connection",

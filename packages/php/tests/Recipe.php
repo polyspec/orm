@@ -128,7 +128,9 @@ final class Recipe
         if (!isset(self::$caseIds[$path])) {
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
             self::$caseIds[$path] = [];
-            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => []];
+            self::$databaseCaseIds[$path] = [
+                'mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => [], 'mariadb' => [],
+            ];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
                 foreach (array_keys(self::$databaseCaseIds[$path]) as $database) {
@@ -151,6 +153,39 @@ final class Recipe
     {
         self::cases($path);
         return self::$databaseCaseIds[$path][$database];
+    }
+
+    /**
+     * The texts of a message_holds field (FCV-4): an absent field holds nothing to check, a string is one text, and an
+     * array is its texts; an empty array or any other value is a recipe error, as it would check nothing.
+     *
+     * @return list<string>
+     */
+    private static function messageHoldsTexts(mixed $holds): array
+    {
+        if ($holds === null) {
+            return [];
+        }
+        if (is_string($holds)) {
+            return [$holds];
+        }
+        if ($holds === []) {
+            throw new InvalidArgumentException('message_holds is an empty array, which checks nothing');
+        }
+        if (is_array($holds) && array_is_list($holds) && array_filter($holds, 'is_string') === $holds) {
+            return $holds;
+        }
+        throw new InvalidArgumentException(
+            'message_holds is ' . json_encode($holds) . ', want a string or an array of strings'
+        );
+    }
+
+    /** Asserts that message holds each text of a message_holds field. */
+    public static function assertMessageHolds(mixed $holds, string $message): void
+    {
+        foreach (self::messageHoldsTexts($holds) as $text) {
+            Assert::assertStringContainsString($text, $message, 'the error message');
+        }
     }
 
     /** The recipe at path, relative to the repository root, decoded when a test of another recipe ran last. */
@@ -601,9 +636,14 @@ final class Recipe
                 'differences' => $result[2],
             ];
         } elseif ($op === 'dbspec.introspect_refusal') {
+            // Introspect with a dialect of no reader, or with a server that is not a server of the dialect, is refused
+            // with a message that names the dialect or the server; without a server the call passes the dialect's name
+            // (DBS-174).
+            $dialect = $step['dialect'];
+            $server = $step['server'] ?? $dialect;
             $got = self::dialectRefusal(
-                $step['dialect'],
-                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+                $server,
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $dialect, $server, 'introspected'),
             );
             $want = $expect instanceof RecipeStep ? $expect->all() : $expect;
             Assert::assertSame(self::sortedKeys($want), self::sortedKeys($got), "$op: result differs from the expect");
@@ -780,7 +820,7 @@ final class Recipe
      * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
      * driver: the one implementation of dsn.connect (FCV-4).
      */
-    private static function connectDriver(string $dsn, array $config = []): string
+    private static function connectDriver(string $dsn, array $config = [], string $database = ''): string
     {
         $db = Orm::connect($dsn, new Config(
             poolSize: $config['pool_size'] ?? 0,
@@ -803,17 +843,21 @@ final class Recipe
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             if (isset($config['session_read'])) {
+                // The query of the session may name its text by database (FCV-3), as the settings of MySQL and MariaDB
+                // differ (DIA-208).
+                $sql = $config['session_read']['sql'];
+                $sql = is_array($sql) ? $sql[self::dialectKey($database, $sql)] : $sql;
                 $read = $db->utils()->run(
                     static fn (TxFrame $frame): array => $frame->run(
                         StatementEvent::UTILITY,
                         [],
-                        $config['session_read']['sql'],
+                        $sql,
                     ),
                 );
                 Assert::assertSame(
                     [$config['session_read']['row']],
                     array_map(static fn (array $row): array => array_map('strval', $row), $read),
-                    $config['session_read']['sql'],
+                    $sql,
                 );
             }
             if ($config['tls_version'] ?? false) {
@@ -884,7 +928,7 @@ final class Recipe
             'the lines that the listener received',
         );
         Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
-        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+        self::assertMessageHolds($step['expect'][$database]['message_holds'] ?? null, $message);
     }
 
     /**
@@ -938,7 +982,7 @@ final class Recipe
             'the lines that the listener received',
         );
         Assert::assertSame($step['expect'][$database]['error'], $code);
-        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+        self::assertMessageHolds($step['expect'][$database]['message_holds'] ?? null, $message);
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -952,7 +996,7 @@ final class Recipe
         $message = '';
         $driver = null;
         try {
-            $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
+            $driver = self::connectDriver($step['dsn'], $step['config'] ?? [], $database);
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
@@ -961,7 +1005,7 @@ final class Recipe
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
-            Assert::assertStringContainsString($expect['message_holds'] ?? '', $message);
+            self::assertMessageHolds($expect['message_holds'] ?? null, $message);
             return;
         }
         if ($code !== null) {
@@ -1771,7 +1815,7 @@ final class Recipe
         $noRow = array_fill_keys($step['no_row_queries'] ?? [], 'SELECT 1 WHERE 0');
         $pdo = dbspec_failing_pdo('dbspec_apply_fault', [], $noRow);
         if (($step['applied_first'] ?? false) === true) {
-            Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+            Dbspec::apply($pdo, 'sqlite', 'sqlite', $plans, $now, null);
         }
         foreach ($step['sql'] ?? [] as $statement) {
             $pdo->exec($statement);
@@ -1799,9 +1843,9 @@ final class Recipe
         $error = null;
         try {
             if ($step['call'] === 'rollback') {
-                Dbspec::rollback($pdo, 'sqlite', $plans, $now, $events);
+                Dbspec::rollback($pdo, 'sqlite', 'sqlite', $plans, $now, $events);
             } else {
-                Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
+                Dbspec::apply($pdo, 'sqlite', 'sqlite', $plans, $now, $events);
             }
         } catch (\Throwable $caught) {
             $error = $caught;
@@ -1882,7 +1926,7 @@ final class Recipe
                 );
                 foreach ($result->errors as $i => $error) {
                     Assert::assertStringContainsString($error->path, $error->message, 'the message names the path');
-                    Assert::assertStringContainsString($expect['errors'][$i]['message_holds'] ?? '', $error->message);
+                    self::assertMessageHolds($expect['errors'][$i]['message_holds'] ?? null, $error->message);
                 }
                 return;
             }
@@ -1974,7 +2018,7 @@ final class Recipe
         $pdo = new CannedCatalogPdo($vectors['catalog'], implode("\n", $found['create']) . "\n", $found['name']);
         $expect = $step['expect'][$database];
         try {
-            $result = Dbspec::introspect($pdo, 'mysql', 'introspected');
+            $result = Dbspec::introspect($pdo, 'mysql', 'mysql', 'introspected');
         } catch (RuntimeException $error) {
             Assert::assertSame($expect['error'] ?? null, $error->getMessage());
             return;
@@ -2007,7 +2051,7 @@ final class Recipe
         foreach ($step['sql'] as $statement) {
             $pdo->exec($statement);
         }
-        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+        $result = Dbspec::introspect($pdo, 'sqlite', 'sqlite', 'introspected');
         $got = array_map(
             static fn($item): array => [
                 'kind' => $item->kind,
@@ -2570,35 +2614,47 @@ final class Recipe
     // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
     /** The databases of a recipe with a fixture (FCV-3). */
-    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown'];
+    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb'];
+
+    /** The SQL dialect of a database that is not a dialect of its own: a corpus runs SQLite's (DIA-185), MariaDB MySQL's (DIA-200). */
+    private const DIALECT_OF = ['markdown' => 'sqlite', 'mariadb' => 'mysql'];
 
     /**
      * Whether a case or step with the list $only runs on database: a corpus speaks SQLite's dialect, so what names
-     * sqlite names it too (FCV-3).
+     * sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3).
      *
      * @param list<string>|null $only
      */
     private static function onDatabase(?array $only, string $database): bool
     {
         return $only === null || in_array($database, $only, true)
-            || ($database === 'markdown' && in_array('sqlite', $only, true));
+            || ($database === 'markdown' && in_array('sqlite', $only, true))
+            || ($database === 'mariadb' && in_array('mysql', $only, true));
     }
 
     /**
-     * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads
-     * the SQLite entry unless the value states its own.
+     * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect
+     * unless the value states its own (FCV-3).
      */
     private static function dialectKey(string $database, mixed $entries): string
     {
-        return $database === 'markdown' && !(is_array($entries) && array_key_exists('markdown', $entries))
-            ? 'sqlite'
-            : $database;
+        return is_array($entries) && array_key_exists($database, $entries)
+            ? $database
+            : (self::DIALECT_OF[$database] ?? $database);
     }
 
-    /** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+    /** The SQL dialect of the case database. */
     private static function dialectOf(array $context): string
     {
-        return $context['database'] === 'markdown' ? 'sqlite' : $context['database'];
+        return self::DIALECT_OF[$context['database']] ?? $context['database'];
+    }
+
+    /** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+    private static function serverVariable(string $name, string $database): string
+    {
+        return $database === 'mariadb' && str_starts_with($name, 'ORM_TEST_MYSQL_')
+            ? 'ORM_TEST_MARIADB_' . substr($name, strlen('ORM_TEST_MYSQL_'))
+            : $name;
     }
 
     /** @var array<string, array{0: Schema, 1: list<Schema>}> the Schema and the external Schemas of each fixture set, built once per process */
@@ -2815,6 +2871,10 @@ final class Recipe
      */
     private static function databaseStep(array $raw, array &$context): void
     {
+        // A step runs on the databases that its only names, a nested step of a transaction too, as in every runtime.
+        if (!self::onDatabase($raw['only'] ?? null, $context['database'])) {
+            return;
+        }
         // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28,
         // FCV-4).
         if (isset($raw['expect_unnamed'])) {
@@ -2842,13 +2902,7 @@ final class Recipe
             if (isset($expected['cause'])) {
                 Assert::assertSame($expected['cause'], $error->getPrevious()?->getMessage(), 'the error cause');
             }
-            if (isset($expected['message_holds'])) {
-                Assert::assertStringContainsString(
-                    $expected['message_holds'],
-                    $error->getMessage(),
-                    'the error message'
-                );
-            }
+            self::assertMessageHolds($expected['message_holds'] ?? null, $error->getMessage());
             if (($expected['keeps_callback'] ?? false) === true) {
                 Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
             }
@@ -3079,14 +3133,26 @@ final class Recipe
                     ? self::userFromDatabaseDsn($reconnectBase, $s['user_from_database'])
                     : $reconnectBase;
                 if (isset($s['refused_message'])) {
+                    $relay = isset($s['connects']) ? new ConnectRelay($reconnectDsn) : null;
                     try {
-                        Catalog::connect($reconnectDsn);
-                    } catch (OrmException $error) {
-                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
-                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
-                        return [];
+                        try {
+                            Catalog::connect($relay?->dsn ?? $reconnectDsn);
+                        } catch (OrmException $error) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                            Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                            if ($relay !== null) {
+                                Assert::assertSame(
+                                    $s['connects'],
+                                    $relay->accepted(),
+                                    'the connections that the client opened for the refused reconnect'
+                                );
+                            }
+                            return [];
+                        }
+                        Assert::fail('the server accepted the connection that the step expects it to refuse');
+                    } finally {
+                        $relay?->close();
                     }
-                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
@@ -3126,6 +3192,11 @@ final class Recipe
                     'generated' => array_map(static fn ($column): bool => $column->generated, $columns),
                     'automatic_keys' => array_map(static fn ($column): bool => $column->automaticKey, $columns),
                     'defaults' => array_map(static fn ($column): bool => $column->defaultExpression !== null, $columns),
+                    'default_texts' => array_map(static fn ($column): ?string => $column->defaultExpression, $columns),
+                    'expression_defaults' => array_map(
+                        static fn ($column): bool => $column->expressionDefault,
+                        $columns
+                    ),
                     'primary_key' => $metadata->primaryKey,
                     'reliable_row_identity' => $metadata->reliableRowIdentity,
                 ];
@@ -3526,15 +3597,20 @@ final class Recipe
                     $source->commit();
                     return [];
                 }
-                $replica = (string) getenv('ORM_TEST_MYSQL_REPLICA_DSN');
+                // MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+                $variable = self::serverVariable('ORM_TEST_MYSQL_REPLICA_DSN', $context['database']);
+                $replica = (string) getenv($variable);
                 Assert::assertNotSame(
                     '',
                     $replica,
-                    'ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases '
-                        . 'and writes it'
+                    "$variable is required; run make orm-test-servers, which starts the databases and writes it"
                 );
-                $status = $source->query('SHOW BINARY LOG STATUS')->fetch(\PDO::FETCH_NUM);
-                $wait = case_admin($replica)->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
+                $mariadb = $context['database'] === 'mariadb';
+                $status = $source->query($mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS')
+                    ->fetch(\PDO::FETCH_NUM);
+                $wait = case_admin($replica)->prepare(
+                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?, 60)' : 'SELECT SOURCE_POS_WAIT(?, ?, 60)'
+                );
                 $wait->execute([$status[0], (int) $status[1]]);
                 $waited = $wait->fetchColumn();
                 Assert::assertTrue(
@@ -3605,9 +3681,15 @@ final class Recipe
                     ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT "
                         . "oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' "
                         . "AND l.pid <> pg_backend_pid() LIMIT 1"
-                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t "
-                        . "ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = "
-                        . "'{$s['table']}' LIMIT 1")->fetchColumn();
+                    // The session, other than this one, whose transaction holds a metadata lock on the table: one
+                    // form that MySQL and MariaDB answer alike, as MariaDB has no performance_schema.data_locks
+                    // (DIA-200, rule 1).
+                    : 'SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN '
+                        . 'performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE '
+                        . "m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = "
+                        . "'{$s['table']}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND "
+                        . 't.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1')
+                    ->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
@@ -3730,11 +3812,11 @@ final class Recipe
                     }
                 }
                 if (str_starts_with($dsn, 'env:')) {
-                    $name = substr($dsn, 4);
+                    $name = self::serverVariable(substr($dsn, 4), $context['database']);
                     $dsn = (string) getenv($name);
                     Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
                 }
-                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
+                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [], $context['database'])]];
             case 'dsn.sqlite_file':
                 return [
                     'value' => ['text' => self::sqliteFileNames($s['name'], $s['query'] ?? null, $s['config'] ?? [])],

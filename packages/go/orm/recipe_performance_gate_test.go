@@ -17,6 +17,13 @@ func TestRecipePerformanceGateMysql(t *testing.T) {
 	recipe.Run(t, performanceGateRecipe, "mysql")
 }
 
+// TestRecipePerformanceGateMariadb runs the performance_gate recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipePerformanceGateMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, performanceGateRecipe, "mariadb")
+}
+
 // TestRecipePerformanceGatePostgres runs the performance_gate recipe on PostgreSQL (FCV-3).
 // Requirements: PERF-1.
 func TestRecipePerformanceGatePostgres(t *testing.T) {

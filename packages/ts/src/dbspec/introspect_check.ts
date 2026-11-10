@@ -142,7 +142,7 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
  * Reads the string literal at the start of the text and returns its value and length. PostgreSQL and SQLite
  * only escape '' , and MySQL also uses backslash escapes.
  */
-function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
+export function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
   let out = '';
   for (let i = 1; i < text.length; i++) {
     const ch = present(text[i], 'text[i]');

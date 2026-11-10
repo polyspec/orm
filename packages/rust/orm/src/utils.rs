@@ -758,16 +758,18 @@ struct Observed<'a> {
 /// Introspects the connection's database. For each catalog query, after reading its rows and before converting them,
 /// Publishes the event. Failing to change a row is not a statement error.
 async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect: dbspec::Dialect) -> Result<crate::dbspec::Introspection> {
-    let queries = dbspec::catalog_queries(dialect);
+    // The server that connect read (DIA-203); the introspection reads no version of its own.
+    let server = on.db.dbspec_server();
+    let queries = dbspec::catalog_queries(dialect, server);
     let mut results = Vec::with_capacity(queries.len());
     for query in queries {
         results.push(fetch_catalog(on, conn, query).await?);
     }
-    let followups = dbspec::catalog_followups(dialect, &results).map_err(Error::internal)?;
+    let followups = dbspec::catalog_followups(dialect, server, &results).map_err(Error::internal)?;
     for query in &followups {
         results.push(fetch_catalog(on, conn, query).await?);
     }
-    dbspec::read_catalog(dialect, &results, "schema").map_err(Error::internal)
+    dbspec::read_catalog(dialect, server, &results, "schema").map_err(Error::internal)
 }
 
 /// Runs one catalog query and returns its row values. The run is recorded in statement observation.

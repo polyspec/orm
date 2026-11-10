@@ -5279,11 +5279,66 @@
         "scripts/suite-test.mts",
         "scripts/suite-test.test.mts",
         "scripts/features/languages.mts",
+        "scripts/features/recipe-runners.mts",
+        "scripts/features/recipe-keys.mts",
+        "scripts/features/recipe-files.mts",
         "scripts/features/rust-code.mts",
         "scripts/features/performance-reference.mts",
         "scripts/decimal-physical-check.mts",
         "contracts/implementations.json",
         "scripts/json/schema/implementations.schema.json"
+      ]
+    },
+    "dialect-facts-mariadb-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/go": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/php": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/php-extension": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/typescript": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/python": {
+      "scope": "suite",
+      "needs": [
+        "python",
+        "mariadb-server"
+      ]
+    },
+    "mariadb-recipes-check/rust": {
+      "scope": "suite",
+      "needs": [
+        "rust",
+        "mariadb-server"
       ]
     }
   },

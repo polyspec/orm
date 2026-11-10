@@ -51,6 +51,7 @@ ZEND_DLEXPORT int sqlite3_extension_init(sqlite3 *database, char **error, const 
 
 typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
 
+static zval *error_driver(zval *self);
 static void set_masked(zval *masks, zend_long idx, const char *s);
 static zval *active_for(zval *db);
 static bool finish_tx(zval *self, zval *frame, bool commit);
@@ -689,8 +690,36 @@ static bool cancellation_reopen(zval *db, zval *primary)
 typedef bool (*op_fn)(zval *self, void *ctx, zval *ret);
 typedef bool (*done_fn)(zval *self, void *ctx, zend_long start, zval *err);
 
-/* Db::send. control statements are not blocked by an armed fault. ret is set when the operation returns true. */
-static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done, void *dctx, zval *ret)
+/* LOCK_NOT_AVAILABLE in out for MariaDB's 1205 of a statement of a *_nowait lock, which MariaDB gives where MySQL gives 3572;
+ * false for any other error, whose 1205 stays CANCELED (DIA-209). server is the server of the connection and lock the row lock
+ * of the statement's plan step, NULL for any other statement. */
+static bool nowait_lock_error(zval *server, zval *lock, zval *error, zval *out)
+{
+    if (lock == NULL || Z_TYPE_P(lock) != IS_STRING || Z_STRLEN_P(lock) < 7
+        || strcmp(Z_STRVAL_P(lock) + Z_STRLEN_P(lock) - 7, "_nowait") != 0 || !is_str(server, "mariadb")) {
+        return false;
+    }
+    zval *info = rd(error, "errorInfo");
+    zval *number = info != NULL && Z_TYPE_P(info) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(info), 1) : NULL;
+    if (number == NULL || Z_TYPE_P(number) != IS_LONG || Z_LVAL_P(number) != 1205) {
+        return false;
+    }
+    zval message, args[3];
+    ZVAL_UNDEF(&message);
+    if (!mcall(error, "getMessage", &message, 0, NULL)) {
+        return false;
+    }
+    str_zv(&args[0], "LOCK_NOT_AVAILABLE");
+    ZVAL_COPY_VALUE(&args[1], &message);
+    ZVAL_COPY(&args[2], error);
+    bool ok = newobj(ORM_EXCEPTION, out, 3, args);
+    for (int index = 0; index < 3; index++) zval_ptr_dtor(&args[index]);
+    return ok;
+}
+
+/* Db::send. control statements are not blocked by an armed fault. ret is set when the operation returns true. lock is the row
+ * lock of the statement's plan step, NULL for any other statement. */
+static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done, void *dctx, zval *ret, zval *lock)
 {
     ZVAL_UNDEF(ret);
     zend_long start = now_hr();
@@ -739,10 +768,14 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
-        ZVAL_COPY(&driver, rd(self, "driver"));
+        ZVAL_COPY(&driver, error_driver(self));
         bool made;
         if (cancelled) {
             made = cancellation_exception(&pe, &err);
+        } else if (nowait_lock_error(&driver, lock, &pe, &err)) {
+            made = true;
+        } else if (EG(exception) != NULL) {
+            made = false;
         } else {
             ZVAL_COPY(&args[0], &pe);
             ZVAL_COPY(&args[1], &driver);
@@ -1144,7 +1177,7 @@ static bool exec_stmt_args(zval *self, zval *st, zval *args)
     return true;
 }
 
-/* float_text is the shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+/* float_text is the shortest decimal text of a finite float that reads back as the same binary64 value (DIA-217). */
 static zend_string *float_text(double value)
 {
     char buf[64];
@@ -1157,7 +1190,7 @@ static zend_string *float_text(double value)
 
 /* sqlite_args writes into mapped the arguments as the database reads them and returns true, or returns false when args need
  * no change. PDO binds a float as its text, which PHP writes with the `precision` setting (14 digits by default) and so names
- * another binary64 value: a finite float binds as the shortest text that reads back as its own value (DIA-201). SQLite takes
+ * another binary64 value: a finite float binds as the shortest text that reads back as its own value (DIA-217). SQLite takes
  * a text as a number only in a numeric form, which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an
  * infinity that SQLite itself writes (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and
  * Db::fetch both bind through it, so a model write and a statement of Utils::run store the same value. */
@@ -2306,7 +2339,7 @@ static bool query_rows(zval *self, zval *step, zval *params, zval *sql_in, zval 
     qctx qc = {&sql, &args};
     modelctx mc = {step, &sql, &args};
     zval rows;
-    ok = send_op(self, false, op_query, &qc, done_model, &mc, &rows);
+    ok = send_op(self, false, op_query, &qc, done_model, &mc, &rows, aget(step, "lock"));
     zval_ptr_dtor(&sql);
     if (ok) {
         zval *dec = aget(step, "decode");
@@ -2342,7 +2375,7 @@ static bool scalar_of_step(zval *self, zval *step, zval *params, bool row, zval 
     qctx qc = {&sql, &args};
     modelctx mc = {step, &sql, &args};
     zval v;
-    bool ok = send_op(self, false, row ? op_scalar_row : op_scalar, &qc, done_model, &mc, &v);
+    bool ok = send_op(self, false, row ? op_scalar_row : op_scalar, &qc, done_model, &mc, &v, aget(step, "lock"));
     zval_ptr_dtor(&sql);
     zval_ptr_dtor(&args);
     if (!ok) {
@@ -2916,12 +2949,14 @@ static bool plan_of(zval *self, zval *r, zval *out)
         return false;
     }
     zval_ptr_dtor(&model);
-    zval eargs[3], engine, rr, shape;
+    zval eargs[4], engine, rr, shape;
     ZVAL_COPY(&eargs[0], hash);
     ZVAL_COPY(&eargs[1], rd(self, "driver"));
     ZVAL_LONG(&eargs[2], as_long(rd(rd(self, "config"), "planCacheSize")));
-    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 3, eargs);
-    for (int i = 0; i < 3; i++) {
+    /* The plans of a mysql connection are the ones of its server (DIA-209). */
+    ZVAL_COPY(&eargs[3], error_driver(self));
+    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 4, eargs);
+    for (int i = 0; i < 4; i++) {
         zval_ptr_dtor(&eargs[i]);
     }
     if (!ok) {
@@ -3138,7 +3173,7 @@ static bool observed_as(zval *self, bool control, zval *kind, zval *tables, zval
     }
     zval_ptr_dtor(&pdo);
     pubctx pc = {kind, tables, tx, sql, binds};
-    return send_op(self, control, op, opctx, done_publish, &pc, out);
+    return send_op(self, control, op, opctx, done_publish, &pc, out, NULL);
 }
 
 bool db_observed_native(zval *connection, zval *kind, zval *tables, zval *transaction, zval *sql,
@@ -3496,7 +3531,7 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
             }
         }
     } else {
-        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar
+        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other scalar
          * statement reads one cell. */
         zval *kind = aget(rd(r, "ir"), "kind");
         ok = scalar_of_step(self, step0, rd(r, "params"), is_str(kind, "avg") || is_str(kind, "sum"), out);
@@ -3828,7 +3863,7 @@ static bool send_write(zval *self, zval *step, zval *args, zval *r, zval *id, zv
     ZVAL_COPY(&sql, aget(step, "sql"));
     modelctx mc = {step, &sql, args};
     zval res;
-    bool ok = send_op(self, false, op_write, &wc, done_model, &mc, &res);
+    bool ok = send_op(self, false, op_write, &wc, done_model, &mc, &res, NULL);
     zval_ptr_dtor(&sql);
     if (!ok) {
         return false;
@@ -4098,6 +4133,15 @@ ZEND_METHOD(Polyspec_Orm_Db, pdo)
 }
 
 /* Maps a PDO error using this connection's driver and handle for both the public method and transaction cleanup. */
+/* The driver name that OrmException::fromDriver reads an error by: a mysql connection names its server, whose table maps its
+ * error numbers (DIA-201). */
+static zval *error_driver(zval *self)
+{
+    zval *driver = rd(self, "driver");
+    if (Z_TYPE_P(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(driver), "mysql")) return rd(rd(self, "state"), "server");
+    return driver;
+}
+
 static bool map_driver_error(zval *self, zval *error, zval *out)
 {
     zval pdo, args[3];
@@ -4106,7 +4150,7 @@ static bool map_driver_error(zval *self, zval *error, zval *out)
         return false;
     }
     ZVAL_COPY(&args[0], error);
-    ZVAL_COPY(&args[1], rd(self, "driver"));
+    ZVAL_COPY(&args[1], error_driver(self));
     ZVAL_COPY(&args[2], &pdo);
     bool ok = scall("Polyspec\\Orm\\OrmException::fromDriver", out, 3, args);
     for (int i = 0; i < 3; i++) {
@@ -4164,7 +4208,7 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
                     zval dargs[3], derr, pdo;
                     if (handle_pdo(self, &pdo)) {
                         ZVAL_COPY(&dargs[0], &pe);
-                        ZVAL_COPY(&dargs[1], rd(self, "driver"));
+                        ZVAL_COPY(&dargs[1], error_driver(self));
                         ZVAL_COPY(&dargs[2], &pdo);
                         if (scall("Polyspec\\Orm\\OrmException::fromDriver", &derr, 3, dargs)) {
                             ZVAL_COPY_VALUE(&err, &derr);
@@ -4252,6 +4296,28 @@ ZEND_METHOD(Polyspec_Orm_Db, withCancellation)
     wr(&copy, "cancellationSlot", &slot);
     zval_ptr_dtor(&slot);
     RETURN_COPY_VALUE(&copy);
+}
+
+/* The server of the connection: on mysql the server that Orm::connect read by VERSION() (DIA-201), on postgres and sqlite the
+ * driver's name. */
+ZEND_METHOD(Polyspec_Orm_Db, server)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    RETURN_COPY(error_driver(ZEND_THIS));
+}
+
+/* Records the server of a mysql connection, which Orm::connect reads by VERSION() (DIA-201). */
+ZEND_METHOD(Polyspec_Orm_Db, setServer)
+{
+    zend_string *server;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(server)
+    ZEND_PARSE_PARAMETERS_END();
+    zval value;
+    ZVAL_STR_COPY(&value, server);
+    wr(rd(ZEND_THIS, "state"), "server", &value);
+    zval_ptr_dtor(&value);
+    RETURN_NULL();
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, setReconnect)
@@ -4652,7 +4718,7 @@ static bool execute_impl(zval *self, zval *step, zval *params)
     ZVAL_COPY(&sql, aget(step, "sql"));
     modelctx mc = {step, &sql, &args};
     zval res;
-    ok = send_op(self, false, op_execute, &wc, done_model, &mc, &res);
+    ok = send_op(self, false, op_execute, &wc, done_model, &mc, &res, NULL);
     zval_ptr_dtor(&sql);
     zval_ptr_dtor(&args);
     if (ok) {

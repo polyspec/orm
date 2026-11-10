@@ -8,7 +8,11 @@ import datetime
 import re
 from typing import Callable
 
-from polyspec.orm.dbspec.introspect import Connection, introspect_dbspec
+from polyspec.orm.dbspec.introspect import (
+    Connection,
+    _check_server,
+    introspect_dbspec,
+)
 from polyspec.orm.dbspec.model import DbspecPlan
 from polyspec.orm.dbspec.manifest import dbspec_manifest
 from polyspec.orm.dbspec.plan import chain_plans
@@ -77,10 +81,10 @@ EFFECT_QUERIES = {
         "index": "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE "
         "TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
         "constraint": "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS "
-        "WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND "
         "CONSTRAINT_NAME = ?",
         "trigger": "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE "
-        "TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND "
+        "EVENT_OBJECT_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND "
         "TRIGGER_NAME = ?",
     },
     "postgres": {
@@ -226,9 +230,11 @@ def _applied_at(micros: int) -> str:
 class _Applier:
     """The state of one command."""
 
-    def __init__(self, connection, dialect: str, chain, now, events):
+    def __init__(self, connection, dialect: str, server: str, chain, now, events):
         self.connection = connection
         self.dialect = dialect
+        # The server of the connection, which the caller read when it connected; verify introspects by it (DIA-203).
+        self.server = server
         self.chain = chain
         self.now = now
         self.events = events
@@ -528,7 +534,9 @@ class _Applier:
     def verify(self, want: str) -> None:
         """Checks that the database's introspection matches the wanted schemaHash (an empty string means an empty database)
         and that there are no unsupported objects."""
-        introspected = introspect_dbspec(self.connection, self.dialect, "schema")
+        introspected = introspect_dbspec(
+            self.connection, self.dialect, self.server, "schema"
+        )
         unsupported = introspected["unsupported"]
         if unsupported:
             u = unsupported[0]
@@ -827,9 +835,8 @@ class _Applier:
         ]
 
 
-def _new_applier(connection, dialect: str, plans, now, events) -> _Applier:
-    if dialect not in ("mysql", "postgres", "sqlite"):
-        raise TypeError(f"unknown dbspec dialect {dialect}")
+def _new_applier(connection, dialect: str, server: str, plans, now, events) -> _Applier:
+    _check_server(dialect, server)
     if not callable(now):
         raise TypeError(
             "now must be a function that returns the microseconds since the epoch"
@@ -839,7 +846,7 @@ def _new_applier(connection, dialect: str, plans, now, events) -> _Applier:
     chained = chain_plans(plans)
     if chained["plans"] is None:
         raise DbspecApplyError("chain", "", 0, chained["diagnostics"][0].message)
-    return _Applier(connection, dialect, chained["plans"], now, events)
+    return _Applier(connection, dialect, server, chained["plans"], now, events)
 
 
 def _last_plan(a: _Applier):
@@ -854,6 +861,7 @@ def _last_plan(a: _Applier):
 def apply_plans(
     connection: Connection,
     dialect: str,
+    server: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
@@ -861,9 +869,11 @@ def apply_plans(
     """Applies the unapplied plans in chain order, one step at a time up to the finalize step, using the dialect's
     lock on one connection (docs/spec/plans.md "Apply"). If the whole chain is applied,
     the database is left as is. `now` is the epoch microseconds recorded in applied_at
-    (the same unit as wall_micros), and `events` is called for each event. A failure
-    remains as DbspecApplyError, a handler error, or a database error."""
-    a = _new_applier(connection, dialect, plans, now, events)
+    (the same unit as wall_micros), and `events` is called for each event. `server` is the server that the connection
+    reached, which the caller read when it connected, and the verification introspects by it (DIA-203); recover_plans,
+    rollback_plans and finalize_plans take it alike. A failure remains as DbspecApplyError, a handler error, or a
+    database error."""
+    a = _new_applier(connection, dialect, server, plans, now, events)
 
     def run():
         position = a.settled()
@@ -892,13 +902,14 @@ def _sqlite_result_code(error) -> int | None:
 def recover_plans(
     connection: Connection,
     dialect: str,
+    server: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
     """Continues forward from the catalog effects after the step that recorded the interrupted plan (docs/
     plans.md "Apply"). If there is no interrupted plan, nothing changes."""
-    a = _new_applier(connection, dialect, plans, now, events)
+    a = _new_applier(connection, dialect, server, plans, now, events)
 
     def run():
         last = _last_plan(a)
@@ -923,6 +934,7 @@ def recover_plans(
 def rollback_plans(
     connection: Connection,
     dialect: str,
+    server: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
@@ -930,7 +942,7 @@ def rollback_plans(
     """Rolls the last plan in the history back to the first step with its rollback statements, and removes the row
     (docs/spec/plans.md "Apply"). An applied plan first checks for drift and NULL rows,
     and a step without a rollback stops with an irreversible DbspecApplyError."""
-    a = _new_applier(connection, dialect, plans, now, events)
+    a = _new_applier(connection, dialect, server, plans, now, events)
 
     def run():
         last = _last_plan(a)
@@ -994,13 +1006,14 @@ def rollback_plans(
 def finalize_plans(
     connection: Connection,
     dialect: str,
+    server: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
     """Runs the finalize steps of all applied plans in chain order, removing the hidden tables and columns
     and records each plan as done (docs/spec/plans.md "Apply")."""
-    a = _new_applier(connection, dialect, plans, now, events)
+    a = _new_applier(connection, dialect, server, plans, now, events)
 
     def run():
         position = a.settled()

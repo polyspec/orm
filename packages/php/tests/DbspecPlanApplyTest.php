@@ -33,7 +33,8 @@ class DbspecPlanApplyTest extends TestCase
         $pdo->exec('CREATE TABLE stray (id INTEGER)');
 
         try {
-            Dbspec::apply($pdo, 'sqlite', [], static fn(): \DateTimeImmutable => new \DateTimeImmutable(), null);
+            $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable();
+            Dbspec::apply($pdo, 'sqlite', 'sqlite', [], $now, null);
             self::fail('apply accepted a database that differs from the empty chain');
         } catch (ApplyError $error) {
             self::assertSame('drift', $error->code_);
@@ -60,11 +61,11 @@ class DbspecPlanApplyTest extends TestCase
         $plan = $parsed->plan ?? plan_failure('create-from-empty', $parsed->diagnostics);
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable();
-        Dbspec::apply($pdo, 'sqlite', [$plan], $now, null);
+        Dbspec::apply($pdo, 'sqlite', 'sqlite', [$plan], $now, null);
         $pdo->exec('CREATE TABLE stray (id INTEGER)');
 
         try {
-            Dbspec::rollback($pdo, 'sqlite', [$plan], $now, null);
+            Dbspec::rollback($pdo, 'sqlite', 'sqlite', [$plan], $now, null);
             self::fail('rollback accepted a database that differs from the applied plan');
         } catch (ApplyError $error) {
             self::assertSame('drift', $error->code_);

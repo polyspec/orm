@@ -107,16 +107,16 @@ func (s *catalogSession) storedQuery(query string, args []any) (string, []string
 func (s *catalogSession) columnNames(query string, args []any) (names []string, err error) {
 	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
-		return nil, mapDriverErrContext(err, s.ctx)
+		return nil, mapDriverErrContext(err, s.ctx, s.server)
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
-			names, err = nil, errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
+			names, err = nil, errors.Join(err, mapDriverErrContext(closeErr, s.ctx, s.server))
 		}
 	}()
 	names, err = rows.Columns()
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErr(err, s.server)
 	}
 	return names, nil
 }

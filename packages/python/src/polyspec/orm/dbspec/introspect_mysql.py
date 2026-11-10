@@ -9,7 +9,11 @@ from polyspec.orm.dbspec.introspect_catalog import (
     table_types,
 )
 from polyspec.orm.dbspec.names import rendered_column
-from polyspec.orm.dbspec.introspect_check import CheckDecodeError, decode_check
+from polyspec.orm.dbspec.introspect_check import (
+    CheckDecodeError,
+    _read_sql_string,
+    decode_check,
+)
 from polyspec.orm.dbspec.introspect_trigger import recognize_triggers
 from polyspec.orm.dbspec.model import DbspecType
 from polyspec.orm.dbspec.render import UUID_PATTERN
@@ -22,22 +26,32 @@ _COLUMNS_QUERY = """SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, CO
 IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EXPRESSION, '')
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME, ORDINAL_POSITION"""
 _INDEXES_QUERY = """SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),
-SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS
+SUB_PART IS NOT NULL, COLUMN_NAME IS NULL, INDEX_TYPE FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX"""
+# MariaDB reads an information_schema table of one database only by the schema column of its table (TABLE_SCHEMA,
+# EVENT_OBJECT_SCHEMA), so each read names it; a constraint and a trigger are in the schema of their table, so MySQL
+# gives the same rows (DIA-213).
 _FOREIGN_KEYS_QUERY = """SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, rc.UPDATE_RULE,
 rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc
 Join information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
-AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
+AND k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION"""
 # Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows in proportion to the number of tables (2000
 # tables takes over 60 seconds), so they are read with two queries and joined by name. MySQL CHECK names
 # are unique within the database.
 _CHECK_CLAUSES_QUERY = """SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME"""
+# MariaDB scopes a CHECK name to its table (probe mariadb.check.name_schema_scope), so its clauses are read by table and
+# name (DIA-203).
+_MARIADB_CHECK_CLAUSES_QUERY = """SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME"""
 _CHECKS_QUERY = """SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
-WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME"""
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME"""
+# MariaDB has no NOT ENFORCED CHECK and no ENFORCED column, so each of its checks is enforced (DIA-203).
+_MARIADB_CHECKS_QUERY = """SELECT TABLE_NAME, CONSTRAINT_NAME, 'YES' FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME"""
 _TRIGGERS_QUERY = """SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
-FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME"""
+FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME"""
 _ROUTINES_QUERY = (
     "SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE "
     "ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME"
@@ -56,8 +70,10 @@ _INTRODUCER = re.compile(r"_[a-z0-9]+\\\'")
 _TIME_FRACTION = re.compile(r"\\'(\d\d:\d\d:\d\d)\.0+\\'")
 
 
-def read_mysql(query) -> Catalog:
-    """query is a call that takes SQL and returns a list of CatalogRow."""
+def read_mysql(query, server: str) -> Catalog:
+    """query is a call that takes SQL and returns a list of CatalogRow. server is mysql or mariadb, the server that the
+    connection reached (DIA-203)."""
+    mariadb = server == "mariadb"
     c = Catalog()
     for r in query(_TABLES_QUERY):
         name, kind, options = r.text(0), r.text(1), r.text(2)
@@ -90,6 +106,11 @@ def read_mysql(query) -> Catalog:
                 "column", table, name, "a generated column has no dbspec definition"
             )
             continue
+        if mariadb:
+            try:
+                dflt, extra = _mariadb_default(dflt, extra)
+            except ValueError as error:
+                raise ValueError(f"column {table}.{name}: {error}") from None
         read = _mysql_type(column_type, charset, collation)
         if read is None:
             c.report(
@@ -128,13 +149,24 @@ def read_mysql(query) -> Catalog:
     _read_indexes(query, c)
     _read_foreign_keys(query, c)
     checked: dict = {}
+    # clauses holds each CHECK_CLAUSE by _check_key, in the escaped form of MySQL's CHECK_CLAUSE.
     clauses: dict = {}
-    for r in query(_CHECK_CLAUSES_QUERY):
-        clauses[r.text(0)] = r.text(1)
+    if mariadb:
+        for r in query(_MARIADB_CHECK_CLAUSES_QUERY):
+            # MariaDB writes CHECK_CLAUSE as SQL text, escaping a string literal once (probes mariadb.check.catalog_text,
+            # mariadb.check.string_escaped_twice), and MySQL escapes it once more; the MariaDB text takes that escape so
+            # that one reader reads both (DIA-203).
+            clauses[_check_key(server, r.text(0), r.text(1))] = _escape_mysql_clause(
+                r.text(2)
+            )
+    else:
+        for r in query(_CHECK_CLAUSES_QUERY):
+            clauses[_check_key(server, "", r.text(0))] = r.text(1)
     shown: dict = {}
-    for r in list(query(_CHECKS_QUERY)):
+    checks_query = _MARIADB_CHECKS_QUERY if mariadb else _CHECKS_QUERY
+    for r in list(query(checks_query)):
         table, name, enforced = r.text(0), r.text(1), r.text(2)
-        stored = clauses.get(name)
+        stored = clauses.get(_check_key(server, table, name))
         if stored is None:
             raise ValueError(f"check {table}.{name} has no CHECK_CLAUSE")
         clause = (
@@ -155,7 +187,7 @@ def read_mysql(query) -> Catalog:
                 column is None
                 or col is None
                 or _without_introducers(clause)
-                != _without_introducers(_renderer_check(col))
+                != _without_introducers(_renderer_check(server, col))
             ):
                 c.report(
                     "check",
@@ -217,12 +249,14 @@ def _mysql_type(column_type: str, charset: str, collation: str):
         return result(DbspecType("varchar", length=int(g(7))), "", text)
     precision = 0 if g(2) == "" else int(g(2))
     word = g(1)
+    # An integer display width has no effect on the value: MySQL drops it from COLUMN_TYPE and MariaDB keeps it
+    # (probes mysql.int.display_width_dropped, mariadb.int.display_width_dropped), so it is read as no width (DIA-204).
     if word == "smallint":
-        return result(DbspecType("i16"), "", g(2) == "")
+        return result(DbspecType("i16"), "", True)
     if word == "int":
-        return result(DbspecType("i32"), "", g(2) == "")
+        return result(DbspecType("i32"), "", True)
     if word == "bigint":
-        return result(DbspecType("i64"), "", g(2) == "")
+        return result(DbspecType("i64"), "", True)
     if word == "tinyint(1)":
         return result(DbspecType("bool"), column_type, True)
     if word == "double":
@@ -300,23 +334,89 @@ def _create_checks(create: str) -> dict:
             elif ch == ")":
                 depth -= 1
                 if depth == 0:
-                    checks[m.group(1)] = (
-                        create[start:i].replace("\\", "\\\\").replace("'", "\\'")
-                    )
+                    checks[m.group(1)] = _escape_mysql_clause(create[start:i])
                     break
             i += 1
     return checks
 
 
-def _renderer_check(col: dict) -> str:
+def _escape_mysql_clause(text: str) -> str:
+    """The inverse of the unescape of decode_check: escapes `\\` and `'`."""
+    return text.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _check_key(server: str, table: str, name: str) -> str:
+    """The key of a check in the clauses of read_mysql: its name on MySQL, whose CHECK names are unique in the
+    database, and its table and name on MariaDB, which scopes a CHECK name to its table (probes
+    mysql.check.name_schema_scope, mariadb.check.name_schema_scope)."""
+    if server == "mariadb":
+        return f"{table}\0{name}"
+    return name
+
+
+# A number literal of COLUMN_DEFAULT.
+_MYSQL_NUMBER = re.compile(r"^-?[0-9]+(\.[0-9]+)?(e[-+]?[0-9]+)?\Z")
+# A clock default of MariaDB's COLUMN_DEFAULT, current_timestamp() or current_timestamp(p).
+_MARIADB_CLOCK = re.compile(r"^current_timestamp\(([1-6]?)\)\Z")
+
+
+def _mariadb_default(dflt, extra: str):
+    """Reads MariaDB's COLUMN_DEFAULT and EXTRA in the form of MySQL's (DIA-205). MariaDB writes the default as SQL
+    text: NULL for a column whose default is NULL, a string or temporal literal quoted with its SQL escapes, a number as
+    written, and an expression default as its text, and its EXTRA has no DEFAULT_GENERATED (probe
+    mariadb.default.catalog_text). MySQL gives a NULL default as SQL NULL, a literal without quotes and escapes, and an
+    expression default, CURRENT_TIMESTAMP and CURRENT_TIMESTAMP(p) among them, with EXTRA DEFAULT_GENERATED (probe
+    mysql.default.catalog_text). A quoted text that is not one whole literal is a ValueError."""
+    if dflt is None or extra != "":
+        return dflt, extra
+    if dflt == "NULL":
+        return None, extra
+    if dflt.startswith("'"):
+        try:
+            value, n = _read_sql_string("mysql", dflt)
+        except CheckDecodeError:
+            n = -1
+        if n != len(dflt):
+            raise ValueError(f"default {dflt} is not one string literal")
+        return value, extra
+    if _MYSQL_NUMBER.match(dflt):
+        return dflt, extra
+    m = _MARIADB_CLOCK.match(dflt)
+    if m is not None:
+        if m.group(1) == "":
+            return "CURRENT_TIMESTAMP", "DEFAULT_GENERATED"
+        return f"CURRENT_TIMESTAMP({m.group(1)})", "DEFAULT_GENERATED"
+    return dflt, "DEFAULT_GENERATED"
+
+
+def mariadb_catalog_default(dflt) -> tuple:
+    """The default text and the expression flag of a MariaDB COLUMN_DEFAULT that the table descriptor of a catalog
+    connection reads, by the rule of the introspection (DIA-205): its query gives the DEFAULT_GENERATED flag and no
+    EXTRA, and MariaDB writes no DEFAULT_GENERATED, so the text is read with an empty EXTRA. A quoted text that is not
+    one whole literal is a ValueError."""
+    value, extra = _mariadb_default(dflt, "")
+    return value, extra == "DEFAULT_GENERATED"
+
+
+def _renderer_check(server: str, col: dict) -> str:
     """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md
-    "Introspection", "Checks")."""
+    "Introspection", "Checks"). MariaDB writes it without the outer parentheses and the introducers, in the escaped
+    form that read_mysql gives its CHECK_CLAUSE (probes mariadb.check.catalog_text, mariadb.render.bool_check,
+    mariadb.render.uuid_check, mariadb.render.time_of_day_check; DIA-203)."""
     c = f"`{col['name']}`"
     kind = col["type"].kind
+    if server == "mariadb":
+        if kind == "bool":
+            return f"{c} in (0,1)"
+        if kind == "uuid":
+            return f"{c} regexp \\'{UUID_PATTERN}\\'"
+        if kind == "time":
+            return f"{c} >= \\'00:00:00\\' and {c} < \\'24:00:00\\'"
+        return ""
     if kind == "bool":
         return f"({c} in (0,1))"
     if kind == "uuid":
-        return f"regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\',_utf8mb4\\'c\\')"
+        return f"regexp_like({c},_utf8mb4\\'{UUID_PATTERN}\\')"
     if kind == "time":
         return f"(({c} >= _utf8mb4\\'00:00:00\\') and ({c} < _utf8mb4\\'24:00:00\\'))"
     return ""

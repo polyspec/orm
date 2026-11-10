@@ -8,7 +8,9 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
+import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
+import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, type Paths } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -142,6 +144,99 @@ read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
   }
 });
 
+// The stop cases of the database servers (MySQL and MariaDB, each with its replica and privilege probe server) run
+// `test-servers.mts stop` on a temporary root whose pid files name fake servers, shells that end on TERM. The rule is
+// the same for the six: a server whose pid file names a process that has exited is reported not running and the stop
+// succeeds; a running one is stopped by its process, whatever client the PATH holds; any other failure shows its
+// output and fails the stop. No database starts.
+const DATABASE_SERVERS = (p: Paths): [string, string][] => [[p.mysqlPid, 'MySQL'], [p.mysqlReplicaPid, 'the MySQL replica'],
+  [p.mysqlPrivilegePid, 'the MySQL privilege probe server'], [p.mariadbPid, 'MariaDB'], [p.mariadbReplicaPid, 'the MariaDB replica'],
+  [p.mariadbPrivilegePid, 'the MariaDB privilege probe server']];
+
+// fakeServer starts a shell that ends on TERM and writes its pid into <pidFile>; it returns after the shell set its trap.
+function fakeServer(pidFile: string): number {
+  const ready = `${pidFile}.ready`;
+  const server = spawnSync('sh', ['-c', `mkfifo ${ready}
+sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
+echo $! > ${pidFile}
+read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
+  assert.equal(server.status, 0, String(server.stderr));
+  return Number(readFileSync(pidFile, 'utf8').trim());
+}
+
+// stopFixture runs main(['stop']) on a fresh root with <PATH> and <STOP_PROCESS> in the environment and returns what it
+// printed and the error it threw; the fake servers that still run afterwards are stopped by the real STOP_PROCESS.
+async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stopProcess?: (bin: string) => string } = {}): Promise<{ lines: string[]; error: unknown; pids: number[] }> {
+  const { LEASE: lease, STOP_PROCESS: stopProcess, PATH: path } = process.env;
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-stop-db-')));
+  const p = paths(root, join(root, 'sockets'));
+  const bin = join(root, 'bin');
+  const lines: string[] = [];
+  const log = console.log;
+  let error: unknown;
+  const pids: number[] = [];
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    mkdirSync(p.socketDir, { recursive: true });
+    mkdirSync(bin);
+    // The clients that the MariaDB bin folder puts first on the PATH of make orm-test-servers-stop: its mysqladmin is
+    // mariadb-admin, whose COM_SHUTDOWN MySQL 8.4 answers with Unknown command.
+    for (const client of ['mysqladmin', 'mariadb-admin']) {
+      writeFileSync(join(bin, client), `#!/bin/sh\necho "${client}: shutdown failed; error: 'Unknown command'" >&2\nexit 1\n`);
+      chmodSync(join(bin, client), 0o755);
+    }
+    prepare(p, bin);
+    for (const [file] of DATABASE_SERVERS(p)) if (existsSync(file)) pids.push(Number(readFileSync(file, 'utf8').trim()));
+    process.env.PATH = `${bin}:${path ?? ''}`;
+    if (env.stopProcess) process.env.STOP_PROCESS = env.stopProcess(bin);
+    console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
+    try { await servers.main(['stop'], p); } catch (thrown) { error = thrown; }
+  } finally {
+    console.log = log;
+    process.env.PATH = path;
+    process.env.STOP_PROCESS = stopProcess;
+    for (const pid of pids) if (!exited(pid)) spawnSync(stopProcess, ['TERM', String(pid)], { env: isolatedEnvironment() });
+    rmSync(root, { recursive: true, force: true });
+  }
+  return { lines, error, pids };
+}
+
+caseTest('stop stops each running database server by its process, whatever mysqladmin the PATH holds', COMPUTE, async () => {
+  let names: [string, string][] = [];
+  const { lines, error, pids } = await stopFixture(p => { names = DATABASE_SERVERS(p); for (const [file] of names) fakeServer(file); });
+  assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
+  for (const pid of pids) assert.ok(exited(pid), `the fake server ${pid} still runs after stop (state ${processState(pid)})`);
+  for (const [, name] of names) assert.ok(lines.includes(`test-servers: stopped ${name}`), `stop did not report stopping ${name}: ${lines.join(' | ')}`);
+});
+
+caseTest('stop reports a database server whose pid file names an exited process and succeeds', COMPUTE, async () => {
+  // A process that has exited and been reaped: spawnSync returns after the wait.
+  const dead = spawnSync('true').pid;
+  assert.ok(dead !== undefined && exited(dead), 'the dead process fixture still runs');
+  let names: [string, string][] = [];
+  const { lines, error } = await stopFixture(p => { names = DATABASE_SERVERS(p); for (const [file] of names) writeFileSync(file, `${dead}\n`); });
+  assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
+  for (const [file, name] of names)
+    assert.ok(lines.includes(`test-servers: ${name} is not running: process ${dead} of ${file} has exited`), `stop did not report ${name} as not running: ${lines.join(' | ')}`);
+});
+
+caseTest('stop fails with the output of a failed stop of a running database server', COMPUTE, async () => {
+  const { error } = await stopFixture(p => { fakeServer(p.mysqlPid); fakeServer(p.mariadbPid); }, {
+    stopProcess: bin => {
+      const refusing = join(bin, 'stop-process');
+      writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
+      chmodSync(refusing, 0o755);
+      return refusing;
+    },
+  });
+  assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
+  assert.match(error.message, /MySQL shutdown failed: test-servers: .*stop-process TERM exited with 7/);
+  assert.match(error.message, /MariaDB shutdown failed: test-servers: .*stop-process TERM exited with 7/);
+});
+
+const errorText = (error: unknown): string => error instanceof Error ? error.message : String(error);
+
 caseTest('only ESRCH means a server is gone and other kill errors keep its data directory', COMPUTE, () => {
   for (const code of ['EPERM', 'EINVAL']) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-kill-error-')));
@@ -235,10 +330,11 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   let holder;
   const stop = () => spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
-    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6).
+    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6, and the MariaDB servers).
     mkdirSync(join(root, 'scripts'));
     mkdirSync(join(root, 'tests'));
-    copyFileSync(new URL('./test-servers.mts', import.meta.url), join(root, 'scripts/test-servers.mts'));
+    for (const file of ['test-servers.mts', 'test-servers-mariadb.mts', 'mariadb-build.mts'])
+      copyFileSync(new URL(`./${file}`, import.meta.url), join(root, 'scripts', file));
     copyFileSync(new URL('../tests/errors.mts', import.meta.url), join(root, 'tests/errors.mts'));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
     execFileSync('mkfifo', [release, ready]);
@@ -594,7 +690,8 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
 caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
   const root = `/Users/someone/Projects/polyspec/${'a-very-long-worktree-name-'.repeat(4)}T135`;
   const sockets = Object.values(paths(root).sockets);
-  assert.equal(sockets.length, 6);
+  // The MySQL primary, replica and privilege probe server, the three of the ProxySQL of MySQL, and the same six of MariaDB.
+  assert.equal(sockets.length, 12);
   for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
   // The same checkout gets the same directory, and another checkout another directory.
   assert.equal(paths(root).sockets.mysql, sockets[0]);
@@ -724,4 +821,36 @@ caseTest('the test-server environment writes the MySQL socket of the primary as 
   const p = paths('/checkout');
   const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.equal(variables.ORM_TEST_MYSQL_SOCKET, p.sockets.mysql, 'the environment does not write the primary socket');
+});
+
+// The MariaDB servers (scripts/test-servers-mariadb.mts) write every variable of MARIADB_VARIABLES and read their ports back; the
+// replica refuses writes, the privilege probe server logs binary changes with trust-function-creators off and has no TLS files, and
+// every server keeps a TCP client at 127.0.0.1 the user of that host.
+caseTest('the MariaDB build leaves out the DTrace probes and records its options, so a build of other options is built again', COMPUTE, () => {
+  assert.ok(CMAKE_OPTIONS.includes('-DENABLE_DTRACE=OFF'), CMAKE_OPTIONS.join(' '));
+  assert.equal(buildOptionsText(['-DA=1', '-DB=2']), '-DA=1\n-DB=2\n');
+  assert.notEqual(buildOptionsText(CMAKE_OPTIONS), buildOptionsText(CMAKE_OPTIONS.filter(option => option !== '-DENABLE_DTRACE=OFF')));
+});
+
+caseTest('the MariaDB servers write their environment and give each role its settings', COMPUTE, () => {
+  const p = paths('/checkout');
+  const ports = { mariadb: 1, mariadbReplica: 2, mariadbPrivilege: 3, proxysql: 4 };
+  const variables = mariadbEnvironment(p, ports);
+  assert.deepEqual(Object.keys(variables), MARIADB_VARIABLES);
+  assert.equal(variables.ORM_TEST_MARIADB_SOCKET, p.sockets.mariadb);
+  const text = Object.entries(variables).map(([name, value]) => `export ${name}='${value}'\n`).join('');
+  assert.deepEqual(mariadbEnvironmentPorts(text, 'mariadb.env'), ports);
+  assert.throws(() => mariadbEnvironmentPorts('', 'mariadb.env'), /records no port in ORM_TEST_MARIADB_SERVER_DSN/);
+  const primary = mariadbdArguments(p, 'primary', 1);
+  const replica = mariadbdArguments(p, 'replica', 2);
+  const privilege = mariadbdArguments(p, 'privilege', 3);
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--skip-name-resolve'), args.join(' '));
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--thread-stack=1048576') && args.includes('--event-scheduler=ON'), args.join(' '));
+  assert.ok(replica.includes('--slave-parallel-threads=4') && !primary.includes('--slave-parallel-threads=4'), replica.join(' '));
+  assert.deepEqual([primary, replica, privilege].map(args => args.find(arg => arg.startsWith('--tmpdir='))), ['mariadb', 'mariadb-replica', 'mariadb-privilege'].map(name => `--tmpdir=${p.dir}/${name}-tmp`));
+  for (const args of [primary, replica, privilege]) assert.ok(args.includes('--performance-schema=ON') && args.includes('--performance-schema-instrument=transaction=ON') && args.includes('--performance-schema-instrument=wait/lock/metadata/sql/mdl=ON'), args.join(' '));
+  assert.ok(replica.includes('--read-only=ON') && !primary.includes('--read-only=ON') && !privilege.includes('--read-only=ON'));
+  assert.ok(privilege.includes('--log-bin-trust-function-creators=OFF') && primary.includes('--log-bin-trust-function-creators=ON'));
+  assert.ok(!privilege.some(arg => arg.startsWith('--ssl-')) && primary.some(arg => arg.startsWith('--ssl-ca=')));
+  assert.deepEqual([primary, replica, privilege].map(args => args.find(arg => arg.startsWith('--server-id='))), ['--server-id=1', '--server-id=2', '--server-id=3']);
 });

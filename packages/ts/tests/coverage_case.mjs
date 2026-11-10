@@ -66,7 +66,8 @@ export async function nativeSession(driver, dsn) {
     const db = new DatabaseSync(decodeURIComponent(url.pathname));
     return { connection: db, query: async sql => db.prepare(sql).all(), close: async () => db.close() };
   }
-  if (driver === 'mysql') {
+  // MariaDB is a server of the MySQL dialect, reached with the MySQL driver (DIA-200).
+  if (driver === 'mysql' || driver === 'mariadb') {
     const conn = await require('mysql2/promise').createConnection({
       user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
       socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname,
@@ -128,16 +129,4 @@ export async function withCleanup(body, cleanup) {
     failure = failure === null ? error : new AggregateError([failure, error], 'the case and its cleanup failed');
   }
   if (failure !== null) throw failure;
-}
-
-/**
- * Rejects with the label and the deadline when the promise has no result within `ms`. Every case that streams a large
- * result runs under a deadline: a read that did not stop at its budget would never finish.
- */
-export function within(promise, ms, label) {
-  let timer;
-  const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label}: no result within ${ms} ms`)), ms);
-  });
-  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 }

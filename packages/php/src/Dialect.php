@@ -26,11 +26,18 @@ final class Dialect
         'months_later' => 'month',
     ];
 
-    public function __construct(public readonly string $name)
+    /**
+     * The server of the dialect: on mysql, mysql or mariadb, which the connection read by VERSION() (DIA-201); on
+     * postgres and sqlite, the dialect's name.
+     */
+    public readonly string $server;
+
+    public function __construct(public readonly string $name, ?string $server = null)
     {
         if (!in_array($name, ['mysql', 'postgres', 'sqlite'], true)) {
             throw new OrmException(Code::DIALECT_UNKNOWN, $name);
         }
+        $this->server = $server ?? $name;
     }
 
     public static function isValueFunction(string $name): bool
@@ -258,16 +265,25 @@ final class Dialect
         return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS uuid)" : $ph;
     }
 
-    /** The row lock suffix; SQLite locks in the executor. */
+    /**
+     * The row lock suffix; SQLite locks in the executor. MySQL and MariaDB both read LOCK IN SHARE MODE as a shared row
+     * lock and MariaDB has no FOR SHARE, but NOWAIT follows FOR SHARE on MySQL alone and LOCK IN SHARE MODE on MariaDB
+     * alone, so share_nowait takes the form of the server (DIA-209).
+     */
     public function rowLock(string $mode): ?string
     {
         if (!in_array($mode, ['update', 'share', 'update_nowait', 'share_nowait'], true)) {
             return null;
         }
-        if ($this->name === 'sqlite') {
-            return '';
-        }
-        return ' FOR ' . strtoupper(str_replace('_', ' ', $mode));
+        return match (true) {
+            $this->name === 'sqlite' => '',
+            $mode === 'update' => ' FOR UPDATE',
+            $mode === 'update_nowait' => ' FOR UPDATE NOWAIT',
+            $this->name === 'postgres' => $mode === 'share' ? ' FOR SHARE' : ' FOR SHARE NOWAIT',
+            $mode === 'share' => ' LOCK IN SHARE MODE',
+            $this->server === 'mariadb' => ' LOCK IN SHARE MODE NOWAIT',
+            default => ' FOR SHARE NOWAIT',
+        };
     }
 
     /** Quotes text as an SQL string literal. */

@@ -10,8 +10,6 @@ pub struct Rule {
     pub text: &'static str,
 }
 
-/// INT-166
-pub const MYSQL_YEAR: Rule = Rule { code: CATALOG_VALUE, text: "MySQL YEAR has no grid cell" };
 /// INT-167
 pub const MYSQL_TIMESTAMP: Rule = Rule { code: CATALOG_VALUE, text: "MySQL TIMESTAMP follows a time zone" };
 /// INT-168

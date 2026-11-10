@@ -76,8 +76,8 @@ func mapErr(err error) error {
 		return err
 	}
 	// class 08 is connection exception. 57P01 (admin_shutdown), 57P02 (crash_shutdown),
-	// and 57P05 (idle_session_timeout) are sent when the server ends a session.
-	if strings.HasPrefix(pe.Code, "08") || pe.Code == "57P01" || pe.Code == "57P02" || pe.Code == "57P05" {
+	// 57P05 (idle_session_timeout) and 25P03 (idle_in_transaction_session_timeout) are sent when the server ends a session.
+	if strings.HasPrefix(pe.Code, "08") || pe.Code == "25P03" || pe.Code == "57P01" || pe.Code == "57P02" || pe.Code == "57P05" {
 		return &ir.Error{Code: orm.CodeConnectionLost, Msg: pe.Error()}
 	}
 	switch pe.Code {

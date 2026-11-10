@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { execFailure } from '../../tests/errors.mts';
-import { caseTest, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
+import { budgetText, caseTest, COMPUTE, DATABASE, duration, PROCESS, stallText, stepBudget, stepGuard } from '../../tests/testcase.mts';
 
 const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 
@@ -53,6 +53,34 @@ caseTest('testcase/duration', COMPUTE, () => {
   assert.equal(duration(60_000), '1m0s');
   assert.equal(duration(75_030), '1m15.03s');
   assert.equal(duration(3_600_000), '1h0m0s');
+});
+
+// The step guard ends a case that reports no step within its stall limit, and one that keeps reporting steps past its step budget,
+// each with the text that every runtime writes; the texts name the limits of a recipe case in seconds.
+caseTest('testcase/stepGuard', COMPUTE, async () => {
+  assert.equal(stallText(DATABASE), 'no step was applied within 120s');
+  assert.equal(budgetText(stepBudget(1)), 'step budget 60.25s exceeded');
+  const stalled = stepGuard(3_600_000, 500);
+  let ended = false;
+  void stalled.ended.then(() => { ended = true; });
+  try {
+    for (let index = 0; index < 10; index++) {
+      stalled.progress();
+      await new Promise(done => setTimeout(done, 5));
+    }
+    assert.equal(ended, false, 'the guard ended a case that reported its steps');
+    assert.equal((await stalled.ended).message, 'no step was applied within 0.5s');
+  } finally {
+    stalled.stop();
+  }
+  const spent = stepGuard(250, 3_600_000);
+  const steps = setInterval(spent.progress, 5);
+  try {
+    assert.equal((await spent.ended).message, 'step budget 0.25s exceeded');
+  } finally {
+    clearInterval(steps);
+    spent.stop();
+  }
 });
 
 caseTest('testcase/runCase', PROCESS, async () => {

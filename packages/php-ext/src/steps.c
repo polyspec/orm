@@ -200,9 +200,11 @@ static void hide_column(writer *w, str table, const column *c, str h)
     add(w, step(rename_column_sql(w, table, c->name, h), rename_column_sql(w, table, h, c->name), SL(""), present("column", table, h)));
 }
 
+/* A check is dropped by DROP CONSTRAINT, the form of PostgreSQL that MySQL and MariaDB, which has no DROP CHECK, read alike
+ * (probes mysql.check.drop_constraint, mariadb.check.drop_constraint; DIA-206). */
 static str drop_check_sql(writer *w, str table, str name)
 {
-    return fmt("ALTER TABLE %S%s%S", q(w, table), w->r.d == D_MYSQL ? " DROP CHECK " : " DROP CONSTRAINT ", q(w, name));
+    return fmt("ALTER TABLE %S DROP CONSTRAINT %S", q(w, table), q(w, name));
 }
 
 static void drop_renderer_check(writer *w, str table, str name, str expression)

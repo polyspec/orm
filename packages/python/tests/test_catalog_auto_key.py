@@ -446,5 +446,38 @@ class CatalogAutoKeyTest(unittest.TestCase):
         self.assertEqual(session.calls, [])
 
 
+class _DescribedSession(_Session):
+    """A mysql session whose metadata reads return the given column rows of one base table."""
+
+    def __init__(self, server, columns):
+        self.dialect = "mysql"
+        self.server = server
+        self.columns = columns
+
+    def run(self, sql, params=(), max_rows=None, max_bytes=None, *_, **__):
+        rows = [["BASE TABLE"]] if "TABLE_TYPE" in sql else self.columns
+        return _Raw(names=[], rows=rows, affected=0)
+
+
+class CatalogMariadbDefaultTest(unittest.TestCase):
+    # Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no server
+    # writes one, so the recipes cannot hold it (FCV-2).
+    def test_a_mariadb_quoted_default_that_is_not_one_literal_is_metadata_invalid(self):
+        for default in ("'a' 'b'", "'unterminated", "'a'x"):
+            with self.subTest(default=default):
+                session = _DescribedSession(
+                    "mariadb",
+                    [["a", "varchar(8)", True, False, 0, False, default, False]],
+                )
+                with self.assertRaises(OrmError) as caught:
+                    session.describe({"namespace": "orm_test", "name": "sample"})
+                self.assertEqual(caught.exception.code, codes.TABLE_METADATA_INVALID)
+                self.assertEqual(
+                    str(caught.exception),
+                    f'TABLE_METADATA_INVALID: column "a": default {default} is not one'
+                    " string literal",
+                )
+
+
 if __name__ == "__main__":
     testcase.main()

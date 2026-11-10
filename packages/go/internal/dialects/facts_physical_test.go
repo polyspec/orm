@@ -113,6 +113,10 @@ func TestDialectFacts(t *testing.T) {
 	counts := map[string]*tally{"mysql": {}, "postgres": {}, "sqlite": {}}
 	started := time.Now()
 	for index, probe := range probes {
+		// The MariaDB probes run on the MariaDB servers (TestDialectFactsMariadb).
+		if probe.DB == "mariadb" {
+			continue
+		}
 		t.Run(probe.ID, func(t *testing.T) {
 			probeServers := servers
 			if probe.Fixture == ProbeFixtureMySQLPrivilege {
@@ -129,6 +133,44 @@ func TestDialectFacts(t *testing.T) {
 		t.Logf("summary %s: %d passed, %d failed", db, counts[db].passed, counts[db].failed)
 	}
 	t.Logf("summary all: %d probes in %s", len(probes), time.Since(started).Round(time.Millisecond))
+}
+
+// TestDialectFactsMariadb runs the MariaDB probes on the MariaDB servers of make orm-test-mariadb: ORM_TEST_MARIADB_DSN and, for a
+// probe of the privilege fixture, ORM_TEST_MARIADB_PRIVILEGE_DSN (DIA-200).
+func TestDialectFactsMariadb(t *testing.T) {
+	testcase.Group(t)
+	dsn, privilegeDSN := os.Getenv("ORM_TEST_MARIADB_DSN"), os.Getenv("ORM_TEST_MARIADB_PRIVILEGE_DSN")
+	if dsn == "" || privilegeDSN == "" {
+		t.Fatal("ORM_TEST_MARIADB_DSN and ORM_TEST_MARIADB_PRIVILEGE_DSN are required; run make orm-test-mariadb, which starts the MariaDB servers and writes them")
+	}
+	probes := All()
+	if err := Validate(probes); err != nil {
+		t.Fatal(err)
+	}
+	servers := openTestServers(t, dsn, "", strconv.Itoa(os.Getpid()))
+	privilegeServers := openTestServers(t, privilegeDSN, "", strconv.Itoa(os.Getpid())+"_privilege")
+	if err := servers.Unreachable("mariadb"); err != nil {
+		t.Errorf("mariadb is unreachable; each of its probes fails: %v", err)
+	}
+	passed, failed := 0, 0
+	started := time.Now()
+	for index, probe := range probes {
+		if probe.DB != "mariadb" {
+			continue
+		}
+		t.Run(probe.ID, func(t *testing.T) {
+			probeServers := servers
+			if probe.Fixture == ProbeFixtureMySQLPrivilege {
+				probeServers = privilegeServers
+			}
+			if runProbeCase(t, probeServers, probe, index, probe.Fact) {
+				passed++
+			} else {
+				failed++
+			}
+		})
+	}
+	t.Logf("summary mariadb: %d passed, %d failed in %s", passed, failed, time.Since(started).Round(time.Millisecond))
 }
 
 // probeCaseDeadline is the deadline of the case that runs one probe. It adds to the probe's own probeDeadline

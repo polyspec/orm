@@ -22,6 +22,13 @@ func TestRecipeCatalogConnectionMysql(t *testing.T) {
 	recipe.Run(t, catalogConnectionRecipe, "mysql")
 }
 
+// TestRecipeCatalogConnectionMariadb runs the catalog_connection recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeCatalogConnectionMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, catalogConnectionRecipe, "mariadb")
+}
+
 // TestRecipeCatalogConnectionPostgres runs the catalog_connection recipe on PostgreSQL, each case on a case database
 // (FCV-3).
 // Requirements: INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,

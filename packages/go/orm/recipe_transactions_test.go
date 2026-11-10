@@ -18,6 +18,13 @@ func TestRecipeTransactionsMysql(t *testing.T) {
 	recipe.Run(t, transactionsRecipe, "mysql")
 }
 
+// TestRecipeTransactionsMariadb runs the transactions recipe on MariaDB, a server of the MySQL dialect, each case on a case
+// database (DIA-200, FCV-3).
+func TestRecipeTransactionsMariadb(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, transactionsRecipe, "mariadb")
+}
+
 // TestRecipeTransactionsPostgres runs the transactions recipe on PostgreSQL, each case on a case database (FCV-3).
 // Requirements: CFG-24, DSL-118, DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-72,
 // INT-48, INT-49, PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, PLN-24, PLN-44.

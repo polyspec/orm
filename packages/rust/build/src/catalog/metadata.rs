@@ -2,6 +2,33 @@
 use super::CatalogError;
 use crate::tool_db::{Conn, QueryLimits, Rows, Val, P};
 
+/// The column of one row of the column query of a server. MariaDB writes COLUMN_DEFAULT as SQL text, which the descriptor
+/// reads in the MySQL form by the rule of the introspection (DIA-205); the query reads no EXTRA, and MariaDB writes no
+/// DEFAULT_GENERATED.
+fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result<TableColumnMetadata, CatalogError> {
+    if row.len() != 8 {
+        return Err("TABLE_METADATA_INVALID: column shape".into());
+    }
+    let mut column = TableColumnMetadata {
+        name: text(&row[0])?,
+        native_type: text(&row[1])?,
+        nullable: row[2].bool().map_err(|e| e.to_string())?,
+        generated: row[3].bool().map_err(|e| e.to_string())?,
+        automatic_key: row[5].bool().map_err(|e| e.to_string())?,
+        default_expression: match &row[6] {
+            Val::Null => None,
+            value => Some(text(value)?),
+        },
+        expression_default: row[7].bool().map_err(|e| e.to_string())?,
+        check_precision: None,
+    };
+    if server == polyspec_orm_schema::dbspec::Server::MariaDb {
+        (column.default_expression, column.expression_default) = polyspec_orm_schema::dbspec::mariadb_catalog_default(column.default_expression.take())
+            .map_err(|error| format!("TABLE_METADATA_INVALID: column {:?}: {error}", column.name))?;
+    }
+    Ok(column)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TableRef {
     pub namespace: String,
@@ -73,7 +100,32 @@ pub(super) async fn current_namespace(connection: &mut Conn, dialect: &str) -> R
     validate_name(&namespace)?;
     Ok(namespace)
 }
-pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &TableRef) -> Result<TableMetadata, CatalogError> {
+/// The server of a catalog connection of `dialect`, which a mysql connection reads once by `VERSION()` when it connects: a
+/// version that contains `-MariaDB` is MariaDB, and any other is MySQL (DIA-201).
+pub(super) async fn server(connection: &mut Conn, dialect: &str) -> Result<polyspec_orm_schema::dbspec::Server, CatalogError> {
+    Ok(match dialect {
+        "mysql" => {
+            let result = rows(connection, "SELECT VERSION()", &[]).await?;
+            if result.len() != 1 || result[0].len() != 1 {
+                return Err("TABLE_METADATA_INVALID: VERSION() returned no one value".into());
+            }
+            if text(&result[0][0])?.contains("-MariaDB") {
+                polyspec_orm_schema::dbspec::Server::MariaDb
+            } else {
+                polyspec_orm_schema::dbspec::Server::MySql
+            }
+        }
+        "postgres" => polyspec_orm_schema::dbspec::Server::Postgres,
+        _ => polyspec_orm_schema::dbspec::Server::Sqlite,
+    })
+}
+/// The descriptor of `table` on a connection of `dialect` whose server is `server` (DIA-201).
+pub(super) async fn describe(
+    connection: &mut Conn,
+    dialect: &str,
+    server: polyspec_orm_schema::dbspec::Server,
+    table: &TableRef,
+) -> Result<TableMetadata, CatalogError> {
     validate_name(&table.namespace)?;
     validate_name(&table.name)?;
     if dialect == "sqlite" && table.namespace != "main" {
@@ -104,33 +156,22 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
         _ => return Err("TABLE_KIND_UNSUPPORTED".into()),
     };
     let sql=match dialect {
-        "mysql"=>"SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+        // The key ordinal is a subquery that names the table by constants: a join of KEY_COLUMN_USAGE opens every table of every
+        // database on MariaDB, and the subquery none, with the same rows on both servers (DIA-210). It binds the table twice.
+        // The native type is COLUMN_TYPE in the form of MySQL 8.4, which MariaDB writes with an integer display width (DIA-204).
+        "mysql"=>"SELECT c.COLUMN_NAME,CASE WHEN c.COLUMN_TYPE='year(4)' THEN 'year' WHEN c.DATA_TYPE IN ('tinyint','smallint','mediumint','int','bigint') AND c.COLUMN_TYPE<>'tinyint(1)' AND c.COLUMN_TYPE NOT LIKE '%zerofill' AND LOCATE('(',c.COLUMN_TYPE)>0 THEN CONCAT(c.DATA_TYPE,SUBSTRING(c.COLUMN_TYPE,LOCATE(')',c.COLUMN_TYPE)+1)) ELSE c.COLUMN_TYPE END,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA=? AND k.TABLE_NAME=? AND k.CONSTRAINT_NAME='PRIMARY' AND k.COLUMN_NAME=c.COLUMN_NAME),0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
         "postgres"=>"SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
         "sqlite"=>"SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?2,?1) ORDER BY cid",
         _=>unreachable!(),
     };
-    let result = rows(connection, sql, &params).await?;
+    let mysql_params = [params[0].clone(), params[1].clone(), params[0].clone(), params[1].clone()];
+    let result = rows(connection, sql, if dialect == "mysql" { &mysql_params } else { &params }).await?;
     let mut columns = Vec::new();
     let mut keys = Vec::new();
     for row in result {
-        if row.len() != 8 {
-            return Err("TABLE_METADATA_INVALID: column shape".into());
-        }
-        let column = TableColumnMetadata {
-            name: text(&row[0])?,
-            native_type: text(&row[1])?,
-            nullable: row[2].bool().map_err(|e| e.to_string())?,
-            generated: row[3].bool().map_err(|e| e.to_string())?,
-            automatic_key: row[5].bool().map_err(|e| e.to_string())?,
-            default_expression: match &row[6] {
-                Val::Null => None,
-                value => Some(text(value)?),
-            },
-            expression_default: row[7].bool().map_err(|e| e.to_string())?,
-            check_precision: None,
-        };
+        let column = column_of(&row, server)?;
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
-            return Err("TABLE_METADATA_INVALID: duplicate column".into());
+            return Err(format!("TABLE_METADATA_INVALID: duplicate column {:?}", column.name).into());
         }
         let ordinal = row[4].int().map_err(|e| e.to_string())?;
         if ordinal < 0 {
@@ -166,4 +207,33 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
         column.check_precision = check.map(|precision| precision as i64);
     }
     Ok(metadata)
+}
+
+#[cfg(test)]
+mod mariadb_default_tests {
+    use super::column_of;
+    use crate::tool_db::Val;
+
+    /// A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID (DIA-205). No server writes one, so
+    /// the recipes cannot hold it, and the catalog of Rust holds sqlx connections with no driver seam, so the case enters at
+    /// the row that describe reads (FCV-2).
+    // Requirements: DIA-205.
+    #[test]
+    fn mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for text in ["'a' 'b'", "'unterminated", "'a'x"] {
+            let row = [
+                Val::Text("broken".into()),
+                Val::Text("varchar(40)".into()),
+                Val::Int(1),
+                Val::Int(0),
+                Val::Int(0),
+                Val::Int(0),
+                Val::Text(text.into()),
+                Val::Int(0),
+            ];
+            let refused = column_of(&row, polyspec_orm_schema::dbspec::Server::MariaDb).expect_err(text);
+            assert_eq!(refused.to_string(), format!("TABLE_METADATA_INVALID: column \"broken\": default {text} is not one string literal"));
+        }
+    }
 }
