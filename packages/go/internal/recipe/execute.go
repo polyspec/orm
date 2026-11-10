@@ -24,19 +24,7 @@ func executeRequest(s databaseStep, c *databaseContext) error {
 	if err != nil {
 		return err
 	}
-	var input map[string]json.RawMessage
-	if err := json.Unmarshal(s.k("request").Request, &input); err != nil {
-		return err
-	}
-	if _, ok := input["manifest_hash"]; ok {
-		return fmt.Errorf("db.execute: the request already holds manifest_hash")
-	}
-	hash, err := json.Marshal(m.ManifestHash)
-	if err != nil {
-		return err
-	}
-	input["manifest_hash"] = hash
-	request, err := json.Marshal(input)
+	request, err := withManifestHash(s.k("request").Request, m.ManifestHash, "db.execute: the request")
 	if err != nil {
 		return err
 	}

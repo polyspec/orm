@@ -19,6 +19,8 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Expression
 {
+    use LogicalChain;
+
     private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
     private const ORDERINGS = ['<' => true, '<=' => true, '>' => true, '>=' => true];
     private const KEYWORDS = [
@@ -99,7 +101,7 @@ final class Expression
     ): array {
         $parser = new self(array_slice($tokens, 0, -1), $line, $endColumn, $columns, $actionColumns, $table, $failed);
         try {
-            $tree = $parser->disjunction();
+            $tree = $parser->logical('or');
             if ($parser->at < count($parser->tokens)) {
                 $parser->fail('is not allowed here');
             }
@@ -166,29 +168,16 @@ final class Expression
         throw new ExpressionFailure();
     }
 
-    private function disjunction(): array
+    private function logicalNode(string $op, array $left, array $right): array
     {
-        $left = $this->conjunction();
-        while ($this->word('or')) {
-            $left = ['or', $left, $this->conjunction()];
-        }
-        return $left;
-    }
-
-    private function conjunction(): array
-    {
-        $left = $this->predicate();
-        while ($this->word('and')) {
-            $left = ['and', $left, $this->predicate()];
-        }
-        return $left;
+        return [$op, $left, $right];
     }
 
     /** One predicate form; parentheses only group and leave no node (emission writes those precedence needs). */
     private function predicate(): array
     {
         if ($this->punct('(')) {
-            $inner = $this->disjunction();
+            $inner = $this->logical('or');
             if (!$this->punct(')')) {
                 $this->fail('is not allowed here; expected )');
             }

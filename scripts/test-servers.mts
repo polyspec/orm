@@ -618,6 +618,29 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
   console.log(`test-servers: PostgreSQL replica on 127.0.0.1:${ports.postgresReplica}`);
 }
 
+// issueTls writes into dir a test CA, a second CA that signs nothing, and for each [name, subjectAltName] of servers a
+// certificate that the test CA signs. It writes a temporary folder and renames it, so dir is complete or absent.
+export function issueTls(dir: string, servers: readonly (readonly [string, string])[]): void {
+  const tmp = `${dir}.tmp`;
+  rmSync(tmp, { recursive: true, force: true });
+  mkdirSync(tmp, { recursive: true });
+  const log = openSync(join(tmp, 'openssl.log'), 'a');
+  try {
+    const openssl = (args: string[]) => run('openssl', args, { stdio: ['ignore', 'inherit', log] });
+    for (const ca of ['ca', 'other-ca'])
+      openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3650', '-subj', `/CN=orm test ${ca}`, '-keyout', join(tmp, `${ca}-key.pem`), '-out', join(tmp, `${ca}.pem`)]);
+    for (const [name, san] of servers) {
+      openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
+      writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
+      openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-CAserial', join(tmp, 'ca.srl'), '-days', '3650',
+        '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
+    }
+  } finally {
+    closeSync(log);
+  }
+  renameSync(tmp, dir);
+}
+
 // tls issues the TLS files of the MySQL servers once under <dir>/tls and loads them into both servers with ALTER
 // INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, a primary certificate that names localhost, a
 // replica certificate that deliberately names orm-mismatch.invalid, and a second CA that signed neither. The mismatch
@@ -626,21 +649,7 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
 function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const dir = join(p.dir, 'tls');
   if (!existsSync(join(dir, 'other-ca.pem'))) {
-    const tmp = `${dir}.tmp`;
-    rmSync(tmp, { recursive: true, force: true });
-    mkdirSync(tmp, { recursive: true });
-    const log = openSync(join(tmp, 'openssl.log'), 'a');
-    const openssl = (args: string[]) => run('openssl', args, { stdio: ['ignore', 'inherit', log] });
-    for (const ca of ['ca', 'other-ca'])
-      openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3650', '-subj', `/CN=orm test ${ca}`, '-keyout', join(tmp, `${ca}-key.pem`), '-out', join(tmp, `${ca}.pem`)]);
-    for (const [name, san] of [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const) {
-      openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
-      writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
-      openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-CAserial', join(tmp, 'ca.srl'), '-days', '3650',
-        '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
-    }
-    closeSync(log);
-    renameSync(tmp, dir);
+    issueTls(dir, [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]]);
   } else {
     const expected = [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const;
     const stale = expected.filter(([name, san]) => {

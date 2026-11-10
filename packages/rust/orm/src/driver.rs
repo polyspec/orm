@@ -228,6 +228,24 @@ pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
     out
 }
 
+/// A parameter that PostgreSQL reads in the binary form of the type with this oid, the bytes the value holds.
+macro_rules! pg_binary_param {
+    ($name:ident, $oid:literal) => {
+        impl sqlx::Type<Postgres> for $name {
+            fn type_info() -> PgTypeInfo {
+                PgTypeInfo::with_oid(sqlx::postgres::types::Oid($oid))
+            }
+        }
+
+        impl sqlx::Encode<'_, Postgres> for $name {
+            fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                buf.extend_from_slice(&self.0);
+                Ok(sqlx::encode::IsNull::No)
+            }
+        }
+    };
+}
+
 /// A PostgreSQL `uuid` value. The binary form is 16 bytes.
 struct PgUuid([u8; 16]);
 
@@ -251,34 +269,12 @@ impl PgUuid {
     }
 }
 
-impl sqlx::Type<Postgres> for PgUuid {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(2950))
-    }
-}
-
-impl sqlx::Encode<'_, Postgres> for PgUuid {
-    fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-        buf.extend_from_slice(&self.0);
-        Ok(sqlx::encode::IsNull::No)
-    }
-}
+pg_binary_param!(PgUuid, 2950);
 
 /// A PostgreSQL `numeric` value in its binary form, from a text of any number of digits (DIA-219).
 struct PgNumeric(Vec<u8>);
 
-impl sqlx::Type<Postgres> for PgNumeric {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(1700))
-    }
-}
-
-impl sqlx::Encode<'_, Postgres> for PgNumeric {
-    fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-        buf.extend_from_slice(&self.0);
-        Ok(sqlx::encode::IsNull::No)
-    }
-}
+pg_binary_param!(PgNumeric, 1700);
 
 macro_rules! bind_param {
     ($query:expr, $param:expr) => {
@@ -637,14 +633,21 @@ async fn server_read(args: &[Param], declared: &[&str], inferred: &[Inferred], c
     Ok(out)
 }
 
+/// The retry of a statement whose plan went stale: a new transaction, the parameter types that the server infers now, and
+/// the reads of the arguments that those types need.
+async fn replanned(sql: &str, args: &[Param], types: &[&str], connection: &mut sqlx::PgConnection) -> Result<(Vec<String>, Vec<Option<PgRead>>)> {
+    begin_again(connection).await?;
+    let inferred = inferred_types(sql, types, connection).await?;
+    let read = server_read(args, types, &inferred, connection).await?;
+    Ok((inferred.into_iter().map(|inferred| inferred.ty).collect(), read))
+}
+
 pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<Vec<PgRow>> {
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = match pg_query(sql, args, types)?.fetch_all(&mut *connection).await {
         Err(error) if stale_plan(&error) => {
-            begin_again(&mut connection).await?;
-            let inferred = inferred_types(sql, types, &mut connection).await?;
-            let read = server_read(args, types, &inferred, &mut connection).await?;
-            let inferred: Vec<&str> = inferred.iter().map(|inferred| inferred.ty.as_str()).collect();
+            let (inferred, read) = replanned(sql, args, types, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
             let rows = pg_query_read(sql, args, &inferred, &read)?.fetch_all(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok(rows)
@@ -666,10 +669,8 @@ pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = match pg_query(sql, args, types)?.execute(&mut *connection).await {
         Err(error) if stale_plan(&error) => {
-            begin_again(&mut connection).await?;
-            let inferred = inferred_types(sql, types, &mut connection).await?;
-            let read = server_read(args, types, &inferred, &mut connection).await?;
-            let inferred: Vec<&str> = inferred.iter().map(|inferred| inferred.ty.as_str()).collect();
+            let (inferred, read) = replanned(sql, args, types, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
             let done = pg_query_read(sql, args, &inferred, &read)?.execute(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok((0, done.rows_affected()))

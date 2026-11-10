@@ -50,4 +50,19 @@ class DbspecApplyCleanupTest extends TestCase
         $pdo = dbspec_failing_pdo('apply_cleanup_php', [], [$tablesQuery => 'SELECT 1'], ['SELECT 1']);
         want_message(static fn() => $effect($pdo), "closing the result of $tablesQuery failed");
     }
+    // An operation that Dbspec does not name is refused before the connection is read, with no fallback to another
+    // operation.
+    public function testAnOperationThatIsNoPlanOperationIsAValueError(): void
+    {
+        try {
+            $now = static fn() => new \DateTimeImmutable();
+            PlanApply::operate('migrate', new PDO('sqlite::memory:'), 'sqlite', 'sqlite', [], $now, null);
+            self::fail('the operation migrate ran');
+        } catch (\ValueError $error) {
+            self::assertSame(
+                'migrate is not a plan operation; apply, recover, rollback and finalize are',
+                $error->getMessage()
+            );
+        }
+    }
 }

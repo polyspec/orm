@@ -1124,16 +1124,15 @@ impl Parser {
         Some(ty)
     }
 
-    /// `( <column> [asc|desc], ... )`; directions only when `directions` is set.
-    /// Reads the `(<column>, ...)` of an audit list. The caller checks the names.
-    fn audit_columns(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
+    /// Reads `( <item>, ... )`, one or more items that `item` reads.
+    fn parenthesized<T>(&mut self, cursor: &mut Cursor, mut item: impl FnMut(&mut Self, &mut Cursor) -> Option<T>) -> Option<Vec<T>> {
         self.expect(cursor, "(")?;
-        let mut columns = Vec::new();
+        let mut items = Vec::new();
         loop {
-            columns.push(self.word(cursor, |_| Class::Name, "a column name")?);
+            items.push(item(self, cursor)?);
             if cursor.peek_is(")") {
                 cursor.next();
-                return Some(columns);
+                return Some(items);
             }
             if !cursor.peek_is(",") {
                 self.syntax(cursor, "',' or ')'");
@@ -1143,26 +1142,21 @@ impl Parser {
         }
     }
 
+    /// Reads the `(<column>, ...)` of an audit list. The caller checks the names.
+    fn audit_columns(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
+        self.parenthesized(cursor, |p, cursor| p.word(cursor, |_| Class::Name, "a column name"))
+    }
+
+    /// `( <column> [asc|desc], ... )`; directions only when `directions` is set.
     fn column_list(&mut self, cursor: &mut Cursor, directions: bool) -> Option<Vec<(Name, bool)>> {
-        self.expect(cursor, "(")?;
-        let mut columns = Vec::new();
-        loop {
-            let name = self.name(cursor, "a column name")?;
+        self.parenthesized(cursor, |p, cursor| {
+            let name = p.name(cursor, "a column name")?;
             let mut desc = false;
             if directions && (cursor.peek_is("asc") || cursor.peek_is("desc")) {
-                desc = self.take_keyword(cursor).is_some_and(|t| t.text == "desc");
+                desc = p.take_keyword(cursor).is_some_and(|t| t.text == "desc");
             }
-            columns.push((name, desc));
-            if cursor.peek_is(")") {
-                cursor.next();
-                return Some(columns);
-            }
-            if !cursor.peek_is(",") {
-                self.syntax(cursor, "',' or ')'");
-                return None;
-            }
-            cursor.next();
-        }
+            Some((name, desc))
+        })
     }
 
     /// Knows a key or index line that failed, so the rules that depend on its columns report nothing. A failed

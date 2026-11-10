@@ -397,7 +397,7 @@
         "packages/php/tests/CatalogUnreadableStream.php",
         "packages/php/tests/CatalogMariadbDefaultPdo.php",
         "packages/php/tests/CatalogCommitFaultPdo.php",
-        "packages/php/tests/CatalogThrowableCases.php",
+        "packages/php/tests/CatalogPdoCases.php",
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/RecipeGenerator.php"

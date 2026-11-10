@@ -2130,6 +2130,14 @@ type rawMember struct {
 	value json.RawMessage
 }
 
+// optionalMembers is the members of an object that the step may leave out: none when raw is empty, else orderedMembers.
+func optionalMembers(raw json.RawMessage) ([]rawMember, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	return orderedMembers(raw)
+}
+
 // orderedMembers reads the members of a JSON object in the order of its text.
 func orderedMembers(raw json.RawMessage) ([]rawMember, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))

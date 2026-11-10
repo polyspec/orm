@@ -79,23 +79,4 @@ final class CatalogPageValidationTest extends TestCase
             self::assertSame(Code::TABLE_PAGE_METADATA_CHANGED, $error->code_);
         }
     }
-
-    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
-    // server writes one, so the recipes cannot hold it (FCV-2).
-    public function testAMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
-    {
-        $read = new \ReflectionMethod(Catalog::class, 'mariadbColumn');
-        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
-            try {
-                $read->invoke(null, new CatalogColumn('broken', 'int', true, false, false, $text, false));
-                self::fail("the default {$text} was read");
-            } catch (OrmException $error) {
-                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
-                self::assertSame(
-                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
-                    $error->getMessage(),
-                );
-            }
-        }
-    }
 }

@@ -8,6 +8,7 @@ use DateTimeZone;
 use PDO;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogTableMetadata;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
@@ -16,11 +17,33 @@ use ReflectionProperty;
 use RuntimeException;
 
 /**
- * A throwable of the PDO that the caller hands the catalog, which is no PDOException, reaches the caller as it is: the
- * PHP library and the PHP extension share this surface of PDO, and no other runtime has it (FCV-2).
+ * The catalog cases on a PDO that the caller hands the catalog, which the PHP library and the PHP extension share
+ * (FCV-2): a throwable of that PDO which is no PDOException reaches the caller as it is, and no other runtime has this
+ * surface; a MariaDB default that no server writes is read from that PDO.
  */
-trait CatalogThrowableCases
+trait CatalogPdoCases
 {
+    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
+    // server writes one, so the recipes cannot hold it (FCV-2).
+    public function testAMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
+    {
+        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
+            $pdo = new CatalogMariadbDefaultPdo([['broken', $text]]);
+            $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+            $db->setServer('mariadb');
+            try {
+                self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
+                self::fail("the default {$text} was described");
+            } catch (OrmException $error) {
+                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
+                self::assertSame(
+                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
+                    $error->getMessage(),
+                );
+            }
+        }
+    }
+
     // Requirements: PRT-79.
     public function testCatalogPassesAThrowableThatIsNoDriverErrorThrough(): void
     {
@@ -45,7 +68,7 @@ trait CatalogThrowableCases
             $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
             $db->setServer('mariadb');
             try {
-                self::throwableCatalog($db, 'mysql')
+                self::catalogWith($db, 'mysql')
                     ->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
                 self::fail('a failed columns read was described');
             } catch (\Throwable $thrown) {
@@ -70,7 +93,7 @@ trait CatalogThrowableCases
         $pdo->rollbackFailure = $interrupt;
         $catalog = null;
         try {
-            [$catalog, $metadata] = self::throwableSqliteCatalog($pdo, 'sample');
+            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'sample');
             $pdo->failCommit = true;
             $pdo->failRollback = true;
             try {
@@ -87,7 +110,7 @@ trait CatalogThrowableCases
         }
     }
 
-    private static function throwableCatalog(Db $db, string $dialect): Catalog
+    private static function catalogWith(Db $db, string $dialect): Catalog
     {
         $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
         (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
@@ -96,10 +119,10 @@ trait CatalogThrowableCases
     }
 
     /** @return array{Catalog, CatalogTableMetadata} */
-    private static function throwableSqliteCatalog(PDO $pdo, string $table): array
+    private static function sqliteCatalog(PDO $pdo, string $table): array
     {
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $catalog = self::throwableCatalog($db, 'sqlite');
+        $catalog = self::catalogWith($db, 'sqlite');
         return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
     }
 }

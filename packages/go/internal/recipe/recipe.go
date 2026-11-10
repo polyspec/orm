@@ -1681,19 +1681,7 @@ func checkPlanner(dir string, s step, database string) error {
 	if err != nil {
 		return err
 	}
-	var input map[string]json.RawMessage
-	if err := json.Unmarshal(s.k("input").Input, &input); err != nil {
-		return err
-	}
-	if _, ok := input["manifest_hash"]; ok {
-		return fmt.Errorf("input already holds manifest_hash")
-	}
-	hash, err := json.Marshal(m.ManifestHash)
-	if err != nil {
-		return err
-	}
-	input["manifest_hash"] = hash
-	request, err := json.Marshal(input)
+	request, err := withManifestHash(s.k("input").Input, m.ManifestHash, "input")
 	if err != nil {
 		return err
 	}
@@ -2403,4 +2391,22 @@ func sameKeyResult(got map[string]any, expect json.RawMessage) error {
 		return fmt.Errorf("got %s, want %s", gotText, expect)
 	}
 	return nil
+}
+
+// withManifestHash is the request object raw with the member manifest_hash of the model; a request that already holds one is
+// refused, named by what.
+func withManifestHash(raw json.RawMessage, hash, what string) ([]byte, error) {
+	var input map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &input); err != nil {
+		return nil, err
+	}
+	if _, ok := input["manifest_hash"]; ok {
+		return nil, fmt.Errorf("%s already holds manifest_hash", what)
+	}
+	text, err := json.Marshal(hash)
+	if err != nil {
+		return nil, err
+	}
+	input["manifest_hash"] = text
+	return json.Marshal(input)
 }

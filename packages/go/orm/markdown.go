@@ -202,20 +202,8 @@ func marshalPlain(v any) ([]byte, error) {
 // openMarkdown opens a markdown connection. It connects one session to check that the server accepts
 // the corpus and token, and puts it in the pool.
 func openMarkdown(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
-	switch {
-	case cfg.PoolSize < 0:
-		return nil, configErr("pool size must not be negative")
-	case cfg.PoolLifetimeMs < 0:
-		return nil, configErr("pool lifetime must not be negative")
-	}
-	if cfg.PoolSize == 0 {
-		cfg.PoolSize = defaultPoolSize
-	}
-	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
-		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
-	}
-	if cfg.PoolIdleSize == 0 {
-		cfg.PoolIdleSize = cfg.PoolSize
+	if err := poolOptions(&cfg); err != nil {
+		return nil, err
 	}
 	pool := markdownStatementPool(dsn.markdown)
 	pool.SetMaxOpenConns(cfg.PoolSize)

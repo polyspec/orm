@@ -24,16 +24,7 @@ func mysqlProbes() []Probe {
 	}
 	utc := "SET time_zone = '+00:00'"
 	return []Probe{
-		p("env.server", "the server is MySQL 8.4 in strict mode with lower_case_table_names=1", func(e *Env) {
-			version := e.Value("SELECT VERSION()")
-			e.Check(strings.HasPrefix(version, "8.4."), "version %s", version)
-			mode := e.Value("SELECT @@sql_mode")
-			e.Check(strings.Contains(mode, "STRICT_TRANS_TABLES"), "sql_mode %s", mode)
-			e.Want("SELECT @@lower_case_table_names", "1")
-			e.Note("version=%s sql_mode=%s log_bin=%s log_bin_trust_function_creators=%s time_zone=%s system_time_zone=%s explicit_defaults_for_timestamp=%s",
-				version, mode, e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"),
-				e.Value("SELECT @@time_zone"), e.Value("SELECT @@system_time_zone"), e.Value("SELECT @@explicit_defaults_for_timestamp"))
-		}),
+		p("env.server", "the server is MySQL 8.4 in strict mode with lower_case_table_names=1", mysqlFamilyServer(func(version string) bool { return strings.HasPrefix(version, "8.4.") })),
 		// Integers and booleans.
 		p("int.tinyint_range", "TINYINT rejects 128 in strict mode (1264)", func(e *Env) {
 			e.Exec("CREATE TABLE t (a tinyint)", "INSERT INTO t VALUES (127)")
@@ -415,20 +406,7 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (pid int, FOREIGN KEY (pid) REFERENCES p (id) DEFERRABLE INITIALLY DEFERRED)", "1064")
 		}),
-		p("fk.match_full_not_enforced", "MATCH FULL is recorded as MATCH_OPTION FULL, omitted by SHOW CREATE TABLE, and a partly NULL key is accepted", func(e *Env) {
-			e.Exec("CREATE TABLE p (a int, b int, PRIMARY KEY (a, b))", "INSERT INTO p VALUES (1, 1)",
-				"CREATE TABLE c (a int, b int, CONSTRAINT fk FOREIGN KEY (a, b) REFERENCES p (a, b) MATCH FULL ON DELETE CASCADE)",
-				"INSERT INTO c VALUES (1, NULL), (1, 1)", "DELETE FROM p")
-			e.Want("SELECT MATCH_OPTION FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "FULL")
-			e.Want("SELECT COUNT(*) FROM c", "1")
-			var table, create string
-			if e.Err == nil {
-				if err := e.Conn.QueryRowContext(e.Ctx, "SHOW CREATE TABLE c").Scan(&table, &create); err != nil {
-					e.fail("SHOW CREATE TABLE c: %v", err)
-				}
-			}
-			e.Check(!strings.Contains(create, "MATCH"), "SHOW CREATE TABLE contains MATCH: %s", create)
-		}),
+		p("fk.match_full_not_enforced", "MATCH FULL is recorded as MATCH_OPTION FULL, omitted by SHOW CREATE TABLE, and a partly NULL key is accepted", matchFullNotEnforced("FULL")),
 		p("fk.rule_catalog", "REFERENTIAL_CONSTRAINTS reports an omitted action as NO ACTION and a written RESTRICT as RESTRICT", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)",
 				"CREATE TABLE c (a int, b int, CONSTRAINT fk_a FOREIGN KEY (a) REFERENCES p (id), CONSTRAINT fk_b FOREIGN KEY (b) REFERENCES p (id) ON DELETE RESTRICT ON UPDATE CASCADE)")
@@ -675,13 +653,7 @@ func mysqlProbes() []Probe {
 				utc, "ALTER TABLE t MODIFY d datetime(6) NULL")
 			e.Want("SELECT CONCAT(COLUMN_TYPE, ' ', (SELECT d FROM t)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "datetime(6) 2020-01-01 00:00:00.000000")
 		}),
-		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as (length(`u`) = 16), orders its values by their bytes, and its default is 0x and the upper-case hex of its bytes", func(e *Env) {
-			e.Exec("CREATE TABLE t (u BINARY(16) NOT NULL DEFAULT X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10', CONSTRAINT `t$u` CHECK (length(u) = 16))",
-				"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001')")
-			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(length(`u`) = 16)")
-			e.Want("SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "0x0E2B5E8C3B0F4C599A0F6A2F2C2E1B10")
-			e.WantRows("SELECT LOWER(HEX(u)) FROM t ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
-		}),
+		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as (length(`u`) = 16), orders its values by their bytes, and its default is 0x and the upper-case hex of its bytes", uuidBytes("NOT NULL", "(length(`u`) = 16)", "0x0E2B5E8C3B0F4C599A0F6A2F2C2E1B10")),
 		p("uuid.binary_pads", "BINARY(16) pads a shorter value with zero bytes and refuses a longer one (1406)", func(e *Env) {
 			e.Exec("CREATE TABLE t (u BINARY(16))", "INSERT INTO t VALUES (X'a0')")
 			e.Want("SELECT CONCAT(LENGTH(u), ' ', LOWER(HEX(u))) FROM t", "16 a0000000000000000000000000000000")
@@ -730,3 +702,50 @@ const (
 	keyOrdinalJoin   = "SELECT c.COLUMN_NAME, COALESCE(pk.ORDINAL_POSITION, 0) FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA = c.TABLE_SCHEMA AND pk.TABLE_NAME = c.TABLE_NAME AND pk.COLUMN_NAME = c.COLUMN_NAME AND pk.CONSTRAINT_NAME = 'PRIMARY' WHERE c.TABLE_SCHEMA = '%[1]s' AND c.TABLE_NAME = 't' ORDER BY c.ORDINAL_POSITION"
 	keyOrdinalByName = "SELECT c.COLUMN_NAME, COALESCE((SELECT k.ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE k WHERE k.TABLE_SCHEMA = '%[1]s' AND k.TABLE_NAME = 't' AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.COLUMN_NAME = c.COLUMN_NAME), 0) FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA = '%[1]s' AND c.TABLE_NAME = 't' ORDER BY c.ORDINAL_POSITION"
 )
+
+// mysqlFamilyServer is the probe env.server of a server of the MySQL dialect: its version, which accepts tells, strict mode
+// and lower_case_table_names=1, with the settings the probes read noted.
+func mysqlFamilyServer(accepts func(version string) bool) func(*Env) {
+	return func(e *Env) {
+		version := e.Value("SELECT VERSION()")
+		e.Check(accepts(version), "version %s", version)
+		mode := e.Value("SELECT @@sql_mode")
+		e.Check(strings.Contains(mode, "STRICT_TRANS_TABLES"), "sql_mode %s", mode)
+		e.Want("SELECT @@lower_case_table_names", "1")
+		e.Note("version=%s sql_mode=%s log_bin=%s log_bin_trust_function_creators=%s time_zone=%s system_time_zone=%s explicit_defaults_for_timestamp=%s",
+			version, mode, e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"),
+			e.Value("SELECT @@time_zone"), e.Value("SELECT @@system_time_zone"), e.Value("SELECT @@explicit_defaults_for_timestamp"))
+	}
+}
+
+// matchFullNotEnforced is the probe fk.match_full_not_enforced of a server of the MySQL dialect: the catalog records MATCH FULL
+// as matchOption, SHOW CREATE TABLE omits it, and a partly NULL key is accepted.
+func matchFullNotEnforced(matchOption string) func(*Env) {
+	return func(e *Env) {
+		e.Exec("CREATE TABLE p (a int, b int, PRIMARY KEY (a, b))", "INSERT INTO p VALUES (1, 1)",
+			"CREATE TABLE c (a int, b int, CONSTRAINT fk FOREIGN KEY (a, b) REFERENCES p (a, b) MATCH FULL ON DELETE CASCADE)",
+			"INSERT INTO c VALUES (1, NULL), (1, 1)", "DELETE FROM p")
+		e.Want("SELECT MATCH_OPTION FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", matchOption)
+		e.Want("SELECT COUNT(*) FROM c", "1")
+		var table, create string
+		if e.Err == nil {
+			if err := e.Conn.QueryRowContext(e.Ctx, "SHOW CREATE TABLE c").Scan(&table, &create); err != nil {
+				e.fail("SHOW CREATE TABLE c: %v", err)
+			}
+		}
+		e.Check(!strings.Contains(create, "MATCH"), "SHOW CREATE TABLE contains MATCH: %s", create)
+	}
+}
+
+// uuidBytes is the probe render.uuid_bytes of a server of the MySQL dialect: a BINARY(16) column of the nullability with the
+// renderer CHECK, which CHECK_CLAUSE writes as check, orders its values by their bytes, and the catalog writes its default as
+// columnDefault.
+func uuidBytes(nullability, check, columnDefault string) func(*Env) {
+	return func(e *Env) {
+		e.Exec("CREATE TABLE t (u BINARY(16) "+nullability+" DEFAULT X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10', CONSTRAINT `t$u` CHECK (length(u) = 16))",
+			"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001')")
+		e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", check)
+		e.Want("SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", columnDefault)
+		e.WantRows("SELECT LOWER(HEX(u)) FROM t ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
+	}
+}

@@ -15,8 +15,6 @@ use RuntimeException;
 final class RecipeIntrospect
 {
     /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
-    private const DIALECT_OF = ['markdown' => 'sqlite', 'mariadb' => 'mysql'];
-
     private const CONNECTION_RULES = [
         'mysql' => ["SET time_zone = '+00:00'"],
         'postgres' => ['SET client_min_messages = warning', "SET TimeZone = 'UTC'"],
@@ -40,8 +38,8 @@ final class RecipeIntrospect
         // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is
         // SQLite's; MariaDB runs SQL in MySQL's (DIA-200).
         $markdown = $context['database'] === 'markdown';
-        $database = self::DIALECT_OF[$context['database']] ?? $context['database'];
-        $server = self::server($context['database']);
+        $database = RecipeApply::dialect($context['database']);
+        $server = RecipeApply::server($context['database']);
         if (isset($step['catalog_of'])) {
             return self::catalogQueryFailure($step['catalog_of'], $context['dsn']);
         }
@@ -148,7 +146,7 @@ final class RecipeIntrospect
     {
         // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's (case_admin);
         // MariaDB runs SQL in MySQL's (DIA-200).
-        $database = self::DIALECT_OF[$context['database']] ?? $context['database'];
+        $database = RecipeApply::dialect($context['database']);
         $id = $step['case'];
         $matching = array_values(array_filter(
             plan_vectors_at($context['dir'] . '/' . $step['vectors'])['cases'],
@@ -218,7 +216,7 @@ final class RecipeIntrospect
                 }
             }
         };
-        $server = self::server($context['database']);
+        $server = RecipeApply::server($context['database']);
         $schemaIs = static function (string $what, string $want) use ($pdo, $database, $server): void {
             $result = Dbspec::introspect($pdo, $database, $server, 'introspected');
             if ($result->unsupported !== []) {
@@ -295,23 +293,13 @@ final class RecipeIntrospect
     }
 
     /**
-     * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
-     * as its server.
-     */
-    private static function server(string $database): string
-    {
-        return $database === 'markdown' ? 'sqlite' : $database;
-    }
-
-    /**
      * Whether the expect of dbspec.introspect on database names refused: on the entry of database, or else of its
      * dialect.
      */
     private static function refusable(RecipeStep $step, string $database): bool
     {
         $expect = $step['expect'] ?? [];
-        $key = array_key_exists($database, $expect) ? $database : (self::DIALECT_OF[$database] ?? $database);
-        $outcome = $expect[$key] ?? null;
+        $outcome = $expect[RecipeApply::dialectKey($database, $expect)] ?? null;
         return $outcome !== null && isset($outcome['refused']);
     }
 

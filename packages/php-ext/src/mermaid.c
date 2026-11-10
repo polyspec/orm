@@ -585,37 +585,6 @@ static ctype *import_type(str s)
     return NULL;
 }
 
-/* Wraps in quotes like Go's %q. ASCII escapes are the same as Go's, and non-ASCII bytes are kept as is. */
-static str quoted(str s)
-{
-    sbuf b = {0};
-    sb_ch(&b, '"');
-    for (size_t i = 0; i < s.n; i++) {
-        unsigned char c = (unsigned char)s.s[i];
-        switch (c) {
-            case 0x07: sb_c(&b, "\\a"); break;
-            case 0x08: sb_c(&b, "\\b"); break;
-            case '\f': sb_c(&b, "\\f"); break;
-            case '\n': sb_c(&b, "\\n"); break;
-            case '\r': sb_c(&b, "\\r"); break;
-            case '\t': sb_c(&b, "\\t"); break;
-            case '\v': sb_c(&b, "\\v"); break;
-            case '\\': sb_c(&b, "\\\\"); break;
-            case '"': sb_c(&b, "\\\""); break;
-            default:
-                if (c < 0x20 || c == 0x7F) {
-                    char hex[8];
-                    snprintf(hex, sizeof hex, "\\x%02x", c);
-                    sb_c(&b, hex);
-                } else {
-                    sb_ch(&b, (char)c);
-                }
-        }
-    }
-    sb_ch(&b, '"');
-    return sb_str(&b);
-}
-
 static strs split_names(str s)
 {
     strs parts = strs_split(s, ','), out = {0};
@@ -781,7 +750,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
             }
             icolumn col = {a->name, type, false, false, SL(""), false, SL("")};
             if (a->comment.n > 0 && !column_suffix(a->comment, &col)) {
-                catalog_report(c, SL("comment"), e->name, a->name, fmt("the comment %S is not a dbspec column suffix", quoted(a->comment)));
+                catalog_report(c, SL("comment"), e->name, a->name, fmt("the comment %S is not a dbspec column suffix", dbs_quote(a->comment)));
             }
             PUSH(t->columns, col);
             if (has_key(a, "PK")) {

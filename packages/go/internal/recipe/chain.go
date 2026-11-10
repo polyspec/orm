@@ -215,10 +215,7 @@ func chainCore(model string, c *databaseContext) *orm.Core {
 // styled value of a column.
 // possible calls possible<Col>() on the model for each member of raw, {<column>: <value>}, in its order.
 func possible(core *orm.Core, raw json.RawMessage, c *databaseContext) error {
-	if len(raw) == 0 {
-		return nil
-	}
-	members, err := orderedMembers(raw)
+	members, err := optionalMembers(raw)
 	if err != nil {
 		return err
 	}
@@ -1511,10 +1508,7 @@ func itemKeys(items *orm.Collection[*tableRow]) ([]any, error) {
 // chainAssign sets the members of an object of values on core, in the written order. A null wrapper is SetNull; an
 // arith entry is Plus or Minus.
 func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error {
-	if len(raw) == 0 {
-		return nil
-	}
-	members, err := orderedMembers(raw)
+	members, err := optionalMembers(raw)
 	if err != nil {
 		return err
 	}

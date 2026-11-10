@@ -2328,14 +2328,16 @@ static bool close_statement(zval *st)
     return true;
 }
 
+/* run_qctx prepares the statement of a query context and executes it with its args. */
+static bool run_qctx(zval *self, const qctx *c, zval *st)
+{
+    return stmt_of(self, c->sql, c->args, st) && execute_prepared_stmt(self, st, c->args);
+}
+
 static bool op_query(zval *self, void *ctx, zval *ret)
 {
-    qctx *c = ctx;
     zval st, mode;
-    if (!stmt_of(self, c->sql, c->args, &st)) {
-        return false;
-    }
-    if (!execute_prepared_stmt(self, &st, c->args)) {
+    if (!run_qctx(self, ctx, &st)) {
         return false;
     }
     ZVAL_LONG(&mode, FETCH_NUM);
@@ -2344,12 +2346,8 @@ static bool op_query(zval *self, void *ctx, zval *ret)
 
 static bool op_scalar(zval *self, void *ctx, zval *ret)
 {
-    qctx *c = ctx;
     zval st;
-    if (!stmt_of(self, c->sql, c->args, &st)) {
-        return false;
-    }
-    if (!execute_prepared_stmt(self, &st, c->args)) {
+    if (!run_qctx(self, ctx, &st)) {
         return false;
     }
     return fetch_stmt_result(&st, "fetchColumn", 0, NULL, ret);
@@ -2358,16 +2356,12 @@ static bool op_scalar(zval *self, void *ctx, zval *ret)
 /* op_scalar_row is op_scalar for an average, which reads the sum and the count of its values as one row (DSL-161). */
 static bool op_scalar_row(zval *self, void *ctx, zval *ret)
 {
-    qctx *c = ctx;
     zval st;
-    if (!stmt_of(self, c->sql, c->args, &st)) {
-        return false;
-    }
-    if (!execute_prepared_stmt(self, &st, c->args)) {
+    if (!run_qctx(self, ctx, &st)) {
         return false;
     }
     zval mode;
-    ZVAL_LONG(&mode, 3); /* PDO::FETCH_NUM */
+    ZVAL_LONG(&mode, FETCH_NUM);
     return fetch_stmt_result(&st, "fetch", 1, &mode, ret);
 }
 

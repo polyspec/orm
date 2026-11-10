@@ -2498,13 +2498,20 @@ static bool in_key_or_check(const table *t, str name)
     return false;
 }
 
-static void order_check(parser *p, const tsetting_rec *s)
+/* A check of the column that the first argument of a table setting names; it runs only when the column exists. */
+typedef void (*setting_column_check)(parser *p, const tsetting_rec *s, const token *name, column *c);
+
+static void check_setting_column(parser *p, const tsetting_rec *s, setting_column_check check)
 {
     const token *name = &s->args.v[0];
     column *c = column_ref(p, s->line, name);
-    if (c == NULL) {
-        return;
+    if (c != NULL) {
+        check(p, s, name, c);
     }
+}
+
+static void order_check(parser *p, const tsetting_rec *s, const token *name, column *c)
+{
     if ((col_valid(c) && !str_eqc(c->type->name, "i32") && !str_eqc(c->type->name, "i64")) || c->nullable || c->has_default) {
         error(p, "setting", s->line, name->column, SL("order needs a non-null i32 or i64 column with no default"));
         return;
@@ -2542,13 +2549,8 @@ static void store_shard_check(parser *p, const tsetting_rec *s, bool order)
 }
 
 /* Column checks for title, body, and markdown. markdown allows null; title and body do not. */
-static void text_setting_check(parser *p, const tsetting_rec *s)
+static void text_setting_check(parser *p, const tsetting_rec *s, const token *name, column *c)
 {
-    const token *name = &s->args.v[0];
-    column *c = column_ref(p, s->line, name);
-    if (c == NULL) {
-        return;
-    }
     if (str_eqc(s->kind, "markdown")) {
         if (col_valid(c) && !text_type(c)) {
             error(p, "setting", s->line, name->column, fmt("markdown needs a varchar or text column, not %S", ctype_text(c->type)));
@@ -2562,11 +2564,9 @@ static void text_setting_check(parser *p, const tsetting_rec *s)
 
 /* The column whose value a list row writes between the brackets of its task marker: a varchar(1) column, written as its
  * value, or a bool column, written as the unchecked and the checked task box of GFM. Nullability is free. */
-static void task_marker_check(parser *p, const tsetting_rec *s)
+static void task_marker_check(parser *p, const tsetting_rec *s, const token *name, column *c)
 {
-    const token *name = &s->args.v[0];
-    column *c = column_ref(p, s->line, name);
-    if (c == NULL || !col_valid(c)) {
+    if (!col_valid(c)) {
         return;
     }
     const ctype *type = c->type;
@@ -2695,16 +2695,16 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
                 }
             }
         } else if (str_eqc(kind, "markdown") || str_eqc(kind, "title") || str_eqc(kind, "body")) {
-            text_setting_check(p, s);
+            check_setting_column(p, s, text_setting_check);
         } else if (str_eqc(kind, "store")) {
             if (str_eqc(a->v[0].text, "block")) {
                 foreign_key_ref(p, line, &a->v[1]);
             }
             store_shard_check(p, s, smap_has(&kinds, SL("order")));
         } else if (str_eqc(kind, "order")) {
-            order_check(p, s);
+            check_setting_column(p, s, order_check);
         } else if (str_eqc(kind, "task_marker")) {
-            task_marker_check(p, s);
+            check_setting_column(p, s, task_marker_check);
         } else if (str_eqc(kind, "immutable")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("immutable is rejected on a child of a cascade or set_null foreign key"));

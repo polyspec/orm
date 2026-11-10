@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eabb3a8a933c36220a768c4c864b83eb68b408e800441ffbd1728581e2ac54ac -->
+<!-- source-sha256: fd1d7300d676cd393554ed04d53b77585aca299fcc8ab87a0a002345ee97d4e8 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.29
 
+- Go markdown 연결은 SQL 연결과 TypeScript의 순서로 pool option을 검사한다: pool size, idle size, 그다음 lifetime(T385.10, CFG-5a). 이전에는 idle size보다 lifetime을 먼저 검사해서, idle size가 pool size보다 크고 lifetime이 음수이면 lifetime 오류를 냈다.
 - PHP library는 extension처럼 `Dialect::$name`을 `$server`보다 먼저 선언한다. 그래서 둘 다 `Dialect`의 property를 같은 순서로 나열한다(T385.9).
 - markdown 시험은 flowmark v0.0.15를 고정한다. 이 버전은 SQLite처럼 `uuid`를 16 byte로 저장하고, 열린 transaction이 없을 때 SAVEPOINT에서 transaction을 시작하며, schema 문장을 그 transaction 안에 둔다. 그래서 uuid의 text 저장 변환(PLN-110)이 SQLite에서처럼 flowmark에서도 실행된다(T421).
 - T429: orm은 모든 runtime에서 ordered-json 0.0.25를 받는다. 이 release는 API를 바꾸지 않는다(kit 0.0.105, PHP 확장의 항목 검사 하나로 합침). benchmarks/rust의 lock에서 T400-1 이후 orm이 쓰지 않는 package가 빠진다.

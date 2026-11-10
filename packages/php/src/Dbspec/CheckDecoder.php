@@ -17,6 +17,8 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class CheckDecoder
 {
+    use LogicalChain;
+
     /** @var list<array{0: string, 1: string}> kind and text: ident, word, number, string, bytes, op, punct */
     private array $tokens = [];
     private int $i = 0;
@@ -43,7 +45,7 @@ final class CheckDecoder
         }
         $d = new self($dialect, $columns);
         $d->tokens = self::tokens($dialect, $text);
-        $node = $d->expression();
+        $node = $d->logical('or');
         if ($d->i !== count($d->tokens)) {
             throw new CheckDecodeFailure("unexpected \"{$d->tokens[$d->i][1]}\"");
         }
@@ -226,22 +228,9 @@ final class CheckDecoder
         return ['node' => 'operand', 'kind' => $kind, 'text' => $text];
     }
 
-    private function expression(): array
+    private function logicalNode(string $op, array $left, array $right): array
     {
-        $left = $this->conjunction();
-        while ($this->word('or')) {
-            $left = ['node' => 'predicate', 'op' => 'or', 'left' => $left, 'right' => $this->conjunction()];
-        }
-        return $left;
-    }
-
-    private function conjunction(): array
-    {
-        $left = $this->predicate();
-        while ($this->word('and')) {
-            $left = ['node' => 'predicate', 'op' => 'and', 'left' => $left, 'right' => $this->predicate()];
-        }
-        return $left;
+        return ['node' => 'predicate', 'op' => $op, 'left' => $left, 'right' => $right];
     }
 
     /** Reads one predicate that starts with a parenthesized expression or an operand. */
@@ -296,7 +285,7 @@ final class CheckDecoder
     private function term(): array
     {
         if ($this->punct('(')) {
-            $node = $this->expression();
+            $node = $this->logical('or');
             $this->expect(')');
         } else {
             $node = $this->operand();

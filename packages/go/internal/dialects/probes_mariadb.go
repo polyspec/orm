@@ -39,16 +39,9 @@ func mariadbFacts() []Probe {
 		return Probe{ID: "mariadb." + id, DB: "mariadb", Fact: fact, Run: run}
 	}
 	return []Probe{
-		p("env.server", "the server is MariaDB 11.8 in strict mode with lower_case_table_names=1", func(e *Env) {
-			version := e.Value("SELECT VERSION()")
-			e.Check(strings.HasPrefix(version, "11.8.") && strings.Contains(version, "-MariaDB"), "version %s", version)
-			mode := e.Value("SELECT @@sql_mode")
-			e.Check(strings.Contains(mode, "STRICT_TRANS_TABLES"), "sql_mode %s", mode)
-			e.Want("SELECT @@lower_case_table_names", "1")
-			e.Note("version=%s sql_mode=%s log_bin=%s log_bin_trust_function_creators=%s time_zone=%s system_time_zone=%s explicit_defaults_for_timestamp=%s",
-				version, mode, e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"),
-				e.Value("SELECT @@time_zone"), e.Value("SELECT @@system_time_zone"), e.Value("SELECT @@explicit_defaults_for_timestamp"))
-		}),
+		p("env.server", "the server is MariaDB 11.8 in strict mode with lower_case_table_names=1", mysqlFamilyServer(func(version string) bool {
+			return strings.HasPrefix(version, "11.8.") && strings.Contains(version, "-MariaDB")
+		})),
 		p("session.partial_revokes_listed", "MariaDB has no partial_revokes (1193), and SHOW GLOBAL VARIABLES lists no row of it", func(e *Env) {
 			e.Fails("SELECT @@GLOBAL.partial_revokes", "1193")
 			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes'", "")
@@ -210,20 +203,7 @@ func mariadbFacts() []Probe {
 			e.Want("SELECT DELETE_RULE FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "RESTRICT")
 			e.Fails("DELETE FROM p WHERE id = 1", "1451")
 		}),
-		p("fk.match_full_not_enforced", "MATCH FULL is recorded as MATCH_OPTION NONE, omitted by SHOW CREATE TABLE, and a partly NULL key is accepted", func(e *Env) {
-			e.Exec("CREATE TABLE p (a int, b int, PRIMARY KEY (a, b))", "INSERT INTO p VALUES (1, 1)",
-				"CREATE TABLE c (a int, b int, CONSTRAINT fk FOREIGN KEY (a, b) REFERENCES p (a, b) MATCH FULL ON DELETE CASCADE)",
-				"INSERT INTO c VALUES (1, NULL), (1, 1)", "DELETE FROM p")
-			e.Want("SELECT MATCH_OPTION FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "NONE")
-			e.Want("SELECT COUNT(*) FROM c", "1")
-			var table, create string
-			if e.Err == nil {
-				if err := e.Conn.QueryRowContext(e.Ctx, "SHOW CREATE TABLE c").Scan(&table, &create); err != nil {
-					e.fail("SHOW CREATE TABLE c: %v", err)
-				}
-			}
-			e.Check(!strings.Contains(create, "MATCH"), "SHOW CREATE TABLE contains MATCH: %s", create)
-		}),
+		p("fk.match_full_not_enforced", "MATCH FULL is recorded as MATCH_OPTION NONE, omitted by SHOW CREATE TABLE, and a partly NULL key is accepted", matchFullNotEnforced("NONE")),
 		p("fk.rule_catalog", "REFERENTIAL_CONSTRAINTS reports an omitted action as RESTRICT and a written RESTRICT as RESTRICT", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)",
 				"CREATE TABLE c (a int, b int, CONSTRAINT fk_a FOREIGN KEY (a) REFERENCES p (id), CONSTRAINT fk_b FOREIGN KEY (b) REFERENCES p (id) ON DELETE RESTRICT ON UPDATE CASCADE)")
@@ -310,13 +290,7 @@ func mariadbFacts() []Probe {
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "4025")
 			e.Fails("INSERT INTO t VALUES ('-00:00:01')", "4025")
 		}),
-		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as octet_length(`u`) = 16, orders its values by their bytes, and its default is x' and the lower-case hex of its bytes", func(e *Env) {
-			e.Exec("CREATE TABLE t (u BINARY(16) NULL DEFAULT X'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10', CONSTRAINT `t$u` CHECK (length(u) = 16))",
-				"INSERT INTO t VALUES (X'ffffffff000040008000000000000000'), (X'0000000f000040008000000000000000'), (X'7f000000ffff4fffbfff000000000001')")
-			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "octet_length(`u`) = 16")
-			e.Want("SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "x'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10'")
-			e.WantRows("SELECT LOWER(HEX(u)) FROM t ORDER BY u", "0000000f000040008000000000000000,7f000000ffff4fffbfff000000000001,ffffffff000040008000000000000000")
-		}),
+		p("render.uuid_bytes", "BINARY(16) with the CHECK length(u) = 16, which CHECK_CLAUSE writes as octet_length(`u`) = 16, orders its values by their bytes, and its default is x' and the lower-case hex of its bytes", uuidBytes("NULL", "octet_length(`u`) = 16", "x'0e2b5e8c3b0f4c599a0f6a2f2c2e1b10'")),
 		p("uuid.binary_pads", "BINARY(16) pads a shorter value with zero bytes and refuses a longer one (1406)", func(e *Env) {
 			e.Exec("CREATE TABLE t (u BINARY(16))", "INSERT INTO t VALUES (X'a0')")
 			e.Want("SELECT CONCAT(LENGTH(u), ' ', LOWER(HEX(u))) FROM t", "16 a0000000000000000000000000000000")

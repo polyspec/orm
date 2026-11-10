@@ -98,7 +98,7 @@ require_once __DIR__ . '/NativeFixtureVectors.php';
 require_once __DIR__ . '/CatalogAnswerPdo.php';
 require_once __DIR__ . '/CatalogMariadbDefaultPdo.php';
 require_once __DIR__ . '/CatalogCommitFaultPdo.php';
-require_once __DIR__ . '/CatalogThrowableCases.php';
+require_once __DIR__ . '/CatalogPdoCases.php';
 require_once __DIR__ . '/CatalogAnswerStatement.php';
 require_once __DIR__ . '/CatalogPostgresTemporalPdo.php';
 require_once __DIR__ . '/CatalogUnreadableStream.php';

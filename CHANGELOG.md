@@ -5,6 +5,7 @@
 
 ## 0.0.29
 
+- A Go markdown connection checks its pool options in the order of a SQL connection and of TypeScript: the pool size, the idle size, then the lifetime (T385.10, CFG-5a). It checked the lifetime before the idle size, so an idle size above the pool size with a negative lifetime gave the lifetime error.
 - The PHP library declares `Dialect::$name` before `$server`, as the extension does, so both list the properties of a `Dialect` in one order (T385.9).
 - The markdown tests pin flowmark v0.0.15, which stores a `uuid` in 16 bytes as SQLite does, begins a transaction at a SAVEPOINT with none open and keeps a schema statement inside its transaction, so the conversion of the text storage of a uuid (PLN-110) runs on flowmark as on SQLite (T421).
 - T429: orm takes ordered-json 0.0.25 in every runtime; the release changes no API (kit 0.0.105 and one entry check in the PHP extension). The lock of benchmarks/rust drops the packages that orm no longer uses since T400-1.

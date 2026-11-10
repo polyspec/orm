@@ -2416,10 +2416,25 @@ APPLY_METHOD(Dbspec, apply)
 APPLY_METHOD(Dbspec, recover)
 APPLY_METHOD(Dbspec, rollback)
 APPLY_METHOD(Dbspec, finalize)
-APPLY_METHOD(PlanApply, apply)
-APPLY_METHOD(PlanApply, recover)
-APPLY_METHOD(PlanApply, rollback)
-APPLY_METHOD(PlanApply, finalize)
+
+/* PlanApply::operate: the operation of Dbspec that it names, with the arguments of that method. */
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, operate)
+{
+    zval *connection, *plans, *now, *events = NULL;
+    zend_string *operation, *dialect_name, *server;
+    ZEND_PARSE_PARAMETERS_START(7, 7)
+        Z_PARAM_STR(operation)
+        Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce())
+        Z_PARAM_STR(dialect_name)
+        Z_PARAM_STR(server)
+        Z_PARAM_ARRAY(plans)
+        Z_PARAM_OBJECT_OF_CLASS(now, zend_ce_closure)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(events, zend_ce_closure)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    dbs_apply(ZSTR_VAL(operation), connection, zs(dialect_name), zs(server), plans, now, events);
+    LEAVE();
+}
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, __construct)
 {

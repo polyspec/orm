@@ -816,7 +816,7 @@ final class Dbspec
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::apply($connection, $dialect, $server, $plans, $now, $events);
+        PlanApply::operate('apply', $connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -838,7 +838,7 @@ final class Dbspec
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::recover($connection, $dialect, $server, $plans, $now, $events);
+        PlanApply::operate('recover', $connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -860,7 +860,7 @@ final class Dbspec
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::rollback($connection, $dialect, $server, $plans, $now, $events);
+        PlanApply::operate('rollback', $connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**
@@ -880,7 +880,7 @@ final class Dbspec
         \Closure $now,
         ?\Closure $events
     ): void {
-        PlanApply::finalize($connection, $dialect, $server, $plans, $now, $events);
+        PlanApply::operate('finalize', $connection, $dialect, $server, $plans, $now, $events);
     }
 
     /**

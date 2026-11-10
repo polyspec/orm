@@ -1869,11 +1869,23 @@ static bool applier_init(applier *a, zval *c, str dialect_name, const str *serve
 
 bool dbs_apply(const char *op, zval *c, str dialect_name, str server, zval *plans, zval *now, zval *events)
 {
+    operation o;
+    if (strcmp(op, "apply") == 0) {
+        o = OP_APPLY;
+    } else if (strcmp(op, "recover") == 0) {
+        o = OP_RECOVER;
+    } else if (strcmp(op, "rollback") == 0) {
+        o = OP_ROLLBACK;
+    } else if (strcmp(op, "finalize") == 0) {
+        o = OP_FINALIZE;
+    } else {
+        zend_value_error("%s is not a plan operation; apply, recover, rollback and finalize are", op);
+        return false;
+    }
     applier a;
     if (!applier_init(&a, c, dialect_name, &server, plans, now, events)) {
         return false;
     }
-    operation o = strcmp(op, "apply") == 0 ? OP_APPLY : strcmp(op, "recover") == 0 ? OP_RECOVER : strcmp(op, "rollback") == 0 ? OP_ROLLBACK : OP_FINALIZE;
     return session(&a, o);
 }
 

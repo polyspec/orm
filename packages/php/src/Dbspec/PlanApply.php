@@ -130,11 +130,15 @@ final class PlanApply
     }
 
     /**
-     * @param PlanList $plans as for Dbspec::apply
-     * @param PlanClock $now as for Dbspec::apply
-     * @param PlanEventHandler|null $events as for Dbspec::apply
+     * Runs one plan operation of Dbspec: apply, recover, rollback or finalize; another operation is a ValueError.
+     *
+     * @param string $operation the Dbspec method
+     * @param PlanList $plans as for that method
+     * @param PlanClock $now as for that method
+     * @param PlanEventHandler|null $events as for that method
      */
-    public static function apply(
+    public static function operate(
+        string $operation,
         \PDO $c,
         string $dialect,
         string $server,
@@ -142,55 +146,16 @@ final class PlanApply
         \Closure $now,
         ?\Closure $events
     ): void {
-        self::inSession($c, $dialect, $server, $plans, $now, $events, self::applyRemaining(...));
-    }
-
-    /**
-     * @param PlanList $plans as for Dbspec::recover
-     * @param PlanClock $now as for Dbspec::recover
-     * @param PlanEventHandler|null $events as for Dbspec::recover
-     */
-    public static function recover(
-        \PDO $c,
-        string $dialect,
-        string $server,
-        array $plans,
-        \Closure $now,
-        ?\Closure $events
-    ): void {
-        self::inSession($c, $dialect, $server, $plans, $now, $events, self::recoverLastPlan(...));
-    }
-
-    /**
-     * @param PlanList $plans as for Dbspec::rollback
-     * @param PlanClock $now as for Dbspec::rollback
-     * @param PlanEventHandler|null $events as for Dbspec::rollback
-     */
-    public static function rollback(
-        \PDO $c,
-        string $dialect,
-        string $server,
-        array $plans,
-        \Closure $now,
-        ?\Closure $events
-    ): void {
-        self::inSession($c, $dialect, $server, $plans, $now, $events, self::rollbackLastPlan(...));
-    }
-
-    /**
-     * @param PlanList $plans as for Dbspec::finalize
-     * @param PlanClock $now as for Dbspec::finalize
-     * @param PlanEventHandler|null $events as for Dbspec::finalize
-     */
-    public static function finalize(
-        \PDO $c,
-        string $dialect,
-        string $server,
-        array $plans,
-        \Closure $now,
-        ?\Closure $events
-    ): void {
-        self::inSession($c, $dialect, $server, $plans, $now, $events, self::finalizeApplied(...));
+        $step = match ($operation) {
+            'apply' => self::applyRemaining(...),
+            'recover' => self::recoverLastPlan(...),
+            'rollback' => self::rollbackLastPlan(...),
+            'finalize' => self::finalizeApplied(...),
+            default => throw new \ValueError(
+                "$operation is not a plan operation; apply, recover, rollback and finalize are"
+            ),
+        };
+        self::inSession($c, $dialect, $server, $plans, $now, $events, $step);
     }
 
     private static function applyRemaining(self $a): void

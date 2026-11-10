@@ -117,17 +117,11 @@ func TestDialectFacts(t *testing.T) {
 		if probe.DB == "mariadb" {
 			continue
 		}
-		t.Run(probe.ID, func(t *testing.T) {
-			probeServers := servers
-			if probe.Fixture == ProbeFixtureMySQLPrivilege {
-				probeServers = privilegeServers
-			}
-			if runProbeCase(t, probeServers, probe, index, probe.Fact) {
-				counts[probe.DB].passed++
-			} else {
-				counts[probe.DB].failed++
-			}
-		})
+		if runProbe(t, servers, privilegeServers, probe, index) {
+			counts[probe.DB].passed++
+		} else {
+			counts[probe.DB].failed++
+		}
 	}
 	for _, db := range []string{"mysql", "postgres", "sqlite"} {
 		t.Logf("summary %s: %d passed, %d failed", db, counts[db].passed, counts[db].failed)
@@ -158,19 +152,26 @@ func TestDialectFactsMariadb(t *testing.T) {
 		if probe.DB != "mariadb" {
 			continue
 		}
-		t.Run(probe.ID, func(t *testing.T) {
-			probeServers := servers
-			if probe.Fixture == ProbeFixtureMySQLPrivilege {
-				probeServers = privilegeServers
-			}
-			if runProbeCase(t, probeServers, probe, index, probe.Fact) {
-				passed++
-			} else {
-				failed++
-			}
-		})
+		if runProbe(t, servers, privilegeServers, probe, index) {
+			passed++
+		} else {
+			failed++
+		}
 	}
 	t.Logf("summary mariadb: %d passed, %d failed in %s", passed, failed, time.Since(started).Round(time.Millisecond))
+}
+
+// runProbe runs one probe as a subtest on the servers of its fixture, the privilege servers for a probe of the MySQL
+// privilege fixture, and reports whether it passed.
+func runProbe(t *testing.T, servers, privilegeServers *Servers, probe Probe, index int) (passed bool) {
+	t.Run(probe.ID, func(t *testing.T) {
+		probeServers := servers
+		if probe.Fixture == ProbeFixtureMySQLPrivilege {
+			probeServers = privilegeServers
+		}
+		passed = runProbeCase(t, probeServers, probe, index, probe.Fact)
+	})
+	return passed
 }
 
 // probeCaseDeadline is the deadline of the case that runs one probe. It adds to the probe's own probeDeadline

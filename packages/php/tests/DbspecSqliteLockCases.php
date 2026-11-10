@@ -57,7 +57,8 @@ final class DbspecSqliteLockCases
         $driver = new FailingSqliteLockPdo($cause, is_int($error) && in_array($error & 0xff, [5, 6], true));
         $initial = $driver->pragmas;
         try {
-            PlanApply::apply(
+            PlanApply::operate(
+                'apply',
                 $driver,
                 'sqlite',
                 'sqlite',

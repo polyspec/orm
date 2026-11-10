@@ -28,7 +28,7 @@ use RuntimeException;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
-    use CatalogThrowableCases;
+    use CatalogPdoCases;
 
     // Requirements: INT-103, INT-117.
     public function testNativeDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
@@ -122,27 +122,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         coverageAssertColumnNameFailureIsPrevious($read);
     }
 
-    // Requirements: DIA-205. A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID; no
-    // server writes one, so the recipes cannot hold it (FCV-2).
-    public function testNativeMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(): void
-    {
-        foreach (["'a' 'b'", "'unterminated", "'a'x"] as $text) {
-            $pdo = new CatalogMariadbDefaultPdo([['broken', $text]]);
-            $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
-            $db->setServer('mariadb');
-            try {
-                self::catalogWith($db, 'mysql')->describeTable(['namespace' => 'orm_test', 'name' => 'default_probe']);
-                self::fail("the default {$text} was described");
-            } catch (OrmException $error) {
-                self::assertSame(Code::TABLE_METADATA_INVALID, $error->code_, $text);
-                self::assertSame(
-                    "TABLE_METADATA_INVALID: column \"broken\": default {$text} is not one string literal",
-                    $error->getMessage(),
-                );
-            }
-        }
-    }
-
     public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
     {
         require_once __DIR__ . '/CatalogMetadataFailurePdo.php';
@@ -227,22 +206,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
-    private static function catalogWith(Db $db, string $dialect): Catalog
-    {
-        $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
-        (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
-        (new ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, $dialect);
-        return $catalog;
-    }
-
-    /** @return array{Catalog, CatalogTableMetadata} */
-    private static function sqliteCatalog(PDO $pdo, string $table): array
-    {
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $catalog = self::catalogWith($db, 'sqlite');
-        return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
-    }
-
     public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void
     {
         $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -255,9 +218,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         };
         (new ReflectionProperty($state, 'stmts'))->setValue($state, [$statement]);
 
-        $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
-        (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
-        (new ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'sqlite');
+        $catalog = self::catalogWith($db, 'sqlite');
 
         try {
             $catalog->close();

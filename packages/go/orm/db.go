@@ -324,20 +324,8 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		}
 		return nil, configErr("%s", msg)
 	}
-	if cfg.PoolSize < 0 {
-		return nil, configErr("pool size must not be negative")
-	}
-	if cfg.PoolSize == 0 {
-		cfg.PoolSize = defaultPoolSize
-	}
-	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
-		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
-	}
-	if cfg.PoolIdleSize == 0 {
-		cfg.PoolIdleSize = cfg.PoolSize
-	}
-	if cfg.PoolLifetimeMs < 0 {
-		return nil, configErr("pool lifetime must not be negative")
+	if err := poolOptions(&cfg); err != nil {
+		return nil, err
 	}
 	s, err := openPool(ctx, sqlDriver, dsn, cfg)
 	if err != nil {
@@ -735,46 +723,65 @@ func mapLockedErr(err error, ctx context.Context, server, lock string) error {
 	return mapDriverErrContext(err, ctx, server)
 }
 
+// poolOptions checks the pool options of a configuration and gives the pool size and the idle size their defaults, the
+// same for every database (CFG-5a, CFG-22a).
+func poolOptions(cfg *Config) error {
+	if cfg.PoolSize < 0 {
+		return configErr("pool size must not be negative")
+	}
+	if cfg.PoolSize == 0 {
+		cfg.PoolSize = defaultPoolSize
+	}
+	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
+		return configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
+	}
+	if cfg.PoolIdleSize == 0 {
+		cfg.PoolIdleSize = cfg.PoolSize
+	}
+	if cfg.PoolLifetimeMs < 0 {
+		return configErr("pool lifetime must not be negative")
+	}
+	return nil
+}
+
+// mapMySQLErr maps the error numbers of MySQL; mapMySQLFamilyErr holds the numbers that MySQL and MariaDB share.
 func mapMySQLErr(err error) error {
-	// go-sql-driver reports a statement on a connection the server ended or that dropped as ErrInvalidConn.
-	if errors.Is(err, mysql.ErrInvalidConn) {
-		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error()}
-	}
-	var me *mysql.MySQLError
-	if !errors.As(err, &me) {
-		return err
-	}
-	state := string(me.SQLState[:])
-	switch {
-	case me.Number == 3572: // ER_LOCK_NOWAIT
-		return &ir.Error{Code: CodeLockNotAvailable, Msg: me.Error()}
-	case me.Number == 1213 || state == "40001":
-		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
-	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
-		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
-	case me.Number == 1451 || me.Number == 1452:
-		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
-	case me.Number == 3819: // ER_CHECK_CONSTRAINT_VIOLATED; MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE (DIA-201)
-		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
-	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
-		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
-	case me.Number == 1205 || me.Number == 3024 || me.Number == 1317: // lock wait timeout / query timeout / interrupted
-		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
-	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection
-		return &ir.Error{Code: CodeConnectionLost, Msg: me.Error()}
-	}
-	return err
+	return mapMySQLFamilyErr(err, mysqlErrorCodes)
 }
 
 // mapMariaDBErr maps the error numbers of MariaDB (DIA-201), which differ from MySQL's above 1999: MariaDB has no 3572,
 // 3819, 3024 or 4031 of MySQL, its 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
 func mapMariaDBErr(err error) error {
+	return mapMySQLFamilyErr(err, mariadbErrorCodes)
+}
+
+// mysqlErrorCodes is the code of each error number of MySQL that MariaDB gives another meaning or does not have.
+var mysqlErrorCodes = map[uint16]string{
+	3572: CodeLockNotAvailable, // ER_LOCK_NOWAIT
+	3819: CodeConstraint,       // ER_CHECK_CONSTRAINT_VIOLATED; MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE (DIA-201)
+	3024: CodeCanceled,         // query timeout
+	4031: CodeConnectionLost,   // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection
+}
+
+// mariadbErrorCodes is the code of each error number of MariaDB that MySQL gives another meaning or does not have.
+var mariadbErrorCodes = map[uint16]string{
+	4025: CodeConstraint, // ER_CONSTRAINT_FAILED: a CHECK constraint failed
+	1969: CodeCanceled,   // ER_STATEMENT_TIMEOUT
+}
+
+// mapMySQLFamilyErr maps an error of a server of the MySQL dialect: the numbers of its server, then the numbers and the
+// SQLSTATEs that MySQL and MariaDB share. go-sql-driver reports a statement on a connection the server ended or that
+// dropped as ErrInvalidConn.
+func mapMySQLFamilyErr(err error, server map[uint16]string) error {
 	if errors.Is(err, mysql.ErrInvalidConn) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error()}
 	}
 	var me *mysql.MySQLError
 	if !errors.As(err, &me) {
 		return err
+	}
+	if code, ok := server[me.Number]; ok {
+		return &ir.Error{Code: code, Msg: me.Error()}
 	}
 	state := string(me.SQLState[:])
 	switch {
@@ -784,11 +791,9 @@ func mapMariaDBErr(err error) error {
 		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
 	case me.Number == 1451 || me.Number == 1452:
 		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
-	case me.Number == 4025: // ER_CONSTRAINT_FAILED: a CHECK constraint failed
-		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
 	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
-	case me.Number == 1205 || me.Number == 1969 || me.Number == 1317: // lock wait timeout / statement timeout / interrupted
+	case me.Number == 1205 || me.Number == 1317: // lock wait timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	}
 	return err

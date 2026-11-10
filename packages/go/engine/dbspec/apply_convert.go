@@ -1,6 +1,7 @@
 package dbspec
 
 import (
+	"maps"
 	"slices"
 	"strings"
 )
@@ -104,11 +105,7 @@ func documentTable(d *Document, name string) *Table {
 // command that stopped between two statements writes the statements that remain.
 func (a *applier) mysqlConversion(state *Document, text map[string][]string, missing map[string][]ForeignKey) ([]string, error) {
 	q := a.r.q
-	tables := make([]string, 0, len(text))
-	for t := range text {
-		tables = append(tables, t)
-	}
-	slices.Sort(tables)
+	tables := slices.Sorted(maps.Keys(text))
 	textColumn := func(table, column string) bool { return slices.Contains(text[table], column) }
 	// The column types of the columns in text storage: char(36), or varbinary(36) of a conversion that stopped.
 	types := map[string]map[string]string{}
@@ -250,11 +247,7 @@ func stateColumnOrder(state *Document, t string, names []string) []string {
 // rebuilt in its rendered form inside one savepoint.
 func (a *applier) sqliteConversion(state *Document, text map[string][]string) ([]string, error) {
 	q := a.r.q
-	tables := make([]string, 0, len(text))
-	for t := range text {
-		tables = append(tables, t)
-	}
-	slices.Sort(tables)
+	tables := slices.Sorted(maps.Keys(text))
 	var out []string
 	for _, name := range tables {
 		t := documentTable(state, name)

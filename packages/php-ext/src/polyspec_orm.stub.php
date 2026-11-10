@@ -740,17 +740,8 @@ final class PlanApply
 {
     private function __construct() {}
 
-    /** Dbspec::apply, which calls it. */
-    public static function apply(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
-
-    /** Dbspec::recover. */
-    public static function recover(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
-
-    /** Dbspec::rollback. */
-    public static function rollback(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
-
-    /** Dbspec::finalize. */
-    public static function finalize(\PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
+    /** One of Dbspec::apply, recover, rollback and finalize, which call it; another operation is a ValueError. */
+    public static function operate(string $operation, \PDO $c, string $dialect, string $server, array $plans, \Closure $now, ?\Closure $events): void {}
 
     /** Reads whether one effect holds in the database of the connection. */
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}

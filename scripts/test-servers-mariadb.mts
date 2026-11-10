@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writ
 import { join } from 'node:path';
 import { MARIADB_VERSION, MARIADB_VERSION_LINE } from './mariadb-build.mts';
 import {
-  checkedPort, holdExclusiveLease, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
+  checkedPort, holdExclusiveLease, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
   type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopServerProcess, TestServerError,
 } from './test-servers.mts';
 
@@ -164,20 +164,7 @@ function mariadbRunning(p: Paths): MariadbPorts | undefined {
 function mariadbTls(p: Paths): void {
   const dir = join(p.dir, 'mariadb-tls');
   if (existsSync(join(dir, 'other-ca.pem'))) return;
-  const tmp = `${dir}.tmp`;
-  rmSync(tmp, { recursive: true, force: true });
-  mkdirSync(tmp, { recursive: true });
-  const log = openSync(join(tmp, 'openssl.log'), 'a');
-  const openssl = (args: string[]) => run('openssl', args, { stdio: ['ignore', 'inherit', log] });
-  for (const ca of ['ca', 'other-ca'])
-    openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3650', '-subj', `/CN=orm test ${ca}`, '-keyout', join(tmp, `${ca}-key.pem`), '-out', join(tmp, `${ca}.pem`)]);
-  for (const [name, san] of [['mariadb', MYSQL_TLS_SERVER_NAMES.mysql], ['mariadb-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const) {
-    openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
-    writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
-    openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-CAserial', join(tmp, 'ca.srl'), '-days', '3650',
-      '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
-  }
-  renameSync(tmp, dir);
+  issueTls(dir, [['mariadb', MYSQL_TLS_SERVER_NAMES.mysql], ['mariadb-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]]);
 }
 
 // mariadbVersion requires the mariadbd on PATH to be MARIADB_VERSION.

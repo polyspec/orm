@@ -94,7 +94,7 @@ final class RecipeApply
     }
 
     /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
-    private static function dialect(string $database): string
+    public static function dialect(string $database): string
     {
         return ['markdown' => 'sqlite', 'mariadb' => 'mysql'][$database] ?? $database;
     }
@@ -103,7 +103,7 @@ final class RecipeApply
      * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
      * as its server.
      */
-    private static function server(string $database): string
+    public static function server(string $database): string
     {
         return $database === 'markdown' ? 'sqlite' : $database;
     }
@@ -112,7 +112,7 @@ final class RecipeApply
      * The key of a value that names its text by database: a corpus reads the SQLite entry unless the value states its
      * own (DIA-185).
      */
-    private static function dialectKey(string $database, array $entries): string
+    public static function dialectKey(string $database, array $entries): string
     {
         return array_key_exists($database, $entries) ? $database : self::dialect($database);
     }

@@ -15,14 +15,14 @@ final class DbspecSqliteLockNativeTest extends TestCase
     // Requirements: PLN-89, PLN-90.
     public function testOnlySqliteBusyAndLockedErrorInfoCodesAreClassifiedAsLocks(): void
     {
-        self::assertTrue((new ReflectionMethod(PlanApply::class, 'apply'))->isInternal());
+        self::assertTrue((new ReflectionMethod(PlanApply::class, 'operate'))->isInternal());
         DbspecSqliteLockCases::assertLockCodes($this);
     }
 
     // Requirements: PLN-89, PLN-90.
     public function testNonLockAndMissingPdoCodesPreserveTheOriginalException(): void
     {
-        self::assertTrue((new ReflectionMethod(PlanApply::class, 'apply'))->isInternal());
+        self::assertTrue((new ReflectionMethod(PlanApply::class, 'operate'))->isInternal());
         DbspecSqliteLockCases::assertNonLockCauses($this);
     }
 }
