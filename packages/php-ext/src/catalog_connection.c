@@ -2170,7 +2170,6 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
 
 /* ---- catalog value rules (docs/spec/interfaces.md "Catalog value rules", INT-165 to INT-185) ----------------------------- */
 
-#define CAT_RULE_MYSQL_YEAR "MySQL YEAR has no grid cell"
 #define CAT_RULE_MYSQL_TIMESTAMP "MySQL TIMESTAMP follows a time zone"
 #define CAT_RULE_POSTGRES_ZONED "PostgreSQL timestamptz and timetz are unsupported"
 #define CAT_RULE_POSTGRES_NUMERIC "PostgreSQL numeric is not finite"
@@ -2720,6 +2719,22 @@ static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
     return cat_grid_made(true, "unsigned", &value, cell);
 }
 
+/* The integer of a MySQL YEAR value (Catalog::yearNumber, INT-166): 1901 to 2155, or 0 for the zero year. The server writes it
+ * in four digits, 0000 for the zero year, and flags the column UNSIGNED, which does not make it an unsigned cell. */
+static bool cat_year_number(zval *v, zval *out)
+{
+    if (Z_TYPE_P(v) == IS_LONG) {
+        ZVAL_LONG(out, Z_LVAL_P(v));
+        return true;
+    }
+    if (Z_TYPE_P(v) != IS_STRING || Z_STRLEN_P(v) != 4 || cat_digits(Z_STRVAL_P(v), 4) != 4) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    const char *s = Z_STRVAL_P(v);
+    ZVAL_LONG(out, (zend_long)((s[0] - '0') * 1000 + (s[1] - '0') * 100 + (s[2] - '0') * 10 + (s[3] - '0')));
+    return true;
+}
+
 /* A text cell; a value that is not valid UTF-8 is its bytes (Catalog::textCell, INT-153, INT-157). */
 static bool cat_text_cell(zval *v, zval *cell)
 {
@@ -2802,11 +2817,11 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, bool unsigned_, bool bi
         case 4: return cat_float_cell(v, true, cell);
         case 5: return cat_float_cell(v, false, cell);
         case 7: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_TIMESTAMP);
-        case 13: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_YEAR);
         case 10: case 14: return cat_temporal_cell(v, 'd', cell);
         case 12: return cat_temporal_cell(v, 'x', cell);
         case 11: return cat_temporal_cell(v, 't', cell);
         case 0: case 246: return cat_grid_made(cat_decimal_text(v, &value), "decimal", &value, cell);
+        case 13: return cat_grid_made(cat_year_number(v, &value), "integer", &value, cell);
         case 1: case 2: case 3: case 8: case 9: return cat_integer_cell(v, unsigned_, cell);
         /* The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185). */
         case 16: return cat_grid_made(cat_bit_bytes(v, bits, &value), "binary", &value, cell);
@@ -3080,6 +3095,7 @@ static bool cat_plain_value(zval *v, const char *native, const char *dialect, zv
         ZVAL_COPY(out, v);
         return true;
     }
+    if (strcmp(dialect, "mysql") == 0 && strcasecmp(native, "YEAR") == 0) return cat_year_number(v, out);
     /* PDO reads a PostgreSQL bytea as a stream (INT-107). */
     if (Z_TYPE_P(v) == IS_RESOURCE) return cat_bytes_value(v, out);
     if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
@@ -3256,7 +3272,7 @@ static zend_long cat_declared_width(const char *native)
 /* The conversion of the values of one described column (Catalog::describedReader). */
 typedef enum {
     CAT_READ_PLAIN, CAT_READ_REFUSE, CAT_READ_BOOL, CAT_READ_BIT, CAT_READ_BYTES, CAT_READ_TEXT, CAT_READ_NUMERIC,
-    CAT_READ_SERVER_TEMPORAL, CAT_READ_SQLITE_TEMPORAL,
+    CAT_READ_SERVER_TEMPORAL, CAT_READ_SQLITE_TEMPORAL, CAT_READ_YEAR,
 } cat_read;
 
 typedef struct {
@@ -3269,7 +3285,7 @@ typedef struct {
 } cat_reader;
 
 /*
- * The reader of one described column (Catalog::describedReader): the rule of its native type (INT-166 to INT-170, INT-185), a
+ * The reader of one described column (Catalog::describedReader): the rule of its native type (INT-167 to INT-170, INT-185), a
  * temporal value in its declared precision, a boolean (INT-182), and the plain conversion otherwise. On PostgreSQL a type that
  * no type text names takes the class of its result OID (cat_pg_class); a column of no OID is refused.
  */
@@ -3304,7 +3320,7 @@ static bool cat_reader_of(zval *db, zval *pdo, zval *cache, const char *dialect,
     }
     reader->read = CAT_READ_REFUSE;
     reader->code = "CATALOG_VALUE";
-    if (strcmp(class_, "year") == 0) reader->text = CAT_RULE_MYSQL_YEAR;
+    if (strcmp(class_, "year") == 0) reader->read = CAT_READ_YEAR;
     else if (strcmp(class_, "mysql_timestamp") == 0) reader->text = CAT_RULE_MYSQL_TIMESTAMP;
     else if (strcmp(class_, "zoned") == 0) reader->text = CAT_RULE_POSTGRES_ZONED;
     else if (strcmp(class_, "refused") == 0 || strcmp(class_, "multirange") == 0) reader->text = CAT_RULE_NATIVE_TYPE;
@@ -3343,6 +3359,7 @@ static bool cat_read_value(cat_reader *reader, zval *cell, const char *dialect, 
         case CAT_READ_NUMERIC: return cat_postgres_numeric(cell, out);
         case CAT_READ_SERVER_TEMPORAL: return cat_described_server_temporal(cell, reader->kind, dialect, reader->native, out);
         case CAT_READ_SQLITE_TEMPORAL: return cat_sqlite_temporal(cell, reader->kind, reader->number, out);
+        case CAT_READ_YEAR: return cat_year_number(cell, out);
         default: return cat_plain_value(cell, reader->native, dialect, out);
     }
 }

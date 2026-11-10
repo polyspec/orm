@@ -30,7 +30,6 @@ func (r *catalogRule) at(column int) error {
 
 // The rules of the table of INT-165, by their ID.
 var (
-	catalogRuleYear            = &catalogRule{code: CodeCatalogValue, text: "MySQL YEAR has no grid cell"}                                                // INT-166
 	catalogRuleMySQLTimestamp  = &catalogRule{code: CodeCatalogValue, text: "MySQL TIMESTAMP follows a time zone"}                                        // INT-167
 	catalogRulePostgresZoned   = &catalogRule{code: CodeCatalogValue, text: "PostgreSQL timestamptz and timetz are unsupported"}                          // INT-168
 	catalogRuleNumericInfinite = &catalogRule{code: CodeCatalogValue, text: "PostgreSQL numeric is not finite"}                                           // INT-169
@@ -82,7 +81,8 @@ var catalogRefusedType = catalogType{refusal: catalogRuleNativeType, byType: tru
 func catalogMySQLType(native string) catalogType {
 	unsigned := strings.HasPrefix(native, "UNSIGNED ")
 	switch strings.TrimPrefix(native, "UNSIGNED ") {
-	case "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT":
+	case "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", "YEAR":
+		// A YEAR value is its integer, 1901 to 2155 or 0 for the zero year, whichever type the server reports (INT-166).
 		return catalogType{kind: CatalogGridInteger, unsigned: unsigned}
 	case "FLOAT":
 		return catalogType{kind: CatalogGridFloat32}
@@ -96,8 +96,6 @@ func catalogMySQLType(native string) catalogType {
 		return catalogType{kind: CatalogGridTime}
 	case "DATETIME":
 		return catalogType{kind: CatalogGridDateTime}
-	case "YEAR":
-		return catalogType{refusal: catalogRuleYear}
 	case "TIMESTAMP":
 		return catalogType{refusal: catalogRuleMySQLTimestamp}
 	case "CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "JSON", "ENUM", "SET":

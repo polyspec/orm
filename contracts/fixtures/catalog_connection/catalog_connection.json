@@ -5654,10 +5654,6 @@
           "sql": "SELECT YEAR('2020-01-02')",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
-            },
-            "mariadb": {
               "rows": [
                 [
                   {
@@ -14793,8 +14789,8 @@
           "only": [
             "mysql"
           ],
-          "reason": "a year and a NULL",
-          "sql": "INSERT INTO value_rule_year VALUES (1, 2020), (2, NULL)"
+          "reason": "a year, a NULL and the zero year",
+          "sql": "INSERT INTO value_rule_year VALUES (1, 2020), (2, NULL), (3, 0)"
         },
         {
           "op": "catalog.read_only_grid_query",
@@ -14804,8 +14800,34 @@
           "sql": "SELECT y FROM value_rule_year WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL YEAR has no grid cell"
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT id, y AS year_value FROM value_rule_year WHERE id = 3",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -14828,6 +14850,29 @@
           }
         },
         {
+          "op": "catalog.read_only_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT y FROM value_rule_year WHERE id IN (1, 3) ORDER BY id",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ],
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
           "op": "catalog.table_page",
           "only": [
             "mysql"
@@ -14840,8 +14885,21 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: MySQL YEAR has no grid cell"
+              "columns": [
+                "id",
+                "y"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "2020"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -14865,11 +14923,42 @@
               "order_by": [
                 "id"
               ],
-              "has_more": false,
+              "has_more": true,
               "rows": [
                 [
                   {
                     "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "value_rule_year",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "y"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "y"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "0"
                   }
                 ]
               ]

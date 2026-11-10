@@ -804,7 +804,7 @@ class GridCell:
 # The MySQL NEWDATE field type, which a server may report for a DATE result.
 _MYSQL_NEWDATE = 14
 _MYSQL_DECIMAL, _MYSQL_NEWDECIMAL, _MYSQL_UNSIGNED_FLAG = 0, 246, 32
-# The MySQL YEAR field type, which a YEAR() result has: it has no grid cell (the spec's unsupported types).
+# The MySQL YEAR field type, which a YEAR column and a MySQL YEAR() result have.
 _MYSQL_YEAR = 13
 # The PostgreSQL type OIDs of real and of the temporal types that a plain query reads as text; _PG_CLASSES holds the
 # class of every OID with a cell.
@@ -850,7 +850,6 @@ def _budget_size(value) -> int:
 # every runtime. A refusal is `<CODE>: column <n>: <text>`, n the 1-based position of the column in the result (a described
 # read selects the columns of its table in physical order), and its text names no value, no column label and no driver
 # type.
-_YEAR_TEXT = "MySQL YEAR has no grid cell"
 _TIMESTAMP_TEXT = "MySQL TIMESTAMP follows a time zone"
 _ZONED_TEXT = "PostgreSQL timestamptz and timetz are unsupported"
 _NUMERIC_TEXT = "PostgreSQL numeric is not finite"
@@ -1116,19 +1115,23 @@ def _pg_cell(raw, cls: str, position: int) -> GridCell:
     raise _driver_value(position)
 
 
-# MySQL field types (pymysql.constants.FIELD_TYPE) and the cell of each (INT-185). TIMESTAMP and YEAR keep their rules
-# (INT-167, INT-166); BIT and GEOMETRY are bytes cells; JSON, ENUM and SET are text cells, which pymysql reports as JSON and
-# STRING; a string or blob type is a text cell, or a bytes cell when its character set is binary.
+# MySQL field types (pymysql.constants.FIELD_TYPE) and the cell of each (INT-185). TIMESTAMP keeps its rule (INT-167); a
+# YEAR value is its integer (INT-166); BIT and GEOMETRY are bytes cells; JSON, ENUM and SET are text cells, which pymysql
+# reports as JSON and STRING; a string or blob type is a text cell, or a bytes cell when its character set is binary.
 _MYSQL_INTEGERS = (1, 2, 3, 8, 9)
 _MYSQL_STRINGS = (15, 245, 247, 248, 249, 250, 251, 252, 253, 254)
 _MYSQL_BYTES = (16, 255)
 
 
 def _mysql_cell(value, code, unsigned: bool, position: int) -> GridCell:
-    if code == _MYSQL_YEAR:
-        raise _value_error(codes.CATALOG_VALUE, position, _YEAR_TEXT)
     if code == _MYSQL_TIMESTAMP:
         raise _value_error(codes.CATALOG_VALUE, position, _TIMESTAMP_TEXT)
+    if code == _MYSQL_YEAR:
+        # pymysql reads a YEAR as an int, 0 for the zero year 0000; the server flags it UNSIGNED, which does not make it an
+        # unsigned cell.
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise _driver_value(position)
+        return GridCell("integer", value)
     if code in _MYSQL_INTEGERS:
         if isinstance(value, bool) or not isinstance(value, int):
             raise _driver_value(position)

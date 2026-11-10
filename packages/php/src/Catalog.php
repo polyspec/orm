@@ -27,8 +27,7 @@ final class Catalog
     private const REOPEN_SECONDS = 2.0;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
-    /** The text of each catalog value rule (docs/spec/interfaces.md "Catalog value rules", INT-166 to INT-182). */
-    private const RULE_MYSQL_YEAR = 'MySQL YEAR has no grid cell';
+    /** The text of each catalog value rule (docs/spec/interfaces.md "Catalog value rules", INT-167 to INT-182). */
     private const RULE_MYSQL_TIMESTAMP = 'MySQL TIMESTAMP follows a time zone';
     private const RULE_POSTGRES_ZONED = 'PostgreSQL timestamptz and timetz are unsupported';
     private const RULE_POSTGRES_NUMERIC = 'PostgreSQL numeric is not finite';
@@ -1086,11 +1085,11 @@ final class Catalog
             'FLOAT' => self::float32Cell($value),
             'DOUBLE' => self::float64Cell($value),
             'TIMESTAMP' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
-            'YEAR' => throw self::rule(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
             'DATE', 'NEWDATE' => new CatalogGridCell('date', self::serverDate(self::driverText($value))),
             'DATETIME' => new CatalogGridCell('datetime', self::serverDateTime(self::driverText($value))),
             'TIME' => new CatalogGridCell('time', self::serverTime(self::driverText($value))),
             'DECIMAL', 'NEWDECIMAL' => new CatalogGridCell('decimal', self::decimalText($value)),
+            'YEAR' => new CatalogGridCell('integer', self::yearNumber($value)),
             'LONG', 'LONGLONG', 'SHORT', 'TINY', 'INT24' => self::integerCell($value, $unsigned),
             // The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185).
             'BIT' => new CatalogGridCell('binary', self::bitBytes($value, $bits)),
@@ -1291,6 +1290,21 @@ final class Catalog
         // Digits beyond the signed range are an unsigned value, whatever the column reports (INT-157).
         if (self::isUnsignedDigits($value)) {
             return new CatalogGridCell('unsigned', $value);
+        }
+        throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
+    }
+
+    /**
+     * The integer of a MySQL YEAR value (INT-166): 1901 to 2155, or 0 for the zero year. The server writes it in four
+     * digits, 0000 for the zero year, and flags the column UNSIGNED, which does not make it an unsigned cell.
+     */
+    private static function yearNumber(mixed $value): int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_string($value) && preg_match('/^\d{4}$/D', $value) === 1) {
+            return (int) $value;
         }
         throw self::rule(Code::CATALOG_VALUE, self::RULE_DRIVER_VALUE);
     }
@@ -2378,7 +2392,7 @@ final class Catalog
     }
 
     /**
-     * The conversion of the values of one described column, which is not NULL: the rule of its native type (INT-166 to
+     * The conversion of the values of one described column, which is not NULL: the rule of its native type (INT-167 to
      * INT-170, INT-185), a temporal value in its declared precision, a boolean (INT-182), and the plain conversion of
      * value() otherwise. On PostgreSQL a type that no type text names takes the class of its result OID (pgClass).
      *
@@ -2410,7 +2424,7 @@ final class Catalog
         $class = $dialect === 'mysql' ? self::mysqlColumnClass($native) : (self::pgColumnClass($native)
             ?? ($oid === null ? 'refused' : $this->pgClass($pdo, $oid)));
         return match ($class) {
-            'year' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_YEAR),
+            'year' => self::yearNumber(...),
             'mysql_timestamp' => $refuse(Code::CATALOG_VALUE, self::RULE_MYSQL_TIMESTAMP),
             'zoned' => $refuse(Code::CATALOG_VALUE, self::RULE_POSTGRES_ZONED),
             'refused', 'multirange' => $refuse(Code::CATALOG_VALUE, self::RULE_NATIVE_TYPE),
@@ -2844,6 +2858,9 @@ final class Catalog
         }
         if ($value === null || is_bool($value) || is_int($value)) {
             return $value;
+        }
+        if ($dialect === 'mysql' && strtoupper($nativeType) === 'YEAR') {
+            return self::yearNumber($value);
         }
         if (is_resource($value)) {
             // PDO reads a PostgreSQL bytea as a stream (INT-107).

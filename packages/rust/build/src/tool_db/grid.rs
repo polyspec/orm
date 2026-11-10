@@ -111,6 +111,14 @@ pub(super) fn mysql_value(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<O
     }
 }
 
+/// The integer cell of a MySQL `YEAR` value, 1901 to 2155 or 0 for the zero year (INT-166): the binary protocol of MySQL
+/// sends it as two little-endian bytes.
+pub(super) fn mysql_year(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<GridCell, sqlx::Error> {
+    let Some(bytes) = mysql_value(row, index)? else { return Ok(GridCell::Null) };
+    let [low, high] = *bytes else { return Err(unsupported_driver_value()) };
+    Ok(GridCell::Integer(i64::from(u16::from_le_bytes([low, high]))))
+}
+
 /// The date of the binary protocol of MySQL after its length prefix: INT-173 for a year outside 1 to 9999 (the zero date
 /// included), and INT-174 for a month or day of no calendar date, which `ALLOW_INVALID_DATES` stores.
 fn mysql_date(bytes: &[u8]) -> Result<NaiveDate, sqlx::Error> {

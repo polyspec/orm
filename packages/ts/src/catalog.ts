@@ -217,7 +217,6 @@ function messageOf(error: unknown): string {
  * 1-based position (atColumn).
  */
 const RULES = {
-  year: [CODE_VALUE, 'MySQL YEAR has no grid cell'],
   timestamp: [CODE_VALUE, 'MySQL TIMESTAMP follows a time zone'],
   zoned: [CODE_VALUE, 'PostgreSQL timestamptz and timetz are unsupported'],
   numeric: [CODE_VALUE, 'PostgreSQL numeric is not finite'],
@@ -263,7 +262,7 @@ function atColumn(index: number, error: unknown): unknown {
 
 /**
  * The cell kind of a native type of a MySQL or PostgreSQL result column, as its driver names it (driver.ts mysqlColumn and pgColumn):
- * the kinds of INT-185, the refused types of INT-166 to INT-168, `none` for a type with no cell (INT-170), and `resolve` for a
+ * the kinds of INT-185, `year` for a MySQL YEAR (INT-166), the refused types of INT-167 and INT-168, `none` for a type with no cell (INT-170), and `resolve` for a
  * PostgreSQL type that only the server's catalog describes (an array, a range, a multirange, an enum, a composite, a pseudo-type).
  */
 type CellClass = 'integer' | 'unsigned' | 'float32' | 'float64' | 'decimal' | 'text' | 'boolean' | 'binary' | 'date' | 'time' | 'datetime' | 'year' | 'timestamp' | 'zoned' | 'none' | 'resolve';
@@ -752,11 +751,13 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
       const text = hostText(value);
       return typeof text === 'string' ? { kind: 'text', value: text } : { kind: 'binary', value: text };
     }
+    case 'year':
+      // The server flags a YEAR UNSIGNED, which does not make it an unsigned cell (INT-166).
+      return { kind: 'integer', value: checkedInteger(value, false) };
     case 'date':
     case 'time':
     case 'datetime':
       return { kind, value: driverTemporal(value, kind) };
-    case 'year':
     case 'timestamp':
     case 'zoned':
       throw refuse(kind);
@@ -807,7 +808,7 @@ function plainValue(value: unknown, column: DriverColumn, dialect: DriverName): 
 }
 
 /**
- * A value of a described table (INT-165): the refused types of INT-166 to INT-170, a non-finite PostgreSQL numeric (INT-169), a boolean
+ * A value of a described table (INT-165): the refused types of INT-167 to INT-170, a non-finite PostgreSQL numeric (INT-169), a boolean
  * column (INT-182), the declared precision of a MySQL or PostgreSQL temporal column (INT-103) and the dbspec text of a SQLite one.
  */
 function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
@@ -821,7 +822,6 @@ function describedValue(value: unknown, column: DriverColumn, described: Catalog
   if (value === null) return null;
   const kind = cellClass(dialect, column.type);
   switch (kind) {
-    case 'year':
     case 'timestamp':
     case 'zoned':
       throw refuse(kind);
