@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: bc83d5fcca2228dc2b4b1e60694c7597527e88d9570d1dd8b0d7de150414098b -->
+<!-- source-sha256: 70734df9d6b8004ce4ff68aa1e7a2e7ae964fcb8704bd71e95d8806ab3eb3959 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -144,6 +144,16 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   `WHERE EVENT_OBJECT_SCHEMA = DATABASE()`로 읽고, `KEY_COLUMN_USAGE` join에 `k.TABLE_SCHEMA = DATABASE()`를 더하며, apply
   probe도 같은 방식으로 읽는다. check 하나, column 두 개의 foreign key 하나, trigger 하나가 있는 database에서 MySQL 8.4와
   MariaDB 11.8 모두 예전 형태와 새 형태가 같은 row를 준다(DIA-200, 규칙 1).
+
+- **DIA-214** case 계정의 role — MySQL 8.4 / MariaDB 11.8: catalog recipe의 case `row_change_on_a_role_only_trigger_grant`는
+  그 user에게 role로만 TRIGGER를 주며(INT-119), 두 server에서 그 role을 만드는 procedure 하나는 없다. 한 server의 runner들은
+  그 계정을 나눠 쓰므로 user와 role은 case database에서 이름을 얻고, case의 procedure는 각 statement를 `PREPARE`로 실행한다.
+  MySQL은 prepared statement에서 `CREATE ROLE`과 `DROP ROLE`을 거부하므로(1295), 그 role은 잠긴 계정
+  `CREATE USER ... ACCOUNT LOCK`이며 `DROP USER`로 지우고 `ALTER USER ... DEFAULT ROLE ALL`로 기본 role로 만든다. MariaDB의
+  role은 계정이 아니고 host가 없다: `CREATE ROLE`로 만들고 `DROP ROLE`로 지우며 `SET DEFAULT ROLE r FOR u`로만 기본 role로
+  만든다. MariaDB는 `ALTER USER ... DEFAULT ROLE`과 `SET DEFAULT ROLE r TO u`를 거부하고(1064), MySQL은
+  `SET DEFAULT ROLE r FOR u`를 거부한다(1064). 그래서 case는 procedure를 server마다 한 번씩 쓰며, 다른 step과 expect는 두
+  server에서 같다.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

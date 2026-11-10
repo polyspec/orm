@@ -157,6 +157,16 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   and the apply probes the same way; on MySQL 8.4 and MariaDB 11.8 the old and the new form give the same rows for a
   database with a check, a two-column foreign key and a trigger (DIA-200, rule 1).
 
+- **DIA-214** The role of a case account — MySQL 8.4 / MariaDB 11.8: the case `row_change_on_a_role_only_trigger_grant`
+  of the catalog recipe gives its user TRIGGER through a role alone (INT-119), and no one procedure makes that role on
+  both servers. Runners on one server share its accounts, so the user and the role take their names from the case
+  database, and the procedure of the case runs each statement by `PREPARE`. MySQL refuses `CREATE ROLE` and `DROP ROLE`
+  in a prepared statement (1295), so its role is a locked account, `CREATE USER ... ACCOUNT LOCK`, dropped by `DROP USER`
+  and made the default by `ALTER USER ... DEFAULT ROLE ALL`. A MariaDB role is no account and has no host: it is made by
+  `CREATE ROLE`, dropped by `DROP ROLE`, and made the default only by `SET DEFAULT ROLE r FOR u`; MariaDB refuses
+  `ALTER USER ... DEFAULT ROLE` and `SET DEFAULT ROLE r TO u` (1064), and MySQL refuses `SET DEFAULT ROLE r FOR u` (1064).
+  The case therefore writes its procedure once for each server; its other steps and its expects are the same on both.
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
