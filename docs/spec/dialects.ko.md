@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d5994df2cbcf2426aadf2963d9b335fb68b58f8ea0d64c87bb3e48ff87940b87 -->
+<!-- source-sha256: 9ab8d86731aa0f0c5a26d6d933d9683ab1094348a340e8682427ee4fdf4dd3b6 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -125,6 +125,18 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   `mysql_audit_notify_connection_connect`를 부른다), 거부 직후 읽으면 11.8.6에서 run 10번 중 6번 그 줄을 놓쳤다. 그래서 수는
   server가 아니라 client의 것이다. step `catalog.reconnect {connects}`는 재연결을 server 앞에 둔 runner의 TCP listener로
   중계하고, listener는 받아들인 연결을 센다. 각 runtime은 두 server에서 같은 형태로 1을 준다(DIA-200, 규칙 1).
+
+- **DIA-213** introspection 읽기의 database — MySQL 8.4 / MariaDB 11.8: MariaDB는 조건이 row가 설명하는 table의 schema
+  column인 `TABLE_SCHEMA`(`TRIGGERS`에서는 `EVENT_OBJECT_SCHEMA`)를 이름 지을 때만 `information_schema` table을 한 database에서
+  읽는다. `CONSTRAINT_SCHEMA`나 `TRIGGER_SCHEMA`만의 조건, 또는 `CONSTRAINT_SCHEMA`로 `KEY_COLUMN_USAGE`를 join하면 모든
+  database의 모든 table을 연다. test server의 MariaDB primary에서 `EXPLAIN`은 `CONSTRAINT_SCHEMA`로 읽는 `TABLE_CONSTRAINTS`의
+  check 목록, `TRIGGER_SCHEMA`로 읽는 `TRIGGERS`의 trigger 목록, foreign key join의 `KEY_COLUMN_USAGE` 쪽에 "Scanned all
+  databases"를 주고, 각각 `TABLE_SCHEMA`나 `EVENT_OBJECT_SCHEMA`를 이름 지으면 "Scanned 1 database"를 준다. plan apply의
+  constraint와 trigger 존재 probe는 "Scanned 1 database"에서 "Scanned 0 databases"로 바뀐다. constraint와 trigger는 그
+  table의 schema에 있으므로, 모든 runtime의 introspection은 check를 `WHERE TABLE_SCHEMA = DATABASE()`로, trigger를
+  `WHERE EVENT_OBJECT_SCHEMA = DATABASE()`로 읽고, `KEY_COLUMN_USAGE` join에 `k.TABLE_SCHEMA = DATABASE()`를 더하며, apply
+  probe도 같은 방식으로 읽는다. check 하나, column 두 개의 foreign key 하나, trigger 하나가 있는 database에서 MySQL 8.4와
+  MariaDB 11.8 모두 예전 형태와 새 형태가 같은 row를 준다(DIA-200, 규칙 1).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

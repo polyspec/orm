@@ -136,6 +136,19 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   step `catalog.reconnect {connects}` relays the reconnect through a TCP listener of the runner in front of the server,
   which counts the connections it accepts, and each runtime gives 1 on both servers in the same form (DIA-200, rule 1).
 
+- **DIA-213** The database of an introspection read — MySQL 8.4 / MariaDB 11.8: MariaDB reads an `information_schema`
+  table of one database only when a condition names the schema column of the table that a row describes, `TABLE_SCHEMA`
+  (`EVENT_OBJECT_SCHEMA` for `TRIGGERS`); a condition on `CONSTRAINT_SCHEMA` or `TRIGGER_SCHEMA` alone, or a join of
+  `KEY_COLUMN_USAGE` on `CONSTRAINT_SCHEMA`, opens every table of every database. On the MariaDB primary of the test
+  servers, `EXPLAIN` gives "Scanned all databases" for the check list of `TABLE_CONSTRAINTS` by `CONSTRAINT_SCHEMA`, the
+  trigger list of `TRIGGERS` by `TRIGGER_SCHEMA` and the `KEY_COLUMN_USAGE` side of the foreign key join, and "Scanned 1
+  database" for each once it names `TABLE_SCHEMA` or `EVENT_OBJECT_SCHEMA`; the existence probes of a constraint and a
+  trigger in a plan apply go from "Scanned 1 database" to "Scanned 0 databases". A constraint and a trigger are in the
+  schema of their table, so the introspection of every runtime reads the checks `WHERE TABLE_SCHEMA = DATABASE()`, the
+  triggers `WHERE EVENT_OBJECT_SCHEMA = DATABASE()`, joins `KEY_COLUMN_USAGE` with `k.TABLE_SCHEMA = DATABASE()` added,
+  and the apply probes the same way; on MySQL 8.4 and MariaDB 11.8 the old and the new form give the same rows for a
+  database with a check, a two-column foreign key and a trigger (DIA-200, rule 1).
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`

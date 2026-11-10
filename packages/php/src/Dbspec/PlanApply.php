@@ -62,9 +62,9 @@ final class PlanApply
                 . 'AND TABLE_NAME = ? AND COLUMN_NAME = ?',
             'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() '
                 . 'AND TABLE_NAME = ? AND INDEX_NAME = ?',
-            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '
+            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = '
                 . 'DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
-            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() '
+            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA = DATABASE() '
                 . 'AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?',
         ],
         'postgres' => [

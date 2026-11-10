@@ -81,10 +81,10 @@ EFFECT_QUERIES = {
         "index": "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE "
         "TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
         "constraint": "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS "
-        "WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND "
         "CONSTRAINT_NAME = ?",
         "trigger": "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE "
-        "TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND "
+        "EVENT_OBJECT_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND "
         "TRIGGER_NAME = ?",
     },
     "postgres": {
