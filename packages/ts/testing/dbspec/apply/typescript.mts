@@ -61,14 +61,15 @@ async function connect(): Promise<Opened> {
   throw new Error(`${dialect ?? ''}: unsupported URI ${uri ?? ''}`);
 }
 
-/** applyPlans, recoverPlans and rollbackPlans take the same arguments for each dialect. */
+/** applyPlans, recoverPlans and rollbackPlans take the same arguments for each dialect; the server of a tool connection is its
+ * dialect, as the tools of the other clients pass it (a MariaDB server is not a server of these runs). */
 type Operation = typeof applyPlans;
 // operate runs the operation on the open connection of its dialect.
 function operate(operation: Operation, opened: Opened, list: readonly DbspecPlan[], events: DbspecApplyHandler | null): Promise<void> {
   switch (opened.dialect) {
-    case 'mysql': return operation(opened.connection, 'mysql', list, now, events);
-    case 'postgres': return operation(opened.connection, 'postgres', list, now, events);
-    case 'sqlite': return operation(opened.connection, 'sqlite', list, now, events);
+    case 'mysql': return operation(opened.connection, 'mysql', 'mysql', list, now, events);
+    case 'postgres': return operation(opened.connection, 'postgres', 'postgres', list, now, events);
+    case 'sqlite': return operation(opened.connection, 'sqlite', 'sqlite', list, now, events);
   }
 }
 

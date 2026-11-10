@@ -87,7 +87,8 @@ final class ModelReadNativeTest extends TestCase
             $number->invoke(null, '1e9999');
             self::fail('An out-of-range aggregate must fail.');
         } catch (OrmException $error) {
-            self::assertStringContainsString('outside finite binary64 range', $error->getMessage());
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: aggregate scalar is not a finite number', $error->getMessage());
         }
     }
 

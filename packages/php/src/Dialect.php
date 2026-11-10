@@ -26,17 +26,20 @@ final class Dialect
         'months_later' => 'month',
     ];
 
+    public readonly string $name;
+
     /**
      * The server of the dialect: on mysql, mysql or mariadb, which the connection read by VERSION() (DIA-201); on
      * postgres and sqlite, the dialect's name.
      */
     public readonly string $server;
 
-    public function __construct(public readonly string $name, ?string $server = null)
+    public function __construct(string $name, ?string $server = null)
     {
         if (!in_array($name, ['mysql', 'postgres', 'sqlite'], true)) {
             throw new OrmException(Code::DIALECT_UNKNOWN, $name);
         }
+        $this->name = $name;
         $this->server = $server ?? $name;
     }
 

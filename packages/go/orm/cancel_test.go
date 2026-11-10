@@ -27,14 +27,17 @@ import (
 // mariadb-recipes-check/go runs.
 // Requirements: CFG-9.
 func TestWithContextCancels(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	withContextCancels(t, "sqlite", "mysql", "postgres")
 }
 
 // Requirements: CFG-9.
-func TestWithContextCancelsMariadb(t *testing.T) { withContextCancels(t, "mariadb") }
+func TestWithContextCancelsMariadb(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	withContextCancels(t, "mariadb")
+}
 
 func withContextCancels(t *testing.T, drivers ...string) {
-	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	eachDatabase(t, drivers, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
 		ent := zoneEntity(s)
@@ -140,16 +143,17 @@ func mysqlFamily(driver string) bool { return driver == "mysql" || driver == "ma
 // TestWithContextCancelsTransactionMariadb is the case on MariaDB (DIA-200).
 // Requirements: INT-67.
 func TestWithContextCancelsTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	withContextCancelsTransaction(t, "sqlite", "mysql", "postgres")
 }
 
 // Requirements: INT-67.
 func TestWithContextCancelsTransactionMariadb(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	withContextCancelsTransaction(t, "mariadb")
 }
 
 func withContextCancelsTransaction(t *testing.T, drivers ...string) {
-	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	eachDatabase(t, drivers, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
 		ent := zoneEntity(s)
@@ -186,15 +190,16 @@ func withContextCancelsTransaction(t *testing.T, drivers ...string) {
 // reports CANCELED. TestWithContextCancelsInsideTransactionMariadb is the case on
 // MariaDB (DIA-200).
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	withContextCancelsInsideTransaction(t, "mysql", "postgres")
 }
 
 func TestWithContextCancelsInsideTransactionMariadb(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	withContextCancelsInsideTransaction(t, "mariadb")
 }
 
 func withContextCancelsInsideTransaction(t *testing.T, drivers ...string) {
-	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	for _, driver := range drivers {

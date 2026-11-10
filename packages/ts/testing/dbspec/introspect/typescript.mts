@@ -26,16 +26,16 @@ async function timed(work: () => Promise<DbspecIntrospection>): Promise<[DbspecI
 async function introspect(): Promise<[DbspecIntrospection, number]> {
   if (dialect === 'mysql' && url.protocol === 'mysql:' && url.search === '') {
     const connection = await connectMysql(url);
-    try { return await timed(() => introspectDbspec(connection, 'mysql', 'introspected')); } finally { await connection.end(); }
+    try { return await timed(() => introspectDbspec(connection, 'mysql', 'mysql', 'introspected')); } finally { await connection.end(); }
   }
   if (dialect === 'postgres' && url.protocol === 'postgres:') {
     const client = new pg.Client({ connectionString: uri });
     await client.connect();
-    try { return await timed(() => introspectDbspec(client, 'postgres', 'introspected')); } finally { await client.end(); }
+    try { return await timed(() => introspectDbspec(client, 'postgres', 'postgres', 'introspected')); } finally { await client.end(); }
   }
   if (dialect === 'sqlite' && url.protocol === 'sqlite:' && url.search === '') {
     const db = new DatabaseSync(decodeURIComponent(url.pathname));
-    try { return await timed(() => introspectDbspec(db, 'sqlite', 'introspected')); } finally { db.close(); }
+    try { return await timed(() => introspectDbspec(db, 'sqlite', 'sqlite', 'introspected')); } finally { db.close(); }
   }
   throw new Error(`${dialect}: unsupported URI ${uri}`);
 }

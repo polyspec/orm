@@ -2903,6 +2903,7 @@
     },
     {
       "id": "an_idle_limit_of_the_server_ends_the_connection_of_a_transaction",
+      "not_through_pooler": "the idle limit is a setting of the server session; a pooler keeps the client session and holds or replaces the server connection, so the limit does not end the connection of the client",
       "requirements": [
         "DIA-201",
         "CFG-15"

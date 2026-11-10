@@ -12,18 +12,17 @@ import (
 // dropDatabaseDiscardsItsSession on the two servers of the MySQL dialect (DIA-200, DIA-212). The MariaDB entry needs the
 // MariaDB servers, which go-test-check does not hold; make mariadb-recipes-check/go runs it.
 func TestDropDatabaseDiscardsItsSessionMysql(t *testing.T) {
-	dropDatabaseDiscardsItsSession(t, "mysql")
+	dropDatabaseDiscardsItsSession(t, testcase.Start(t, testcase.Database), "mysql")
 }
 
 func TestDropDatabaseDiscardsItsSessionMariadb(t *testing.T) {
-	dropDatabaseDiscardsItsSession(t, "mariadb")
+	dropDatabaseDiscardsItsSession(t, testcase.Start(t, testcase.Database), "mariadb")
 }
 
 // dropDatabaseDiscardsItsSession drops a database through an admin pool of one connection and then reads the
 // foreign_key_checks of the next session of that pool: the session of the drop turned the checks off (DIA-212), so it
 // must not return to the pool, and the next session has them on.
-func dropDatabaseDiscardsItsSession(t *testing.T, driver string) {
-	c := testcase.Start(t, testcase.Database)
+func dropDatabaseDiscardsItsSession(t *testing.T, c *testcase.Case, driver string) {
 	env := "ORM_TEST_" + strings.ToUpper(driver) + "_DSN"
 	base := os.Getenv(env)
 	if base == "" {

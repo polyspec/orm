@@ -1728,7 +1728,7 @@
         },
         {
           "id": "writes-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Writes' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Writes' -skip '^Test[A-Za-z]*Mariadb$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
@@ -2278,7 +2278,7 @@
       "verification": [
         {
           "id": "transactions-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Transactions' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Transactions' -skip '^Test[A-Za-z]*Mariadb$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
@@ -5198,7 +5198,7 @@
       "verification": [
         {
           "id": "composite-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -run 'Composite' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -run 'Composite' -skip '^Test[A-Za-z]*Mariadb$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/engine/engine_test.go",
@@ -5546,7 +5546,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|TestRecipeCodecNone' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|TestRecipeCodecNone' -skip '^Test[A-Za-z]*Mariadb$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/aes_rotation_test.go",
@@ -6668,7 +6668,7 @@
       "verification": [
         {
           "id": "audit-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Audit' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Audit' -skip '^Test[A-Za-z]*Mariadb$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/audit_transaction_test.go",

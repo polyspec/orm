@@ -15,7 +15,9 @@
   "include": [
     "src/**/*.ts",
     "tests/**/*.ts",
-    "testing/dbspec/compare/typescript.mts"
+    "testing/dbspec/apply/typescript.mts",
+    "testing/dbspec/compare/typescript.mts",
+    "testing/dbspec/introspect/typescript.mts"
   ],
   "references": [
     {

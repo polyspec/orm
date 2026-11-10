@@ -206,6 +206,10 @@
       "kind": "ecosystem",
       "tool": "ajv"
     },
+    "scripts/mariadb-build.mts": {
+      "kind": "policy",
+      "reason": "builds the MariaDB server of the test servers of this repository from the pinned source release with cmake into var/mariadb/<version>, on a machine whose package manager has no MariaDB; it runs cmake and make and adds only the pin and the install folder"
+    },
     "scripts/package-check.mts": {
       "kind": "policy",
       "reason": "checks the four client packages as a consumer builds them; it runs npm pack, Composer, cargo and go"
@@ -258,6 +262,10 @@
       "kind": "policy",
       "reason": "the rule of this repository that a failure message states its cause and its fix"
     },
+    "scripts/repo/native-tests.mts": {
+      "kind": "policy",
+      "reason": "the rule FCV-2 of this repository over contracts/implementations.json: a behaviour of more than one runtime is the cases of a recipe, and a native test stays only where FCV-2 names it"
+    },
     "scripts/repo/node.mts": {
       "kind": "policy",
       "reason": "the rule (kit K171) that one Node version declared in mise.toml runs every check and workflow"
@@ -297,6 +305,10 @@
     "scripts/repo/workflow.mts": {
       "kind": "ecosystem",
       "tool": "yaml"
+    },
+    "scripts/test-servers-mariadb.mts": {
+      "kind": "policy",
+      "reason": "starts and stops the MariaDB servers of the database checks of this repository under .runtime/servers on free ports, beside scripts/test-servers.mts; it runs mariadbd and ProxySQL"
     },
     "scripts/test-servers-mysql.mts": {
       "kind": "policy",

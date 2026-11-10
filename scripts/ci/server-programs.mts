@@ -7,7 +7,9 @@
 // mysql-client-core provides), so a runner holds one of them: the argument names the server family of the CI group, mysql or
 // mariadb, which make orm-install-server-programs reads from the need mariadb-server of the targets of the group
 // (scripts/check/ci-setup.mts). With mariadb the script installs mariadb-server-core and mariadb-client-core of MARIADB_VERSION
-// (scripts/mariadb-build.mts) and mariadb-client, which holds mariadb-admin and mariadb-tzinfo-to-sql, from which make orm-test-mariadb starts the MariaDB servers, and no MySQL, PostgreSQL or pooler.
+// (scripts/mariadb-build.mts), mariadb-client, which holds mariadb-admin and mariadb-tzinfo-to-sql, and the ProxySQL of the MySQL
+// family, from which make orm-test-mariadb starts the MariaDB servers and the ProxySQL in front of the primary, and no MySQL,
+// PostgreSQL or PgBouncer.
 // The image loads an AppArmor profile for /usr/sbin/mysqld that allows only /var/lib/mysql; it is removed because the
 // servers keep their data in .runtime/servers. In a GitHub Actions job the PostgreSQL bin directory is added to GITHUB_PATH.
 import { spawnSync } from 'node:child_process';
@@ -36,6 +38,18 @@ function version(program: string, args: string[], pattern: RegExp): void {
   if (result.status !== 0 || !pattern.test(line)) fail(`${[program, ...args].join(' ')} printed ${JSON.stringify(line)}, not ${pattern}`);
 }
 
+// proxysql installs the ProxySQL package, checked by its sha256, and requires its version; both families start a ProxySQL.
+async function proxysql(): Promise<void> {
+  const response = await fetch(PROXYSQL);
+  if (!response.ok) fail(`${PROXYSQL} answered ${response.status}`);
+  const archive = Buffer.from(await response.arrayBuffer());
+  const digest = createHash('sha256').update(archive).digest('hex');
+  if (digest !== PROXYSQL_SHA256) fail(`${PROXYSQL} has the sha256 ${digest}, not ${PROXYSQL_SHA256}`);
+  writeFileSync(PROXYSQL_FILE, archive);
+  run('sudo', ['apt-get', 'install', '-y', '-q', PROXYSQL_FILE], { quiet: true });
+  version('proxysql', ['--version'], /ProxySQL version 3\.0\.9-/);
+}
+
 const family = process.argv[2];
 if (family !== 'mysql' && family !== 'mariadb') fail(`usage: server-programs.mts mysql | mariadb; got ${JSON.stringify(family ?? '')}`);
 
@@ -46,26 +60,20 @@ if (family === 'mariadb') {
   if (spawnSync('sudo', ['grep', '-qs', '^/usr/sbin/mariadbd ', '/sys/kernel/security/apparmor/profiles']).status === 0)
     run('sudo', ['tee', '/sys/kernel/security/apparmor/.remove'], { quiet: true, input: '/usr/sbin/mariadbd' });
   version('mariadbd', ['--version'], MARIADB_VERSION_LINE);
+  await proxysql();
   console.log(`server-programs: MariaDB ${MARIADB_VERSION}`);
   process.exit(0);
 }
 run('sudo', ['apt-get', 'install', '-y', '-q', 'postgresql-common', 'sqlite3', 'mysql-server-core', 'mysql-client-core'], { quiet: true });
 run('sudo', ['/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh', '-y'], { quiet: true });
 run('sudo', ['apt-get', 'install', '-y', '-q', 'postgresql-17', 'pgbouncer'], { quiet: true });
-const response = await fetch(PROXYSQL);
-if (!response.ok) fail(`${PROXYSQL} answered ${response.status}`);
-const archive = Buffer.from(await response.arrayBuffer());
-const digest = createHash('sha256').update(archive).digest('hex');
-if (digest !== PROXYSQL_SHA256) fail(`${PROXYSQL} has the sha256 ${digest}, not ${PROXYSQL_SHA256}`);
-writeFileSync(PROXYSQL_FILE, archive);
-run('sudo', ['apt-get', 'install', '-y', '-q', PROXYSQL_FILE], { quiet: true });
+await proxysql();
 // The AppArmor profile of /usr/sbin/mysqld is removed when the image loads one.
 if (spawnSync('sudo', ['grep', '-qs', '^/usr/sbin/mysqld ', '/sys/kernel/security/apparmor/profiles']).status === 0)
   run('sudo', ['tee', '/sys/kernel/security/apparmor/.remove'], { quiet: true, input: '/usr/sbin/mysqld' });
 const mysqld = spawnSync('sh', ['-c', 'command -v mysqld'], { encoding: 'utf8' }).stdout.trim();
 if (mysqld !== '/usr/sbin/mysqld') fail(`mysqld on PATH is ${JSON.stringify(mysqld)}, not /usr/sbin/mysqld`);
 version('mysqld', ['--version'], / Ver 8\.4\.11[- ]/);
-version('proxysql', ['--version'], /ProxySQL version 3\.0\.9-/);
 // The PostgreSQL apt repository keeps only the newest minor release of PostgreSQL 17 and of PgBouncer, so the major release
 // is what can be pinned; the versions are printed for the record of the run.
 version('/usr/lib/postgresql/17/bin/postgres', ['--version'], /^postgres \(PostgreSQL\) 17\./);

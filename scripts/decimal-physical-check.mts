@@ -81,7 +81,7 @@ export function observed(language: string, database: string, output: string): bo
   if (language === 'php-extension') {
     const name = `Polyspec\\Orm\\Extension\\Tests\\DecimalModelDbNativeTest::testNativeRoundTrip with data set "${database}"`;
     return output.split('\n').filter(line => line.includes(`✔ ${name} (`)).length === 1
-      && output.includes(': 1 passed, 0 failed, 0 timed out, 0 skipped');
+      && output.includes(': 1 passed, 0 failed, 0 skipped');
   }
   // The Python test uses unittest's TextTestRunner, which reports each named test and a complete summary.
   if (language === 'python') {

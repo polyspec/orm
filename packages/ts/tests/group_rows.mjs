@@ -6,16 +6,17 @@ import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 // holds an i64 whole, so no recipe case can state this bound (FCV-2). The recipe cases added_sum_above_i32, added_sum_above_i64,
 // added_sum_fractional and added_text_not_exact hold what all six share. Requirements: COD-45, INT-160.
 caseTest('added_column/driver_cell_forms', COMPUTE, () => {
+  const column = { index: 0, name: 'added', column: 'added', type: 'i64', styles: [], hidden: false };
   const held = [[2, 2], ['2', 2], [2n, 2], ['-2', -2], ['0', 0], [9007199254740991, Number.MAX_SAFE_INTEGER], ['9007199254740991', Number.MAX_SAFE_INTEGER], [9007199254740991n, Number.MAX_SAFE_INTEGER], ['-9007199254740991', Number.MIN_SAFE_INTEGER], [null, null]];
   for (const [input, want] of held) {
-    const got = addedColumnValue('i64', input, 'UTC');
+    const got = addedColumnValue(column, input, [input], 'UTC');
     if (got !== want) throw new Error(`added i64 ${String(input)} read as ${String(got)}, want ${String(want)}`);
   }
   const refused = [true, false, '', 'bad', '2.0', '2.5', '+2', '02', ' 2', 2.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53, '9007199254740992', 9007199254740992n, '9007199254740993', 9007199254740993n, 1n << 63n, {}];
   for (const input of refused) {
     let code;
     try {
-      addedColumnValue('i64', input, 'UTC');
+      addedColumnValue(column, input, [input], 'UTC');
     } catch (error) {
       if (!(error instanceof OrmError)) throw error;
       code = error.code;

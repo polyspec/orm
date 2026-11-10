@@ -101,13 +101,13 @@ caseTest('matches the exact Go decimal test2json symbol and package pass', COMPU
 });
 
 caseTest('matches the exact PHP extension decimal native test event', COMPUTE, () => {
-  // The report of kit's run-tests (kit 0.0.99): each case by its qualified name with its time, then the run's summary.
+  // The report of kit's run-tests (kit 0.0.105): each case by its qualified name with its time, then the run's summary.
   const name = 'Polyspec\\Orm\\Extension\\Tests\\DecimalModelDbNativeTest::testNativeRoundTrip with data set "mysql"';
   const output = [
-    `[    0.5s] ▶ ${name} (timeout 120.0s)`,
+    `[    0.5s] ▶ ${name}`,
     `[    0.5s] ✔ ${name} (0.1s)`,
     '[    0.5s] OK (1 test, 5 assertions)',
-    '[    0.5s] ✔ phpunit . --configuration packages/php-ext/phpunit.xml.dist --filter with data set "mysql"$ packages/php-ext/tests/DecimalModelDbNativeTest.php: 1 passed, 0 failed, 0 timed out, 0 skipped (0.5s)',
+    '[    0.5s] ✔ phpunit . --configuration packages/php-ext/phpunit.xml.dist --filter with data set "mysql"$ packages/php-ext/tests/DecimalModelDbNativeTest.php: 1 passed, 0 failed, 0 skipped (0.5s)',
   ].join('\n');
   assert.equal(observed('php-extension', 'mysql', output), true);
   assert.equal(observed('php-extension', 'mysql', output.replaceAll('testNativeRoundTrip', 'testOther')), false);

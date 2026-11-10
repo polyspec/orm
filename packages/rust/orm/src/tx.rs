@@ -1477,10 +1477,10 @@ mod tests {
     }
 
     // A transaction future dropped before it finished closes the connection. The server ends that session's
-    // transaction and lock, so another connection takes the lock. The MySQL test server's
-    // The connection uses TLS, and sqlx's TLS stream shutdown waits for data the server does not send.
-    // This test watches the end of a server session, so it connects to the servers at ORM_TEST_MYSQL_SERVER_DSN and
-    // ORM_TEST_POSTGRES_SERVER_DSN, not through a pooler.
+    // transaction and lock, so another connection takes the lock. The MySQL connection uses TLS, through the ssl-mode of
+    // ORM_TEST_MYSQL_TLS_DSN (a DSN without ssl-mode connects without TLS, CFG-44), since sqlx's TLS stream shutdown
+    // waits for data the server does not send. This test watches the end of a server session, so it connects to the
+    // servers at ORM_TEST_MYSQL_TLS_DSN and ORM_TEST_POSTGRES_SERVER_DSN, not through a pooler.
     // On SQLite, the write transaction of the closed connection ends, so another connection takes the write lock.
     #[tokio::test]
     // Requirements: INT-72, INT-67.
@@ -1489,7 +1489,7 @@ mod tests {
         let tmp = Scratch::new("orm-dropped");
         let targets = [
             ("sqlite", format!("sqlite://{}", tmp.join("dropped.sqlite").display())),
-            ("mysql", required_dsn("ORM_TEST_MYSQL_SERVER_DSN")),
+            ("mysql", required_dsn("ORM_TEST_MYSQL_TLS_DSN")),
             ("postgres", required_dsn("ORM_TEST_POSTGRES_SERVER_DSN")),
         ];
         for (driver, dsn) in targets {

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 58b68a53b895e757fcf49228731235c6b8cafe694e3db12b47b9b3e6391790ee -->
+<!-- source-sha256: eabb3a8a933c36220a768c4c864b83eb68b408e800441ffbd1728581e2ac54ac -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.29
 
+- PHP library는 extension처럼 `Dialect::$name`을 `$server`보다 먼저 선언한다. 그래서 둘 다 `Dialect`의 property를 같은 순서로 나열한다(T385.9).
 - markdown 시험은 flowmark v0.0.15를 고정한다. 이 버전은 SQLite처럼 `uuid`를 16 byte로 저장하고, 열린 transaction이 없을 때 SAVEPOINT에서 transaction을 시작하며, schema 문장을 그 transaction 안에 둔다. 그래서 uuid의 text 저장 변환(PLN-110)이 SQLite에서처럼 flowmark에서도 실행된다(T421).
 - T429: orm은 모든 runtime에서 ordered-json 0.0.25를 받는다. 이 release는 API를 바꾸지 않는다(kit 0.0.105, PHP 확장의 항목 검사 하나로 합침). benchmarks/rust의 lock에서 T400-1 이후 orm이 쓰지 않는 package가 빠진다.
 - Breaking: 모든 dbspec 거부가 모든 runtime에서 같은 문장이다(DBS-144, DBS-156부터 DBS-171, T419). Go, TypeScript, Python, PHP, PHP extension, Rust는 parse와 검증 diagnostic마다 docs/spec/dbspec.md가 그 규칙에 적은 message를 준다. 그 문장은 Go가 주던 것이며, 나머지 다섯은 각자 다른 문장을 썼다: 이름은 `name "Users" does not match [a-z][a-z0-9_]* or is a reserved word`처럼 큰따옴표로, token은 `unexpected 'x', expected '{'`처럼 작은따옴표로 감싸고, Go는 이제 `table "users" has no primary key`와 `table "users" has no column`에 table 이름을 넣는다. message의 이름과 문자는 DBS-144가 적은 대로 Unicode table 없이 감싸므로, Go는 U+200B 같은 format 문자를 `%q`가 쓰던 `\u200b` 대신 그대로 쓰며, vector format-character-in-name과 control-character-in-name이 그 규칙을 고정한다. 어떤 vector에도 없던 message는 tests/dbspec/rules.json의 case 열한 개가 준다(check-group-without-close, check-is-without-null, check-in-without-list, check-in-list-without-comma, use-table-named-like-used-constraint, use-table-listed-twice, use-table-from-two-documents, foreign-key-repeated-column, audit-history-table-unknown, audit-action-column-is-history-key, audit-record-table-audited). tests/dbspec/invalid.json, limits.json, rules.json, schema-definition.json에서 거부되는 `dbspec.format` text의 diagnostic은 모두 정확한 `message`를 밝히며, 이것은 이제 recipe schema의 필수 field다. 모든 recipe runner와 language vector는 diagnostic이 message를 밝히지 않는 거부 text에서 실패한다.

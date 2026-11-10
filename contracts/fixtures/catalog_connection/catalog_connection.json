@@ -15937,6 +15937,7 @@
     },
     {
       "id": "committed_mutations_share_one_connection",
+      "not_through_pooler": "it counts the server connections that wrote the rows; a pooler gives the writes of one client connection to its server connections as it chooses",
       "requirements": [
         "INT-106b",
         "INT-106c",
