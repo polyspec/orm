@@ -199,6 +199,10 @@ async function startServers(p: Paths, ports: MariadbPorts): Promise<void> {
   for (const [role, port] of [['primary', ports.mariadb], ['replica', ports.mariadbReplica], ['privilege', ports.mariadbPrivilege]] as const) {
     const { name } = MARIADB_SERVERS[role];
     mkdirSync(mariadbTmpdir(p, role), { recursive: true });
+    // mariadb-install-db makes the data folder as mysqld --initialize-insecure does for MySQL. --auth-root-authentication-method=normal
+    // gives root the password-less native login of an insecure MySQL root, where MariaDB would let root in only by the unix_socket
+    // plugin as the operating-system user root; --skip-test-db leaves out the database test and the grants of the anonymous user on
+    // test and test_%, which MySQL does not make.
     run('mariadb-install-db', ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, '--auth-root-authentication-method=normal', '--skip-test-db',
       `--lower-case-table-names=${MYSQL_LOWER_CASE}`], { stdio: ['ignore', openSync(join(p.dir, `${name}-init.log`), 'w'), 'inherit'], env });
     await startLogged(p.dir, name, 'ready for connections', 'mariadbd', mariadbdArguments(p, role, port), env);
