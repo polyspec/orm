@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7d25dc0a15f5ade5907c84a72a2fbb1607a255336eca72901d04a731f4dbce45 -->
+<!-- source-sha256: 0d9dac44ac9f151149868e7e683295216686fae50ff92724e115952d98d4dc51 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.29
 
 - orm은 ordered-json 0.0.24와 kit 0.0.103을 받는다 (T424). Go는 JSON parser의 실패를 0.0.24가 `*orderedjson.ParseError` 대신 주는 interface `orderedjson.Error`로 읽고, Rust는 그 error의 kind를 이제 enum인 `ErrorKind::MaximumDepthExceeded`와 비교한다. 그래서 256 level을 넘어 중첩된 값은 둘 다 그대로 `json: value nesting exceeds 256 levels`다. PHP, PHP extension, Python, TypeScript는 0.0.24가 바꾸지 않은 `ParseError`와 그 kind를 그대로 쓴다. 모든 runtime의 pin(packages/go/go.mod와 examples/go.mod, Cargo manifest와 두 Cargo lock, composer.json과 composer.lock, package.json과 package-lock.json, packages/python/pyproject.toml과 uv.lock)과 docs/operations/packaging은 0.0.24 release asset을 가리킨다. Red: 0.0.24 pin에서 `packages/go/orm/codec.go:113: undefined: orderedjson.ParseError`, Rust는 kind를 `&str`과 비교한 E0308.
 
