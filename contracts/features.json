@@ -6949,6 +6949,7 @@
         "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
         "packages/rust/orm/src/row.rs",
+        "packages/rust/orm/tests/unit/numeric_text.rs",
         "packages/php/tests/GoSerializationTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/go/internal/recipe/keys_test.go",
@@ -7039,6 +7040,15 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-row-value-decoding-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
+            "packages/rust/orm/src/row.rs"
+          ]
+        },
+        {
+          "id": "numeric-text-rust-unit",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts numeric-text-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib row::numeric_text_tests:: -- --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/unit/numeric_text.rs",
             "packages/rust/orm/src/row.rs"
           ]
         },

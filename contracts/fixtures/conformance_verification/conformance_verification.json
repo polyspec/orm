@@ -5,6 +5,7 @@
   "PRT-84",
   "PRT-83",
   "DIA-202",
+  "DIA-203",
   "DIA-200",
   "DSL-161",
   "DSL-66",
@@ -89764,6 +89765,74 @@
       "sqlite": {
        "error": "CONFIG",
        "message_suffix": "possible applies only to a relation child"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "decimal_text_past_28_digits_reads_exactly",
+   "requirements": [
+    "DIA-25",
+    "COD-1",
+    "DIA-203"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "only": [
+      "mysql",
+      "postgres"
+     ],
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [],
+       "sql": {
+        "mysql": "SELECT CAST('1234567890123456789012345678901.123456789' AS DECIMAL(40,9)), CAST('-0.000000000000000000000000000001' AS DECIMAL(40,30))",
+        "postgres": "SELECT CAST('1234567890123456789012345678901.123456789' AS NUMERIC(40,9)), CAST('-0.000000000000000000000000000001' AS NUMERIC(40,30))",
+        "sqlite": "SELECT 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "1234567890123456789012345678901.123456789"
+           },
+           {
+            "text": "-0.000000000000000000000000000001"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "1234567890123456789012345678901.123456789"
+           },
+           {
+            "text": "-0.000000000000000000000000000001"
+           }
+          ]
+         }
+        ]
+       }
       }
      }
     }

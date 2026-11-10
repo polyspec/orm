@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
@@ -346,7 +345,8 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
             Param::Null => q.bind(Option::<rust_decimal::Decimal>::None),
             Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|error| bad_with(&error))?),
             Param::I64(x) => q.bind(rust_decimal::Decimal::from(*x)),
-            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|error| bad_with(&error))?),
+            // A text of more digits than a 128-bit decimal holds is refused, not rounded.
+            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str_exact(s.trim()).map_err(|error| bad_with(&error))?),
             _ => return Err(bad()),
         },
         "bool" => match p {

@@ -221,8 +221,9 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
             });
         }
         "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        // Preserve DECIMAL text exactly; a caller that requests f64 checks precision.
-        "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
+        // MySQL sends a DECIMAL as its text in both protocols, which is kept exactly: a 128-bit decimal holds 28 digits and
+        // rounds a longer value, such as a sum of DSL-161, silently. A caller that requests f64 checks precision.
+        "DECIMAL" => row.try_get_unchecked::<Option<String>, _>(i)?.map(Val::Str),
         // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
         "DATETIME" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
@@ -252,7 +253,7 @@ pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
         "INT8" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "FLOAT4" => row.try_get::<Option<f32>, _>(i)?.map(|x| Val::F64(x as f64)),
         "FLOAT8" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
+        "NUMERIC" => numeric_text(row, i)?.map(Val::Str),
         "BOOL" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         "TIMESTAMP" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         // an instant, shown as wall-clock time in the connection zone
@@ -267,6 +268,91 @@ pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
+}
+
+/// The exact decimal text of a PostgreSQL NUMERIC cell, or None for NULL. A 128-bit decimal holds 28 digits and rounds a
+/// longer value, such as a sum of DSL-161, silently, so the cell is read from its wire form: the text form as it is, the
+/// binary form as its sign, its base-10000 digits from the weight of the first one and its display scale. NaN and the
+/// infinities, which no exact column holds, are CODEC_DECODE.
+fn numeric_text(row: &PgRow, i: usize) -> Result<Option<String>> {
+    use sqlx::postgres::PgValueFormat;
+    let raw = row.try_get_raw(i)?;
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let refused = |what: &str| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("numeric cell {i} is {what}"), source: None };
+    let text = match raw.format() {
+        PgValueFormat::Text => raw
+            .as_str()
+            .map_err(|error| crate::Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("numeric cell {i} is not text"),
+                source: Some(error),
+            })?
+            .to_owned(),
+        PgValueFormat::Binary => {
+            let bytes = raw.as_bytes().map_err(|error| crate::Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("numeric cell {i} has no bytes"),
+                source: Some(error),
+            })?;
+            numeric_binary_text(bytes).ok_or_else(|| refused("not a binary numeric"))?
+        }
+    };
+    if matches!(text.as_str(), "NaN" | "Infinity" | "-Infinity") {
+        return Err(refused("not a finite number"));
+    }
+    Ok(Some(text))
+}
+
+/// The decimal text of the binary form of a PostgreSQL NUMERIC: ndigits, weight, sign and dscale as 16-bit big-endian
+/// integers, then ndigits base-10000 digits, the first of weight 10000^weight; None for a malformed form. The text has
+/// dscale fraction digits, as PostgreSQL writes it.
+pub(crate) fn numeric_binary_text(bytes: &[u8]) -> Option<String> {
+    let word = |at: usize| bytes.get(at..at + 2).map(|b| u16::from_be_bytes([b[0], b[1]]));
+    let ndigits = usize::from(word(0)?);
+    let weight = i64::from(word(2)? as i16);
+    let sign = word(4)?;
+    let dscale = usize::from(word(6)?);
+    if bytes.len() != 8 + 2 * ndigits {
+        return None;
+    }
+    match sign {
+        0xC000 => return Some("NaN".into()),
+        0xD000 => return Some("Infinity".into()),
+        0xF000 => return Some("-Infinity".into()),
+        0x0000 | 0x4000 => {}
+        _ => return None,
+    }
+    let digits: Vec<u16> = (0..ndigits).map(|k| word(8 + 2 * k)).collect::<Option<_>>()?;
+    if digits.iter().any(|&d| d >= 10000) {
+        return None;
+    }
+    // The base-10000 digit of weight w, 0 outside the stored ones.
+    let digit = |w: i64| -> u16 {
+        let k = weight - w;
+        if k < 0 || k >= ndigits as i64 {
+            0
+        } else {
+            digits[k as usize]
+        }
+    };
+    let mut whole = String::new();
+    for w in (0..=weight.max(0)).rev() {
+        whole.push_str(&format!("{:04}", digit(w)));
+    }
+    let whole = whole.trim_start_matches('0');
+    let whole = if whole.is_empty() { "0" } else { whole };
+    let mut fraction = String::new();
+    let mut w = -1;
+    while fraction.len() < dscale {
+        fraction.push_str(&format!("{:04}", digit(w)));
+        w -= 1;
+    }
+    fraction.truncate(dscale);
+    let zero = whole == "0" && fraction.bytes().all(|b| b == b'0');
+    let sign = if sign == 0x4000 && !zero { "-" } else { "" };
+    Some(if dscale == 0 { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") })
 }
 
 /// Reads one SQLite cell by the stored value's type (SQLite is dynamically typed): INTEGER as
@@ -511,3 +597,7 @@ mod native_cell_bytes_tests {
         assert_eq!(decoded, [Val::Bytes(vec![0x00, 0x7f, 0x80, 0xff, b'A'])]);
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/numeric_text.rs"]
+mod numeric_text_tests;
