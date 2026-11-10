@@ -110,8 +110,8 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 		v, err = orderedjson.ParseBytes(b)
 		if err != nil {
 			// The parser reads the cell in its order and refuses a list or a map at level 257 where it starts (json-depth-read).
-			var parseErr *orderedjson.ParseError
-			if errors.As(err, &parseErr) && parseErr.Kind() == "maximum_depth_exceeded" {
+			var parseErr orderedjson.Error
+			if errors.As(err, &parseErr) && parseErr.Kind() == orderedjson.MaximumDepthExceededError {
 				err = codecCause(CodeCodecDecode, fmt.Sprintf("json: value nesting exceeds %d levels", orderedjson.MaxDepth), err)
 			} else {
 				err = codecCause(CodeCodecDecode, "json: the cell is not JSON", err)

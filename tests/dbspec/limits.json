@@ -32,7 +32,8 @@
                 {
                   "rule": "limit",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "document has 33554447 bytes, more than 33554432"
                 }
               ]
             }
@@ -68,7 +69,8 @@
                 {
                   "rule": "limit",
                   "line": 1,
-                  "column": 1
+                  "column": 1,
+                  "message": "document has 33554435 bytes, more than 33554432"
                 }
               ]
             }
@@ -195,7 +197,8 @@
                 {
                   "rule": "limit",
                   "line": 16386,
-                  "column": 1
+                  "column": 1,
+                  "message": "document has more than 4096 tables"
                 }
               ]
             }
@@ -233,7 +236,8 @@
                 {
                   "rule": "limit",
                   "line": 1003,
-                  "column": 3
+                  "column": 3,
+                  "message": "table has more than 1000 columns"
                 }
               ]
             }
@@ -270,12 +274,14 @@
                 {
                   "rule": "name.format",
                   "line": 2,
-                  "column": 7
+                  "column": 7,
+                  "message": "name \"T\" does not match [a-z][a-z0-9_]* or is a reserved word"
                 },
                 {
                   "rule": "limit",
                   "line": 1003,
-                  "column": 3
+                  "column": 3,
+                  "message": "table has more than 1000 columns"
                 }
               ]
             }
@@ -324,7 +330,8 @@
                 {
                   "rule": "limit",
                   "line": 120484,
-                  "column": 3
+                  "column": 3,
+                  "message": "document has more than 120000 columns"
                 }
               ]
             }
@@ -374,7 +381,8 @@
                 {
                   "rule": "limit",
                   "line": 20106,
-                  "column": 3
+                  "column": 3,
+                  "message": "document has more than 20000 foreign keys"
                 }
               ]
             }

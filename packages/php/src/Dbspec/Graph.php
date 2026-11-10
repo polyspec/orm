@@ -126,7 +126,7 @@ final class Graph
                 self::object($setting, Setting::class, 'Settings::$settings');
                 self::strings($setting->arguments, 'Setting::$arguments');
                 self::strings($setting->comments, 'Setting::$comments');
-                foreach (['requires', 'exclude', 'include'] as $list) {
+                foreach (['exclude', 'include'] as $list) {
                     if ($setting->$list !== null) {
                         self::strings($setting->$list, "Setting::\$$list");
                     }

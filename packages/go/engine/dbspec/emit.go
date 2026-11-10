@@ -125,43 +125,14 @@ func (s *settingsNode) model() *Settings {
 				store.Shard = &StoreShard{Column: rest[1], Period: rest[2]}
 			}
 			out.Store = store
-		case "key_prefix":
-			out.KeyPrefix = &KeyPrefixSetting{Comments: line.comments, Prefix: args[0]}
 		case "title":
 			out.Title = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		case "body":
 			out.Body = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		case "order":
 			out.Order = &ColumnSetting{Comments: line.comments, Column: args[0]}
-		case "checkbox":
-			out.Checkboxes = append(out.Checkboxes, CheckboxSetting{Comments: line.comments, Column: args[0], State: args[1], Glyph: args[2]})
-		case "state_machine":
-			if out.StateMachine == nil {
-				out.StateMachine = &StateMachineSetting{Comments: line.comments, Column: args[0]}
-			}
-			machine := out.StateMachine
-			switch line.form {
-			case "history":
-				machine.History = &HistorySetting{Comments: line.comments, Table: args[1], Row: args[2], From: args[3], To: args[4], At: args[5]}
-			case "limit":
-				// The settings check parsed this count and rejected any value that fails, and model converts only a validated tree.
-				count, err := strconv.ParseInt(args[2], 10, 64)
-				if err != nil {
-					panic("dbspec: a validated state_machine limit count parses as int64: " + err.Error())
-				}
-				machine.Limits = append(machine.Limits, LimitSetting{Comments: line.comments, State: args[1], Count: count})
-			default:
-				stateLine := StateLineSetting{Comments: line.comments, Initial: line.form == "initial", Terminal: line.form == "terminal"}
-				if stateLine.Initial || stateLine.Terminal {
-					stateLine.State = args[1]
-				} else {
-					stateLine.From, stateLine.To = args[1], args[2]
-				}
-				for _, list := range line.lists {
-					stateLine.Requires = tokenTexts(list.columns)
-				}
-				machine.Lines = append(machine.Lines, stateLine)
-			}
+		case "task_marker":
+			out.TaskMarker = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		}
 	}
 	return out
@@ -300,8 +271,8 @@ func (e *emitter) table(t *Table) {
 func (s *Settings) empty() bool {
 	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
 		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
-		s.Immutable == nil && s.Audit == nil && s.StateMachine == nil && len(s.Marks) == 0 &&
-		s.Store == nil && s.KeyPrefix == nil && s.Title == nil && s.Body == nil && s.Order == nil && len(s.Checkboxes) == 0
+		s.Immutable == nil && s.Audit == nil && len(s.Marks) == 0 &&
+		s.Store == nil && s.Title == nil && s.Body == nil && s.Order == nil && s.TaskMarker == nil
 }
 
 func (e *emitter) settings(t *Table, s *Settings) {
@@ -370,9 +341,6 @@ func (e *emitter) mappingSettings(s *Settings) {
 		}
 		e.line(2, st.Comments, text)
 	}
-	if k := s.KeyPrefix; k != nil {
-		e.line(2, k.Comments, "key_prefix "+quote(k.Prefix))
-	}
 	if s.Title != nil {
 		e.line(2, s.Title.Comments, "title "+s.Title.Column)
 	}
@@ -382,31 +350,7 @@ func (e *emitter) mappingSettings(s *Settings) {
 	if s.Order != nil {
 		e.line(2, s.Order.Comments, "order "+s.Order.Column)
 	}
-	for _, c := range s.Checkboxes {
-		e.line(2, c.Comments, "checkbox "+c.Column+" "+c.State+" "+quote(c.Glyph))
-	}
-	if m := s.StateMachine; m != nil {
-		for _, line := range m.Lines {
-			text := "state_machine " + m.Column + " "
-			switch {
-			case line.Initial:
-				text += "initial " + line.State
-			case line.Terminal:
-				text += "terminal " + line.State
-			default:
-				text += line.From + " -> " + line.To
-			}
-			if len(line.Requires) > 0 {
-				text += " require (" + strings.Join(line.Requires, ", ") + ")"
-			}
-			e.line(2, line.Comments, text)
-		}
-		if h := m.History; h != nil {
-			e.line(2, h.Comments, "state_machine "+m.Column+" history "+h.Table+" row "+h.Row+
-				" from "+h.From+" to "+h.To+" at "+h.At)
-		}
-		for _, l := range m.Limits {
-			e.line(2, l.Comments, "state_machine "+m.Column+" limit "+l.State+" "+strconv.FormatInt(l.Count, 10))
-		}
+	if s.TaskMarker != nil {
+		e.line(2, s.TaskMarker.Comments, "task_marker "+s.TaskMarker.Column)
 	}
 }

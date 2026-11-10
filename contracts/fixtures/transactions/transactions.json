@@ -2,6 +2,11 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "CFG-6",
+    "PRT-48",
+    "PRT-49",
+    "PRT-50",
+    "PRT-51",
+    "PRT-52",
     "CFG-15",
     "CFG-24",
     "DSL-118",
@@ -3889,6 +3894,985 @@
             "sqlite": {
               "value": {
                 "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_statement_fault_refuses_the_next_statement",
+      "requirements": [
+        "PRT-48",
+        "PRT-49",
+        "PRT-50",
+        "PRT-51",
+        "PRT-52"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "fault.next_statement",
+          "connection": "connection",
+          "code": "DRIVER",
+          "message": "the insert is refused"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "connection",
+          "as": "recorder"
+        },
+        {
+          "op": "model.create",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990030"
+            },
+            "account_id": {
+              "int": "1"
+            },
+            "name": {
+              "text": "refused"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "postgres": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO `composite_account` (`account_id`, `name`, `tenant_id`) VALUES (?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "refused"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"composite_account\" (\"account_id\", \"name\", \"tenant_id\") VALUES ($1, $2, $3)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "refused"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"composite_account\" (\"account_id\", \"name\", \"tenant_id\") VALUES (?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "refused"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990030"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_statement_fault_is_consumed_by_one_statement",
+      "requirements": [
+        "PRT-48",
+        "PRT-49",
+        "PRT-50",
+        "PRT-51",
+        "PRT-52"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "fault.next_statement",
+          "connection": "connection",
+          "code": "DRIVER",
+          "message": "the insert is refused"
+        },
+        {
+          "op": "model.create",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990030"
+            },
+            "account_id": {
+              "int": "1"
+            },
+            "name": {
+              "text": "first"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "postgres": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990030"
+            },
+            "account_id": {
+              "int": "2"
+            },
+            "name": {
+              "text": "second"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990030"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_statement_fault_in_a_transaction_refuses_the_insert_and_not_the_begin",
+      "requirements": [
+        "PRT-48",
+        "PRT-49",
+        "PRT-50",
+        "PRT-51",
+        "PRT-52"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "fault.next_statement",
+          "connection": "connection",
+          "code": "DRIVER",
+          "message": "the insert is refused"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "connection",
+          "as": "recorder"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990030"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "in transaction"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "postgres": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message": "DRIVER: the insert is refused"
+            }
+          },
+          "retry": 0
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "START TRANSACTION"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO `composite_account` (`account_id`, `name`, `tenant_id`) VALUES (?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "in transaction"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"composite_account\" (\"account_id\", \"name\", \"tenant_id\") VALUES ($1, $2, $3)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "in transaction"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "utility"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "orm__row_lock"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN IMMEDIATE"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"composite_account\" (\"account_id\", \"name\", \"tenant_id\") VALUES (?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "1"
+                            },
+                            {
+                              "text": "in transaction"
+                            },
+                            {
+                              "int": "990030"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "text": "DRIVER"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990030"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990030"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "later"
+                }
+              }
+            }
+          ],
+          "retry": 0
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990030"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
               }
             }
           }

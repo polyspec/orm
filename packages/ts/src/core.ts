@@ -571,8 +571,10 @@ export class BuiltRequest {
     return this.ir;
   }
 
-  public query(c: Core, f: Frame): RequestQuery | undefined {
+  /** The query of a model; possible<Col>() is refused on a model that is no relation child, which has no parent row to compare (DSL-85). */
+  public query(c: Core, f: Frame, relationChild = false): RequestQuery | undefined {
     if (c.error) { this.fail(c.error); return undefined; }
+    if (c.possible && !relationChild) { this.fail(configError('possible applies only to a relation child')); return undefined; }
     if (c.where.pending !== '') { this.fail(configError(`connector ${c.where.pending} without a following condition`)); return undefined; }
     const q: RequestQuery = { entity: c.ent.entity.name };
     if (c.index !== '') q.force_index = c.index;
@@ -628,7 +630,7 @@ export class BuiltRequest {
 
   private relation(rel: RelSpec): Relation | undefined {
     const ch = rel.child;
-    const q = this.query(ch, new Frame(ch, undefined));
+    const q = this.query(ch, new Frame(ch, undefined), true);
     if (!q) return undefined;
     if (ch.limit) { this.fail(new OrmError(codes.LIMIT_IN_RELATION, `${ch.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
     if (ch.parentNode) q.flatten = true;

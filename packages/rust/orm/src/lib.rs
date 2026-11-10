@@ -2,6 +2,7 @@
 //! them into SQL for the connection's database (cached by request shape), runs
 //! the statements with sqlx, and assembles models.
 
+mod aggregate;
 pub mod args;
 mod array;
 mod bind_check;

@@ -1,0 +1,83 @@
+# The document checks of orm (T418). ci.yml ignores a push whose every changed path is a document of its paths-ignore
+# (DOCUMENT_PATHS of scripts/repo/ci.mts); this workflow runs on every push to main, with no path filter, so every change of
+# a document is checked. GitHub evaluates a path filter over the first 3000 files of a diff only, so make diff-size-check
+# fails a push of more files and names the way to run ci.yml; it runs after the document checks. make documents-ci runs DOCUMENT_CHECKS of the Makefile as the
+# runner of make orm-check does; it runs the next target even when one fails and writes the report of this run id, which the
+# last step uploads whatever the result. Every step has an id and runs whatever the earlier steps did (if: !cancelled()).
+name: documents
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documents:
+    runs-on: ubuntu-26.04-arm
+    env:
+      VITEPRESS_BASE: /orm/
+    steps:
+      # The whole history, so the before commit of the push is there for the diff.
+      - uses: actions/checkout@v5
+        id: checkout
+        with:
+          fetch-depth: 0
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      - name: cache of the npm packages
+        id: cache-npm
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
+      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+      - name: cache of the tools of mise.toml
+        id: cache-tools
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+      - uses: ./.github/actions/kit-bootstrap
+        id: kit-bootstrap
+        if: ${{ !cancelled() }}
+      # The Go of the runner of the checks, and alint of layout-check.
+      - name: tools of mise.toml
+        id: go
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS="go alint"
+      - name: document checks
+        id: documents
+        if: ${{ !cancelled() }}
+        env:
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-documents
+          ORM_CI_SETUP: ${{ toJSON(steps) }}
+        run: make documents-ci
+      # After the document checks, whose runner reads the results of the setup steps before them (ORM_CI_SETUP).
+      - name: diff size
+        id: diff-size
+        if: ${{ !cancelled() }}
+        run: make diff-size-check
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: documents-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_documents/report/
+          if-no-files-found: error

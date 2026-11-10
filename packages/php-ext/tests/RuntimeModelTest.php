@@ -240,7 +240,7 @@ DBSPEC;
         $before = memory_get_usage();
         for ($i = 0; $i < 50; $i++) {
             $model = RuntimeModel::build($documents);
-            self::assertSame(24, count($model->entities));
+            self::assertSame(25, count($model->entities));
             unset($model);
         }
         self::assertLessThan(

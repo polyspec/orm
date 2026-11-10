@@ -204,10 +204,6 @@
           "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/styled_state_physical_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/procevent/procevent_test.go",
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
@@ -387,7 +383,6 @@
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/SqliteRecipeTestCase.php",
         "packages/php/tests/DatabaseRecipeTestCase.php",
-        "packages/php/tests/PlanCacheCompositeCases.php",
         "packages/php/tests/RecipeRecording.php",
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
@@ -592,7 +587,6 @@
         "packages/php-ext/tests/CollectionFixtureModel.php",
         "packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
         "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
-        "packages/php-ext/tests/CoverageNativeDecimalModel.php",
         "packages/php-ext/tests/DslFixture.php",
         "packages/php-ext/tests/ModelAssemblyFixture.php",
         "packages/php-ext/tests/ModelAssemblyTestSupport.php",
@@ -1038,7 +1032,6 @@
         "packages/rust/orm/tests/common/apply_stop.rs",
         "packages/rust/orm/tests/cases/common/case_database_run.rs",
         "packages/rust/orm/tests/cases/common/clock_event.rs",
-        "packages/rust/orm/tests/cases/common/json_trials.rs",
         "packages/rust/orm/tests/common/plan_cases.rs",
         "packages/rust/orm/tests/common/plan_recipe.rs",
         "packages/rust/orm/tests/common/plan_sources.rs",

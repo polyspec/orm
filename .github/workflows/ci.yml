@@ -1,4 +1,6 @@
-# CI: every check of the repository. The job test runs make orm-check, the targets
+# CI: every check of the repository. The job preflight runs the CI group preflight, the checks of the structure of the
+# repository, and every other job needs it, so their failure ends the run before any suite starts (T428).
+# The job test runs make orm-check, the targets
 # of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
 # interfaces and the hot-path regression check of the feature verification, the decoder
 # fuzz checks and the common state contracts of the conformance results, split
@@ -19,10 +21,28 @@
 # long operation, which the runner logs line by line and judges by its exit
 # code, with no deadline; only a test case inside a suite has its own
 # deadline. make repo-check fails a workflow with timeout-minutes.
+# A push whose every changed path is a document that only the document checks read starts no run (T418): paths-ignore lists
+# DOCUMENT_PATHS of scripts/repo/ci.mts, and documents.yml runs those checks on every push. GitHub starts the run when any
+# changed path of the whole push matches no pattern, so a code change pushed with documents runs every job, and a version
+# commit changes VERSION, so it runs every job and the release takes its run. Past 3000 changed files GitHub does not
+# evaluate the filter; documents.yml fails such a push (make diff-size-check). make repo-check requires this list and fails a
+# listed document that a check outside DOCUMENT_CHECKS of the Makefile reads. A manual run runs every job.
 name: ci
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'CHANGELOG*.md'
+      - 'CODE_OF_CONDUCT*.md'
+      - 'CONTRIBUTING*.md'
+      - 'PRINCIPLES*.md'
+      - 'README*.md'
+      - 'SECURITY*.md'
+      - 'docs/plans/check-recipes/**'
+      - 'docs/plans/cross-verification/**'
+      - 'docs/plans/execution/**'
+      - 'docs/plans/kit-standard/plan.md'
+      - 'docs/plans/kit-standard/*.ko.md'
   workflow_dispatch:
 
 # A new run cancels the run before it on the same ref: the runners are few, and only the run of the newest head
@@ -35,11 +55,13 @@ jobs:
   # The gates of orm: ci-pipeline.yml, which orm took from kit and owns (T391), plans and runs the shared and runtime
   # gates with the targets of the Makefile. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
   kit:
+    needs: [preflight]
     uses: ./.github/workflows/ci-pipeline.yml
     permissions:
       contents: read
 
   test:
+    needs: [preflight]
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
@@ -61,13 +83,19 @@ jobs:
     # failed or skipped step installs is recorded as not-run with that step,
     # and every other target runs. A failed step fails the job. The checkout
     # and Node are what the runner itself needs.
-    steps:
+    steps: &group-steps
       # The kit tools read the commit graph, so the checkout carries the full
       # commit graph.
       - uses: actions/checkout@v5
         id: checkout
         with:
           fetch-depth: 0
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
       # mise.toml declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
@@ -84,7 +112,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -92,7 +120,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The Go modules are restored by the hash of every go.sum (B3-4).
       - name: cache of the Go modules
         id: cache-go
@@ -100,7 +128,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
       # The composer packages are restored by the hash of every composer.lock (B3-4).
       - name: cache of the composer packages
         id: cache-composer
@@ -108,7 +136,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/composer
-          key: composer-packages-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          key: composer-packages-${{ runner.os }}-${{ steps.locks.outputs.composer }}
       # The uv packages are restored by the hash of every uv.lock (B3-4).
       - name: cache of the uv packages
         id: cache-uv
@@ -116,7 +144,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+          key: uv-packages-${{ runner.os }}-${{ steps.locks.outputs.uv }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -275,7 +303,19 @@ jobs:
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/
           if-no-files-found: error
 
+  # The group preflight of the Makefile (CI_TARGETS_preflight): the checks of the structure of the repository, which every other
+  # job needs, so a defect they find ends the run in this job before any suite starts (T428). It runs the steps of the job test
+  # (the anchor group-steps), so group-needs installs only what its targets declare (contracts/check-inputs.json).
+  preflight:
+    runs-on: ubuntu-26.04-arm
+    strategy:
+      matrix:
+        group: [preflight]
+    steps: *group-steps
+
+
   docs:
+    needs: [preflight]
     runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
@@ -286,6 +326,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         id: checkout
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}
@@ -299,7 +345,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -307,7 +353,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -341,10 +387,17 @@ jobs:
   # vscode.provideDocumentSemanticTokens inside the VS Code that make orm-install-vscode installs (kit's installer, at the
   # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
   editor:
+    needs: [preflight]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
         id: checkout
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}
@@ -358,7 +411,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -366,7 +419,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -383,7 +436,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
       - name: Go lease module of the check runner
         id: go-lease-modules
         if: ${{ !cancelled() }}
@@ -404,10 +457,16 @@ jobs:
   # lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [kit, test, docs, editor]
+    needs: [preflight, kit, test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
+      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
+      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
+      - name: hashes of the lock files
+        id: locks
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v7
         with:
           node-version-file: mise.toml
@@ -419,7 +478,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
       # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
       - name: cache of the tools of mise.toml
         id: cache-tools
@@ -427,7 +486,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap

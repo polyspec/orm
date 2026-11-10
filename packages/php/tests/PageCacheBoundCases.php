@@ -92,8 +92,8 @@ trait PageCacheBoundCases
             'entity' => 'root',
             'columns' => [
                 'fn' => [
-                    'z_fn' => ['column' => 'seq', 'fn' => ['name' => 'year', 'ps' => [0]]],
-                    'a_fn' => ['column' => 'seq', 'fn' => ['name' => 'year', 'ps' => [1]]],
+                    'z_fn' => ['column' => 'seq', 'fn' => ['name' => 'year']],
+                    'a_fn' => ['column' => 'seq', 'fn' => ['name' => 'year']],
                 ],
                 'sub' => [
                     'z_sub' => ['column' => 'seq', 'query' => ['entity' => 'inner', 'where' => $pred(2)]],
@@ -118,7 +118,7 @@ trait PageCacheBoundCases
                 ],
                 ['rel' => 'r2', 'query' => ['entity' => 'related', 'where' => $pred(10)]],
             ],
-            'order' => [['column' => 'seq', 'fn' => ['name' => 'year', 'ps' => [11]]]],
+            'order' => [['column' => 'seq', 'fn' => ['name' => 'year']]],
             'limit' => ['offset' => 0, 'count' => 20],
             'if_parent' => ['column' => 'seq', 'p' => 12],
             'set' => [['column' => 'seq', 'p' => 13]],
@@ -129,19 +129,19 @@ trait PageCacheBoundCases
         ];
         $request->canonicalize();
         $expectedParams = [
-            'v1', 'v0', 'v3', 'v2', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9',
-            'v10', 'v11', 0, 20, 'v12', 'v13', 'v14', 'v15', 'v16', 'v17',
+            'v3', 'v2', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 0,
+            20, 'v12', 'v13', 'v14', 'v15', 'v16', 'v0', 'v1', 'v11', 'v17',
         ];
         self::assertSame(
             $expectedParams,
             $request->params
         );
-        self::assertSame(['offset_p' => 12, 'count_p' => 13], $request->ir['limit']);
-        self::assertSame(14, $request->ir['if_parent']['p']);
-        self::assertSame(15, $request->ir['set'][0]['p']);
-        self::assertSame(16, $request->ir['on_duplicate'][0]['p']);
-        self::assertSame([[17]], $request->ir['rows']);
-        self::assertSame(18, $request->ir['optimistic']['p']);
+        self::assertSame(['offset_p' => 9, 'count_p' => 10], $request->ir['limit']);
+        self::assertSame(11, $request->ir['if_parent']['p']);
+        self::assertSame(12, $request->ir['set'][0]['p']);
+        self::assertSame(13, $request->ir['on_duplicate'][0]['p']);
+        self::assertSame([[14]], $request->ir['rows']);
+        self::assertSame(15, $request->ir['optimistic']['p']);
     }
 
     // Requirements: T236.

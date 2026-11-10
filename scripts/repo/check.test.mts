@@ -8,11 +8,14 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
+import { repositoryOf, runErrors } from './release-run.mts';
+import { AFTER_GROUP_CHECK, documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
+import { nativeLines, nativeTestErrors } from './native-tests.mts';
 import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
@@ -124,6 +127,26 @@ caseTest('the Go model build regenerates models', COMPUTE, () => {
   const generation = result.stdout.indexOf('go run ./cmd/orm-gen sets');
   assert.ok(generation >= 0, 'build-go does not run the Go model generator');
   assert.match(result.stdout, /go run \.\/cmd\/orm-gen sets/);
+});
+
+// A model generator's key covers the directory of the document set of each of its entries, which holds the set and its documents, so a
+// fixture change regenerates the models that it is read into: the Go and PHP keys once named only their own package.
+caseTest('the key of a model generator covers the document set of each of its entries', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const sets = (file: string, base: string) => [...text(file).matchAll(/^--set (\S+)/gm)].map(match => posix.dirname(posix.normalize(posix.join(base, match[1] ?? ''))));
+  const expected: [string, string[]][] = [
+    ['go-models', sets('packages/go/models.txt', 'packages/go')],
+    ['php-models', sets('packages/php/models.txt', '.')],
+    ['python-models', [posix.dirname(/^PYTHON_MODELS_SET = (\S+)$/m.exec(text('Makefile'))?.[1] ?? '')]],
+  ];
+  for (const [target, dirs] of expected) {
+    const result = spawnSync('make', ['-n', '--no-print-directory', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(result.status, 0, result.stderr);
+    const line = result.stdout.split('\n').find(entry => entry.includes('once.mts') && entry.includes(`/${target}.key `));
+    assert.ok(line !== undefined, `${target} runs no keyed generator: ${result.stdout}`);
+    const inputs = (line.split(' -- ')[0] ?? '').split(/\s+/).map(path => path.replace(/\/$/, ''));
+    for (const dir of dirs) assert.ok(inputs.includes(dir), `${target} does not key on ${dir}: ${line.split(' -- ')[0]}`);
+  }
 });
 
 caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
@@ -281,7 +304,7 @@ const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/w
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
 caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/documents.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
@@ -699,6 +722,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const own = jobTargets(makefile);
   assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
+  assert.deepEqual(targets.preflight, ['repo-check', 'runner-check', 'docs-rules-check', 'comment-language-check'], 'the group preflight runs the four structure checks (T428)');
   assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'dialect-facts-check'],
@@ -735,8 +759,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
   const testJob = jobs.test;
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
-  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
-    'independent runtime and comparison jobs start alongside kit and install their own dependencies');
+  assert.deepEqual('needs' in testJob ? testJob.needs : undefined, ['preflight'],
+    'runtime and comparison jobs wait only for the preflight job (T427), start alongside kit and install their own dependencies');
   assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
     'CI passes the group setup needs to one Make target, not inline shell logic');
   const installTools = (group: string, php: string, python: string) => {
@@ -861,8 +885,8 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   ]);
   assert.deepEqual(ciCheckTargetErrors(grouped('[one, three, three]'), good), [
     'ci.yml job test lists the matrix group three twice',
-    'ci.yml job test has no matrix group two of CI_GROUPS, so no job runs its targets',
     'ci.yml job test has the matrix group three, which is not in CI_GROUPS',
+    'ci.yml has no matrix group two of CI_GROUPS, so no job runs its targets',
   ]);
   assert.deepEqual(ciCheckTargetErrors(grouped(), make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check b-check c-check', 'CI_TARGETS_three = b-check'])), [
     'Makefile CI group two declares no CI_TARGETS_two',
@@ -883,7 +907,7 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
 caseTest('every CI group uploads the report directory that the runner writes', COMPUTE, () => {
   assert.deepEqual(ciReportPathErrors(workflow, text('Makefile')), []);
   const make = text('Makefile').replace(/^CI_GROUPS = (.*)$/m, 'CI_GROUPS = $1 stress-x').concat('\nCI_TARGETS_stress-x = feature-stress-mysql-check\n');
-  assert.deepEqual(ciReportPathErrors(workflow, make), [
+  assert.deepEqual(ciReportPathErrors(workflow.replace('group: [static, ', 'group: [static, stress-x, '), make), [
     'ci.yml job test group stress-x uploads .runtime/check/ci_1_1_stress-x/report/, but the runner writes the report of ORM_CHECK_RUN_ID 1-1-stress-x to .runtime/check/ci_1_1_stress_x/report/; name the group with lowercase letters, digits and _ only',
   ]);
 });
@@ -999,7 +1023,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
   ]);
   assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'echo passed')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of \[\{"uses":"actions\/checkout@v5"\}/);
   // A job without the checkout runs make where the repository is not, and make finds no Makefile.
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"uses":"actions\/setup-node@v7"/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"name":"hashes of the lock files","id":"locks"/);
 });
 
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
@@ -2074,6 +2098,135 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
   assert.throws(() => timeFailureErrors({ 'a_test.go': 'package a\n' }), /timeFailureErrors reads no Go source \(a_test\.go\); go vet runs the analyzer timefailure of tests\/analyzers over it/);
 });
 
+// The selection cases of ci.yml by the changed paths of a push (T418): its push trigger starts no run when every changed path
+// is a document of DOCUMENT_PATHS, and every job otherwise; the version commit, an undeclared path and a change under
+// packages/go run every group, the Go groups among them.
+const repositoryRoot = new URL('../..', import.meta.url).pathname;
+const ciPush = (): unknown => {
+  const on = readWorkflow(readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'), 'ci.yml').value['on'];
+  return typeof on === 'object' && on !== null ? Object.entries(on).find(([event]) => event === 'push')?.[1] : undefined;
+};
+const SELECTION: { name: string; paths: string[]; starts: boolean }[] = [
+  { name: 'a document-only push, the checklist cells of a row', paths: ['docs/plans/execution/checklist.md', 'docs/plans/execution/checklist.ko.md'], starts: false },
+  { name: 'a push of the root documents and the plans', paths: ['README.md', 'README.ko.md', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'PRINCIPLES.md', 'SECURITY.md', 'CONTRIBUTING.ko.md', 'CODE_OF_CONDUCT.md', 'docs/plans/cross-verification/plan.md', 'docs/plans/kit-standard/checklist.ko.md'], starts: false },
+  { name: 'a change under packages/go', paths: ['packages/go/orm/db.go'], starts: true },
+  { name: 'a change under packages/go pushed with documents', paths: ['docs/plans/execution/checklist.md', 'packages/go/orm/db.go'], starts: true },
+  { name: 'AGENTS.md, which repo-check reads', paths: ['AGENTS.md'], starts: true },
+  { name: 'the checklist of kit-standard, which the feature checks read', paths: ['docs/plans/kit-standard/checklist.md'], starts: true },
+  { name: 'a spec, which the docs-implementation and recipe checks read', paths: ['docs/spec/dbspec.md'], starts: true },
+  { name: 'an undeclared path', paths: ['notes.txt'], starts: true },
+  { name: 'an undeclared plan', paths: ['docs/plans/new-plan/plan.md'], starts: true },
+  { name: 'a version commit', paths: ['VERSION', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'package.json', 'packages/ts/package.json', 'packages/php/composer.json'], starts: true },
+];
+for (const change of SELECTION) {
+  caseTest(`ci.yml on push: ${change.name} ${change.starts ? 'starts every group' : 'starts no run'}`, COMPUTE, () => {
+    assert.equal(workflowStarts(ciPush(), change.paths), change.starts, `${change.paths.join(', ')} against ${JSON.stringify(ciPush())}`);
+  });
+}
+
+caseTest('ci.yml ignores no package file of config/release.json and no VERSION, so a version commit runs every group', COMPUTE, () => {
+  const release: unknown = JSON.parse(readFileSync(join(repositoryRoot, 'config/release.json'), 'utf8'));
+  const manifests: unknown = typeof release === 'object' && release !== null ? Object.entries(release).find(([key]) => key === 'manifests')?.[1] : undefined;
+  assert.ok(typeof manifests === 'object' && manifests !== null, 'config/release.json names its manifests');
+  for (const file of ['VERSION', ...Object.keys(manifests)]) assert.ok(workflowStarts(ciPush(), [file]), `ci.yml ignores ${file}`);
+});
+
+caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', COMPUTE, () => {
+  assert.equal(workflowStarts({ branches: ['main'] }, ['README.md']), true);
+  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['README.md']), false);
+  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['packages/go/README.md']), true);
+  assert.equal(workflowStarts({ 'paths-ignore': ['docs/plans/**'] }, ['docs/plans/a/b/c.md']), false);
+  assert.throws(() => workflowStarts({ 'paths-ignore': 'docs/**' }, ['a']), /paths-ignore is no list of patterns/);
+});
+
+caseTest('every path that ci.yml ignores is read by the document checks of documents.yml alone', COMPUTE, () => {
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repositoryRoot }).toString().split('\0').filter(Boolean);
+  const documentChecks = (makeVariables(readFileSync(join(repositoryRoot, 'Makefile'), 'utf8')).get('DOCUMENT_CHECKS') ?? '').split(/\s+/).filter(Boolean);
+  assert.ok(documentChecks.length > 0, 'the Makefile declares DOCUMENT_CHECKS');
+  assert.deepEqual(documentPathErrors(DOCUMENT_PATHS, tracked, readCheckInputs(repositoryRoot).targets, documentChecks), []);
+  assert.ok(tracked.some(file => !workflowStarts(ciPush(), [file])), 'ci.yml ignores a tracked path');
+  // A path that a code check reads is refused: by the inputs of an owner target, by a lint that names it, and by a suite read.
+  const targets = { 'docs-check': { inputs: ['**/*.md'] }, 'spec-check': { inputs: ['docs/spec/**'] }, 'go-vet-check': { lints: ['**/*.go'] }, 'repo-check': { lints: ['**'] } };
+  assert.deepEqual(documentPathErrors(['docs/**', '*.go'], ['docs/spec/a.md', 'docs/plans/p.md', 'a.go'], targets, ['docs-check'], { 'feature-verify-rust': ['docs/plans/p.md'] }), [
+    'ci.yml ignores docs/spec/a.md, which spec-check reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+    'ci.yml ignores docs/plans/p.md, which feature-verify-rust reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+    'ci.yml ignores a.go, which go-vet-check reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml',
+  ]);
+});
+
+const SHA_BEFORE = 'a'.repeat(40);
+const SHA_AFTER = 'b'.repeat(40);
+caseTest('the diff of a push is the two-dot diff of its before and after commits, and a manual run has none', COMPUTE, () => {
+  assert.deepEqual(diffOf('push', { ref: 'refs/heads/main', before: SHA_BEFORE, after: SHA_AFTER }), { range: `${SHA_BEFORE}..${SHA_AFTER}` });
+  assert.ok('none' in diffOf('workflow_dispatch', {}));
+  assert.throws(() => diffOf('push', { ref: 'refs/heads/main', before: '0'.repeat(40), after: SHA_AFTER }), /creates refs\/heads\/main/);
+  assert.throws(() => diffOf('push', { before: SHA_BEFORE }), /the event has no after/);
+  assert.throws(() => diffOf('pull_request', {}), /pull_request is none that ci\.yml filters/);
+});
+
+caseTest(`a diff of ${LIMIT} files passes the size check and one of ${LIMIT + 1} fails it`, COMPUTE, () => {
+  assert.equal(judge('x..y', LIMIT), undefined);
+  assert.match(judge('x..y', LIMIT + 1) ?? '', /x\.\.y changes 3001 files, more than the 3000/);
+});
+
+caseTest('the size check counts the changed files of the range, a rename as its two paths', PROCESS, () => {
+  const directory = mkdtempSync(join(tmpdir(), 'diff-size-'));
+  try {
+    const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd: directory, encoding: 'utf8' }).trim();
+    git('init', '-q');
+    writeFileSync(join(directory, 'a.md'), 'a\n');
+    writeFileSync(join(directory, 'b.go'), 'package b\n');
+    git('add', '.');
+    git('commit', '-q', '--no-verify', '-m', 'one');
+    const before = git('rev-parse', 'HEAD');
+    writeFileSync(join(directory, 'a.md'), 'a2\n');
+    git('mv', 'b.go', 'c.go');
+    writeFileSync(join(directory, 'with space.txt'), 'x\n');
+    git('add', '.');
+    git('commit', '-q', '--no-verify', '-m', 'two');
+    assert.equal(changedFiles(directory, `${before}..HEAD`), 4);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+// The run check of a release (T418): make release-tag takes a successful push or manual run of ci.yml on the commit it tags,
+// and refuses a run of any other workflow before kit tags. The fixtures are answers of gh api repos/<repo>/actions/runs/<id>.
+const RELEASE_SHA = 'c'.repeat(40);
+const apiRun = (fields: Record<string, unknown>): Record<string, unknown> => ({ id: 7, name: 'ci', path: '.github/workflows/ci.yml', event: 'push', status: 'completed', conclusion: 'success', head_sha: RELEASE_SHA, head_branch: 'main', ...fields });
+
+caseTest('make release-tag runs the run check on RUN before kit tags its commit', COMPUTE, () => {
+  const makefile = readFileSync(join(repositoryRoot, 'Makefile'), 'utf8');
+  const recipe = makefile.split(/^release-tag:.*\n/m)[1]?.split(/^\S/m)[0] ?? '';
+  const check = recipe.indexOf('scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")');
+  assert.ok(check >= 0, `the recipe of release-tag runs scripts/repo/release-run.mts on RUN:\n${recipe}`);
+  assert.ok(recipe.indexOf('release-run.$(KIT_EXT) tag "$$RUN"') > check, 'the run check comes before the tag step of kit');
+});
+
+caseTest('a release takes a successful push or manual run of ci.yml, also on the commit that it tags', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({})), []);
+  assert.deepEqual(runErrors('7', apiRun({}), RELEASE_SHA), []);
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_dispatch' })), []);
+});
+
+caseTest('a release refuses a run of documents.yml and of docs-pages.yml and names the workflow', COMPUTE, () => {
+  for (const [id, workflow] of [['8', 'documents.yml'], ['9', 'docs-pages.yml']] as const) {
+    assert.deepEqual(runErrors(id, apiRun({ path: `.github/workflows/${workflow}` })), [
+      `run ${id} is a run of .github/workflows/${workflow}, not of .github/workflows/ci.yml; a release takes a successful run of .github/workflows/ci.yml`,
+    ]);
+  }
+});
+
+caseTest('a release refuses a ci.yml run of another event, without success or on another commit', COMPUTE, () => {
+  assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_run' })), ['run 7 is a workflow_run run, not a push or workflow_dispatch run']);
+  assert.deepEqual(runErrors('7', apiRun({ conclusion: 'cancelled' })), ['run 7 has the conclusion cancelled, not success']);
+  assert.deepEqual(runErrors('7', apiRun({}), 'd'.repeat(40)), [`run 7 ran on ${RELEASE_SHA}, not on the commit ${'d'.repeat(40)} that the release tags`]);
+  assert.deepEqual(runErrors('7', apiRun({ head_sha: 'abc' })), ['run 7 names no head_sha']);
+  assert.equal(runErrors('7', { message: 'Not Found' }).length, 4);
+  assert.equal(repositoryOf({ repositoryUrl: 'https://github.com/polyspec/orm' }), 'polyspec/orm');
+  assert.throws(() => repositoryOf({}), /no repositoryUrl/);
+});
+
 // The trigger case (G5.98) checks that the `on:` blocks of ci.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
 // pull_request or merge_group.
 caseTest('every workflow runs on its declared events only', COMPUTE, () => {
@@ -2085,7 +2238,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text([stringify({ on })])]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  pull_request:', '  push:', '    branches: [main]', '  workflow_dispatch:']) }), [
-    '.github/workflows/ci.yml has the triggers {"pull_request":null,"push":{"branches":["main"]},"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
+    `.github/workflows/ci.yml has the triggers {"pull_request":null,"push":{"branches":["main"]},"workflow_dispatch":null} instead of ${JSON.stringify(WORKFLOW_TRIGGERS['.github/workflows/ci.yml'])}`,
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
     '.github/workflows/docs-pages.yml has the triggers {"push":{"branches":["main"]},"pull_request":null,"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
@@ -2093,13 +2246,13 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const { ['.github/workflows/docs-pages.yml']: _, ...withoutPages } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutPages, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
     '.github/workflows/docs-pages.yml is missing; it runs on {"push":{"branches":["main"]},"workflow_dispatch":null}',
-    '.github/workflows/review.yml runs on pull_request; only ci.yml and docs-pages.yml run on these events',
+    '.github/workflows/review.yml runs on pull_request; only ci.yml, documents.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
   // release.yml is owned by Kit, so the table holds no entry for it (KSTD-5-25).
   assert.equal(Object.hasOwn(WORKFLOW_TRIGGERS, '.github/workflows/release.yml'), false);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
-    '.github/workflows/release.yml runs on push; only ci.yml and docs-pages.yml run on these events',
+    '.github/workflows/release.yml runs on push; only ci.yml, documents.yml and docs-pages.yml run on these events',
   ]);
 });
 
@@ -2439,6 +2592,11 @@ caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
 // package-lock.json files, and the composer, uv, Go module and mise tool installs each follow a cache keyed by their lock file.
 caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
+  // A hashFiles key is evaluated again after the last step, over the workspace as the job left it (CI run 42784034583).
+  const cache = (key: string) => ['jobs:', '  test:', '    steps:', '      - uses: actions/cache@v4', '        with:', '          path: ~/.cache/uv', `          key: ${key}`, '      - run: make orm-install-python', ''].join('\n');
+  const refused = ['ci.yml job test step run: make orm-install-python installs the uv packages with no cache before it, keyed by steps.locks.outputs.uv of the step locks (~/.cache/uv)'];
+  assert.deepEqual(lockedCacheErrors(cache("uv-${{ hashFiles('**/uv.lock') }}")), refused);
+  assert.deepEqual(lockedCacheErrors(cache('uv-${{ steps.locks.outputs.uv }}')), refused, 'a key of the step locks with no step locks before it');
 });
 
 // The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,
@@ -2464,4 +2622,92 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// The native test case (T400-1) checks the rule of FCV-2 over a fixture of the inventory of contracts/implementations.json, of the
+// features of contracts/features.json and of the spec. The check of `make repo-check` runs the same rule on the tree itself
+// (scripts/repo/check.mts), which names the native tests that wait for their recipe, so this case holds the rule and not the tree.
+const nativeFiles: Record<string, string> = {
+  'packages/go/orm/a_test.go': 'package orm\n\nfunc TestShared(t *testing.T) {}\n\nfunc TestStated(t *testing.T) {}\n',
+  'packages/php/tests/ATest.php': '<?php\nfinal class ATest extends TestCase\n{\n    use ACases;\n\n    public function testOwn(): void {}\n}\n',
+  'packages/php/tests/ACases.php': '<?php\ntrait ACases\n{\n    public function testFromTrait(): void {}\n}\n',
+  'packages/go/orm/recipe_a_test.go': 'package orm\n\nfunc TestRecipeANone(t *testing.T) { recipe.Run(t) }\n',
+  'packages/go/orm/only_test.go': 'package orm\n\nfunc TestGoOnly(t *testing.T) {}\n',
+  'packages/rust/orm/tests/cases/a.rs': '#[tokio::main]\n// Requirements: X.\nasync fn a_trial() {}\n\npub fn trials() -> Vec<Trial> {\n    native_trials!("a": a_trial)\n}\n#[test]\n// a comment\nfn an_attributed_test() {}\n',
+};
+const nativeInputs = (lines: string[], files: Record<string, string> = nativeFiles) => ({
+  // The internal test of Go is not in the inventory: contracts/implementations.json declares it in `internal`, which the inventory leaves out.
+  tests: { go: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/go/orm/only_test.go'], php: ['packages/php/tests/ATest.php'], rust: ['packages/rust/orm/tests/cases/a.rs'] },
+  features: [
+    { id: 'shared', files: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/php/tests/ATest.php', 'packages/rust/orm/tests/cases/a.rs', 'packages/go/orm/internal_test.go'] },
+    { id: 'go-alone', files: ['packages/go/orm/only_test.go'] },
+  ],
+  recipeTests: new Set(['packages/go/orm/recipe_a_test.go']),
+  caseRunnerTests: new Set<string>(),
+  spec: ['- **FCV-1** Each feature declares its coverage.', '- **FCV-2** One spec holds every orm test.', ...lines,
+    '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
+  files: Object.keys(files),
+  read: (file: string) => {
+    const content = files[file];
+    if (content === undefined) throw new Error(`no file ${file} in this fixture`);
+    return content;
+  },
+});
+const unstated = (file: string, name: string) => `${file}: the native test ${name} of the shared feature shared runs no recipe, and no line of FCV-2 names it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md as in \`${file}\`, \`${name}\``;
+const statedAll = [
+  '  - In `packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
+  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/orm/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
+];
+caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', COMPUTE, () => {
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('packages/go/orm/a_test.go', 'TestShared'), unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  // A test that a PHP class takes from a trait of a support file, a Rust trial and a Rust test under a comment are native tests too.
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('packages/php/tests/ATest.php', 'testOwn'), unstated('packages/php/tests/ATest.php', 'testFromTrait'),
+    unstated('packages/rust/orm/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/orm/tests/cases/a.rs', 'a_trial')]);
+});
+
+// A Rust file of cases without native_trials! makes its trials in the harness function `trials`, which is its native test (T400-1).
+// Requirements: FCV-2.
+caseTest('the harness function trials of a Rust file of cases is its native test', COMPUTE, () => {
+  const harness = 'packages/rust/orm/tests/cases/b.rs';
+  const files = { ...nativeFiles, [harness]: 'pub fn trials() -> Vec<Trial> {\n    cases().map(|c| Trial::test(c.id, run)).collect()\n}\n' };
+  const inputs = nativeInputs(statedAll, files);
+  const [shared, ...others] = inputs.features;
+  assert.ok(shared !== undefined, 'the fixture has the shared feature');
+  const widened = { ...inputs, tests: { ...inputs.tests, rust: [...inputs.tests.rust, harness] }, features: [{ ...shared, files: [...shared.files, harness] }, ...others] };
+  assert.deepEqual(nativeTestErrors(widened), [unstated(harness, 'trials')]);
+  assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-3**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-3**`) }), []);
+});
+caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', COMPUTE, () => {
+  // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
+  assert.deepEqual(nativeLines(nativeInputs(statedAll).spec).map(line => line.tests.length), [2, 4]);
+  // A list of paths after `in` names files and no test.
+  assert.deepEqual(nativeLines(nativeInputs(['  - `a-unit` stays native: its measurement stays in `packages/go/orm/a_test.go`, `packages/php/tests/ATest.php` and `b.mjs`. In `packages/go/orm/a_test.go`, `TestShared` is one.']).spec)
+    .map(line => line.tests), [[{ file: 'packages/go/orm/a_test.go', name: 'TestShared' }]]);
+  // A line may name the test of one runtime, which needs no line, as long as the test is there.
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
+});
+// A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
+// file still are (T400-1).
+// Requirements: FCV-2, FCV-15.
+caseTest('a case runner test is no native test, and the other tests of its file are', COMPUTE, () => {
+  const inputs = nativeInputs(statedAll.slice(1));
+  assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }), [unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  // A line that names the case runner test names no native test of that file.
+  assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }),
+    ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
+});
+caseTest('a line of FCV-2 that names no native test is a finding', COMPUTE, () => {
+  const spec = 'docs/spec/feature-coverage.md FCV-2';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/a_test.go`, `TestGone` stays as a native test: a reason.'])),
+    [`${spec} keeps the native test TestGone of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line`]);
+  for (const file of ['packages/go/orm/recipe_a_test.go', 'packages/go/orm/internal_test.go', 'packages/php/tests/ACases.php']) {
+    assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, `  - In \`${file}\`, \`TestX\` stays as a native test: a reason.`])),
+      [`${spec} keeps native tests of ${file}, which is no native test file (a recipe test, a support file, an internal test, a file that no feature lists or no test file); remove the name from the line`]);
+  }
+  const unnamed = '  - `gone-unit` (X-1) stays native in every runtime: a reason that names no test.';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, unnamed])),
+    [`${spec} line "${unnamed.trim()}" names no native test; name each test it keeps as in \`file\`, \`test\`, or remove the line`]);
+  const reasonless = '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test.';
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, reasonless])), [`${spec} line "${reasonless.trim()}" states no reason after a colon; state why its tests stay native`]);
 });

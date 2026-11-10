@@ -14,8 +14,11 @@ namespace Polyspec\Orm;
 final class CanonicalRequest
 {
     private const MAX_SAFE_INTEGER = 9007199254740991;
-    /** @var list<string> the fields of a predicate or an assignment in Go's walk order (packages/go/orm/canonical.go) */
-    private const PREDICATE_ORDER = ['p', 'plus_p', 'minus_p', 'ps', 'fn', 'value', 'sub'];
+    /**
+     * @var list<string> the fields of a predicate or an assignment in Go's walk order (packages/go/orm/canonical.go); a
+     * column function takes no parameter, so its field fn holds no slot
+     */
+    private const PREDICATE_ORDER = ['p', 'plus_p', 'minus_p', 'ps', 'value', 'sub'];
     /** @var list<mixed> the canonical parameters */
     private array $out = [];
     /** @var array<int, bool> */
@@ -159,7 +162,7 @@ final class CanonicalRequest
 
     /**
      * The keys of a map in walk order. A predicate or an assignment (a map with a string column) is walked in the
-     * order of Go's pred and assign: P, PlusP, MinusP, Ps, Fn, Value, Sub; the other keys follow in sorted order.
+     * order of Go's pred and assign: P, PlusP, MinusP, Ps, Value, Sub; the other keys follow in sorted order.
      * Any other map is walked in sorted order, so a column function named like a field keeps its place.
      *
      * @param array<mixed> $v

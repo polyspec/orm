@@ -1,6 +1,7 @@
-# The next statement of a connection fails deterministically with the code and message of the
-# fixture contracts/fixtures/statement_fault.json through the test entry point
-# polyspec.orm.testing.fail_next_statement (docs/spec/protocol.md "3.2 Test statement fault"). Each case
+# The test entry point polyspec.orm.testing.fail_next_statement (docs/spec/protocol.md "3.2 Test statement
+# fault") refuses an empty code or message with a ValueError, the programmer-error signal of the client, and
+# arms nothing: the case of the fixture contracts/fixtures/statement_fault.json. The refused statement, its
+# event and its consumption are the cases a_statement_fault_* of the recipe transactions. The case
 # runs on SQLite, MySQL and PostgreSQL; MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
 # ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 import contextlib
@@ -12,7 +13,6 @@ import unittest
 import uuid
 from pathlib import Path
 from polyspec.orm.database import Db
-from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .server_database import server_database
@@ -129,81 +129,6 @@ class StatementFaultTest(unittest.TestCase):
         except BaseException as error:  # noqa: BLE001 - the probe returns any exception the run raises
             return error
         return None
-
-    def check_fault(self, error, code: str = CODE, message: str = MESSAGE):
-        self.assertIsInstance(error, OrmError, f"the statement raises {error!r}")
-        self.assertEqual(error.code, code, f"{error}")
-        self.assertEqual(str(error), f"{code}: {message}")
-
-    def test_refused_insert(self):
-        def run(db):
-            fail_next_statement(db, CODE, MESSAGE)
-            events = []
-            unsubscribe = db.subscribe(events.append)
-            self.addCleanup(unsubscribe)
-            error = self.raised(lambda: self.probe(db, "refused").create())
-            self.check_fault(error)
-            self.assertTrue(
-                any(event.error is error for event in events),
-                "the statement event of the refused statement carries the error",
-            )
-            self.assertEqual(
-                self.count(db), 0, "the refused insert is not sent to the database"
-            )
-
-        self.each_dialect("refused_insert", run)
-
-    def test_consumed_by_one_statement(self):
-        def run(db):
-            fail_next_statement(db, CODE, MESSAGE)
-            self.check_fault(self.raised(lambda: self.probe(db, "first").create()))
-            self.assertIsNone(
-                self.raised(lambda: self.probe(db, "second").create()),
-                "the statement after the consumed fault runs",
-            )
-            self.assertEqual(self.count(db), 1)
-
-        self.each_dialect("consumed_by_one_statement", run)
-
-    def test_refused_in_transaction(self):
-        def run(db):
-            fail_next_statement(db, CODE, MESSAGE)
-            events = []
-            unsubscribe = db.subscribe(events.append)
-            self.addCleanup(unsubscribe)
-            error = self.raised(
-                lambda: db.transaction(
-                    lambda: self.probe(db, "in transaction").create(), {"retry": 0}
-                )
-            )
-            self.check_fault(error)
-            refused = [event for event in events if event.error is error]
-            self.assertEqual(
-                len(refused), 1, "exactly one statement event carries the error"
-            )
-            self.assertIn(
-                "insert", refused[0].sql.lower(), "the insert is the refused statement"
-            )
-            self.assertTrue(
-                events
-                and events[0].error is None
-                and "insert" not in events[0].sql.lower(),
-                "the transaction control statement before the insert is not refused",
-            )
-            self.assertEqual(
-                self.count(db), 0, "the refused insert and its transaction leave no row"
-            )
-            self.assertIsNone(
-                self.raised(
-                    lambda: db.transaction(
-                        lambda: self.probe(db, "later").create(), {"retry": 0}
-                    )
-                ),
-                "the transaction after the consumed fault commits",
-            )
-            self.assertEqual(self.count(db), 1)
-
-        self.each_dialect("refused_in_transaction", run)
 
     def test_empty_argument_refused(self):
         def run(db):

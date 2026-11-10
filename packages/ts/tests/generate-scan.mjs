@@ -252,7 +252,36 @@ async function unparsableFirstLine() {
   }
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, unparsable_first_line: unparsableFirstLine };
+/**
+ * A compiled copy of the set's models, such as the dist of a package, holds the manifest hash of the build that it came from; its source
+ * map names the set's models.ts, so a class imported from the copy is the set's even when that hash is stale, as the first build after a
+ * manifest change finds it. A copy with a stale hash and no source map stays another set's.
+ */
+// Requirements: DSL-151.
+async function compiledCopy() {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-compiled-'));
+  try {
+    const set = join(root, 'contracts/fixtures/bench/dbspec-set.json');
+    const first = await runGeneratorCommand(bin, ['gen', '--set', set, '--out', 'models'], work);
+    if (first.status !== 0) throw new Error(`orm-gen exit ${first.status}: ${first.stderr}`);
+    const stale = (await readFile(join(work, 'models/models.ts'), 'utf8')).replace(/^export const MANIFEST_HASH = '[^']*';$/m, "export const MANIFEST_HASH = 'sha256:stale';");
+    for (const dir of ['dist/models', 'dist/nomap', 'src']) await mkdir(join(work, dir), { recursive: true });
+    await writeFile(join(work, 'dist/models/models.js'), `${stale}\n//# sourceMappingURL=models.js.map\n`);
+    await writeFile(join(work, 'dist/models/models.js.map'), JSON.stringify({ version: 3, file: 'models.js', sources: ['../../models/models.ts'], mappings: '' }));
+    await writeFile(join(work, 'dist/nomap/models.js'), stale);
+    await writeFile(join(work, 'src/example.ts'), "import { Author } from '../dist/models/models.js';\nimport { User } from '../dist/nomap/models.js';\ndeclare const db: unknown;\nnew Author().connect(db).gtReadCount(1);\nnew User().connect(db).neName('x');\n");
+    const result = await runGeneratorCommand(bin, ['gen', '--set', set, '--out', 'models', '--scan', 'src'], work);
+    if (result.status !== 0) throw new Error(`orm-gen exit ${result.status}: ${result.stderr}`);
+    const text = await readFile(join(work, 'models/models.ts'), 'utf8');
+    const declares = (model, method) => new RegExp(`export class ${model} extends Model \\{\\n(?:(?!\\n\\}\\n)[\\s\\S])*\\n  declare ${method}:`).test(text);
+    check(declares('Author', 'gtReadCount'), 'Author lacks gtReadCount, called on the compiled copy whose source map names the set\'s models.ts');
+    check(!declares('User', 'neName'), 'User declares neName, called on a copy with another hash and no source map');
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, unparsable_first_line: unparsableFirstLine, compiled_copy: compiledCopy };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

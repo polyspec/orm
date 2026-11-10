@@ -1946,12 +1946,9 @@ class Db:
         """Registers the runtime model of the manifest for validation and planning. A set that is already registered is not changed."""
         self.schemas.setdefault(manifest_hash, model)
         if manifest_hash not in self.engines:
-            # A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
             # The engine of a mysql connection renders by its server (DIA-209), and the plan cache of the connection
             # holds the plans of that engine alone, so a plan of one server never serves another.
-            self.engines[manifest_hash] = Engine(
-                model, self.sql_driver, self.corpus, self._server
-            )
+            self.engines[manifest_hash] = Engine(model, self.sql_driver, self._server)
 
     @property
     def closed(self) -> bool:
@@ -3256,8 +3253,7 @@ def scalar(ex: Executor, request: dict, params):
         parts = _root_in_parts(request, slots, db.sql_driver, params)
         if len(parts) == 1:
             step = db.plan(parts[0])["plan"]["steps"][0]
-            result = db._send_step(ex, step["sql"], step, params)
-            return result["rows"][0][0] if result["rows"] else None
+            return cells(db._send_step(ex, step["sql"], step, params))
         if len(parts) > 1:
             if request["kind"] != "count":
                 raise OrmError(
@@ -3271,7 +3267,13 @@ def scalar(ex: Executor, request: dict, params):
                 total += int((result["rows"][0] or [0])[0] if result["rows"] else 0)
             return total
         step = cached["plan"]["steps"][0]
-        result = db._send_step(ex, step["sql"], step, params)
+        return cells(db._send_step(ex, step["sql"], step, params))
+
+    def cells(result):
+        # A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        # scalar statement reads one cell.
+        if request["kind"] in ("avg", "sum"):
+            return tuple(result["rows"][0])
         return result["rows"][0][0] if result["rows"] else None
 
     return _guarded(ex, work)
@@ -3314,8 +3316,8 @@ def lookahead(ex: Executor, request: dict, params, per_page: int):
 
 def write(ex: Executor, request: dict, params, after_hook=None):
     """Runs insert, update, delete, and restore, and returns the key of the inserted row and the affected row count: in SQL databases the generated
-    identity, or the key_prefix key that a corpus allocated on a markdown connection. 'request' and 'params' are the executed
-    request left by the request hook and its parameters."""
+    identity, on a markdown connection as on the others. 'request' and 'params' are the executed request left by the
+    request hook and its parameters."""
     request, params = _hooked(ex.db, request, params, after_hook)
 
     def work():
@@ -3334,10 +3336,8 @@ def write(ex: Executor, request: dict, params, after_hook=None):
         if settle is not None:
             settle(result["affected"], None)
         if request["kind"] == "insert" and " RETURNING " in step["sql"]:
-            # The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
-            returned = result["rows"][0][0]
-            key = returned if isinstance(returned, str) else int(returned)
-            return {"id": key, "affected": 1}
+            # The returned key is the identity, an integer.
+            return {"id": int(result["rows"][0][0]), "affected": 1}
         if (
             request["kind"] == "update"
             and request.get("optimistic")

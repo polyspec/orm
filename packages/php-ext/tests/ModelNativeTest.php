@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\DataProvider;
-use Polyspec\Orm\Codec;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\Frame;
 use Polyspec\Orm\Request;
@@ -365,30 +363,6 @@ final class ModelNativeTest extends TestCase
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
-    }
-
-    /** @return iterable<string, array{string}> */
-    public static function styledColumnStateVectors(): iterable
-    {
-        require_once dirname(__DIR__, 2) . '/php/tests/StyledValueTest.php';
-        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
-            \Polyspec\Orm\Tests\StyledValueTest::cases(),
-            'styled-column'
-        );
-    }
-
-    #[DataProvider('styledColumnStateVectors')]
-    public function testStyledColumnStateVector(string $id): void
-    {
-        require_once dirname(__DIR__, 2) . '/php/tests/StyledValueTest.php';
-        self::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        self::assertTrue((new ReflectionClass(Codec::class))->isInternal());
-        [$case] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
-            \Polyspec\Orm\Tests\StyledValueTest::cases(),
-            $id,
-            'styled-column'
-        );
-        (new \Polyspec\Orm\Tests\StyledValueTest('testStyledValue'))->testStyledValue($case);
     }
 
     public function testDecimalNormalizationAndDatetimeUsesTheConnectionZone(): void

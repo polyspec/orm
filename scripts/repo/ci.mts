@@ -1,8 +1,9 @@
 import { isDeepStrictEqual } from 'node:util';
+import { Minimatch } from 'minimatch';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
 import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
-import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
+import { CI_SETUP, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 
@@ -41,7 +42,10 @@ const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment
 export function ciServerErrors(workflow: string, variables: readonly string[]): string[] {
   const errors: string[] = [];
   if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
-  const steps = workflowSteps(workflow);
+  // The servers start in the job that runs make orm-test-servers, so the order that counts is the order of that job's steps; another
+  // job, such as the preflight job that every other job needs, runs on a runner of its own.
+  const serverJob = readWorkflow(workflow).jobs.find(job => job.steps.some(startsServers));
+  const steps = serverJob ? serverJob.steps : workflowSteps(workflow);
   const defined = environment(workflow);
   const server = steps.findIndex(startsServers);
   if (server === -1) {
@@ -51,8 +55,9 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
     }
     errors.push('ci.yml does not start the database servers with make orm-test-servers');
   } else {
-    // The CI setup step (scripts/check/ci-setup.mts) is installation and environment checking that needs no server.
-    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
+    // The CI setup step and the runner steps (scripts/check/ci-setup.mts) are installation, hashing and environment checking that
+    // need no server.
+    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '') && !RUNNER_STEPS.includes(step.id ?? '')).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make orm-test-servers starts the servers`));
   }
   for (const variable of variables) {
@@ -107,27 +112,30 @@ export function kitGates(makefile: string): string[] {
 
 // lockedCacheErrors returns one error for each place where a CI job does not restore the caches of its locked installs (B3-4).
 // A job that installs the npm packages, the composer packages, the uv packages, the Go modules or the tools of mise.toml must restore,
-// before that install, a cache whose key is the hash of the lock file the install reads. setup-node keeps its own npm cache off
-// (scripts/repo/node.mts), so the npm cache is the one this check reads.
+// before that install, a cache whose key is the hash of the lock file the install reads. The key is the output of the step `locks`
+// (LOCKS_STEP), which hashes the tracked lock files once after the checkout: actions/cache evaluates its key again after the last
+// step, and a hashFiles key would then read the workspace as the job left it (CI run 42784034583). setup-node keeps its own npm
+// cache off (scripts/repo/node.mts), so the npm cache is the one this check reads.
 export function lockedCacheErrors(workflow: string): string[] {
   const errors: string[] = [];
   const installs: [RegExp, string, string, string][] = [
-    [/\bnpm\b/, '~/.npm', 'package-lock.json', 'the npm packages'],
-    [/\borm-install-php\b/, '~/.cache/composer', 'composer.lock', 'the composer packages'],
-    [/\borm-install-python\b/, '~/.cache/uv', 'uv.lock', 'the uv packages'],
-    [/\borm-install-go\b/, '~/go/pkg/mod', 'go.sum', 'the Go modules'],
-    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'mise.toml', 'the tools of mise.toml'],
+    [/\bnpm\b/, '~/.npm', 'npm', 'the npm packages'],
+    [/\borm-install-php\b/, '~/.cache/composer', 'composer', 'the composer packages'],
+    [/\borm-install-python\b/, '~/.cache/uv', 'uv', 'the uv packages'],
+    [/\borm-install-go\b/, '~/go/pkg/mod', 'go', 'the Go modules'],
+    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'tools', 'the tools of mise.toml'],
   ];
   // text reads a workflow value that is a string, and is empty otherwise.
   const text = (value: unknown): string => (typeof value === 'string' ? value : '');
   for (const job of readWorkflow(workflow).jobs) {
     job.steps.forEach((step, index) => {
       for (const [pattern, path, lock, what] of installs) {
-        if (!pattern.test(step.run)) continue;
-        const restored = job.steps.slice(0, index).some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
-          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`hashFiles(`) &&
-          text(earlier.with['key']).includes(lock));
-        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by the hash of ${lock} (${path})`);
+        if (step.id === LOCKS_STEP['id'] || !pattern.test(step.run)) continue;
+        const before = job.steps.slice(0, index);
+        const hashed = before.some(earlier => earlier.id === LOCKS_STEP['id'] && earlier.run === LOCKS_STEP['run']);
+        const restored = hashed && before.some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
+          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`\${{ steps.locks.outputs.${lock} }}`));
+        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by steps.locks.outputs.${lock} of the step locks (${path})`);
       }
     });
   }
@@ -180,15 +188,20 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const gates = kitGates(makefile);
   const checks = all.filter(target => !gates.includes(target));
   if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
+  // The jobs that run GROUP_CHECK together list every group once: the job preflight runs the group preflight, which every
+  // other job needs (T428), and the job test the other groups.
+  const listed: string[] = [];
   for (const job of readWorkflow(workflow).jobs) {
     const { id } = job;
     if (!job.steps.some(groupStep)) continue;
     const matrix = matrixGroups(job);
     if (!matrix) { errors.push(`ci.yml job ${id} runs ${GROUP_CHECK} without a matrix group: [...] of CI_GROUPS`); continue; }
     for (const group of new Set(matrix.filter((group, index) => matrix.indexOf(group) !== index))) errors.push(`ci.yml job ${id} lists the matrix group ${group} twice`);
-    for (const group of groups) if (!matrix.includes(group)) errors.push(`ci.yml job ${id} has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
     for (const group of new Set(matrix)) if (!groups.includes(group)) errors.push(`ci.yml job ${id} has the matrix group ${group}, which is not in CI_GROUPS`);
+    for (const group of new Set(matrix)) if (listed.includes(group)) errors.push(`ci.yml lists the matrix group ${group} in two jobs`);
+    listed.push(...new Set(matrix));
   }
+  if (listed.length > 0) for (const group of groups) if (!listed.includes(group)) errors.push(`ci.yml has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
   for (const group of new Set(groups.filter((group, index) => groups.indexOf(group) !== index))) errors.push(`Makefile CI_GROUPS lists ${group} twice`);
   for (const group of groups) if (!((targets[group]?.length ?? 0) > 0)) errors.push(`Makefile CI group ${group} declares no CI_TARGETS_${group}`);
   for (const group of Object.keys(targets)) if (!groups.includes(group)) errors.push(`Makefile declares CI_TARGETS_${group}, but ${group} is not in CI_GROUPS`);
@@ -216,13 +229,15 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
 export function ciReportPathErrors(workflow: string, makefile: string): string[] {
   const { groups } = ciGroups(makefile);
   const errors: string[] = [];
-  for (const { id, steps } of readWorkflow(workflow).jobs) {
+  for (const job of readWorkflow(workflow).jobs) {
+    const { id, steps } = job;
     const runId = steps.map(step => step.env['ORM_CHECK_RUN_ID']).find((value): value is string => typeof value === 'string');
     const path = steps.map(step => step.with['path']).find((value): value is string => typeof value === 'string' && value.startsWith('.runtime/check/'));
     if (!runId || !path) continue;
     // The matrix group fills ${{ matrix.group }} with its name.
     const fill = (text: string, group: string) => text.replaceAll('${{ matrix.group }}', group).replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1');
-    for (const group of runId.includes('matrix.group') ? groups : ['']) {
+    // A job uploads the reports of the groups of its own matrix.
+    for (const group of runId.includes('matrix.group') ? (matrixGroups(job) ?? groups) : ['']) {
       const want = `.runtime/check/${runName(fill(runId, group))}/report/`;
       const have = fill(path, group);
       if (have !== want) errors.push(`ci.yml job ${id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, group)} to ${want}; name the group with lowercase letters, digits and _ only`);
@@ -765,13 +780,72 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
   return errors;
 }
 
-// WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main and on manual runs,
+// DOCUMENT_PATHS are the paths-ignore of the push trigger of ci.yml (T418): the documents that only DOCUMENT_CHECKS of the
+// Makefile read, which documents.yml runs on every push. A push whose every changed path matches one starts no run of ci.yml;
+// GitHub compares the diff of the whole push, so a push that holds any other path runs every job. AGENTS.md and AGENTS.ko.md
+// are no such documents (repo-check reads them), nor the checklist of kit-standard (scripts/features/check.mts reads it), the
+// specs or any other document that a code check reads; a plan that is not listed here starts every job. One lint is no read
+// of a document: the lint `**` of repo-check checks the form of every path name, and layout-check of documents.yml checks the
+// form of the path of a document that ci.yml ignores, while the documents that repo-check reads by their text (AGENTS.md and
+// AGENTS.ko.md) stay its inputs (documentPathErrors).
+export const DOCUMENT_PATHS = [
+  'CHANGELOG*.md', 'CODE_OF_CONDUCT*.md', 'CONTRIBUTING*.md', 'PRINCIPLES*.md', 'README*.md', 'SECURITY*.md',
+  'docs/plans/check-recipes/**', 'docs/plans/cross-verification/**', 'docs/plans/execution/**',
+  'docs/plans/kit-standard/plan.md', 'docs/plans/kit-standard/*.ko.md',
+];
+
+// WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main that change a path outside
+// DOCUMENT_PATHS and on manual runs; documents.yml runs the document checks on every push to main and on manual runs;
 // docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows Kit owns (release.yml
 // among them) are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
 export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
-  '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
+  '.github/workflows/ci.yml': { push: { branches: ['main'], 'paths-ignore': DOCUMENT_PATHS }, workflow_dispatch: null },
+  '.github/workflows/documents.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
   '.github/workflows/docs-pages.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
 };
+
+// A pattern of a workflow path filter: `*` within one path segment, `**` across segments, as GitHub reads it.
+const filterPattern = (glob: string) => new Minimatch(glob, { dot: true });
+
+// workflowStarts returns whether a push that changes `paths` starts a workflow whose push trigger is `trigger`: with
+// paths-ignore, GitHub starts it when some changed path matches no pattern of it; with no path filter, on every push.
+export function workflowStarts(trigger: unknown, paths: readonly string[]): boolean {
+  const ignore: unknown = typeof trigger === 'object' && trigger !== null ? Object.entries(trigger).find(([key]) => key === 'paths-ignore')?.[1] : undefined;
+  if (ignore === undefined) return paths.length > 0;
+  if (!Array.isArray(ignore) || !ignore.every(glob => typeof glob === 'string')) throw new Error('paths-ignore is no list of patterns');
+  const patterns = ignore.map(filterPattern);
+  return paths.some(path => !patterns.some(pattern => pattern.match(path)));
+}
+
+// SUITE_READS are the documents that suite targets read, which declare no inputs (contracts/check-inputs.json): rules-check
+// reads the rules of AGENTS.md and PRINCIPLES.md, layout-check the name of every path, and the feature verification reads the
+// checklist of kit-standard (scripts/features/check.mts).
+export const SUITE_READS: Record<string, string[]> = {
+  'rules-check': ['AGENTS*.md', 'PRINCIPLES*.md'],
+  'layout-check': ['**'],
+  'feature-verify-rust': ['docs/plans/kit-standard/checklist.md'],
+  'feature-verify-other': ['docs/plans/kit-standard/checklist.md'],
+};
+
+// documentPathErrors returns one error for each tracked path that `ignore` matches and that a target outside `documentChecks`
+// reads: an owner target by its inputs or by a lint that names the path, or a suite target of `suiteReads`. The lint `**` of
+// repo-check checks the form of every path name, which layout-check checks for a document too; repo-check reads AGENTS.md and
+// AGENTS.ko.md, its inputs. A path that such a target reads is never ignored, so ci.yml runs that target on its change.
+export function documentPathErrors(ignore: readonly string[], tracked: readonly string[], targets: Record<string, { inputs?: string[]; lints?: string[] }>, documentChecks: readonly string[], suiteReads: Record<string, string[]> = SUITE_READS): string[] {
+  const patterns = ignore.map(filterPattern);
+  const reads: [string, Minimatch[]][] = [
+    ...Object.entries(targets).map(([target, { inputs, lints }]): [string, Minimatch[]] => [target, [...(inputs ?? []), ...(lints ?? []).filter(glob => glob !== '**')].map(filterPattern)]),
+    ...Object.entries(suiteReads).map(([target, globs]): [string, Minimatch[]] => [target, globs.map(filterPattern)]),
+  ];
+  const errors: string[] = [];
+  for (const path of tracked.filter(file => patterns.some(pattern => pattern.match(file)))) {
+    for (const [target, globs] of reads) {
+      if (!documentChecks.includes(target) && globs.some(glob => glob.match(path)))
+        errors.push(`ci.yml ignores ${path}, which ${target} reads; remove it from DOCUMENT_PATHS of scripts/repo/ci.mts and the paths-ignore of ci.yml`);
+    }
+  }
+  return errors;
+}
 
 // workflowTriggerErrors returns one error for each place where a workflow in WORKFLOW_TRIGGERS is missing or has a different `on:` value, and for each place where another workflow runs on push,
 // pull_request, or merge_group.
@@ -786,7 +860,7 @@ export function workflowTriggerErrors(workflows: Record<string, string>): string
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
     const ran = events(readWorkflow(workflow, path)).filter(event => ['push', 'pull_request', 'merge_group'].includes(event));
-    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml and docs-pages.yml run on these events`);
+    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, documents.yml and docs-pages.yml run on these events`);
   }
   return errors;
 }
@@ -813,11 +887,17 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 // make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
 // checkout, the node of mise.toml and the install of the package come before it.
 export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed FAIL_SKIPPED=1' };
+// LOCKS_STEP hashes the tracked lock files of each cache once, after the checkout of a job (lockedCacheErrors).
+export const LOCKS_STEP: Record<string, unknown> = {
+  name: 'hashes of the lock files', id: 'locks', if: NOT_CANCELLED,
+  run: 'make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"',
+};
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
+  LOCKS_STEP,
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
-  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ hashFiles(\'**/package-lock.json\') }}' } },
-  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ hashFiles(\'mise.toml\', \'.mise/locks/**\', \'config/toolchain.json\') }}' } },
+  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}' } },
+  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}' } },
   { uses: './.github/actions/kit-bootstrap', id: 'kit-bootstrap', if: NOT_CANCELLED },
   CI_PASSED_STEP,
 ];

@@ -184,9 +184,6 @@ final class DbspecGraphTest extends TestCase
         yield 'Setting::$comments' => [static function (Document $d): void {
             $d->tables[0]->settings->settings[0]->comments = [1];
         }, "{$n}Setting::\$comments holds int, not a string"];
-        yield 'Setting::$requires' => [static function (Document $d): void {
-            $d->tables[0]->settings->settings[0]->requires = [1];
-        }, "{$n}Setting::\$requires holds int, not a string"];
         yield 'Setting::$exclude' => [static function (Document $d): void {
             $d->tables[0]->settings->settings[0]->exclude = [1];
         }, "{$n}Setting::\$exclude holds int, not a string"];

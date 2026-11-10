@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polyspec-orm"
-version = "0.0.27"
+version = "0.0.29"
 description = "Python ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite"
 license = "MIT"
 requires-python = ">=3.14"
 # Wheels support CPython only (docs/operations/packaging.md, Python client release). The toolchain is python-build-standalone CPython.
 classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
-    # Python wheel of ordered-json (release v0.0.23). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
-    "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.23/polyspec_ordered_json-0.0.23-py3-none-any.whl#sha256=eed9593dbfe6bbddf0942ab7479b3e95fadcb82ca6543f214662f37820524db6",
+    # Python wheel of ordered-json (release v0.0.25). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
+    "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.25/polyspec_ordered_json-0.0.25-py3-none-any.whl#sha256=d64801de501f15b90a2f2f2ec0d86e78f0a4e66a65f6157b3dc807998f1bb1ab",
     "cryptography==50.0.2",
     "PyMySQL==1.2.3",
     # Same install as psycopg[binary]==3.3.6: the extra binary requires psycopg-binary==3.3.6.

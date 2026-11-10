@@ -12,7 +12,7 @@ import { connect as connectSocket, createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { failNextRollback, lastAffected } from '../dist/testing.js';
+import { failNextRollback, failNextStatement, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CatalogFloat, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -883,19 +883,21 @@ const OPS = {
     const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
     return { value: { text: await connectDriver(dsn, s.config, context.database) } };
   },
-  // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
+  // dsn.sqlite_file (FCV-4, CFG-11, CFG-26): the names in a new directory, other than the journals of a file of it, after a connection
+  // to a file of it with the query, if any.
   async 'dsn.sqlite_file'(s) {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
       try {
-        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`, s.config);
+        await connectDriver(`sqlite://${directory}/${s.name}${s.query === undefined ? '' : `?${s.query}`}`, s.config);
       } catch (refused) {
         const left = readdirSync(directory);
         if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`, { cause: refused });
         throw refused;
       }
-      const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
-      return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
+      const listed = readdirSync(directory);
+      const journalOf = name => /^(.*)-(?:journal|shm|wal)$/s.exec(name)?.[1];
+      return { value: { text: listed.filter(name => !listed.includes(journalOf(name))).join(',') } };
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -2089,6 +2091,8 @@ class ChainBuild {
     if (q.lock !== undefined) m[CORE].lock = q.lock;
     if (q.force_index !== undefined) m[CORE].index = q.force_index;
     if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
+    // possible outside a relation is refused at the build of its request (DSL-85).
+    for (const [column, value] of Object.entries(q.possible ?? {})) m[CORE].possible = { column, value: chainValue(value, this.context) };
   }
 
   /** The child model of a relation. */
@@ -2097,7 +2101,6 @@ class ChainBuild {
     if (r.connection !== undefined) child.connect(refOf(r.connection, this.context));
     for (const [left, right] of r.match ?? []) child[CORE].matches.push({ left, right });
     if (r.alias !== undefined) child[CORE].alias = snakeOf(r.alias);
-    for (const [column, value] of Object.entries(r.possible ?? {})) child[CORE].possible = { column, value: chainValue(value, this.context) };
     if (r.parent_node === true) child.parentNode();
     new ChainBuild(this.context, this.outer).query(child, r);
     if (r.group_limit > 0) child.groupLimit(r.group_limit);
@@ -2273,6 +2276,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
+    if (s.json_output === true) return { json: rows.toJSONText() };
     const fields = { bind: rows, json: rows.values().map(row => rowJson(row, pick)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
@@ -2289,6 +2293,11 @@ const TABLE_OPS = {
       return { json: stringifyJson(tagged.value) };
     }
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
+    if (s.get !== undefined && row !== null) {
+      // The generated getter (DBS-112) reads Core.column, which is COLUMN_UNSELECTED for a column neither selected nor assigned.
+      row[CORE].column(s.get);
+      return { json: rowJson(row, [s.get])[s.get] };
+    }
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),
@@ -2537,8 +2546,22 @@ Object.assign(OPS, {
     subscription.stop = connectionOf(s, context).subscribe(event => recordEvent(subscription, event));
     return { bind: subscription };
   },
+  // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for the
+  // dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step of the plan with execute.
+  async 'db.execute'(s, context) {
+    const { model, hash } = validationModel(resolve(root, context.dir, s.schema));
+    if (Object.hasOwn(s.request, 'manifest_hash')) throw new Error('db.execute: the request already holds manifest_hash');
+    const dialect = context.database === 'markdown' ? 'sqlite' : context.database;
+    const plan = new Engine(model, dialect).compile({ ...structuredClone(s.request), manifest_hash: hash });
+    await connectionOf(s, context).execute(plan.steps[0], (s.params ?? []).map(toValue));
+    return {};
+  },
   async 'fault.next_rollback'(s, context) {
     failNextRollback(connectionOf(s, context));
+    return {};
+  },
+  async 'fault.next_statement'(s, context) {
+    failNextStatement(connectionOf(s, context), s.code, s.message);
     return {};
   },
   async 'events.fail_subscriber'(s, context) {
@@ -2692,12 +2715,14 @@ function emitStable(text, set) {
 // checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
 // and the same diagnostics.
 function checkRefusal(text, set, want) {
+  for (const [i, w] of want.entries()) assert.ok(w.message, `expected diagnostic ${i} (${w.rule} ${w.line} ${w.column}) states no message; every refused text states the message of each diagnostic`);
   const parsed = parseDbspec(text, set);
   assert.ok(!parsed.document, 'Parse returned a document for an invalid source');
   const formatted = formatDbspec(text, set);
   assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
   for (const got of [parsed.diagnostics, formatted.diagnostics]) {
-    assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+    const rows = got.map(d => ({ rule: d.rule, line: d.line, column: d.column, message: d.message }));
+    assert.deepEqual(rows, want, 'diagnostics');
     for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
   }
 }

@@ -544,7 +544,7 @@ impl<'a> Assembler<'a> {
                     continue;
                 }
             }
-            let added = crate::cell::added_cell(&col.typ, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+            let added = crate::cell::added_column(col, v, row).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
             st.extra.insert(col.name.clone(), added);
         }
         for key in &asm.key {
@@ -772,6 +772,8 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         let mut q = (**ch).clone();
         q.matches.clear();
         q.alias.clear();
+        // The parents above are the ones that possible_<col>() keeps, so the statement of the child has no possible.
+        q.possible = None;
         let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
         // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {
@@ -961,7 +963,18 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     })
 }
 
-async fn scalar(c: &Core, kind: &str) -> Result<Val> {
+/// The cells of a scalar statement: every cell of a sum or an average, whose sums are one cell or the cells of a split sum
+/// (DIA-202) and an average
+/// the count after them; the one cell of every other.
+fn scalar_cells(rows: &[crate::row::DriverRow], kind: &str, zone: crate::db::Zone) -> Result<Vec<Val>> {
+    if kind != "avg" && kind != "sum" {
+        return Ok(vec![first_cell(rows, zone)?]);
+    }
+    let row = rows.first().ok_or_else(|| Error::internal("a sum or average statement read no row"))?;
+    (0..row.len()).map(|i| crate::row::read_cell(row, i, zone)).collect()
+}
+
+async fn scalar(c: &Core, kind: &str) -> Result<Vec<Val>> {
     let ex = terminal(c)?;
     let mut req = build(c, kind);
     if kind == "sum" || kind == "avg" {
@@ -975,7 +988,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     if let [part] = parts.as_mut_slice() {
         let pp = db.plan_split_part(part, req.params.len()).await?;
         let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
-        return first_cell(&rows, ex.db().inner.zone);
+        return scalar_cells(&rows, kind, ex.db().inner.zone);
     }
     if !parts.is_empty() {
         if kind != "count" {
@@ -987,15 +1000,15 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
             let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
             total = total.checked_add(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).ok_or_else(|| Error::internal("row count exceeds i64 range"))?;
         }
-        return Ok(Val::I64(total));
+        return Ok(vec![Val::I64(total)]);
     }
     let rows = ex.query(st, &req.params, Vec::new()).await?;
-    first_cell(&rows, ex.db().inner.zone)
+    scalar_cells(&rows, kind, ex.db().inner.zone)
 }
 
 /// The number of matching rows.
 pub async fn get_count(c: &Core) -> Result<i64> {
-    let count = scalar(c, "count").await?.as_i64()?;
+    let count = scalar(c, "count").await?.first().ok_or_else(|| Error::internal("a count statement read no cell"))?.as_i64()?;
     if count < 0 {
         return Err(Error::internal("negative row count"));
     }
@@ -1008,10 +1021,18 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
     if c.agg_fn != "sum" {
         return Err(config("get_sum requires sum_<col>()"));
     }
-    match scalar(c, "sum").await? {
+    let value = scalar(c, "sum").await.map_err(crate::aggregate::range_error)?;
+    let field = aggregate_field(c)?;
+    match crate::aggregate::sum_cell(&field, &value)? {
         Val::Null => Ok(0.0),
-        v => v.as_aggregate_f64(),
+        v => crate::aggregate::sum_value(&field, &v),
     }
+}
+
+/// The field of the column of a sum or an average, which the planner has checked.
+fn aggregate_field(c: &Core) -> Result<polyspec_orm_schema::dbspec::Field> {
+    let entity = c.ent.entity_schema()?;
+    entity.field(&c.agg).cloned().ok_or_else(|| Error::internal(format!("{}.{} is missing from a planned aggregate", c.ent.name, c.agg)))
 }
 
 /// The average of the column selected with avg_<col>(); None when SQL gives
@@ -1020,9 +1041,11 @@ pub async fn get_avg(c: &Core) -> Result<Option<f64>> {
     if c.agg_fn != "avg" {
         return Err(config("get_avg requires avg_<col>()"));
     }
-    match scalar(c, "avg").await? {
-        Val::Null => Ok(None),
-        v => v.as_aggregate_f64().map(Some),
+    let value = scalar(c, "avg").await.map_err(crate::aggregate::range_error)?;
+    let field = aggregate_field(c)?;
+    match value.split_last() {
+        Some((count, sums)) => crate::aggregate::avg_value(&field, &crate::aggregate::sum_cell(&field, sums)?, count),
+        None => Err(Error::internal("an average statement read no sum and count")),
     }
 }
 
@@ -1126,8 +1149,8 @@ pub(crate) fn validate_host_value(styles: &[String], value: &Param) -> Result<()
     Ok(())
 }
 
-/// Runs insert, update, delete, and restore, and returns the key of the inserted row and the number of changed rows: on SQL databases
-/// the generated identity, or on a markdown connection the key_prefix key that the corpus allocated, a text. Null if there is no key.
+/// Runs insert, update, delete, and restore, and returns the key of the inserted row, the generated identity, and the number of
+/// changed rows. Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     write_after_hook(ex, conn, req, |_| Ok(())).await
 }
@@ -1193,11 +1216,8 @@ pub(crate) fn binds_audit(st: &crate::plan::Step) -> bool {
 async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(Val, u64)> {
     if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
-        // The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text (PRT-73).
-        return Ok(match first_cell(&rows, ex.db().inner.zone)? {
-            Val::Str(key) => (Val::Str(key), 1),
-            other => (Val::I64(other.as_i64()?), 1),
-        });
+        // The returned key is the identity, an integer.
+        return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
     }
     let (id, affected) = ex.execute(st, &req.params).await?;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
@@ -1262,17 +1282,10 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    // The column that takes the received key: identity, or the key_prefix key that a corpus allocated to a primary key the
-    // request did not supply (PRT-73).
-    let assigned_key = match (&ent.identity, ent.primary_key.as_slice()) {
-        (Some(identity), _) => Some(identity),
-        (None, [pk]) if matches!(key, Val::Str(_)) && ent.key_prefix.is_some() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
-        _ => None,
-    };
-    if let Some(column) = assigned_key {
+    // The column that takes the received key is the identity.
+    if let Some(column) = &ent.identity {
         st.add_name(column);
-        let value = if ent.identity.is_some() { Val::I64(key.as_i64()?) } else { key };
-        assign_model(&mut out, column, value)?;
+        assign_model(&mut out, column, Val::I64(key.as_i64()?))?;
     }
     st.loaded = true;
     for pk in &ent.primary_key {
@@ -1895,50 +1908,6 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
     }
 }
 
-// The shared cases of contracts/fixtures/insert_parts.json, one test for each case named by its id: every client splits
-// the same row count into the same parts.
-// Requirements: PLN-44.
-#[cfg(test)]
-mod insert_parts_cases {
-    use super::insert_parts;
-
-    const FIXTURE: &str = include_str!("../../../../contracts/fixtures/insert_parts.json");
-
-    /// The ids of the cases that this module has a test for, in file order.
-    pub(super) const IDS: &[&str] = &["empty", "one_row", "exact_batches", "last_batch_smaller", "batch_over_rows", "batch_of_one"];
-
-    pub(super) fn cases() -> Vec<serde_json::Value> {
-        let doc: serde_json::Value = serde_json::from_str(FIXTURE).expect("insert_parts.json");
-        doc["cases"].as_array().expect("cases").clone()
-    }
-
-    fn check(id: &str) {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let case = cases().into_iter().find(|case| case["id"] == id).unwrap_or_else(|| panic!("insert_parts.json has no case {id}"));
-        assert_eq!(case["operation"], "insert_parts");
-        let input = &case["input"];
-        let number = |key: &str| input[key].as_u64().unwrap_or_else(|| panic!("{key}")) as usize;
-        let want: Vec<usize> = case["expected"].as_array().expect("expected").iter().map(|p| p.as_u64().expect("part") as usize).collect();
-        assert_eq!(insert_parts(number("rows"), number("batch")), want);
-    }
-
-    macro_rules! cases {
-        ($($id:ident),* $(,)?) => { $( #[test] fn $id() { check(stringify!($id)); } )* };
-    }
-    cases!(empty, one_row, exact_batches, last_batch_smaller, batch_over_rows, batch_of_one);
-}
-
-#[cfg(test)]
-mod insert_parts_tests {
-    // Every case of insert_parts.json has a test of insert_parts_cases, and every test names a case.
-    #[test]
-    fn every_case_has_a_test() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let ids: Vec<String> = super::insert_parts_cases::cases().iter().map(|case| case["id"].as_str().expect("id").to_owned()).collect();
-        assert_eq!(ids, super::insert_parts_cases::IDS);
-    }
-}
-
 #[cfg(test)]
 mod column_decode_tests {
     use super::column_decode_error;
@@ -2037,145 +2006,6 @@ mod related_tests {
                 assert!(error.to_string().contains(name), "{error} does not name {name}");
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod page_order_tests {
-    use super::*;
-    use std::sync::{Arc, Mutex, OnceLock};
-
-    const DOCUMENT: &str = "dbspec 1 page_order\ntable page_parent {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\ntable page_child {\n  seq i64 identity\n  parent_seq i64\n  label varchar(32)\n  primary key (seq)\n  index ix_page_child_parent (parent_seq)\n  foreign key fk_page_child_parent (parent_seq) references page_parent (seq) on delete restrict on update restrict\n}\n";
-
-    struct TempSqlite(std::path::PathBuf);
-
-    impl Drop for TempSqlite {
-        fn drop(&mut self) {
-            match std::fs::remove_file(&self.0) {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => drop(error),
-                Err(error) => {
-                    let message = format!("failed to remove temporary SQLite database {}: {error}", self.0.display());
-                    if std::thread::panicking() {
-                        eprintln!("{message}");
-                    } else {
-                        panic!("{message}");
-                    }
-                }
-            }
-        }
-    }
-
-    fn schema() -> &'static Schema {
-        static SCHEMA: OnceLock<&'static Schema> = OnceLock::new();
-        SCHEMA.get_or_init(|| {
-            let parsed = dbspec::parse(DOCUMENT, &Default::default()).expect("page-order schema");
-            let manifest = dbspec::manifest(&[&parsed.document]).expect("page-order manifest");
-            let text = Box::leak(manifest.manifest_text.into_boxed_str());
-            let hash = Box::leak(manifest.manifest_hash.into_boxed_str());
-            Box::leak(Box::new(Schema::new(text, hash)))
-        })
-    }
-
-    #[derive(Clone)]
-    struct ParentRow {
-        core: Core,
-        values: HashMap<String, Val>,
-    }
-
-    #[derive(Clone)]
-    struct ChildRow {
-        core: Core,
-        values: HashMap<String, Val>,
-    }
-
-    macro_rules! row_model {
-        ($row:ident, $entity:ident, $columns:expr) => {
-            impl Model for $row {
-                fn entity() -> &'static Entity {
-                    $entity()
-                }
-                fn core(&self) -> &Core {
-                    &self.core
-                }
-                fn core_mut(&mut self) -> &mut Core {
-                    &mut self.core
-                }
-                fn from_core(core: Core) -> Self {
-                    Self { core, values: HashMap::new() }
-                }
-                fn into_core(self) -> Core {
-                    self.core
-                }
-                fn assign(&mut self, name: &str, value: Val) -> Result<bool> {
-                    if $columns.contains(&name) {
-                        self.values.insert(name.to_owned(), value);
-                        Ok(true)
-                    } else {
-                        Ok(false)
-                    }
-                }
-                fn value(&self, name: &str) -> Option<Val> {
-                    self.values.get(name).cloned()
-                }
-            }
-        };
-    }
-
-    fn parent_entity() -> &'static Entity {
-        static ENTITY: OnceLock<&'static Entity> = OnceLock::new();
-        ENTITY.get_or_init(|| {
-            Box::leak(Box::new(Entity { name: "page_parent", schema: schema(), new: new_boxed::<ParentRow>, collect: collect_boxed::<ParentRow> }))
-        })
-    }
-
-    fn child_entity() -> &'static Entity {
-        static ENTITY: OnceLock<&'static Entity> = OnceLock::new();
-        ENTITY.get_or_init(|| {
-            Box::leak(Box::new(Entity { name: "page_child", schema: schema(), new: new_boxed::<ChildRow>, collect: collect_boxed::<ChildRow> }))
-        })
-    }
-
-    row_model!(ParentRow, parent_entity, &["seq", "label"]);
-    row_model!(ChildRow, child_entity, &["seq", "parent_seq", "label"]);
-
-    #[tokio::test]
-    // Requirements: CPX-2.
-    async fn gets_page_emits_root_count_then_relation_statement_events() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let schema = schema();
-        let path = std::env::temp_dir().join(format!("orm-page-order-{}.sqlite", std::process::id()));
-        let _temporary = TempSqlite(path.clone());
-        let dsn = format!("sqlite://{}", path.display());
-        let db = Db::connect_schema(&dsn, schema, 1, crate::Config::default()).await.unwrap();
-        db.utils().schema().install(schema).await.unwrap();
-        let crate::db::Pool::Sqlite(pool) = &db.inner.pool else { panic!("expected SQLite pool") };
-        sqlx::query("INSERT INTO page_parent (label) VALUES (?)").bind("parent").execute(pool).await.unwrap();
-        sqlx::query("INSERT INTO page_child (parent_seq, label) VALUES (?, ?)").bind(1i64).bind("child").execute(pool).await.unwrap();
-
-        let records = Arc::new(Mutex::new(Vec::new()));
-        let observed = records.clone();
-        let _subscription = db
-            .subscribe(move |event| {
-                observed.lock().unwrap().push(event.sql.to_owned());
-                Ok(())
-            })
-            .unwrap();
-
-        let mut core = Core::new(parent_entity());
-        core.connect(&db);
-        let mut child = Core::new(child_entity());
-        child.add_match("seq", "parent_seq");
-        core.relation(false, child);
-        let page = gets_page(&ParentRow::from_core(core), 1, 10).await.unwrap();
-        assert_eq!(page.total_count, 1);
-        assert_eq!(page.items.len(), 1);
-
-        let records = records.lock().unwrap();
-        assert_eq!(records.len(), 3, "{records:?}");
-        assert!(records[0].contains("FROM \"page_parent\""), "root query: {}", records[0]);
-        assert!(records[1].contains("COUNT(*)") && records[1].contains("page_parent"), "count query: {}", records[1]);
-        assert!(records[2].contains("FROM \"page_child\""), "relation query: {}", records[2]);
     }
 }
 

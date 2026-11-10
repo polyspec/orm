@@ -176,14 +176,12 @@ type Settings struct {
 	Navigations     []NavigationSetting
 	Immutable       *ImmutableSetting
 	Audit           *AuditSetting
-	StateMachine    *StateMachineSetting
 	Marks           []MarkSetting
 	Store           *StoreSetting
-	KeyPrefix       *KeyPrefixSetting
 	Title           *ColumnSetting
 	Body            *ColumnSetting
 	Order           *ColumnSetting
-	Checkboxes      []CheckboxSetting
+	TaskMarker      *ColumnSetting
 	ClosingComments []string
 }
 
@@ -205,62 +203,10 @@ type StoreShard struct {
 	Period string
 }
 
-// KeyPrefixSetting is `key_prefix '<p>'`: the assignment prefix of a character primary key.
-type KeyPrefixSetting struct {
-	Comments []string
-	Prefix   string
-}
-
-// CheckboxSetting is the list glyph of one state.
-type CheckboxSetting struct {
-	Comments []string
-	Column   string
-	State    string
-	Glyph    string
-}
-
-// HistorySetting is the history line of a state_machine. Row is the foreign key column of the history table,
-// From, To, and At are the previous state, next state, and time columns of a state transition.
-type HistorySetting struct {
-	Comments []string
-	Table    string
-	Row      string
-	From     string
-	To       string
-	At       string
-}
-
-// LimitSetting is the limit line of a state_machine: rows of that state cannot exceed Count.
-type LimitSetting struct {
-	Comments []string
-	State    string
-	Count    int64
-}
-
 // MarkSetting is `markdown <column>`: a manifest-only mark of a prose column.
 type MarkSetting struct {
 	Comments []string
 	Column   string
-}
-
-// StateMachineSetting is the state machine of one column. Its lines keep their declaration order.
-type StateMachineSetting struct {
-	Comments []string
-	Column   string
-	Lines    []StateLineSetting
-	History  *HistorySetting
-	Limits   []LimitSetting
-}
-
-// StateLineSetting is a transition line, a terminal declaration line, or an initial declaration line.
-type StateLineSetting struct {
-	Comments []string
-	Initial  bool
-	Terminal bool
-	From     string
-	To       string
-	State    string
-	Requires []string
 }
 
 // EntitySetting is `entity <name>`.

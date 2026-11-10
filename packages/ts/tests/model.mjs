@@ -8,7 +8,6 @@
 //
 // Each case is one node:test test named by its case id; node --test-name-pattern selects one.
 // Usage: node packages/ts/tests/model.mjs (after npm run typescript:build)
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   Account, Author, CompositeAccount, CompositeMembership, OrmError, Service,
@@ -18,7 +17,6 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { DATABASE, caseTest, withTemporaryDirectory } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
-const root = new URL('../../..', import.meta.url).pathname;
 
 let failures = 0;
 let current = '';
@@ -256,14 +254,12 @@ async function jsonValues(db, f) {
 
 // Requirements: COD-20.
 async function styledStates(db) {
-  const fixture = JSON.parse(await readFile(join(root, 'contracts/fixtures/styled_column_states.json'), 'utf8'));
-  const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
   const f = await seed(db);
   const seq = f.authors[0].getSeq();
   const row = await new Author().connect(db).addAllColumns().getBySeq(seq);
   check(row.getJsonSetting().kind === 'sql-null', 'SQL NULL getter');
   const partial = await new Author().connect(db).removeAllColumns().addColumnName().getBySeq(seq);
-  check(await code(Promise.resolve().then(() => partial.getJsonSetting())) === cases.unselected.getter_error, 'unselected getter');
+  check(await code(Promise.resolve().then(() => partial.getJsonSetting())) === 'COLUMN_UNSELECTED', 'unselected getter');
 
   await row.setJsonSetting(StyledValue.value(parseJson('null')))
     .setJsonsTags(StyledValue.value(parseJson('null')))

@@ -212,10 +212,9 @@ def _validate_aes_assignments(ent: Entity, assignments, require_complete: bool) 
             )
 
 
-def _validate_required_assignments(ent: Entity, assignments, assigns: bool) -> None:
+def _validate_required_assignments(ent: Entity, assignments) -> None:
     """Insert gives values to all required columns: those that are NOT NULL without a default,
-    that are neither identity nor columns the planner writes (AES key version, audit column), nor, on a
-    database that assigns them, the key_prefix key and the order position.
+    that are neither identity nor columns the planner writes (AES key version, audit column).
     A column left out of the values takes the database default."""
     for col in ent.fields:
         if (
@@ -226,17 +225,7 @@ def _validate_required_assignments(ent: Entity, assignments, assigns: bool) -> N
             or _assigned(assignments, col.name)
         ):
             continue
-        if assigns and (
-            (_allocated_key(ent) and col.name == ent.primary_key[0])
-            or col.name == ent.order
-        ):
-            continue
         _fail(codes.IR_INVALID, f"required column {ent.name}.{col.name} is not set")
-
-
-def _allocated_key(ent: Entity) -> bool:
-    """Whether a database that assigns keys allocates the key of ent: a key_prefix setting over one primary key column."""
-    return ent.key_prefix != "" and len(ent.primary_key) == 1
 
 
 def _add_blind_index_assignments(ent: Entity, assignments) -> list:
@@ -334,12 +323,9 @@ class _Scope:
 
 
 class Planner:
-    def __init__(self, m: RuntimeModel, d, assigns: bool = False):
+    def __init__(self, m: RuntimeModel, d):
         self.m = m
         self.d = d
-        # assigns says that the database assigns the key_prefix key and the order position of a row that an insert
-        # leaves them out of, as a flowmark corpus does.
-        self.assigns = assigns
 
     def _entity(self, name: str) -> Entity:
         entity = entity_of(self.m, name)
@@ -411,6 +397,21 @@ class Planner:
     def _qcol(self, s: _Scope, col: str) -> str:
         return f"{self.d.quote(s.alias)}.{self.d.quote(col)}"
 
+    def _aggregate_sums(self, root: _Scope, column: str) -> tuple[list, str]:
+        """The SUMs of the column of a sum or an average, and the cell that reports a value that is not an integer, or "".
+        MySQL writes an infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with
+        1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past it,
+        so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the four sums of its 16-bit parts,
+        which the executor combines, and the cell of DIA-202 reports a value that is not an integer (DIA-202)."""
+        q = self._qcol(root, column)
+        field = field_of(root.ent, column)
+        kind = field.type if field is not None else ""
+        if self.d.name == "sqlite" and kind in ("i16", "i32", "i64", "decimal"):
+            return [f"SUM({part})" for part in _split_parts(q)], _non_integer_cell(q)
+        if self.d.name == "mysql" and kind == "f64":
+            return [f"SUM({q}) + 0"], ""
+        return [f"SUM({q})"], ""
+
     def _qualified(self, s: _Scope, columns) -> list:
         return [self._qcol(s, c) for c in columns]
 
@@ -451,9 +452,17 @@ class Planner:
         if kind == "count":
             sql += "1" if group_count else "COUNT(*)"
         elif kind == "sum":
-            sql += f"COALESCE(SUM({self._qcol(root, agg)}), 0)"
+            sums, non_integer = self._aggregate_sums(root, agg)
+            sql += ", ".join(
+                [f"COALESCE({total}, 0)" for total in sums]
+                + ([non_integer] if non_integer else [])
+            )
         elif kind == "avg":
-            sql += f"AVG({self._qcol(root, agg)})"
+            # The executor divides the sum by the count of values, so the average is exact before its one conversion
+            # (DSL-161).
+            sums, non_integer = self._aggregate_sums(root, agg)
+            cells = sums + ([non_integer] if non_integer else [])
+            sql += f"{', '.join(cells)}, COUNT({self._qcol(root, agg)})"
         elif kind == "group_count":
             sql += self._select_group_count_list(b, root, asm, idx, out_names)
             asm["key"] = _key_refs(asm, list(q.get("group_by") or []))
@@ -706,8 +715,20 @@ class Planner:
                 type_ = function_type(c["fn"]["name"], col, s.ent.name, c["column"])
                 col = None
             elif c.get("sub"):
-                expr = f"({self._sub_select(b, s, c['sub'])})"
-                type_ = self._sub_type(c["sub"])
+                expr, sub_col, split = self._sub_column(
+                    b, s, c["name"], c["sub"], idx, out_names
+                )
+                if split:
+                    # The sum and its cells are written; the column states them (DIA-202, PRT-84).
+                    parts.append(expr)
+                    asm["columns"].append(sub_col)
+                    continue
+                out = f"{s.alias}__{c['name']}"
+                parts.append(f"{expr} AS {self.d.quote(out)}")
+                out_names.append(out)
+                asm["columns"].append(sub_col)
+                idx["n"] += 1
+                continue
             else:
                 expr = self._read_column(self._qcol(s, c["column"]), col)
                 col_styles = self._client_styles(_styles(col))
@@ -1074,17 +1095,17 @@ class Planner:
             )
         return result
 
-    def _sub_select(self, b: _Builder, outer: _Scope, sub: dict) -> str:
+    def _sub_select(self, b: _Builder, outer: _Scope, sub: dict, sel=None) -> str:
         """The subquery of an IN list or a scalar column; "^" points outward."""
         b.subs += 1
         root = self._build_scopes(sub["query"], f"s{b.subs}", None)
         root.outer = outer
         sql = "SELECT "
         agg = sub.get("agg") or ""
-        if agg == "sum":
+        if sel is not None:
+            sql += sel(self._qcol(root, sub["column"]))
+        elif agg == "sum":
             sql += f"COALESCE(SUM({self._qcol(root, sub['column'])}), 0)"
-        elif agg == "avg":
-            sql += f"AVG({self._qcol(root, sub['column'])})"
         elif agg == "count":
             sql += "COUNT(*)"
         else:
@@ -1106,12 +1127,65 @@ class Planner:
             )
         return sql
 
+    def _sub_column(
+        self, b: _Builder, s: _Scope, name: str, sub: dict, idx, out_names
+    ) -> tuple[str, dict, bool]:
+        """The select expression of the scalar subquery column name at the cell idx["n"], its plan column, and whether it
+        is split. SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+        column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value
+        that is not an integer, which the executor combines and checks (DIA-202, PRT-84); the plan column states their
+        cells. Every other subquery is one cell, the sum of an integer or decimal column states the column it sums, and a
+        decimal column states its scale and, but for a sum, its precision (INT-160)."""
+        col: dict = {
+            "index": idx["n"],
+            "name": name,
+            "column": "",
+            "type": self._sub_type(sub),
+            "styles": [],
+            "hidden": False,
+        }
+        field = self._sub_field(sub)
+        if field is not None and field.type == "decimal":
+            col["scale"] = field.scale
+            if sub.get("agg") != "sum":
+                col["precision"] = field.precision
+        if (
+            sub.get("agg") == "sum"
+            and field is not None
+            and field.type in ("i16", "i32", "i64", "decimal")
+        ):
+            col["sum_of"] = field.name
+        if "sum_of" not in col or self.d.name != "sqlite":
+            return f"({self._sub_select(b, s, sub)})", col, False
+        selects = [
+            (lambda q, k=k: f"COALESCE(SUM({_split_parts(q)[k]}), 0)") for k in range(4)
+        ]
+        selects.append(_non_integer_cell)
+        parts: list[str] = []
+        sum_parts: list[int] = []
+        for k, sel in enumerate(selects):
+            out = f"{s.alias}__{name}" if k == 0 else f"{s.alias}__{name}__{k}"
+            parts.append(f"({self._sub_select(b, s, sub, sel)}) AS {self.d.quote(out)}")
+            out_names.append(out)
+            if k < len(selects) - 1:
+                sum_parts.append(idx["n"])
+            else:
+                col["non_integer"] = idx["n"]
+            idx["n"] += 1
+        col["sum_parts"] = sum_parts
+        return ", ".join(parts), col, True
+
+    def _sub_field(self, sub: dict):
+        """The summed or selected column of a scalar subquery, or None for a count."""
+        if sub.get("agg") == "count":
+            return None
+        entity = self.m.entities.get(sub["query"]["entity"])
+        return field_of(entity, sub.get("column") or "") if entity is not None else None
+
     def _sub_type(self, sub: dict) -> str:
         agg = sub.get("agg")
         if agg == "count":
             return "i64"
-        if agg == "avg":
-            return "f64"
         entity_name = sub["query"]["entity"]
         entity = self.m.entities.get(entity_name)
         if entity is None:
@@ -1188,7 +1262,7 @@ class Planner:
         input_set = r.get("set") or []
         assignments = _add_blind_index_assignments(ent, input_set)
         _validate_aes_assignments(ent, assignments, False)
-        _validate_required_assignments(ent, assignments, self.assigns)
+        _validate_required_assignments(ent, assignments)
         load = r.get("load") is True
         # load writes the row with its stored key as is, so it takes and requires the identity column's value.
         if (
@@ -1285,9 +1359,6 @@ class Planner:
             sql += self.d.upsert(_conflict_target(ent, assignments), ", ".join(sets))
         if self.d.insert_returning_id and ent.identity != "":
             sql += f" RETURNING {self.d.quote(ent.identity)}"
-        elif self.assigns and _allocated_key(ent):
-            # The key that the database allocated, or the key of the row an upsert met.
-            sql += f" RETURNING {self.d.quote(ent.primary_key[0])}"
         return {
             "role": "main",
             "sql": sql,
@@ -1421,3 +1492,19 @@ class Planner:
             "tables": b.tables(),
             "bind_slots": [],
         }
+
+
+def _split_parts(q: str) -> list:
+    """The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+    [-2^15, 2^15), and the three others in [0, 2^16)."""
+    return [
+        f"{q} >> 48",
+        f"({q} >> 32) & 65535",
+        f"({q} >> 16) & 65535",
+        f"{q} & 65535",
+    ]
+
+
+def _non_integer_cell(q: str) -> str:
+    """1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202)."""
+    return f"MAX(typeof({q}) NOT IN ('integer', 'null'))"

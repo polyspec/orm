@@ -49,7 +49,6 @@ typedef struct pctx {
     zval *dialect;        /* $this->d */
     zval *model;          /* $this->m */
     HashTable *entities;  /* $this->m->entities, borrowed */
-    bool assigns;         /* $this->assigns: the database assigns key_prefix keys and order positions (PRT-73) */
     vtemp *temps;         /* values kept until the public call returns */
     mem *mems;            /* the planner's C structs, freed with the values */
 } pctx;
@@ -351,31 +350,6 @@ static zval *lib_static(pctx *c, const char *cls, const char *method, uint32_t a
     add_next_index_string(&cb, cls);
     add_next_index_string(&cb, method);
     return invoke_kept(c, &cb, argc, argv);
-}
-
-/* The key and the order column of the entity ent that the database assigns when an insert leaves them out
- * (RuntimeModel::assignedColumns), or the empty strings when it assigns none; false with an exception. */
-static bool assigned_columns(pctx *c, HashTable *ent, zend_string **key, zend_string **order)
-{
-    *key = ZSTR_EMPTY_ALLOC();
-    *order = ZSTR_EMPTY_ALLOC();
-    if (!c->assigns) {
-        return true;
-    }
-    zval cb, name;
-    array_init(&cb);
-    Z_TRY_ADDREF_P(c->model);
-    add_next_index_zval(&cb, c->model);
-    add_next_index_string(&cb, "assignedColumns");
-    ZVAL_STR_COPY(&name, gs(c, ent, "entity"));
-    zval *got = invoke_kept(c, &cb, 1, &name);
-    zval_ptr_dtor(&name);
-    if (got == NULL || Z_TYPE_P(got) != IS_ARRAY) {
-        return false;
-    }
-    *key = gs(c, Z_ARRVAL_P(got), "key");
-    *order = gs(c, Z_ARRVAL_P(got), "order");
-    return true;
 }
 
 /* Calls a public method of the Dialect object $this->d: the result is kept, or NULL with an exception. */
@@ -869,6 +843,8 @@ static zval *step_array(pctx *c, pstep *st)
 
 static zend_string *qcol(pctx *c, pscope *s, zend_string *col);
 static zend_string *sub_type(pctx *c, HashTable *sub);
+static zend_string *sub_sum_of(pctx *c, HashTable *sub);
+static bool sub_decimal(pctx *c, HashTable *sub, zval *oc);
 
 /* Appends a string to a list. */
 static void lpushs(zval *list, zend_string *s)
@@ -1103,7 +1079,7 @@ static zend_string *render_pred(pctx *c, pbinds *b, pscope *s, HashTable *p);
 static zend_string *render_joins(pctx *c, pbinds *b, pscope *s);
 static bool collect_join_where(pctx *c, pbinds *b, pscope *s, zval *where);
 static zend_string *render_order(pctx *c, pbinds *b, pscope *s, HashTable *q);
-static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub);
+static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub, int cell);
 static zend_string *value_function_sql(pctx *c, pbinds *b, zend_string *fn, zend_long ps0);
 static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, HashTable *col, zend_long p);
 static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops);
@@ -1183,6 +1159,63 @@ static zend_string *qcol(pctx *c, pscope *s, zend_string *col)
     zend_string *q = quote(c, col);
     OKP(q);
     return fmt(c, "%s.%s", ZSTR_VAL(a), ZSTR_VAL(q));
+}
+
+/* The four 16-bit parts of an integer q, highest first (DIA-202): the high part, which >> shifts with its sign, in
+ * [-2^15, 2^15), and the three others in [0, 2^16). */
+static zend_string *split_part(pctx *c, const char *q, int k)
+{
+    switch (k) {
+    case 0: return fmt(c, "%s >> 48", q);
+    case 1: return fmt(c, "(%s >> 32) & 65535", q);
+    case 2: return fmt(c, "(%s >> 16) & 65535", q);
+    default: return fmt(c, "%s & 65535", q);
+    }
+}
+
+/* The number of parts of a split sum (DIA-202). */
+#define SPLIT_PARTS 4
+
+/* 1 when a value of q is not an integer, which >> and & would read without its fraction (DIA-202). */
+static zend_string *non_integer_cell(pctx *c, const char *q)
+{
+    return fmt(c, "MAX(typeof(%s) NOT IN ('integer', 'null'))", q);
+}
+
+/* The SUMs of the column of a sum or an average, joined by commas, each in COALESCE(..., 0) with coalesce, and the cell that
+ * reports a value that is not an integer where the sum is split. MySQL writes an infinite double as 0 in its text protocol,
+ * so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite
+ * sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact
+ * column is the four sums of its 16-bit parts, which the executor combines, and the cell of DIA-202 reports a value that is
+ * not an integer (DIA-202). */
+static zend_string *aggregate_sums(pctx *c, pscope *root, zend_string *column, bool coalesce)
+{
+    zend_string *qc = qcol(c, root, column);
+    OKP(qc);
+    HashTable *col = NULL;
+    if (!col_of(c, root->ent, column, &col)) return NULL;
+    zend_string *name = dialect_name(c);
+    OKP(name);
+    zend_string *type = col != NULL ? gs(c, col, "type") : NULL;
+    bool f64 = type != NULL && zend_string_equals_literal(type, "f64");
+    bool exact = type != NULL && (zend_string_equals_literal(type, "i16") || zend_string_equals_literal(type, "i32")
+        || zend_string_equals_literal(type, "i64") || zend_string_equals_literal(type, "decimal"));
+    const char *open = coalesce ? "COALESCE(" : "", *close = coalesce ? ", 0)" : "";
+    if (exact && zend_string_equals_literal(name, "sqlite")) {
+        const char *q = ZSTR_VAL(qc);
+        zend_string *out = fmt(c, "%s", "");
+        for (int k = 0; k < SPLIT_PARTS; k++) {
+            zend_string *part = split_part(c, q, k);
+            OKP(part);
+            out = fmt(c, "%s%sSUM(%s)%s, ", ZSTR_VAL(out), open, ZSTR_VAL(part), close);
+            OKP(out);
+        }
+        zend_string *flag = non_integer_cell(c, q);
+        OKP(flag);
+        return fmt(c, "%s%s", ZSTR_VAL(out), ZSTR_VAL(flag));
+    }
+    if (f64 && zend_string_equals_literal(name, "mysql")) return fmt(c, "%sSUM(%s) + 0%s", open, ZSTR_VAL(qc), close);
+    return fmt(c, "%sSUM(%s)%s", open, ZSTR_VAL(qc), close);
 }
 
 /* The quoted columns of a list, qualified by the scope. */
@@ -1560,7 +1593,7 @@ static zend_string *render_pred(pctx *c, pbinds *b, pscope *s, HashTable *p)
     zend_string *lhs = qcol(c, s, gs(c, p, "column"));
     OKP(lhs);
     if (isset_(p, "sub")) {
-        zend_string *inner = sub_select(c, b, s, ga(p, "sub"));
+        zend_string *inner = sub_select(c, b, s, ga(p, "sub"), -1);
         OKP(inner);
         return fmt(c, "%s%s(%s)", ZSTR_VAL(lhs), strcmp(ops, "not_in") == 0 ? " NOT IN " : " IN ", ZSTR_VAL(inner));
     }
@@ -2041,6 +2074,7 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
         }
         zend_string *expr;
         zend_string *type = fmt(c, "string");
+        zend_string *sumOf = NULL;
         zval *styles = newlist(c);
         bool fnBranch = false;
         if (isset_(ch, "fn")) {
@@ -2057,11 +2091,53 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
             fnBranch = true;
         } else if (isset_(ch, "sub")) {
             HashTable *sh = ga(ch, "sub");
-            zend_string *inner = sub_select(c, b, s, sh);
-            OKP(inner);
-            expr = fmt(c, "(%s)", ZSTR_VAL(inner));
             type = sub_type(c, sh);
             OKP(type);
+            sumOf = sub_sum_of(c, sh);
+            if (sumOf == NULL) {
+                return NULL;
+            }
+            zend_string *dn = dialect_name(c);
+            OKP(dn);
+            if (ZSTR_LEN(sumOf) > 0 && zend_string_equals_literal(dn, "sqlite")) {
+                /* SQLite refuses a SUM past the i64 range, so on SQLite, and on markdown, the sum of an integer or decimal
+                 * column is the four scalar subqueries of the sums of its 16-bit parts and the one of the cell that reports a value that is
+                 * not an integer, which the executor combines and checks; the plan column states their cells (DIA-202,
+                 * PRT-84). */
+                zval *oc = out_col(c, *idx, name, cname, type, styles, false);
+                puts_(oc, "sum_of", sumOf);
+                if (!sub_decimal(c, sh, oc)) return NULL;
+                zval *sumParts = newlist(c);
+                for (int k = 0; k <= SPLIT_PARTS; k++) {
+                    zend_string *inner = sub_select(c, b, s, sh, k);
+                    OKP(inner);
+                    zend_string *alias_name = k == 0 ? fmt(c, "%s__%s", ZSTR_VAL(s->alias), ZSTR_VAL(name))
+                        : fmt(c, "%s__%s__%d", ZSTR_VAL(s->alias), ZSTR_VAL(name), k);
+                    lpushs(parts, fmt(c, "(%s) AS %s", ZSTR_VAL(inner), ZSTR_VAL(quote(c, alias_name))));
+                    lpushs(outNames, alias_name);
+                    if (k < SPLIT_PARTS) {
+                        zval n;
+                        ZVAL_LONG(&n, *idx);
+                        zend_hash_next_index_insert(Z_ARRVAL_P(sumParts), &n);
+                    } else {
+                        putl(oc, "non_integer", *idx);
+                    }
+                    (*idx)++;
+                }
+                put(oc, "sum_parts", sumParts);
+                lpush(ast->columns, oc);
+                continue;
+            }
+            zend_string *inner = sub_select(c, b, s, sh, -1);
+            OKP(inner);
+            zend_string *out = fmt(c, "%s__%s", ZSTR_VAL(s->alias), ZSTR_VAL(name));
+            lpushs(parts, fmt(c, "(%s) AS %s", ZSTR_VAL(inner), ZSTR_VAL(quote(c, out))));
+            lpushs(outNames, out);
+            zval *oc = out_col(c, (*idx)++, name, cname, type, styles, false);
+            if (ZSTR_LEN(sumOf) > 0) puts_(oc, "sum_of", sumOf);
+            if (!sub_decimal(c, sh, oc)) return NULL;
+            lpush(ast->columns, oc);
+            continue;
         } else {
             zend_string *q = qcol(c, s, cname);
             OKP(q);
@@ -2076,7 +2152,8 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
         if (col != NULL) {
             type = gs(c, col, "type");
         }
-        lpush(ast->columns, out_col(c, (*idx)++, name, cname, type, styles, false));
+        zval *oc = out_col(c, (*idx)++, name, cname, type, styles, false);
+        lpush(ast->columns, oc);
     } ZEND_HASH_FOREACH_END();
     if (hasAes) {
         zend_string *ver = gs(c, s->ent, "aes_version");
@@ -2155,8 +2232,45 @@ static bool add_soft_delete_filter(pctx *c, pscope *root, zval *where)
     return true;
 }
 
-/* Planner::subSelect: a subquery for an IN list or a scalar column; ^ references resolve against outer. */
-static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub)
+/* sub_decimal states, on the plan column oc of a scalar subquery of a decimal column, the scale of that column and, but for
+ * a sum, which leaves the precision of its column, its precision: the value is its exact decimal text of that scale
+ * (INT-160). It is false on failure. */
+static bool sub_decimal(pctx *c, HashTable *sub, zval *oc)
+{
+    if (zend_string_equals_literal(gs(c, sub, "agg"), "count")) return true;
+    HashTable *ent = entity(c, gs(c, ga(sub, "query"), "entity"));
+    if (ent == NULL) return true;
+    HashTable *col = NULL;
+    if (!col_of(c, ent, gs(c, sub, "column"), &col)) return false;
+    if (col == NULL || !zend_string_equals_literal(gs(c, col, "type"), "decimal")) return true;
+    putl(oc, "scale", gl(col, "scale", 0));
+    if (!zend_string_equals_literal(gs(c, sub, "agg"), "sum")) putl(oc, "precision", gl(col, "precision", 0));
+    return true;
+}
+
+/* The integer or decimal column that a scalar subquery sums, which states it (PRT-84), or the empty string; NULL on
+ * failure. */
+static zend_string *sub_sum_of(pctx *c, HashTable *sub)
+{
+    if (!zend_string_equals_literal(gs(c, sub, "agg"), "sum")) {
+        return fmt(c, "%s", "");
+    }
+    HashTable *ent = entity(c, gs(c, ga(sub, "query"), "entity"));
+    if (ent == NULL) {
+        return fmt(c, "%s", "");
+    }
+    HashTable *col = NULL;
+    if (!col_of(c, ent, gs(c, sub, "column"), &col)) return NULL;
+    zend_string *type = col != NULL ? gs(c, col, "type") : NULL;
+    bool integer = type != NULL && (zend_string_equals_literal(type, "i16") || zend_string_equals_literal(type, "i32")
+        || zend_string_equals_literal(type, "i64") || zend_string_equals_literal(type, "decimal"));
+    return integer ? gs(c, col, "name") : fmt(c, "%s", "");
+}
+
+/* Planner::subSelect: a subquery for an IN list or a scalar column; ^ references resolve against outer. A cell from 0 to
+ * SPLIT_PARTS - 1 selects the sum of that 16-bit part of the summed column, SPLIT_PARTS the cell that reports a value that
+ * is not an integer (DIA-202, PRT-84), and -1 the subquery itself. */
+static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub, int cell)
 {
     HashTable *q = ga(sub, "query");
     b->subs++;
@@ -2167,14 +2281,21 @@ static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub
     zend_string *column = gs(c, sub, "column");
     zend_string *agg = gs(c, sub, "agg");
     zend_string *sel;
-    if (zend_string_equals_literal(agg, "sum")) {
+    if (cell >= 0) {
+        zend_string *qc = qcol(c, root, column);
+        OKP(qc);
+        if (cell < SPLIT_PARTS) {
+            zend_string *part = split_part(c, ZSTR_VAL(qc), cell);
+            OKP(part);
+            sel = fmt(c, "COALESCE(SUM(%s), 0)", ZSTR_VAL(part));
+        } else {
+            sel = non_integer_cell(c, ZSTR_VAL(qc));
+        }
+        OKP(sel);
+    } else if (zend_string_equals_literal(agg, "sum")) {
         zend_string *qc = qcol(c, root, column);
         OKP(qc);
         sel = fmt(c, "COALESCE(SUM(%s), 0)", ZSTR_VAL(qc));
-    } else if (zend_string_equals_literal(agg, "avg")) {
-        zend_string *qc = qcol(c, root, column);
-        OKP(qc);
-        sel = fmt(c, "AVG(%s)", ZSTR_VAL(qc));
     } else if (zend_string_equals_literal(agg, "count")) {
         sel = fmt(c, "COUNT(*)");
     } else {
@@ -2213,9 +2334,6 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
     zend_string *agg = gs(c, sub, "agg");
     if (zend_string_equals_literal(agg, "count")) {
         return fmt(c, "i64");
-    }
-    if (zend_string_equals_literal(agg, "avg")) {
-        return fmt(c, "f64");
     }
     zend_string *entity_name = gs(c, ga(sub, "query"), "entity");
     HashTable *ent = entity(c, entity_name);
@@ -2265,13 +2383,17 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
     if (strcmp(kind, "count") == 0) {
         sel = groupCount ? fmt(c, "1") : fmt(c, "COUNT(*)");
     } else if (strcmp(kind, "sum") == 0) {
-        zend_string *qc = qcol(c, root, agg);
-        OKP(qc);
-        sel = fmt(c, "COALESCE(SUM(%s), 0)", ZSTR_VAL(qc));
+        zend_string *sum = aggregate_sums(c, root, agg, true);
+        OKP(sum);
+        sel = sum;
     } else if (strcmp(kind, "avg") == 0) {
+        /* The executor divides the sum by the count of values, so the average is exact before its one conversion
+         * (DSL-161). */
+        zend_string *sum = aggregate_sums(c, root, agg, false);
+        OKP(sum);
         zend_string *qc = qcol(c, root, agg);
         OKP(qc);
-        sel = fmt(c, "AVG(%s)", ZSTR_VAL(qc));
+        sel = fmt(c, "%s, COUNT(%s)", ZSTR_VAL(sum), ZSTR_VAL(qc));
     } else if (strcmp(kind, "group_count") == 0) {
         sel = group_count_list(c, root, ast, &idx, outNames);
         OKP(sel);
@@ -2667,16 +2789,11 @@ static bool check_aes_assignments(pctx *c, HashTable *ent, HashTable *set, bool 
 }
 
 /* An insert specifies every required column (Planner::checkRequiredAssignments): NOT NULL columns with no default that are
- * not identity, the AES key version the planner writes, or the audit columns the executor writes, nor, on a database that
- * assigns them, the key_prefix key and the order position. */
+ * not identity, the AES key version the planner writes, or the audit columns the executor writes. */
 static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
 {
     bool hasa = false;
     if (!has_aes(c, ent, &hasa)) {
-        return false;
-    }
-    zend_string *assigned_key, *assigned_order;
-    if (!assigned_columns(c, ent, &assigned_key, &assigned_order)) {
         return false;
     }
     zend_string *version = hasa ? gs(c, ent, "aes_version") : ZSTR_EMPTY_ALLOC();
@@ -2688,9 +2805,7 @@ static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
         HashTable *ch = Z_ARRVAL_P(col);
         zend_string *name = gs(c, ch, "name");
         bool skip = gt(ch, "nullable") || gt(ch, "default") || zend_string_equals(name, identity)
-            || zend_string_equals(name, version) || zend_string_equals(name, audit) || assigned(c, set, name)
-            || (ZSTR_LEN(assigned_key) > 0 && zend_string_equals(name, assigned_key))
-            || (ZSTR_LEN(assigned_order) > 0 && zend_string_equals(name, assigned_order));
+            || zend_string_equals(name, version) || zend_string_equals(name, audit) || assigned(c, set, name);
         if (!skip) {
             fail("IR_INVALID", "required column %s.%s is not set", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(name));
             return false;
@@ -3127,17 +3242,6 @@ static pstep *insert_step(pctx *c, HashTable *r)
         zend_string *qi = quote(c, identity);
         OKP(qi);
         sql = fmt(c, "%s RETURNING %s", ZSTR_VAL(sql), ZSTR_VAL(qi));
-    } else if (c->assigns) {
-        zend_string *assigned_key, *assigned_order;
-        if (!assigned_columns(c, ent, &assigned_key, &assigned_order)) {
-            return NULL;
-        }
-        if (ZSTR_LEN(assigned_key) > 0) {
-            /* The key that the database allocated, or the key of the row an upsert met. */
-            zend_string *qk = quote(c, assigned_key);
-            OKP(qk);
-            sql = fmt(c, "%s RETURNING %s", ZSTR_VAL(sql), ZSTR_VAL(qk));
-        }
     }
     return main_step(c, b, sql);
 }
@@ -3424,7 +3528,7 @@ static zend_class_entry *lib_class(const char *name)
     return ce;
 }
 
-bool planner_construct(zval *self, zval *model, zval *dialect, bool assigns)
+bool planner_construct(zval *self, zval *model, zval *dialect)
 {
     zend_class_entry *mce = lib_class(RUNTIME_MODEL);
     if (mce == NULL || Z_TYPE_P(model) != IS_OBJECT || !instanceof_function(Z_OBJCE_P(model), mce)) {
@@ -3440,9 +3544,6 @@ bool planner_construct(zval *self, zval *model, zval *dialect, bool assigns)
     }
     zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "m", 1, model);
     zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "d", 1, dialect);
-    zval flag;
-    ZVAL_BOOL(&flag, assigns);
-    zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "assigns", sizeof("assigns") - 1, &flag);
     return EG(exception) == NULL;
 }
 
@@ -3457,9 +3558,6 @@ bool planner_compile(zval *self, HashTable *r, zval *ret)
     c.dialect = zend_read_property(Z_OBJCE_P(self), Z_OBJ_P(self), "d", 1, true, &rv_d);
     zval *ents = zend_read_property(Z_OBJCE_P(c.model), Z_OBJ_P(c.model), "entities", sizeof("entities") - 1, true, &rv_e);
     c.entities = Z_ARRVAL_P(ents);
-    zval rv_a;
-    zval *assigns = zend_read_property(Z_OBJCE_P(self), Z_OBJ_P(self), "assigns", sizeof("assigns") - 1, true, &rv_a);
-    c.assigns = assigns != NULL && Z_TYPE_P(assigns) == IS_TRUE;
     bool ok = compile_body(&c, r, ret);
     release(&c);
     return ok;

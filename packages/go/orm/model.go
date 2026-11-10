@@ -233,7 +233,7 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		if st.extra == nil {
 			st.extra = map[string]any{}
 		}
-		added, err := addedColumnValue(col.Type, v)
+		added, err := addedColumnValue(col, v, row)
 		if err != nil {
 			// An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
 			return nil, columnDecodeErr(b.ent.Name, col.Name, err)
@@ -557,7 +557,8 @@ func attachExternal(parents []*Core, rel relSpec) error {
 	byKey := map[Key][]entry{}
 	if len(values) > 0 {
 		q := ch.Clone()
-		q.matches, q.alias = nil, ""
+		// The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+		q.matches, q.alias, q.possible = nil, "", nil
 		match := condNode{pred: &predSpec{column: ch.matches[0].Right, op: "in", value: values, list: true}}
 		if len(ch.matches) > 1 {
 			// A composite key filters the whole child key column as a tuple.
@@ -862,39 +863,57 @@ func (c *Core) GetCount() (int64, error) {
 // (no row, or every value null) is 0.
 func (c *Core) GetSum() (float64, error) {
 	c.ensureStatement()
-	v, err := c.aggregate("sum")
+	v, field, err := c.aggregate("sum")
 	if err != nil || v == nil {
 		return 0, err
 	}
-	return AsFloat64(v)
+	return sumValue(field, v)
 }
 
 // GetAvg returns the average of the column selected with avg<Col>(). A null
 // scalar (no row, or every value null) is a nil result.
 func (c *Core) GetAvg() (*float64, error) {
 	c.ensureStatement()
-	v, err := c.aggregate("avg")
-	if err != nil || v == nil {
-		return nil, err
-	}
-	f, err := AsFloat64(v)
+	v, field, err := c.aggregate("avg")
 	if err != nil {
 		return nil, err
 	}
-	return &f, nil
+	cells, ok := v.(avgCells)
+	if !ok {
+		return nil, codecErr(CodeInternal, "an average statement read %T, not its sum and count", v)
+	}
+	return avgValue(field, cells)
 }
 
-func (c *Core) aggregate(fn string) (any, error) {
+// aggregate runs the sum or average statement of fn and returns its cells with the field of its column.
+func (c *Core) aggregate(fn string) (any, *runtimemodel.Field, error) {
 	if c.aggFn != fn {
-		return nil, configErr("get%s requires %s<Col>()", titled(fn), fn)
+		return nil, nil, configErr("get%s requires %s<Col>()", titled(fn), fn)
 	}
 	ex, err := c.terminal()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	ent, err := c.entityModel(ex.base())
+	if err != nil {
+		return nil, nil, err
+	}
+	field := ent.Field(c.agg)
 	r := c.build(fn)
 	r.ir.Agg = c.agg
-	return scalar(ex, r)
+	r.sumCells = 1
+	if field != nil && splitSum(ex.base().driver, field) {
+		r.sumCells = splitCells
+	}
+	v, err := scalar(ex, r)
+	if err != nil {
+		return nil, nil, aggregateRangeErr(err)
+	}
+	// The planner has checked the column, so the field of the manifest is there.
+	if field == nil {
+		return nil, nil, codecErr(CodeInternal, "%s.%s is missing from a planned aggregate", c.ent.Name, c.agg)
+	}
+	return v, field, nil
 }
 
 func titled(s string) string { return string(s[0]-'a'+'A') + s[1:] }
@@ -1080,12 +1099,8 @@ func (c *Core) Create() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	// These are the columns that write the received key: identity, or the key_prefix key that a corpus allocated to a
-	// primary key the request did not supply.
+	// The column that writes the received key is the identity.
 	assignedKey := ent.Identity
-	if _, allocated := id.(string); assignedKey == "" && allocated && ent.KeyPrefix != "" && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
-		assignedKey = ent.PK[0]
-	}
 	if assignedKey != "" {
 		st.addName(assignedKey)
 		assigned, err := c.ent.Assign(m.self, assignedKey, id)

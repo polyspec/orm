@@ -374,25 +374,21 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Settings, __construct)
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, __construct)
 {
-    zend_string *kind, *form = NULL;
-    zval *arguments, *comments = NULL, *exclude = NULL, *include = NULL, *requires = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 7)
+    zend_string *kind;
+    zval *arguments, *comments = NULL, *exclude = NULL, *include = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 5)
         Z_PARAM_STR(kind)
         Z_PARAM_ARRAY(arguments)
         Z_PARAM_OPTIONAL
         Z_PARAM_ARRAY(comments)
         Z_PARAM_ARRAY_OR_NULL(exclude)
         Z_PARAM_ARRAY_OR_NULL(include)
-        Z_PARAM_STR_OR_NULL(form)
-        Z_PARAM_ARRAY_OR_NULL(requires)
     ZEND_PARSE_PARAMETERS_END();
     init_str(ZEND_THIS, "kind", kind);
     init_array(ZEND_THIS, "arguments", arguments);
     init_array(ZEND_THIS, "comments", comments);
     init_array_or_null(ZEND_THIS, "exclude", exclude);
     init_array_or_null(ZEND_THIS, "include", include);
-    init_str_or_null(ZEND_THIS, "form", form);
-    init_array_or_null(ZEND_THIS, "requires", requires);
 }
 
 /* in_array($column, $list, true) */
@@ -1891,14 +1887,11 @@ ZEND_METHOD(Polyspec_Orm_Validator, conflictKey)
 ZEND_METHOD(Polyspec_Orm_Planner, __construct)
 {
     zval *model, *dialect;
-    bool assigns = false;
-    ZEND_PARSE_PARAMETERS_START(2, 3)
+    ZEND_PARSE_PARAMETERS_START(2, 2)
         Z_PARAM_OBJECT(model)
         Z_PARAM_OBJECT(dialect)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
-    planner_construct(ZEND_THIS, model, dialect, assigns);
+    planner_construct(ZEND_THIS, model, dialect);
 }
 
 ZEND_METHOD(Polyspec_Orm_Planner, compile)
@@ -2904,7 +2897,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     static const zend_long arity[] = {2, 1, 1, 1};
     static const char *const actions[] = {"restrict", "cascade", "set_null"};
     static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-        "key_prefix", "title", "body", "order", "checkbox", "state_machine", "immutable", "audit"};
+        "title", "body", "order", "task_marker", "immutable", "audit"};
     static const char *const stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"};
     static const char *const store_kinds[] = {"files", "document", "block"};
     static const zend_long store_arguments[] = {1, 2, 3};

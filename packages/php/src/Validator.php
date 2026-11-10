@@ -643,8 +643,7 @@ final class Validator
      * while PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no
      * order of keys reproduces both: an upsert has exactly one key that can meet the inserted row, and the
      * insert assigns every column of it. The candidates are the primary key, unless the insert leaves it out
-     * (an identity, or a key_prefix key a corpus assigns), and each unique key; a blind index column counts as
-     * assigned with its AES source.
+     * (an identity), and each unique key; a blind index column counts as assigned with its AES source.
      *
      * @param list<array<string, mixed>> $set
      * @return list<string>
@@ -1193,8 +1192,10 @@ final class Validator
                     throw self::err(Code::IR_INVALID, 'subquery needs a column');
                 }
                 break;
-            case 'sum':
             case 'avg':
+                // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+                throw self::err(Code::IR_INVALID, 'avg subquery is not one value on every database');
+            case 'sum':
                 if (!$scalar) {
                     throw self::err(Code::IR_INVALID, "$agg subquery is only valid as a column");
                 }

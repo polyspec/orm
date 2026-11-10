@@ -1,11 +1,9 @@
 package dbspec
 
 import (
-	"maps"
 	"math"
 	"slices"
 	"strconv"
-	"unicode/utf8"
 )
 
 // codecStages maps each codec stage to the storage it produces
@@ -36,8 +34,7 @@ func (v *validator) settings(t *tableNode) {
 				continue
 			}
 			seen[s.args[0].text] = true
-		} else if kind != "state_machine" && kind != "checkbox" {
-			// state_machine and checkbox are written on several lines, so they are excluded from the once check.
+		} else {
 			if once[kind] {
 				v.add(RuleSetting, s.keyword, "setting %s repeats", kind)
 				continue
@@ -59,7 +56,6 @@ func (v *validator) settings(t *tableNode) {
 	for _, s := range accepted {
 		v.setting(t, s, aesColumns)
 	}
-	v.stateMachineConsistency(t)
 	if aesVersion := byKind["aes_version"]; aesVersion == nil {
 		for _, s := range aesCodecs {
 			v.add(RuleSetting, s.keyword, "a column with the aes stage requires an aes_version setting")
@@ -110,8 +106,6 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		v.foreignKeyName(t, s.args[0])
 	case "store":
 		v.store(t, s)
-	case "key_prefix":
-		v.keyPrefix(t, s)
 	case "title", "body":
 		v.textColumn(t, s)
 	case "order":
@@ -122,8 +116,8 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		}
 	case "audit":
 		v.audit(t, s)
-	case "state_machine":
-		v.stateMachine(t, s)
+	case "task_marker":
+		v.taskMarker(t, s)
 	case "markdown":
 		if c := v.columnRef(t, s.args[0], RuleSetting); c != nil && c.typ.valid &&
 			c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText {
@@ -145,243 +139,13 @@ func (v *validator) foreignKeyName(t *tableNode, ref token) {
 	}
 }
 
-// stateMachine checks one `state_machine <column> ...` line: the column is a
-// non-null varchar or text column of the table and the require list names
-// columns of the table (docs/spec/dbspec.md "Settings").
-func (v *validator) stateMachine(t *tableNode, s *settingNode) {
-	columnRef := s.args[0]
-	column := v.columnRef(t, columnRef, RuleSetting)
-	if column != nil && ((column.typ.valid && column.typ.typ.Kind != TypeVarchar && column.typ.typ.Kind != TypeText) || column.null != nil) {
-		v.add(RuleSetting, columnRef, "state_machine needs a non-null varchar or text column")
-	}
-	for _, list := range s.lists {
-		for _, ref := range list.columns {
-			v.columnRef(t, ref, RuleSetting)
-		}
-	}
-}
-
-// stateMachineConsistency checks the machine's lines against each other: one column per table,
-// consistency among the initial, transition, and terminal lines, the history and limit lines, the default of the state column,
-// and the checkbox lines (docs/spec/dbspec.md "Settings").
-func (v *validator) stateMachineConsistency(t *tableNode) {
-	column := ""
-	states := map[string]bool{}
-	initials := map[string]bool{}
-	terminals := map[string]bool{}
-	var lines, limits []*settingNode
-	var history *settingNode
-	var requires []token
-	// seen holds the identity of each initial, terminal and transition line: its form and states, never its require list.
-	seen := map[string]bool{}
-	for _, s := range t.settings.lines {
-		if s.keyword.text != "state_machine" {
-			continue
-		}
-		if column == "" {
-			column = s.args[0].text
-		} else if s.args[0].text != column {
-			v.add(RuleSetting, s.args[0], "state_machine repeats for %q; a table holds one machine", s.args[0].text)
-		}
-		switch s.form {
-		case "history":
-			if history != nil {
-				v.add(RuleSetting, s.keyword, "state_machine repeats history")
-				continue
-			}
-			history = s
-		case "limit":
-			limits = append(limits, s)
-		default:
-			// A line of another column already reports that a table holds one machine; it is no line of this one.
-			key, what := machineLine(s)
-			if s.args[0].text == column && seen[key] {
-				v.add(RuleSetting, s.keyword, "state_machine repeats %s", what)
-				continue
-			}
-			if s.args[0].text == column {
-				seen[key] = true
-			}
-			lines = append(lines, s)
-			for _, list := range s.lists {
-				requires = append(requires, list.columns...)
-			}
-			switch s.form {
-			case "initial":
-				initials[s.args[1].text] = true
-				states[s.args[1].text] = true
-			case "terminal":
-				terminals[s.args[1].text] = true
-				states[s.args[1].text] = true
-			default:
-				states[s.args[1].text] = true
-				states[s.args[2].text] = true
-			}
-		}
-	}
-	for _, s := range lines {
-		switch s.form {
-		case "initial":
-			if terminals[s.args[1].text] {
-				v.add(RuleSetting, s.keyword, "an initial state %q is also terminal", s.args[1].text)
-			}
-		case "transition":
-			if terminals[s.args[1].text] {
-				v.add(RuleSetting, s.keyword, "a transition leaves the terminal state %q", s.args[1].text)
-			}
-		}
-	}
-	v.limits(limits, states)
-	if history != nil {
-		v.history(t, history, t.column(column), requires)
-	}
-	if c := t.column(column); column != "" && c != nil && c.value != nil && c.dflt != nil && !initials[c.value.text] {
-		v.add(RuleSetting, *c.value, "the default %q of the state column is not an initial state", c.value.text)
-	}
-	v.checkboxes(t, column, states)
-}
-
-// limits checks each limit line: the state belongs to the state set, is not repeated per state, and count is a positive integer.
-func (v *validator) limits(lines []*settingNode, states map[string]bool) {
-	seen := map[string]bool{}
-	for _, s := range lines {
-		state := s.args[1]
-		switch {
-		case !states[state.text]:
-			v.add(RuleSetting, state, "limit names state %q outside the state set", state.text)
-		case seen[state.text]:
-			v.add(RuleSetting, state, "limit repeats for state %q", state.text)
-		}
-		seen[state.text] = true
-		if n, err := strconv.ParseInt(s.args[2].text, 10, 64); err != nil || n < 1 {
-			v.add(RuleSetting, s.args[2], "limit needs a positive row count, not %s", s.args[2].text)
-		}
-	}
-}
-
-// history checks the history table of a state_machine history line. Its columns
-// include the foreign key that refers to this table; from and to columns with the state column's type;
-// an at column of datetime(6); and, for each required column, one nullable column of the same type, and a key,
-// and it declares no title or body. Every mismatch is reported at the history table's name.
-func (v *validator) history(t *tableNode, s *settingNode, state *columnNode, requires []token) {
-	name := s.args[1]
-	if !v.ref(name) {
-		return
-	}
-	h := v.table(name.text)
-	if h == nil {
-		if !v.failedUse[name.text] {
-			v.add(RuleSetting, name, "history table %q is not a table of this document or a used table", name.text)
-		}
-		return
-	}
-	if state == nil || !state.typ.valid {
-		return
-	}
-	row := s.args[2]
-	fk := false
-	for _, f := range h.foreignKeys {
-		fk = fk || (len(f.columns) == 1 && f.columns[0].text == row.text && f.target.text == t.name.text)
-	}
-	if !fk {
-		v.add(RuleSetting, name, "history table %q has no foreign key of %q to table %q", name.text, row.text, t.name.text)
-	}
-	named := map[string]bool{row.text: true}
-	typed := func(ref token, want Type) {
-		named[ref.text] = true
-		c := h.column(ref.text)
-		switch {
-		case c == nil:
-			if !h.failedName(ref.text) {
-				v.add(RuleSetting, name, "history table %q has no column %q", name.text, ref.text)
-			}
-		case c.typ.valid && c.typ.typ != want:
-			v.add(RuleSetting, name, "history column %q has type %s, not %s", ref.text, c.typ.typ, want)
-		}
-	}
-	typed(s.args[3], state.typ.typ)
-	typed(s.args[4], state.typ.typ)
-	typed(s.args[5], Type{Kind: TypeDatetime, Precision: 6})
-	for _, r := range requires {
-		named[r.text] = true
-		c := t.column(r.text)
-		hc := h.column(r.text)
-		switch {
-		case c == nil || !c.typ.valid:
-		case hc == nil:
-			if !h.failedName(r.text) {
-				v.add(RuleSetting, name, "history table %q has no column %q of the required column", name.text, r.text)
-			}
-		case hc.null == nil || (hc.typ.valid && hc.typ.typ != c.typ.typ):
-			v.add(RuleSetting, name, "history column %q is not a nullable %s column", r.text, c.typ.typ)
-		}
-	}
-	for _, k := range h.primaryKeys {
-		for _, ct := range k.columns {
-			named[ct.text] = true
-		}
-	}
-	for _, c := range h.columns {
-		if !named[c.name.text] {
-			v.add(RuleSetting, name, "history table %q has column %q, which the history line does not name", name.text, c.name.text)
-		}
-	}
-	if h.settings != nil {
-		for _, hs := range h.settings.lines {
-			if hs.keyword.text == "title" || hs.keyword.text == "body" {
-				v.add(RuleSetting, name, "history table %q declares %s, which a history table does not", name.text, hs.keyword.text)
-			}
-		}
-	}
-}
-
-// checkboxes checks checkbox lines against the machine's state set: each names the machine's column, and for each state in the set there is one line with a single character and a distinct glyph; no line names another state.
-func (v *validator) checkboxes(t *tableNode, column string, states map[string]bool) {
-	var boxes []*settingNode
-	for _, s := range t.settings.lines {
-		if s.keyword.text == "checkbox" {
-			boxes = append(boxes, s)
-		}
-	}
-	if len(boxes) == 0 {
-		return
-	}
-	first := boxes[0]
-	if column == "" {
-		v.add(RuleSetting, first.args[0], "checkbox needs a state_machine on column %q", first.args[0].text)
-		return
-	}
-	covered := map[string]bool{}
-	glyphs := map[string]bool{}
-	for _, b := range boxes {
-		if v.columnRef(t, b.args[0], RuleSetting) == nil {
-			continue
-		}
-		if b.args[0].text != column {
-			v.add(RuleSetting, b.args[0], "checkbox names column %q, but the state_machine column is %q", b.args[0].text, column)
-			continue
-		}
-		state := b.args[1]
-		switch {
-		case !states[state.text]:
-			v.add(RuleSetting, state, "checkbox names state %q outside the state set", state.text)
-		case covered[state.text]:
-			v.add(RuleSetting, state, "checkbox repeats for state %q", state.text)
-		}
-		covered[state.text] = true
-		glyph := b.args[2]
-		switch {
-		case utf8.RuneCountInString(glyph.text) != 1:
-			v.add(RuleSetting, glyph, "a checkbox glyph is one character")
-		case glyphs[glyph.text]:
-			v.add(RuleSetting, glyph, "checkbox glyph %q repeats", glyph.text)
-		}
-		glyphs[glyph.text] = true
-	}
-	for _, state := range slices.Sorted(maps.Keys(states)) {
-		if !covered[state] {
-			v.add(RuleSetting, first.keyword, "checkbox does not cover state %q", state)
-		}
+// taskMarker checks the column whose value a list row writes between the brackets of its task marker: a varchar(1)
+// column, written as its value, or a bool column, written as the unchecked and the checked task box of GFM
+// (docs/spec/dbspec.md "Settings").
+func (v *validator) taskMarker(t *tableNode, s *settingNode) {
+	c := v.columnRef(t, s.args[0], RuleSetting)
+	if c != nil && c.typ.valid && c.typ.typ.Kind != TypeBool && c.typ.typ != (Type{Kind: TypeVarchar, Length: 1}) {
+		v.add(RuleSetting, s.args[0], "task_marker needs a varchar(1) or bool column, not %s", c.typ.typ)
 	}
 }
 
@@ -410,20 +174,6 @@ func (v *validator) store(t *tableNode, s *settingNode) {
 	}
 	if slices.ContainsFunc(t.settings.lines, func(l *settingNode) bool { return l.keyword.text == "order" }) {
 		v.add(RuleSetting, shard, "store shard is rejected on a table with order")
-	}
-}
-
-// keyPrefix checks that the primary key is a single varchar column.
-func (v *validator) keyPrefix(t *tableNode, s *settingNode) {
-	if t.failedPK {
-		return
-	}
-	if len(t.primaryKeys) != 1 || len(t.primaryKeys[0].columns) != 1 {
-		v.add(RuleSetting, s.keyword, "key_prefix needs a single-column primary key")
-		return
-	}
-	if c := t.column(t.primaryKeys[0].columns[0].text); c != nil && c.typ.valid && c.typ.typ.Kind != TypeVarchar {
-		v.add(RuleSetting, s.keyword, "key_prefix needs a varchar primary key, not %s", c.typ.typ)
 	}
 }
 
@@ -816,17 +566,6 @@ func coordinate(t token) (int64, bool) {
 	}
 	n, err := strconv.ParseInt(canonicalNumber(t.text), 10, 64)
 	return n, err == nil && n >= math.MinInt32 && n <= math.MaxInt32
-}
-
-// machineLine returns the identity of the initial, terminal or transition line s of a state_machine and its
-// description: a line of the same identity adds no meaning, and one with another require list contradicts it, so a
-// repeat is a `setting` error (docs/spec/dbspec.md "Settings").
-func machineLine(s *settingNode) (string, string) {
-	switch s.form {
-	case "initial", "terminal":
-		return s.form + " " + s.args[1].text, s.form + " " + strconv.Quote(s.args[1].text)
-	}
-	return "transition " + s.args[1].text + " " + s.args[2].text, strconv.Quote(s.args[1].text) + " -> " + strconv.Quote(s.args[2].text)
 }
 
 // isCodecStage reports whether s is a codec stage of the codec setting.

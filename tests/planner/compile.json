@@ -54,7 +54,15 @@
   "PRT-9",
   "PRT-38",
   "PRT-40",
-  "PRT-78"
+  "PRT-78",
+  "PRT-2",
+  "PRT-3",
+  "PRT-26",
+  "PRT-27",
+  "PRT-28",
+  "PRT-29",
+  "PRT-30",
+  "DSL-113"
  ],
  "cases": [
   {
@@ -12423,7 +12431,7 @@
            ]
           }
          },
-         "agg": "avg"
+         "agg": "sum"
         }
        }
       },
@@ -12440,7 +12448,7 @@
        "value": [
         {
          "name": "first_author",
-         "type": "f64",
+         "type": "i64",
          "hidden": false
         }
        ]
@@ -13097,6 +13105,745 @@
          }
         ]
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_insert",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO `load_probe` (`seq`, `label`) VALUES (?, ?)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES ($1, $2) RETURNING \"seq\"",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES (?, ?) RETURNING \"seq\"",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_insert_rows",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 4,
+      "rows": [
+       [
+        2,
+        3
+       ]
+      ],
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO `load_probe` (`seq`, `label`) VALUES (?, ?), (?, ?)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES ($1, $2), ($3, $4)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES (?, ?), (?, ?)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64",
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "varchar",
+            "length": 32,
+            "not_null": true
+           }
+          ],
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_insert_without_identity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_note",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "code",
+        "p": 0
+       },
+       {
+        "column": "body",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO `load_note` (`code`, `body`) VALUES (?, ?)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "varchar",
+            "length": 16,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 64
+           }
+          ],
+          "tables": [
+           "load_note"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_note\" (\"code\", \"body\") VALUES ($1, $2)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "varchar",
+            "length": 16,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 64
+           }
+          ],
+          "tables": [
+           "load_note"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "sql": "INSERT INTO \"load_note\" (\"code\", \"body\") VALUES (?, ?)",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "varchar",
+            "length": 16,
+            "not_null": true
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "varchar",
+            "length": 64
+           }
+          ],
+          "tables": [
+           "load_note"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_refuses_identity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 2,
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: cannot set identity column seq"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_needs_identity_value",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: load of load_probe needs a value for the identity column seq"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_refuses_null_identity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 1,
+      "set": [
+       {
+        "column": "seq",
+        "null": true
+       },
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: set load_probe.seq to null but column is NOT NULL"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_only_on_insert",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "update",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 1
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: load is only valid on insert without on_duplicate"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "load_refuses_on_duplicate",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "on_duplicate": [
+       {
+        "column": "label",
+        "p": 1
+       }
+      ],
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: load is only valid on insert without on_duplicate"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "restart_identity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 0
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "ALTER TABLE `load_probe` AUTO_INCREMENT = 1",
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "SELECT setval(pg_get_serial_sequence('\"load_probe\"', 'seq'), COALESCE(MAX(\"seq\"), 0) + 1, false) FROM \"load_probe\"",
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(\"seq\"), 0) FROM \"load_probe\") WHERE name = 'load_probe'",
+          "tables": [
+           "load_probe"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "restart_identity_needs_identity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_note",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 0
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: restart_identity of load_note, which has no identity column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "restart_identity_takes_only_entity",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/identity_load.dbs",
+     "input": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 1,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: restart_identity takes no set, rows, on_duplicate, where or optimistic"
       }
      }
     }

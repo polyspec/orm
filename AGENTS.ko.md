@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 695ef8b2d87398465f9d9e5db0d98a9a2b28a7d39f2fdc9afcb9be28e476c156 -->
+<!-- source-sha256: cfefa1d31eb8e3b8e040a33bdbbf66375ca3c4b224eb3e24f50c9c47d1c9f0d2 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -97,9 +97,10 @@
   process에 닿지 않는다(`make repo-check`).
   Enforced by: `make repo-check`
 - Own: 둘 이상의 runtime이 가진 동작은 recipe의 case이며(docs/spec/feature-coverage.md의 FCV-2), 그런 동작의 native test는
-  FCV-2가 콜론 뒤에 이유를 밝힌 곳에만 남는다. 이 규칙의 검사는 kit 0.0.100이 지운 config/parity.json의 feature unit을 읽었다.
-  contracts/implementations.json의 시험을 읽는 그 검사는 보류된 row T400-1이다.
-  Enforced by: none, 그 검사는 보류된 row T400-1이다
+  FCV-2의 한 줄이 그 파일과 시험을 이름 짓고 콜론 뒤에 이유를 밝힌 곳에만 남는다. native test는 contracts/implementations.json
+  inventory의 시험 중 contracts/features.json의 기능이 나열하고 recipe를 실행하지 않는 것이다(scripts/features/recipe-runners.mts).
+  그 기능이 둘 이상의 구현의 시험을 나열하면 그 동작은 공유된다. 이유와 함께 선언한 internal 시험은 native test가 아니다.
+  Enforced by: `make repo-check`, scripts/repo/native-tests.mts를 실행한다
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
@@ -141,7 +142,12 @@
   Enforced by: none, review에서의 판단이다
 - Own: `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
-  통과한다(`make ci-passed`). `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+  통과한다(`make ci-passed`). 바뀐 모든 경로가 그 `paths-ignore`(`scripts/repo/ci.mts`의 `DOCUMENT_PATHS`)의 문서인
+  push는 그 run을 시작하지 않는다. `.github/workflows/documents.yml`은 `main`으로의 모든 push에서 Makefile의
+  `DOCUMENT_CHECKS` 검사를 실행하고, GitHub가 path filter를 평가하지 않는 3000개를 넘는 파일의 push를 실패시킨다.
+  `DOCUMENT_CHECKS` 밖의 검사가 읽는 문서는 무시하지 않으며, version commit은 VERSION을 바꾸므로 모든 job을 실행하고
+  그 run이 release가 받는 run이다. `[skip ci]`는 push의 head commit만 읽으므로 쓰지 않는다.
+  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
@@ -209,7 +215,7 @@
   Enforced by: none, polling, timer, symbolic link를 검사하는 도구가 없다
 - Own: 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
-- Own: 하나의 `0.0.27` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
+- Own: 하나의 `0.0.29` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
   Enforced by: none, kit K812 이후 version을 읽는 검사가 없다. package manager가 그것을 해석한다
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`
@@ -255,8 +261,9 @@
   dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
   검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
   tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
-  tag를 만들고 옮기고 push하는 사람은 없다.
-  Enforced by: `make release-tag`
+  tag를 만들고 옮기고 push하는 사람은 없다. tag하기 전에 `scripts/repo/release-run.mts`가 `documents.yml`이나 `docs-pages.yml` 같은
+  다른 workflow의 run, 다른 event의 run, 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 거부한다.
+  Enforced by: `make release-tag`, `make repo-check`
 - Own: 이어서 `.github/workflows/release.yml`이 tag한 commit에서 GitHub Release를 게시한다:
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든

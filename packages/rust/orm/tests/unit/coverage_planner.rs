@@ -32,7 +32,7 @@ mod internal_tests {
         validate(&manifest, &request).expect("valid scalar subquery passes validation");
         let sub = request.query.columns.as_mut().unwrap().sub.get_mut("first_author").unwrap();
         sub.column = "missing_column".into();
-        let error = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite, assigns: false, server: crate::MySqlServer::MySql }
+        let error = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite, server: crate::MySqlServer::MySql }
             .compile(&request)
             .expect_err("planner must reject missing post-validation scalar column");
         assert_eq!(error.code(), crate::codes::INTERNAL);
@@ -61,7 +61,7 @@ mod internal_tests {
             _ => panic!("fixture starts with a predicate"),
         };
         pred.column = "missing_column".into();
-        let error = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite, assigns: false, server: crate::MySqlServer::MySql }
+        let error = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite, server: crate::MySqlServer::MySql }
             .compile(&request)
             .expect_err("planner must reject missing post-validation column-function metadata");
         assert_eq!(error.code(), crate::codes::INTERNAL);

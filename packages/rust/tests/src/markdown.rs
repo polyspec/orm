@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 use crate::plain::Plain;
-use markdown_model::{CodecRows, Logs, People, Tasks};
+use markdown_model::{CodecRows, Logs, People, Tags, Tasks};
 use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
 use serde_json::{json, Value};
 
@@ -283,20 +283,27 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
     let db = &s.db;
     Ok(match id {
         "insert_one" => {
-            let m =
-                People::new().connect(db).set_name("Ann").set_email(Some("ann@example.com".to_owned())).set_age(Some(30)).set_score("1.50")?.create().await?;
+            let m = People::new()
+                .connect(db)
+                .set_id("P1")
+                .set_name("Ann")
+                .set_email(Some("ann@example.com".to_owned()))
+                .set_age(Some(30))
+                .set_score("1.50")?
+                .create()
+                .await?;
             json!({ "id": m.get_id()? })
         }
         "insert_rows" => {
-            let bob = People::new().set_name("Bob").set_email(Some("bob@example.com".to_owned())).set_age(Some(25)).set_score("2.00")?;
-            let cara = People::new().set_name("Cara").set_email(None::<String>).set_age(None::<i32>).set_score("0.50")?;
+            let bob = People::new().set_id("P2").set_name("Bob").set_email(Some("bob@example.com".to_owned())).set_age(Some(25)).set_score("2.00")?;
+            let cara = People::new().set_id("P3").set_name("Cara").set_email(None::<String>).set_age(None::<i32>).set_score("0.50")?;
             json!(People::new().connect(db).creates(vec![bob, cara], 2).await?)
         }
         "insert_rows_tasks" => {
             let rows = vec![
-                Tasks::new().set_owner("P1").set_title("write spec").set_points(3).set_due(Some("2026-10-01".to_string()))?,
-                Tasks::new().set_owner("P1").set_title("review").set_points(5).set_due(None::<String>)?,
-                Tasks::new().set_owner("P2").set_title("ship").set_points(8).set_due(Some("2026-10-05".to_string()))?,
+                Tasks::new().set_id("T1").set_owner("P1").set_title("write spec").set_points(3).set_due(Some("2026-10-01".to_string()))?,
+                Tasks::new().set_id("T2").set_owner("P1").set_title("review").set_points(5).set_due(None::<String>)?,
+                Tasks::new().set_id("T3").set_owner("P2").set_title("ship").set_points(8).set_due(Some("2026-10-05".to_string()))?,
             ];
             json!(Tasks::new().connect(db).creates(rows, 100).await?)
         }
@@ -423,15 +430,16 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             Value::Null
         }
         "insert_on_duplicate" => {
-            let m = People::new()
-                .connect(db)
-                .set_name("Ann B")
-                .set_email(Some("ann@example.com".to_owned()))
-                .duplication(People::new().set_name("Ann B"))
-                .create()
-                .await?;
+            let m = People::new().connect(db).set_id("P1").set_name("Ann B").duplication(People::new().set_name("Ann B")).create().await?;
             let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
             json!({ "created": m.get_id()?, "name": read.get_name()? })
+        }
+        "insert_on_duplicate_unique" => {
+            let created = Tags::new().connect(db).set_name("spec").set_uses(1).create().await?;
+            let met = Tags::new().connect(db).set_name("spec").set_uses(1).duplication(Tags::new().set_uses(2)).create().await?;
+            let read = Tags::new().connect(db).name("spec").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let count = Tags::new().connect(db).get_count().await?;
+            json!({ "created": created.get_id()?, "met": met.get_id()?, "uses": read.get_uses()?, "count": count })
         }
         "delete" => {
             Tasks::new().connect(db).id("T2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;

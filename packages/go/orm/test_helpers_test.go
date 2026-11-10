@@ -2,7 +2,6 @@ package orm_test
 
 import (
 	"database/sql"
-	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -37,20 +36,6 @@ func requireTarget(t *testing.T, driver, dsn string) {
 func openNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	return testdb.Open(t, driver, dsn)
-}
-
-// openRaw opens the database of dsn through database/sql: SQLite by its file,
-// MySQL and PostgreSQL through the native driver.
-func openRaw(t *testing.T, driver, dsn string) *sql.DB {
-	t.Helper()
-	if driver != "sqlite" {
-		return openNative(t, driver, dsn)
-	}
-	raw, err := sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
 }
 
 // newDatabase returns the DSN of a case database of its own for driver
@@ -176,23 +161,6 @@ func openNativeSQLite(t *testing.T, driver, dsn, suffix string) *sql.DB {
 func auditDB(t *testing.T, dsn string, s *orm.Schema) *orm.DB {
 	t.Helper()
 	return openSchemaDBConfig(t, dsn, s, auditConfig("default"))
-}
-
-// checkStatementsJSON fails the test unless got and want encode to the same JSON
-// and the case has statements (n is the number of expected statements).
-func checkStatementsJSON(t *testing.T, dialect string, got, want any, n int) {
-	t.Helper()
-	gotJSON, err := json.Marshal(got)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantJSON, err := json.Marshal(want)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n == 0 || string(gotJSON) != string(wantJSON) {
-		t.Fatalf("%s statements:\n got %s\nwant %s", dialect, gotJSON, wantJSON)
-	}
 }
 
 // eachDatabase runs body as a subtest of each driver in drivers, in a new case

@@ -106,8 +106,13 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       }
     }
     const ownerCases = selectedCases ? coverage.cases.filter(id => selectedCases.has(id)) : coverage.cases;
+    let selectedSlots = 0;
     for (const database of required) {
       const command = selectCommandCases(owner.commands?.[database], selectedCases);
+      // A selected case runs only on the databases whose entries name it, so a slot whose entries name none of the selected
+      // cases is no slot of the selection; the full run still requires it.
+      if (selectedCases && owner.commands?.[database]?.length && command?.length === 0) continue;
+      selectedSlots++;
       // The cases of a recipe owner are the cases of its recipe on this database (FCV-12), which entryTest compares.
       const recipe = Array.isArray(command) && command.some(entry => entry?.recipe);
       const tests = coverage.kind === 'database' || selectedCases || recipe
@@ -116,6 +121,8 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
         role: 'owner', language, database, part: owner.part, tests, recipe, selected: Boolean(selectedCases),
         cases: recipe ? (command ?? []).flatMap(entry => entry.cases) : ownerCases, command });
     }
+    if (selectedCases && selectedSlots === 0 && (selectedParts.get(feature)?.has(`owner/${language}`) ?? true))
+      errors.push(`${feature.id}/owner/${language}: no entry runs the selected cases`);
   }
   const dependentIds = new Set<string>();
   for (const dependent of Array.isArray(coverage.dependents) ? coverage.dependents : []) {
@@ -137,11 +144,16 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       continue;
     }
     if (selectedCases && !dependent.cases.some(id => selectedCases.has(id))) continue;
-    for (const database of required) items.push({ key: `${feature.id}/dependent/${dependent.id}/${dependent.language}/${database}`,
-      role: 'dependent', dependent: dependent.id, language: dependent.language, database,
-      part: dependent.part, tests: dependent.tests,
-      cases: selectedCases ? dependent.cases.filter(id => selectedCases.has(id)) : dependent.cases,
-      command: selectCommandCases(dependent.commands?.[database], selectedCases) });
+    for (const database of required) {
+      const command = selectCommandCases(dependent.commands?.[database], selectedCases);
+      // As for an owner, a database whose entries name none of the selected cases is no slot of the selection.
+      if (selectedCases && dependent.commands?.[database]?.length && command?.length === 0) continue;
+      items.push({ key: `${feature.id}/dependent/${dependent.id}/${dependent.language}/${database}`,
+        role: 'dependent', dependent: dependent.id, language: dependent.language, database,
+        part: dependent.part, tests: dependent.tests,
+        cases: selectedCases ? dependent.cases.filter(id => selectedCases.has(id)) : dependent.cases,
+        command });
+    }
   }
   // When selectFeatures chose a coverage unit (--part), only the items of that unit are required and run.
   const selected = selectedParts.get(feature);

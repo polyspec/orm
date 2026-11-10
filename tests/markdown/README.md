@@ -3,7 +3,7 @@
 
 A markdown connection is a SQLite connection whose statements a flowmark server answers on a corpus
 ([dialects](../../docs/spec/dialects.md)). The recipes run on it as on every database; these cases cover what only a corpus
-has: its documents, its `key_prefix` keys, keys unique without regard to case, files edited outside the engine and the
+has: its documents, keys unique without regard to case, files edited outside the engine and the
 catalogs it installs. Each client runs the cases of `cases.json` on one corpus that a flowmark server serves and compares
 the result of each case with its `expect`.
 
@@ -11,7 +11,7 @@ the result of each case with its `expect`.
 |---|---|
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
 | `session.json` | the recipe of the messages of a session (PRT-66): each step runs on a listener that answers from its replies, with no database (`make markdown-session-check`, FCV-4 `markdown.session`) |
-| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | the catalog set and its corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
+| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | the catalog set and its corpus: `people` (a `document` table with a text key, a soft delete column and an update time column), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key), `tags` (with an `identity` key and a unique key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
 | `catalogs/aes.dbs`, `catalogs/audit.dbs` | catalogs of an `aes` column and of an `audit` setting, which `install_aes` and `install_audit` install as the one document of the set of a new corpus of their own, answering `{"error": null}`, or the code that `flowmark install` prints, `{"error": <code>}` |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark/packages/go` whose `flowmark` the cases run on |
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
@@ -57,7 +57,7 @@ A case's result is a JSON value compared with `expect` after both are read as JS
 - a case that writes and reads back answers what it read back, as `cases.json` gives it.
 
 Each case covers one surface of the capability table: every IR kind (`one`, `all`, `count`, `group_count`,
-`sum`, `avg`, `paginate`, `insert` with one row, several rows, an `identity` key and `on_duplicate`, `update`
+`sum`, `avg`, `paginate`, `insert` with one row, several rows, an `identity` key, and `on_duplicate` on the primary key and on a unique key, `update`
 with and without `optimistic`, `delete` with its foreign key refusal and the soft delete, `restore`), joins and
 relations, transactions with their commit, rollback and savepoint rollback, a read-only transaction, the row lock
 `update` and `update_nowait`, `getQuery()` and `isolation` as on SQLite, a commit that meets an edit

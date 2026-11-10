@@ -477,21 +477,21 @@ class Model:
 
     def get_sum(self) -> float:
         """The sum of the column; 0.0 when SQL gives null (no row, or every value null)."""
-        from polyspec.orm.model_exec import _aggregate_number, scalar_of
+        from polyspec.orm.model_exec import aggregate_of
 
         if self.core.agg_fn != "sum":
             raise OrmError(codes.CONFIG, "get_sum requires sum_<col>()")
-        value = scalar_of(self.core, "sum", self.core.agg)
-        return 0.0 if value is None else _aggregate_number(value)
+        value = aggregate_of(self.core, "sum")
+        assert value is not None
+        return value
 
     def get_avg(self) -> float | None:
         """The average of the column; None when SQL gives null (no row, or every value null)."""
-        from polyspec.orm.model_exec import _aggregate_number, scalar_of
+        from polyspec.orm.model_exec import aggregate_of
 
         if self.core.agg_fn != "avg":
             raise OrmError(codes.CONFIG, "get_avg requires avg_<col>()")
-        value = scalar_of(self.core, "avg", self.core.agg)
-        return None if value is None else _aggregate_number(value)
+        return aggregate_of(self.core, "avg")
 
     def gets_count(self) -> GroupRows:
         """Returns the group values and the checked row count, without incomplete model rows."""

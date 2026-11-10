@@ -28,8 +28,8 @@ fn op_allowed(c: &Field, op: &str) -> bool {
 /// The one key an insert with `on_duplicate` conflicts on. MySQL updates the row met on any unique key, while
 /// PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
 /// reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
-/// of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key a corpus
-/// assigns), and each unique key; a blind index column counts as assigned with its AES source.
+/// of it. The candidates are the primary key, unless the insert leaves it out (an identity), and each unique key; a blind
+/// index column counts as assigned with its AES source.
 pub(super) fn conflict_key(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<String>> {
     let mut assigned: Vec<&str> = set.iter().map(|a| a.column.as_str()).collect();
     for f in &ent.fields {
@@ -786,7 +786,9 @@ impl<'m> Validator<'m> {
                     return Err(err(codes::IR_INVALID, "subquery needs a column"));
                 }
             }
-            "sum" | "avg" => {
+            // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+            "avg" => return Err(err(codes::IR_INVALID, "avg subquery is not one value on every database")),
+            "sum" => {
                 if !scalar {
                     return Err(err(codes::IR_INVALID, format!("{} subquery is only valid as a column", s.agg)));
                 }

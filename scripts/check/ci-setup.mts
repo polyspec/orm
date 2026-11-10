@@ -45,9 +45,10 @@ export const CI_SETUP: Record<string, string | null> = {
   flowmark: 'flowmark',
 };
 
-// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make orm-check nor the summary runs, so
+// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make orm-check nor the summary runs, and
+// without the hashes of the lock files (locks, make ci-lock-hashes) every cache would be restored and saved under a key of no lock, so
 // that failure is a job failure, and the log of that step is the cause.
-export const RUNNER_STEPS = ['checkout', 'node'];
+export const RUNNER_STEPS = ['checkout', 'locks', 'node'];
 
 // NEEDS are the needs a target may declare. databases, mysql-privilege-server and mariadb-server are prepared by the runner's
 // setup phase: databases uses servers and databases/create, the privilege server is a separate optional MySQL fixture, and

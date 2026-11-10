@@ -458,15 +458,19 @@ func (d databaseSQL) of(database string) (string, error) {
 	return text, nil
 }
 
-// sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
-// other than the journals of that file (dsn.sqlite_file, CFG-26, COD-8).
+// sqliteFileName opens a SQLite DSN with the query, if any, on a new file called name, and returns the names in its
+// directory other than the journals of a file of it (dsn.sqlite_file, CFG-11, CFG-26, COD-8).
 func sqliteFileName(name, query string, config dsnConfig) (_ string, err error) {
 	directory, err := os.MkdirTemp("", "orm-recipe-sqlite-name-")
 	if err != nil {
 		return "", err
 	}
 	defer removeTemp(directory, &err)
-	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, "sqlite", config)
+	dsn := "sqlite://" + filepath.Join(directory, name)
+	if query != "" {
+		dsn += "?" + query
+	}
+	_, refused := connectDriver(dsn, "sqlite", config)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return "", err
@@ -477,10 +481,21 @@ func sqliteFileName(name, query string, config dsnConfig) (_ string, err error) 
 		}
 		return "", refused
 	}
-	names := []string{}
+	listed := []string{}
 	for _, entry := range entries {
-		if !slices.Contains([]string{name + "-journal", name + "-shm", name + "-wal"}, entry.Name()) {
-			names = append(names, entry.Name())
+		listed = append(listed, entry.Name())
+	}
+	names := []string{}
+	for _, entry := range listed {
+		stem, journal := strings.CutSuffix(entry, "-journal")
+		if !journal {
+			stem, journal = strings.CutSuffix(entry, "-shm")
+		}
+		if !journal {
+			stem, journal = strings.CutSuffix(entry, "-wal")
+		}
+		if !journal || !slices.Contains(listed, stem) {
+			names = append(names, entry)
 		}
 	}
 	return strings.Join(names, ","), nil

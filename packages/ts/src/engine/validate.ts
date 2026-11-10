@@ -387,7 +387,10 @@ class Validator {
       case '':
         if (column === '') fail(codes.IR_INVALID, 'subquery needs a column');
         break;
-      case 'sum': case 'avg': {
+      case 'avg':
+        // No executor divides the average of a subquery, which would be the AVG of the database (PRT-83).
+        fail(codes.IR_INVALID, 'avg subquery is not one value on every database');
+      case 'sum': {
         if (!scalar) fail(codes.IR_INVALID, `${s.agg} subquery is only valid as a column`);
         const c = columnOf(ent, column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${column}`);
         if (!numericTypes.has(c.type)) fail(codes.OPERATOR_NOT_ALLOWED, `${s.agg} on ${ent.name}.${column} (${c.type})`);
@@ -440,8 +443,8 @@ function hasGroupBy(q: RequestQuery): boolean {
  * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while PostgreSQL
  * and SQLite name one target and a meeting on another key is a unique violation, so no order of keys reproduces both:
  * an upsert has exactly one key that can meet the inserted row, and the insert assigns every column of it. The
- * candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor assigns), and
- * each unique key; a blind index column counts as assigned with its AES source.
+ * candidates are the primary key, unless the insert leaves it out (an identity), and each unique key; a blind index
+ * column counts as assigned with its AES source.
  */
 export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly string[] {
   const assigned = new Set(set.map(a => a.column));

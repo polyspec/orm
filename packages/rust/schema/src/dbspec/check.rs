@@ -26,19 +26,21 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         self.cursor.at
     }
 
-    fn unexpected<T>(&self) -> Result<T, CheckError> {
+    /// The error at the next token (Go's expressionParser.fail): `<token> <reason> in a check expression`, or
+    /// `check expression ends early` at the end of the expression.
+    fn fail<T>(&self, reason: &str) -> Result<T, CheckError> {
         match self.cursor.peek() {
-            Some(t) => Err(not_allowed(t)),
+            Some(t) => Err((t.pos, format!("{} {reason} in a check expression", t.describe()))),
             None => Err((self.cursor.here(), "check expression ends early".into())),
         }
     }
 
-    fn expect(&mut self, text: &str) -> Result<(), CheckError> {
+    fn expect(&mut self, text: &str, reason: &str) -> Result<(), CheckError> {
         if self.cursor.peek_is(text) {
             self.cursor.advance();
             Ok(())
         } else {
-            self.unexpected()
+            self.fail(reason)
         }
     }
 
@@ -68,7 +70,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         if self.cursor.peek_is("(") {
             self.cursor.advance();
             let inner = self.expression()?;
-            self.expect(")")?;
+            self.expect(")", "is not allowed here; expected )")?;
             return Ok(inner);
         }
         let left = self.operand()?;
@@ -77,7 +79,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
                 self.cursor.advance();
                 let right = self.operand()?;
                 if let (Operand::Literal(first), Operand::Literal(_)) = (&left, &right) {
-                    return Err((first.pos, "a comparison of two literals has no column".into()));
+                    return Err((first.pos, format!("{} is compared with a literal; a comparison needs a column", first.value.describe())));
                 }
                 return Ok(Expr::Compare(left, op, token.pos, right));
             }
@@ -92,7 +94,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
             if negated {
                 self.cursor.advance();
             }
-            self.expect("null")?;
+            self.expect("null", "is not allowed here; expected null")?;
             return Ok(Expr::IsNull(column, negated));
         }
         let negated = self.cursor.peek_is("not") && self.cursor.peek_n(1).is_some_and(|t| t.is("in"));
@@ -101,16 +103,16 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         }
         if self.cursor.peek_is("in") {
             self.cursor.advance();
-            self.expect("(")?;
-            let mut list = vec![self.literal()?];
+            self.expect("(", "is not allowed here; expected (")?;
+            let mut list = vec![self.literal("is not a literal")?];
             while self.cursor.peek_is(",") {
                 self.cursor.advance();
-                list.push(self.literal()?);
+                list.push(self.literal("is not a literal")?);
             }
-            self.expect(")")?;
+            self.expect(")", "is not allowed here; expected , or )")?;
             return Ok(Expr::In(column, negated, list));
         }
-        self.alone(column.pos, format!("column '{}' alone is not a predicate", column.text))
+        self.alone(column.pos, format!("'{}' alone is not a predicate", column.text))
     }
 
     /// Error for a literal not followed by a comparison: a literal that is the subject of `in` or `is`
@@ -119,36 +121,37 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         let subject =
             self.cursor.peek_is("in") || self.cursor.peek_is("is") || (self.cursor.peek_is("not") && self.cursor.peek_n(1).is_some_and(|t| t.is("in")));
         if subject {
-            return Err((literal.pos, "a literal is not the subject of 'in' or 'is'; the subject is a column".into()));
+            return Err((literal.pos, format!("{} is not a column", literal.value.describe())));
         }
-        self.alone(literal.pos, "a literal alone is not a predicate".into())
+        self.alone(literal.pos, format!("{} alone is not a predicate", literal.value.describe()))
     }
 
     /// Error for an operand not followed by a comparison, `in`, or `is`: when `and`, `or`,
     /// `)`, or the end follows, it is reported at the operand; otherwise at the next token.
     fn alone<T>(&self, operand: Pos, message: String) -> Result<T, CheckError> {
         match self.cursor.peek() {
-            Some(t) if !(t.is("and") || t.is("or") || t.is(")")) => self.unexpected(),
+            Some(t) if !(t.is("and") || t.is("or") || t.is(")")) => self.fail("is not allowed here"),
             _ => Err((operand, message)),
         }
     }
 
     /// A column or a literal.
     fn operand(&mut self) -> Result<Operand, CheckError> {
-        let Some(token) = self.cursor.peek() else { return self.unexpected() };
+        let Some(token) = self.cursor.peek() else { return self.fail("") };
         if token.kind == Kind::Word && !KEYWORDS.contains(&token.text) {
             if self.cursor.peek_n(1).is_some_and(|t| t.is("(")) {
-                return Err((token.pos, format!("function '{}' is not allowed in a check expression", token.text)));
+                return self.fail("is a function; check predicates have no functions");
             }
             self.cursor.advance();
             return Ok(Operand::Column(Name { text: token.text.to_owned(), pos: token.pos }));
         }
-        self.literal().map(Operand::Literal)
+        self.literal("is not allowed here").map(Operand::Literal)
     }
 
     /// A literal: a number with an optional unary minus, a string, `true` or `false`.
-    fn literal(&mut self) -> Result<Literal, CheckError> {
-        let Some(token) = self.cursor.peek() else { return self.unexpected() };
+    /// `reason` is the error at a token that is not a literal.
+    fn literal(&mut self, reason: &str) -> Result<Literal, CheckError> {
+        let Some(token) = self.cursor.peek() else { return self.fail(reason) };
         let pos = token.pos;
         let value = if token.is("-") {
             match self.cursor.peek_n(1) {
@@ -156,15 +159,14 @@ impl<'t, 'a> CheckParser<'t, 'a> {
                     self.cursor.advance();
                     Value::Number { negative: true, text: next.text.to_owned() }
                 }
-                _ => return Err((pos, "a unary minus applies only to a number literal".into())),
+                _ => return self.fail(reason),
             }
         } else {
             match token.kind {
                 Kind::Number => Value::Number { negative: false, text: token.text.to_owned() },
                 Kind::Str => Value::Str(token.string_value()),
-                Kind::Word if token.is("null") => return Err((pos, "the null literal is not allowed in a check expression".into())),
                 Kind::Word if token.is("true") || token.is("false") => Value::Word(token.text.to_owned()),
-                _ => return self.unexpected(),
+                _ => return self.fail(reason),
             }
         };
         self.cursor.advance();
@@ -172,13 +174,9 @@ impl<'t, 'a> CheckParser<'t, 'a> {
     }
 }
 
-/// The error of a token outside the predicate forms.
+/// The error of a token after a whole predicate.
 pub(crate) fn not_allowed(token: &Token) -> CheckError {
-    if ["+", "-", "*", "/"].iter().any(|op| token.is(op)) {
-        (token.pos, format!("arithmetic operator '{}' is not allowed in a check expression", token.text))
-    } else {
-        (token.pos, format!("'{}' is not allowed in a check expression", token.text))
-    }
+    (token.pos, format!("{} is not allowed here in a check expression", token.describe()))
 }
 
 #[cfg(test)]

@@ -353,6 +353,24 @@ caseTest('selecting a coverage owner, database and cases reports only that subse
   assert.throws(() => selectFeatures(manifest, 'constraints_and_relations', [], 'mysql', ['missing_case']), /unknown coverage case/);
 });
 
+caseTest('a selected case requires only the databases whose entries run it', COMPUTE, () => {
+  // committed_mutations_share_one_connection runs on MySQL and PostgreSQL alone, so its selection has no SQLite slot.
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  const feature = manifest.features.find(item => item.id === 'catalog_connection');
+  assert.ok(feature?.coverage?.owners);
+  const selected = selectFeatures(manifest, 'catalog_connection', [], undefined, ['committed_mutations_share_one_connection']);
+  assert.deepEqual(checkCoverage(selected, {}).toSorted(), Object.keys(feature.coverage.owners).flatMap(language =>
+    ['mysql', 'postgres'].map(database => `catalog_connection/owner/${language}/${database}: no executed report`)).toSorted());
+  // A selected case that no entry of an owner names leaves that owner without a slot, which is an error and not a pass.
+  const owner = 'packages/go/orm/sample_test.go';
+  const sample: Manifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
+    coverage: { kind: 'database', cases: ['first', 'second'], dependents: [], owners: {
+      go: { part: 'packages/go/orm', tests: [owner], commands: Object.fromEntries(databases.map(database =>
+        [database, [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }]])) } } } }] };
+  assert.ok(checkCoverage(selectFeatures(sample, 'sample', ['owner/go'], undefined, ['second']), {})
+    .includes('sample/owner/go: no entry runs the selected cases'));
+});
+
 caseTest('an unknown feature name fails with the list of valid names', COMPUTE, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.throws(() => selectFeatures(manifest, 'missing'),
@@ -373,7 +391,7 @@ caseTest('aggregate numeric TypeScript cases are owned by the client', COMPUTE, 
 
 caseTest('TypeScript behavior tests stay in their client directory', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url);
-  const expected = ['dsn', 'engine', 'generate', 'model'];
+  const expected = ['engine', 'generate', 'model'];
   const entries = await readdir(new URL('packages/ts/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });

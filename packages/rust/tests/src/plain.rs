@@ -20,7 +20,14 @@ impl Plain for ArrayValue {
             ArrayValue::Text(s) => Value::String(s.clone()),
             ArrayValue::Bytes(b) => serde_json::json!({ "bytes_hex": b.iter().map(|byte| format!("{byte:02x}")).collect::<String>() }),
             ArrayValue::Json(v) => v.clone(),
-            ArrayValue::Ordered(v) => serde_json::from_str(&v.compact()).map_err(|e| encode(format!("the document has no serde_json form: {e}")))?,
+            ArrayValue::Ordered(v) => {
+                // An ordered-json value holds 256 levels, past the 128 that serde_json reads by default.
+                use serde::Deserialize as _;
+                let text = v.compact();
+                let mut reader = serde_json::Deserializer::from_str(&text);
+                reader.disable_recursion_limit();
+                Value::deserialize(&mut reader).map_err(|e| encode(format!("the document has no serde_json form: {e}")))?
+            }
             ArrayValue::Map(values) => Value::Object(values.iter().map(|(k, v)| Ok((k.clone(), v.plain()?))).collect::<Result<Map<_, _>>>()?),
             ArrayValue::List(items) => Value::Array(items.iter().map(Plain::plain).collect::<Result<_>>()?),
         })

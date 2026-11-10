@@ -81,61 +81,42 @@ pub trait Src {
 
 /// One row of a select step as handed to the generated code.
 pub enum Cells {
-    /// The MySQL driver row itself: decoded straight into the struct when no host AES stage is
-    /// present. AES rows use the positional path so the stored key version can be selected.
-    Raw(MySqlRow),
     /// A positional row (styled cells already decoded).
     Pos(Vec<Val>),
 }
 
 impl Src for Cells {
     fn i64(&mut self, i: usize) -> Result<i64> {
-        match self {
-            Cells::Raw(r) => raw_i64(r, i),
-            Cells::Pos(v) => v[i].as_i64(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_i64()
     }
     fn f64(&mut self, i: usize) -> Result<f64> {
-        match self {
-            Cells::Raw(r) => raw_f64(r, i),
-            Cells::Pos(v) => v[i].as_f64(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_f64()
     }
     fn bool(&mut self, i: usize) -> Result<bool> {
-        match self {
-            Cells::Raw(r) => raw_bool(r, i),
-            Cells::Pos(v) => v[i].as_bool(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_bool()
     }
     fn string(&mut self, i: usize) -> Result<String> {
-        match self {
-            Cells::Raw(r) => raw_string(r, i),
-            Cells::Pos(v) => v[i].take_string(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].take_string()
     }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime> {
-        match self {
-            Cells::Raw(r) => raw_datetime(r, i),
-            Cells::Pos(v) => v[i].as_datetime(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_datetime()
     }
     fn date(&mut self, i: usize) -> Result<NaiveDate> {
-        match self {
-            Cells::Raw(r) => raw_date(r, i),
-            Cells::Pos(v) => v[i].as_date(),
-        }
+        let Cells::Pos(v) = self;
+        v[i].as_date()
     }
-    fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val> {
-        match self {
-            Cells::Raw(r) => crate::codec::decode(styles, &read_cell_mysql(r, i)?),
-            Cells::Pos(v) => Ok(std::mem::take(&mut v[i])),
-        }
+    fn styled(&mut self, i: usize, _styles: &[String]) -> Result<Val> {
+        let Cells::Pos(v) = self;
+        Ok(std::mem::take(&mut v[i]))
     }
     fn val(&mut self, i: usize) -> Result<Val> {
-        match self {
-            Cells::Raw(r) => read_cell_mysql(r, i),
-            Cells::Pos(v) => Ok(v[i].clone()),
-        }
+        let Cells::Pos(v) = self;
+        Ok(v[i].clone())
     }
 }
 
@@ -144,67 +125,11 @@ fn type_name(r: &MySqlRow, i: usize) -> &str {
     r.column(i).type_info().name()
 }
 
-fn required_cell<T>(value: Option<T>, i: usize) -> Result<T> {
-    value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required"), source: None })
-}
-
 /// A `YEAR` cell, which `YEAR(col)` also returns. sqlx's i64 does not accept `YEAR` (only
 /// unsigned Rust integers of an `UNSIGNED` column do); the value is a two-byte integer, so it is
 /// decoded as i64 without that type check.
 fn year_cell(r: &MySqlRow, i: usize) -> Result<Option<i64>> {
     Ok(r.try_get_unchecked::<Option<i64>, _>(i)?)
-}
-
-fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
-    Ok(match type_name(r, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
-        "YEAR" => required_cell(year_cell(r, i)?, i)?,
-        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?).map_err(|error| crate::cell::cell_refusal_by("i64", error))?
-        }
-        "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
-        _ => read_cell_mysql(r, i)?.as_i64()?,
-    })
-}
-
-fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
-    Ok(match type_name(r, i) {
-        "FLOAT" | "DOUBLE" => Val::F64(required_cell(r.try_get::<Option<f64>, _>(i)?, i)?).as_f64()?,
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_f64()?,
-        "YEAR" => Val::I64(required_cell(year_cell(r, i)?, i)?).as_f64()?,
-        _ => read_cell_mysql(r, i)?.as_f64()?,
-    })
-}
-
-fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
-    Ok(match type_name(r, i) {
-        // The driver reads any nonzero TINYINT(1) as true; a cell neither 0 nor 1 is no boolean (PRT-67).
-        "BOOLEAN" => Val::I64(i64::from(required_cell(r.try_get::<Option<i8>, _>(i)?, i)?)).as_bool()?,
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_bool()?,
-        _ => read_cell_mysql(r, i)?.as_bool()?,
-    })
-}
-
-fn raw_string(r: &MySqlRow, i: usize) -> Result<String> {
-    Ok(match type_name(r, i) {
-        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => required_cell(r.try_get::<Option<String>, _>(i)?, i)?,
-        _ => read_cell_mysql(r, i)?.take_string()?,
-    })
-}
-
-fn raw_datetime(r: &MySqlRow, i: usize) -> Result<NaiveDateTime> {
-    Ok(match type_name(r, i) {
-        "DATETIME" => required_cell(r.try_get::<Option<NaiveDateTime>, _>(i)?, i)?,
-        "TIMESTAMP" => required_cell(r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?, i)?.naive_utc(),
-        _ => read_cell_mysql(r, i)?.as_datetime()?,
-    })
-}
-
-fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
-    Ok(match type_name(r, i) {
-        "DATE" => required_cell(r.try_get::<Option<NaiveDate>, _>(i)?, i)?,
-        _ => read_cell_mysql(r, i)?.as_date()?,
-    })
 }
 
 /// Reads one MySQL cell as a `Val` by its column type name.
@@ -221,8 +146,9 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
             });
         }
         "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        // Preserve DECIMAL text exactly; a caller that requests f64 checks precision.
-        "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
+        // MySQL sends a DECIMAL as its text in both protocols, which is kept exactly: a 128-bit decimal holds 28 digits and
+        // rounds a longer value, such as a sum of DSL-161, silently. A caller that requests f64 checks precision.
+        "DECIMAL" => row.try_get_unchecked::<Option<String>, _>(i)?.map(Val::Str),
         // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
         "DATETIME" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
@@ -252,7 +178,7 @@ pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
         "INT8" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "FLOAT4" => row.try_get::<Option<f32>, _>(i)?.map(|x| Val::F64(x as f64)),
         "FLOAT8" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
+        "NUMERIC" => numeric_text(row, i)?.map(Val::Str),
         "BOOL" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         "TIMESTAMP" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         // an instant, shown as wall-clock time in the connection zone
@@ -267,6 +193,307 @@ pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
+}
+
+/// The exact decimal text of a PostgreSQL NUMERIC cell, or None for NULL. A 128-bit decimal holds 28 digits and rounds a
+/// longer value, such as a sum of DSL-161, silently, so the cell is read from its wire form: the text form as it is, the
+/// binary form as its sign, its base-10000 digits from the weight of the first one and its display scale. NaN and the
+/// infinities, which no exact column holds, are CODEC_DECODE.
+fn numeric_text(row: &PgRow, i: usize) -> Result<Option<String>> {
+    use sqlx::postgres::PgValueFormat;
+    let raw = row.try_get_raw(i)?;
+    if raw.is_null() {
+        return Ok(None);
+    }
+    let refused = |what: &str| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("numeric cell {i} is {what}"), source: None };
+    let text = match raw.format() {
+        PgValueFormat::Text => raw
+            .as_str()
+            .map_err(|error| crate::Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("numeric cell {i} is not text"),
+                source: Some(error),
+            })?
+            .to_owned(),
+        PgValueFormat::Binary => {
+            let bytes = raw.as_bytes().map_err(|error| crate::Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("numeric cell {i} has no bytes"),
+                source: Some(error),
+            })?;
+            numeric_binary_text(bytes).ok_or_else(|| refused("not a binary numeric"))?
+        }
+    };
+    if matches!(text.as_str(), "NaN" | "Infinity" | "-Infinity") {
+        return Err(refused("not a finite number"));
+    }
+    Ok(Some(text))
+}
+
+/// The decimal text of the binary form of a PostgreSQL NUMERIC: ndigits, weight, sign and dscale as 16-bit big-endian
+/// integers, then ndigits base-10000 digits, the first of weight 10000^weight; None for a malformed form. The text has
+/// dscale fraction digits, as PostgreSQL writes it.
+pub(crate) fn numeric_binary_text(bytes: &[u8]) -> Option<String> {
+    let word = |at: usize| bytes.get(at..at + 2).map(|b| u16::from_be_bytes([b[0], b[1]]));
+    let ndigits = usize::from(word(0)?);
+    let weight = i64::from(word(2)? as i16);
+    let sign = word(4)?;
+    let dscale = usize::from(word(6)?);
+    if bytes.len() != 8 + 2 * ndigits {
+        return None;
+    }
+    match sign {
+        0xC000 => return Some("NaN".into()),
+        0xD000 => return Some("Infinity".into()),
+        0xF000 => return Some("-Infinity".into()),
+        0x0000 | 0x4000 => {}
+        _ => return None,
+    }
+    let digits: Vec<u16> = (0..ndigits).map(|k| word(8 + 2 * k)).collect::<Option<_>>()?;
+    if digits.iter().any(|&d| d >= 10000) {
+        return None;
+    }
+    // The base-10000 digit of weight w, 0 outside the stored ones.
+    let digit = |w: i64| -> u16 {
+        let k = weight - w;
+        if k < 0 || k >= ndigits as i64 {
+            0
+        } else {
+            digits[k as usize]
+        }
+    };
+    let mut whole = String::new();
+    for w in (0..=weight.max(0)).rev() {
+        whole.push_str(&format!("{:04}", digit(w)));
+    }
+    let whole = whole.trim_start_matches('0');
+    let whole = if whole.is_empty() { "0" } else { whole };
+    let mut fraction = String::new();
+    let mut w = -1;
+    while fraction.len() < dscale {
+        fraction.push_str(&format!("{:04}", digit(w)));
+        w -= 1;
+    }
+    fraction.truncate(dscale);
+    let zero = whole == "0" && fraction.bytes().all(|b| b == b'0');
+    let sign = if sign == 0x4000 && !zero { "-" } else { "" };
+    Some(if dscale == 0 { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") })
+}
+
+/// Why PostgreSQL does not read a text as a numeric: its SQLSTATE, 22P02 for a text that is no numeric and 22003 for a
+/// numeric past the range of the type.
+pub(crate) const NUMERIC_INVALID: &str = "22P02";
+pub(crate) const NUMERIC_OUT_OF_RANGE: &str = "22003";
+
+/// The binary form of the PostgreSQL NUMERIC that PostgreSQL 17 reads from `text` (numeric_in), whatever its number of
+/// digits, or the SQLSTATE with which PostgreSQL refuses the text. The text, between spaces of the C locale, is `NaN`,
+/// an optionally signed `Infinity` or `inf`, any case; or an optionally signed number: a hexadecimal, octal or binary
+/// integer after `0x`, `0o` or `0b`, or decimal digits with an optional point and an optional exponent, where an
+/// underscore stands between two digits. The display scale is the number of fraction digits after the exponent, at
+/// least 0. An exponent past 1073741823, a weight past 32767 base-10000 digits and a display scale past 16383 are
+/// past the range.
+pub(crate) fn numeric_text_binary(text: &str) -> std::result::Result<Vec<u8>, &'static str> {
+    let header = |ndigits: u16, weight: i16, sign: u16, dscale: u16| -> Vec<u8> {
+        [ndigits, weight as u16, sign, dscale].iter().flat_map(|word| word.to_be_bytes()).collect()
+    };
+    let space = |b: u8| matches!(b, b' ' | b'\t' | b'\n' | 0x0B | 0x0C | b'\r');
+    let bytes = text.as_bytes();
+    let mut at = 0;
+    while at < bytes.len() && space(bytes[at]) {
+        at += 1;
+    }
+    let rest = |at: usize| &bytes[at..];
+    let starts = |at: usize, word: &str| rest(at).len() >= word.len() && rest(at)[..word.len()].eq_ignore_ascii_case(word.as_bytes());
+    let end = |mut at: usize| {
+        while at < bytes.len() && space(bytes[at]) {
+            at += 1;
+        }
+        at == bytes.len()
+    };
+    for (word, sign) in
+        [("NaN", 0xC000), ("Infinity", 0xD000), ("+Infinity", 0xD000), ("-Infinity", 0xF000), ("inf", 0xD000), ("+inf", 0xD000), ("-inf", 0xF000)]
+    {
+        if starts(at, word) {
+            return if end(at + word.len()) { Ok(header(0, 0, sign, 0)) } else { Err(NUMERIC_INVALID) };
+        }
+    }
+    let negative = match bytes.get(at) {
+        Some(b'-') => {
+            at += 1;
+            true
+        }
+        Some(b'+') => {
+            at += 1;
+            false
+        }
+        _ => false,
+    };
+    let radix = match (bytes.get(at), bytes.get(at + 1).map(u8::to_ascii_lowercase)) {
+        (Some(b'0'), Some(b'x')) => 16,
+        (Some(b'0'), Some(b'o')) => 8,
+        (Some(b'0'), Some(b'b')) => 2,
+        _ => 10,
+    };
+    // The value is the decimal digits times 10^-scale; weight10 is the decimal weight of the first digit.
+    let mut digits: Vec<u8> = Vec::new();
+    let mut scale: i64 = 0;
+    if radix != 10 {
+        at += 2;
+        let first = at;
+        let digit = |b: u8| (b as char).to_digit(radix).map(|d| d as u8);
+        // The base-10000 digits of the integer, most significant first, multiplied by the radix for each digit.
+        let mut words: Vec<u32> = Vec::new();
+        while let Some(&b) = bytes.get(at) {
+            if let Some(d) = digit(b) {
+                let mut carry = u32::from(d);
+                for w in words.iter_mut().rev() {
+                    let v = *w * radix + carry;
+                    *w = v % 10000;
+                    carry = v / 10000;
+                }
+                while carry > 0 {
+                    words.insert(0, carry % 10000);
+                    carry /= 10000;
+                }
+                at += 1;
+            } else if b == b'_' {
+                at += 1;
+                if !bytes.get(at).is_some_and(|&b| digit(b).is_some()) {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else {
+                break;
+            }
+        }
+        if at == first || !end(at) {
+            return Err(NUMERIC_INVALID);
+        }
+        for w in words {
+            digits.extend(format!("{w:04}").bytes().map(|b| b - b'0'));
+        }
+    } else {
+        let mut point = false;
+        if bytes.get(at) == Some(&b'.') {
+            point = true;
+            at += 1;
+        }
+        if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+            return Err(NUMERIC_INVALID);
+        }
+        while let Some(&b) = bytes.get(at) {
+            if b.is_ascii_digit() {
+                digits.push(b - b'0');
+                if point {
+                    scale += 1;
+                }
+                at += 1;
+            } else if b == b'.' {
+                if point {
+                    return Err(NUMERIC_INVALID);
+                }
+                point = true;
+                at += 1;
+                if bytes.get(at) == Some(&b'_') {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else if b == b'_' {
+                at += 1;
+                if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                    return Err(NUMERIC_INVALID);
+                }
+            } else {
+                break;
+            }
+        }
+        if matches!(bytes.get(at), Some(b'e' | b'E')) {
+            at += 1;
+            let negative_exponent = match bytes.get(at) {
+                Some(b'+') => {
+                    at += 1;
+                    false
+                }
+                Some(b'-') => {
+                    at += 1;
+                    true
+                }
+                _ => false,
+            };
+            if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                return Err(NUMERIC_INVALID);
+            }
+            let mut exponent: i64 = 0;
+            while let Some(&b) = bytes.get(at) {
+                if b.is_ascii_digit() {
+                    exponent = exponent * 10 + i64::from(b - b'0');
+                    if exponent > i64::from(i32::MAX / 2) {
+                        return Err(NUMERIC_OUT_OF_RANGE);
+                    }
+                    at += 1;
+                } else if b == b'_' {
+                    at += 1;
+                    if !bytes.get(at).is_some_and(u8::is_ascii_digit) {
+                        return Err(NUMERIC_INVALID);
+                    }
+                } else {
+                    break;
+                }
+            }
+            scale -= if negative_exponent { -exponent } else { exponent };
+        }
+        if !end(at) {
+            return Err(NUMERIC_INVALID);
+        }
+    }
+    // The decimal weight of the first digit that is not 0: one past 4 * 32767 + 3 is past a weight of 32767, which is
+    // known before the digits of a large exponent are written out.
+    if let Some(first) = digits.iter().position(|&d| d != 0) {
+        if (digits.len() - first) as i64 - 1 - scale > 4 * 32767 + 3 {
+            return Err(NUMERIC_OUT_OF_RANGE);
+        }
+    }
+    // A negative scale is that many zero digits after the last one; the display scale is then 0.
+    if scale < 0 {
+        if digits.iter().any(|&d| d != 0) {
+            // A count of zeros past usize is past the range, which is the whole answer of the conversion.
+            let Ok(zeros) = usize::try_from(-scale) else { return Err(NUMERIC_OUT_OF_RANGE) };
+            digits.extend(std::iter::repeat_n(0, zeros));
+        }
+        scale = 0;
+    }
+    // A display scale past 16383, or past u16, is past the range, which is the whole answer of the conversion.
+    let dscale = match u16::try_from(scale) {
+        Ok(dscale) if dscale <= 0x3FFF => dscale,
+        _ => return Err(NUMERIC_OUT_OF_RANGE),
+    };
+    let scale = usize::from(dscale);
+    if digits.len() < scale {
+        let mut padded = vec![0; scale - digits.len()];
+        padded.extend(digits);
+        digits = padded;
+    }
+    let (whole, fraction) = digits.split_at(digits.len() - scale);
+    let mut whole = whole.to_vec();
+    whole.splice(0..0, std::iter::repeat_n(0, (4 - whole.len() % 4) % 4));
+    let mut fraction = fraction.to_vec();
+    fraction.extend(std::iter::repeat_n(0, (4 - fraction.len() % 4) % 4));
+    let group = |part: &[u8]| -> Vec<u16> { part.chunks(4).map(|c| c.iter().fold(0u16, |n, &d| n * 10 + u16::from(d))).collect() };
+    let mut groups = group(&whole);
+    let mut weight = groups.len() as i64 - 1;
+    groups.extend(group(&fraction));
+    let leading = groups.iter().take_while(|&&g| g == 0).count();
+    groups.drain(..leading);
+    weight -= leading as i64;
+    while groups.last() == Some(&0) {
+        groups.pop();
+    }
+    if groups.is_empty() {
+        return Ok(header(0, 0, 0x0000, dscale));
+    }
+    // A weight or a digit count past its 16 bits is past the range, which is the whole answer of each conversion.
+    let (Ok(weight), Ok(ndigits)) = (i16::try_from(weight), u16::try_from(groups.len())) else { return Err(NUMERIC_OUT_OF_RANGE) };
+    let mut out = header(ndigits, weight, if negative { 0x4000 } else { 0x0000 }, dscale);
+    out.extend(groups.iter().flat_map(|g| g.to_be_bytes()));
+    Ok(out)
 }
 
 /// Reads one SQLite cell by the stored value's type (SQLite is dynamically typed): INTEGER as
@@ -511,3 +738,7 @@ mod native_cell_bytes_tests {
         assert_eq!(decoded, [Val::Bytes(vec![0x00, 0x7f, 0x80, 0xff, b'A'])]);
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/numeric_text.rs"]
+mod numeric_text_tests;

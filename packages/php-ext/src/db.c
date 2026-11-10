@@ -1177,28 +1177,44 @@ static bool exec_stmt_args(zval *self, zval *st, zval *args)
     return true;
 }
 
-/* sqlite_args writes into mapped the arguments as SQLite reads them and returns true, or returns false when args need no
- * change. PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form, which INF is not, so
- * on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes (quote()). Db::exec and
+/* float_text is the shortest decimal text of a finite float that reads back as the same binary64 value (DIA-201). */
+static zend_string *float_text(double value)
+{
+    char buf[64];
+    for (int digits = 1; digits <= 17; digits++) {
+        zend_gcvt(value, digits, '.', 'E', buf);
+        if (zend_strtod(buf, NULL) == value) break;
+    }
+    return zend_string_init(buf, strlen(buf), 0);
+}
+
+/* sqlite_args writes into mapped the arguments as the database reads them and returns true, or returns false when args need
+ * no change. PDO binds a float as its text, which PHP writes with the `precision` setting (14 digits by default) and so names
+ * another binary64 value: a finite float binds as the shortest text that reads back as its own value (DIA-201). SQLite takes
+ * a text as a number only in a numeric form, which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an
+ * infinity that SQLite itself writes (quote()). A markdown connection binds each argument in its type (PRT-67). Db::exec and
  * Db::fetch both bind through it, so a model write and a statement of Utils::run store the same value. */
 static bool sqlite_args(zval *self, zval *args, zval *mapped)
 {
-    if (!is_str(rd(self, "driver"), "sqlite") || is_corpus(self)) return false;
-    bool infinite = false;
+    if (is_corpus(self)) return false;
+    bool sqlite = is_str(rd(self, "driver"), "sqlite");
+    bool floats = false;
     zval *item;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), item)
     {
         ZVAL_DEREF(item);
-        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) infinite = true;
+        if (Z_TYPE_P(item) == IS_DOUBLE) floats = true;
     }
     ZEND_HASH_FOREACH_END();
-    if (!infinite) return false;
+    if (!floats) return false;
     array_init_size(mapped, zend_hash_num_elements(Z_ARRVAL_P(args)));
     zend_ulong idx;
     ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(args), idx, item)
     {
         ZVAL_DEREF(item);
-        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) {
+        if (Z_TYPE_P(item) == IS_DOUBLE && zend_finite(Z_DVAL_P(item))) {
+            add_index_str(mapped, idx, float_text(Z_DVAL_P(item)));
+        } else if (sqlite && Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) {
             add_index_string(mapped, idx, Z_DVAL_P(item) > 0 ? "9.0e+999" : "-9.0e+999");
         } else {
             Z_TRY_ADDREF_P(item);
@@ -2286,6 +2302,22 @@ static bool op_scalar(zval *self, void *ctx, zval *ret)
     return fetch_stmt_result(&st, "fetchColumn", 0, NULL, ret);
 }
 
+/* op_scalar_row is op_scalar for an average, which reads the sum and the count of its values as one row (DSL-161). */
+static bool op_scalar_row(zval *self, void *ctx, zval *ret)
+{
+    qctx *c = ctx;
+    zval st;
+    if (!stmt_of(self, c->sql, c->args, &st)) {
+        return false;
+    }
+    if (!execute_prepared_stmt(self, &st, c->args)) {
+        return false;
+    }
+    zval mode;
+    ZVAL_LONG(&mode, 3); /* PDO::FETCH_NUM */
+    return fetch_stmt_result(&st, "fetch", 1, &mode, ret);
+}
+
 /* Db::query and Db::scalar: the statement of the step with its args, published as a model statement. */
 static bool query_rows(zval *self, zval *step, zval *params, zval *sql_in, zval *parents, zval *out)
 {
@@ -2332,7 +2364,7 @@ static bool query_rows(zval *self, zval *step, zval *params, zval *sql_in, zval 
     return ok;
 }
 
-static bool scalar_of_step(zval *self, zval *step, zval *params, zval *out)
+static bool scalar_of_step(zval *self, zval *step, zval *params, bool row, zval *out)
 {
     zval args;
     if (!args_of(self, step, params, NULL, NULL, &args)) {
@@ -2343,7 +2375,7 @@ static bool scalar_of_step(zval *self, zval *step, zval *params, zval *out)
     qctx qc = {&sql, &args};
     modelctx mc = {step, &sql, &args};
     zval v;
-    bool ok = send_op(self, false, op_scalar, &qc, done_model, &mc, &v, aget(step, "lock"));
+    bool ok = send_op(self, false, row ? op_scalar_row : op_scalar, &qc, done_model, &mc, &v, aget(step, "lock"));
     zval_ptr_dtor(&sql);
     zval_ptr_dtor(&args);
     if (!ok) {
@@ -2917,16 +2949,14 @@ static bool plan_of(zval *self, zval *r, zval *out)
         return false;
     }
     zval_ptr_dtor(&model);
-    zval eargs[5], engine, rr, shape;
+    zval eargs[4], engine, rr, shape;
     ZVAL_COPY(&eargs[0], hash);
     ZVAL_COPY(&eargs[1], rd(self, "driver"));
     ZVAL_LONG(&eargs[2], as_long(rd(rd(self, "config"), "planCacheSize")));
-    /* A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
-    ZVAL_BOOL(&eargs[3], is_corpus(self));
     /* The plans of a mysql connection are the ones of its server (DIA-209). */
-    ZVAL_COPY(&eargs[4], error_driver(self));
-    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 5, eargs);
-    for (int i = 0; i < 5; i++) {
+    ZVAL_COPY(&eargs[3], error_driver(self));
+    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 4, eargs);
+    for (int i = 0; i < 4; i++) {
         zval_ptr_dtor(&eargs[i]);
     }
     if (!ok) {
@@ -3486,7 +3516,7 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
             ZEND_HASH_FOREACH_VAL(Z_ARRVAL(parts), part)
             {
                 zval pplan, v;
-                if (!plan_of(self, part, &pplan) || !scalar_of_step(self, aidx(aget(&pplan, "steps"), 0), rd(part, "params"), &v)) {
+                if (!plan_of(self, part, &pplan) || !scalar_of_step(self, aidx(aget(&pplan, "steps"), 0), rd(part, "params"), false, &v)) {
                     ok = false;
                     zval_ptr_dtor(&pplan);
                     break;
@@ -3501,7 +3531,10 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
             }
         }
     } else {
-        ok = scalar_of_step(self, step0, rd(r, "params"), out);
+        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar
+         * statement reads one cell. */
+        zval *kind = aget(rd(r, "ir"), "kind");
+        ok = scalar_of_step(self, step0, rd(r, "params"), is_str(kind, "avg") || is_str(kind, "sum"), out);
     }
     zval_ptr_dtor(&parts);
     zval_ptr_dtor(&plan);
@@ -3521,7 +3554,7 @@ static bool paginate_plan(zval *self, zval *frame, zval *r, zval *out, zval *pla
         {
             ZVAL_DEREF(st);
             if (is_str(aget(st, "role"), "count")) {
-                ok = scalar_of_step(self, st, rd(r, "params"), &total);
+                ok = scalar_of_step(self, st, rd(r, "params"), false, &total);
                 found = true;
                 break;
             }

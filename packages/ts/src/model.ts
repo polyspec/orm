@@ -5,7 +5,7 @@ import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@p
 import { Db, DatetimeKey, keyOfValues, keyText, keyValue, lookahead, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
-import type { Assemble, Request } from './ir.js';
+import type { Assemble, OutputColumn, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
@@ -383,7 +383,7 @@ class Assembler {
         m.values.set(col.name, columnValue(schema.name, col.name, () => convert(kind, versionAt ? storedVersion(cell) : cell, this.db.zone, declared)));
       } else {
         // An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
-        st.extra.set(col.name, columnValue(schema.name, col.name, () => addedColumnValue(col.type, cell, this.db.zone)));
+        st.extra.set(col.name, columnValue(schema.name, col.name, () => addedColumnValue(col, cell, row, this.db.zone)));
       }
     }
     for (const key of asm.key) {
@@ -508,7 +508,7 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
   // A group column is refused as a model column is, by its entity and its name, and reads an integer from its exact digits on
   // every database, as an added column does (COD-1, INT-160).
   return columnValue(schema.name, column.name, () => (type === 'i16' || type === 'i32' || type === 'i64'
-    ? addedColumnValue(type, raw, db.zone)
+    ? addedColumnValue({ ...column, type }, raw, [], db.zone)
     : convert(type === 'string' ? 'text' : type, raw, db.zone, declared)));
 }
 
@@ -593,6 +593,8 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
     const q = ch.clone();
     q.matches = [];
     q.alias = '';
+    // The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+    q.possible = undefined;
     // A composite key filters the whole child key column as a tuple.
     const rights = ch.matches.map(k => k.right);
     const keys: ChainKey[] = rights.length === 1
@@ -635,18 +637,155 @@ async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promi
 
 async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number | null> {
   if (c.aggFn !== fn) throw configError(`get${upperFirst(fn)} requires ${fn}<Col>()`);
-  const value = await scalarOf(c, fn, c.agg);
-  return value === null || value === undefined ? null : aggregateNumber(value);
+  let value: unknown;
+  try {
+    value = await scalarOf(c, fn, c.agg);
+  } catch (error) {
+    throw aggregateRangeError(error);
+  }
+  // The planner has checked the column, so the field of the model is there.
+  const field = present(fieldOf(c.ent.entity, c.agg), `the aggregate column ${c.ent.entity.name}.${c.agg}`);
+  if (!Array.isArray(value)) throw new OrmError(codes.INTERNAL, `a ${fn} statement read no row of sums`);
+  const cells: readonly unknown[] = value;
+  if (fn === 'sum') {
+    const sum = sumOf(cells);
+    return sum === null || sum === undefined ? null : sumValue(field, sum);
+  }
+  return avgValue(field, sumOf(cells.slice(0, -1)), cells.at(-1));
 }
 
+/** The number of cells of a split sum: the four sums of the 16-bit parts and the cell that reports a value that is not an integer (DIA-202). */
+const splitCells = 5;
+
+/** The sum of a column that holds a value that is not an integer (DIA-202), which the reader of the sum refuses by the name and the type of its column. */
+const nonInteger = Symbol('a value that is not an integer');
+
+/**
+ * The CODEC_DECODE of the sum of a column that holds a value which its type does not hold: a value that is not an integer, or
+ * a decimal of more fraction digits than the scale of the column (DIA-202, DSL-66).
+ */
+function nonIntegerRefusal(column: string, type: string, scale: number): OrmError {
+  return new OrmError(codes.CODEC_DECODE, type === 'decimal'
+    ? `column ${column} holds a value that is not a decimal of scale ${scale}`
+    : `column ${column} holds a value that is not an integer`);
+}
+
+/**
+ * The exact integer ((p3 × 2^16 + p2) × 2^16 + p1) × 2^16 + p0 of the cells of a split sum, nonInteger when its last cell
+ * reports a value that is not an integer, and null when every part is SQL NULL, the sum of no value (DIA-202).
+ */
+function splitSumValue(parts: readonly unknown[], flag: unknown): bigint | typeof nonInteger | null {
+  const integer = (cell: unknown): bigint => {
+    if (typeof cell === 'bigint') return cell;
+    if (typeof cell === 'number' && Number.isSafeInteger(cell)) return BigInt(cell);
+    if (typeof cell === 'string' && /^-?[0-9]+$/.test(cell)) return BigInt(cell);
+    throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  };
+  if (flag !== null && flag !== undefined && integer(flag) !== 0n) return nonInteger;
+  let sum = 0n;
+  let none = true;
+  for (const part of parts) {
+    sum <<= 16n;
+    if (part === null || part === undefined) continue;
+    none = false;
+    sum += integer(part);
+  }
+  return none ? null : sum;
+}
+
+/** The sum of the sum cells of a statement: its one cell, or the exact integer of the cells of a split sum (DIA-202); null is the sum of no value. */
+function sumOf(cells: readonly unknown[]): unknown {
+  if (cells.length === 1) return cells[0];
+  if (cells.length !== splitCells) throw new OrmError(codes.INTERNAL, `a split sum reads ${cells.length} cells, not ${splitCells}`);
+  return splitSumValue(cells.slice(0, splitCells - 1), cells[splitCells - 1]);
+}
+
+/** The text of every refused sum or average scalar in every client (DSL-66). */
+const aggregateRefused = 'aggregate scalar is not a finite number';
+
+/** The decimal places that the average of an exact column keeps beyond the scale of the column (DSL-161). */
+const avgScaleExtra = 16;
+
+/** The binary64 value of a sum or an average scalar, rounded to the nearest, ties to even (DSL-66). */
 export function aggregateNumber(value: unknown): number {
   if (typeof value !== 'number' && typeof value !== 'bigint'
       && !(typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(value))) {
-    throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is not a finite number');
+    throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
   }
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
+  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
   return number;
+}
+
+/** Whether the sum and the average of the column are exact (DSL-161): an integer or a decimal column. */
+function exactAggregate(field: Field): boolean {
+  return field.type === 'i16' || field.type === 'i32' || field.type === 'i64' || field.type === 'decimal';
+}
+
+/**
+ * The sum cell of the exact column field as the integer sum × 10^scale: an integer cell, or the integer of a split sum
+ * (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale
+ * fraction digits. A sum that holds a value which the type of the column does not hold, which the split sum reports and the
+ * text of MySQL and PostgreSQL shows by more fraction digits, is refused by its column.
+ */
+function exactSum(field: Field, value: unknown): bigint {
+  const scale = field.scale;
+  if (value === nonInteger) throw nonIntegerRefusal(field.name, field.type, scale);
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return BigInt(value);
+  const match = typeof value === 'string' ? /^(-?)([0-9]+)(?:\.([0-9]+))?$/.exec(value) : null;
+  if (match === null) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  if ((match[3] ?? '').length > scale) throw nonIntegerRefusal(field.name, field.type, scale);
+  const fraction = (match[3] ?? '').padEnd(scale, '0');
+  const digits = BigInt(`${match[2] ?? ''}${fraction}`);
+  return match[1] === '-' ? -digits : digits;
+}
+
+/** The nearest binary64 value of n × 10^-scale, ties to even; a value beyond the finite range is CODEC_DECODE (DSL-66). */
+function nearestBinary64(n: bigint, scale: number): number {
+  const number = Number(`${n}e-${scale}`);
+  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  return number;
+}
+
+/** The result of getSum for the sum cell of the column field (DSL-66, DSL-161). */
+function sumValue(field: Field, value: unknown): number {
+  return exactAggregate(field) ? nearestBinary64(exactSum(field, value), field.scale) : aggregateNumber(value);
+}
+
+/**
+ * The result of getAvg for the sum and the count of the values of the column field: null for no value; for an exact column
+ * the exact sum divided by the count, rounded half away from zero to avgScaleExtra places beyond the scale of the column and
+ * then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count, which is the AVG of every
+ * database.
+ */
+function avgValue(field: Field, sum: unknown, countCell: unknown): number | null {
+  const count = typeof countCell === 'bigint' ? countCell
+    : typeof countCell === 'number' && Number.isSafeInteger(countCell) ? BigInt(countCell)
+    : typeof countCell === 'string' && /^[0-9]+$/.test(countCell) ? BigInt(countCell) : -1n;
+  if (count < 0n) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  if (count === 0n) return null;
+  if (sum === null || sum === undefined) throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  if (!exactAggregate(field)) return aggregateNumber(sum) / Number(count);
+  const n = exactSum(field, sum);
+  const magnitude = n < 0n ? -n : n;
+  // The quotient with one place more than the stated scale: its last digit decides the rounding half away from zero.
+  const longer = magnitude * 10n ** BigInt(avgScaleExtra + 1) / count;
+  const rounded = longer / 10n + (longer % 10n >= 5n ? 1n : 0n);
+  return nearestBinary64(n < 0n ? -rounded : rounded, field.scale + avgScaleExtra);
+}
+
+/**
+ * The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003, and
+ * MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it is CODEC_DECODE with the text of that scalar and the driver
+ * error as its cause (DIA-200).
+ */
+function aggregateRangeError(error: unknown): unknown {
+  if (!(error instanceof OrmError) || error.code !== codes.DRIVER) return error;
+  const cause: unknown = error.cause;
+  // PostgreSQL names the SQLSTATE in code and MySQL in sqlState.
+  const state = cause instanceof Error ? ('sqlState' in cause ? cause.sqlState : 'code' in cause ? cause.code : undefined) : undefined;
+  return state === '22003' ? new OrmError(codes.CODEC_DECODE, aggregateRefused, error) : error;
 }
 
 /** The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps. */
@@ -746,12 +885,8 @@ async function create(c: Core): Promise<Model> {
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
       : convert(type, s.value, ex.db.zone, field));
   }
-  // The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a primary key the
-  // request did not supply.
-  let assignedKey = schema.identity;
-  if (assignedKey === '' && typeof key === 'string' && schema.keyPrefix !== '' && !c.sets.some(s => s.column === schema.primaryKey[0])) {
-    assignedKey = present(schema.primaryKey[0], `the primary key of ${schema.name}`);
-  }
+  // The column that takes the key it is given is the identity.
+  const assignedKey = schema.identity;
   if (assignedKey !== '') {
     st.addName(assignedKey);
     m.values.set(assignedKey, key);
@@ -821,7 +956,7 @@ function batchFits(driver: string, parts: readonly number[], columns: number): v
  * The row counts of the batches a multi-row insert of rows rows runs as, in row order (docs/spec/protocol.md "Relation
  * steps"): each batch rows, the last one the rows left when fewer.
  */
-export function insertParts(rows: number, batch: number): number[] {
+function insertParts(rows: number, batch: number): number[] {
   const parts: number[] = [];
   for (let left = rows; left > 0; left -= Math.min(left, batch)) parts.push(Math.min(left, batch));
   return parts;
@@ -1083,9 +1218,32 @@ function exactIntegers(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exactIntegers(item)]));
 }
 
-/** An added column by the type its plan column states (INT-160); other types keep the driver value. A text is an integer only exactly, and an integer is a safe integer (COD-45). */
-export function addedColumnValue(type: string, raw: unknown, zone: string): unknown {
+/**
+ * An added column by the type its plan column states (INT-160), from its cell raw of the row; other types keep the driver
+ * value. A text is an integer only exactly, and an integer is a safe integer (COD-45). The sum of an integer column is the
+ * exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not
+ * hold is refused by that column (DIA-202, PRT-84).
+ */
+export function addedColumnValue(col: OutputColumn, raw: unknown, row: readonly unknown[], zone: string): unknown {
+  const type = col.type;
+  const scale = col.scale ?? 0;
+  if (col.sum_parts !== undefined && col.sum_parts.length > 0) {
+    if (col.non_integer === undefined) throw new OrmError(codes.INTERNAL, `the split sum ${col.name} states no cell of a value that is not an integer`);
+    const flag = col.non_integer;
+    let sum: bigint | typeof nonInteger | null;
+    try {
+      sum = splitSumValue(col.sum_parts.map(i => row[i]), row[flag]);
+    } catch (cause) { throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`, cause); }
+    if (sum === nonInteger) throw nonIntegerRefusal(present(col.sum_of, `the summed column of ${col.name}`), type, scale);
+    raw = sum;
+  }
+  if (raw === null || raw === undefined) return null;
+  // The text of a sum of MySQL and PostgreSQL has more fraction digits than the scale when the column holds such a value.
+  const text = typeof raw === 'string' ? raw : raw instanceof Uint8Array ? new TextDecoder().decode(raw) : undefined;
+  if (col.sum_of !== undefined && text !== undefined && (text.split('.')[1] ?? '').length > scale) throw nonIntegerRefusal(col.sum_of, type, scale);
   switch (type) {
+    case 'decimal':
+      return addedDecimal(raw, col.precision ?? 0, scale);
     case 'i16': case 'i32': case 'i64': {
       if (typeof raw !== 'string') return convert(type, raw, zone);
       if (!/^-?(?:0|[1-9][0-9]*)$/.test(raw)) throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`);
@@ -1096,6 +1254,34 @@ export function addedColumnValue(type: string, raw: unknown, zone: string): unkn
     default:
       return raw;
   }
+}
+
+/**
+ * The exact decimal text of scale fraction digits of a decimal added column: SQLite and markdown store a decimal as its
+ * integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of at most scale fraction digits, which is padded
+ * to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its digits.
+ */
+function addedDecimal(raw: unknown, precision: number, scale: number): string {
+  const refusal = (): OrmError => new OrmError(codes.CODEC_DECODE, 'decimal cell is not a decimal of its precision and scale');
+  let negative: boolean;
+  let digits: string;
+  if (typeof raw === 'bigint') {
+    negative = raw < 0n;
+    digits = (negative ? -raw : raw).toString();
+  } else if (typeof raw === 'string' || raw instanceof Uint8Array) {
+    const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
+    const match = /^(-?)([0-9]+)(?:\.([0-9]+))?$/.exec(text);
+    if (match === null) throw refusal();
+    const fraction = match[3] ?? '';
+    if (fraction.length > scale) throw refusal();
+    negative = match[1] === '-';
+    digits = `${match[2] ?? ''}${fraction.padEnd(scale, '0')}`;
+  } else throw refusal();
+  digits = digits.replace(/^0+/, '');
+  if (precision > 0 && digits.length > precision) throw refusal();
+  digits = digits.padStart(scale + 1, '0');
+  const text = scale > 0 ? `${digits.slice(0, -scale)}.${digits.slice(-scale)}` : digits;
+  return negative && /[1-9]/.test(digits) ? `-${text}` : text;
 }
 
 /**

@@ -1,13 +1,11 @@
-# model JSON output: to_json_text() writes the same text as TypeScript toJSONText(). Members are in row order, and
-# value-style columns carry the ordered-json stored text as is inside the outer expression, while other values are written
-# as JSON.stringify writes them (docs/spec/codec.md "Value model"; the toJSONText expected values of packages/ts/tests/model.mjs).
+# model JSON output of Python values that no recipe value can write (COD-68): a value that is no column is written as
+# JSON.stringify writes it, a value that JSON cannot write fails with CODEC_ENCODE, and json.dumps of a model fails with
+# TypeError. The member order, a collection and a related row are the cases of the recipe model_writes_chain.
 import json
 import tempfile
 import unittest
 from pathlib import Path
-from polyspec.ordered_json import parse as parse_json
 from polyspec.orm.errors import OrmError
-from polyspec.orm.styled_value import StyledValue
 from . import testcase
 
 from .test_sqlite import DDL, generate, run_script
@@ -16,17 +14,6 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 STORED = '{"b":1,"1":2,"a":1.50,"e":1E2,"s":"\\u00e9"}'
-# Key columns not selected are also read by the planner, so they enter the row order.
-KEYS = '"user_seq":1,"service_seq":1,"service_region_seq":1,"service_member_seq":1,'
-ROW_TEXT = (
-    '{"seq":1,'
-    + KEYS
-    + '"name":"a","json_setting":{"kind":"value","value":'
-    + STORED
-    + "},"
-    '"jsons_tags":{"kind":"sql-null"},"serialize_data":{"kind":"value","value":null},'
-    '"read_count":3}'
-)
 
 
 class ModelJsonTextTest(unittest.TestCase):
@@ -74,40 +61,6 @@ class ModelJsonTextTest(unittest.TestCase):
             .add_column_jsons_tags()
             .add_column_serialize_data()
             .add_column_read_count()
-        )
-
-    # Requirements: COD-68.
-    def test_a_key_that_javascript_reorders_keeps_its_place(self):
-        row = self.author().get_by_seq(1)
-        row.set_json_setting(StyledValue.value(parse_json('{"b":1,"1":2}')))
-        self.assertIn(
-            '"json_setting":{"kind":"value","value":{"b":1,"1":2}}', row.to_json_text()
-        )
-
-    # Requirements: COD-68.
-    def test_a_collection_writes_the_texts_of_its_rows(self):
-        rows = self.author().seq([1, 2]).order_by_seq_asc().gets()
-        second = (
-            '{"seq":2,'
-            + KEYS
-            + '"name":"b","json_setting":{"kind":"value","value":[]},'
-            '"jsons_tags":{"kind":"sql-null"},"serialize_data":{"kind":"sql-null"},'
-            '"read_count":3}'
-        )
-        self.assertEqual(rows.to_json_text(), f"[{ROW_TEXT},{second}]")
-        self.assertEqual(self.author().seq([9]).gets().to_json_text(), "[]")
-
-    # Requirements: COD-68.
-    def test_a_related_row_is_written_under_its_relation_name(self):
-        user = (
-            self.models.User()
-            .connect(self.db)
-            .relations(self.author().match_seq_with_user_seq().seq([1]))
-            .get_by_seq(1)
-        )
-        self.assertEqual(
-            user.to_json_text(),
-            '{"seq":1,"name":"u","author_models":[' + ROW_TEXT + "]}",
         )
 
     # Requirements: COD-68.

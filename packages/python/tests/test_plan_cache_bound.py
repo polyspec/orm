@@ -1,6 +1,5 @@
 # The plan cache holds one entry per bucketed IN-list shape: one statement run with lists of 1 to 300 values keeps at
 # most ten plans (the power-of-two buckets 1 to 512), and an IN parameter past the parameters is IR_INVALID.
-import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,11 +12,10 @@ from polyspec.orm.canonical import canonical_request
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURE = json.loads(
-    (ROOT / "contracts" / "fixtures" / "identity_load.json").read_text()
-)
 MODEL = model_of_documents(
-    parse_document_set([(ROOT / FIXTURE["fixture"]).read_text()])
+    parse_document_set(
+        [(ROOT / "contracts" / "fixtures" / "identity_load.dbs").read_text()]
+    )
 )
 
 
@@ -82,8 +80,8 @@ class PlanCacheBoundTest(unittest.TestCase):
             "n_params": 18,
             "columns": {
                 "fn": {
-                    "z_fn": {"column": "seq", "fn": {"name": "year", "ps": [0]}},
-                    "a_fn": {"column": "seq", "fn": {"name": "year", "ps": [1]}},
+                    "z_fn": {"column": "seq", "fn": {"name": "year"}},
+                    "a_fn": {"column": "seq", "fn": {"name": "year"}},
                 },
                 "sub": {
                     "z_sub": {
@@ -116,7 +114,7 @@ class PlanCacheBoundTest(unittest.TestCase):
                 },
                 {"rel": "r2", "query": {"entity": "related", "where": pred(10)}},
             ],
-            "order": [{"column": "seq", "fn": {"name": "year", "ps": [11]}}],
+            "order": [{"column": "seq", "fn": {"name": "year"}}],
             "limit": {"offset": 0, "count": 20},
             "if_parent": {"column": "seq", "p": 12},
             "set": [{"column": "seq", "p": 13}],
@@ -128,8 +126,6 @@ class PlanCacheBoundTest(unittest.TestCase):
         self.assertEqual(
             params,
             [
-                "v1",
-                "v0",
                 "v3",
                 "v2",
                 "v4",
@@ -139,7 +135,6 @@ class PlanCacheBoundTest(unittest.TestCase):
                 "v8",
                 "v9",
                 "v10",
-                "v11",
                 0,
                 20,
                 "v12",
@@ -147,15 +142,18 @@ class PlanCacheBoundTest(unittest.TestCase):
                 "v14",
                 "v15",
                 "v16",
+                "v0",
+                "v1",
+                "v11",
                 "v17",
             ],
         )
-        self.assertEqual(canonical["limit"], {"offset_p": 12, "count_p": 13})
-        self.assertEqual(canonical["if_parent"]["p"], 14)
-        self.assertEqual(canonical["set"][0]["p"], 15)
-        self.assertEqual(canonical["on_duplicate"][0]["p"], 16)
-        self.assertEqual(canonical["rows"], [[17]])
-        self.assertEqual(canonical["optimistic"]["p"], 18)
+        self.assertEqual(canonical["limit"], {"offset_p": 9, "count_p": 10})
+        self.assertEqual(canonical["if_parent"]["p"], 11)
+        self.assertEqual(canonical["set"][0]["p"], 12)
+        self.assertEqual(canonical["on_duplicate"][0]["p"], 13)
+        self.assertEqual(canonical["rows"], [[14]])
+        self.assertEqual(canonical["optimistic"]["p"], 15)
 
     # Requirements: PRT-78; T236.
     def test_paged_reads_share_plan_and_bind_page_values(self):

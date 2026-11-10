@@ -15,7 +15,7 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-use crate::db::{Db, DbStats, Pool};
+use crate::db::DbStats;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
 
@@ -166,13 +166,6 @@ fn connection_lost(message: impl Into<String>) -> sqlx::Error {
 
 fn answer_error(message: impl std::fmt::Display) -> sqlx::Error {
     session_error(codes::INTERNAL, format!("the flowmark answer: {message}"))
-}
-
-impl Db {
-    /// The connection is the flowmark server's corpus.
-    pub(crate) fn is_markdown(&self) -> bool {
-        matches!(self.inner.pool, Pool::Markdown(_))
-    }
 }
 
 /// One connection to the flowmark server, that is, one server session. One task uses it at a time: when the pool hands it out or

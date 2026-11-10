@@ -26,6 +26,7 @@ use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\MarkdownModel\Logs;
 use Polyspec\Orm\Tests\MarkdownModel\CodecRows;
 use Polyspec\Orm\Tests\MarkdownModel\People;
+use Polyspec\Orm\Tests\MarkdownModel\Tags;
 use Polyspec\Orm\Tests\MarkdownModel\Tasks;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
@@ -273,6 +274,7 @@ class MarkdownConformanceTest extends TestCase
         return [
             'insert_one' => static function (Served $s): mixed {
                 $m = (new People())->connect($s->db)
+                    ->setId('P1')
                     ->setName('Ann')
                     ->setEmail('ann@example.com')
                     ->setAge(30)
@@ -281,18 +283,27 @@ class MarkdownConformanceTest extends TestCase
                 return ['id' => $m->getId()];
             },
             'insert_rows' => static function (Served $s): mixed {
-                $bob = (new People())->setName('Bob')->setEmail('bob@example.com')->setAge(25)->setScore('2.00');
-                $cara = (new People())->setName('Cara')->setEmail(null)->setAge(null)->setScore('0.50');
+                $bob = (new People())->setId('P2')
+                    ->setName('Bob')
+                    ->setEmail('bob@example.com')
+                    ->setAge(25)
+                    ->setScore('2.00');
+                $cara = (new People())->setId('P3')->setName('Cara')->setEmail(null)->setAge(null)->setScore('0.50');
                 return (new People())->connect($s->db)->creates([$bob, $cara], 2);
             },
             'insert_rows_tasks' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->creates([
-                    (new Tasks())->setOwner('P1')
+                    (new Tasks())->setId('T1')
+                        ->setOwner('P1')
                         ->setTitle('write spec')
                         ->setPoints(3)
                         ->setDue(self::day('2026-10-01')),
-                    (new Tasks())->setOwner('P1')->setTitle('review')->setPoints(5)->setDue(null),
-                    (new Tasks())->setOwner('P2')->setTitle('ship')->setPoints(8)->setDue(self::day('2026-10-05')),
+                    (new Tasks())->setId('T2')->setOwner('P1')->setTitle('review')->setPoints(5)->setDue(null),
+                    (new Tasks())->setId('T3')
+                        ->setOwner('P2')
+                        ->setTitle('ship')
+                        ->setPoints(8)
+                        ->setDue(self::day('2026-10-05')),
                 ], 3);
             },
             'insert_identity' => static function (Served $s): mixed {
@@ -433,10 +444,22 @@ class MarkdownConformanceTest extends TestCase
                 return $stale->setAge(27)->update(true)->toArray();
             },
             'insert_on_duplicate' => static function (Served $s): mixed {
-                $m = (new People())->connect($s->db)->setName('Ann B')->setEmail('ann@example.com')
+                $m = (new People())->connect($s->db)->setId('P1')->setName('Ann B')
                     ->duplication((new People())->setName('Ann B'))->create();
                 $read = (new People())->connect($s->db)->id('P1')->get();
                 return ['created' => $m->getId(), 'name' => $read->getName()];
+            },
+            'insert_on_duplicate_unique' => static function (Served $s): mixed {
+                $created = (new Tags())->connect($s->db)->setName('spec')->setUses(1)->create();
+                $met = (new Tags())->connect($s->db)->setName('spec')->setUses(1)
+                    ->duplication((new Tags())->setUses(2))->create();
+                $read = (new Tags())->connect($s->db)->name('spec')->get();
+                return [
+                    'created' => $created->getId(),
+                    'met' => $met->getId(),
+                    'uses' => $read->getUses(),
+                    'count' => (new Tags())->connect($s->db)->getCount(),
+                ];
             },
             'delete' => static function (Served $s): mixed {
                 (new Tasks())->connect($s->db)->id('T2')->get()->delete();

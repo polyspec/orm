@@ -64,6 +64,16 @@ static void query_throw_config(const char *message)
     zend_string_release(text);
 }
 
+/* Refuses possible<Col>() on a model that is no relation child, the root of a request, a join child or a subquery
+ * model, which has no parent row to compare (DSL-85); false when it refused. */
+static bool query_no_possible(zval *model)
+{
+    zval *possible = model_state_property(model_state_of(Z_OBJ_P(model)), "possible");
+    if (possible == NULL || Z_TYPE_P(possible) == IS_NULL) return true;
+    query_throw_config("possible applies only to a relation child");
+    return false;
+}
+
 static bool query_is_group(model_state *state)
 {
     zval *group = model_state_property(state, "group_of");
@@ -222,6 +232,7 @@ ZEND_METHOD(Polyspec_Orm_Model, build)
     zval_ptr_dtor(&model_arg);
     if (Z_TYPE(frame_ctor_result) != IS_UNDEF) zval_ptr_dtor(&frame_ctor_result);
     if (EG(exception) != NULL) { zval_ptr_dtor(&request); zval_ptr_dtor(&frame); RETURN_THROWS(); }
+    if (!query_no_possible(ZEND_THIS)) { zval_ptr_dtor(&request); zval_ptr_dtor(&frame); RETURN_THROWS(); }
     zval query;
     ZVAL_UNDEF(&query);
     zend_call_method(Z_OBJ_P(ZEND_THIS), model_native_class_entry(), NULL, "query", sizeof("query") - 1, &query, 2, &request, &frame);
@@ -639,6 +650,7 @@ ZEND_METHOD(Polyspec_Orm_Model, subqueryIr)
     if (conn != NULL && Z_TYPE_P(conn) != IS_NULL) { query_throw_config("a subquery model cannot have its own connection"); RETURN_THROWS(); }
     zval *relations = model_state_property(state, "relations");
     if (relations != NULL && Z_TYPE_P(relations) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(relations)) != 0) { query_throw_config("a subquery model cannot load relations"); RETURN_THROWS(); }
+    if (!query_no_possible(ZEND_THIS)) RETURN_THROWS();
     zval frame;
     ZVAL_UNDEF(&frame);
     if (!query_make_frame(ZEND_THIS, outer, &frame)) { if (Z_TYPE(frame) != IS_UNDEF) zval_ptr_dtor(&frame); RETURN_THROWS(); }
@@ -1093,6 +1105,7 @@ ZEND_METHOD(Polyspec_Orm_Model, query)
             if(zend_hash_exists(Z_ARRVAL_P(names),join_path)){zend_string *message=strpprintf(0,"join result name %s is used twice; use alias<Name>()",ZSTR_VAL(name));zend_string_release(join_path);zend_string_release(name);zval_ptr_dtor(&join_ir);zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);query_throw_orm("CONFIG",message);zend_string_release(message);RETURN_THROWS();}
             SEPARATE_ARRAY(names);
             zval mark; ZVAL_TRUE(&mark); zend_hash_update(Z_ARRVAL_P(names),join_path,&mark); zend_string_release(join_path);
+            if(!query_no_possible(child)){zend_string_release(name);zval_ptr_dtor(&join_ir);zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);RETURN_THROWS();}
             zval child_args[2], child_query; ZVAL_COPY(&child_args[0],request); ZVAL_COPY(&child_args[1],frame);
             if(!query_invoke(child,"query",child_args,2,&child_query)){for(int i=0;i<2;i++)zval_ptr_dtor(&child_args[i]);zend_string_release(name);zval_ptr_dtor(&join_ir);zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);if(Z_TYPE(child_query)!=IS_UNDEF)zval_ptr_dtor(&child_query);RETURN_THROWS();}for(int i=0;i<2;i++)zval_ptr_dtor(&child_args[i]);
             model_state *child_state=model_state_of(Z_OBJ_P(child)); zval *on=model_state_property(child_state,"on");

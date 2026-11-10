@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Extension\Tests;
 
 use DateTimeZone;
-use PDOStatement;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -14,58 +13,13 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\CompositeMembership;
 use Polyspec\Orm\Tests\Model\Service;
-use Polyspec\Orm\OrmException;
 
-// PRT-80: the native probe of the PDO statements counts the statements of a split root list, the values each one
-// binds and the memory of the split. A declarative recipe step cannot observe these counts, so these methods stay
-// native (FCV-2).
+// PRT-80: the native probe of the PDO statements counts the statements of a split count and of the relation chunks and
+// the memory of the split. A declarative recipe step cannot observe these counts, so these methods stay native (FCV-2);
+// the statements of a split root read are the case root_in_split_statements of the recipe parameter_chunking.
 #[Small]
 final class ParameterChunkingNativeTest extends TestCase
 {
-    // Requirements: PLN-44, PRT-76.
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
-    public function test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages(): void
-    {
-        require_once __DIR__ . '/NativeQueryProbeStatement.php';
-        require_once __DIR__ . '/NativeQueryProbePdo.php';
-        NativeQueryProbePdo::assertNativeOrmClasses();
-        $pdo = new NativeQueryProbePdo();
-        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
-        $insert = $pdo->prepare('INSERT INTO "service" ("seq", "name") VALUES (?, ?)');
-        Assert::assertInstanceOf(PDOStatement::class, $insert);
-        for ($seq = 1; $seq <= 1001; $seq++) {
-            Assert::assertTrue($insert->execute([$seq, "service-$seq"]));
-        }
-
-        $pdo->executions = [];
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
-        try {
-            $values = array_merge(range(1, 1001), range(1, 25), [2001]);
-            $rows = (new Service())($db)->seq($values)->gets();
-            $sequences = [];
-            foreach ($rows as $row) {
-                $sequences[] = $row->getSeq();
-            }
-            Assert::assertSame(range(1, 1001), $sequences, 'split rows are merged in query order without duplicates');
-            Assert::assertCount(2, $pdo->executions, 'the SQLite bind limit splits the root IN into two statements');
-            Assert::assertSame(range(1, 512), $pdo->executions[0]['params']);
-            Assert::assertSame(array_merge(range(513, 1001), array_fill(0, 23, 2001)), $pdo->executions[1]['params']);
-            Assert::assertSame(512, substr_count($pdo->executions[0]['sql'], '?'));
-            Assert::assertSame(512, substr_count($pdo->executions[1]['sql'], '?'));
-
-            try {
-                (new Service())($db)->seq($values)->limit(0, 10)->gets();
-                self::fail('a split root page must fail before a statement is executed');
-            } catch (OrmException $error) {
-                Assert::assertSame(\Polyspec\Orm\Code::IR_INVALID, $error->code_);
-            }
-            Assert::assertCount(2, $pdo->executions, 'the rejected page sent no additional statement');
-        } finally {
-            $db->close();
-        }
-    }
-
     // A root IN list over the bind limit is split before it is planned, so no plan holds a bind slot per value: a plan
     // costs about 1.6 KB per bind slot, and the plan of these 70300 values alone took 113 MB of PHP memory. The split
     // plans hold at most the bind limit; what the count holds above that is the request's own values.

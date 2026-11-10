@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
@@ -265,6 +264,22 @@ impl sqlx::Encode<'_, Postgres> for PgUuid {
     }
 }
 
+/// A PostgreSQL `numeric` value in its binary form, from a text of any number of digits (DIA-203).
+struct PgNumeric(Vec<u8>);
+
+impl sqlx::Type<Postgres> for PgNumeric {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(1700))
+    }
+}
+
+impl sqlx::Encode<'_, Postgres> for PgNumeric {
+    fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        buf.extend_from_slice(&self.0);
+        Ok(sqlx::encode::IsNull::No)
+    }
+}
+
 macro_rules! bind_param {
     ($query:expr, $param:expr) => {
         match $param {
@@ -342,13 +357,23 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
         "i32" => int!(i32),
         "i64" => int!(i64),
         "f64" => float!(f64),
-        "decimal" => match p {
-            Param::Null => q.bind(Option::<rust_decimal::Decimal>::None),
-            Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|error| bad_with(&error))?),
-            Param::I64(x) => q.bind(rust_decimal::Decimal::from(*x)),
-            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|error| bad_with(&error))?),
-            _ => return Err(bad()),
-        },
+        // The number that the text names, whatever its number of digits, as PostgreSQL reads that text (DIA-203).
+        "decimal" => {
+            let text = match p {
+                Param::Null => return Ok(q.bind(Option::<PgNumeric>::None)),
+                Param::F64(x) => x.to_string(),
+                Param::I64(x) => x.to_string(),
+                Param::Str(s) => s.clone(),
+                _ => return Err(bad()),
+            };
+            q.bind(PgNumeric(crate::row::numeric_text_binary(&text).map_err(|code| {
+                bad_with(&if code == crate::row::NUMERIC_OUT_OF_RANGE {
+                    "PostgreSQL reads the text as a numeric past the range of the type"
+                } else {
+                    "PostgreSQL reads no numeric from the text"
+                })
+            })?))
+        }
         "bool" => match p {
             Param::Null => q.bind(Option::<bool>::None),
             Param::Bool(b) => q.bind(*b),
@@ -436,14 +461,54 @@ pub(crate) async fn exec_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool)
 }
 
 pub(crate) fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[&str]) -> Result<PgQuery<'q>> {
+    pg_query_read(sql, args, types, &[])
+}
+
+/// The query of `sql` with each parameter bound as its type, or as the value of `read` at its position, which the server
+/// read from the text of the parameter.
+fn pg_query_read<'q>(sql: &str, args: &'q [Param], types: &[&str], read: &'q [Option<PgRead>]) -> Result<PgQuery<'q>> {
     if types.len() != args.len() {
         return Err(Error::internal(format!("the plan types {} parameters and binds {}", types.len(), args.len())));
     }
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for (i, (a, ty)) in args.iter().zip(types).enumerate() {
-        q = bind_pg(q, a, ty, i)?;
+        q = match read.get(i) {
+            Some(Some(value)) => q.bind(value),
+            _ => bind_pg(q, a, ty, i)?,
+        };
     }
     Ok(q)
+}
+
+/// A parameter value that PostgreSQL read from its text as the type it infers for the parameter: the binary form that
+/// the server returned, of that type, or None for NULL.
+pub(crate) struct PgRead {
+    oid: sqlx::postgres::types::Oid,
+    bytes: Option<Vec<u8>>,
+}
+
+impl sqlx::Type<Postgres> for PgRead {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(25))
+    }
+    fn compatible(_: &PgTypeInfo) -> bool {
+        true
+    }
+}
+
+impl sqlx::Encode<'_, Postgres> for PgRead {
+    fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        match &self.bytes {
+            Some(bytes) => {
+                buf.extend_from_slice(bytes);
+                Ok(sqlx::encode::IsNull::No)
+            }
+            None => Ok(sqlx::encode::IsNull::Yes),
+        }
+    }
+    fn produces(&self) -> Option<PgTypeInfo> {
+        Some(PgTypeInfo::with_oid(self.oid))
+    }
 }
 
 pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[&str], e: E) -> Result<Vec<PgRow>> {
@@ -483,37 +548,93 @@ async fn commit_again(connection: &mut sqlx::PgConnection) -> Result<()> {
     Ok(())
 }
 
-/// The binding of each parameter when the statement runs again. Each binding declares its type from the model, and a Parse with the
+/// The type of a parameter of a statement that runs again: the binding of the type the server infers (CFG-28), its
+/// PostgreSQL type, and whether that type has no binding of its own, so that the parameter keeps the binding of the model.
+struct Inferred {
+    ty: String,
+    oid: Option<sqlx::postgres::types::Oid>,
+    unmapped: bool,
+}
+
+/// The type of each parameter when the statement runs again. Each binding declares its type from the model, and a Parse with the
 /// declared type of a column that the schema change gave another type would fail again, so the statement is parsed with the types
 /// that the server infers and each value is bound as that type (CFG-28). sqlx sends every value in binary format, so a value cannot
-/// stay text with an undeclared type. A type without a binding of its own keeps the binding of the model.
-async fn inferred_types(sql: &str, declared: &[&str], connection: &mut sqlx::PgConnection) -> Result<Vec<String>> {
+/// stay text with an undeclared type; a value of another type than the declared one is the value the server reads from its text
+/// (server_read). A type without a binding of its own keeps the binding of the model.
+async fn inferred_types(sql: &str, declared: &[&str], connection: &mut sqlx::PgConnection) -> Result<Vec<Inferred>> {
     use sqlx::{SqlSafeStr, Statement, TypeInfo};
     let statement = (&mut *connection).prepare_with(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str(), &[]).await?;
     let inferred = match statement.parameters() {
         Some(sqlx::Either::Left(inferred)) if inferred.len() == declared.len() => inferred,
-        _ => return Ok(declared.iter().map(|&ty| ty.to_owned()).collect()),
+        _ => return Ok(declared.iter().map(|&ty| Inferred { ty: ty.to_owned(), oid: None, unmapped: false }).collect()),
     };
     Ok(declared
         .iter()
         .zip(inferred)
         .map(|(&ty, info)| {
-            match info.name() {
-                "INT2" => "i16",
-                "INT4" => "i32",
-                "INT8" => "i64",
-                "FLOAT8" => "f64",
-                "NUMERIC" => "decimal",
-                "BOOL" => "bool",
-                "VARCHAR" => "varchar",
-                "TEXT" => "text",
-                "TIMESTAMP" => "datetime",
-                "DATE" => "date",
-                _ => ty,
-            }
-            .to_owned()
+            let mapped = match info.name() {
+                "INT2" => Some("i16"),
+                "INT4" => Some("i32"),
+                "INT8" => Some("i64"),
+                "FLOAT8" => Some("f64"),
+                "NUMERIC" => Some("decimal"),
+                "BOOL" => Some("bool"),
+                "VARCHAR" => Some("varchar"),
+                "TEXT" => Some("text"),
+                "TIMESTAMP" => Some("datetime"),
+                "DATE" => Some("date"),
+                _ => None,
+            };
+            Inferred { ty: mapped.unwrap_or(ty).to_owned(), oid: info.oid(), unmapped: mapped.is_none() }
         })
         .collect())
+}
+
+/// The text of a value as PostgreSQL reads a parameter sent as text, as every client but Rust sends it, or None for a
+/// value with no such text.
+fn param_text(p: &Param) -> Option<String> {
+    Some(match p {
+        Param::Str(s) => s.clone(),
+        Param::I64(x) => x.to_string(),
+        Param::F64(x) => x.to_string(),
+        Param::Bool(b) => b.to_string(),
+        Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
+        Param::Date(d) => d.to_string(),
+        Param::Null | Param::Bytes(_) => return None,
+    })
+}
+
+/// The value of each parameter of a statement that runs again after a schema change whose type PostgreSQL now infers
+/// as another than the plan declared (CFG-28): the server reads the text of a text parameter, or of a value that the
+/// binding of the inferred type does not take, as the inferred type, as it reads the text that every other client
+/// sends. So a text that the inferred type does not read fails with the DRIVER error of PostgreSQL, 22P02 or 22003
+/// among them, as in every client, and a text that it reads is the value the server read, by the input rules and the
+/// settings of that connection. A parameter of the declared type keeps its binding.
+async fn server_read(args: &[Param], declared: &[&str], inferred: &[Inferred], connection: &mut sqlx::PgConnection) -> Result<Vec<Option<PgRead>>> {
+    use sqlx::Row as _;
+    let mut out = Vec::with_capacity(args.len());
+    for (i, ((arg, &declared), inferred)) in args.iter().zip(declared).zip(inferred).enumerate() {
+        let retyped = inferred.ty != declared || inferred.unmapped;
+        let text = match (retyped, inferred.oid, arg) {
+            (true, Some(_), Param::Str(text)) => Some(text.clone()),
+            (true, Some(_), arg) if bind_pg(sqlx::query(""), arg, &inferred.ty, i).is_err() => param_text(arg),
+            _ => None,
+        };
+        let (Some(text), Some(oid)) = (text, inferred.oid) else {
+            out.push(None);
+            continue;
+        };
+        let name: String = sqlx::query_scalar("SELECT format_type($1, NULL)").bind(oid).fetch_one(&mut *connection).await?;
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT CAST($1 AS {name})"))).bind(text).fetch_one(&mut *connection).await?;
+        let raw = row.try_get_raw(0)?;
+        let bytes = if sqlx::ValueRef::is_null(&raw) {
+            None
+        } else {
+            Some(raw.as_bytes().map_err(|error| Error::internal(format!("the server read parameter ${} with no bytes: {error}", i + 1)))?.to_vec())
+        };
+        out.push(Some(PgRead { oid, bytes }));
+    }
+    Ok(out)
 }
 
 pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<Vec<PgRow>> {
@@ -522,8 +643,9 @@ pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], poo
         Err(error) if stale_plan(&error) => {
             begin_again(&mut connection).await?;
             let inferred = inferred_types(sql, types, &mut connection).await?;
-            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
-            let rows = pg_query(sql, args, &inferred)?.fetch_all(&mut *connection).await?;
+            let read = server_read(args, types, &inferred, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(|inferred| inferred.ty.as_str()).collect();
+            let rows = pg_query_read(sql, args, &inferred, &read)?.fetch_all(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok(rows)
         }
@@ -546,8 +668,9 @@ pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool
         Err(error) if stale_plan(&error) => {
             begin_again(&mut connection).await?;
             let inferred = inferred_types(sql, types, &mut connection).await?;
-            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
-            let done = pg_query(sql, args, &inferred)?.execute(&mut *connection).await?;
+            let read = server_read(args, types, &inferred, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(|inferred| inferred.ty.as_str()).collect();
+            let done = pg_query_read(sql, args, &inferred, &read)?.execute(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok((0, done.rows_affected()))
         }

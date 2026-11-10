@@ -86,6 +86,8 @@ uint32_t utf8_decode_at(str s, size_t i, size_t *width); /* Code point value at 
 size_t word_rune_width(str s, size_t i); /* Byte count of the character at position i if it is Go's isWordRune, otherwise 0 */
 size_t word_run_end(str s, size_t i);  /* Position where the word token starting at position i ends */
 bool name_rule(str name, const char **rule, str *message); /* Go's nameDiagnostics: the rule and message for a name with a wrong format or length */
+str dbs_quote(str s);                    /* The canonical quote of a string: double quotes, `"` and `\` escaped, a control character below 0x20 and 0x7F as \t, \n or \xNN, every other byte as is */
+str dbs_describe(str token);             /* Go's token.describe: 'text', or string 'value' for a string literal token */
 size_t utf8_valid_prefix(str s);         /* Byte count of the valid UTF-8 prefix */
 size_t utf8_char_width(str s, size_t i); /* Byte count of the code point at position i: its length if a valid UTF-8 character, otherwise 1 (R15) */
 size_t utf8_count(str s);                /* Code point count; each invalid byte also counts as one (R15) */
@@ -258,8 +260,6 @@ typedef struct {
     strs args;
     strs comments;
     strs *exclude, *include; /* NULL means there is no list */
-    str form;                /* Shape of the state_machine line; other settings are SNULL */
-    strs *requires;          /* require list of state_machine; NULL if none */
 } setting;
 
 typedef VEC(setting *) settingv;
@@ -386,7 +386,7 @@ typedef struct {
 } raw_error;
 
 /* columns: name => column*, action: name => foreign key name (str*) */
-bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors, smap *marks);
+bool expression_parse(const tokens *t, zend_long line, zend_long end, str table, const smap *columns, const smap *action, str *text, diags *errors, smap *marks);
 
 /* ------------------------------------------------------------- emit, set */
 

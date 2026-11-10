@@ -247,6 +247,142 @@
       ]
     },
     {
+      "id": "sqlite_path_opens_the_percent_decoded_file",
+      "requirements": [
+        "CFG-11"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "plain.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "plain.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%20b.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "a b.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%2520b.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "a%20b.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%23b.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "a#b.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%3Fb.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "a?b.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "%ED%95%9C.sqlite",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "한.sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "c%20d.sqlite",
+          "query": "_pragma=busy_timeout(1000)",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "c d.sqlite"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_invalid_path_is_config_and_creates_no_file",
+      "requirements": [
+        "CFG-11"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%zzb.sqlite",
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%2",
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%00b.sqlite",
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "a%FFb.sqlite",
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "mysql_session_settings",
       "requirements": [
         "CFG-3",

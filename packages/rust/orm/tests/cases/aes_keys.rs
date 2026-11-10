@@ -35,7 +35,15 @@ fn aes_read_assemble() -> polyspec_orm::plan::Assemble {
         entity: "secret_config".to_owned(),
         columns: vec![
             aes_config_column(),
-            OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
+            OutCol {
+                index: 1,
+                name: "aes_key_version".into(),
+                column: "aes_key_version".into(),
+                typ: "int".into(),
+                styles: vec![],
+                hidden: false,
+                ..Default::default()
+            },
         ],
         aes_version: Some(1),
         ..Default::default()
@@ -55,6 +63,7 @@ fn aes_config_column() -> polyspec_orm::plan::OutCol {
         typ: "longblob".into(),
         styles: vec!["aes".into(), "hex".into()],
         hidden: false,
+        ..Default::default()
     }
 }
 

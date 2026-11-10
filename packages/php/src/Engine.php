@@ -31,36 +31,26 @@ final class Engine
     private readonly Validator $validator;
     private readonly Planner $planner;
 
-    /**
-     * $assigns plans for a database that assigns the key_prefix keys and the order positions that an insert leaves
-     * out, as a flowmark corpus does (docs/spec/protocol.md PRT-73).
-     */
     public function __construct(
         public readonly RuntimeModel $model,
         string $dialect,
         private readonly int $cacheSize,
-        bool $assigns = false,
         ?string $server = null,
     ) {
         $this->validator = new Validator($model);
-        $this->planner = new Planner($model, new Dialect($dialect, $server), $assigns);
+        $this->planner = new Planner($model, new Dialect($dialect, $server));
     }
 
     /**
-     * The engine shared by the generated model of a manifest hash, by the dialect, by whether the database assigns
-     * keys and by the server, whose plans may differ on one dialect (DIA-209), so a plan of one server never serves
-     * another. The hash of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     * The engine shared by the generated model of a manifest hash, by the dialect and by the server, whose plans may
+     * differ on one dialect (DIA-209), so a plan of one server never serves another. The hash of a generated model that
+     * has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(
-        string $manifestHash,
-        string $dialect,
-        int $cacheSize,
-        bool $assigns = false,
-        ?string $server = null,
-    ): self {
+    public static function for(string $manifestHash, string $dialect, int $cacheSize, ?string $server = null): self
+    {
         $server ??= $dialect;
-        return self::$engines[$manifestHash . "\0" . $dialect . "\0" . ($assigns ? 'assigns' : '') . "\0" . $server]
-            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize, $assigns, $server);
+        return self::$engines[$manifestHash . "\0" . $dialect . "\0" . $server]
+            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize, $server);
     }
 
     /** The plan of a value-free request (docs/spec/protocol.md). */

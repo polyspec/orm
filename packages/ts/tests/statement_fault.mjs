@@ -1,10 +1,8 @@
-// The test entry point's statement fault, on SQLite, MySQL and PostgreSQL, with
-// the fixture contracts/fixtures/statement_fault.json (protocol section 3.2).
-// Each case arms failNextStatement(db, code, message) from @polyspec/orm/testing
-// and checks the refused statement: the ORM error with the given code and
-// message, the statement event that carries the error, and a database that
-// the refused statement did not change. The four cases of the fixture run on
-// each of the three databases; a fixture case that did not pass on every
+// The refusal of an empty argument of the test entry point's statement fault, on SQLite, MySQL and PostgreSQL, with
+// the fixture contracts/fixtures/statement_fault.json (protocol section 3.2): failNextStatement(db, code, message) of
+// @polyspec/orm/testing refuses an empty code or message with a TypeError, the programmer-error signal of the client, and
+// arms nothing. The refused statement, its event and its consumption are the cases a_statement_fault_* of the recipe
+// transactions. The case of the fixture runs on each of the three databases; a fixture case that did not pass on every
 // database fails its test. Each case runs on a case database of its
 // own (case-database.mjs); the test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
@@ -15,7 +13,7 @@
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
-import { Db, OrmError, CORE } from '../dist/index.js';
+import { Db, CORE } from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
 import { models } from './registered_models.mjs';
 import { schemaOf } from './schema_of.mjs';
@@ -24,7 +22,6 @@ import { captureError } from './capture-error.mjs';
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 const { code, message } = fixture;
-const faultText = `${code}: ${message}`;
 if (fixture.schema !== 1 || typeof code !== 'string' || code === '' || typeof message !== 'string' || message === '' || !Array.isArray(fixture.cases)) {
   throw new Error('contracts/fixtures/statement_fault.json is not a schema 1 fixture with a code, a message and cases');
 }
@@ -58,62 +55,6 @@ async function connect(dsn) {
   return db;
 }
 
-/**
- * Checks that an error is the ORM error of the armed fault: its code and its message. OrmError
- * takes the message as its text and prefixes the code (`CODE: text`, runtime_error.ts).
- */
-function checkFaultError(error, subject) {
-  check(error instanceof OrmError, `${subject} raises an OrmError: ${error}`);
-  check(error?.code === code, `${subject} code ${error?.code}, want ${code}`);
-  check(error?.message === faultText, `${subject} message ${JSON.stringify(error?.message)}, want ${JSON.stringify(faultText)}`);
-}
-
-/** The insert is refused: the error, the statement event and the unchanged database. */
-async function refusedInsert(driver, dsn) {
-  const fail = requireFaultEntry();
-  const db = await connect(dsn);
-  try {
-    const events = [];
-    const unsubscribe = db.subscribe(event => events.push(event));
-    fail(db, code, message);
-    const error = await raised(() => probe(db, 'refused').create());
-    checkFaultError(error, 'the refused insert');
-    const failed = events.filter(event => event.error !== null);
-    check(failed.length === 1, `one statement event carries the error: ${failed.length}`);
-    check(failed[0]?.error?.code === code && failed[0]?.error?.message === faultText, `the statement event carries the error ${failed[0]?.error?.code} ${failed[0]?.error?.message}`);
-    unsubscribe();
-    check(await countOf(db) === 0, 'the refused insert leaves the table unchanged');
-  } finally { await db.close(); }
-}
-
-/** The fault is consumed by one statement: the next statement of the connection runs. */
-async function consumedByOneStatement(driver, dsn) {
-  const fail = requireFaultEntry();
-  const db = await connect(dsn);
-  try {
-    fail(db, code, message);
-    checkFaultError(await raised(() => probe(db, 'first').create()), 'the refused insert');
-    const second = await raised(() => probe(db, 'second').create());
-    check(second === undefined, `the statement after the consumed fault raises ${second}`);
-    check(await countOf(db) === 1, 'only the second insert is stored');
-  } finally { await db.close(); }
-}
-
-/** BEGIN is not consumed: the insert inside the transaction is refused and the transaction rolls back. */
-async function refusedInTransaction(driver, dsn) {
-  const fail = requireFaultEntry();
-  const db = await connect(dsn);
-  try {
-    fail(db, code, message);
-    const error = await raised(() => db.transaction(async () => { await probe(db, 'in transaction').create(); }, { retry: 0 }));
-    checkFaultError(error, 'the transaction');
-    check(await countOf(db) === 0, 'the refused insert and the rollback leave the table unchanged');
-    const after = await raised(() => probe(db, 'after').create());
-    check(after === undefined, `the insert after the consumed fault raises ${after}`);
-    check(await countOf(db) === 1, 'the insert after the transaction is stored');
-  } finally { await db.close(); }
-}
-
 /** An empty code or message is refused with a TypeError (the programmer-error signal of the client) and arms nothing. */
 async function emptyArgumentRefused(driver, dsn) {
   const fail = requireFaultEntry();
@@ -138,9 +79,6 @@ function requireFaultEntry() {
 }
 
 const cases = {
-  refused_insert: refusedInsert,
-  consumed_by_one_statement: consumedByOneStatement,
-  refused_in_transaction: refusedInTransaction,
   empty_argument_refused: emptyArgumentRefused,
 };
 

@@ -161,6 +161,50 @@ def string_value(tok: Tk) -> str:
     return tok.t[1:-1].replace("''", "'")
 
 
+# The end of the message for a table name that names no table of the document and no used table.
+_NOT_A_TABLE = "is not a table of this document or a used table"
+
+
+def describe(tok: Tk) -> str:
+    """A token as a diagnostic shows it (Go's token.describe): a string token is its decoded value."""
+    return f"string '{string_value(tok)}'" if tok.k == STR else f"'{tok.t}'"
+
+
+def message_quote(text: str, delim: str) -> str:
+    """A text quoted in a diagnostic message (table-free): delim, then each code point, delim and backslash escaped with a
+    backslash, \\a \\b \\f \\n \\r \\t \\v as those escapes, any other code point below 0x20 and 0x7F as \\xNN,
+    every other code point as is; then delim."""
+    out = [delim]
+    for c in text:
+        code = ord(c)
+        if c == delim or c == "\\":
+            out.append("\\" + c)
+        elif c in _MESSAGE_ESCAPES:
+            out.append(_MESSAGE_ESCAPES[c])
+        elif code < 0x20 or code == 0x7F:
+            out.append(f"\\x{code:02x}")
+        else:
+            out.append(c)
+    out.append(delim)
+    return "".join(out)
+
+
+_MESSAGE_ESCAPES = {
+    "\a": "\\a",
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    "\v": "\\v",
+}
+
+
+def goq(value: str) -> str:
+    """A name in a diagnostic message: quoted with double quotes."""
+    return message_quote(value, '"')
+
+
 def quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
@@ -384,15 +428,18 @@ def well_formed(name: str) -> bool:
 def _name_rule(name: str):
     """Go's nameDiagnostics: the rule and the message of a name that breaks the form or the length, or None."""
     if not well_formed(name):
-        return (
-            "name.format",
-            f"{name} is a reserved word"
-            if name in RESERVED
-            else f"{name} does not match [a-z][a-z0-9_]*",
-        )
+        return ("name.format", _format_message(name))
     if utf8_length(name) > MAX_NAME_BYTES:
-        return ("name.length", f"{name} is longer than 63 bytes")
+        return ("name.length", _length_message(name))
     return None
+
+
+def _format_message(name: str) -> str:
+    return f"name {goq(name)} does not match [a-z][a-z0-9_]* or is a reserved word"
+
+
+def _length_message(name: str) -> str:
+    return f"name {goq(name)} has {utf8_length(name)} bytes, more than {MAX_NAME_BYTES}"
 
 
 def valid_name(name: str) -> bool:
@@ -437,9 +484,8 @@ def is_number_text(text: str) -> bool:
 
 
 def go_rune_quote(c: str) -> str:
-    """A rune written with Go's %q. Control characters are escaped; everything else is wrapped in single quotes."""
-    escapes = {"\t": "\\t", "\n": "\\n", "\r": "\\r", "'": "\\'", "\\": "\\\\"}
-    return "'" + escapes.get(c, c) + "'"
+    """A character in a diagnostic message: quoted with single quotes."""
+    return message_quote(c, "'")
 
 
 def lex_line(text: str, line: int):
@@ -600,7 +646,6 @@ class _Setting:
         "tables",
         "lists",
         "args",
-        "form",
     )
 
     def __init__(self, kw, comments, kind, **fields):
@@ -623,16 +668,14 @@ class _Setting:
         self.tables = fields.get("tables")
         # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
-        # Tokens and form of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines.
+        # Tokens of the markdown, store, title, body, order, and task_marker lines.
         self.args = fields.get("args", ())
-        self.form = fields.get("form", "")
 
 
 def _setting_identity(s: _Setting) -> tuple[str, ...]:
     """Return what the repeat rule of a setting makes unique (docs/spec/dbspec.md "Settings"; the same as
     settingIdentity in engine/dbspec/positions.go): the column of codec, markdown and blind_index, the
-    foreign key of navigation, the column and state of checkbox, and the form and states of a state_machine
-    line (its column left out). Every other setting has no identity."""
+    foreign key of navigation. Every other setting appears at most once and has no identity."""
     keyword = s.kw.t
     if keyword == "codec" or keyword == "blind_index":
         return (s.column.t,)
@@ -640,14 +683,6 @@ def _setting_identity(s: _Setting) -> tuple[str, ...]:
         return (s.foreign_key.t,)
     if keyword == "markdown":
         return (s.args[0].t,)
-    if keyword == "checkbox":
-        return (s.args[0].t, s.args[1].t)
-    if keyword == "state_machine":
-        if s.form == "transition":
-            return ("transition", s.args[1].t, s.args[2].t)
-        if s.form == "history":
-            return ("history",)
-        return (s.form, s.args[1].t)
     return ()
 
 
@@ -792,8 +827,11 @@ class _ParseContext:
 
 
 class _ExpressionSyntax(Exception):
-    def __init__(self, at):
+    """A token the check reader cannot read, or None at the end; reason is Go's expressionParser.fail reason."""
+
+    def __init__(self, at, reason: str = "is not allowed here"):
         self.at = at
+        self.reason = reason
 
 
 class _Operand:
@@ -810,26 +848,14 @@ FORM_SETTINGS = frozenset(
     {
         "markdown",
         "store",
-        "key_prefix",
         "title",
         "body",
         "order",
-        "checkbox",
-        "state_machine",
+        "task_marker",
     }
 )
 # For each store kind, the number of tokens before the shard clause (including kind).
 STORE_ARGUMENTS = {"files": 1, "document": 2, "block": 3}
-
-
-def go_int64(text: str):
-    """Same as Go's strconv.ParseInt(text, 10, 64): an optional '-' and decimal digits, in int64 range. Otherwise None."""
-    if re.fullmatch(r"-?[0-9]+", text) is None:
-        return None
-    n = int(text)
-    if -(1 << 63) <= n < (1 << 63):
-        return n
-    return None
 
 
 class _Cursor:
@@ -853,8 +879,9 @@ class _Cursor:
     def fail(self, expected: str) -> bool:
         if self.more():
             t = self.toks[self.i]
-            shown = f"string '{string_value(t)}'" if t.k == STR else f"'{t.t}'"
-            self.parser._at("syntax", t, f"unexpected {shown}, expected {expected}")
+            self.parser._at(
+                "syntax", t, f"unexpected {describe(t)}, expected {expected}"
+            )
         else:
             self.parser._report(
                 "syntax", self.line, len(self.text), f"line ends, expected {expected}"
@@ -893,11 +920,6 @@ class _Cursor:
             return tok, True
         return None, self.fail(what)
 
-    def quoted(self, what: str):
-        if self.more() and self.toks[self.i].k == STR:
-            return self.next(), True
-        return None, self.fail(what)
-
     def value(self, what: str):
         """Reads one literal. A '-' joins the digit right after it to make a negative number."""
         if self.peek(OP, "-"):
@@ -917,28 +939,6 @@ class _Cursor:
             _mark_value(tok)
             return tok, True
         return None, self.fail(what)
-
-    def arrow(self) -> bool:
-        if (
-            self.peek(OP, "-")
-            and self.i + 1 < len(self.toks)
-            and self.toks[self.i + 1].k == OP
-            and self.toks[self.i + 1].t == ">"
-        ):
-            self.i += 2
-            return True
-        return self.fail("'->'")
-
-    def form_ahead(self, text: str) -> bool:
-        """Reports whether a keyword letter follows and it is not the from state of a transition: if `->` follows, it is a state name."""
-        if not self.peek(WORD, text):
-            return False
-        nxt = self.i + 1
-        if nxt < len(self.toks) and self.toks[nxt].k == OP and self.toks[nxt].t == "-":
-            return False
-        # The caller always takes the word as a form word, so it is a keyword here.
-        _mark(self.toks[self.i], "keyword")
-        return True
 
     def names(self):
         """Reads `( name, ... )`. None on failure."""
@@ -1008,24 +1008,30 @@ class DocumentParser:
     def _at(self, rule: str, tok: Tk, message: str) -> None:
         self._report(rule, tok.line, tok.s, message)
 
-    def _unclosed(self, tok: Tk, message: str) -> None:
+    def _unclosed(self, tok: Tk) -> None:
         # An error for a block not closed at the end of the document. It is reported along with other syntax errors on the same line (Go does not limit it to one per line).
         text = self.lines[tok.line - 1] if 1 <= tok.line <= len(self.lines) else ""
         self.diagnostics.append(
-            DbspecDiagnostic("syntax", tok.line, column_of(text, tok.s), message)
+            DbspecDiagnostic(
+                "syntax",
+                tok.line,
+                column_of(text, tok.s),
+                f"block opened at this {describe(tok)} is not closed",
+            )
         )
 
-    def _syntax(self, toks, i: int, line: int, message: str) -> None:
+    def _syntax(self, toks, i: int, line: int, expected: str) -> None:
+        """A syntax error at token i, or at the line end (Go's cursor.fail): expected names what the position takes."""
         tok = toks[i] if i < len(toks) else None
         if tok is not None:
-            self._at("syntax", tok, message)
+            self._at("syntax", tok, f"unexpected {describe(tok)}, expected {expected}")
         else:
             # A line-end error is the column after the end of the line (Go's cursor.end): trailing blanks are counted too.
             self._report(
                 "syntax",
                 line,
                 len(self.lines[line - 1]) if 1 <= line <= len(self.lines) else 0,
-                message,
+                f"line ends, expected {expected}",
             )
 
     def _stop(self, rule: str, tok: Tk, message: str) -> None:
@@ -1037,15 +1043,9 @@ class DocumentParser:
         _mark(tok, "name")
         formed = well_formed(tok.t)
         if not formed:
-            self._at(
-                "name.format",
-                tok,
-                f"{tok.t} is a reserved word"
-                if tok.t in RESERVED
-                else f"{tok.t} does not match [a-z][a-z0-9_]*",
-            )
+            self._at("name.format", tok, _format_message(tok.t))
         if utf8_length(tok.t) > MAX_NAME_BYTES:
-            self._at("name.length", tok, f"{tok.t} is longer than 63 bytes")
+            self._at("name.length", tok, _length_message(tok.t))
         return formed
 
     def _constraint_name(self, tok: Tk) -> None:
@@ -1055,7 +1055,7 @@ class DocumentParser:
             self._at(
                 "name.duplicate",
                 tok,
-                f"{tok.t} repeats an index, key, foreign key or check name",
+                f"index, unique key, foreign key or check name {goq(tok.t)} repeats in the schema",
             )
         else:
             self.document.constraints[tok.t] = tok
@@ -1108,7 +1108,9 @@ class DocumentParser:
                     _mark(first, "keyword")
                     if phase > 1:
                         self._at(
-                            "order", first, "use lines come before tables and diagrams"
+                            "order",
+                            first,
+                            "use lines come before table and diagram blocks",
                         )
                     else:
                         phase = 1
@@ -1116,7 +1118,9 @@ class DocumentParser:
                 elif is_word(first, "table"):
                     _mark(first, "keyword")
                     if phase > 2:
-                        self._at("order", first, "tables come before diagrams")
+                        self._at(
+                            "order", first, "table blocks come before diagram blocks"
+                        )
                     else:
                         phase = 2
                     table = self._table_header(toks, line, own)
@@ -1127,11 +1131,11 @@ class DocumentParser:
                     diagram = self._diagram_header(toks, line, own)
                     state = "diagram"
                 else:
-                    self._at("syntax", first, "expected use, table or diagram")
+                    self._syntax(toks, 0, line, "'use', 'table' or 'diagram'")
             elif state == "table":
                 if is_punct(first, "}"):
                     if len(toks) > 1:
-                        self._syntax(toks, 1, line, "expected the end of the line")
+                        self._syntax(toks, 1, line, "the end of the line")
                     table.closing = own
                     table = None
                     state = "top"
@@ -1147,7 +1151,9 @@ class DocumentParser:
                         and len(toks) == 2
                     ):
                         self._at(
-                            "order", first, "a table has at most one settings block"
+                            "order",
+                            first,
+                            "a table has at most one settings block, after its other lines",
                         )
                     self._open_settings_block(
                         table,
@@ -1155,9 +1161,9 @@ class DocumentParser:
                     )
                     table.phase = 2
                     if not is_punct(second, "{"):
-                        self._syntax(toks, 1, line, "expected {")
+                        self._syntax(toks, 1, line, "'{'")
                     elif len(toks) > 2:
-                        self._syntax(toks, 2, line, "expected the end of the line")
+                        self._syntax(toks, 2, line, "the end of the line")
                     state = "settings"
                 elif first.k == WORD and first.t in CONSTRAINT_WORDS:
                     _mark(first, "keyword")
@@ -1165,7 +1171,7 @@ class DocumentParser:
                         self._at(
                             "order",
                             first,
-                            "key, index, foreign key and check lines come before settings",
+                            "key, index, foreign key and check lines come before the settings block",
                         )
                     else:
                         table.phase = 1
@@ -1181,12 +1187,12 @@ class DocumentParser:
                         self._at(
                             "order",
                             first,
-                            "columns come before keys, indexes, foreign keys, checks and settings",
+                            "column lines come before key, index, foreign key, check and settings lines",
                         )
             elif state == "settings":
                 if is_punct(first, "}"):
                     if len(toks) > 1:
-                        self._syntax(toks, 1, line, "expected the end of the line")
+                        self._syntax(toks, 1, line, "the end of the line")
                     self._settings_block.closing = own
                     state = "table"
                 else:
@@ -1194,7 +1200,7 @@ class DocumentParser:
             else:
                 if is_punct(first, "}"):
                     if len(toks) > 1:
-                        self._syntax(toks, 1, line, "expected the end of the line")
+                        self._syntax(toks, 1, line, "the end of the line")
                     diagram.closing = own
                     diagram = None
                     state = "top"
@@ -1217,26 +1223,30 @@ class DocumentParser:
             return
         # Reports only the innermost open block (as Go does): an open settings block does not report the table's `{`.
         if state == "settings":
-            self._unclosed(
-                self._settings_block.open, "the settings block is not closed"
-            )
+            self._unclosed(self._settings_block.open)
         elif state == "table":
-            self._unclosed(table.open, "the table block is not closed")
+            self._unclosed(table.open)
         if state == "diagram":
-            self._unclosed(diagram.open, "the diagram block is not closed")
+            self._unclosed(diagram.open)
         self.document.closing = comments
 
     def _header(self) -> bool:
         # A header error points at the first character that differs in `dbspec 1 <name>`, or, if it is missing, at the position after the end of the line.
         text = self.lines[0]
 
-        def fail(offset: int) -> bool:
-            self._report(
-                "header", 1, offset, "the first line is exactly dbspec 1 <document>"
-            )
+        def fail(
+            offset: int, message: str = "the first line is exactly dbspec 1 <document>"
+        ) -> bool:
+            self._report("header", 1, offset, message)
             self._stopped = True
             self.stop = "header"
             return False
+
+        # An empty text has no line (only the empty text splits into one empty line here).
+        if self.lines == [""]:
+            return fail(
+                0, "document is empty; the first line must be dbspec 1 <document>"
+            )
 
         prefix = "dbspec 1 "
         for i in range(len(prefix)):
@@ -1256,13 +1266,13 @@ class DocumentParser:
         self.document.name_tok = name
         return True
 
-    def _list(self, toks, i: int, line: int, close: str):
-        """Reads `<word> (, <word>)*` up to the closing token."""
+    def _list(self, toks, i: int, line: int, close: str, what: str):
+        """Reads `<word> (, <word>)*` up to the closing token; what names a word of the list."""
         words = []
         while True:
             w = toks[i] if i < len(toks) else None
             if w is None or w.k != WORD:
-                self._syntax(toks, i, line, "expected a name")
+                self._syntax(toks, i, line, what)
                 return None
             words.append(w)
             i += 1
@@ -1271,13 +1281,13 @@ class DocumentParser:
                 continue
             if is_punct(toks[i] if i < len(toks) else None, close):
                 return words, i + 1
-            self._syntax(toks, i, line, f"expected , or {close}")
+            self._syntax(toks, i, line, f"',' or '{close}'")
             return None
 
     def _end(self, toks, i: int, line: int) -> bool:
         if i >= len(toks):
             return True
-        self._syntax(toks, i, line, "expected the end of the line")
+        self._syntax(toks, i, line, "the end of the line")
         return False
 
     def _use(self, toks, line: int, comments) -> None:
@@ -1286,10 +1296,10 @@ class DocumentParser:
                 self.document.failed.add(t.t)
         doc = toks[1] if len(toks) > 1 else None
         if doc is None or doc.k != WORD:
-            return self._syntax(toks, 1, line, "expected a document name")
+            return self._syntax(toks, 1, line, "a document name")
         if not is_punct(toks[2] if len(toks) > 2 else None, "{"):
-            return self._syntax(toks, 2, line, "expected {")
-        listed = self._list(toks, 3, line, "}")
+            return self._syntax(toks, 2, line, "'{'")
+        listed = self._list(toks, 3, line, "}", "a table name")
         if listed is None:
             return
         if not self._end(toks, listed[1], line):
@@ -1315,7 +1325,7 @@ class DocumentParser:
             comments,
         )
         if len(self.document.tables) >= MAX_TABLES:
-            self._stop("limit", kw, f"a document has at most {MAX_TABLES} tables")
+            self._stop("limit", kw, f"document has more than {MAX_TABLES} tables")
             return table
         self.document.tables.append(table)
         table.header_failed = (
@@ -1324,11 +1334,11 @@ class DocumentParser:
             or len(toks) > 3
         )
         if not named:
-            self._syntax(toks, 1, line, "expected a table name")
+            self._syntax(toks, 1, line, "a table name")
         else:
             self._name(name)
             if not is_punct(toks[2] if len(toks) > 2 else None, "{"):
-                self._syntax(toks, 2, line, "expected {")
+                self._syntax(toks, 2, line, "'{'")
             else:
                 self._end(toks, 3, line)
         return table
@@ -1344,15 +1354,17 @@ class DocumentParser:
         diagram = _Diagram(open_, name if named else toks[0], named, comments)
         self.document.diagrams.append(diagram)
         if not named:
-            self._syntax(toks, 1, line, "expected a diagram name")
+            self._syntax(toks, 1, line, "a diagram name")
         else:
             if self._name(name) and any(
                 d is not diagram and d.named and d.name.t == name.t
                 for d in self.document.diagrams
             ):
-                self._at("name.duplicate", name, f"diagram {name.t} repeats")
+                self._at(
+                    "name.duplicate", name, f"diagram {goq(name.t)} is defined twice"
+                )
             if not is_punct(toks[2] if len(toks) > 2 else None, "{"):
-                self._syntax(toks, 2, line, "expected {")
+                self._syntax(toks, 2, line, "'{'")
             else:
                 self._end(toks, 3, line)
         return diagram
@@ -1397,7 +1409,7 @@ class DocumentParser:
                 self._at("type", tok, f"{kind}(p) needs 0 <= p <= 6")
                 return None
             return DbspecType(kind, precision=p)
-        self._at("type", tok, f'type "{kind}" is not a dbspec type')
+        self._at("type", tok, f"type {goq(kind)} is not a dbspec type")
         return None
 
     def _column(self, table: _Table, toks, line: int, comments) -> None:
@@ -1416,16 +1428,21 @@ class DocumentParser:
     def _column_line(self, table: _Table, toks, line: int, comments) -> None:
         name = toks[0]
         if name.k != WORD:
-            return self._syntax(toks, 0, line, "expected a column name")
+            return self._syntax(
+                toks,
+                0,
+                line,
+                "a column name, key, index, foreign key, check, settings or '}'",
+            )
         type_tok = toks[1] if len(toks) > 1 else None
         if type_tok is None or type_tok.k != WORD:
             table.failed.add(name.t)
-            return self._syntax(toks, 1, line, "expected a type")
+            return self._syntax(toks, 1, line, "a type")
         _mark(type_tok, "type")
         i = 2
         params = None
         if is_punct(toks[i] if i < len(toks) else None, "("):
-            listed = self._list(toks, i + 1, line, ")")
+            listed = self._list(toks, i + 1, line, ")", "a type parameter")
             if listed is None:
                 table.failed.add(name.t)
                 return
@@ -1433,11 +1450,11 @@ class DocumentParser:
         self._column_count += 1
         if len(table.columns) >= MAX_TABLE_COLUMNS:
             self._stop(
-                "limit", name, f"a table has at most {MAX_TABLE_COLUMNS} columns"
+                "limit", name, f"table has more than {MAX_TABLE_COLUMNS} columns"
             )
             return
         if self._column_count > MAX_COLUMNS:
-            self._stop("limit", name, f"a document has at most {MAX_COLUMNS} columns")
+            self._stop("limit", name, f"document has more than {MAX_COLUMNS} columns")
             return
         resolvable = self._name(name)
         type_ = self._type(type_tok, params)
@@ -1468,17 +1485,22 @@ class DocumentParser:
                 _mark_value(value_tok)
                 i += 1
             else:
-                self._syntax(toks, i, line, "expected a default value")
+                self._syntax(toks, i, line, "a default value")
                 complete = False
         if complete:
             self._end(toks, i, line)
         value = None
         if identity is not None:
-            if type_ is not None and type_.kind != "i64":
-                self._at("column", identity, "an identity column has the type i64")
+            # One diagnostic for the identity keyword, in Go's order.
             if null_tok is not None:
                 self._at("column", identity, "an identity column cannot be null")
-            if table.identity:
+            elif type_ is not None and type_.kind != "i64":
+                self._at(
+                    "column",
+                    identity,
+                    f"an identity column has type i64, not {type_text(type_)}",
+                )
+            elif table.identity:
                 self._at("column", identity, "a table has at most one identity column")
             table.identity = True
             if default_tok is not None:
@@ -1489,7 +1511,11 @@ class DocumentParser:
             elif value_tok is not None:
                 fitted = default_of(type_, value_tok)
                 if isinstance(fitted, str):
-                    self._at("column", value_tok, fitted)
+                    self._at(
+                        "column",
+                        value_tok,
+                        f"default {describe(value_tok)} is not a literal of type {type_text(type_)}",
+                    )
                 else:
                     value = fitted
         column = _Column(name, type_, null_tok is not None, identity, value, comments)
@@ -1498,23 +1524,25 @@ class DocumentParser:
         if not resolvable:
             return
         if name.t in table.col_map:
-            self._at("name.duplicate", name, f"column {name.t} repeats")
+            self._at(
+                "name.duplicate", name, f"column {goq(name.t)} repeats in the table"
+            )
         else:
             table.col_map[name.t] = column
 
     def _key_columns(self, toks, i: int, line: int, directions: bool):
         if not is_punct(toks[i] if i < len(toks) else None, "("):
-            self._syntax(toks, i, line, "expected (")
+            self._syntax(toks, i, line, "'('")
             return None
         i += 1
         cols = []
         if is_punct(toks[i] if i < len(toks) else None, ")"):
-            self._syntax(toks, i, line, "expected a column name")
+            self._syntax(toks, i, line, "a column name")
             return None
         while True:
             w = toks[i] if i < len(toks) else None
             if w is None or w.k != WORD:
-                self._syntax(toks, i, line, "expected a column name")
+                self._syntax(toks, i, line, "a column name")
                 return None
             i += 1
             descending = False
@@ -1531,7 +1559,7 @@ class DocumentParser:
                 continue
             if is_punct(toks[i] if i < len(toks) else None, ")"):
                 return cols, i + 1
-            self._syntax(toks, i, line, "expected , or )")
+            self._syntax(toks, i, line, "',' or ')'")
             return None
 
     def _constraint(self, table: _Table, toks, line: int, comments) -> None:
@@ -1555,7 +1583,7 @@ class DocumentParser:
         if kw.t == "primary":
             if not is_word(toks[1] if len(toks) > 1 else None, "key"):
                 table.failed_primary = True
-                return self._syntax(toks, 1, line, "expected key")
+                return self._syntax(toks, 1, line, "'key'")
             _mark(toks[1], "keyword")
             cols = self._key_columns(toks, 2, line, False)
             if cols is None or not self._end(toks, cols[1], line):
@@ -1569,7 +1597,7 @@ class DocumentParser:
             name = toks[1] if len(toks) > 1 else None
             if name is None or name.k != WORD:
                 failed_key()
-                return self._syntax(toks, 1, line, "expected a name")
+                return self._syntax(toks, 1, line, f"a {kw.t} name")
             cols = self._key_columns(toks, 2, line, kw.t == "index")
             if cols is None or not self._end(toks, cols[1], line):
                 failed_key()
@@ -1583,21 +1611,21 @@ class DocumentParser:
             return
         if kw.t == "foreign":
             if not is_word(toks[1] if len(toks) > 1 else None, "key"):
-                return self._syntax(toks, 1, line, "expected key")
+                return self._syntax(toks, 1, line, "'key'")
             _mark(toks[1], "keyword")
             name = toks[2] if len(toks) > 2 else None
             if name is None or name.k != WORD:
-                return self._syntax(toks, 2, line, "expected a name")
+                return self._syntax(toks, 2, line, "a foreign key name")
             cols = self._key_columns(toks, 3, line, False)
             if cols is None:
                 return
             i = cols[1]
             if not is_word(toks[i] if i < len(toks) else None, "references"):
-                return self._syntax(toks, i, line, "expected references")
+                return self._syntax(toks, i, line, "'references'")
             _mark(toks[i], "keyword")
             target = toks[i + 1] if i + 1 < len(toks) else None
             if target is None or target.k != WORD:
-                return self._syntax(toks, i + 1, line, "expected a table name")
+                return self._syntax(toks, i + 1, line, "a table name")
             refs = self._key_columns(toks, i + 2, line, False)
             if refs is None:
                 return
@@ -1613,7 +1641,7 @@ class DocumentParser:
                 _mark(toks[i + 1], "keyword")
                 action = toks[i + 2] if i + 2 < len(toks) else None
                 if action is None or action.k != WORD:
-                    return self._syntax(toks, i + 2, line, "expected an action")
+                    return self._syntax(toks, i + 2, line, "an action")
                 actions[event] = action.t
                 if action.t in ACTIONS:
                     _mark(action, "keyword")
@@ -1625,7 +1653,7 @@ class DocumentParser:
                 return self._stop(
                     "limit",
                     kw,
-                    f"a document has at most {MAX_FOREIGN_KEYS} foreign keys",
+                    f"document has more than {MAX_FOREIGN_KEYS} foreign keys",
                 )
             self._foreign_key_count += 1
             self._constraint_name(name)
@@ -1650,14 +1678,14 @@ class DocumentParser:
         if kw.t == "check":
             name = toks[1] if len(toks) > 1 else None
             if name is None or name.k != WORD:
-                return self._syntax(toks, 1, line, "expected a name")
+                return self._syntax(toks, 1, line, "a check name")
             if not is_punct(toks[2] if len(toks) > 2 else None, "("):
-                return self._syntax(toks, 2, line, "expected (")
+                return self._syntax(toks, 2, line, "'('")
             close = toks[-1]
             # Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
             if len(toks) < 4 or not is_punct(close, ")"):
                 return self._syntax(
-                    toks, len(toks), line, "expected ')' at the end of the check"
+                    toks, len(toks), line, "')' at the end of the check"
                 )
             self._constraint_name(name)
             table.checks.append(_Check(name, toks[3:-1], close, comments))
@@ -1675,7 +1703,7 @@ class DocumentParser:
             return
         kw = toks[0]
         if kw.k != WORD:
-            return self._syntax(toks, 0, line, "expected a setting")
+            return self._syntax(toks, 0, line, "a setting or '}'")
         _mark(kw, "setting")
         if kw.t in FORM_SETTINGS:
             entry = self._form_setting(toks, line, comments)
@@ -1683,62 +1711,65 @@ class DocumentParser:
                 self._settings_block.entries.append(entry)
             return
 
-        def words(frm: int, count):
+        def words(frm: int, whats, rest=None):
+            """Reads one word for each of whats and then, when rest is given, the words up to the line end as rest.
+            A failure names what the position takes (Go's arg, rest and stage)."""
             out = []
-            for i in range(frm, len(toks)):
-                if toks[i].k != WORD:
-                    self._syntax(toks, i, line, "expected a name")
+            i = frm
+            while True:
+                k = i - frm
+                if k < len(whats):
+                    what = whats[k]
+                elif rest is not None and i < len(toks):
+                    what = rest
+                elif i < len(toks):
+                    self._syntax(toks, i, line, "the end of the line")
+                    return None
+                else:
+                    return out
+                if i >= len(toks) or toks[i].k != WORD:
+                    self._syntax(toks, i, line, what)
                     return None
                 out.append(toks[i])
-            if (out and count is None) or (count is not None and len(out) >= count):
-                pass
-            else:
-                self._syntax(toks, len(toks), line, "expected a name")
-                return None
-            if count is not None and len(out) > count:
-                self._syntax(toks, frm + count, line, "expected the end of the line")
-                return None
-            return out
+                i += 1
 
         entry = None
         if kw.t == "entity":
-            w = words(1, 1)
+            w = words(1, ("an entity name",))
             if w is None:
                 return
             self._name(w[0])
             entry = _Setting(kw, comments, "entity", name=w[0])
         elif kw.t in ("updated", "soft_delete", "aes_version"):
-            w = words(1, 1)
+            w = words(1, ("a column name",))
             if w is None:
                 return
             self._name(w[0])
             entry = _Setting(kw, comments, kw.t, column=w[0])
         elif kw.t == "select":
             if not is_word(toks[1] if len(toks) > 1 else None, "explicit"):
-                return self._syntax(toks, 1, line, "expected explicit")
+                return self._syntax(toks, 1, line, "'explicit'")
             _mark(toks[1], "keyword")
-            w = words(2, None)
+            w = words(2, ("a column name",), "a column name")
             if w is None:
                 return
             for c in w:
                 self._name(c)
             entry = _Setting(kw, comments, "select_explicit", columns=tuple(w))
         elif kw.t == "codec":
-            w = words(1, None)
+            w = words(1, ("a column name", "a codec stage"), "a codec stage")
             if w is None:
                 return
-            if len(w) < 2:
-                return self._syntax(toks, len(toks), line, "expected a codec stage")
             self._name(w[0])
             stages = w[1:]
             for s in stages:
                 if s.t in STAGES:
                     _mark(s, "keyword")
                 elif not self._detached_block:
-                    self._at("setting", s, f"{s.t} is not a codec stage")
+                    self._at("setting", s, f"codec stage {goq(s.t)} is unknown")
             entry = _Setting(kw, comments, "codec", column=w[0], stages=tuple(stages))
         elif kw.t == "blind_index":
-            w = words(1, 2)
+            w = words(1, ("the AES column", "the index column"))
             if w is None:
                 return
             for c in w:
@@ -1747,7 +1778,14 @@ class DocumentParser:
                 kw, comments, "blind_index", column=w[0], index_column=w[1]
             )
         elif kw.t == "navigation":
-            w = words(1, 3)
+            w = words(
+                1,
+                (
+                    "a foreign key name",
+                    "the child relation name",
+                    "the parent relation name",
+                ),
+            )
             if w is None:
                 return
             for c in w:
@@ -1767,13 +1805,19 @@ class DocumentParser:
         elif kw.t == "audit":
             parts = []
             i = 1
-            for label in ("into", "column", "references", "action", "previous"):
+            for label, what in (
+                ("into", "the history table"),
+                ("column", "the audit column"),
+                ("references", "the audit record table"),
+                ("action", "the action column"),
+                ("previous", "the previous column"),
+            ):
                 if not is_word(toks[i] if i < len(toks) else None, label):
-                    return self._syntax(toks, i, line, f"expected {label}")
+                    return self._syntax(toks, i, line, f"'{label}'")
                 _mark(toks[i], "keyword")
                 w = toks[i + 1] if i + 1 < len(toks) else None
                 if w is None or w.k != WORD:
-                    return self._syntax(toks, i + 1, line, "expected a name")
+                    return self._syntax(toks, i + 1, line, what)
                 self._name(w)
                 parts.append(w)
                 i += 2
@@ -1781,23 +1825,23 @@ class DocumentParser:
             if is_word(toks[i] if i < len(toks) else None, "tables"):
                 _mark(toks[i], "keyword")
                 names = []
-                for k, want in (
-                    (1, None),
-                    (2, "("),
-                    (3, None),
-                    (4, ","),
-                    (5, None),
-                    (6, ")"),
+                for k, want, what in (
+                    (1, None, "the tables table"),
+                    (2, "(", None),
+                    (3, None, "the record column"),
+                    (4, ",", None),
+                    (5, None, "the name column"),
+                    (6, ")", None),
                 ):
                     w = toks[i + k] if i + k < len(toks) else None
                     if want is None:
                         if w is None or w.k != WORD:
-                            return self._syntax(toks, i + k, line, "expected a name")
+                            return self._syntax(toks, i + k, line, what)
                         _mark(w, "name")
                         self._name(w)
                         names.append(w)
                     elif not is_punct(w, want):
-                        return self._syntax(toks, i + k, line, f"expected {want}")
+                        return self._syntax(toks, i + k, line, f"'{want}'")
                 tables = tuple(names)
                 i += 7
             lists = []
@@ -1805,8 +1849,8 @@ class DocumentParser:
                 toks[i] if i < len(toks) else None, "include"
             ):
                 if not is_punct(toks[i + 1] if i + 1 < len(toks) else None, "("):
-                    return self._syntax(toks, i + 1, line, "expected (")
-                listed = self._list(toks, i + 2, line, ")")
+                    return self._syntax(toks, i + 1, line, "'('")
+                listed = self._list(toks, i + 2, line, ")", "a column name")
                 if listed is None:
                     return
                 _mark(toks[i], "keyword")
@@ -1816,7 +1860,12 @@ class DocumentParser:
                 i = listed[1]
             if i < len(toks):
                 return self._syntax(
-                    toks, i, line, "expected exclude, include or the end of the line"
+                    toks,
+                    i,
+                    line,
+                    "'tables', 'exclude', 'include' or the end of the line"
+                    if tables is None
+                    else "'exclude', 'include' or the end of the line",
                 )
             entry = _Setting(
                 kw,
@@ -1831,17 +1880,15 @@ class DocumentParser:
                 lists=tuple(lists),
             )
         else:
-            return self._at("setting", kw, f"{kw.t} is not a setting")
+            return self._at("setting", kw, f"setting {goq(kw.t)} is unknown")
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
-        """Reads markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines as Go's settingsLine does.
+        """Reads markdown, store, title, body, order, and task_marker lines as Go's settingsLine does.
         Returns _Setting if the line matches, otherwise None (the error was reported)."""
         c = _Cursor(self, toks, line, self.lines[line - 1])
         kw = c.next()
         args = []
-        lists = []
-        form = ""
 
         def arg(what: str) -> bool:
             tok, ok = c.name(what)
@@ -1850,7 +1897,7 @@ class DocumentParser:
             return ok
 
         ok = True
-        if kw.t in ("markdown", "title", "body", "order"):
+        if kw.t in ("markdown", "title", "body", "order", "task_marker"):
             ok = arg("a column name")
         elif kw.t == "store":
             kind, ok = c.one_of(
@@ -1876,65 +1923,9 @@ class DocumentParser:
                     )
                     if ok:
                         args.append(period)
-        elif kw.t == "key_prefix":
-            prefix, ok = c.quoted("a key prefix in quotes")
-            if ok:
-                args.append(prefix)
-        elif kw.t == "checkbox":
-            ok = arg("the state column") and arg("a state name")
-            if ok:
-                glyph, ok = c.quoted("a glyph in quotes")
-                if ok:
-                    args.append(glyph)
-        else:
-            ok = arg("the state column")
-            if not ok:
-                pass
-            elif c.form_ahead("initial"):
-                c.next()
-                form = "initial"
-                ok = arg("a state name")
-            elif c.form_ahead("terminal"):
-                c.next()
-                form = "terminal"
-                ok = arg("a state name")
-            elif c.form_ahead("history"):
-                c.next()
-                form = "history"
-                ok = (
-                    arg("the history table")
-                    and c.keyword("row")
-                    and arg("the foreign key column")
-                    and c.keyword("from")
-                    and arg("the from column")
-                    and c.keyword("to")
-                    and arg("the to column")
-                    and c.keyword("at")
-                    and arg("the at column")
-                )
-            elif c.form_ahead("limit"):
-                c.next()
-                form = "limit"
-                ok = arg("a state name")
-                if ok:
-                    count, ok = c.value("a row count")
-                    if ok:
-                        args.append(count)
-            else:
-                form = "transition"
-                ok = arg("the from state") and c.arrow() and arg("the to state")
-            if ok and form in ("transition", "terminal") and c.peek(WORD, "require"):
-                require = c.next()
-                _mark(require, "keyword")
-                columns = c.names()
-                ok = columns is not None
-                if ok:
-                    lists.append((require, tuple(columns)))
         if not ok or not c.done():
             return None
-        return _Setting(
-            kw, comments, kw.t, args=tuple(args), form=form, lists=tuple(lists)
-        )
+        return _Setting(kw, comments, kw.t, args=tuple(args))
 
     def _lexed_table_line(self, table: _Table, toks, line: int, comments) -> str:
         """Handles a table line with a lex error (not }) as Go's tableLine does: the line fails and only the name remains. settings
@@ -1961,13 +1952,13 @@ class DocumentParser:
     def _placement(self, diagram: _Diagram, toks, line: int, comments) -> None:
         table = toks[0]
         if table.k != WORD:
-            return self._syntax(toks, 0, line, "expected a table name")
+            return self._syntax(toks, 0, line, "a table name or '}'")
         if not is_word(toks[1] if len(toks) > 1 else None, "at"):
-            return self._syntax(toks, 1, line, "expected at")
+            return self._syntax(toks, 1, line, "'at'")
         _mark(toks[1], "keyword")
         i = 2
         coordinates = []
-        for _ in range(2):
+        for what in ("the x coordinate", "the y coordinate"):
             v = toks[i] if i < len(toks) else None
             nxt = toks[i + 1] if i + 1 < len(toks) else None
             if _is_negative_word(v, nxt):
@@ -1977,7 +1968,7 @@ class DocumentParser:
                 coordinates.append((v, v.t))
                 i += 1
             else:
-                return self._syntax(toks, i, line, "expected a coordinate")
+                return self._syntax(toks, i, line, what)
         if not self._end(toks, i, line):
             return
         self._name(table)
@@ -1988,7 +1979,7 @@ class DocumentParser:
                 self._at(
                     "diagram",
                     tok,
-                    f"coordinate {text} is not an integer from "
+                    f"coordinate '{text}' is not an integer from "
                     f"-2147483648 to 2147483647",
                 )
                 value = 0
@@ -2002,19 +1993,22 @@ class DocumentParser:
         available = {}
         used_at = {}
         used_documents = set()
-        used_constraints = set()
+        # A constraint name of a used document => the first used document that declares it (Go's usedConstraints).
+        used_constraints = {}
         used_tables = set()
         for use in doc.uses:
             if not well_formed(use.doc.t):
                 continue
             if use.doc.t in used_documents:
                 self._at(
-                    "name.duplicate", use.doc, f"document {use.doc.t} is used twice"
+                    "name.duplicate",
+                    use.doc,
+                    f"document {goq(use.doc.t)} is used twice",
                 )
                 continue
             used_documents.add(use.doc.t)
             if use.doc.t == doc.name:
-                self._at("use", use.doc, f"document {doc.name} uses itself")
+                self._at("use", use.doc, "a document cannot use itself")
                 continue
             target = self._resolve(use.doc)
             if target is None:
@@ -2023,36 +2017,46 @@ class DocumentParser:
                 for t in use.tables:
                     doc.failed.add(t.t)
                 continue
-            if target is not None:
-                names = set()
-                for name in target.constraints:
-                    if name in used_constraints or name in used_tables:
-                        names.add(name)
-                for t in target.tables:
-                    if t.named and t.name.t in used_constraints:
-                        names.add(t.name.t)
-                for name in names:
+            for t in target.tables:
+                if t.named:
+                    used_tables.add(t.name.t)
+            # Go reports the first constraint name that an earlier used document declares, once for the use line.
+            for name in target.constraints:
+                owner = used_constraints.get(name)
+                if owner is not None and owner != use.doc.t:
                     self._at(
                         "name.duplicate",
                         use.doc,
-                        f"{name} is declared by two used documents",
+                        f"document {goq(use.doc.t)} repeats constraint name {goq(name)} of document {goq(owner)}",
                     )
-                for name in target.constraints:
-                    used_constraints.add(name)
-                for t in target.tables:
-                    if t.named:
-                        used_tables.add(t.name.t)
-            tables = {t.name.t: t for t in target.tables if t.named}
+                    break
+            for name in target.constraints:
+                used_constraints.setdefault(name, use.doc.t)
+            tables = {}
+            for t in target.tables:
+                if t.named:
+                    tables.setdefault(t.name.t, t)
+            listed = set()
             for t in use.tables:
                 if not well_formed(t.t):
                     continue
+                if t.t in listed:
+                    self._at("name.duplicate", t, f"table {goq(t.t)} is listed twice")
+                    continue
+                listed.add(t.t)
                 if t.t in available:
-                    self._at("name.duplicate", t, f"table {t.t} is used twice")
+                    self._at(
+                        "name.duplicate",
+                        t,
+                        f"table {goq(t.t)} is already used from another document",
+                    )
                     continue
                 found = tables.get(t.t)
                 if found is None:
                     self._at(
-                        "use", t, f"document {use.doc.t} does not define table {t.t}"
+                        "use",
+                        t,
+                        f"document {goq(use.doc.t)} does not define table {goq(t.t)}",
                     )
                 available[t.t] = found
                 used_at[t.t] = t
@@ -2071,7 +2075,8 @@ class DocumentParser:
                     self._at(
                         "name.duplicate",
                         t.name,
-                        f"table {t.name.t} repeats a constraint name of a used document",
+                        f"table {goq(t.name.t)} is named like a constraint of document "
+                        f"{goq(used_constraints[t.name.t])}",
                     )
                 continue
             # Go does not report duplicate names of tables whose header failed (the failed table in validate.go).
@@ -2081,21 +2086,24 @@ class DocumentParser:
             self._at(
                 "name.duplicate",
                 t.name if used is None else later(used, t.name),
-                f"table {t.name.t} repeats",
+                f"table {goq(t.name.t)} is defined twice"
+                if used is None
+                else f"table {goq(t.name.t)} is also a used table",
             )
         for name in doc.failed:
             if name not in available:
                 available[name] = None
         for name, tok in doc.constraints.items():
-            table = local_tables.get(name)
-            if table is not None:
-                # As in Go's constraint checks, reports at the place where the constraint name is used (whether the table comes before or after).
+            # As in Go's constraint checks, reports at the place where the constraint name is used (whether the table comes before or after).
+            if name in used_constraints:
                 self._at(
-                    "name.duplicate", tok, f"{name} names both a table and a constraint"
+                    "name.duplicate",
+                    tok,
+                    f"name {goq(name)} is a constraint name of used document {goq(used_constraints[name])}",
                 )
-            elif name in used_constraints or name in used_tables:
+            elif name in local_tables or name in used_tables:
                 self._at(
-                    "name.duplicate", tok, f"{name} repeats a name of a used document"
+                    "name.duplicate", tok, f"name {goq(name)} is also a table name"
                 )
         for t in doc.tables:
             self._validate_table(t, available)
@@ -2107,21 +2115,25 @@ class DocumentParser:
                     continue
                 if p.table.t not in available:
                     self._at(
-                        "diagram", p.table, f"table {p.table.t} is not defined or used"
+                        "diagram", p.table, f"table {goq(p.table.t)} {_NOT_A_TABLE}"
                     )
                 elif p.table.t in placed:
                     self._at(
-                        "diagram", p.table, f"table {p.table.t} repeats in the diagram"
+                        "diagram",
+                        p.table,
+                        f"table {goq(p.table.t)} appears twice in the diagram",
                     )
                 placed.add(p.table.t)
 
     def _resolve(self, tok: Tk):
         name = tok.t
-        if name not in self.context.documents:
-            self._at("use", tok, f"document {name} is not in the declared document set")
-            return None
         if name in self._chain:
-            self._at("use", tok, f"document {name} uses itself through use lines")
+            self._at("use", tok, f"using document {goq(name)} closes a use cycle")
+            return None
+        if name not in self.context.documents:
+            self._at(
+                "use", tok, f"document {goq(name)} is not in the declared document set"
+            )
             return None
         parsed = self.context.cache.get(name)
         if parsed is None:
@@ -2129,21 +2141,20 @@ class DocumentParser:
                 self.context.documents[name], self.context, list(self._chain) + [name]
             )
             self.context.cache[name] = parsed
+        if parsed.stop is None and parsed.document.name != name:
+            self._at(
+                "use",
+                tok,
+                f"the document set entry {goq(name)} holds document {goq(parsed.document.name)}",
+            )
+            return None
         if parsed.diagnostics:
             first = parsed.diagnostics[0]
             self._at(
                 "use",
                 tok,
-                f"document {name} is invalid: {first.rule} at line {first.line} "
-                f"column {first.column}: {first.message}",
-            )
-            return None
-        if parsed.document.name != name:
-            self._at(
-                "use",
-                tok,
-                f"the declared document {name} has the header name "
-                f"{parsed.document.name}",
+                f"used document {goq(name)} is invalid: line {first.line} column {first.column} "
+                f"{first.rule}: {first.message}",
             )
             return None
         return parsed.document
@@ -2157,7 +2168,9 @@ class DocumentParser:
             if tok.t in table.failed:
                 return None
             self._at(
-                rule, tok, f"{what} {tok.t} is not a column of table {table.name.t}"
+                rule,
+                tok,
+                f"{what} {goq(tok.t)} is not a column of table {goq(table.name.t)}",
             )
             return None
         return column
@@ -2168,7 +2181,9 @@ class DocumentParser:
             self._at("key", at, "a key or index lists at least one column")
         if len(key.cols) > MAX_KEY_COLUMNS:
             self._at(
-                "key", at, f"a key or index lists at most {MAX_KEY_COLUMNS} columns"
+                "key",
+                at,
+                f"a key or index lists {len(key.cols)} columns, more than {MAX_KEY_COLUMNS}",
             )
         seen = set()
         varchar = 0
@@ -2177,7 +2192,7 @@ class DocumentParser:
             if column is None:
                 continue
             if c.tok.t in seen:
-                self._at("key", c.tok, f"column {c.tok.t} repeats")
+                self._at("key", c.tok, f"column {goq(c.tok.t)} repeats in the key")
                 continue
             seen.add(c.tok.t)
             if column.type is not None and column.type.kind in ("text", "bytes"):
@@ -2187,14 +2202,14 @@ class DocumentParser:
                     f"a {column.type.kind} column cannot be part of a key or index",
                 )
             if primary and column.nullable:
-                self._at("key", c.tok, f"primary key column {c.tok.t} is null")
+                self._at("key", c.tok, f"primary key column {goq(c.tok.t)} is nullable")
             if column.type is not None and column.type.kind == "varchar":
                 varchar += column.type.length
         if varchar > MAX_KEY_VARCHAR:
             self._at(
                 "key",
                 at,
-                f"the varchar columns total {varchar} characters, more than "
+                f"the varchar columns of the key total {varchar} characters, more than "
                 f"{MAX_KEY_VARCHAR}",
             )
 
@@ -2223,11 +2238,11 @@ class DocumentParser:
 
     def _validate_table(self, table: _Table, available) -> None:
         if len(table.columns) == 0 and table.failed_lines == 0:
-            self._at("column", table.name, "a table has at least one column")
+            self._at("column", table.name, f"table {goq(table.name.t)} has no column")
         if len(table.pks) == 0 and not table.failed_primary:
-            self._at("key", table.name, f"table {table.name.t} has no primary key")
+            self._at("key", table.name, f"table {goq(table.name.t)} has no primary key")
         for extra in table.pks[1:]:
-            self._at("key", extra.kw, "a table has exactly one primary key")
+            self._at("key", extra.kw, "table has more than one primary key")
         for pk in table.pks[:1]:
             self._key_like(table, pk, True)
         for u in table.uniques:
@@ -2242,7 +2257,7 @@ class DocumentParser:
                     self._at(
                         "column",
                         identity.identity,
-                        "an identity column is the only primary key column",
+                        "the identity column must be the only primary key column",
                     )
             elif all(
                 well_formed(c.tok.t) and c.tok.t not in table.failed for c in pk.cols
@@ -2252,7 +2267,7 @@ class DocumentParser:
                     self._at(
                         "column",
                         identity.identity,
-                        "an identity column is the only primary key column",
+                        "the identity column must be the only primary key column",
                     )
         banned = set()
         action_child = False
@@ -2276,7 +2291,7 @@ class DocumentParser:
                 self._at(
                     "foreign_key",
                     tok,
-                    f'action "{tok.t}" is not restrict, cascade or set_null',
+                    f"action {goq(tok.t)} is not restrict, cascade or set_null",
                 )
         resolved = True
         children = []
@@ -2292,7 +2307,9 @@ class DocumentParser:
                 children.append(None)
                 continue
             if c.t in seen:
-                self._at("foreign_key", c, f"column {c.t} repeats")
+                self._at(
+                    "foreign_key", c, f"column {goq(c.t)} repeats in the foreign key"
+                )
                 resolved = False
             seen.add(c.t)
             children.append(column)
@@ -2302,9 +2319,7 @@ class DocumentParser:
             self._foreign_key_keys(table, fk, children, resolved)
             return
         if fk.table.t not in available:
-            self._at(
-                "foreign_key", fk.table, f"table {fk.table.t} is not defined or used"
-            )
+            self._at("foreign_key", fk.table, f"table {goq(fk.table.t)} {_NOT_A_TABLE}")
             self._foreign_key_keys(table, fk, children, resolved)
             return
         target = available[fk.table.t]
@@ -2330,8 +2345,7 @@ class DocumentParser:
             self._at(
                 "foreign_key",
                 fk.name,
-                "the foreign key lists a different number of child "
-                "and referenced columns",
+                f"foreign key lists {len(fk.cols)} columns and {len(fk.refs)} referenced columns",
             )
         elif references_known:
             refs = ",".join(r.t for r in fk.refs)
@@ -2344,7 +2358,7 @@ class DocumentParser:
                     "foreign_key",
                     fk.name,
                     f"the referenced columns are not the primary key or "
-                    f"a unique key of table {target.name.t}",
+                    f"a unique key of table {goq(fk.table.t)}",
                 )
             for i in range(len(children)):
                 child = children[i].type if children[i] is not None else None
@@ -2357,8 +2371,8 @@ class DocumentParser:
                     self._at(
                         "foreign_key",
                         fk.name,
-                        f"column {fk.cols[i].t} is {type_text(child)} "
-                        f"but references {type_text(parent)}",
+                        f"column {goq(fk.cols[i].t)} has type {type_text(child)}, "
+                        f"the referenced column has {type_text(parent)}",
                     )
                     break
         self._foreign_key_keys(table, fk, children, resolved)
@@ -2378,16 +2392,17 @@ class DocumentParser:
             self._at(
                 "foreign_key",
                 fk.name,
-                "no index or key of the table leads with the foreign key columns",
+                "the table declares no index or key whose leading columns are the foreign key columns",
             )
-        if (fk.on_delete == "set_null" or fk.on_update == "set_null") and any(
-            c is not None and not c.nullable for c in children
-        ):
-            self._at(
-                "foreign_key",
-                fk.name,
-                "set_null requires every child column to be null",
-            )
+        if fk.on_delete == "set_null" or fk.on_update == "set_null":
+            for i, c in enumerate(children):
+                if c is not None and not c.nullable:
+                    self._at(
+                        "foreign_key",
+                        fk.name,
+                        f"set_null requires every foreign key column to be null; {goq(fk.cols[i].t)} is not",
+                    )
+                    break
 
     def _check(self, table: _Table, check: _Check, banned) -> None:
         toks = check.expr
@@ -2425,16 +2440,16 @@ class DocumentParser:
             i += 1
             return tok
 
-        def expect_punct(text: str) -> None:
+        def expect_punct(text: str, reason: str) -> None:
             tok = take()
             if not is_punct(tok, text):
-                raise _ExpressionSyntax(tok)
+                raise _ExpressionSyntax(tok, reason)
             out.append(text)
 
         def expect_word(text: str) -> None:
             tok = take()
             if not is_word(tok, text):
-                raise _ExpressionSyntax(tok)
+                raise _ExpressionSyntax(tok, f"is not allowed here; expected {text}")
             read_mark(tok, "keyword")
             out.append(text)
 
@@ -2474,12 +2489,12 @@ class DocumentParser:
             if is_word(t, "true") or is_word(t, "false"):
                 read_mark(t, "keyword")
                 return literal_operand(t, t.t)
-            if is_word(t, "null"):
-                flag("check", t, "the null literal is not part of a predicate")
-            elif t.k == WORD and t.t not in EXPRESSION_WORDS:
-                flag("check", t, f"{t.t} is not a literal")
+            if t.k == WORD:
+                flag(
+                    "check", t, f"{describe(t)} is not a literal in a check expression"
+                )
             else:
-                raise _ExpressionSyntax(t)
+                raise _ExpressionSyntax(t, "is not a literal")
             out.append(t.t)
             return None
 
@@ -2491,7 +2506,11 @@ class DocumentParser:
             if t.k == STR:
                 return literal_operand(t, t.t)
             if t.k == OP and t.t == "-":
-                flag("check", t, "unary minus applies only to a number literal")
+                flag(
+                    "check",
+                    t,
+                    f"{describe(t)} is not allowed here in a check expression",
+                )
                 out.append("-")
                 term()
                 return None
@@ -2503,12 +2522,20 @@ class DocumentParser:
                 read_mark(t, "keyword")
                 return literal_operand(t, t.t)
             if t.t == "null":
-                flag("check", t, "the null literal is not part of a predicate")
+                flag(
+                    "check",
+                    t,
+                    f"{describe(t)} is not allowed here in a check expression",
+                )
                 return None
             if t.t in EXPRESSION_WORDS:
                 raise _ExpressionSyntax(t)
             if is_punct(peek(), "("):
-                flag("check", t, f"function {t.t} is not part of a predicate")
+                flag(
+                    "check",
+                    t,
+                    f"{describe(t)} is a function; check predicates have no functions in a check expression",
+                )
                 depth = 0
                 while True:
                     u = take()
@@ -2530,11 +2557,16 @@ class DocumentParser:
             if column is None and t.t in table.failed:
                 return None
             if column is None:
-                issue(t, f"{t.t} is not a column of table {table.name.t}")
+                issue(
+                    t, f"column {goq(t.t)} is not a column of table {goq(table.name.t)}"
+                )
             elif t.t in banned:
-                issue(t, f"column {t.t} belongs to a cascade or set_null foreign key")
+                issue(
+                    t,
+                    f"column {goq(t.t)} belongs to a foreign key with cascade or set_null",
+                )
             elif column.type is not None and column.type.kind == "bytes":
-                issue(t, f"bytes column {t.t} is not part of a predicate")
+                issue(t, f"bytes column {goq(t.t)} cannot be part of a check")
             else:
                 return _Operand(column, t, column.type, -1)
             return None
@@ -2545,7 +2577,11 @@ class DocumentParser:
                 t = peek()
                 if t is None or t.k != OP or t.t not in ARITHMETIC:
                     break
-                flag("check", t, f"arithmetic {t.t} is not part of a predicate")
+                flag(
+                    "check",
+                    t,
+                    f"{describe(t)} is not allowed here in a check expression",
+                )
                 out.append(take().t)
                 term()
                 result = None
@@ -2561,19 +2597,17 @@ class DocumentParser:
             if column.type is None:
                 return
             fitted = default_of(column.type, value.tok)
-            if isinstance(fitted, str):
-                issue(
-                    value.tok,
-                    f"{value.tok.t} does not meet column {column.tok.t}: {fitted}",
-                )
-            elif fitted.kind == "literal":
+            if not isinstance(fitted, str) and fitted.kind == "literal":
                 out[value.slot] = fitted.text
             else:
-                issue(value.tok, f"{value.tok.t} is not a literal")
+                issue(
+                    value.tok,
+                    f"{describe(value.tok)} is not a {type_text(column.type)} value",
+                )
 
         def compare(left: _Operand, op: Tk, right: _Operand) -> None:
             if op.t in ORDERINGS and (is_bool(left) or is_bool(right)):
-                issue(op, f"{op.t} does not compare bool values")
+                issue(op, f"{op.t} does not order bool values")
             if left.column is not None and right.column is not None:
                 if (
                     left.type is not None
@@ -2582,8 +2616,8 @@ class DocumentParser:
                 ):
                     issue(
                         right.tok,
-                        f"column {right.tok.t} ({type_text(right.type)}) does not "
-                        f"meet column {left.tok.t} ({type_text(left.type)})",
+                        f"column {goq(right.tok.t)} is {type_text(right.type)} and does not "
+                        f"meet {type_text(left.type)}",
                     )
             elif left.column is not None:
                 fit(left, right)
@@ -2593,11 +2627,11 @@ class DocumentParser:
         def subject(left, word: Tk):
             # The operand before in and is is a column.
             if left is not None and left.column is None:
-                flag("check", left.tok, f"{word.t} takes a column, not a literal")
+                flag("check", left.tok, f"{describe(left.tok)} is not a column")
                 return None
             return left
 
-        def alone(start: Tk):
+        def alone(start: Tk, left):
             nxt = peek()
             if (
                 nxt is not None
@@ -2605,9 +2639,15 @@ class DocumentParser:
                 and not is_word(nxt, "or")
                 and not is_punct(nxt, ")")
             ):
-                flag("check", nxt, f"{nxt.t} is not part of a predicate")
+                flag(
+                    "check",
+                    nxt,
+                    f"{describe(nxt)} is not allowed here in a check expression",
+                )
             else:
-                flag("check", start, f"{start.t} alone is not a predicate")
+                # The operand as Go shows it: a negative number is one token from its '-'.
+                at = left.tok if left is not None else start
+                flag("check", start, f"{describe(at)} alone is not a predicate")
             raise _ExpressionSyntax(None)
 
         def predicate():
@@ -2617,7 +2657,7 @@ class DocumentParser:
                 inner = or_expr()
                 closing = take()
                 if not is_punct(closing, ")"):
-                    raise _ExpressionSyntax(closing)
+                    raise _ExpressionSyntax(closing, "is not allowed here; expected )")
                 return inner
             out = []
             start = peek()
@@ -2635,7 +2675,7 @@ class DocumentParser:
                     flag(
                         "check",
                         left.tok,
-                        "a comparison has at least one column operand",
+                        f"{describe(left.tok)} is compared with a literal; a comparison needs a column",
                     )
                 elif left is not None and right is not None:
                     compare(left, t, right)
@@ -2652,12 +2692,12 @@ class DocumentParser:
                 column = subject(left, u)
                 read_mark(take(), "keyword")
                 out.append(u.t)
-                expect_punct("(")
+                expect_punct("(", "is not allowed here; expected (")
                 values = [literal()]
                 while is_punct(peek(), ","):
                     out.append(take().t)
                     values.append(literal())
-                expect_punct(")")
+                expect_punct(")", "is not allowed here; expected , or )")
                 if column is not None:
                     for value in values:
                         if value is not None:
@@ -2672,7 +2712,7 @@ class DocumentParser:
                     out.append("not")
                 expect_word("null")
                 return ("leaf", list(out))
-            alone(start)
+            alone(start, left)
 
         def and_expr():
             left = predicate()
@@ -2696,9 +2736,9 @@ class DocumentParser:
             flag(
                 "check",
                 error.at if error.at is not None else check.close,
-                "the check expression ends early"
+                "check expression ends early"
                 if error.at is None
-                else f"{error.at.t} is not allowed here in a check expression",
+                else f"{describe(error.at)} {error.reason} in a check expression",
             )
             return
         if flagged:
@@ -2715,8 +2755,8 @@ class DocumentParser:
     def _settings(
         self, table: _Table, settings: _Settings, available, action_child: bool
     ) -> None:
-        """Checks the settings block (settings in engine/dbspec/settings.go). Only the lines accepted by repeated checks are checked, and
-        state_machine and checkbox agreement between lines is checked. Diagnostic positions are the setting keyword, column reference, and history table name."""
+        """Checks the settings block (settings in engine/dbspec/settings.go). Only the lines accepted by repeated checks are checked.
+        Diagnostic positions are the setting keyword, column reference, and history table name."""
         once = set()
         repeatable = {
             "codec": set(),
@@ -2738,10 +2778,10 @@ class DocumentParser:
                 else:
                     key = s.column.t
                 if key in repeatable[kind]:
-                    self._at("setting", s.kw, f'{s.kw.t} repeats for "{key}"')
+                    self._at("setting", s.kw, f"{s.kw.t} repeats for {goq(key)}")
                     continue
                 repeatable[kind].add(key)
-            elif kind not in ("state_machine", "checkbox"):
+            else:
                 if kind in once:
                     self._at("setting", s.kw, f"setting {s.kw.t} repeats")
                     continue
@@ -2757,7 +2797,6 @@ class DocumentParser:
 
         for s in accepted:
             self._setting_check(table, s, aes_columns, available, action_child, lookup)
-        self._state_machine_consistency(table, settings.entries, available)
         aes_version = by_kind.get("aes_version")
         if aes_version is None:
             for s in aes_codecs:
@@ -2786,7 +2825,11 @@ class DocumentParser:
         elif kind == "updated":
             c = lookup(s.column)
             if c is not None and c.type is not None and c.type.kind != "datetime":
-                self._at("setting", s.column, "updated names a datetime column")
+                self._at(
+                    "setting",
+                    s.column,
+                    f"updated needs a datetime column, not {type_text(c.type)}",
+                )
         elif kind == "soft_delete":
             c = lookup(s.column)
             if (
@@ -2795,13 +2838,17 @@ class DocumentParser:
                 and (c.type.kind != "datetime" or not c.nullable)
             ):
                 self._at(
-                    "setting", s.column, "soft_delete names a nullable datetime column"
+                    "setting", s.column, "soft_delete needs a nullable datetime column"
                 )
         elif kind == "select_explicit":
             listed = set()
             for tok in s.columns:
                 if lookup(tok) is not None and tok.t in listed:
-                    self._at("setting", tok, f"column {tok.t} repeats")
+                    self._at(
+                        "setting",
+                        tok,
+                        f"column {goq(tok.t)} repeats in select explicit",
+                    )
                 listed.add(tok.t)
         elif kind == "codec":
             self._codec(table, s)
@@ -2813,7 +2860,7 @@ class DocumentParser:
                 and (c.type.kind not in ("i16", "i32", "i64") or c.nullable)
             ):
                 self._at(
-                    "setting", s.column, "aes_version names a non-null integer column"
+                    "setting", s.column, "aes_version needs a non-null integer column"
                 )
         elif kind == "blind_index":
             self._blind_index(table, s, aes_columns)
@@ -2827,7 +2874,7 @@ class DocumentParser:
                 self._at(
                     "setting",
                     s.foreign_key,
-                    f'foreign key "{s.foreign_key.t}" is not a foreign key of the table',
+                    f"foreign key {goq(s.foreign_key.t)} is not a foreign key of the table",
                 )
         elif kind == "immutable":
             if action_child:
@@ -2854,8 +2901,6 @@ class DocumentParser:
             if s.args[0].t == "block":
                 self._foreign_key_name(table, s.args[1])
             self._store_shard(table, s)
-        elif kind == "key_prefix":
-            self._key_prefix(table, s)
         elif kind in ("title", "body"):
             c = self._column_ref(table, s.args[0])
             if c is not None and (
@@ -2869,23 +2914,17 @@ class DocumentParser:
                 )
         elif kind == "order":
             self._order(table, s)
-        elif kind == "state_machine":
-            self._state_machine_line(table, s)
+        elif kind == "task_marker":
+            self._task_marker(table, s)
 
     def _ref(self, tok: Tk) -> bool:
         """Go's validator.ref: if the name has the right form it is true; otherwise it reports a name diagnostic and is false."""
         if well_formed(tok.t):
             return True
         if not well_formed(tok.t):
-            self._at(
-                "name.format",
-                tok,
-                f"{tok.t} is a reserved word"
-                if tok.t in RESERVED
-                else f"{tok.t} does not match [a-z][a-z0-9_]*",
-            )
+            self._at("name.format", tok, _format_message(tok.t))
         if utf8_length(tok.t) > MAX_NAME_BYTES:
-            self._at("name.length", tok, f"{tok.t} is longer than 63 bytes")
+            self._at("name.length", tok, _length_message(tok.t))
         return False
 
     def _column_ref(self, table: _Table, tok: Tk):
@@ -2897,7 +2936,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 tok,
-                f"column {tok.t} is not a column of table {table.name.t}",
+                f"column {goq(tok.t)} is not a column of table {goq(table.name.t)}",
             )
         return column
 
@@ -2909,21 +2948,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 tok,
-                f'foreign key "{tok.t}" is not a foreign key of the table',
-            )
-
-    def _key_prefix(self, table: _Table, s: _Setting) -> None:
-        if table.failed_primary:
-            return
-        if len(table.pks) != 1 or len(table.pks[0].cols) != 1:
-            self._at("setting", s.kw, "key_prefix needs a single-column primary key")
-            return
-        c = table.col_map.get(table.pks[0].cols[0].tok.t)
-        if c is not None and c.type is not None and c.type.kind != "varchar":
-            self._at(
-                "setting",
-                s.kw,
-                f"key_prefix needs a varchar primary key, not {type_text(c.type)}",
+                f"foreign key {goq(tok.t)} is not a foreign key of the table",
             )
 
     def _order(self, table: _Table, s: _Setting) -> None:
@@ -2945,7 +2970,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 s.args[0],
-                f'order column "{s.args[0].t}" is in a key, index or check',
+                f"order column {goq(s.args[0].t)} is in a key, index or check",
             )
 
     def _store_shard(self, table: _Table, s: _Setting) -> None:
@@ -2989,277 +3014,22 @@ class DocumentParser:
                 return True
         return False
 
-    def _state_machine_line(self, table: _Table, s: _Setting) -> None:
-        """One state_machine line: the column is non-null varchar or text, and the require list is columns of the table."""
-        column = self._column_ref(table, s.args[0])
-        if column is not None and (
-            (column.type is not None and column.type.kind not in ("varchar", "text"))
-            or column.nullable
+    def _task_marker(self, table: _Table, s: _Setting) -> None:
+        """The column whose value a list row writes between the brackets of its task marker: a varchar(1) column,
+        written as its value, or a bool column, written as the unchecked and the checked task box of GFM
+        (docs/spec/dbspec.md "Settings")."""
+        c = self._column_ref(table, s.args[0])
+        if (
+            c is not None
+            and c.type is not None
+            and c.type.kind != "bool"
+            and not (c.type.kind == "varchar" and c.type.length == 1)
         ):
             self._at(
                 "setting",
                 s.args[0],
-                "state_machine needs a non-null varchar or text column",
+                f"task_marker needs a varchar(1) or bool column, not {type_text(c.type)}",
             )
-        for _, columns in s.lists:
-            for ref in columns:
-                self._column_ref(table, ref)
-
-    def _state_machine_consistency(self, table: _Table, entries, available) -> None:
-        """Checks the state_machine lines against each other: one column per table, one history, and agreement among transitions, terminal and initial states,
-        limit, the default of the state column, and checkbox (docs/spec/dbspec.md "Settings")."""
-        machine = [s for s in entries if s.kind == "state_machine"]
-        column = None
-        states = set()
-        initials = set()
-        terminals = set()
-        lines = []
-        limits = []
-        history = None
-        requires = []
-        # The identity of each initial, terminal and transition line: its form and states, never its require list.
-        seen = set()
-        for s in machine:
-            if column is None:
-                column = s.args[0].t
-            elif s.args[0].t != column:
-                self._at(
-                    "setting",
-                    s.args[0],
-                    f'state_machine repeats for "{s.args[0].t}"; a table holds one machine',
-                )
-            if s.form == "history":
-                if history is not None:
-                    self._at("setting", s.kw, "state_machine repeats history")
-                    continue
-                history = s
-            elif s.form == "limit":
-                limits.append(s)
-            else:
-                # A line of another column already reports that a table holds one machine; it is no line of this one.
-                if s.args[0].t == column:
-                    if s.form == "transition":
-                        key, what = (
-                            ("transition", s.args[1].t, s.args[2].t),
-                            f"{s.args[1].t} -> {s.args[2].t}",
-                        )
-                    else:
-                        key, what = (s.form, s.args[1].t), f"{s.form} {s.args[1].t}"
-                    if key in seen:
-                        self._at("setting", s.kw, f"state_machine repeats {what}")
-                        continue
-                    seen.add(key)
-                lines.append(s)
-                for _, columns in s.lists:
-                    requires.extend(columns)
-                if s.form == "initial":
-                    initials.add(s.args[1].t)
-                    states.add(s.args[1].t)
-                elif s.form == "terminal":
-                    terminals.add(s.args[1].t)
-                    states.add(s.args[1].t)
-                else:
-                    states.add(s.args[1].t)
-                    states.add(s.args[2].t)
-        for s in lines:
-            if s.form == "initial" and s.args[1].t in terminals:
-                self._at(
-                    "setting",
-                    s.kw,
-                    f'an initial state "{s.args[1].t}" is also terminal',
-                )
-            elif s.form == "transition" and s.args[1].t in terminals:
-                self._at(
-                    "setting",
-                    s.kw,
-                    f'a transition leaves the terminal state "{s.args[1].t}"',
-                )
-        self._limits(limits, states)
-        if history is not None:
-            self._history(
-                table, history, table.col_map.get(column), requires, available
-            )
-        state_column = table.col_map.get(column) if column is not None else None
-        if (
-            state_column is not None
-            and state_column.default_tok is not None
-            and state_column.value is not None
-        ):
-            default = state_column.default_tok
-            text = string_value(default) if default.k == STR else default.t
-            if text not in initials:
-                self._at(
-                    "setting",
-                    default,
-                    f'the default "{text}" of the state column is not an initial state',
-                )
-        self._checkboxes(table, column, states)
-
-    def _limits(self, lines, states) -> None:
-        """Checks each limit line: state belongs to the state set and appears once per state, and count is a positive int64."""
-        seen = set()
-        for s in lines:
-            state = s.args[1]
-            if state.t not in states:
-                self._at(
-                    "setting",
-                    state,
-                    f'limit names state "{state.t}" outside the state set',
-                )
-            elif state.t in seen:
-                self._at("setting", state, f'limit repeats for state "{state.t}"')
-            seen.add(state.t)
-            count = go_int64(s.args[2].t)
-            if count is None or count < 1:
-                self._at(
-                    "setting",
-                    s.args[2],
-                    f"limit needs a positive row count, not {s.args[2].t}",
-                )
-
-    def _history(self, table: _Table, s: _Setting, state, requires, available) -> None:
-        """Checks the history table of a state_machine history line (docs/spec/dbspec.md "Settings"): a foreign key pointing to this table,
-        from and to with the state column's type, datetime(6) at, a nullable column of the same type for each required column,
-        key, no title or body. All mismatches are reported at the name of the history table."""
-        name = s.args[1]
-        if not self._ref(name):
-            return
-        if name.t not in available:
-            self._at(
-                "setting",
-                name,
-                f'history table "{name.t}" is not a table of this document or a used table',
-            )
-            return
-        h = available[name.t]
-        if h is None:
-            return
-        if state is None or state.type is None:
-            return
-        row = s.args[2]
-        fk = any(
-            len(f.cols) == 1 and f.cols[0].t == row.t and f.table.t == table.name.t
-            for f in h.fks
-        )
-        if not fk:
-            self._at(
-                "setting",
-                name,
-                f'history table "{name.t}" has no foreign key of "{row.t}" to table "{table.name.t}"',
-            )
-        named = {row.t}
-
-        def typed(ref: Tk, want) -> None:
-            named.add(ref.t)
-            c = h.col_map.get(ref.t)
-            if c is None:
-                if ref.t not in h.failed:
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" has no column "{ref.t}"',
-                    )
-            elif c.type is not None and not same_type(c.type, want):
-                self._at(
-                    "setting",
-                    name,
-                    f'history column "{ref.t}" has type {type_text(c.type)}, not {type_text(want)}',
-                )
-
-        typed(s.args[3], state.type)
-        typed(s.args[4], state.type)
-        typed(s.args[5], DbspecType(kind="datetime", precision=6))
-        for r in requires:
-            named.add(r.t)
-            c = table.col_map.get(r.t)
-            hc = h.col_map.get(r.t)
-            if c is None or c.type is None:
-                continue
-            if hc is None:
-                if r.t not in h.failed:
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" has no column "{r.t}" of the required column',
-                    )
-            elif not hc.nullable or (
-                hc.type is not None and not same_type(hc.type, c.type)
-            ):
-                self._at(
-                    "setting",
-                    name,
-                    f'history column "{r.t}" is not a nullable {type_text(c.type)} column',
-                )
-        for k in h.pks:
-            for ct in k.cols:
-                named.add(ct.tok.t)
-        for c in h.columns:
-            if c.name.t not in named:
-                self._at(
-                    "setting",
-                    name,
-                    f'history table "{name.t}" has column "{c.name.t}", which the history line does not name',
-                )
-        if h.settings is not None:
-            for hs in h.settings.entries:
-                if hs.kind in ("title", "body"):
-                    self._at(
-                        "setting",
-                        name,
-                        f'history table "{name.t}" declares {hs.kind}, which a history table does not',
-                    )
-
-    def _checkboxes(self, table: _Table, column, states) -> None:
-        """Checks a checkbox line against the machine's state set: names the column of the machine, each state has one line with a distinct
-        glyph, and no line names a different state."""
-        boxes = (
-            [s for s in table.settings.entries if s.kind == "checkbox"]
-            if table.settings is not None
-            else []
-        )
-        if not boxes:
-            return
-        first = boxes[0]
-        if column is None:
-            self._at(
-                "setting",
-                first.args[0],
-                f'checkbox needs a state_machine on column "{first.args[0].t}"',
-            )
-            return
-        covered = set()
-        glyphs = set()
-        for b in boxes:
-            if self._column_ref(table, b.args[0]) is None:
-                continue
-            if b.args[0].t != column:
-                self._at(
-                    "setting",
-                    b.args[0],
-                    f'checkbox names column "{b.args[0].t}", but the state_machine column is "{column}"',
-                )
-                continue
-            state = b.args[1]
-            if state.t not in states:
-                self._at(
-                    "setting",
-                    state,
-                    f'checkbox names state "{state.t}" outside the state set',
-                )
-            elif state.t in covered:
-                self._at("setting", state, f'checkbox repeats for state "{state.t}"')
-            covered.add(state.t)
-            glyph = string_value(b.args[2])
-            if len(glyph) != 1:
-                self._at("setting", b.args[2], "a checkbox glyph is one character")
-            elif glyph in glyphs:
-                self._at("setting", b.args[2], f'checkbox glyph "{glyph}" repeats')
-            glyphs.add(glyph)
-        for state in sorted(states):
-            if state not in covered:
-                self._at(
-                    "setting", first.kw, f'checkbox does not cover state "{state}"'
-                )
 
     def _codec(self, table: _Table, s: _Setting) -> None:
         """The stage order, and the storage type the last stage requires (codec in engine/dbspec/settings.go)."""
@@ -3296,7 +3066,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 s.kw,
-                f'blind_index names column "{s.column.t}", which has no codec with the aes stage',
+                f"blind_index names column {goq(s.column.t)}, which has no codec with the aes stage",
             )
         index = self._lookup(table, s.index_column, "setting")
         if index is None:
@@ -3326,7 +3096,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 s.index_column,
-                f"column {s.index_column.t} is not the only column of a "
+                f"column {goq(s.index_column.t)} is not the only column of a "
                 "declared index or unique key",
             )
 
@@ -3347,9 +3117,7 @@ class DocumentParser:
         if not well_formed(s.into.t):
             return
         if s.into.t not in available:
-            self._at(
-                "setting", s.into, f"history table {s.into.t} is not defined or used"
-            )
+            self._at("setting", s.into, f"history table {goq(s.into.t)} {_NOT_A_TABLE}")
             return
         history = available[s.into.t]
         if history is None:
@@ -3358,12 +3126,14 @@ class DocumentParser:
         if history.header_failed:
             return
         if history is table:
-            self._at("setting", s.into, "a table is not its own history table")
+            self._at("setting", s.into, "a table cannot be its own history table")
             return
         if history.settings is not None and any(
             e.kind == "audit" for e in history.settings.entries
         ):
-            self._at("setting", s.into, f"history table {s.into.t} is audited itself")
+            self._at(
+                "setting", s.into, f"history table {goq(s.into.t)} is audited itself"
+            )
         key = next((c for c in history.columns if c.identity is not None), None)
         if (key is None and not history.failed_primary) or (
             key is not None and (key.type is None or key.type.kind != "i64")
@@ -3371,15 +3141,25 @@ class DocumentParser:
             self._at(
                 "setting",
                 s.into,
-                f"history table {s.into.t} has no i64 identity primary key",
+                f"history table {goq(s.into.t)} needs an i64 identity primary key",
             )
+        # The columns of the history table that the audit keeps for itself, in Go's order: the identity key, the action column.
+        own = set()
+        if key is not None and key.type is not None and key.type.kind == "i64":
+            own.add(key.name.t)
         if well_formed(s.action.t):
             action = history.col_map.get(s.action.t)
             if action is None:
                 self._at(
                     "setting",
                     s.action,
-                    f"{s.action.t} is not a column of history table {s.into.t}",
+                    f"column {goq(s.action.t)} is not a column of history table {goq(s.into.t)}",
+                )
+            elif s.action.t in own:
+                self._at(
+                    "setting",
+                    s.action,
+                    "the action column is a separate column of the history table",
                 )
             elif (
                 action.type is not None and type_text(action.type) != "varchar(8)"
@@ -3387,15 +3167,24 @@ class DocumentParser:
                 self._at(
                     "setting", s.action, "the action column is a non-null varchar(8)"
                 )
+            own.add(s.action.t)
         if well_formed(s.previous.t):
             previous = history.col_map.get(s.previous.t)
             if previous is None:
                 self._at(
                     "setting",
                     s.previous,
-                    f"{s.previous.t} is not a column of history table {s.into.t}",
+                    f"column {goq(s.previous.t)} is not a column of history table {goq(s.into.t)}",
                 )
-            elif not previous.nullable or (
+            elif s.previous.t in own:
+                self._at(
+                    "setting",
+                    s.previous,
+                    "the previous column is a separate column of the history table",
+                )
+            elif not previous.nullable:
+                self._at("setting", s.previous, "the previous column is nullable")
+            elif (
                 previous.type is not None
                 and column is not None
                 and column.type is not None
@@ -3404,7 +3193,8 @@ class DocumentParser:
                 self._at(
                     "setting",
                     s.previous,
-                    "the previous column is nullable and has the type of the audit column",
+                    f"the previous column has the audit column type {type_text(column.type)}, "
+                    f"not {type_text(previous.type)}",
                 )
         # A setting that uses both lists does not determine which columns are recorded, so the history table's
         # columns are not checked.
@@ -3423,7 +3213,7 @@ class DocumentParser:
                 self._at(
                     "setting",
                     s.into,
-                    f"history table {s.into.t} has no column {c.name.t}",
+                    f"history table {goq(s.into.t)} has no copy of column {goq(c.name.t)}",
                 )
             elif (
                 c.type is not None
@@ -3433,7 +3223,7 @@ class DocumentParser:
                 self._at(
                     "setting",
                     s.into,
-                    f"history column {c.name.t} is {type_text(copy.type)},"
+                    f"history column {goq(c.name.t)} has type {type_text(copy.type)},"
                     f" not {type_text(c.type)}",
                 )
         for c in history.columns:
@@ -3443,14 +3233,15 @@ class DocumentParser:
                 self._at(
                     "setting",
                     s.into,
-                    f"history table {s.into.t} has column {c.name.t}, "
-                    f"which table {table.name.t} does not record",
+                    f"history table {goq(s.into.t)} has column {goq(c.name.t)}, "
+                    f"which table {goq(table.name.t)} does not record",
                 )
             else:
                 self._at(
                     "setting",
                     s.into,
-                    f"history table {s.into.t} has the extra column {c.name.t}",
+                    f"history table {goq(s.into.t)} has column {goq(c.name.t)}, "
+                    f"which is not a column of table {goq(table.name.t)}",
                 )
 
     def _audit_lists(self, table: _Table, s: _Setting):
@@ -3468,13 +3259,15 @@ class DocumentParser:
         for kw, columns in s.lists:
             for tok in columns:
                 if tok.t in listed:
-                    self._at("setting", tok, f"column {tok.t} repeats in audit {kw.t}")
+                    self._at(
+                        "setting", tok, f"column {goq(tok.t)} repeats in audit {kw.t}"
+                    )
                     continue
                 if tok.t == s.column.t:
                     self._at(
                         "setting",
                         tok,
-                        f"the audit column {tok.t} is always recorded and is "
+                        f"the audit column {goq(tok.t)} is always recorded and is "
                         f"not listed in exclude or include",
                     )
                 elif self._name(tok):
@@ -3497,7 +3290,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 ref,
-                f"tables table {ref.t} is not a table of this document or a used table",
+                f"tables table {goq(ref.t)} {_NOT_A_TABLE}",
             )
             return
         tables = available[ref.t]
@@ -3513,7 +3306,7 @@ class DocumentParser:
         if tables.settings is not None and any(
             e.kind == "audit" for e in tables.settings.entries
         ):
-            self._at("setting", ref, f"tables table {ref.t} is audited itself")
+            self._at("setting", ref, f"tables table {goq(ref.t)} is audited itself")
             return
         known = True
         for tok in (rec, nm):
@@ -3525,7 +3318,7 @@ class DocumentParser:
                 self._at(
                     "setting",
                     tok,
-                    f"column {tok.t} is not a column of tables table {ref.t}",
+                    f"column {goq(tok.t)} is not a column of tables table {goq(ref.t)}",
                 )
                 known = False
         if not known:
@@ -3542,7 +3335,7 @@ class DocumentParser:
                 self._at(
                     "setting",
                     ref,
-                    f"tables table {ref.t} has the extra column {c.name.t}",
+                    f"tables table {goq(ref.t)} has the extra column {goq(c.name.t)}",
                 )
         pk = tables.pks[0] if len(tables.pks) == 1 else None
         if not tables.failed_primary and (
@@ -3551,7 +3344,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 ref,
-                f"the primary key of tables table {ref.t} is ({rec.t}, {nm.t})",
+                f"the primary key of tables table {goq(ref.t)} is ({rec.t}, {nm.t})",
             )
         record = available.get(s.references.t)
         if (
@@ -3577,7 +3370,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 ref,
-                f"tables table {ref.t} needs the foreign key ({rec.t}) references {s.references.t} ({key}) "
+                f"tables table {goq(ref.t)} needs the foreign key ({rec.t}) references {s.references.t} ({key}) "
                 f"on delete restrict on update restrict",
             )
 
@@ -3592,8 +3385,7 @@ class DocumentParser:
             self._at(
                 "setting",
                 ref,
-                f"audit record table {ref.t} is not a table of this "
-                f"document or a used table",
+                f"audit record table {goq(ref.t)} {_NOT_A_TABLE}",
             )
             return
         record = available[ref.t]
@@ -3615,13 +3407,15 @@ class DocumentParser:
         if record.settings is not None and any(
             e.kind == "audit" for e in record.settings.entries
         ):
-            self._at("setting", ref, f"audit record table {ref.t} is audited itself")
+            self._at(
+                "setting", ref, f"audit record table {goq(ref.t)} is audited itself"
+            )
         if len(record.pks) != 1 or len(record.pks[0].cols) != 1:
             if not record.failed_primary:
                 self._at(
                     "setting",
                     ref,
-                    f"audit record table {ref.t} needs a primary key of one column",
+                    f"audit record table {goq(ref.t)} needs a primary key of one column",
                 )
             return
         key = record.pks[0].cols[0].tok.t
@@ -3638,7 +3432,7 @@ class DocumentParser:
                 s.column,
                 f"the audit column has type {type_text(column.type)}, "
                 f"not the type {type_text(pk.type)} of the primary key "
-                f"of {ref.t}",
+                f"of {goq(ref.t)}",
             )
             return
         declared = any(
@@ -3789,49 +3583,17 @@ class DocumentParser:
         )
 
     def _form_setting_of(self, s: _Setting) -> DbspecSetting:
-        a = [t.t if t.k != STR else string_value(t) for t in s.args]
+        a = [t.t for t in s.args]
         base = {"kind": s.kind, "comments": tuple(s.comments)}
-        if s.kind in ("markdown", "title", "body", "order"):
+        if s.kind in ("markdown", "title", "body", "order", "task_marker"):
             return DbspecSetting(column=a[0], **base)
-        if s.kind == "store":
-            at = STORE_ARGUMENTS[a[0]]
-            return DbspecSetting(
-                form=a[0],
-                foreign_key=a[1] if a[0] == "block" else "",
-                shape=a[at - 1] if a[0] != "files" else "",
-                shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
-                **base,
-            )
-        if s.kind == "key_prefix":
-            return DbspecSetting(prefix=a[0], **base)
-        if s.kind == "checkbox":
-            return DbspecSetting(column=a[0], state=a[1], glyph=a[2], **base)
-        requires = tuple(c.t for _, columns in s.lists for c in columns)
-        if s.form == "history":
-            return DbspecSetting(
-                column=a[0],
-                form="history",
-                history=a[1],
-                row=a[2],
-                from_column=a[3],
-                to_column=a[4],
-                at_column=a[5],
-                **base,
-            )
-        if s.form == "limit":
-            return DbspecSetting(
-                column=a[0], form="limit", state=a[1], count=str(int(a[2])), **base
-            )
-        if s.form in ("initial", "terminal"):
-            return DbspecSetting(
-                column=a[0], form=s.form, state=a[1], requires=requires, **base
-            )
+        # store
+        at = STORE_ARGUMENTS[a[0]]
         return DbspecSetting(
-            column=a[0],
-            form="transition",
-            from_state=a[1],
-            to_state=a[2],
-            requires=requires,
+            form=a[0],
+            foreign_key=a[1] if a[0] == "block" else "",
+            shape=a[at - 1] if a[0] != "files" else "",
+            shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
             **base,
         )
 
@@ -3900,9 +3662,9 @@ def _encoding_error(lines) -> DbspecDiagnostic | None:
         for i, c in enumerate(text):
             message = None
             if c == "﻿" and n == 0 and i == 0:
-                message = "the text starts with a byte order mark"
+                message = "document starts with a byte order mark"
             elif c == "\r" and (last or i != len(text) - 1):
-                message = "the text has a bare CR"
+                message = "carriage return without a following line feed"
             if message is not None:
                 return DbspecDiagnostic("encoding", n + 1, column_of(text, i), message)
     return None
@@ -3911,7 +3673,14 @@ def _encoding_error(lines) -> DbspecDiagnostic | None:
 def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     empty = _Document()
     if utf8_length(text) > MAX_BYTES:
-        diagnostics = [DbspecDiagnostic("limit", 1, 1, "a document has at most 32 MiB")]
+        diagnostics = [
+            DbspecDiagnostic(
+                "limit",
+                1,
+                1,
+                f"document has {utf8_length(text)} bytes, more than {MAX_BYTES}",
+            )
+        ]
         return _Parsed(diagnostics, empty, None, "limit")
     raw = text.split("\n")
     encoding = _encoding_error(raw)
