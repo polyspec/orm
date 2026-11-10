@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: dbf1c1acf8ab4c527d6cc2e6b4f73f2e6fd2fd4ce90d1f0ed78fe54d5901259c -->
+<!-- source-sha256: cbebf1d38ad60ae6105811472324f3a919572278c487fc0f2b9a35176c45dd3d -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -299,7 +299,7 @@
   - `packages/rust/build/tests/unit/typed_bind_validation.rs`의 `bind_validation_checks_exact_bounds_before_driver_encoding`는 native 시험으로 남는다: 그 요구사항(INT-122)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/src/row.rs`의 `sqlite_driver_row_bytes_remain_exact`는 native 시험으로 남는다: 그 요구사항(INT-142)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/src/tx_send_tests.rs`의 `mysql_send_savepoint`, `postgres_send_savepoint`, `sqlite_send_savepoint`는 native 시험으로 남는다: 그 요구사항(INT-46a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
-  - `packages/rust/orm/src/value.rs`의 `decimal_texts_read_exactly_whatever_their_digits`, `invalid_or_lossy_values_report_decode_errors`는 native 시험으로 남는다: 그 요구사항(INT-141)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
+  - `packages/rust/orm/src/value.rs`의 `decimal_texts_read_as_the_nearest_f64`, `invalid_or_lossy_values_report_decode_errors`는 native 시험으로 남는다: 그 요구사항(INT-141)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/tests/cases/audit.rs`의 `audit_transaction_entry_points`는 native 시험으로 남는다: 그 요구사항(INT-44a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/tests/cases/rollback.rs`의 `transaction_forms_rollback_fault_mysql`, `transaction_forms_rollback_fault_postgres`, `transaction_forms_rollback_fault_sqlite`는 native 시험으로 남는다: 그 요구사항(INT-72a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/tests/cases/rollback.rs`의 `rollback_fault_entry`는 native 시험으로 남는다: 이 runtime이 production이 싣는 것 밖에 test 진입점을 두는 방식을 이 runtime의 packaging으로 읽는다: build tag, crate feature, export condition, autoloader가 잇지 않는 파일, 어떤 import도 싣지 않는 module이다(PRT-43부터 PRT-62까지).

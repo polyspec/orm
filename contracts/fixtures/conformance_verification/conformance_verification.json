@@ -90197,6 +90197,256 @@
    ]
   },
   {
+   "id": "decimal_text_reads_as_the_nearest_f64",
+   "requirements": [
+    "COD-1",
+    "INT-141"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a float column that holds the exact decimal text it is given, which the database returns as that text",
+     "sql": {
+      "mysql": "ALTER TABLE typed_value MODIFY ratio DECIMAL(65,30) NOT NULL",
+      "postgres": "ALTER TABLE typed_value ALTER COLUMN ratio TYPE numeric",
+      "sqlite": "DROP TABLE typed_value"
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite keeps a text only in a column with no type affinity",
+     "sql": {
+      "mysql": "SELECT 1",
+      "postgres": "SELECT 1",
+      "sqlite": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, ratio)"
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the rows again in the table made again",
+     "sql": {
+      "mysql": "SELECT 1",
+      "postgres": "SELECT 1",
+      "sqlite": "INSERT INTO typed_value (seq) VALUES (1), (2), (3), (4)"
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a decimal text of more than 30 digits, or of no exact binary64",
+     "sql": "UPDATE typed_value SET ratio = '3.141592653589793238462643383279' WHERE seq = 1"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a decimal text of more than 30 digits, or of no exact binary64",
+     "sql": "UPDATE typed_value SET ratio = '0.1' WHERE seq = 2"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a decimal text of more than 30 digits, or of no exact binary64",
+     "sql": "UPDATE typed_value SET ratio = '1267650600228229401496703205376.000000000001' WHERE seq = 3"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a decimal text of more than 30 digits, or of no exact binary64",
+     "sql": "UPDATE typed_value SET ratio = '-0.000000000000123456789012345678' WHERE seq = 4"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "columns": [
+      "seq",
+      "ratio"
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 1,
+         "ratio": 3.141592653589793
+        },
+        {
+         "seq": 2,
+         "ratio": 0.1
+        },
+        {
+         "seq": 3,
+         "ratio": 1.2676506002282294e+30
+        },
+        {
+         "seq": 4,
+         "ratio": -1.234567890123457e-13
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 1,
+         "ratio": 3.141592653589793
+        },
+        {
+         "seq": 2,
+         "ratio": 0.1
+        },
+        {
+         "seq": 3,
+         "ratio": 1.2676506002282294e+30
+        },
+        {
+         "seq": 4,
+         "ratio": -1.234567890123457e-13
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 1,
+         "ratio": 3.141592653589793
+        },
+        {
+         "seq": 2,
+         "ratio": 0.1
+        },
+        {
+         "seq": 3,
+         "ratio": 1.2676506002282294e+30
+        },
+        {
+         "seq": 4,
+         "ratio": -1.234567890123457e-13
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "scalar_subquery_avg_is_refused",
    "requirements": [
     "PRT-83",

@@ -14,8 +14,7 @@ mod checked_value_tests {
         for value in bad_integers {
             assert_eq!(value.as_i64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
         }
-        for value in [Val::Str("NaN".into()), Val::Str("0.1".into()), Val::Str("9007199254740993".into()), Val::F64(f64::INFINITY), Val::I64((1i64 << 53) + 1)]
-        {
+        for value in [Val::Str("NaN".into()), Val::Str("1e999".into()), Val::F64(f64::INFINITY), Val::Bool(true), Val::Bytes(b"0.5".to_vec())] {
             assert_eq!(value.as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
         }
         for value in [Val::Str("perhaps".into()), Val::I64(2), Val::Null] {
@@ -48,11 +47,11 @@ mod checked_value_tests {
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
 
-    /// A text reads as an f64 when its decimal value is the f64 exactly, whatever its number of digits (INT-141): the 31
-    /// digits of 2^100, the 1074 fraction digits of the least subnormal and a long tail of zeros, and not the nearest f64 of a
-    /// text that no f64 is.
+    /// A decimal text reads as the nearest finite binary64, whatever its number of digits (COD-1, INT-141): a text that no f64
+    /// is exactly, 0.1 among them, more than 30 digits, the 1074 fraction digits of the least subnormal, an integer past
+    /// 2^53 and a value under the least subnormal, which is 0; a value past the finite range is refused.
     #[test]
-    fn decimal_texts_read_exactly_whatever_their_digits() {
+    fn decimal_texts_read_as_the_nearest_f64() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let least = format!("0.{}", {
             let mut digits = vec![0u8; 1074];
@@ -67,20 +66,29 @@ mod checked_value_tests {
             }
             digits.iter().map(|d| char::from(b'0' + d)).collect::<String>()
         });
-        let exact = [
-            ("1267650600228229401496703205376", 2f64.powi(100)),
-            ("-1267650600228229401496703205376.000000000000", -(2f64.powi(100))),
-            ("0.50000000000000000000000000000000000000", 0.5),
+        let nearest = [
+            ("0.1", 0.1),
+            ("48.0450", 48.045),
+            ("9007199254740993", 9_007_199_254_740_992.0),
+            ("3.141592653589793238462643383279", std::f64::consts::PI),
+            ("1267650600228229401496703205377", 2f64.powi(100)),
+            ("-1267650600228229401496703205376.000000000001", -(2f64.powi(100))),
+            ("0.1000000000000000000000000000000000001", 0.1),
             ("1.2676506002282294014967032053760e30", 2f64.powi(100)),
             (least.as_str(), f64::from_bits(1)),
+            ("1e-400", 0.0),
         ];
-        for (text, value) in exact {
+        for (text, value) in nearest {
             match Val::Str(text.into()).as_f64() {
                 Ok(read) => assert_eq!(read.to_bits(), value.to_bits(), "{text}"),
                 Err(error) => panic!("{text}: {error}"),
             }
         }
-        for text in ["1267650600228229401496703205377", "0.1000000000000000000000000000000000001", "1e-400"] {
+        match Val::I64((1i64 << 53) + 1).as_f64() {
+            Ok(read) => assert_eq!(read.to_bits(), 9_007_199_254_740_992f64.to_bits()),
+            Err(error) => panic!("2^53 + 1: {error}"),
+        }
+        for text in ["1e999", "-1e999", "0x10", "", "1.", ".5", "inf"] {
             assert_eq!(Val::Str(text.into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{text}");
         }
     }
@@ -97,7 +105,6 @@ mod checked_value_tests {
     #[test]
     fn aggregate_numbers_round_integers_and_refuse_other_kinds() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(Val::Str("48.0450".into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::I64((1i64 << 53) + 1).as_aggregate_f64().unwrap().to_bits(), 0x4340_0000_0000_0000);
         assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
@@ -297,16 +304,8 @@ impl Val {
 
     pub fn as_f64(&self) -> crate::Result<f64> {
         match self {
-            Val::F64(x) if x.is_finite() => Ok(*x),
-            Val::I64(x) if x.unsigned_abs() <= (1u64 << 53) => Ok(*x as f64),
-            // A text reads only when its decimal value is the f64 exactly, whatever its number of digits (INT-141).
-            Val::Str(s) => {
-                let value = crate::cell::f64_cell(self).ok_or_else(|| crate::cell::cell_refusal("f64"))?;
-                if !crate::cell::decimal_is_f64(s, value) {
-                    return Err(crate::cell::cell_refusal("f64"));
-                }
-                Ok(value)
-            }
+            // A number or a decimal text reads as the nearest finite binary64, whatever its number of digits (COD-1, INT-141).
+            Val::F64(_) | Val::I64(_) | Val::Str(_) => crate::cell::f64_cell(self).ok_or_else(|| crate::cell::cell_refusal("f64")),
             _ => Err(crate::cell::cell_refusal("f64")),
         }
     }

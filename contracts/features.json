@@ -7029,7 +7029,7 @@
         },
         {
           "id": "rust-value-types-native-api",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-value-types-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- --exact value::checked_value_tests::invalid_or_lossy_values_report_decode_errors value::checked_value_tests::decimal_texts_read_exactly_whatever_their_digits --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-value-types-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- --exact value::checked_value_tests::invalid_or_lossy_values_report_decode_errors value::checked_value_tests::decimal_texts_read_as_the_nearest_f64 --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/value.rs"
