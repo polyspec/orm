@@ -4549,6 +4549,10 @@
           "op": {
             "const": "model.create"
           },
+          "where": {
+            "description": "The conditions of the model that writes: the insert writes only when they hold for each written row, and a column names the value that the insert writes to it (DSL-162, PRT-85).",
+            "$ref": "#/$defs/predicate"
+          },
           "unconnected": {
             "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
             "const": true
@@ -4600,6 +4604,10 @@
               "op": {
                 "const": "model.creates"
               },
+              "where": {
+                "description": "The conditions of the model that writes: the insert writes only when they hold for each written row, and a column names the value that the insert writes to it (DSL-162, PRT-85).",
+                "$ref": "#/$defs/predicate"
+              },
               "connection": {
                 "$ref": "#/$defs/name"
               },
@@ -4640,6 +4648,10 @@
             "properties": {
               "op": {
                 "const": "model.creates"
+              },
+              "where": {
+                "description": "The conditions of the model that writes: the insert writes only when they hold for each written row, and a column names the value that the insert writes to it (DSL-162, PRT-85).",
+                "$ref": "#/$defs/predicate"
               },
               "connection": {
                 "$ref": "#/$defs/name"
@@ -4728,6 +4740,10 @@
         "properties": {
           "op": {
             "const": "model.duplicate_create"
+          },
+          "where": {
+            "description": "The conditions of the model that writes: the insert writes only when they hold for each written row, and a column names the value that the insert writes to it (DSL-162, PRT-85).",
+            "$ref": "#/$defs/predicate"
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -9336,6 +9352,11 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"

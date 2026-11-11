@@ -1177,9 +1177,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         if ($this->error !== null) {
             throw $this->error;
         }
-        if ($this->where['pending'] !== '') {
-            throw new OrmException(Code::CONFIG, "connector {$this->where['pending']} without a following condition");
-        }
+        $this->refusePendingConnector();
         $q = ['entity' => static::meta()['entity']];
         $columns = $this->columnsIr($r);
         if ($columns !== null) {
@@ -2547,6 +2545,27 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         return Codec::encode($codec, $v);
     }
 
+    /**
+     * Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column
+     * compares the value that the insert writes to that column, and a subquery of it names the written row as its
+     * outer model.
+     */
+    private function insertCondition(Request $r): void
+    {
+        $this->refusePendingConnector();
+        if ($this->where['items'] !== []) {
+            $r->ir['where'] = $this->groupIr($this->where['items'], $r, new Frame($this, null));
+        }
+    }
+
+    /** Refuses conditions that end with a connector, as CONFIG. */
+    private function refusePendingConnector(): void
+    {
+        if ($this->where['pending'] !== '') {
+            throw new OrmException(Code::CONFIG, "connector {$this->where['pending']} without a following condition");
+        }
+    }
+
     /** Inserts the row and returns the created row. */
     public function create(): static
     {
@@ -2567,6 +2586,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CONFIG, 'duplication model has no set<Col> values');
             }
         }
+        $this->insertCondition($r);
         [$id] = $db->writeOf($frame, $r);
         $m = $this->newRow($this->conn);
         $st = ['loaded' => true, 'names' => [], 'hidden' => [], 'original' => [], 'extra' => [], 'related' => [],
@@ -2639,9 +2659,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         // Rows run as batches of $batch rows in the given order in one transaction (docs/spec/protocol.md).
         $parts = Db::insertParts(count($rows), $batch);
         $limit = Db::bindLimit($db->dialect());
+        // The condition binds its parameters in every batch.
+        $probe = $this->writeRequest('insert', $db);
+        $this->insertCondition($probe);
         foreach ($parts as $i => $part) {
             // A batch over the bind limit is refused before any statement, never split.
-            $binds = $part * count($columns);
+            $binds = $part * count($columns) + count($probe->params);
             if ($binds > $limit) {
                 $n = $i + 1;
                 throw new OrmException(Code::BATCH_TOO_LARGE, "creates batch $n of $part rows binds $binds "
@@ -2672,6 +2695,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                         $r->ir['rows'][] = $params;
                     }
                 }
+                $this->insertCondition($r);
                 [, $affected] = $db->writeOf($frame, $r);
                 $total += $affected;
             }

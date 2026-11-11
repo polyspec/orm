@@ -3033,6 +3033,87 @@ static bool write_inputs(pctx *c, HashTable *request, bool complete, pwrite_inpu
     return true;
 }
 
+/* Appends to out the values of the columns that the executor writes on every inserted row: the AES version, the audit
+ * record and the clocked columns (the managed values of Planner::insertStep). False with an exception. */
+static bool managed_values(pctx *c, pbinds *b, HashTable *ent, bool versioned, bool audited, zval *clocked, zval *out)
+{
+    if (versioned) {
+        zend_string *cv = aes_version_slot(c, b, ent);
+        OKB(cv != NULL);
+        lpushs(out, cv);
+    }
+    if (audited) {
+        zend_string *au = b_audit(c, b, ent);
+        OKB(au != NULL);
+        lpushs(out, au);
+    }
+    zval *cl;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(clocked), cl) {
+        ZVAL_DEREF(cl);
+        zend_string *now = b_now(c, b, gl(Z_ARRVAL_P(cl), "precision", 0));
+        OKB(now != NULL);
+        lpushs(out, now);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* The select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87, Planner::conditionalRows): the rows
+ * of the request, named by their columns in a common table expression, are selected only when no row leaves the
+ * condition other than true, so the statement writes every row or none, and a NULL condition does not hold. The
+ * condition reads each row as the scope of the written row, which a subquery names with ^. NULL with an exception. */
+static zend_string *conditional_rows(pctx *c, pbinds *b, HashTable *ent, zval *names, zval *lists, HashTable *where)
+{
+    zval *quoted = newlist(c);
+    zval *types = newlist(c);
+    zval *nm;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(names), nm) {
+        zend_string *q = quote(c, Z_STR_P(nm));
+        OKP(q);
+        lpushs(quoted, q);
+        HashTable *col = NULL;
+        if (!col_of(c, ent, Z_STR_P(nm), &col)) {
+            return NULL;
+        }
+        lpushs(types, gs(c, col, "type"));
+    } ZEND_HASH_FOREACH_END();
+    zval *selects = newlist(c);
+    zval *list;
+    bool first = true;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(lists), list) {
+        ZVAL_DEREF(list);
+        zval *items = newlist(c);
+        zend_long k = 0;
+        zval *v;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(list), v) {
+            zval args[2] = {*Zs(c, Z_STR_P(v)), *Zs(c, Z_STR_P(at(Z_ARRVAL_P(types), k)))};
+            zend_string *item = Ds(c, "insertValue", 2, args);
+            OKP(item);
+            lpushs(items, first ? fmt(c, "%s AS %s", ZSTR_VAL(item), ZSTR_VAL(Z_STR_P(at(Z_ARRVAL_P(quoted), k))))
+                : item);
+            k++;
+        } ZEND_HASH_FOREACH_END();
+        lpushs(selects, fmt(c, "SELECT %s", ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(items)))));
+        first = false;
+    } ZEND_HASH_FOREACH_END();
+    zval *q = newlist(c);
+    puts_(q, "entity", gs(c, ent, "entity"));
+    pscope *written = scope_new(c, ent, fmt(c, "orm_written"), Z_ARRVAL_P(q), NULL);
+    zend_string *condition = render_group(c, b, written, where, true);
+    OKP(condition);
+    zend_string *rows_name = quote(c, fmt(c, "orm_rows"));
+    OKP(rows_name);
+    zend_string *written_name = quote(c, fmt(c, "orm_written"));
+    OKP(written_name);
+    zval *read = newlist(c);
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(quoted), nm) {
+        lpushs(read, fmt(c, "%s.%s", ZSTR_VAL(rows_name), ZSTR_VAL(Z_STR_P(nm))));
+    } ZEND_HASH_FOREACH_END();
+    return fmt(c, "WITH %s AS (%s) SELECT %s FROM %s WHERE NOT EXISTS (SELECT 1 FROM %s AS %s WHERE (%s) IS NOT TRUE)",
+        ZSTR_VAL(rows_name), ZSTR_VAL(implode(c, " UNION ALL ", Z_ARRVAL_P(selects))),
+        ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(read))), ZSTR_VAL(rows_name), ZSTR_VAL(rows_name), ZSTR_VAL(written_name),
+        ZSTR_VAL(condition));
+}
+
 /* The statement of an insert, with its rows and upsert (Planner::insertStep). */
 static pstep *insert_step(pctx *c, HashTable *r)
 {
@@ -3067,7 +3148,7 @@ static pstep *insert_step(pctx *c, HashTable *r)
         return fail("IR_INVALID", "load of %s needs a value for the identity column %s",
             ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(identity));
     }
-    zval *cols = newlist(c);
+    zval *names = newlist(c);
     zval *vals = newlist(c);
     zval *a;
     ZEND_HASH_FOREACH_VAL(set, a) {
@@ -3078,43 +3159,35 @@ static pstep *insert_step(pctx *c, HashTable *r)
         if (zend_string_equals(gs(c, col, "name"), identity) && !load) {
             return fail("IR_INVALID", "cannot set identity column %s", ZSTR_VAL(gs(c, ah, "column")));
         }
-        zend_string *qc = quote(c, gs(c, ah, "column"));
-        OKP(qc);
-        lpushs(cols, qc);
+        lpushs(names, gs(c, ah, "column"));
         zend_string *v = render_assign(c, b, ent, col, ah);
         OKP(v);
         lpushs(vals, v);
     } ZEND_HASH_FOREACH_END();
+    /* The columns that the executor writes on every insert follow the assigned ones in every row. */
     if (versioned) {
-        zend_string *qv = quote(c, gs(c, ent, "aes_version"));
-        OKP(qv);
-        lpushs(cols, qv);
-        zend_string *cv = aes_version_slot(c, b, ent);
-        OKP(cv);
-        lpushs(vals, cv);
+        lpushs(names, gs(c, ent, "aes_version"));
     }
     if (audited) {
-        zend_string *qa = quote(c, gs(c, ent, "audit"));
-        OKP(qa);
-        lpushs(cols, qa);
-        zend_string *au = b_audit(c, b, ent);
-        OKP(au);
-        lpushs(vals, au);
+        lpushs(names, gs(c, ent, "audit"));
     }
     zval *cl;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(clocked), cl) {
         ZVAL_DEREF(cl);
-        zend_string *qn = quote(c, gs(c, Z_ARRVAL_P(cl), "name"));
-        OKP(qn);
-        lpushs(cols, qn);
-        zend_string *now = b_now(c, b, gl(Z_ARRVAL_P(cl), "precision", 0));
-        OKP(now);
-        lpushs(vals, now);
+        lpushs(names, gs(c, Z_ARRVAL_P(cl), "name"));
     } ZEND_HASH_FOREACH_END();
-    zend_string *tbl = b_table(c, b, ent);
-    OKP(tbl);
-    zend_string *sql = fmt(c, "INSERT INTO %s (%s) VALUES (%s)", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(cols))),
-        ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(vals))));
+    if (!managed_values(c, b, ent, versioned, audited, clocked, vals)) {
+        return NULL;
+    }
+    zval *cols = newlist(c);
+    zval *nm;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(names), nm) {
+        zend_string *qc = quote(c, Z_STR_P(nm));
+        OKP(qc);
+        lpushs(cols, qc);
+    } ZEND_HASH_FOREACH_END();
+    zval *lists = newlist(c);
+    lpush(lists, vals);
     HashTable *rows = lst(r, "rows");
     if (count_of(rows) > 0) {
         HashTable *rset = lst(r, "set");
@@ -3131,19 +3204,19 @@ static pstep *insert_step(pctx *c, HashTable *r)
                 if (bsrc == NULL) {
                     return fail("IR_INVALID", "no assigned AES source for blind index %s", ZSTR_VAL(gs(c, ah, "column")));
                 }
-                zend_string *nm = gs(c, bsrc, "name");
+                zend_string *bn = gs(c, bsrc, "name");
                 zval *gv;
                 zend_long gi = 0;
                 src[i] = -1;
                 ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(given), gv) {
-                    if (Z_TYPE_P(gv) == IS_STRING && zend_string_equals(Z_STR_P(gv), nm)) {
+                    if (Z_TYPE_P(gv) == IS_STRING && zend_string_equals(Z_STR_P(gv), bn)) {
                         src[i] = gi;
                         break;
                     }
                     gi++;
                 } ZEND_HASH_FOREACH_END();
                 if (src[i] < 0) {
-                    return fail("IR_INVALID", "assigned AES source %s is missing from insert set", ZSTR_VAL(nm));
+                    return fail("IR_INVALID", "assigned AES source %s is missing from insert set", ZSTR_VAL(bn));
                 }
             }
         }
@@ -3171,25 +3244,29 @@ static pstep *insert_step(pctx *c, HashTable *r)
                 }
                 lpushs(more, v);
             }
-            if (versioned) {
-                zend_string *cv = aes_version_slot(c, b, ent);
-                OKP(cv);
-                lpushs(more, cv);
+            if (!managed_values(c, b, ent, versioned, audited, clocked, more)) {
+                return NULL;
             }
-            if (audited) {
-                zend_string *au = b_audit(c, b, ent);
-                OKP(au);
-                lpushs(more, au);
-            }
-            zval *cl2;
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(clocked), cl2) {
-                ZVAL_DEREF(cl2);
-                zend_string *now = b_now(c, b, gl(Z_ARRVAL_P(cl2), "precision", 0));
-                OKP(now);
-                lpushs(more, now);
-            } ZEND_HASH_FOREACH_END();
-            sql = fmt(c, "%s, (%s)", ZSTR_VAL(sql), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(more))));
+            lpush(lists, more);
         } ZEND_HASH_FOREACH_END();
+    }
+    zend_string *tbl = b_table(c, b, ent);
+    OKP(tbl);
+    zend_string *sql = fmt(c, "INSERT INTO %s (%s) ", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(cols))));
+    HashTable *where = ga(r, "where");
+    if (where != NULL) {
+        zend_string *selected = conditional_rows(c, b, ent, names, lists, where);
+        OKP(selected);
+        sql = fmt(c, "%s%s", ZSTR_VAL(sql), ZSTR_VAL(selected));
+    } else {
+        zval *parens = newlist(c);
+        zval *list;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(lists), list) {
+            lpushs(parens, fmt(c, "(%s)", ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(list)))));
+        } ZEND_HASH_FOREACH_END();
+        sql = fmt(c, "%sVALUES %s", ZSTR_VAL(sql), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(parens))));
+    }
+    if (count_of(rows) > 0) {
         return main_step(c, b, sql);
     }
     HashTable *dup = lst(r, "on_duplicate");

@@ -41,6 +41,18 @@ func (Postgres) RowNumber(partition, orderBy string) string {
 // RestartIdentity: sets the identity sequence to the largest key plus 1 and sets is_called
 // to false, so that the next nextval returns that value. The first argument of pg_get_serial_sequence
 // is read as an identifier, so it is the quoted table name; the second argument is the column name as is.
+// postgresBaseType is the type of a dbspec type without its length, precision or scale, so that the cast neither
+// truncates nor rounds a value before the insert converts it.
+var postgresBaseType = map[string]string{
+	"i16": "smallint", "i32": "integer", "i64": "bigint", "bool": "boolean", "decimal": "numeric",
+	"f64": "double precision", "varchar": "text", "text": "text", "bytes": "bytea", "uuid": "uuid",
+	"date": "date", "time": "time", "datetime": "timestamp",
+}
+
+func (Postgres) InsertValue(expr, typ string) string {
+	return "CAST(" + expr + " AS " + postgresBaseType[typ] + ")"
+}
+
 func (Postgres) RestartIdentity(table, column string) string {
 	q := QuoteWith(`"`, column)
 	return "SELECT setval(pg_get_serial_sequence(" + Literal(QuoteWith(`"`, table)) + ", " + Literal(column) + "), COALESCE(MAX(" + q + "), 0) + 1, false) FROM " + QuoteWith(`"`, table)

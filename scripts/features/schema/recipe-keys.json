@@ -432,7 +432,8 @@
       "op",
       "restore_or_create",
       "unconnected",
-      "values"
+      "values",
+      "where"
     ],
     "model.creates": [
       "batch",
@@ -441,7 +442,8 @@
       "model",
       "op",
       "rows",
-      "rows_sequence"
+      "rows_sequence",
+      "where"
     ],
     "model.save": [
       "connection",
@@ -457,7 +459,8 @@
       "expect",
       "model",
       "op",
-      "values"
+      "values",
+      "where"
     ],
     "model.update": [
       "connection",

@@ -1305,8 +1305,8 @@ fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
 }
 
 /// The ir.validate op (FCV-4): the step builds its request from its JSON with the manifest hash of the bench schema, then validates
-/// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
-/// true}} for an accepted request.
+/// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, with message, the
+/// whole text of the error, when it gives one, or {value: {bool: true}} for an accepted request.
 fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
     let want = crate::recipe_reads::read(step, "expect")["expect"].get(database).ok_or_else(|| format!("ir.validate has no expect for {database}"))?;
     if crate::recipe_reads::read(step, "request")["request"].get("manifest_hash").is_some() {
@@ -1315,19 +1315,25 @@ fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
     let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
     let manifest_hash = crate::recipe_reads::read(step, "manifest_hash")["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
     let built = std::panic::catch_unwind(|| ir_request::request(&crate::recipe_reads::read(step, "request")["request"], manifest_hash));
-    let got: Result<(), String> = match built {
-        Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
+    // The error is its code and its whole text, code included.
+    let got: Result<(), (String, String)> = match built {
+        Ok(request) => engine::validate(&manifest, &request).map_err(|error| (error.code().to_owned(), error.to_string())),
         Err(payload) => {
             let message = payload.downcast_ref::<String>().cloned().unwrap_or_default();
             match message.strip_prefix(ir_request::REJECTED) {
-                Some(_) => Err("IR_INVALID".to_owned()),
+                Some(rest) => Err(("IR_INVALID".to_owned(), format!("IR_INVALID: {rest}"))),
                 None => std::panic::resume_unwind(payload),
             }
         }
     };
     match want.get("error").and_then(Value::as_str) {
-        Some(code) if got.as_ref().err().is_some_and(|c| c == code) => Ok(()),
-        Some(code) => Err(format!("got {got:?}, want {code}")),
+        Some(code) => match &got {
+            Err((c, message)) if c == code => match want.get("message").and_then(Value::as_str) {
+                Some(text) if text != message => Err(format!("error message {message:?}, want {text:?}")),
+                _ => Ok(()),
+            },
+            _ => Err(format!("got {got:?}, want {code}")),
+        },
         None if want["value"] != serde_json::json!({"bool": true}) => Err(format!("ir.validate expects {{bool true}} or an error, not {}", want["value"])),
         None if got.is_ok() => Ok(()),
         None => Err(format!("got {got:?}, want valid")),
@@ -7192,6 +7198,7 @@ mod tables {
                 };
                 row.core.attach(name, plain);
             }
+            self.insert_condition(&mut row.core, step, db)?;
             if crate::recipe_reads::read(step, "duplication").get("duplication").is_some() {
                 let mut other = TableRow::from_core(core_of(model)?);
                 assign_values(&mut other, &crate::recipe_reads::read(step, "duplication")["duplication"])?;
@@ -7213,6 +7220,16 @@ mod tables {
                 self.rows.insert(name.to_owned(), written);
             }
             Ok(fields)
+        }
+
+        /// Sets the where of a write step as the conditions of the model that inserts (DSL-162). That model owns the
+        /// subqueries of its condition, so their outer names the written row (PRT-17, PRT-85).
+        fn insert_condition(&self, core: &mut Core, step: &Value, db: Option<&Db>) -> Result<(), String> {
+            let Some(filter) = crate::recipe_reads::read(step, "where").get("where").filter(|w| !w.is_null()) else {
+                return Ok(());
+            };
+            let build = Build { joined: HashMap::new(), outer: Some(core.id()), db: db.cloned(), handles: self.handles.clone() };
+            build.predicate(core, "", filter)
         }
 
         /// model.creates on the rows of rows or rows_sequence.
@@ -7237,7 +7254,8 @@ mod tables {
                 }
             }
             let batch = crate::recipe_reads::read(step, "batch")["batch"].as_u64().map_or(Ok(rows.len()), usize::try_from).map_err(|e| e.to_string())?;
-            let all = self.row(model, db, &Value::Null)?;
+            let mut all = self.row(model, db, &Value::Null)?;
+            self.insert_condition(&mut all.core, step, Some(db))?;
             let n = creates(&all, rows, batch).await.map_err(orm)?;
             Ok(count_fields(n))
         }

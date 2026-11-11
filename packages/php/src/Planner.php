@@ -1066,30 +1066,42 @@ final class Planner
                 "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}"
             );
         }
-        $cols = [];
+        $names = [];
         $vals = [];
         foreach ($set as $a) {
             $col = RuntimeModel::column($ent, $a['column']);
             if ($col['name'] === $ent['identity'] && !$load) {
                 throw self::err(Code::IR_INVALID, 'cannot set identity column ' . $a['column']);
             }
-            $cols[] = $this->d->quote($a['column']);
+            $names[] = $a['column'];
             $vals[] = $this->renderAssign($b, $ent, $col, $a);
         }
+        // The columns that the executor writes on every insert follow the assigned ones in every row.
         if ($versioned) {
-            $cols[] = $this->d->quote($ent['aes_version']);
-            $vals[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+            $names[] = $ent['aes_version'];
         }
         if ($audited) {
-            $cols[] = $this->d->quote($ent['audit']);
-            $vals[] = $b->audit($ent);
+            $names[] = $ent['audit'];
         }
         foreach ($clocked as $c) {
-            $cols[] = $this->d->quote($c['name']);
-            $vals[] = $b->now($c['precision']);
+            $names[] = $c['name'];
         }
-        $sql = 'INSERT INTO ' . $b->table($ent) . ' (' . implode(', ', $cols) . ') VALUES ('
-            . implode(', ', $vals) . ')';
+        $managed = static function () use ($b, $ent, $versioned, $audited, $clocked): array {
+            $values = [];
+            if ($versioned) {
+                $values[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+            }
+            if ($audited) {
+                $values[] = $b->audit($ent);
+            }
+            foreach ($clocked as $c) {
+                $values[] = $b->now($c['precision']);
+            }
+            return $values;
+        };
+        $vals = [...$vals, ...$managed()];
+        $cols = array_map(fn(string $name): string => $this->d->quote($name), $names);
+        $lists = [$vals];
         $rows = $r['rows'] ?? [];
         if ($rows !== []) {
             // derived blind-index columns take the value of their AES source column
@@ -1123,17 +1135,19 @@ final class Planner
                         ['column' => $a['column'], 'p' => $row[$source[$i]]]
                     );
                 }
-                if ($versioned) {
-                    $more[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
-                }
-                if ($audited) {
-                    $more[] = $b->audit($ent);
-                }
-                foreach ($clocked as $c) {
-                    $more[] = $b->now($c['precision']);
-                }
-                $sql .= ', (' . implode(', ', $more) . ')';
+                $lists[] = [...$more, ...$managed()];
             }
+        }
+        $sql = 'INSERT INTO ' . $b->table($ent) . ' (' . implode(', ', $cols) . ') ';
+        if (isset($r['where'])) {
+            $sql .= $this->conditionalRows($b, $ent, $names, $lists, $r['where']);
+        } else {
+            $sql .= 'VALUES ' . implode(', ', array_map(
+                static fn(array $list): string => '(' . implode(', ', $list) . ')',
+                $lists
+            ));
+        }
+        if ($rows !== []) {
             return new PlanStep('main', $sql, '', $b->slots, $b->tables());
         }
         if (($r['on_duplicate'] ?? []) !== []) {
@@ -1162,6 +1176,37 @@ final class Planner
             $sql .= ' RETURNING ' . $this->d->quote($ent['identity']);
         }
         return new PlanStep('main', $sql, '', $b->slots, $b->tables());
+    }
+
+    /**
+     * The select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87): the rows of the request,
+     * named by their columns in a common table expression, are selected only when no row leaves the condition other
+     * than true, so the statement writes every row or none, and a NULL condition does not hold. The condition reads
+     * each row as the scope of the written row, which a subquery names with ^; the tables it reads are read as they
+     * were before the statement.
+     *
+     * @param list<string> $names
+     * @param list<list<string>> $lists
+     */
+    private function conditionalRows(PlanBinds $b, array $ent, array $names, array $lists, array $where): string
+    {
+        $quoted = array_map(fn(string $name): string => $this->d->quote($name), $names);
+        $selects = [];
+        foreach ($lists as $i => $list) {
+            $items = [];
+            foreach ($list as $k => $v) {
+                $item = $this->d->insertValue($v, RuntimeModel::column($ent, $names[$k])['type']);
+                $items[] = $i === 0 ? $item . ' AS ' . $quoted[$k] : $item;
+            }
+            $selects[] = 'SELECT ' . implode(', ', $items);
+        }
+        $written = new PlanScope($ent, 'orm_written', ['entity' => $ent['entity']], null);
+        $condition = $this->renderGroup($b, $written, $where, true);
+        $rowsName = $this->d->quote('orm_rows');
+        $read = array_map(static fn(string $q): string => $rowsName . '.' . $q, $quoted);
+        return 'WITH ' . $rowsName . ' AS (' . implode(' UNION ALL ', $selects) . ') SELECT ' . implode(', ', $read)
+            . ' FROM ' . $rowsName . ' WHERE NOT EXISTS (SELECT 1 FROM ' . $rowsName . ' AS '
+            . $this->d->quote('orm_written') . ' WHERE (' . $condition . ') IS NOT TRUE)';
     }
 
     private function updateStep(array $r): PlanStep

@@ -1535,23 +1535,27 @@ function requestText(literal, caseIndex, stepIndex) {
 }
 
 // checkValidate gives the request of an ir.validate step to the validator, with the manifest_hash of its schema added, and checks
-// the outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE.
+// the outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE,
+// whose whole text is message when the expect gives one.
 function checkValidate(step, text, schema, database) {
   if (schema === undefined) throw new Error('ir.validate needs the schema key of the recipe');
   // The request is the text of this step in the recipe file, which keeps its member order and repeated names.
   void step.request;
   let got = null;
+  let gotMessage = '';
   try {
     const request = decodeRequest(text);
     if ('manifest_hash' in request) throw new Error('request already holds manifest_hash');
     validate(schema.model, { ...request, manifest_hash: step.manifest_hash ?? schema.hash });
   } catch (error) {
     got = error.code ?? String(error);
+    gotMessage = error.message ?? String(error);
   }
   const outcome = step.expect[dialectKey(database, step.expect)];
   if (outcome === undefined) throw new Error(`ir.validate has no expect for ${database}`);
   if (outcome.error !== undefined) {
     if (got !== outcome.error) throw new Error(`got ${got ?? 'valid'}, want ${outcome.error}`);
+    if (outcome.message !== undefined && gotMessage !== outcome.message) throw new Error(`error message ${JSON.stringify(gotMessage)}, want ${JSON.stringify(outcome.message)}`);
     return;
   }
   if (JSON.stringify(outcome.value) !== '{"bool":true}') throw new Error(`ir.validate expects {bool true} or an error, got ${JSON.stringify(outcome.value)}`);
@@ -2206,10 +2210,18 @@ function chainAssign(m, values, context) {
   return m;
 }
 
+/** Sets the where of a write step as the conditions of the model that inserts (DSL-162). */
+function chainInsertCondition(m, s, context) {
+  if (s.where === undefined) return m;
+  // The model that inserts owns the subqueries of its condition, so their outer names the written row (PRT-17, PRT-85).
+  new ChainBuild(context, m).predicate(m, '', s.where);
+  return m;
+}
+
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
   const model = coreModel(s.model, context);
-  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
+  const m = chainInsertCondition(chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context), s, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
@@ -2320,7 +2332,7 @@ const TABLE_OPS = {
         row[CORE].setValue(s.rows_sequence.column, s.rows_sequence.from + i);
         return chainAssign(row, s.rows_sequence.values, context);
       });
-    return countFields(await coreModel(s.model, context).connect(db).creates(rows, s.batch ?? rows.length));
+    return countFields(await chainInsertCondition(coreModel(s.model, context).connect(db), s, context).creates(rows, s.batch ?? rows.length));
   },
   async 'model.update'(s, context) {
     const m = chainTarget(s, context);

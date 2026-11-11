@@ -1367,6 +1367,102 @@ static bool group(vctx *c, const vat *at, HashTable *g, HashTable *joined)
     return true;
 }
 
+/* The array under key k of h, or NULL. */
+static HashTable *array_at(HashTable *h, const char *k)
+{
+    return ha(orm_hash_value(h, k, strlen(k), true));
+}
+
+static bool insert_condition_reads(const char *entity, const char *column)
+{
+    return fail(IR_INVALID, "an insert condition reads %s.%s, which the insert does not assign", entity, column);
+}
+
+/* The ^ refs of a subquery of an insert condition name the written row; a subquery nested in it names that subquery
+ * with ^, so it is not read. */
+static bool insert_condition_outer(vctx *c, const char *entity, HashTable *g, HashTable *assigned)
+{
+    zval *it;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(array_at(g, "items")), it)
+    {
+        HashTable *ih = ha(it);
+        HashTable *grp = array_at(ih, "group");
+        if (grp != NULL) {
+            TRY(insert_condition_outer(c, entity, grp, assigned));
+        }
+        HashTable *ref = array_at(array_at(ih, "pred"), "ref");
+        if (ref != NULL && streq(str(c, ref, "path", ""), "^") && !set_has(assigned, str(c, ref, "column", ""))) {
+            return insert_condition_reads(entity, str(c, ref, "column", ""));
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+static bool insert_condition_pred(vctx *c, const char *entity, HashTable *p, HashTable *assigned)
+{
+    const char *column = str(c, p, "column", "");
+    if (*column != '\0' && !set_has(assigned, column)) {
+        return insert_condition_reads(entity, column);
+    }
+    if (has(p, "fn")) {
+        return fail(IR_INVALID, "an insert condition takes no fn");
+    }
+    if (has(p, "value")) {
+        return fail(IR_INVALID, "an insert condition takes no value");
+    }
+    const char *op = str(c, p, "op", "");
+    const char *compared[] = {"eq", "not_eq", "gt", "gte", "lt", "lte", "is_null", "is_not_null"};
+    if (IN(op, compared)) {
+        return true;
+    }
+    if (streq(op, "in") || streq(op, "not_in")) {
+        HashTable *query = array_at(array_at(p, "sub"), "query");
+        return query == NULL || insert_condition_outer(c, entity, array_at(query, "where"), assigned);
+    }
+    return fail(IR_INVALID, "an insert condition takes no %s", op);
+}
+
+static bool insert_condition_group(vctx *c, const char *entity, HashTable *g, HashTable *assigned)
+{
+    zval *it;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(array_at(g, "items")), it)
+    {
+        HashTable *ih = ha(it);
+        if (has(ih, "group")) {
+            TRY(insert_condition_group(c, entity, array_at(ih, "group"), assigned));
+        } else if (has(ih, "joined")) {
+            return fail(IR_INVALID, "an insert condition takes no joined");
+        } else if (has(ih, "pred")) {
+            TRY(insert_condition_pred(c, entity, array_at(ih, "pred"), assigned));
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* Checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its predicates
+ * compare a value that the insert writes, so each names a column that the set assigns, by a form that reads only that
+ * value, and a ^ ref of a subquery names such a column too. */
+static bool insert_condition(vctx *c, HashTable *r)
+{
+    HashTable *where = array_at(r, "where");
+    if (!streq(str(c, r, "kind", ""), "insert") || where == NULL) {
+        return true;
+    }
+    if (!has_items(array_at(where, "items"))) {
+        return fail(IR_INVALID, "an insert condition holds no item");
+    }
+    HashTable *assigned = new_set(c);
+    zval *a;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(array_at(r, "set")), a)
+    {
+        set_add(assigned, str(c, ha(a), "column", ""));
+    }
+    ZEND_HASH_FOREACH_END();
+    return insert_condition_group(c, str(c, r, "entity", ""), where, assigned);
+}
+
 static bool joined_refs(vctx *c, HashTable *g, HashTable *seen)
 {
     zval *it;
@@ -1832,6 +1928,7 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
             || has(r, "where") || has(r, "optimistic"))) {
         return fail(IR_INVALID, "restart_identity takes no set, rows, on_duplicate, where or optimistic");
     }
+    TRY(insert_condition(c, r));
     set_n(c, num(r, "n_params", 0));
     zval *root = scopes(c, r);
     vat at = {root, NULL, root};

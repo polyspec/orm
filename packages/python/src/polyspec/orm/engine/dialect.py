@@ -209,6 +209,11 @@ class Dialect:
         """The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it."""
         return ""
 
+    def insert_value(self, expr: str, type_: str) -> str:
+        """The value of a column of dbspec type type_ in the rows that an insert with a condition selects
+        (docs/spec/protocol.md PRT-86); MySQL and SQLite take it as it is."""
+        return expr
+
     # restart_identity(table, column) is defined per dialect: the statement restarts from the value after the largest key of the table's identity column,
     # and an empty table's next key is 1.
 
@@ -348,6 +353,24 @@ class MysqlDialect(Dialect):
         return f"ALTER TABLE {quote_with('`', table)} AUTO_INCREMENT = 1"
 
 
+# The PostgreSQL type of a dbspec type without its length, precision or scale (insert_value).
+_POSTGRES_BASE_TYPE = {
+    "i16": "smallint",
+    "i32": "integer",
+    "i64": "bigint",
+    "bool": "boolean",
+    "decimal": "numeric",
+    "f64": "double precision",
+    "varchar": "text",
+    "text": "text",
+    "bytes": "bytea",
+    "uuid": "uuid",
+    "date": "date",
+    "time": "time",
+    "datetime": "timestamp",
+}
+
+
 class PostgresDialect(Dialect):
     """All codec stages are on the host side: an ip value is stored as bytes in a bytea column."""
 
@@ -423,6 +446,11 @@ class PostgresDialect(Dialect):
             )
 
         return _guard_result(value)
+
+    def insert_value(self, expr: str, type_: str) -> str:
+        # A parameter in a select list is otherwise text, so the value is typed by the base type of its column, which neither
+        # truncates nor rounds it; the insert then converts it as it converts a value of a VALUES list.
+        return f"CAST({expr} AS {_POSTGRES_BASE_TYPE[type_]})"
 
     def restart_identity(self, table, column):
         # Sets the identity sequence to the largest key plus 1, and sets is_called to false so that nextval

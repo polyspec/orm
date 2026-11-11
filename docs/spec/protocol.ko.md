@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 61abda244c67a572476bab792d6e558bd13e63877c37ed5cb302625b9e5d0fbc -->
+<!-- source-sha256: b637e6c92144ed172266e49b39face9e96bc6609d356c2e54889832d62e8d1e5 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -152,6 +152,16 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 - **PRT-30** SQLite: `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX("seq"), 0) FROM "load_probe") WHERE name = 'load_probe'`. 행을 받은 적이 없는 테이블은 `sqlite_sequence` 행이 없고, 그 다음 key는 이미 가장 큰 key 다음이다
 
 PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 시작하지 않으면 다음 생성 key가 적재한 key와 충돌한다. MySQL과 SQLite는 명시한 key를 지나 counter를 옮기며, 다시 시작하면 모든 dialect가 같은 다음 key를 가진다. MySQL 문장은 DDL이라 열린 transaction을 commit하므로, 적재는 행을 commit한 뒤 다시 시작한다. 클라이언트는 둘 다 execute 호출로 실행한다([사용법](../operations/usage.ko.md#execute-a-compiled-statement)). `tests/planner/compile.json`의 case `load_*`, `insert_refuses_identity`, `restart_identity*`가 문장과 오류를, recipe `conformance_verification`의 case `identity_execute_*`가 적재 뒤의 key를 모든 runtime에서 모든 데이터베이스로 적는다.
+
+### 1.7 Insert 조건
+
+`where`가 있는 `insert`는 조건이 성립할 때만 row를 쓴다. 조건의 column은 insert가 그 column에 쓰는 값을 뜻하므로, 조건은 쓰는 row를 읽고 subquery로 다른 row를 읽는다. 이것이 insert를 쓰는 문 안에서 다른 row로 insert를 제한하는 방법이다.
+
+- **PRT-85** `insert`의 `where`는 1.3절의 group이며, 그 항목은 group과 insert의 `set`이 `p`나 `null`로 할당하는 column에 대한 predicate이다: `p`를 받는 `eq`, `not_eq`, `gt`, `gte`, `lt`, `lte`, `ps`나 `sub`를 받는 `in`, `not_in`, 그리고 `is_null`, `is_not_null`. `rows`의 각 row는 조건에 자기 값을 준다. subquery는 `ref.path` `^`(PRT-17)로 쓰는 row를 읽고, insert가 쓰는 table을 읽을 수 있다. insert가 할당하지 않는 column에 대한 predicate나, 그런 column을 가리키는 subquery의 `^` ref는 `IR_INVALID` `an insert condition reads <entity>.<column>, which the insert does not assign`, 그 밖의 predicate나 `joined` 항목은 `IR_INVALID` `an insert condition takes no <op>`, 항목이 없는 `where`는 `IR_INVALID` `an insert condition holds no item`으로 실패한다. 이 검사는 항목 순서대로, 항목의 다른 검사보다 먼저 한다.
+- **PRT-86** 문은 select에서 하는 insert이다: 조건이 요청의 모든 row에 성립하면 모든 row를 쓰고, 한 row에라도 성립하지 않으면 아무 row도 쓰지 않으므로, 문은 자기 row의 일부만 쓰지 않는다. row에 대해 NULL인 조건은 성립하지 않는다. `on_duplicate`가 있으면 조건이 성립하지 않는 row는 삽입도 갱신도 되지 않고, 조건이 성립하는 row는 조건이 없을 때처럼 삽입되거나 만난 row를 갱신하며 그 쓰기 결과는 PRT-70을 따른다.
+- **PRT-87** 조건의 subquery는 모든 database에서 insert가 쓰는 table을 포함한 모든 table의 row를 문 이전 상태로 읽는다: MySQL과 MariaDB는 `INSERT ... SELECT`의 대상을 쓰기 전에 읽고(error 1093은 `UPDATE`와 `DELETE`의 것이다), PostgreSQL과 SQLite는 문 자신의 snapshot을 읽는다.
+- **PRT-88** 문이 아무 row도 쓰지 않으면 client는 문 다음, 반환하기 전에 `CONDITION_NOT_MET` `the condition of the insert into <entity> does not hold; no row was written`으로 실패한다. 여러 batch의 `creates`는 한 transaction에서 실행하므로(DSL-104) 실패한 batch는 쓰인 batch를 남기지 않는다.
+- **PRT-89** 조건은 문이 보는 대로 row를 읽으며 lock을 잡지 않는다. 동시 transaction은 insert가 commit하기 전에 조건이 읽은 row를 바꿀 수 있다: READ COMMITTED의 PostgreSQL은 문 snapshot에서 lock 없이 읽고, MySQL과 MariaDB는 `INSERT ... SELECT`가 읽는 row에 shared lock을 잡으며, SQLite는 한 번에 writer 하나만 실행한다. 동시 writer에 대해 성립해야 하는 규칙은 key를 쓰거나, insert 전에 transaction에서 row lock(PRT-8)을 잡는다.
 
 ## 2. Plan
 

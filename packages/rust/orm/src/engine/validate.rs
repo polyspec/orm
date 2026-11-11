@@ -25,6 +25,72 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     polyspec_orm_schema::dbspec::operator_allowed_for_field(c, op, col_op(op))
 }
 
+/// Checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its predicates compare
+/// a value that the insert writes, so each names a column that the set assigns, by a form that reads only that value, and a
+/// ^ ref of a subquery names such a column too.
+fn insert_condition(r: &ir::Request) -> Result<()> {
+    let Some(where_) = r.query.where_.as_ref().filter(|_| r.kind == "insert") else {
+        return Ok(());
+    };
+    if where_.items.is_empty() {
+        return Err(err(codes::IR_INVALID, "an insert condition holds no item"));
+    }
+    let assigned: Vec<&str> = r.set.iter().map(|a| a.column.as_str()).collect();
+    insert_condition_group(&r.query.entity, where_, &assigned)
+}
+
+fn unassigned_read(entity: &str, column: &str) -> crate::Error {
+    err(codes::IR_INVALID, format!("an insert condition reads {entity}.{column}, which the insert does not assign"))
+}
+
+fn insert_condition_group(entity: &str, g: &ir::Group, assigned: &[&str]) -> Result<()> {
+    for item in &g.items {
+        match item {
+            ir::Item::Group { group } => insert_condition_group(entity, group, assigned)?,
+            ir::Item::Joined { .. } => return Err(err(codes::IR_INVALID, "an insert condition takes no joined")),
+            ir::Item::Pred { pred } => insert_condition_pred(entity, pred, assigned)?,
+        }
+    }
+    Ok(())
+}
+
+fn insert_condition_pred(entity: &str, p: &ir::Pred, assigned: &[&str]) -> Result<()> {
+    if !p.column.is_empty() && !assigned.contains(&p.column.as_str()) {
+        return Err(unassigned_read(entity, &p.column));
+    }
+    if p.r#fn.is_some() {
+        return Err(err(codes::IR_INVALID, "an insert condition takes no fn"));
+    }
+    if p.value.is_some() {
+        return Err(err(codes::IR_INVALID, "an insert condition takes no value"));
+    }
+    match p.op.as_str() {
+        "eq" | "not_eq" | "gt" | "gte" | "lt" | "lte" | "is_null" | "is_not_null" => Ok(()),
+        "in" | "not_in" => match p.sub.as_ref().and_then(|sub| sub.query.where_.as_ref()) {
+            Some(w) => insert_condition_outer(entity, w, assigned),
+            None => Ok(()),
+        },
+        op => Err(err(codes::IR_INVALID, format!("an insert condition takes no {op}"))),
+    }
+}
+
+/// Checks the ^ refs of a subquery of the condition, which name the written row; a subquery nested in it names that
+/// subquery with ^, so it is not read.
+fn insert_condition_outer(entity: &str, g: &ir::Group, assigned: &[&str]) -> Result<()> {
+    for item in &g.items {
+        match item {
+            ir::Item::Group { group } => insert_condition_outer(entity, group, assigned)?,
+            ir::Item::Pred { pred } => {
+                if let Some(r) = pred.r#ref.as_ref().filter(|r| r.path == "^" && !assigned.contains(&r.column.as_str())) {
+                    return Err(unassigned_read(entity, &r.column));
+                }
+            }
+            ir::Item::Joined { .. } => {}
+        }
+    }
+    Ok(())
+}
+
 /// The one key an insert with `on_duplicate` conflicts on. MySQL updates the row met on any unique key, while
 /// PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
 /// reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
@@ -148,6 +214,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     {
         return Err(err(codes::IR_INVALID, "restart_identity takes no set, rows, on_duplicate, where or optimistic"));
     }
+    insert_condition(r)?;
     let v = Validator { m, n: r.n_params };
     let root = v.scopes(&r.query)?;
     v.query(&r.query, At { root: &root, outer: None, node: &root }, false, false)?;

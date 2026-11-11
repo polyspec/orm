@@ -18,7 +18,8 @@
     "DSL-126",
     "INT-38",
     "INT-44",
-    "DIA-183"
+    "DIA-183",
+    "PRT-88"
   ],
   "fixture": "contracts/fixtures/audit_triggers/dbspec-set.json",
   "cases": [
@@ -1125,6 +1126,231 @@
                 [
                   {
                     "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_record_of_an_insert_whose_condition_fails",
+      "requirements": [
+        "DBS-87",
+        "PRT-88"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "refused"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "other"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "postgres": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "sqlite": {
+                  "error": "CONDITION_NOT_MET"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "refused"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "refused"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "other"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "postgres": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "sqlite": {
+                  "error": "CONDITION_NOT_MET"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "written"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "written"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT title FROM item ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
                   }
                 ]
               ]

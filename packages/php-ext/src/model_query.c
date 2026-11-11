@@ -527,7 +527,8 @@ ZEND_METHOD(Polyspec_Orm_Model, getQuery)
     ZVAL_COPY_VALUE(return_value, &result);
 }
 
-static bool query_make_frame(zval *model, zval *outer, zval *frame)
+/* new Frame($model, $outer) in frame. False with an exception. */
+bool query_make_frame(zval *model, zval *outer, zval *frame)
 {
     zend_class_entry *frame_ce = query_class("Polyspec\\Orm\\Frame");
     if (frame_ce == NULL) {

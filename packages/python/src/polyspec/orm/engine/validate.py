@@ -857,6 +857,74 @@ def _typed(kind: str, value, path: str) -> None:
         _fail(codes.IR_INVALID, f"{path}: {kind} required")
 
 
+_INSERT_CONDITION_OPS = frozenset(
+    ("eq", "not_eq", "gt", "gte", "lt", "lte", "is_null", "is_not_null", "in", "not_in")
+)
+
+
+def _insert_condition(r: dict) -> None:
+    """Checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its predicates
+    compare a value that the insert writes, so each names a column that the set assigns, by a form that reads only that
+    value, and a ^ ref of a subquery names such a column too."""
+    if r["kind"] != "insert" or r.get("where") is None:
+        return
+    if not r["where"].get("items"):
+        _fail(codes.IR_INVALID, "an insert condition holds no item")
+    assigned = {a.get("column") for a in r.get("set") or []}
+    _insert_condition_group(r.get("entity", ""), r["where"], assigned)
+
+
+def _insert_condition_unassigned(entity: str, column: str) -> None:
+    _fail(
+        codes.IR_INVALID,
+        f"an insert condition reads {entity}.{column}, which the insert does not assign",
+    )
+
+
+def _insert_condition_group(entity: str, g: dict, assigned: set) -> None:
+    for item in g.get("items") or []:
+        if item.get("group") is not None:
+            _insert_condition_group(entity, item["group"], assigned)
+        elif item.get("joined") is not None:
+            _fail(codes.IR_INVALID, "an insert condition takes no joined")
+        elif item.get("pred") is not None:
+            _insert_condition_pred(entity, item["pred"], assigned)
+
+
+def _insert_condition_pred(entity: str, p: dict, assigned: set) -> None:
+    column = p.get("column") or ""
+    if column and column not in assigned:
+        _insert_condition_unassigned(entity, column)
+    if p.get("fn") is not None:
+        _fail(codes.IR_INVALID, "an insert condition takes no fn")
+    if p.get("value") is not None:
+        _fail(codes.IR_INVALID, "an insert condition takes no value")
+    op = p.get("op") or ""
+    if op not in _INSERT_CONDITION_OPS:
+        _fail(codes.IR_INVALID, f"an insert condition takes no {op}")
+    sub = p.get("sub")
+    if op in ("in", "not_in") and sub is not None and sub.get("query") is not None:
+        _insert_condition_outer(entity, sub["query"].get("where"), assigned)
+
+
+def _insert_condition_outer(entity: str, g, assigned: set) -> None:
+    """Checks the ^ refs of a subquery of the condition, which name the written row; a subquery nested in it names that
+    subquery with ^, so it is not read."""
+    if g is None:
+        return
+    for item in g.get("items") or []:
+        if item.get("group") is not None:
+            _insert_condition_outer(entity, item["group"], assigned)
+        p = item.get("pred")
+        ref = p.get("ref") if p is not None else None
+        if (
+            ref is not None
+            and ref.get("path") == "^"
+            and ref.get("column") not in assigned
+        ):
+            _insert_condition_unassigned(entity, ref.get("column"))
+
+
 def validate(m: RuntimeModel, r: dict) -> None:
     """Checks the request against the manifest."""
     _shape("Request", r, "")
@@ -894,6 +962,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
             codes.IR_INVALID,
             "restart_identity takes no set, rows, on_duplicate, where or optimistic",
         )
+    _insert_condition(r)
     v = _Validator(m, r.get("n_params") or 0)
     root = v.scopes(r)
     v.query(r, {"root": root, "outer": None, "node": root}, False, False, True)

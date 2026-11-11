@@ -57,6 +57,8 @@ codes:
     origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor
+  - code: CONDITION_NOT_MET       # an insert with a condition wrote no row, because the condition does not hold for one of its rows; nothing was written
+    origin: executor
   - code: WRITE_CONFLICT          # a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/spec/codec.md)

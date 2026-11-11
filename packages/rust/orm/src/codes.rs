@@ -49,6 +49,8 @@ pub const REVISION_CHANGED: &str = "REVISION_CHANGED";
 pub const COLUMN_UNSELECTED: &str = "COLUMN_UNSELECTED";
 /// executor: updateOptimistic matched no row (updated_ts changed)
 pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
+/// executor: an insert with a condition wrote no row, because the condition does not hold for one of its rows; nothing was written
+pub const CONDITION_NOT_MET: &str = "CONDITION_NOT_MET";
 /// executor: a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it
 pub const WRITE_CONFLICT: &str = "WRITE_CONFLICT";
 /// executor: styled column bytes could not be decoded (docs/spec/codec.md)

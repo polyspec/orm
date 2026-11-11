@@ -1328,10 +1328,11 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(c.column()));
             vals.push(c.value(&mut b));
         }
-        let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", b.table(&ent.table), cols.join(", "), vals.join(", "));
+        let table = b.table(&ent.table);
+        let mut rows = vec![vals];
+        // The rendered columns correspond to the values of r.set. A derived blind index uses the value of the AES source column.
+        let mut source = Vec::with_capacity(set.len());
         if !r.rows.is_empty() {
-            // The rendered columns correspond to the values of r.set. A derived blind index uses the value of the AES source column.
-            let mut source = Vec::with_capacity(set.len());
             for (i, a) in set.iter().enumerate() {
                 if i < r.set.len() {
                     source.push(i);
@@ -1346,17 +1347,28 @@ impl<'m> Planner<'m> {
                     source.push(source_index);
                 }
             }
-            for row in &r.rows {
-                let mut more = Vec::with_capacity(set.len() + 2);
-                for (i, a) in set.iter().enumerate() {
-                    let assign = ir::Assign { column: a.column.clone(), p: Some(row[source[i]]), ..Default::default() };
-                    more.push(self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, &assign)?);
-                }
-                for c in &managed {
-                    more.push(c.value(&mut b));
-                }
-                sql.push_str(&format!(", ({})", more.join(", ")));
+        }
+        for row in &r.rows {
+            let mut more = Vec::with_capacity(set.len() + 2);
+            for (i, a) in set.iter().enumerate() {
+                let assign = ir::Assign { column: a.column.clone(), p: Some(row[source[i]]), ..Default::default() };
+                more.push(self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, &assign)?);
             }
+            for c in &managed {
+                more.push(c.value(&mut b));
+            }
+            rows.push(more);
+        }
+        let mut sql = format!("INSERT INTO {table} ({}) ", cols.join(", "));
+        if let Some(where_) = &r.query.where_ {
+            let mut names: Vec<&str> = set.iter().map(|a| a.column.as_str()).collect();
+            names.extend(managed.iter().map(|c| c.column()));
+            sql.push_str(&self.conditional_rows(&mut b, ent, &r.query, &names, &rows, where_)?);
+        } else {
+            let lists: Vec<String> = rows.iter().map(|row| format!("({})", row.join(", "))).collect();
+            sql.push_str(&format!("VALUES {}", lists.join(", ")));
+        }
+        if !r.rows.is_empty() {
             b.checked()?;
             return Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() });
         }
@@ -1387,6 +1399,36 @@ impl<'m> Planner<'m> {
         }
         b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
+    }
+
+    /// The select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87): the rows of the request, named by
+    /// their columns in a common table expression, are selected only when no row leaves the condition other than true, so the
+    /// statement writes every row or none, and a NULL condition does not hold. The condition reads each row as the scope of
+    /// the written row, which a subquery names with ^; the tables it reads are read as they were before the statement.
+    fn conditional_rows(&self, b: &mut Builder, ent: &Entity, q: &ir::Query, names: &[&str], rows: &[Vec<String>], where_: &ir::Group) -> Result<String> {
+        let quoted: Vec<String> = names.iter().map(|n| self.d.quote(n)).collect();
+        let mut selects = Vec::with_capacity(rows.len());
+        for (i, row) in rows.iter().enumerate() {
+            let mut items = Vec::with_capacity(row.len());
+            for (k, v) in row.iter().enumerate() {
+                let mut item = self.d.insert_value(v, self.column_of(ent, names[k])?.ty);
+                if i == 0 {
+                    item.push_str(&format!(" AS {}", quoted[k]));
+                }
+                items.push(item);
+            }
+            selects.push(format!("SELECT {}", items.join(", ")));
+        }
+        let written = Scope { ent, alias: "orm_written".into(), q, joins: Vec::new(), outer: None, extra: Vec::new() };
+        let condition = self.render_group(b, &written, &written, where_, true)?;
+        let rows_name = self.d.quote("orm_rows");
+        let read: Vec<String> = quoted.iter().map(|q| format!("{rows_name}.{q}")).collect();
+        Ok(format!(
+            "WITH {rows_name} AS ({}) SELECT {} FROM {rows_name} WHERE NOT EXISTS (SELECT 1 FROM {rows_name} AS {} WHERE ({condition}) IS NOT TRUE)",
+            selects.join(" UNION ALL "),
+            read.join(", "),
+            self.d.quote("orm_written"),
+        ))
     }
 
     /// Columns an insert writes besides the user's assignments: AES key version, audit column,

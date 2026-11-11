@@ -1383,7 +1383,7 @@ final class Db
         $this->enter($frame, $r->ir);
         $step = $this->plan($r)['steps'][0];
         $settle = $frame !== null && self::bindsAudit($step)
-            ? $this->auditFor($frame, $r->ir['kind'] !== 'insert') : null;
+            ? $this->auditFor($frame, $r->ir['kind'] !== 'insert' || isset($r->ir['where'])) : null;
         try {
             $args = $this->args($step, $r->params, [], $frame);
             [$id, $affected] = $this->sendWrite($step, $args, $r);
@@ -1396,6 +1396,14 @@ final class Db
         }
         if ($settle !== null && ($settled = $settle($affected)) !== null) {
             throw $settled;
+        }
+        if ($r->ir['kind'] === 'insert' && isset($r->ir['where']) && $affected === 0) {
+            // The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition
+            // does not hold.
+            throw new OrmException(
+                Code::CONDITION_NOT_MET,
+                "the condition of the insert into {$r->ir['entity']} does not hold; no row was written"
+            );
         }
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
@@ -1417,13 +1425,18 @@ final class Db
                 if ($insert && str_contains($step['sql'], ' RETURNING ')) {
                     $id = $st->fetchColumn();
                     $st->closeCursor();
-                    return [$id, 1];
+                    // An insert with a condition returns no key when its condition does not hold
+                    // (docs/spec/protocol.md PRT-88).
+                    return $id === false && isset($r->ir['where']) ? [null, 0] : [$id, 1];
                 }
                 $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
-                // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
-                $upsert = $insert && ($r->ir['on_duplicate'] ?? []) !== [];
+                $affected = $st->rowCount();
+                // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1. An
+                // insert with a condition that writes no row counts 0 (docs/spec/protocol.md PRT-88).
+                $upsert = $insert && ($r->ir['on_duplicate'] ?? []) !== []
+                    && !(isset($r->ir['where']) && $affected === 0);
                 return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
-                    ? $this->handle()->lastInsertId() : null, $upsert ? 1 : $st->rowCount()];
+                    ? $this->handle()->lastInsertId() : null, $upsert ? 1 : $affected];
             } catch (\PDOException $e) {
                 throw self::failed($st, $e);
             }

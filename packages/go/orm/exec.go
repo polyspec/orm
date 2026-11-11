@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -1386,7 +1387,8 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	settle := func(int64, error) error { return nil }
 	if t := ex.transaction(); t != nil {
 		if bindsAudit(st) {
-			if settle, err = t.auditFor(r.ir.Kind != "insert"); err != nil {
+			// A write that can change no row, an insert with a condition too, takes the guard (DBS-87).
+			if settle, err = t.auditFor(r.ir.Kind != "insert" || r.ir.Where != nil); err != nil {
 				return nil, 0, err
 			}
 		}
@@ -1413,6 +1415,13 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		// The returned key is the identity, an integer.
 		var returned any
 		err = stmt.QueryRowContext(ctx, args...).Scan(&returned)
+		if r.ir.Where != nil && errors.Is(err, sql.ErrNoRows) {
+			// An insert with a condition returns no key when its condition does not hold (docs/spec/protocol.md PRT-88).
+			if err := d.modelDone(ex, st, st.SQL, args, masks, start, nil); err != nil {
+				return nil, 0, err
+			}
+			return nil, 0, conditionNotMet(r.ir.Entity)
+		}
 		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx, ex.base().server)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
@@ -1433,6 +1442,10 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if err != nil {
 		return nil, 0, mapDriverErr(err, ex.base().server)
 	}
+	if r.ir.Kind == "insert" && r.ir.Where != nil && affected == 0 {
+		// The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not hold.
+		return nil, 0, conditionNotMet(r.ir.Entity)
+	}
 	if r.ir.Kind == "insert" && len(r.ir.OnDuplicate) > 0 {
 		// An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
 		affected = 1
@@ -1449,4 +1462,9 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, &ir.Error{Code: CodeOptimisticLock, Msg: "the row changed after it was read"}
 	}
 	return lastID, affected, nil
+}
+
+// conditionNotMet is the error of an insert with a condition that wrote no row (docs/spec/protocol.md PRT-88).
+func conditionNotMet(entity string) error {
+	return &ir.Error{Code: CodeConditionNotMet, Msg: "the condition of the insert into " + entity + " does not hold; no row was written"}
 }

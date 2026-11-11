@@ -381,6 +381,31 @@ impl Dialect {
         }
     }
 
+    /// The value of a column of dbspec type `ty` in the rows that an insert with a condition selects (docs/spec/protocol.md
+    /// PRT-86): PostgreSQL types it by the base type of the column, since a parameter in a select list is otherwise text; the
+    /// insert then converts it as it converts a value of a VALUES list. The base type has no length, precision or scale, so
+    /// the cast neither truncates nor rounds a value before the insert converts it. MySQL and SQLite take the value as is.
+    pub fn insert_value(self, expr: &str, ty: Type) -> String {
+        if self != Dialect::Postgres {
+            return expr.to_owned();
+        }
+        let base = match ty {
+            Type::I16 => "smallint",
+            Type::I32 => "integer",
+            Type::I64 => "bigint",
+            Type::Bool => "boolean",
+            Type::Decimal(..) => "numeric",
+            Type::F64 => "double precision",
+            Type::Varchar(_) | Type::Text => "text",
+            Type::Bytes => "bytea",
+            Type::Uuid => "uuid",
+            Type::Date => "date",
+            Type::Time(_) => "time",
+            Type::DateTime(_) => "timestamp",
+        };
+        format!("CAST({expr} AS {base})")
+    }
+
     /// The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it.
     pub fn nulls_order(self, desc: bool) -> &'static str {
         match self {

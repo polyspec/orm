@@ -84,6 +84,10 @@ type Dialect interface {
 	// RestartIdentity is the statement that restarts a table's identity column from the value after the largest key.
 	// If the table is empty, the next key is 1.
 	RestartIdentity(table, column string) string
+	// InsertValue is the value of a column of dbspec type typ in the rows that an insert with a condition selects
+	// (docs/spec/protocol.md PRT-86): PostgreSQL types it by the base type of the column, since a parameter in a
+	// select list is otherwise text; the insert then converts it as it converts a value of a VALUES list.
+	InsertValue(expr, typ string) string
 }
 
 // Literal quotes text as a SQL string literal.

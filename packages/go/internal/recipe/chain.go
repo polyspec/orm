@@ -1621,6 +1621,16 @@ func columnField(core *orm.Core, column string, c *databaseContext) *runtimemode
 	return entity.Field(column)
 }
 
+// chainInsertCondition sets the where of a write step as the conditions of the model that inserts (DSL-162).
+func chainInsertCondition(core *orm.Core, s chainStep, db *orm.DB, c *databaseContext) error {
+	if len(s.k("where").Where) == 0 {
+		return nil
+	}
+	// The model that inserts owns the subqueries of its condition, so their outer names the written row (PRT-17, PRT-85).
+	build := &chainBuild{c: c, joined: map[string]*orm.Core{}, db: db, outer: core}
+	return build.predicate(core, "", s.k("where").Where)
+}
+
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its
 // terminal. The written model is bound with as, and its toArray is the result.
 func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
@@ -1629,6 +1639,9 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		core.Connect(db)
 	}
 	if err := chainAssign(core, s.k("values").Values, c); err != nil {
+		return outcome{}, err
+	}
+	if err := chainInsertCondition(core, s, db, c); err != nil {
 		return outcome{}, err
 	}
 	if len(s.k("attached").Attached) > 0 {
@@ -1718,6 +1731,9 @@ func chainCreates(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) 
 	}
 	core := chainCore(s.k("model").Model, c)
 	core.Connect(db)
+	if err := chainInsertCondition(core, s, db, c); err != nil {
+		return outcome{}, err
+	}
 	n, err := orm.Creates(core, models, batch)
 	if err != nil {
 		return outcome{}, err

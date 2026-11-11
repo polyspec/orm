@@ -123,3 +123,13 @@ table composite_member {
   role varchar(32)
   primary key (tenant_id, account_id, role)
 }
+
+# An insert with a condition (docs/spec/protocol.md PRT-85 to PRT-88): a nullable body that a condition reads, and a unique
+# code that an insert with on_duplicate meets.
+table condition_cell {
+  seq i64 identity
+  code varchar(16)
+  body varchar(16) null
+  primary key (seq)
+  unique uq_condition_cell_code (code)
+}

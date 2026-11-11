@@ -571,6 +571,17 @@ export class BuiltRequest {
     return this.ir;
   }
 
+  /**
+   * The conditions of c as the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column compares the value that
+   * the insert writes to that column. Undefined when c has no condition, or when it fails, which error then holds.
+   */
+  public insertCondition(c: Core): Group | undefined {
+    if (c.where.pending !== '') { this.fail(configError(`connector ${c.where.pending} without a following condition`)); return undefined; }
+    if (c.where.items.length === 0) return undefined;
+    const where = this.group(c.where, c, new Frame(c, undefined));
+    return this.error === undefined ? where : undefined;
+  }
+
   /** The query of a model; possible<Col>() is refused on a model that is no relation child, which has no parent row to compare (DSL-85). */
   public query(c: Core, f: Frame, relationChild = false): RequestQuery | undefined {
     if (c.error) { this.fail(c.error); return undefined; }

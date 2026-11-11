@@ -28,6 +28,7 @@ const (
 	CodeRevisionChanged           = "REVISION_CHANGED"             // executor: an update or delete given an expected revision found the row at another revision, or no row; nothing was written
 	CodeColumnUnselected          = "COLUMN_UNSELECTED"            // executor: a requested column was not included in the loaded row
 	CodeOptimisticLock            = "OPTIMISTIC_LOCK"              // executor: updateOptimistic matched no row (updated_ts changed)
+	CodeConditionNotMet           = "CONDITION_NOT_MET"            // executor: an insert with a condition wrote no row, because the condition does not hold for one of its rows; nothing was written
 	CodeWriteConflict             = "WRITE_CONFLICT"               // executor: a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it
 	CodeCodecDecode               = "CODEC_DECODE"                 // executor: styled column bytes could not be decoded (docs/spec/codec.md)
 	CodeCodecEncode               = "CODEC_ENCODE"                 // executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER)

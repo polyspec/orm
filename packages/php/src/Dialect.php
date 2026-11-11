@@ -26,6 +26,16 @@ final class Dialect
         'months_later' => 'month',
     ];
 
+    /**
+     * The PostgreSQL type of a dbspec type without its length, precision or scale, so that the cast of insertValue
+     * neither truncates nor rounds a value before the insert converts it.
+     */
+    private const POSTGRES_BASE_TYPE = [
+        'i16' => 'smallint', 'i32' => 'integer', 'i64' => 'bigint', 'bool' => 'boolean', 'decimal' => 'numeric',
+        'f64' => 'double precision', 'varchar' => 'text', 'text' => 'text', 'bytes' => 'bytea', 'uuid' => 'uuid',
+        'date' => 'date', 'time' => 'time', 'datetime' => 'timestamp',
+    ];
+
     public readonly string $name;
 
     /**
@@ -319,6 +329,17 @@ final class Dialect
                 . '), 0) FROM ' . self::quoteWith('"', $table)
                 . ') WHERE name = ' . self::literal($table),
         };
+    }
+
+    /**
+     * The value of a column of dbspec type $type in the rows that an insert with a condition selects
+     * (docs/spec/protocol.md PRT-86): PostgreSQL types it by the base type of the column, since a parameter in a
+     * select list is otherwise text; the insert then converts it as it converts a value of a VALUES list. MySQL and
+     * SQLite take the value as is.
+     */
+    public function insertValue(string $expr, string $type): string
+    {
+        return $this->name === 'postgres' ? 'CAST(' . $expr . ' AS ' . self::POSTGRES_BASE_TYPE[$type] . ')' : $expr;
     }
 
     public function random(): string

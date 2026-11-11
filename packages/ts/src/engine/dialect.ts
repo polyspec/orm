@@ -1,6 +1,8 @@
 // Database-specific SQL pieces (docs/spec/dialects.md). The planner never writes a
 // quote or a placeholder itself.
 
+import { present } from '../present.js';
+
 /** Column types each column function accepts. */
 export const columnFunctionTypes: Readonly<Record<string, readonly string[]>> = {
   day_of_week: ['date', 'datetime'],
@@ -110,6 +112,12 @@ export interface Dialect {
   nullsOrder(desc: boolean): string;
   /** A statement that restarts a table's identity column from the value after the largest key. If the table is empty, the next key is 1. */
   restartIdentity(table: string, column: string): string;
+  /**
+   * The value of a column of dbspec type typ in the rows that an insert with a condition selects (docs/spec/protocol.md PRT-86):
+   * PostgreSQL types it by the base type of the column, since a parameter in a select list is otherwise text; the insert then
+   * converts it as it converts a value of a VALUES list.
+   */
+  insertValue(expr: string, typ: string): string;
 }
 
 function quoteWith(q: string, ident: string): string {
@@ -223,9 +231,17 @@ const mysql: Dialect = {
   // InnoDB sets AUTO_INCREMENT, when the column's largest value is at or below it, to the largest value plus 1, so 1
   // is always after the largest key. It is DDL, so it commits the open transaction.
   restartIdentity: table => `ALTER TABLE ${quoteWith('`', table)} AUTO_INCREMENT = 1`,
+  insertValue: expr => expr,
 };
 
 /** Every codec stage is host-side: an ip value is stored as bytes in a bytea column. */
+// postgresBaseType is the type of a dbspec type without its length, precision or scale, so that the cast neither truncates nor
+// rounds a value before the insert converts it.
+const postgresBaseType: Readonly<Record<string, string>> = {
+  i16: 'smallint', i32: 'integer', i64: 'bigint', bool: 'boolean', decimal: 'numeric', f64: 'double precision', varchar: 'text',
+  text: 'text', bytes: 'bytea', uuid: 'uuid', date: 'date', time: 'time', datetime: 'timestamp',
+};
+
 const postgres: Dialect = {
   name: 'postgres',
   quote: ident => quoteWith('"', ident),
@@ -285,6 +301,7 @@ const postgres: Dialect = {
     const q = quoteWith('"', column);
     return `SELECT setval(pg_get_serial_sequence(${literal(quoteWith('"', table))}, ${literal(column)}), COALESCE(MAX(${q}), 0) + 1, false) FROM ${quoteWith('"', table)}`;
   },
+  insertValue: (expr, typ) => `CAST(${expr} AS ${present(postgresBaseType[typ], `the PostgreSQL base type of ${typ}`)})`,
 };
 
 /** Every codec stage is host-side. */
@@ -345,6 +362,7 @@ const sqlite: Dialect = {
   // The next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1, so the seq is set to the largest key.
   // If the table has never received a row and sqlite_sequence has no row for it, the next key is already after the largest key.
   restartIdentity: (table, column) => `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(${quoteWith('"', column)}), 0) FROM ${quoteWith('"', table)}) WHERE name = ${literal(table)}`,
+  insertValue: expr => expr,
 };
 
 /** The mysql dialect on a MariaDB server: only the row lock `share_nowait` differs (DIA-209). */

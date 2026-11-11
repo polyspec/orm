@@ -242,6 +242,82 @@ func numeric(t string) bool {
 var colOps = map[string]bool{"eq_col": true, "not_eq_col": true, "gt_col": true, "gte_col": true, "lt_col": true, "lte_col": true}
 
 // assign validates one set[]/on_duplicate[] assignment.
+// insertCondition checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its
+// predicates compare a value that the insert writes, so each names a column that the set assigns, by a form that reads only
+// that value, and a ^ ref of a subquery names such a column too.
+func insertCondition(r *Request) error {
+	if r.Kind != "insert" || r.Where == nil {
+		return nil
+	}
+	if len(r.Where.Items) == 0 {
+		return errf("IR_INVALID", "an insert condition holds no item")
+	}
+	assigned := make(map[string]bool, len(r.Set))
+	for _, a := range r.Set {
+		assigned[a.Column] = true
+	}
+	return insertConditionGroup(r.Entity, r.Where, assigned)
+}
+
+func insertConditionGroup(entity string, g *Group, assigned map[string]bool) error {
+	for _, item := range g.Items {
+		switch {
+		case item.Group != nil:
+			if err := insertConditionGroup(entity, item.Group, assigned); err != nil {
+				return err
+			}
+		case item.Joined != nil:
+			return errf("IR_INVALID", "an insert condition takes no joined")
+		case item.Pred != nil:
+			if err := insertConditionPred(entity, item.Pred, assigned); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func insertConditionPred(entity string, p *Pred, assigned map[string]bool) error {
+	if p.Column != "" && !assigned[p.Column] {
+		return errf("IR_INVALID", "an insert condition reads %s.%s, which the insert does not assign", entity, p.Column)
+	}
+	switch {
+	case p.Fn != nil:
+		return errf("IR_INVALID", "an insert condition takes no fn")
+	case p.Value != nil:
+		return errf("IR_INVALID", "an insert condition takes no value")
+	}
+	switch p.Op {
+	case "eq", "not_eq", "gt", "gte", "lt", "lte", "is_null", "is_not_null":
+		return nil
+	case "in", "not_in":
+		if p.Sub != nil && p.Sub.Query != nil {
+			return insertConditionOuter(entity, p.Sub.Query.Where, assigned)
+		}
+		return nil
+	}
+	return errf("IR_INVALID", "an insert condition takes no %s", p.Op)
+}
+
+// insertConditionOuter checks the ^ refs of a subquery of the condition, which name the written row; a subquery nested in
+// it names that subquery with ^, so it is not read.
+func insertConditionOuter(entity string, g *Group, assigned map[string]bool) error {
+	if g == nil {
+		return nil
+	}
+	for _, item := range g.Items {
+		if item.Group != nil {
+			if err := insertConditionOuter(entity, item.Group, assigned); err != nil {
+				return err
+			}
+		}
+		if p := item.Pred; p != nil && p.Ref != nil && p.Ref.Path == "^" && !assigned[p.Ref.Column] {
+			return errf("IR_INVALID", "an insert condition reads %s.%s, which the insert does not assign", entity, p.Ref.Column)
+		}
+	}
+	return nil
+}
+
 func (v *validator) assign(ent *runtimemodel.Entity, r *Request, a *Assign) error {
 	c := ent.Field(a.Column)
 	if c == nil {
@@ -329,6 +405,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	// restart_identity restarts only one entity's identity, so it takes no row or value.
 	if r.Kind == "restart_identity" && (len(r.Set) > 0 || len(r.Rows) > 0 || len(r.OnDuplicate) > 0 || r.Where != nil || r.Optimistic != nil) {
 		return errf("IR_INVALID", "restart_identity takes no set, rows, on_duplicate, where or optimistic")
+	}
+	if err := insertCondition(r); err != nil {
+		return err
 	}
 	v := &validator{m: m, n: r.NParams, root: &r.Query}
 	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false, true); err != nil {

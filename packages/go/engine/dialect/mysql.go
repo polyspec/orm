@@ -84,6 +84,8 @@ func (MySQL) RowNumber(partition, orderBy string) string {
 // RestartIdentity: InnoDB sets AUTO_INCREMENT to the largest column value if that is at most it, and
 // otherwise to that largest value plus 1; since 1 is always the value after the largest key, DDL commits an open
 // transaction.
+func (MySQL) InsertValue(expr, _ string) string { return expr }
+
 func (MySQL) RestartIdentity(table, _ string) string {
 	return "ALTER TABLE " + QuoteWith("`", table) + " AUTO_INCREMENT = 1"
 }

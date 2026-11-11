@@ -410,15 +410,20 @@ final class Recipe
         }
         $model = RuntimeModel::build(RuntimeModel::files([$schema]));
         $got = 'no error';
+        $message = '';
         try {
             (new Validator($model))->validate(
                 $step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]
             );
         } catch (OrmException $error) {
             $got = $error->code_;
+            $message = $error->getMessage();
         }
         if (isset($outcome['error'])) {
             Assert::assertSame($outcome['error'], $got);
+            if (isset($outcome['message'])) {
+                Assert::assertSame($outcome['message'], $message, 'ir.validate error message');
+            }
             return;
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
@@ -4880,6 +4885,17 @@ final class Recipe
         return $model;
     }
 
+    /**
+     * Sets the where of a write step as the conditions of the model that inserts (DSL-162). That model owns the
+     * subqueries of its condition, so their outer names the written row (PRT-17, PRT-85).
+     */
+    private static function chainInsertCondition(Model $model, RecipeStep $s, array $context): void
+    {
+        if (isset($s['where'])) {
+            self::chainPredicate($model, '', $s['where'], self::chainState($model), $context);
+        }
+    }
+
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(RecipeStep $s, array $context, \Closure $terminal): array
     {
@@ -4888,6 +4904,7 @@ final class Recipe
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
         $model = self::chainAssign($table, $s['values'] ?? [], $context);
+        self::chainInsertCondition($model, $s, $context);
         foreach ($s['attached'] ?? [] as $name => $value) {
             $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));
         }
@@ -5003,6 +5020,7 @@ final class Recipe
                     }
                 }
                 $table = self::tableModel($s['model'], $db, $context);
+                self::chainInsertCondition($table, $s, $context);
                 return self::countFields($table->creates($models, $s['batch'] ?? count($models)));
             case 'model.update':
                 $model = self::chainTarget($s, $context);

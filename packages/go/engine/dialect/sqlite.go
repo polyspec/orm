@@ -45,6 +45,8 @@ func (SQLite) RowNumber(partition, orderBy string) string {
 // RestartIdentity: the next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1,
 // so seq is set to the largest key. A table that has not yet received rows has
 // no sqlite_sequence row, so the next key is already the one after the largest key.
+func (SQLite) InsertValue(expr, _ string) string { return expr }
+
 func (SQLite) RestartIdentity(table, column string) string {
 	return "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(" + QuoteWith(`"`, column) + "), 0) FROM " + QuoteWith(`"`, table) + ") WHERE name = " + Literal(table)
 }
