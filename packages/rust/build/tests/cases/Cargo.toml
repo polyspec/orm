@@ -11,7 +11,7 @@ test = false
 doctest = false
 
 [dependencies]
-polyspec-orm-build = { path = "../..", features = ["live-db"] }
+polyspec-orm-build = { path = "../..", features = ["live-db", "test-faults"] }
 polyspec-orm = { path = "../../../orm", features = ["test-faults"] }
 polyspec-orm-schema = { path = "../../../schema" }
 polyspec-orm-testcase = { path = "../../../testcase" }

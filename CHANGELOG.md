@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Rust catalog has a driver seam for its tests, as the other five runtimes have (T431): with feature `test-faults` of polyspec-orm-build, `tool_db::script::run` answers the statements of the catalog connections inside it from a `Script` before the driver sends them, rows for a read or an error for a statement. The cases of DIA-205 (a MariaDB default that is not one literal) and INT-118 (a commit with no acknowledgement) run on `CatalogConnection` in Rust as in the other runtimes. No default feature enables it.
+
 ## 0.0.29
 
 - Rust logs in with a password over a MySQL Unix socket, as the other runtimes do (T385.13, CFG-10). sqlx 0.9.0 sent a public key request in the full authentication of `caching_sha2_password` there, which MySQL reads as a wrong password, so the login failed with 1045 whenever the server held no cached entry for the account. The Rust workspace takes sqlx from the fork min-0-max/sqlx, release `v0.9.0-polyspec.1`, which sends the cleartext password over a socket as over TLS.

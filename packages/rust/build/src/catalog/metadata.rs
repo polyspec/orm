@@ -208,32 +208,3 @@ pub(super) async fn describe(
     }
     Ok(metadata)
 }
-
-#[cfg(test)]
-mod mariadb_default_tests {
-    use super::column_of;
-    use crate::tool_db::Val;
-
-    /// A quoted MariaDB default that is not one whole literal is TABLE_METADATA_INVALID (DIA-205). No server writes one, so
-    /// the recipes cannot hold it, and the catalog of Rust holds sqlx connections with no driver seam, so the case enters at
-    /// the row that describe reads (FCV-2).
-    // Requirements: DIA-205.
-    #[test]
-    fn mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for text in ["'a' 'b'", "'unterminated", "'a'x"] {
-            let row = [
-                Val::Text("broken".into()),
-                Val::Text("varchar(40)".into()),
-                Val::Int(1),
-                Val::Int(0),
-                Val::Int(0),
-                Val::Int(0),
-                Val::Text(text.into()),
-                Val::Int(0),
-            ];
-            let refused = column_of(&row, polyspec_orm_schema::dbspec::Server::MariaDb).expect_err(text);
-            assert_eq!(refused.to_string(), format!("TABLE_METADATA_INVALID: column \"broken\": default {text} is not one string literal"));
-        }
-    }
-}

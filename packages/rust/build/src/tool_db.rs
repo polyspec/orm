@@ -15,6 +15,8 @@ pub(crate) mod pg_describe;
 mod pg_output;
 pub(crate) mod pg_text;
 mod result;
+#[cfg(feature = "test-faults")]
+pub mod script;
 pub mod value;
 pub use grid::{has_temporal_form, GridCell, GridQueryResult};
 pub(crate) use grid::{is_temporal, sqlite_temporal};
@@ -557,6 +559,10 @@ impl Conn {
     /// Statement-scoped MySQL identity, not session-global state or a guessed key.
     pub(crate) async fn mysql_insert(&mut self, sql: &str, params: &[P]) -> Result<(u64, u64), sqlx::Error> {
         self.validate_params(params)?;
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = script::statement(sql) {
+            return Err(error);
+        }
         let Conn::MySql(connection) = self else {
             return Err(sqlx::Error::Decode("TOOL_INSERT_DIALECT: expected MySQL".into()));
         };
@@ -644,6 +650,10 @@ impl Conn {
     /// binds is sent as written.
     pub async fn exec(&mut self, sql: &str, params: &[P]) -> Result<u64, sqlx::Error> {
         self.validate_params(params)?;
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = script::statement(sql) {
+            return Err(error);
+        }
         let sql = AssertSqlSafe(sql.to_owned());
         macro_rules! run {
             ($conn:expr,$bind:ident) => {{
@@ -690,6 +700,10 @@ impl Conn {
     /// Ordered prepared columns and bounded checked rows, including empty results.
     pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
+        #[cfg(feature = "test-faults")]
+        if let Some(answer) = script::read(&sql.0) {
+            return answer;
+        }
         plain_result_of!(self, sql, params, budget, cell, cell_pg)
     }
 
@@ -697,6 +711,10 @@ impl Conn {
     /// parameter streams its rows through a cursor, so that a budget stop does not wait for the whole statement.
     pub(crate) async fn query_result_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
+        #[cfg(feature = "test-faults")]
+        if let Some(answer) = script::read(&sql.0) {
+            return answer;
+        }
         match self {
             Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, query_cell_pg, QueryResult),
             _ => plain_result_of!(self, sql, params, budget, query_cell, query_cell_pg),
@@ -706,6 +724,10 @@ impl Conn {
     /// Typed SQL grid rows using the same streaming and metadata budgets.
     pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
         let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = script::statement(&sql.0) {
+            return Err(error);
+        }
         grid_result_of!(self, sql, params, budget)
     }
 
@@ -713,6 +735,10 @@ impl Conn {
     /// parameter streams its rows through a cursor, so that a budget stop does not wait for the whole statement.
     pub(crate) async fn grid_query_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = script::statement(&sql.0) {
+            return Err(error);
+        }
         match self {
             Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, grid_pg, GridQueryResult),
             _ => grid_result_of!(self, sql, params, budget),

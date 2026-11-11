@@ -32,13 +32,15 @@ sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 [features]
 # The catalog and tool_db database connections need the driver.
 live-db = ["dep:polyspec-orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
+# The driver seam of the catalog tests (tool_db::script, T431); no default feature enables it.
+test-faults = ["live-db"]
 
 [dev-dependencies]
 # Test cases report their start, result, elapsed time, and their own deadline.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
 # The live-db tests need the feature of this crate: a self dev-dependency enables it for the test targets only.
-polyspec-orm-build = { path = ".", features = ["live-db"] }
+polyspec-orm-build = { path = ".", features = ["live-db", "test-faults"] }
 
 [lints]
 workspace = true

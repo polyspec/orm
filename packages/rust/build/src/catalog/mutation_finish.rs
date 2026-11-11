@@ -23,7 +23,12 @@ pub(super) async fn finish<T: Send + 'static>(
     };
     // No cancellation await between publishing intent and spawning its owner.
     publish(MutationPhase::CommitStarted);
-    let task = tokio::spawn(async move {
+    // Under feature test-faults the spawned commit answers from the test script of its caller (T431).
+    #[cfg(feature = "test-faults")]
+    let spawn = |body| tokio::spawn(crate::tool_db::script::carry(body));
+    #[cfg(not(feature = "test-faults"))]
+    let spawn = tokio::spawn;
+    let task = spawn(async move {
         match connection.exec("COMMIT", &[]).await {
             Ok(_) => {
                 // The commit ended the transaction and its locks, so the next mutation of this catalog takes this connection. Every

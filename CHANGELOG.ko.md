@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 75961e512da5ec0d42b8d42d7e71da8ba6cb2da6ec0a6f232f6283d42a722fca -->
+<!-- source-sha256: 21958b2cf82c506428fb5aab0017d1cd0c8031547ed801c856d17830135b2eab -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust catalog에도 다른 다섯 runtime처럼 test용 driver seam이 생겼다(T431). polyspec-orm-build의 feature `test-faults`에서 `tool_db::script::run`은 그 안의 catalog 연결이 보내는 문에 driver보다 먼저 `Script`로 답한다. 읽기에는 행을, 문에는 오류를 준다. DIA-205(literal 하나가 아닌 MariaDB default)와 INT-118(확인 응답 없는 commit) case가 Rust에서도 다른 runtime처럼 `CatalogConnection`에서 돈다. 어떤 기본 feature도 이를 켜지 않는다.
 
 ## 0.0.29
 

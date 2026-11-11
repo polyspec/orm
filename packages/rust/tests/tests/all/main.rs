@@ -188,6 +188,7 @@ fn main() {
     polyspec_orm_testcase::run_groups(vec![
         polyspec_orm_testcase::Group::new("aes_keys", polyspec_orm_cases::aes_keys::trials),
         polyspec_orm_testcase::Group::new("audit", polyspec_orm_cases::audit::trials),
+        polyspec_orm_testcase::Group::new("catalog_driver_seam", polyspec_orm_build_cases::catalog_driver_seam::trials),
         polyspec_orm_testcase::Group::new("code_catalog", polyspec_orm_cases::code_catalog::trials),
         polyspec_orm_testcase::Group::new("collection_identity", polyspec_orm_cases::collection_identity::trials),
         polyspec_orm_testcase::Group::new("compiler_fixtures", polyspec_orm_cases::compiler_fixtures::trials).in_order(),
