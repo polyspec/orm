@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 8e3691fb5efdb7397db0ddc2f5636e401a120106acbd5a93c7b1ab21f064aca3 -->
+<!-- source-sha256: bf6a13c0f5e2f90c53225c2e93fced15fc5679c9795a3fe8465ad2e9c1ffdcce -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -394,4 +394,4 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 - **DSL-147** `date()` — 컬럼: 날짜·시각; MySQL: `DATE(c)`; PostgreSQL: `CAST(c AS date)`; SQLite: `date(c)`
 
 - **DSL-148** 목록에 없는 컬럼 타입에 컬럼 함수를 사용하면 `OPERATOR_NOT_ALLOWED`를 반환한다.
-- **DSL-150** SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.
+- **DSL-150** SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다. 모든 클라이언트는 그 version을 같은 규칙으로 읽는다. version은 `.`로 나뉜 세 개나 네 개의 구성 요소이고, 각 구성 요소는 ASCII 숫자 0-9로만 되어 있으며 부호 없는 32-bit 정수에 들어가고, 앞의 두 개가 major와 minor version이다. 그 밖의 version은 `INTERNAL: SQLite library version "<version>" is invalid; expected three or four decimal components that each fit u32`이고 version은 INT-187대로 quote한다. 3.46보다 낮은 version은 `CAPABILITY_UNSUPPORTED: SQLite <version> is older than 3.46`이다.

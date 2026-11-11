@@ -124,7 +124,10 @@ impl Zone {
     fn parse(value: &str) -> Result<Zone> {
         match value {
             "UTC" | "+00:00" => Ok(Zone),
-            _ => Err(Error::Config(format!("dsn timezone {value}: every connection reads and writes datetime values in UTC"))),
+            _ => Err(Error::Config(format!(
+                "dsn timezone {}: every connection reads and writes datetime values in UTC",
+                polyspec_orm_schema::message::Quoted(value)
+            ))),
         }
     }
 
@@ -187,114 +190,321 @@ impl ParsedDsn {
 /// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
 
-/// Percent-decodes the DSN path as UTF-8. A `%` without two hex digits, a NUL byte, or a non-UTF-8 result is another
-/// error; it is `CONFIG` because it would point at a file or corpus. `scheme` is the DSN the error names.
-fn decoded_path(raw: &str, scheme: &str) -> Result<String> {
+/// The path of a DSN as written: after the authority, before the query and the fragment. The URL parser removes the dot
+/// segments of a path, so the path of a DSN is read from its text (CFG-10, CFG-11, PRT-63).
+fn dsn_path(dsn: &str) -> &str {
+    let rest = dsn.split_once("://").map_or("", |(_, rest)| rest);
+    let rest = rest.split('#').next().unwrap_or("");
+    match rest.find(['/', '?']) {
+        Some(at) if rest[at..].starts_with('/') => rest[at..].split('?').next().unwrap_or(""),
+        _ => "",
+    }
+}
+
+/// The parameters that a DSN of each scheme accepts, in the order of CFG-19.
+fn accepted_parameters(scheme: &str) -> Option<&'static [&'static str]> {
+    match scheme {
+        "mysql" => Some(&["timezone", "socket", "ssl-mode", "ssl-ca"]),
+        "postgres" => Some(&["timezone", "host", "sslmode"]),
+        "sqlite" => Some(&["timezone", "_pragma", "_txlock"]),
+        "markdown" => Some(&["token", "timezone", "_pragma"]),
+        _ => None,
+    }
+}
+
+/// Decodes a name or a value of a DSN query as an HTML form is: `+` is a space and `%` with two hexadecimal digits is that
+/// byte. None is a `%` that two hexadecimal digits do not follow or decoded bytes that are not UTF-8 (CFG-20).
+fn form_decoded(raw: &str) -> Option<String> {
+    decoded(raw, true)
+}
+
+/// Percent-decodes a DSN path as UTF-8, where `+` stays a `+`; None as [`form_decoded`] gives it (CFG-11, CFG-20). The path
+/// of every scheme is decoded by it.
+pub(crate) fn percent_decoded(raw: &str) -> Option<String> {
+    decoded(raw, false)
+}
+
+fn decoded(raw: &str, form: bool) -> Option<String> {
     let bytes = raw.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] != b'%' {
-            out.push(bytes[i]);
-            i += 1;
-            continue;
+        match bytes[i] {
+            b'+' if form => out.push(b' '),
+            b'%' => {
+                let digit = |at: usize| bytes.get(at).and_then(|&b| char::from(b).to_digit(16));
+                let (high, low) = (digit(i + 1)?, digit(i + 2)?);
+                // Two hexadecimal digits are one byte.
+                out.push(((high << 4) | low) as u8);
+                i += 2;
+            }
+            other => out.push(other),
         }
-        let digit = |at: usize| bytes.get(at).and_then(|&b| char::from(b).to_digit(16));
-        match (digit(i + 1), digit(i + 2)) {
-            (Some(high), Some(low)) => out.push((high * 16 + low) as u8),
-            _ => return Err(Error::Config(format!("{scheme} DSN path has a % without two hexadecimal digits"))),
-        }
-        i += 3;
+        i += 1;
     }
-    if out.contains(&0) {
-        return Err(Error::Config(format!("{scheme} DSN path must not contain a NUL byte")));
-    }
-    String::from_utf8(out).map_err(|error| Error::Config(format!("{scheme} DSN path must be UTF-8 after percent-decoding: {error}")))
+    // Bytes that are not UTF-8 are the refusal of CFG-20, whose message states no decoder text; UTF-8 bytes convert exactly.
+    std::str::from_utf8(&out).is_ok().then(|| String::from_utf8_lossy(&out).into_owned())
 }
 
-/// Parses a DSN URI.
+/// The decoded parameters of a DSN query in written order, read by the one rule of CFG-20: each pair is refused, in this
+/// order, for a name that the scheme does not accept (before its value is decoded), a repeated name other than
+/// `_pragma`, a name or value that is not percent-encoded UTF-8, an empty value or a pair without `=`, and a `socket` or
+/// `host` that holds `;` or NUL.
+fn query_parameters(scheme: &str, query: Option<&str>, accepted: &[&str]) -> Result<Vec<(String, String)>> {
+    let unknown = |name: &str| {
+        Error::Config(format!("{scheme} DSN has the unknown parameter {}; it accepts {}", polyspec_orm_schema::message::Quoted(name), accepted.join(", ")))
+    };
+    let mut parameters: Vec<(String, String)> = Vec::new();
+    // An empty query has no pair; an empty pair has the name "", which no scheme accepts.
+    for pair in query.filter(|query| !query.is_empty()).map(|query| query.split('&')).into_iter().flatten() {
+        let (raw_name, raw_value) = match pair.split_once('=') {
+            Some((name, value)) => (name, Some(value)),
+            None => (pair, None),
+        };
+        // A name that is not percent-encoded UTF-8 is a name that the scheme does not accept, named by its written text.
+        let name = form_decoded(raw_name).ok_or_else(|| unknown(raw_name))?;
+        if !accepted.contains(&name.as_str()) {
+            return Err(unknown(&name));
+        }
+        let quoted = polyspec_orm_schema::message::Quoted(&name);
+        if name != "_pragma" && parameters.iter().any(|(earlier, _)| *earlier == name) {
+            return Err(Error::Config(format!("{scheme} DSN repeats the parameter {quoted}")));
+        }
+        let value = form_decoded(raw_value.unwrap_or_default())
+            .ok_or_else(|| Error::Config(format!("{scheme} DSN parameter {quoted} is not percent-encoded UTF-8")))?;
+        if value.is_empty() {
+            return Err(Error::Config(format!("{scheme} DSN parameter {quoted} is empty")));
+        }
+        // The PDO DSN of PHP cannot hold these characters, so no client takes them (CFG-20).
+        if matches!(name.as_str(), "socket" | "host") && value.contains([';', '\0']) {
+            return Err(Error::Config(format!("{scheme} DSN parameter {quoted} holds a character that a connection string cannot hold")));
+        }
+        parameters.push((name, value));
+    }
+    Ok(parameters)
+}
+
+/// A `_pragma` value is `name(value)`: a name of one or more of `a` to `z` and `_`, and a value of one or more ASCII letters,
+/// digits and `_`; the value of `busy_timeout` is digits (CFG-12).
+fn valid_pragma(pragma: &str) -> bool {
+    let Some((name, value)) = pragma.strip_suffix(')').and_then(|text| text.split_once('(')) else { return false };
+    !name.is_empty()
+        && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+        && !value.is_empty()
+        && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        && (name != "busy_timeout" || busy_timeout_ms(value).is_some())
+}
+
+/// The wait of a busy_timeout value of CFG-12: a decimal whole number from 0 to 2147483647, the largest wait the C int of
+/// SQLite holds, since SQLite reads a larger number as 0; None for another value.
+fn busy_timeout_ms(value: &str) -> Option<u64> {
+    if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    // A number past the wait is refused as a whole, so the error of the parse is the refusal itself.
+    match value.parse::<u32>() {
+        Ok(ms) if ms <= 2_147_483_647 => Some(u64::from(ms)),
+        Ok(_) | Err(_) => None,
+    }
+}
+
+/// The CA certificate of a MySQL DSN that connects with TLS: `ssl-mode=VERIFY_IDENTITY` with the absolute path of a readable
+/// CA file in `ssl-ca`, over TCP to a host name (CFG-16, CFG-17, CFG-18); None for a DSN that names neither.
+fn mysql_tls_ca(url: &url::Url, mode: Option<&str>, ca: Option<&str>, socket: bool) -> Result<Option<Vec<u8>>> {
+    if mode.is_none() && ca.is_none() {
+        return Ok(None);
+    }
+    let bad = |msg: String| Error::Config(msg);
+    if mode != Some("VERIFY_IDENTITY") {
+        return Err(bad(format!(
+            "mysql DSN ssl-mode {} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca",
+            polyspec_orm_schema::message::Quoted(mode.unwrap_or_default())
+        )));
+    }
+    let Some(ca) = ca else { return Err(bad("mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file".into())) };
+    if !ca.starts_with('/') {
+        return Err(bad(format!("mysql DSN ssl-ca {} is not an absolute path", polyspec_orm_schema::message::Quoted(ca))));
+    }
+    if socket {
+        return Err(bad("mysql DSN ssl-mode connects over TCP and does not accept socket".into()));
+    }
+    // The identity check compares the host name with the certificate.
+    let host = url.host_str().unwrap_or_default();
+    if host.trim_start_matches('[').trim_end_matches(']').parse::<std::net::IpAddr>().is_ok() {
+        return Err(bad(format!("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address {}", polyspec_orm_schema::message::Quoted(host))));
+    }
+    std::fs::read(ca).map(Some).map_err(|error| bad(format!("mysql DSN ssl-ca {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
+}
+
+/// Refuses a MySQL or PostgreSQL database name, its path percent-decoded, that holds `;` or NUL, which the PDO DSN of PHP
+/// cannot hold (CFG-20).
+fn check_database(written: &str, scheme: &str) -> Result<String> {
+    let Some(database) = percent_decoded(written) else {
+        return Err(Error::Config(format!("{scheme} DSN database {} is not percent-encoded UTF-8", polyspec_orm_schema::message::Quoted(written))));
+    };
+    if database.contains([';', '\0']) {
+        return Err(Error::Config(format!(
+            "{scheme} DSN database {} holds a character that a connection string cannot hold",
+            polyspec_orm_schema::message::Quoted(database)
+        )));
+    }
+    Ok(database)
+}
+
+/// Parses a DSN URI. The driver options are built from the closed parameter set of CFG-19 and the user, password, host,
+/// port and database of the URL; the query is never passed on to the driver (CFG-20).
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
-    let url = url::Url::parse(dsn).map_err(|error| bad(format!("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://: {error}")))?;
-    let mut zone_text = None;
-    let mut pragmas = Vec::new();
-    let mut rest = url.clone();
-    rest.set_query(None);
-    let mut pairs = Vec::new();
-    for (k, v) in url.query_pairs() {
-        match k.as_ref() {
-            "timezone" => zone_text = Some(v.into_owned()),
-            "_pragma" if matches!(url.scheme(), "sqlite" | "markdown") => pragmas.push(v.into_owned()),
-            "_txlock" if url.scheme() == "sqlite" => {
-                return Err(bad("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE".into()));
-            }
-            _ => pairs.push((k.into_owned(), v.into_owned())),
+    // The text of the URL parser differs in every client, so the message states none (dsn_reject.json).
+    let Ok(url) = url::Url::parse(dsn) else { return Err(bad("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://".into())) };
+    let scheme = url.scheme();
+    let Some(accepted) = accepted_parameters(scheme) else {
+        return Err(bad(format!("unsupported DSN scheme {}; want mysql, postgres, sqlite, or markdown", polyspec_orm_schema::message::Quoted(scheme))));
+    };
+    // No part of a DSN is dropped unread. The checks run in the order of CFG-20: the fragment, the query, the host and
+    // the database name.
+    if url.fragment().is_some() {
+        return Err(bad(format!("{scheme} DSN has a fragment, which no connection reads")));
+    }
+    let parameters = query_parameters(scheme, url.query(), accepted)?;
+    // A server DSN checks its host in its host step, and a markdown DSN after its token and user (CFG-10, PRT-63).
+    if let Some(host) = url.host_str().filter(|host| scheme == "sqlite" && host.contains('%')) {
+        return Err(bad(format!("{scheme} DSN host {} holds a percent escape, which no host name needs", polyspec_orm_schema::message::Quoted(host))));
+    }
+    let parameter = |name: &str| parameters.iter().find(|(key, _)| key == name).map(|(_, value)| value.as_str());
+    let pragmas: Vec<String> = parameters.iter().filter(|(key, _)| key == "_pragma").map(|(_, value)| value.clone()).collect();
+    // The host and the database name of a server DSN come before the values of the parameters (CFG-20).
+    let mut database = String::new();
+    if matches!(scheme, "mysql" | "postgres") {
+        // The host step of CFG-20 (CFG-10).
+        let url_host = url.host_str().unwrap_or("");
+        let named = |host: bool| if host { Ok(()) } else { Err(bad(format!("{scheme} DSN must include host and database"))) };
+        named(!url_host.is_empty() || scheme == "postgres" && parameter("host").is_some())?;
+        if url_host.contains('%') {
+            return Err(bad(format!("{scheme} DSN host {} holds a percent escape, which no host name needs", polyspec_orm_schema::message::Quoted(url_host))));
         }
+        if scheme == "mysql" && parameter("socket").is_some() && url_host != "localhost" {
+            return Err(bad("mysql DSN socket needs the host localhost, which names the local server".into()));
+        }
+        if let Some(other) = parameter("host").filter(|other| scheme == "postgres" && !url_host.is_empty() && *other != url_host) {
+            return Err(bad(format!(
+                "postgres DSN names two hosts, {} in the URL and {} in the host parameter",
+                polyspec_orm_schema::message::Quoted(url_host),
+                polyspec_orm_schema::message::Quoted(other)
+            )));
+        }
+        // The database step: the database is named, percent-encoded UTF-8 and holds no `;` or NUL.
+        // The database is the path after its first /, as written (CFG-10).
+        let written = dsn_path(dsn).strip_prefix('/').unwrap_or("");
+        named(!written.is_empty())?;
+        database = check_database(written, scheme)?;
     }
-    if !pairs.is_empty() {
-        rest.query_pairs_mut().extend_pairs(pairs.iter());
-    }
-    let zone = match &zone_text {
+    // The database file of a SQLite DSN, its path percent-decoded.
+    let sqlite_path = match scheme {
+        "sqlite" => {
+            // The database step of SQLite (CFG-11): an absolute path and no host, its escapes, then NUL, named as written.
+            let written = dsn_path(dsn);
+            if url.host_str().is_some_and(|host| !host.is_empty()) || !written.starts_with('/') || written.len() < 2 {
+                return Err(bad("sqlite DSN must include an absolute database path".into()));
+            }
+            let quoted = polyspec_orm_schema::message::Quoted(written);
+            let Some(path) = percent_decoded(written) else { return Err(bad(format!("sqlite DSN path {quoted} is not percent-encoded UTF-8"))) };
+            if path.contains('\0') {
+                return Err(bad(format!("sqlite DSN path {quoted} holds a NUL byte, which a file name cannot hold")));
+            }
+            Some(path)
+        }
+        _ => None,
+    };
+    // The token, the user, the host, the port and the corpus of a markdown DSN come before the values of its parameters.
+    let markdown = match scheme {
+        "markdown" => {
+            let tokens: Vec<&str> = parameters.iter().filter(|(key, _)| key == "token").map(|(_, value)| value.as_str()).collect();
+            Some(parse_markdown_dsn(&url, dsn_path(dsn), &tokens, &pragmas)?)
+        }
+        _ => None,
+    };
+    let zone = match parameter("timezone") {
         Some(z) => Zone::parse(z)?,
         None => Zone,
     };
+    // The URL without its query: the user, password, host, port and database that the driver reads.
+    let mut base = url.clone();
+    base.set_query(None);
+    base.set_fragment(None);
     let sqlx_err = |e: sqlx::Error| Error::Config(format!("dsn: {e}"));
-    let options = match url.scheme() {
+    let options = match scheme {
         "mysql" => {
-            if url.host_str().unwrap_or("").is_empty() || url.path().trim_matches('/').is_empty() {
-                return Err(bad("mysql DSN must include host and database".into()));
-            }
-            if pairs.iter().any(|(key, _)| key == "ssl-mode") {
-                if url.host_str().is_some_and(|host| host.trim_start_matches('[').trim_end_matches(']').parse::<std::net::IpAddr>().is_ok()) {
-                    return Err(bad("mysql DSN ssl-mode requires a host name, not an IP address".into()));
-                }
-                if pairs.iter().any(|(key, _)| key == "socket") {
-                    return Err(bad("mysql DSN ssl-mode requires TCP and does not accept socket".into()));
-                }
-            }
+            let ca = mysql_tls_ca(&url, parameter("ssl-mode"), parameter("ssl-ca"), parameter("socket").is_some())?;
             // sqlx sends SET NAMES utf8mb4 when it connects, with no collation, which a pooler in front of the server may not
             // know (ProxySQL refuses utf8mb4_0900_bin with 1115): a text column that the renderer writes compares under its
             // own utf8mb4_0900_bin, and SQL that compares text with no such column states COLLATE utf8mb4_0900_bin (DIA-202).
-            let options = MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())).charset("utf8mb4");
+            // The database is the one of the database step, read as written; the URL that sqlx reads has its dot segments removed.
+            let mut options =
+                MySqlConnectOptions::from_str(base.as_str()).map_err(sqlx_err)?.database(&database).timezone(Some("+00:00".to_owned())).charset("utf8mb4");
+            if let Some(socket) = parameter("socket") {
+                options = options.socket(socket);
+            }
             // A DSN without ssl-mode connects without TLS, also to a server that offers it (CFG-44): sqlx would otherwise
-            // take TLS whenever the server offers it, with no check of its certificate. A named ssl-mode reaches sqlx (CFG-20).
-            ConnectOptions::MySql(if pairs.iter().any(|(key, _)| key == "ssl-mode") { options } else { options.ssl_mode(sqlx::mysql::MySqlSslMode::Disabled) })
+            // take TLS whenever the server offers it, with no check of its certificate.
+            ConnectOptions::MySql(match ca {
+                Some(pem) => options.ssl_mode(sqlx::mysql::MySqlSslMode::VerifyIdentity).ssl_ca_from_pem(pem),
+                None => options.ssl_mode(sqlx::mysql::MySqlSslMode::Disabled),
+            })
         }
         "postgres" => {
-            let host = url.host_str().unwrap_or("").to_owned() + &pairs.iter().filter(|(k, _)| k == "host").map(|(_, v)| v.clone()).collect::<String>();
-            if host.is_empty() || url.path().trim_matches('/').is_empty() {
-                return Err(bad("postgres DSN must include host and database".into()));
+            if let Some(mode) = parameter("sslmode").filter(|mode| *mode != "disable") {
+                return Err(bad(format!("postgres DSN sslmode {} is not supported; it accepts disable", polyspec_orm_schema::message::Quoted(mode))));
+            }
+            // The host parameter, a socket directory or a host name, is the one value of the query that reaches sqlx.
+            if let Some(host) = parameter("host") {
+                base.query_pairs_mut().append_pair("host", host);
             }
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            let o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None).options([("timezone", "UTC")]);
+            // A PostgreSQL DSN connects without TLS, with or without sslmode=disable (CFG-19).
+            let o = PgConnectOptions::from_str(base.as_str())
+                .map_err(sqlx_err)?
+                .database(&database)
+                .ssl_mode(sqlx::postgres::PgSslMode::Disable)
+                .extra_float_digits(None)
+                .options([("timezone", "UTC")]);
             ConnectOptions::Postgres(o)
         }
         "sqlite" => {
-            let path = decoded_path(url.path(), "sqlite")?;
-            if !path.starts_with('/') || path.len() < 2 {
-                return Err(bad("sqlite DSN must include an absolute database path".into()));
-            }
+            let Some(path) = sqlite_path else { return Err(Error::internal("a sqlite DSN without its checked path")) };
             let mut o = SqliteConnectOptions::new()
                 .filename(&path)
                 .create_if_missing(true)
                 .foreign_keys(true)
                 .busy_timeout(std::time::Duration::from_millis(SQLITE_BUSY_TIMEOUT_MS));
             for p in pragmas {
-                let (name, value) =
-                    p.strip_suffix(')').and_then(|x| x.split_once('(')).ok_or_else(|| bad(format!("sqlite DSN _pragma {p:?} must be name(value)")))?;
+                let invalid = || bad(format!("sqlite DSN _pragma {} is invalid", polyspec_orm_schema::message::Quoted(&p)));
+                if !valid_pragma(&p) {
+                    return Err(invalid());
+                }
+                let (name, value) = p.strip_suffix(')').and_then(|x| x.split_once('(')).ok_or_else(invalid)?;
                 o = if name == "busy_timeout" {
-                    let ms: u64 = value.parse().map_err(|error| bad(format!("sqlite busy_timeout {value:?}: {error}")))?;
+                    let ms = busy_timeout_ms(value).ok_or_else(invalid)?;
                     o.busy_timeout(std::time::Duration::from_millis(ms))
                 } else {
                     o.pragma(name.to_owned(), value.to_owned())
                 };
             }
+            // The values in the CFG-19 order (CFG-20): _pragma before _txlock.
+            if parameter("_txlock").is_some() {
+                return Err(bad("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE".into()));
+            }
             ConnectOptions::Sqlite(o)
         }
-        "markdown" => ConnectOptions::Markdown(parse_markdown_dsn(&url, &decoded_path(url.path(), "markdown")?, &pairs, &pragmas)?),
-        other => return Err(bad(format!("unsupported DSN scheme {other:?}; want mysql, postgres, sqlite, or markdown"))),
+        _ => {
+            let Some(markdown) = markdown else { return Err(Error::internal("a markdown DSN without its checked parts")) };
+            if let Some(pragma) = pragmas.iter().find(|pragma| !valid_pragma(pragma)) {
+                return Err(bad(format!("markdown DSN _pragma {} is invalid", polyspec_orm_schema::message::Quoted(pragma))));
+            }
+            ConnectOptions::Markdown(markdown)
+        }
     };
     Ok(ParsedDsn { options, zone })
 }
@@ -476,18 +686,22 @@ mod pool_stats_tests;
 mod time_precision_tests;
 
 fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
+    let text = format!(
+        "SQLite library version {version} is invalid; expected three or four decimal components that each fit u32",
+        version = polyspec_orm_schema::message::Quoted(&version)
+    );
+    let invalid = || Error::internal(text.clone());
     let parts: Vec<&str> = version.split('.').collect();
     if parts.len() != 3 && parts.len() != 4 {
-        return Err(Error::internal(format!("SQLite library version {version:?} must have three or four decimal components")));
+        return Err(invalid());
     }
     let mut numbers = Vec::with_capacity(parts.len());
     for part in parts {
         if part.is_empty() || !part.bytes().all(|byte| byte.is_ascii_digit()) {
-            return Err(Error::internal(format!("SQLite library version {version:?} has invalid component {part:?}")));
+            return Err(invalid());
         }
-        numbers.push(
-            part.parse::<u32>().map_err(|error| Error::internal(format!("SQLite library version {version:?} has component {part:?} outside u32: {error}")))?,
-        );
+        // Digits beyond u32 are the one failure of the parse here; its error follows the message (INT-187).
+        numbers.push(part.parse::<u32>().map_err(|error| Error::internal(format!("{text}: {error}")))?);
     }
     Ok((numbers[0], numbers[1], numbers[2]))
 }
@@ -684,9 +898,12 @@ impl Db {
             ConnectOptions::Sqlite(o) => {
                 // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
                 let raw_version = libsqlite3_sys::SQLITE_VERSION;
-                let version = raw_version
-                    .to_str()
-                    .map_err(|error| Error::internal(format!("SQLite library version bytes {:?} are not UTF-8: {error}", raw_version.to_bytes())))?;
+                let version = raw_version.to_str().map_err(|error| {
+                    Error::internal(format!(
+                        "SQLite library version bytes {} are not UTF-8: {error}",
+                        polyspec_orm_schema::message::quote_bytes(raw_version.to_bytes())
+                    ))
+                })?;
                 check_sqlite_version(version)?;
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 Pool::Sqlite(pool)
@@ -1438,13 +1655,14 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Result<Option<String>> {
         _ => return Ok(None),
     };
     let wall = format!("{} {}.{:0<6}", &body[..10], &body[11..19], fraction);
-    let t = NaiveDateTime::parse_from_str(&wall, "%Y-%m-%d %H:%M:%S%.6f").map_err(|error| Error::internal(format!("{wall:?} is not a datetime: {error}")))?;
+    let t = NaiveDateTime::parse_from_str(&wall, "%Y-%m-%d %H:%M:%S%.6f")
+        .map_err(|error| Error::internal(format!("{} is not a datetime: {error}", polyspec_orm_schema::message::quote(&wall))))?;
     match offset {
         None => Ok(Some(wall)),
         Some(minutes) => {
             let instant = t
                 .checked_sub_signed(chrono::Duration::minutes(i64::from(minutes)))
-                .ok_or_else(|| Error::internal(format!("{wall:?} with its offset is out of the datetime range")))?
+                .ok_or_else(|| Error::internal(format!("{} with its offset is out of the datetime range", polyspec_orm_schema::message::quote(&wall))))?
                 .and_utc();
             Ok(Some(format!("{}.{:0<6}", zone.local(instant).format("%Y-%m-%d %H:%M:%S"), fraction)))
         }

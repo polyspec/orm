@@ -7,6 +7,7 @@ import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecType } from './model.js';
 import { rendererName } from './names.js';
 import { Renderer } from './render.js';
+import { quote as messageQuote } from '../message.js';
 
 
 const MASTER_QUERY = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
@@ -87,7 +88,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
       continue;
     }
     if (st.identity !== name && !sqliteColumnText(st.columns.get(name) ?? '', name, declared, notNull !== 0, dflt)) {
-      c.report('column', table, name, `the column definition ${JSON.stringify(st.columns.get(name) ?? '')} has clauses that dbspec does not read`);
+      c.report('column', table, name, `the column definition ${messageQuote(st.columns.get(name) ?? '')} has clauses that dbspec does not read`);
       continue;
     }
     const checkName = rendererName(table, name);
@@ -104,7 +105,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
         type = { kind: 'uuid' };
         c.report('column', table, name, TEXT_STORAGE_REASON);
       } else if (read === null) {
-        c.report('column', table, name, `declared type ${declared} with CHECK ${JSON.stringify(check ?? '')} has no dbspec type`);
+        c.report('column', table, name, `declared type ${declared} with CHECK ${messageQuote(check ?? '')} has no dbspec type`);
         continue;
       } else {
         type = read;
@@ -271,15 +272,15 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
       // A constraint without a name is reported with an empty name object. A primary key in another form keeps the table from being read.
       const kind = ({ CHECK: 'check', UNIQUE: 'unique', 'FOREIGN KEY': 'foreign_key' } as Record<string, DbspecUnsupported['kind']>)[present(m[2], 'm[2]')];
       if (kind === undefined) {
-        st.unsupported = `the primary key ${JSON.stringify(item)} has no dbspec definition`;
+        st.unsupported = `the primary key ${messageQuote(item)} has no dbspec definition`;
         return { table: st, unsupported: [] };
       }
-      unsupported.push({ kind, table: '', name: m[1] ?? '', reason: `the table item ${JSON.stringify(item)} has no dbspec definition` });
+      unsupported.push({ kind, table: '', name: m[1] ?? '', reason: `the table item ${messageQuote(item)} has no dbspec definition` });
     } else if ((m = COLUMN_ITEM.exec(item)) !== null) {
       // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
       st.columns.set(present(m[1] ?? m[2], 'column name'), item);
     } else {
-      st.unsupported = `the table item ${JSON.stringify(item)} has no dbspec definition`;
+      st.unsupported = `the table item ${messageQuote(item)} has no dbspec definition`;
       return { table: st, unsupported: [] };
     }
   }

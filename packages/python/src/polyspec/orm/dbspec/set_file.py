@@ -9,6 +9,8 @@ import os
 import stat
 from dataclasses import dataclass
 
+from polyspec.orm.message import quote as quote_message
+
 __all__ = [
     "DBSPEC_SET_NAME",
     "DbspecSet",
@@ -88,8 +90,6 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
         raise TypeError("dbspec set path must be a string")
     prefix, name = _split(path)
     try:
-        if "\0" in path:
-            raise _Failure("set.file", path, f"{path}: the path contains a NUL byte")
         data = _read_set_file(path, prefix, name)
         documents, external = _parse(path, data)
     except _Failure as failure:
@@ -119,7 +119,7 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
                 DbspecSetError(
                     "set.duplicate",
                     joined,
-                    f"{joined} names the file that {seen[identity]} names",
+                    f"{joined}: names the file that {seen[identity]} names",
                 )
             )
             continue
@@ -161,22 +161,20 @@ def _os_path(path: str):
     return path if _WINDOWS else os.fsencode(path)
 
 
-def _listed(directory: str, segment: str, subject: str, report: str) -> None:
+def _listed(directory: str, segment: str, report: str, root: bool = False) -> None:
     """Checks that `segment` equals a name that `directory` lists: on POSIX its UTF-8 bytes equal the
     listed bytes, on Windows its UTF-16 code units the listed ones."""
+    subject = f"the root {directory}" if root else directory
     try:
         names = os.listdir(_os_path(directory))
     except OSError as error:
         raise _Failure(
-            "set.file", report, f"{report}: {directory} cannot be listed: {error}"
+            "set.file", report, f"{report}: {subject} cannot be listed: {error}"
         ) from None
     want = segment if _WINDOWS else segment.encode("utf-8")
     if want not in names:
-        raise _Failure(
-            "set.file",
-            report,
-            f"{report}: {subject} is not a name that {directory} lists",
-        )
+        lists = DBSPEC_SET_NAME if root else f"name {quote_message(segment)}"
+        raise _Failure("set.file", report, f"{report}: {subject} lists no {lists}")
 
 
 def _is_link(status: os.stat_result) -> bool:
@@ -189,49 +187,55 @@ def _is_link(status: os.stat_result) -> bool:
     return stat.S_ISLNK(status.st_mode)
 
 
-def _lstat(path: str, report: str, follow: bool = False) -> os.stat_result:
+def _lstat(
+    path: str, report: str, subject: str, follow: bool = False
+) -> os.stat_result:
     """The status of `path` without following a symbolic link at its last component, or, with
-    `follow`, the status of the entry that it names (stat)."""
+    `follow`, the status of the entry that it names (stat). `subject` names it in the message."""
     try:
         return (os.stat if follow else os.lstat)(_os_path(path))
-    except FileNotFoundError:
-        raise _Failure("set.file", report, f"{report}: {path} is missing") from None
     except OSError as error:
         raise _Failure(
-            "set.file", report, f"{report}: {path} cannot be examined: {error}"
+            "set.file", report, f"{report}: {subject} cannot be examined: {error}"
         ) from None
 
 
 def _read_set_file(path: str, prefix: str, name: str) -> bytes:
-    """Step 1: the set file and its root."""
+    """Step 1: the set file and its root (DBS-12), in the order of DBS-18a."""
     if name != DBSPEC_SET_NAME:
-        raise _Failure("set.file", path, f"{path} is not named {DBSPEC_SET_NAME}")
+        raise _Failure(
+            "set.file", path, f"{path}: the set file is not named {DBSPEC_SET_NAME}"
+        )
+    if "\0" in path:
+        raise _Failure("set.file", path, f"{path}: the path contains a NUL byte")
     root = _root(prefix)
-    status = _lstat(root, path)
+    status = _lstat(root, path, f"the root {root}")
     if _is_link(status):
         raise _Failure(
-            "set.symlink", path, f"{path}: its root {root} is a symbolic link"
+            "set.symlink", path, f"{path}: the root {root} is a symbolic link"
         )
     if not stat.S_ISDIR(status.st_mode):
-        raise _Failure("set.file", path, f"{path}: its root {root} is not a directory")
-    _listed(root, name, name, path)
-    status = _lstat(path, path)
+        raise _Failure("set.file", path, f"{path}: the root {root} is not a directory")
+    _listed(root, name, path, root=True)
+    status = _lstat(path, path, "the set file")
     if _is_link(status):
-        raise _Failure("set.symlink", path, f"{path} is a symbolic link")
+        raise _Failure("set.symlink", path, f"{path}: the set file is a symbolic link")
     if not stat.S_ISREG(status.st_mode):
-        raise _Failure("set.file", path, f"{path} is not a regular file")
+        raise _Failure("set.file", path, f"{path}: the set file is not a regular file")
     try:
         with open(_os_path(path), "rb") as handle:
             return handle.read()
     except OSError as error:
-        raise _Failure("set.file", path, f"{path} cannot be read: {error}") from None
+        raise _Failure(
+            "set.file", path, f"{path}: the set file cannot be read: {error}"
+        ) from None
 
 
 def _parse(path: str, data: bytes) -> tuple[list[str], list[str]]:
     """Step 2: the JSON of the set file."""
 
     def invalid(reason):
-        return _Failure("set.json", path, f"{path} {reason}")
+        return _Failure("set.json", path, f"{path}: the set file {reason}")
 
     if data.startswith(_BOM):
         raise invalid("starts with a byte order mark")
@@ -239,14 +243,8 @@ def _parse(path: str, data: bytes) -> tuple[list[str], list[str]]:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         raise invalid("is not valid UTF-8") from None
-    repeated = []
 
     def pairs(items):
-        keys = set()
-        for key, _ in items:
-            if key in keys:
-                repeated.append(key)
-            keys.add(key)
         return {key: value for key, value in items} | {
             _KeyList: [key for key, _ in items]
         }
@@ -263,52 +261,81 @@ def _parse(path: str, data: bytes) -> tuple[list[str], list[str]]:
             parse_float=float,
         )
     except RecursionError:
-        raise invalid(f"is nested more than {_MAX_DEPTH} levels deep") from None
+        raise invalid(f"nests deeper than {_MAX_DEPTH} levels") from None
     except ValueError as error:
         raise invalid(f"is not JSON: {error}") from None
     if not isinstance(value, dict):
-        raise invalid("is not a JSON object")
+        raise invalid("is not one JSON object")
     depth, surrogate = _walk(value)
     if depth > _MAX_DEPTH:
-        raise invalid(f"is nested more than {_MAX_DEPTH} levels deep")
+        raise invalid(f"nests deeper than {_MAX_DEPTH} levels")
     if surrogate:
         raise invalid("escapes a lone surrogate")
 
     def key_error(message):
-        return _Failure("set.key", path, f"{path} {message}")
+        return _Failure("set.key", path, f"{path}: {message}")
 
-    if repeated:
-        raise key_error(
-            "repeats the key "
-            + ", ".join(
-                json.dumps(key, ensure_ascii=False) for key in sorted(set(repeated))
-            )
-        )
+    repeated = _first_repeated_key(text)
+    if repeated is not None:
+        raise key_error(f"the key {quote_message(repeated)} appears twice")
     del value[_KeyList]
     unknown = sorted(key for key in value if key not in _KEYS)
     if unknown:
         raise key_error(
-            "has the unknown key "
-            + ", ".join(json.dumps(key, ensure_ascii=False) for key in unknown)
+            ("unknown key " if len(unknown) == 1 else "unknown keys ")
+            + ", ".join(quote_message(key) for key in unknown)
         )
-    schema = value.get("schema")
+    # DBS-13: schema, then documents, then external.
+    if "schema" not in value:
+        raise _Failure("set.schema", path, f"{path}: schema is missing")
+    schema = value["schema"]
     if not isinstance(schema, float) or schema != 1:
-        raise _Failure(
-            "set.schema",
-            path,
-            f"{path} has no schema 1" if "schema" in value else f"{path} has no schema",
-        )
+        raise _Failure("set.schema", path, f"{path}: schema is not the number 1")
     if "documents" not in value:
-        raise key_error("has no documents")
+        raise key_error("documents is missing")
     documents = value["documents"]
     if not _strings(documents):
-        raise key_error("has documents that are not an array of strings")
+        raise key_error("documents is not an array of strings")
     if not documents:
-        raise _Failure("set.empty", path, f"{path} has no documents")
+        raise _Failure("set.empty", path, f"{path}: documents is empty")
     external = value.get("external", [])
     if not _strings(external):
-        raise key_error("has external that is not an array of strings")
+        raise key_error("external is not an array of strings")
     return documents, external
+
+
+def _first_repeated_key(text: str) -> str | None:
+    """The first key, in text order, that an object of the parsed JSON text already holds, at any depth, or None. The
+    text is valid JSON, so each string ends at the first quote that no backslash escapes."""
+    objects: list[tuple[set, list]] = []
+    stack: list[bool] = []
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "{":
+            stack.append(True)
+            objects.append((set(), [True]))
+        elif c == "[":
+            stack.append(False)
+        elif c in "}]":
+            if stack.pop():
+                objects.pop()
+        elif c == "," and stack and stack[-1]:
+            objects[-1][1][0] = True
+        elif c == '"':
+            end = i + 1
+            while text[end] != '"':
+                end += 2 if text[end] == "\\" else 1
+            if stack and stack[-1] and objects[-1][1][0]:
+                key = json.loads(text[i : end + 1])
+                keys, expecting = objects[-1]
+                if key in keys:
+                    return key
+                keys.add(key)
+                expecting[0] = False
+            i = end
+        i += 1
+    return None
 
 
 class _KeyList:
@@ -347,37 +374,49 @@ def _has_surrogate(text: str) -> bool:
     return any("\ud800" <= c <= "\udfff" for c in text)
 
 
-def _normal(written: str, is_external: bool) -> bool:
-    """Whether `written` is in the normal form of a set path."""
+def _path_problem(written: str, is_external: bool) -> str | None:
+    """The first problem of DBS-18a that keeps `written` from the normal form of a set path, checking the segments from
+    the first and then the suffix, or None."""
     segments = written.split("/")
-    if not segments[-1].endswith(".dbs"):
-        return False
     leading = is_external
     for segment in segments:
+        if segment == "":
+            return "has an empty segment"
         if segment == "..":
             if not leading:
-                return False
+                return (
+                    "has a .. segment after another segment"
+                    if is_external
+                    else "has a .. segment"
+                )
             continue
         leading = False
-        if segment == "" or segment == "." or segment[-1] in ". ":
-            return False
-        if any(c in _FORBIDDEN for c in segment):
-            return False
+        if segment == ".":
+            return "has a . segment"
+        held = next((c for c in segment if c in _FORBIDDEN), None)
+        if held is not None:
+            return f"has the character {quote_message(held)} that a segment cannot hold"
+        if segment[-1] in ". ":
+            return "has a segment that ends in . or a space"
         if segment.split(".", 1)[0].rstrip(" ").translate(_ASCII_LOWER) in _DEVICES:
-            return False
-    return True
+            return (
+                f"has the segment {quote_message(segment)} that names a Windows device"
+            )
+    if not segments[-1].endswith(".dbs"):
+        return "does not end in .dbs"
+    return None
 
 
 def _check_path(path: str, prefix: str, written: str, is_external: bool) -> str:
     """Step 3 for one written path: its normal form, then every component of its joined path. It
     gives the joined path."""
-    if not _normal(written, is_external):
+    problem = _path_problem(written, is_external)
+    if problem is not None:
         kind = "external" if is_external else "documents"
         raise _Failure(
             "set.path",
             path,
-            f"{path}: the {kind} path {json.dumps(written, ensure_ascii=False)} "
-            f"has no normal form",
+            f"{path}: the {kind} path {quote_message(written)} {problem}",
         )
     joined = prefix + written
     segments = written.split("/")
@@ -386,17 +425,19 @@ def _check_path(path: str, prefix: str, written: str, is_external: bool) -> str:
         component = prefix + "/".join(segments[: index + 1])
         last = index == len(segments) - 1
         if segment != "..":
-            _listed(directory, segment, component, joined)
-        status = _lstat(component, joined)
+            _listed(directory, segment, joined)
+        status = _lstat(component, joined, component)
         if _is_link(status) and is_external and not last:
             # An intermediate component of an external path may be a link to a directory: it is followed.
-            status = _lstat(component, joined, follow=True)
+            status = _lstat(component, joined, component, follow=True)
         if _is_link(status):
             raise _Failure(
                 "set.symlink", joined, f"{joined}: {component} is a symbolic link"
             )
         if last and not stat.S_ISREG(status.st_mode):
-            raise _Failure("set.file", joined, f"{joined} is not a regular file")
+            raise _Failure(
+                "set.file", joined, f"{joined}: {component} is not a regular file"
+            )
         if not last and not stat.S_ISDIR(status.st_mode):
             raise _Failure(
                 "set.file", joined, f"{joined}: {component} is not a directory"
@@ -413,6 +454,6 @@ def _read_listed(joined: str) -> tuple[bytes, tuple[int, int]]:
             data = handle.read()
     except OSError as error:
         raise _Failure(
-            "set.file", joined, f"{joined} cannot be read: {error}"
+            "set.file", joined, f"{joined}: the file cannot be read: {error}"
         ) from None
     return data, (status.st_dev, status.st_ino & _LOW_64)

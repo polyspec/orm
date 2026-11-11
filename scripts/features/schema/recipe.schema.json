@@ -7119,13 +7119,26 @@
                             "rule",
                             "path"
                           ],
+                          "oneOf": [
+                            { "properties": { "message": true }, "required": ["message"] },
+                            { "properties": { "message_starts": true }, "required": ["message_starts"] }
+                          ],
                           "additionalProperties": false,
                           "properties": {
                             "rule": {
                               "enum": ["set.file", "set.symlink", "set.json", "set.schema", "set.key", "set.empty", "set.path", "set.duplicate"]
                             },
                             "path": { "type": "string" },
-                            "message_holds": { "$ref": "#/$defs/messageHolds" }
+                            "message": {
+                              "description": "The whole message of the error (DBS-18a).",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "message_starts": {
+                              "description": "The text of the client before `: <error>`, for a message that ends in the error of the platform or the JSON parser (DBS-18a, INT-187).",
+                              "type": "string",
+                              "minLength": 1
+                            }
                           }
                         }
                       }

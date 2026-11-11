@@ -8,10 +8,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // The rules of the set reader (docs/spec/dbspec.md "Document sets").
@@ -98,41 +100,50 @@ func ReadSet(path string) (Set, []SetError) {
 		paths    []string
 		external bool
 	}{{documents, false}, {external, true}} {
+		external := list.external
 		for _, written := range list.paths {
-			if problem := normalFormProblem(written, list.external); problem != "" {
-				errs = append(errs, SetError{Rule: RuleSetPath, Path: path, Message: fmt.Sprintf("%s: path %s %s", path, quoteJSON(written), problem)})
+			if problem := normalFormProblem(written, external); problem != "" {
+				list := "documents"
+				if external {
+					list = "external"
+				}
+				errs = append(errs, SetError{Rule: RuleSetPath, Path: path, Message: path + ": the " + list + " path " + message.Quote(written, '"') + " " + problem})
 				continue
 			}
 			joined := prefix + written
-			if failure := r.examinePath(prefix, root, written, joined, list.external); failure != nil {
+			if failure := r.examinePath(prefix, root, written, joined, external); failure != nil {
 				errs = append(errs, *failure)
 				continue
 			}
-			passed = append(passed, entry{joined: joined, external: list.external})
+			passed = append(passed, entry{joined: joined, external: external})
 		}
 	}
 
 	// Step 4: the read and the file identity of each path that passed step 3.
 	var set Set
-	var identities []os.FileInfo
+	type identity struct {
+		joined string
+		info   os.FileInfo
+	}
+	var identities []identity
 	for _, e := range passed {
 		data, info, err := readListedFile(e.joined)
 		if err != nil {
-			errs = append(errs, SetError{Rule: RuleSetFile, Path: e.joined, Message: fmt.Sprintf("%s cannot be read: %v", e.joined, err)})
+			errs = append(errs, SetError{Rule: RuleSetFile, Path: e.joined, Message: e.joined + ": the file cannot be read: " + err.Error()})
 			continue
 		}
-		duplicate := false
-		for _, earlier := range identities {
-			if os.SameFile(earlier, info) {
-				duplicate = true
+		earlier := ""
+		for _, known := range identities {
+			if os.SameFile(known.info, info) {
+				earlier = known.joined
 				break
 			}
 		}
-		if duplicate {
-			errs = append(errs, SetError{Rule: RuleSetDuplicate, Path: e.joined, Message: e.joined + " names a file that an earlier path names"})
+		if earlier != "" {
+			errs = append(errs, SetError{Rule: RuleSetDuplicate, Path: e.joined, Message: e.joined + ": names the file that " + earlier + " names"})
 			continue
 		}
-		identities = append(identities, info)
+		identities = append(identities, identity{joined: e.joined, info: info})
 		file := SetFile{Path: e.joined, Bytes: data}
 		if e.external {
 			set.External = append(set.External, file)
@@ -211,12 +222,15 @@ func (r *setReader) readSetFile(path, root, last string) ([]byte, *SetError) {
 		return &SetError{Rule: rule, Path: path, Message: path + ": " + message}
 	}
 	if last != SetFileName {
-		return nil, fail(RuleSetFile, "a set file is named "+SetFileName)
+		return nil, fail(RuleSetFile, "the set file is not named "+SetFileName)
+	}
+	if strings.IndexByte(path, 0) >= 0 {
+		return nil, fail(RuleSetFile, "the path contains a NUL byte")
 	}
 	kind, err := examine(root)
 	switch {
 	case err != nil:
-		return nil, fail(RuleSetFile, fmt.Sprintf("the root %s cannot be examined: %v", root, err))
+		return nil, fail(RuleSetFile, "the root "+root+" cannot be examined: "+err.Error())
 	case kind == kindSymlink:
 		return nil, fail(RuleSetSymlink, "the root "+root+" is a symbolic link")
 	case kind != kindDirectory:
@@ -224,7 +238,7 @@ func (r *setReader) readSetFile(path, root, last string) ([]byte, *SetError) {
 	}
 	listed, err := r.listed(root, last)
 	if err != nil {
-		return nil, fail(RuleSetFile, fmt.Sprintf("the root %s cannot be listed: %v", root, err))
+		return nil, fail(RuleSetFile, "the root "+root+" cannot be listed: "+err.Error())
 	}
 	if !listed {
 		return nil, fail(RuleSetFile, "the root "+root+" lists no "+SetFileName)
@@ -232,7 +246,7 @@ func (r *setReader) readSetFile(path, root, last string) ([]byte, *SetError) {
 	kind, err = examine(path)
 	switch {
 	case err != nil:
-		return nil, fail(RuleSetFile, fmt.Sprintf("cannot be examined: %v", err))
+		return nil, fail(RuleSetFile, "the set file cannot be examined: "+err.Error())
 	case kind == kindSymlink:
 		return nil, fail(RuleSetSymlink, "the set file is a symbolic link")
 	case kind != kindRegular:
@@ -240,7 +254,7 @@ func (r *setReader) readSetFile(path, root, last string) ([]byte, *SetError) {
 	}
 	data, _, err := readListedFile(path)
 	if err != nil {
-		return nil, fail(RuleSetFile, fmt.Sprintf("cannot be read: %v", err))
+		return nil, fail(RuleSetFile, "the set file cannot be read: "+err.Error())
 	}
 	return data, nil
 }
@@ -261,19 +275,19 @@ func (r *setReader) examinePath(prefix, root, written, joined string, external b
 		if segment != ".." {
 			listed, err := r.listed(directory, segment)
 			if err != nil {
-				return fail(RuleSetFile, fmt.Sprintf("%s cannot be listed: %v", directory, err))
+				return fail(RuleSetFile, directory+" cannot be listed: "+err.Error())
 			}
 			if !listed {
-				return fail(RuleSetFile, fmt.Sprintf("%s lists no name %s", directory, quoteJSON(segment)))
+				return fail(RuleSetFile, directory+" lists no name "+message.Quote(segment, '"'))
 			}
 		}
 		kind, err := examine(component)
 		if err != nil {
-			return fail(RuleSetFile, fmt.Sprintf("%s cannot be examined: %v", component, err))
+			return fail(RuleSetFile, component+" cannot be examined: "+err.Error())
 		}
 		if kind == kindSymlink && external && i < len(segments)-1 {
 			if kind, err = examineFollowed(component); err != nil {
-				return fail(RuleSetFile, fmt.Sprintf("%s cannot be examined: %v", component, err))
+				return fail(RuleSetFile, component+" cannot be examined: "+err.Error())
 			}
 		}
 		if kind == kindSymlink {
@@ -327,10 +341,10 @@ func readListedFile(path string) (_ []byte, _ os.FileInfo, err error) {
 }
 
 // parseSetJSON is step 2. It returns the documents and the external paths or
-// the first error.
+// the first error, checked in the order of DBS-13 and DBS-18a.
 func parseSetJSON(path string, data []byte) ([]string, []string, *SetError) {
-	fail := func(rule, message string) *SetError {
-		return &SetError{Rule: rule, Path: path, Message: path + ": " + message}
+	fail := func(rule, text string) *SetError {
+		return &SetError{Rule: rule, Path: path, Message: path + ": " + text}
 	}
 	if bytes.HasPrefix(data, []byte("\xEF\xBB\xBF")) {
 		return nil, nil, fail(RuleSetJSON, "the set file starts with a byte order mark")
@@ -338,33 +352,57 @@ func parseSetJSON(path string, data []byte) ([]string, []string, *SetError) {
 	if !utf8.Valid(data) {
 		return nil, nil, fail(RuleSetJSON, "the set file is not valid UTF-8")
 	}
-	duplicate, err := checkSetJSON(data)
-	if err != nil {
-		return nil, nil, fail(RuleSetJSON, err.Error())
+	// Unmarshal into a RawMessage checks the syntax of the whole text with the
+	// parser's scanner and decodes no value, so a number beyond a double is JSON.
+	var whole json.RawMessage
+	if err := json.Unmarshal(data, &whole); err != nil {
+		return nil, nil, fail(RuleSetJSON, "the set file is not JSON: "+err.Error())
 	}
-	if duplicate != "" {
-		return nil, nil, fail(RuleSetKey, "the key "+quoteJSON(duplicate)+" appears twice")
+	if whole[0] != '{' {
+		return nil, nil, fail(RuleSetJSON, "the set file is not one JSON object")
+	}
+	scan, err := scanSetJSON(data)
+	if err != nil {
+		return nil, nil, fail(RuleSetJSON, "the set file is not JSON: "+err.Error())
+	}
+	if scan.tooDeep {
+		return nil, nil, fail(RuleSetJSON, fmt.Sprintf("the set file nests deeper than %d levels", setMaxDepth))
+	}
+	if scan.loneSurrogate {
+		return nil, nil, fail(RuleSetJSON, "the set file escapes a lone surrogate")
+	}
+	if scan.duplicate != nil {
+		return nil, nil, fail(RuleSetKey, "the key "+message.Quote(*scan.duplicate, '"')+" appears twice")
 	}
 	var object map[string]json.RawMessage
 	if err := json.Unmarshal(data, &object); err != nil {
-		return nil, nil, fail(RuleSetJSON, err.Error())
+		return nil, nil, fail(RuleSetJSON, "the set file is not JSON: "+err.Error())
 	}
 	var unknown []string
 	for key := range object {
 		if key != "schema" && key != "documents" && key != "external" {
-			unknown = append(unknown, quoteJSON(key))
+			unknown = append(unknown, key)
 		}
 	}
 	if len(unknown) > 0 {
-		sort.Strings(unknown)
-		return nil, nil, fail(RuleSetKey, "unknown keys "+strings.Join(unknown, ", "))
+		// The UTF-8 bytes of the keys sort in code-point order.
+		slices.Sort(unknown)
+		quoted := make([]string, len(unknown))
+		for i, key := range unknown {
+			quoted[i] = message.Quote(key, '"')
+		}
+		noun := "unknown key "
+		if len(unknown) > 1 {
+			noun = "unknown keys "
+		}
+		return nil, nil, fail(RuleSetKey, noun+strings.Join(quoted, ", "))
 	}
 	schema, ok := object["schema"]
 	if !ok {
 		return nil, nil, fail(RuleSetSchema, "schema is missing")
 	}
 	if !isSchemaOne(schema) {
-		return nil, nil, fail(RuleSetSchema, "schema is "+string(schema)+", not the number 1")
+		return nil, nil, fail(RuleSetSchema, "schema is not the number 1")
 	}
 	raw, ok := object["documents"]
 	if !ok {
@@ -386,11 +424,19 @@ func parseSetJSON(path string, data []byte) ([]string, []string, *SetError) {
 	return documents, external, nil
 }
 
-// checkSetJSON reads data with the decoder's tokens and checks that it is one
-// JSON object nested at most setMaxDepth levels deep in which no string escapes
-// a lone surrogate. It returns the first key that appears twice in one object,
-// which is judged only when the JSON is valid.
-func checkSetJSON(data []byte) (string, error) {
+// setScan is what scanSetJSON found in a valid JSON object: whether it nests
+// deeper than setMaxDepth, whether a string escapes a lone surrogate, and the
+// first key, in text order, that repeats a key of its object.
+type setScan struct {
+	tooDeep       bool
+	loneSurrogate bool
+	duplicate     *string
+}
+
+// scanSetJSON reads data, which the parser has accepted as one JSON object, with
+// the decoder's tokens. It stops at the first level deeper than setMaxDepth,
+// since that check comes first.
+func scanSetJSON(data []byte) (setScan, error) {
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
 	type frame struct {
@@ -399,40 +445,25 @@ func checkSetJSON(data []byte) (string, error) {
 		expectKey bool // the next token of an object is a key or its end
 	}
 	var stack []*frame
-	duplicate := ""
-	for first := true; ; first = false {
+	var scan setScan
+	for {
 		start := d.InputOffset()
 		token, err := d.Token()
 		if err == io.EOF {
-			if first {
-				return "", errors.New("the set file holds no JSON value")
-			}
-			if len(stack) > 0 {
-				return "", errors.New("the set file is not JSON: it ends inside the object")
-			}
-			return duplicate, nil
+			return scan, nil
 		}
 		if err != nil {
-			return "", fmt.Errorf("the set file is not JSON: %w", err)
+			return scan, err
 		}
-		if first && token != json.Delim('{') {
-			return "", errors.New("the set file is not one JSON object")
-		}
-		if !first && len(stack) == 0 {
-			return "", errors.New("the set file holds more than one JSON value")
-		}
-		var top *frame
-		if len(stack) > 0 {
-			top = stack[len(stack)-1]
-		}
-		if s, ok := token.(string); ok && loneSurrogateEscape(data[start:d.InputOffset()]) {
-			return "", fmt.Errorf("the string %s of the set file escapes a lone surrogate", quoteJSON(s))
+		if _, ok := token.(string); ok && loneSurrogateEscape(data[start:d.InputOffset()]) {
+			scan.loneSurrogate = true
 		}
 		switch token {
 		case json.Delim('{'), json.Delim('['):
 			stack = append(stack, &frame{object: token == json.Delim('{'), keys: map[string]bool{}, expectKey: true})
 			if len(stack) > setMaxDepth {
-				return "", fmt.Errorf("the set file nests deeper than %d levels", setMaxDepth)
+				scan.tooDeep = true
+				return scan, nil
 			}
 			continue
 		case json.Delim('}'), json.Delim(']'):
@@ -442,13 +473,14 @@ func checkSetJSON(data []byte) (string, error) {
 			}
 			continue
 		}
+		top := stack[len(stack)-1]
 		if top.object && top.expectKey {
 			key, ok := token.(string)
 			if !ok {
-				return "", errors.New("the set file is not JSON: an object key is not a string")
+				return scan, errors.New("an object key is not a string")
 			}
-			if top.keys[key] && duplicate == "" {
-				duplicate = key
+			if top.keys[key] && scan.duplicate == nil {
+				scan.duplicate = &key
 			}
 			top.keys[key] = true
 			top.expectKey = false
@@ -540,17 +572,21 @@ func stringArray(raw json.RawMessage) ([]string, bool) {
 }
 
 // normalFormProblem says why written has no normal form, or is empty when it
-// has one. An external path may begin with `..` segments.
+// has one: the first problem of DBS-18a, checking the segments from the first.
+// An external path may begin with `..` segments.
 func normalFormProblem(written string, external bool) string {
 	segments := strings.Split(written, "/")
 	leading := external
 	for _, segment := range segments {
+		if segment == "" {
+			return "has an empty segment"
+		}
 		if segment == ".." {
 			if !leading {
 				if external {
 					return "has a .. segment after another segment"
 				}
-				return "of documents has a .. segment"
+				return "has a .. segment"
 			}
 			continue
 		}
@@ -565,25 +601,23 @@ func normalFormProblem(written string, external bool) string {
 	return ""
 }
 
-// segmentProblem says why segment is not a segment of the normal form.
+// segmentProblem says why a non-empty segment other than `..` is not a segment
+// of the normal form.
 func segmentProblem(segment string) string {
-	if segment == "" {
-		return "has an empty segment"
+	if segment == "." {
+		return "has a . segment"
 	}
 	for _, c := range segment {
 		if c < 0x20 || strings.ContainsRune(`/\:<>"|?*`, c) {
-			return "has the character " + quoteJSON(string(c))
+			return "has the character " + message.Quote(string(c), '"') + " that a segment cannot hold"
 		}
-	}
-	if segment == "." {
-		return "has a . segment"
 	}
 	if strings.HasSuffix(segment, ".") || strings.HasSuffix(segment, " ") {
 		return "has a segment that ends in . or a space"
 	}
 	base, _, _ := strings.Cut(segment, ".")
 	if isDeviceName(strings.TrimRight(base, " ")) {
-		return "names a Windows device"
+		return "has the segment " + message.Quote(segment, '"') + " that names a Windows device"
 	}
 	return ""
 }
@@ -614,15 +648,4 @@ func isDeviceName(name string) bool {
 		}
 	}
 	return false
-}
-
-// quoteJSON writes s as a JSON string without HTML escapes.
-func quoteJSON(s string) string {
-	var b bytes.Buffer
-	e := json.NewEncoder(&b)
-	e.SetEscapeHTML(false)
-	if err := e.Encode(s); err != nil {
-		return strconv.Quote(s)
-	}
-	return strings.TrimSuffix(b.String(), "\n")
 }

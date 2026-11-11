@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -169,15 +168,15 @@ type mdDriver struct{}
 
 // Open opens one session of the markdown DSN, as sql.Open("markdown", dsn) asks.
 func (mdDriver) Open(name string) (driver.Conn, error) {
-	u, err := url.Parse(name)
-	if err != nil {
-		return nil, configErr("the markdown DSN: %v", err)
-	}
-	dsn, err := parseMarkdownDSN(u, u.Query())
+	// The one reader of every DSN (CFG-20, PRT-63).
+	dsn, err := parseDSN(name, 0)
 	if err != nil {
 		return nil, err
 	}
-	return mdConnector{dsn}.Connect(context.Background())
+	if dsn.driver != "markdown" {
+		return nil, configErr("the markdown driver opens a markdown:// DSN, not a %s:// one", dsn.driver)
+	}
+	return mdConnector{dsn.markdown}.Connect(context.Background())
 }
 
 func init() { sql.Register("markdown", mdDriver{}) }

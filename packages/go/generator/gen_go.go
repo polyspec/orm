@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Go generator. Every model gets its fixed column methods; the methods named
@@ -155,7 +156,7 @@ func newGoGen(m *runtimemodel.Model, out, pkg string) (*goGen, error) {
 	}
 	g := &goGen{m: m, out: out, outDir: outDir, pkg: pkg, models: map[string]*goModel{}, byType: map[string]*goModel{}, tuples: map[string]string{}, constr: map[string]string{}, owners: map[string]bool{}}
 	if !isIdent(g.pkg) {
-		return nil, fmt.Errorf("output directory name %q is not a Go package name", g.pkg)
+		return nil, message.Errorf("output directory name %q is not a Go package name", g.pkg)
 	}
 	for _, name := range m.Order {
 		e := m.Entities[name]

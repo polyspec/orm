@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * Reads and writes plan documents (docs/spec/plans.md "Plan document").
  *
@@ -222,7 +224,7 @@ final class PlanText
     {
         foreach ($names as $n) {
             if (in_array($n, Parser::RESERVED, true) || strlen($n) > 63) {
-                return "name \"$n\" is reserved or longer than 63 bytes";
+                return "name " . Message::quote($n) . " is reserved or longer than 63 bytes";
             }
         }
         return null;

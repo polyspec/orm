@@ -117,7 +117,7 @@ final class Validator
             !in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate',
             'group_lookahead_paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)
         ) {
-            throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
+            throw self::err(Code::IR_INVALID, "unknown kind " . Message::quote($kind));
         }
         // A table of an external document is written only by the set that owns it
         // (docs/spec/dbspec.md "External documents").
@@ -507,7 +507,8 @@ final class Validator
         }
         $fields = self::RECORDS[$record];
         foreach ($value as $key => $v) {
-            $type = $fields[$key] ?? throw self::err(Code::IR_INVALID, "json: unknown field \"$key\"");
+            $type = $fields[$key]
+                ?? throw self::err(Code::IR_INVALID, "json: unknown field " . Message::quote((string) $key));
             self::typed($type, $v, $path === '' ? (string) $key : "$path.$key");
         }
     }
@@ -743,7 +744,7 @@ final class Validator
             $cols = $q['columns'];
             $mode = $cols['mode'] ?? '';
             if ($mode !== '' && $mode !== 'all' && $mode !== 'none') {
-                throw self::err(Code::IR_INVALID, "columns.mode \"$mode\"");
+                throw self::err(Code::IR_INVALID, "columns.mode " . Message::quote($mode));
             }
             foreach ([...($cols['add'] ?? []), ...($cols['remove'] ?? [])] as $c) {
                 if (RuntimeModel::column($ent, $c) === null) {
@@ -771,10 +772,10 @@ final class Validator
             $kind = $j['kind'] ?? '';
             $rel = $j['rel'] ?? '';
             if ($kind !== 'inner' && $kind !== 'left') {
-                throw self::err(Code::IR_INVALID, "join kind \"$kind\"");
+                throw self::err(Code::IR_INVALID, "join kind " . Message::quote($kind));
             }
             if ($rel === '' || isset($joined[$rel])) {
-                throw self::err(Code::IR_INVALID, "join name \"$rel\" is empty or used twice");
+                throw self::err(Code::IR_INVALID, "join name " . Message::quote($rel) . " is empty or used twice");
             }
             $left = $j['left'] ?? '';
             $right = $j['right'] ?? '';
@@ -800,7 +801,8 @@ final class Validator
         // The top-level group has no earlier sibling, so it has no conn.
         foreach (['on', 'where'] as $top) {
             if (($q[$top]['conn'] ?? '') !== '') {
-                throw self::err(Code::IR_INVALID, "the top-level group takes no conn (\"{$q[$top]['conn']}\")");
+                throw self::err(Code::IR_INVALID, "the top-level group takes no conn ("
+                    . Message::quote($q[$top]['conn']) . ")");
             }
         }
         if (isset($q['on'])) {
@@ -815,7 +817,8 @@ final class Validator
         foreach ($q['relations'] ?? [] as $r) {
             $rel = $r['rel'] ?? '';
             if ($rel === '' || isset($relationNames[$rel])) {
-                throw self::err(Code::COLUMN_ALIAS_CONFLICT, "relation name \"$rel\" is empty or used twice");
+                throw self::err(Code::COLUMN_ALIAS_CONFLICT, "relation name " . Message::quote($rel)
+                    . " is empty or used twice");
             }
             $relationNames[$rel] = true;
             if (RuntimeModel::column($ent, $rel) !== null) {
@@ -935,7 +938,8 @@ final class Validator
         }
         $lock = $q['lock'] ?? '';
         if ($lock !== '' && !in_array($lock, ['update', 'share', 'update_nowait', 'share_nowait'], true)) {
-            throw self::err(Code::IR_INVALID, "lock \"$lock\": want update, share, update_nowait or share_nowait");
+            throw self::err(Code::IR_INVALID, "lock " . Message::quote($lock)
+                . ": want update, share, update_nowait or share_nowait");
         }
         if ($lock !== '' && ($isJoin || isset($q['group_by']) || ($q['limit_per_parent'] ?? 0) > 0)) {
             throw self::err(
@@ -973,14 +977,15 @@ final class Validator
                 throw self::err(Code::IR_INVALID, 'where item must be exactly one of pred/group/joined');
             }
             if ($conn !== '' && $conn !== 'and' && $conn !== 'or') {
-                throw self::err(Code::IR_INVALID, "conn \"$conn\"");
+                throw self::err(Code::IR_INVALID, "conn " . Message::quote($conn));
             }
             if ($i === 0 && $conn === 'or') {
                 throw self::err(Code::OR_AT_GROUP_START, 'a group may not start with OR');
             }
             // The first item of a group has no earlier sibling, so it has no conn.
             if ($i === 0 && $conn !== '') {
-                throw self::err(Code::IR_INVALID, "the first item of a group takes no conn (\"$conn\")");
+                throw self::err(Code::IR_INVALID, "the first item of a group takes no conn ("
+                    . Message::quote($conn) . ")");
             }
             if (isset($it['joined'])) {
                 $name = $it['joined']['join'] ?? '';
@@ -1211,7 +1216,7 @@ final class Validator
                 }
                 break;
             default:
-                throw self::err(Code::IR_INVALID, "subquery agg \"$agg\"");
+                throw self::err(Code::IR_INVALID, "subquery agg " . Message::quote($agg));
         }
         if ($column !== '' && RuntimeModel::column($ent, $column) === null) {
             throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");

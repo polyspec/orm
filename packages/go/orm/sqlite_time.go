@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 var (
@@ -102,5 +103,5 @@ func invalidTimeText(v, colType string) error {
 	case "time":
 		form = "HH:MM:SS[.ffffff]"
 	}
-	return &ir.Error{Code: CodeCodecEncode, Msg: fmt.Sprintf("%s value %q is not %s", colType, v, form)}
+	return &ir.Error{Code: CodeCodecEncode, Msg: message.Sprintf("%s value %q is not %s", colType, v, form)}
 }

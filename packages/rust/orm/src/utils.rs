@@ -158,7 +158,7 @@ impl<'a> Utils<'a> {
     pub async fn lock(&self, key: &str) -> Result<()> {
         let t = self.active("lock")?;
         if !valid_key(key) {
-            return Err(Error::Config(format!("lock key {key:?} is invalid")));
+            return Err(Error::Config(format!("lock key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let ex = Executor::Tx(t.clone());
         match self.db.sql_driver() {
@@ -182,7 +182,7 @@ impl<'a> Utils<'a> {
     pub async fn set_local(&self, key: &str, value: &str) -> Result<()> {
         let t = self.active("set_local")?;
         if !valid_key(key) {
-            return Err(Error::Config(format!("local key {key:?} is invalid")));
+            return Err(Error::Config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let ex = Executor::Tx(t.clone());
         let params = [Param::Str(key.into()), Param::Str(value.into())];
@@ -223,6 +223,9 @@ impl<'a> Utils<'a> {
 
     pub fn local(&self, key: &str) -> Result<String> {
         let t = self.active("local")?;
+        if !valid_key(key) {
+            return Err(Error::Config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
+        }
         let v = t.locals.lock().unwrap().get(key).cloned();
         v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set"), source: None })
     }
@@ -485,9 +488,12 @@ impl PrivilegeUtils<'_> {
         let (_, qualified) = self.table(table)?;
         let role = Self::role(role)?;
         let tables = [table.to_owned()];
-        let privilege = privilege.trim().to_uppercase();
+        let given = privilege;
+        // A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
+        let privilege = privilege.to_ascii_uppercase();
         if !["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"].contains(&privilege.as_str()) {
-            return Err(Error::Config(format!("unsupported table privilege {privilege:?}")));
+            // The refusal names the privilege as the caller gave it.
+            return Err(Error::Config(format!("unsupported table privilege {}", polyspec_orm_schema::message::quote(given))));
         }
         self.u
             .run_executor(async |ex: &Executor| {

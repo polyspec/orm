@@ -216,7 +216,15 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
 /// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
 /// `database` is the database of the case, whose entry a database-keyed `session_read.sql` gives.
 async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<String, (String, String)> {
-    let field = |name: &str| config[name].as_u64().unwrap_or(0) as u32;
+    // A count of the configuration is a u32 in Rust: an absent field is 0, and a value that a u32 cannot hold has no call.
+    let field = |name: &str| match &config[name] {
+        Value::Null => Ok(0),
+        value => match value.as_u64().map(u32::try_from) {
+            Some(Ok(count)) => Ok(count),
+            Some(Err(error)) => Err(("STEP".to_owned(), format!("{name} {value} is not a u32: {error}"))),
+            None => Err(("STEP".to_owned(), format!("{name} {value} is not a u32"))),
+        },
+    };
     let aes_keys = config["aes_keys"]
         .as_object()
         .into_iter()
@@ -227,15 +235,15 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
         })
         .collect::<Result<_, (String, String)>>()?;
     let options = polyspec_orm::Config {
-        pool_idle_size: field("pool_idle_size"),
-        pool_lifetime_ms: field("pool_lifetime_ms"),
-        statement_timeout_ms: field("statement_timeout_ms"),
+        pool_idle_size: field("pool_idle_size")?,
+        pool_lifetime_ms: field("pool_lifetime_ms")?,
+        statement_timeout_ms: field("statement_timeout_ms")?,
         aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
         aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
         aes_keys,
         ..polyspec_orm::Config::default()
     };
-    match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
+    match polyspec_orm::Db::connect(dsn, field("pool_size")?, options).await {
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
@@ -456,10 +464,14 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
+    let want_message = expect["message"].as_str();
     let dsn = crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default();
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     let outcome = runtime.block_on(connect_driver(dsn, &crate::recipe_reads::read(step, "config")["config"], database));
     match (outcome, expect["error"].as_str()) {
+        (Err((got, message)), Some(code)) if got == code && want_message.is_some_and(|want| want != message) => {
+            Err(format!("message {message}, want {}", want_message.unwrap_or_default()))
+        }
         (Err((got, message)), Some(code)) if got == code => match missing_hold(&message, &message_holds(&expect["message_holds"])?) {
             None => Ok(()),
             Some(text) => Err(format!("message {message}, want one that holds {text}")),
@@ -589,13 +601,16 @@ fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
         if actual != wanted {
             return Err(format!("errors {actual:?}, want {wanted:?}"));
         }
+        // The message relative to the root, as the paths: every root followed by `/` is removed and the root itself is `.`.
+        let relative = |message: &str| message.replace(&format!("{root}/"), "").replace(&root, ".");
         for (error, wanted) in errors.iter().zip(expected) {
-            let path = error.path.display().to_string();
-            if !error.message.contains(&path) {
-                return Err(format!("the message {:?} does not name {path}", error.message));
-            }
-            if let Some(text) = missing_hold(&error.message, &message_holds(&wanted["message_holds"])?) {
-                return Err(format!("the message {:?} does not hold {text:?}", error.message));
+            let message = relative(&error.message);
+            match (wanted["message"].as_str(), wanted["message_starts"].as_str()) {
+                (Some(text), None) if message == text => {}
+                (None, Some(start)) if message.strip_prefix(start).and_then(|rest| rest.strip_prefix(": ")).is_some_and(|below| !below.is_empty()) => {}
+                (Some(text), None) => return Err(format!("the message {message:?}, want {text:?}")),
+                (None, Some(start)) => return Err(format!("the message {message:?}, want {start:?} followed by \": \" and the error below")),
+                _ => return Err(format!("the error {wanted} has not one of message and message_starts")),
             }
         }
         return Ok(());

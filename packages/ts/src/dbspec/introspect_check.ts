@@ -4,6 +4,7 @@ import { present } from '../present.js';
 import { quote, uuidText } from './introspect_catalog.js';
 import type { DbspecType } from './model.js';
 import type { DbspecDialect } from './render.js';
+import { quote as messageQuote } from '../message.js';
 
 /** The error that a check expression cannot be read as a dbspec predicate. That check is reported as unsupported. */
 export class CheckDecodeError extends Error {
@@ -17,12 +18,12 @@ export class CheckDecodeError extends Error {
 export function decodeCheck(dialect: DbspecDialect, text: string, columns: ReadonlyMap<string, DbspecType>): string {
   if (dialect === 'mysql') text = unescapeMySQLClause(text);
   if (dialect === 'postgres') {
-    if (!text.startsWith('CHECK ')) throw new CheckDecodeError(`constraint definition ${JSON.stringify(text)} does not start with CHECK`);
+    if (!text.startsWith('CHECK ')) throw new CheckDecodeError(`constraint definition ${messageQuote(text)} does not start with CHECK`);
     text = text.slice('CHECK '.length);
   }
   const d = new CheckDecoder(checkTokens(dialect, text), columns, dialect);
   const node = d.expression();
-  if (d.i !== d.tokens.length) throw new CheckDecodeError(`unexpected ${JSON.stringify(present(d.tokens[d.i], 'd.tokens[d.i]').text)}`);
+  if (d.i !== d.tokens.length) throw new CheckDecodeError(`unexpected ${messageQuote(present(d.tokens[d.i], 'd.tokens[d.i]').text)}`);
   if (node.kind === 'operand') throw new CheckDecodeError('an operand alone is not a predicate');
   return d.write(node);
 }
@@ -144,7 +145,7 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
       out.push({ kind: 'punct', text: ch });
       i++;
     } else {
-      throw new CheckDecodeError(`unexpected character ${JSON.stringify(ch)}`);
+      throw new CheckDecodeError(`unexpected character ${messageQuote(String.fromCodePoint(present(text.codePointAt(i), 'text.codePointAt(i)')), "'")}`);
     }
   }
   return out;
@@ -229,7 +230,7 @@ class CheckDecoder {
   }
 
   private expect(text: string): void {
-    if (!this.punct(text)) throw new CheckDecodeError(`expected ${JSON.stringify(text)} at token ${this.i}`);
+    if (!this.punct(text)) throw new CheckDecodeError(`expected ${messageQuote(text)} at token ${this.i}`);
   }
 
   expression(): Node {
@@ -348,7 +349,7 @@ class CheckDecoder {
       this.i++;
       return operand('column', t.text);
     }
-    throw new CheckDecodeError(`unexpected ${JSON.stringify(t.text)}`);
+    throw new CheckDecodeError(`unexpected ${messageQuote(t.text)}`);
   }
 
   /** Reads the (a, b, ...) after in. */

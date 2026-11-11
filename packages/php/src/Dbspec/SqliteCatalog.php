@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * Reads the SQLite main database into an intermediate model. It joins sqlite_master and table-valued
  * pragmas to read all tables at once (docs/spec/dialects.md "Introspection").
@@ -100,7 +102,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                     'column',
                     $table,
                     $name,
-                    "the column definition \"$item\" has clauses that dbspec does not read"
+                    "the column definition " . Message::quote($item) . " has clauses that dbspec does not read"
                 );
                 continue;
             }
@@ -123,7 +125,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                         'column',
                         $table,
                         $name,
-                        "declared type $declared with CHECK \"$check\" has no dbspec type"
+                        "declared type $declared with CHECK " . Message::quote($check) . " has no dbspec type"
                     );
                     continue;
                 }
@@ -295,15 +297,16 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 // Any other form of primary key makes the table unreadable.
                 $kind = ['CHECK' => 'check', 'UNIQUE' => 'unique', 'FOREIGN KEY' => 'foreign_key'][$m[2]] ?? null;
                 if ($kind === null) {
-                    $st['unsupported'] = "the primary key \"$item\" has no dbspec definition";
+                    $st['unsupported'] = "the primary key " . Message::quote($item) . " has no dbspec definition";
                     return [$st, []];
                 }
-                $unsupported[] = [$kind, $m[1], "the table item \"$item\" has no dbspec definition"];
+                $unsupported[] = [$kind, $m[1], "the table item " . Message::quote($item)
+                    . " has no dbspec definition"];
             } elseif (preg_match(self::COLUMN_ITEM, $item, $m)) {
                 // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
                 $st['columns'][$m[1] !== '' ? $m[1] : $m[2]] = $item;
             } else {
-                $st['unsupported'] = "the table item \"$item\" has no dbspec definition";
+                $st['unsupported'] = "the table item " . Message::quote($item) . " has no dbspec definition";
                 return [$st, []];
             }
         }

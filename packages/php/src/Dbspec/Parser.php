@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * Reads one dbspec document line by line and validates it (docs/spec/dbspec.md).
  * Rules local to a line are checked on the line, rules of a whole table when
@@ -1322,7 +1324,7 @@ final class Parser
             $this->error('type', $this->line, $column, match (true) {
                 in_array($name, ColumnType::SIMPLE, true) => "$name takes no parameters",
                 isset(ColumnType::PARAMETERIZED[$name]) => self::parametersMessage($name),
-                default => "type \"$name\" is not a dbspec type",
+                default => "type " . Message::quote($name) . " is not a dbspec type",
             });
             return [null, $parenthesis ? $this->skipParentheses($i + 1) : $i + 1];
         }
@@ -3212,34 +3214,10 @@ final class Parser
         return self::quote($text, '"');
     }
 
-    /**
-     * The canonical quoting of a diagnostic: the delimiter, then each code point, the delimiter or `\\` after a
-     * backslash, \\a \\b \\f \\n \\r \\t \\v as those escapes, any other code point below 0x20 and 0x7F as \\xNN,
-     * every other code point as is; then the delimiter.
-     */
+    /** The quoting of every message (INT-187), which the diagnostics use too. */
     public static function quote(string $text, string $delimiter): string
     {
-        $out = $delimiter;
-        foreach (self::chars($text) as $c) {
-            if (strlen($c) !== 1) {
-                $out .= $c;
-                continue;
-            }
-            $o = ord($c);
-            $out .= match (true) {
-                $c === $delimiter, $c === '\\' => '\\' . $c,
-                $c === "\x07" => '\\a',
-                $c === "\x08" => '\\b',
-                $c === "\f" => '\\f',
-                $c === "\n" => '\\n',
-                $c === "\r" => '\\r',
-                $c === "\t" => '\\t',
-                $c === "\v" => '\\v',
-                $o < 0x20 || $o === 0x7f => sprintf('\\x%02x', $o),
-                default => $c,
-            };
-        }
-        return $out . $delimiter;
+        return Message::quote($text, $delimiter);
     }
 
     /**

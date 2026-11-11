@@ -621,7 +621,7 @@ final class Generator
         }
         foreach (explode('_', $n) as $segment) {
             if (in_array($segment, self::RESERVED_SEGMENTS, true)) {
-                throw $fail("column name may not contain the segment \"$segment\": $n");
+                throw $fail("column name may not contain the segment " . Message::quote($segment) . ": $n");
             }
         }
         if (in_array($n, self::RESERVED_COLUMNS, true)) {
@@ -629,7 +629,7 @@ final class Generator
         }
         foreach (self::RESERVED_PREFIXES as $p) {
             if ($n === $p || str_starts_with($n, $p . '_')) {
-                throw $fail("column name may not start with \"$p\": $n");
+                throw $fail("column name may not start with " . Message::quote($p) . ": $n");
             }
         }
     }

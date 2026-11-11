@@ -14,6 +14,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // cached is one plan-cache entry with the facts every execution needs.
@@ -827,7 +828,7 @@ func expandIn(st *plan.Step, vals []any) (string, []any, error) {
 			}
 			k, err := strconv.Atoi(st.SQL[i+1 : j])
 			if err != nil {
-				return "", nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("placeholder %q of the statement is not a number", st.SQL[i:j]), Cause: err}
+				return "", nil, &ir.Error{Code: CodeInternal, Msg: message.Sprintf("placeholder %q of the statement is not a number", st.SQL[i:j]), Cause: err}
 			}
 			switch {
 			case k == parent:

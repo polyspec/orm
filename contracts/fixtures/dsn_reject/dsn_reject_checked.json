@@ -1,13 +1,16 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "CFG-36"
+    "CFG-36",
+    "INT-187",
+    "CFG-20"
   ],
   "cases": [
     {
       "id": "tls_mode_verify_ca",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -16,7 +19,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"VERIFY_CA\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -25,7 +28,8 @@
     {
       "id": "tls_mode_required",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -34,7 +38,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"REQUIRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -43,7 +47,8 @@
     {
       "id": "tls_mode_preferred",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -52,7 +57,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"PREFERRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -61,7 +66,8 @@
     {
       "id": "tls_mode_disabled",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -70,7 +76,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"DISABLED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -79,7 +85,8 @@
     {
       "id": "tls_mode_lower_case",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -88,7 +95,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"verify_identity\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -97,7 +104,9 @@
     {
       "id": "tls_mode_empty",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187",
+        "CFG-20"
       ],
       "steps": [
         {
@@ -106,7 +115,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN parameter \"ssl-mode\" is empty"
             }
           }
         }
@@ -124,7 +133,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "needs ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file"
             }
           }
         }
@@ -142,7 +151,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not an absolute path"
+              "message": "CONFIG: mysql DSN ssl-ca \"ca.pem\" is not an absolute path"
             }
           }
         }
@@ -151,7 +160,8 @@
     {
       "id": "tls_ca_without_mode",
       "requirements": [
-        "CFG-36"
+        "CFG-36",
+        "INT-187"
       ],
       "steps": [
         {
@@ -160,7 +170,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "message": "CONFIG: mysql DSN ssl-mode \"\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -178,7 +188,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "is not a readable file"
+              "message_holds": "CONFIG: mysql DSN ssl-ca \"/nonexistent/orm-missing-ca.pem\" is not a readable file: "
             }
           }
         }

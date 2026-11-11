@@ -18,6 +18,8 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Probe is one asserted fact. ID is stable and is cited by docs/spec/dialects.md.
@@ -74,7 +76,7 @@ func Validate(probes []Probe) error {
 	seen := map[string]bool{}
 	for _, p := range probes {
 		if !probeID.MatchString(p.ID) {
-			return fmt.Errorf("probe ID %q does not match %s", p.ID, probeID)
+			return message.Errorf("probe ID %q does not match %s", p.ID, probeID)
 		}
 		if !strings.HasPrefix(p.ID, p.DB+".") {
 			return fmt.Errorf("probe %s runs on %s", p.ID, p.DB)

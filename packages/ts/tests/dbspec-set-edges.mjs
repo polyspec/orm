@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
+import { checkSetMessage } from './recipe.mjs';
 import { parseSet, readDbspecSet } from '../dist/dbspec/index.js';
 import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
 
@@ -63,10 +64,10 @@ for (const c of cases) {
       for (const [entry, parse] of [['node', parseSet], ['browser', browserParseSet]]) {
         const result = parse(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
         assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors.map(e => ({ rule: e.rule, path: e.path })), entry);
-        for (const e of result.errors) {
+        result.errors.forEach((e, i) => {
           assert.deepEqual(Object.keys(e).sort(), ['message', 'path', 'rule']);
-          assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
-        }
+          checkSetMessage(e.message, c.want.errors[i], i);
+        });
       }
     });
   } else if (!('errors' in c.want)) {

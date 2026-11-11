@@ -1005,6 +1005,9 @@ final class Recipe
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
+            if (isset($expect['message'])) {
+                Assert::assertSame($expect['message'], $message, 'dsn.connect message');
+            }
             self::assertMessageHolds($expect['message_holds'] ?? null, $message);
             return;
         }
@@ -1892,7 +1895,7 @@ final class Recipe
     /**
      * Runs one dbspec.read_set step (FCV-4): it writes the tree under an empty temporary directory, with real links in
      * the order written, reads the set with the public Dbspec::readSet, and compares the paths and the bytes of the
-     * files or the rule and path of each error (DBS-11).
+     * files or the rule, path and message of each error (DBS-11, DBS-18a).
      */
     private static function dbspecReadSetStep(RecipeStep $step, string $database): void
     {
@@ -1925,8 +1928,17 @@ final class Recipe
                     'errors',
                 );
                 foreach ($result->errors as $i => $error) {
-                    Assert::assertStringContainsString($error->path, $error->message, 'the message names the path');
-                    self::assertMessageHolds($expect['errors'][$i]['message_holds'] ?? null, $error->message);
+                    // The message relative to the root, as the paths: every root followed by / goes, and the root
+                    // itself reads `.`.
+                    $message = str_replace([$root . '/', $root], ['', '.'], $error->message);
+                    $want = $expect['errors'][$i];
+                    if (isset($want['message'])) {
+                        Assert::assertSame($want['message'], $message, 'the error message');
+                    } else {
+                        $starts = $want['message_starts'] . ': ';
+                        Assert::assertStringStartsWith($starts, $message, 'the error message');
+                        Assert::assertNotSame($starts, $message, 'the error of the platform or the JSON parser');
+                    }
                 }
                 return;
             }

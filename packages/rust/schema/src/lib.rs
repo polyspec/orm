@@ -5,5 +5,6 @@
 //! `sql` splits SQL text into statements.
 
 pub mod dbspec;
+pub mod message;
 pub mod names;
 pub mod sql;

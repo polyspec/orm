@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * Reads a dialect catalog check expression as dbspec predicate text
  * (docs/spec/dialects.md "Introspection", "Checks"). A literal is read as the value of the column
@@ -39,7 +41,8 @@ final class CheckDecoder
         }
         if ($dialect === 'postgres') {
             if (!str_starts_with($text, 'CHECK ')) {
-                throw new CheckDecodeFailure("constraint definition \"$text\" does not start with CHECK");
+                throw new CheckDecodeFailure("constraint definition " . Message::quote($text)
+                    . " does not start with CHECK");
             }
             $text = substr($text, strlen('CHECK '));
         }
@@ -47,7 +50,7 @@ final class CheckDecoder
         $d->tokens = self::tokens($dialect, $text);
         $node = $d->logical('or');
         if ($d->i !== count($d->tokens)) {
-            throw new CheckDecodeFailure("unexpected \"{$d->tokens[$d->i][1]}\"");
+            throw new CheckDecodeFailure("unexpected " . Message::quote($d->tokens[$d->i][1]));
         }
         if ($node['node'] !== 'predicate') {
             throw new CheckDecodeFailure('an operand alone is not a predicate');
@@ -139,7 +142,8 @@ final class CheckDecoder
                 $out[] = ['punct', $ch];
                 $i++;
             } else {
-                throw new CheckDecodeFailure("unexpected character \"$ch\"");
+                throw new CheckDecodeFailure("unexpected character "
+                    . Message::quote(Message::character($text, $i), "'"));
             }
         }
         return $out;
@@ -219,7 +223,7 @@ final class CheckDecoder
     private function expect(string $text): void
     {
         if (!$this->punct($text)) {
-            throw new CheckDecodeFailure("expected \"$text\" at token {$this->i}");
+            throw new CheckDecodeFailure("expected " . Message::quote($text) . " at token {$this->i}");
         }
     }
 
@@ -358,7 +362,7 @@ final class CheckDecoder
             $this->i++;
             return self::operandNode('column', $text);
         }
-        throw new CheckDecodeFailure("unexpected \"$text\"");
+        throw new CheckDecodeFailure("unexpected " . Message::quote($text));
     }
 
     /** Reads the (a, b, ...) after in. */

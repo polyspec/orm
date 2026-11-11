@@ -100,7 +100,9 @@ mod dsn_connection_markdown;
 mod dsn_connection_mysql;
 mod dsn_connection_postgres;
 mod dsn_connection_sqlite;
+mod dsn_reject_checked_none;
 mod dsn_reject_none;
+mod dsn_reject_parameters_none;
 mod example_dsn;
 mod external_audit_markdown;
 mod external_audit_mysql;
@@ -303,6 +305,8 @@ fn main() {
         polyspec_orm_testcase::Group::recipe("dsn_connection_sqlite", dsn_connection_sqlite::trials),
         polyspec_orm_testcase::Group::recipe("dsn_connection_markdown", dsn_connection_markdown::trials),
         polyspec_orm_testcase::Group::new("dsn_reject_none", dsn_reject_none::trials),
+        polyspec_orm_testcase::Group::new("dsn_reject_parameters_none", dsn_reject_parameters_none::trials),
+        polyspec_orm_testcase::Group::new("dsn_reject_checked_none", dsn_reject_checked_none::trials),
         polyspec_orm_testcase::Group::new("example_dsn", example_dsn::trials),
         polyspec_orm_testcase::Group::recipe("external_audit_mysql", external_audit_mysql::trials),
         polyspec_orm_testcase::Group::recipe("external_audit_postgres", external_audit_postgres::trials),

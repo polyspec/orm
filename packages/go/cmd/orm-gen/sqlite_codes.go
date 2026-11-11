@@ -16,6 +16,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 type sqliteCode struct {
@@ -134,7 +136,7 @@ func sqliteCodesSource(lang string, codes []sqliteCode) ([]byte, error) {
 		}
 		sb.WriteString("    default: return NULL;\n    }\n}\n\n#endif\n")
 	default:
-		return nil, fmt.Errorf("unknown lang %q", lang)
+		return nil, message.Errorf("unknown lang %q", lang)
 	}
 	return []byte(sb.String()), nil
 }

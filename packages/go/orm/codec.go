@@ -18,7 +18,9 @@ import (
 	"unicode/utf8"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
+
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/message"
 	goyaml "go.yaml.in/yaml/v3"
 )
 
@@ -32,7 +34,7 @@ func errNesting(code, stage string) error {
 }
 
 func codecErr(code, format string, a ...any) error {
-	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
+	return &ir.Error{Code: code, Msg: message.Sprintf(format, a...)}
 }
 
 // codecCause is the error of code with the fixed text msg of a rule and the library error that failed as its cause, whose
@@ -581,7 +583,7 @@ func phpFloat(f float64) string {
 	mant, exp := s[:i], s[i+1:]
 	e, err := strconv.Atoi(exp)
 	if err != nil {
-		panic(fmt.Sprintf("orm: FormatFloat wrote the exponent %q", exp))
+		panic(message.Sprintf("orm: FormatFloat wrote the exponent %q", exp))
 	}
 	if e >= -4 && e <= 16 {
 		return strconv.FormatFloat(f, 'f', -1, 64)

@@ -296,7 +296,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: unknown key \"x\""
                 }
               ]
             }
@@ -326,7 +327,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"a\" appears twice"
                 }
               ]
             }
@@ -356,7 +358,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: unknown key \"x\""
                 }
               ]
             }
@@ -447,7 +450,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/set.json"
+                  "path": "app/set.json",
+                  "message": "app/set.json: the set file is not named dbspec-set.json"
                 }
               ]
             }
@@ -474,7 +478,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the root app lists no dbspec-set.json"
                 }
               ]
             }
@@ -504,7 +509,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the root app lists no dbspec-set.json"
                 }
               ]
             }
@@ -534,7 +540,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/gone.dbs"
+                  "path": "app/gone.dbs",
+                  "message": "app/gone.dbs: app lists no name \"gone.dbs\""
                 }
               ]
             }
@@ -567,7 +574,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/dir.dbs"
+                  "path": "app/dir.dbs",
+                  "message": "app/dir.dbs: app/dir.dbs is not a regular file"
                 }
               ]
             }
@@ -597,7 +605,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/Shop.dbs"
+                  "path": "app/Shop.dbs",
+                  "message": "app/Shop.dbs: app lists no name \"Shop.dbs\""
                 }
               ]
             }
@@ -627,7 +636,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/shop.dbs/x.dbs"
+                  "path": "app/shop.dbs/x.dbs",
+                  "message": "app/shop.dbs/x.dbs: app/shop.dbs is not a directory"
                 }
               ]
             }
@@ -660,7 +670,8 @@
               "errors": [
                 {
                   "rule": "set.symlink",
-                  "path": "app/link.dbs"
+                  "path": "app/link.dbs",
+                  "message": "app/link.dbs: app/link.dbs is a symbolic link"
                 }
               ]
             }
@@ -696,7 +707,8 @@
               "errors": [
                 {
                   "rule": "set.symlink",
-                  "path": "app/sub/x.dbs"
+                  "path": "app/sub/x.dbs",
+                  "message": "app/sub/x.dbs: app/sub is a symbolic link"
                 }
               ]
             }
@@ -765,7 +777,8 @@
               "errors": [
                 {
                   "rule": "set.symlink",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file is a symbolic link"
                 }
               ]
             }
@@ -798,7 +811,8 @@
               "errors": [
                 {
                   "rule": "set.symlink",
-                  "path": "alias/dbspec-set.json"
+                  "path": "alias/dbspec-set.json",
+                  "message": "alias/dbspec-set.json: the root alias is a symbolic link"
                 }
               ]
             }
@@ -828,7 +842,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -858,7 +873,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file is not one JSON object"
                 }
               ]
             }
@@ -888,7 +904,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -946,7 +963,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -976,7 +994,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -1006,7 +1025,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -1036,7 +1056,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -1066,7 +1087,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -1096,7 +1118,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file nests deeper than 64 levels"
                 }
               ]
             }
@@ -1126,7 +1149,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: unknown key \"x\""
                 }
               ]
             }
@@ -1156,7 +1180,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file starts with a byte order mark"
                 }
               ]
             }
@@ -1186,7 +1211,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file is not valid UTF-8"
                 }
               ]
             }
@@ -1216,7 +1242,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is missing"
                 }
               ]
             }
@@ -1246,7 +1273,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -1276,7 +1304,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -1306,7 +1335,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -1336,7 +1366,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -1366,7 +1397,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: unknown keys \"alpha\", \"zeta\""
                 }
               ]
             }
@@ -1396,7 +1428,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"documents\" appears twice"
                 }
               ]
             }
@@ -1426,7 +1459,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"a\" appears twice"
                 }
               ]
             }
@@ -1456,7 +1490,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -1486,7 +1521,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is missing"
                 }
               ]
             }
@@ -1516,7 +1552,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is not an array of strings"
                 }
               ]
             }
@@ -1546,7 +1583,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is not an array of strings"
                 }
               ]
             }
@@ -1576,7 +1614,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: external is not an array of strings"
                 }
               ]
             }
@@ -1606,7 +1645,8 @@
               "errors": [
                 {
                   "rule": "set.empty",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is empty"
                 }
               ]
             }
@@ -1636,7 +1676,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"/shop.dbs\" has an empty segment"
                 }
               ]
             }
@@ -1666,7 +1707,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"C:/shop.dbs\" has the character \":\" that a segment cannot hold"
                 }
               ]
             }
@@ -1696,7 +1738,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"C:x.dbs\" has the character \":\" that a segment cannot hold"
                 }
               ]
             }
@@ -1726,7 +1769,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"\" has an empty segment"
                 }
               ]
             }
@@ -1756,7 +1800,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"COM³.dbs\" has the segment \"COM³.dbs\" that names a Windows device"
                 }
               ]
             }
@@ -1786,7 +1831,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the external path \"..\" does not end in .dbs"
                 }
               ]
             }
@@ -1816,7 +1862,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub\\\\shop.dbs\" has the character \"\\\\\" that a segment cannot hold"
                 }
               ]
             }
@@ -1846,7 +1893,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"./shop.dbs\" has a . segment"
                 }
               ]
             }
@@ -1876,7 +1924,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub//shop.dbs\" has an empty segment"
                 }
               ]
             }
@@ -1906,7 +1955,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub/\" has an empty segment"
                 }
               ]
             }
@@ -1936,7 +1986,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"shop.txt\" does not end in .dbs"
                 }
               ]
             }
@@ -1966,7 +2017,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"nul.dbs\" has the segment \"nul.dbs\" that names a Windows device"
                 }
               ]
             }
@@ -1996,7 +2048,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"com1.x.dbs\" has the segment \"com1.x.dbs\" that names a Windows device"
                 }
               ]
             }
@@ -2026,7 +2079,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"LPT1 .dbs\" has the segment \"LPT1 .dbs\" that names a Windows device"
                 }
               ]
             }
@@ -2056,7 +2110,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"COM¹.dbs\" has the segment \"COM¹.dbs\" that names a Windows device"
                 }
               ]
             }
@@ -2086,7 +2141,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub./shop.dbs\" has a segment that ends in . or a space"
                 }
               ]
             }
@@ -2116,7 +2172,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub /shop.dbs\" has a segment that ends in . or a space"
                 }
               ]
             }
@@ -2146,7 +2203,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sh<op.dbs\" has the character \"<\" that a segment cannot hold"
                 }
               ]
             }
@@ -2176,7 +2234,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sh\\x01op.dbs\" has the character \"\\x01\" that a segment cannot hold"
                 }
               ]
             }
@@ -2206,7 +2265,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"../shop.dbs\" has a .. segment"
                 }
               ]
             }
@@ -2236,7 +2296,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"sub/../shop.dbs\" has a .. segment"
                 }
               ]
             }
@@ -2266,7 +2327,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the external path \"sub/../core.dbs\" has a .. segment after another segment"
                 }
               ]
             }
@@ -2327,7 +2389,8 @@
               "errors": [
                 {
                   "rule": "set.duplicate",
-                  "path": "app/shop.dbs"
+                  "path": "app/shop.dbs",
+                  "message": "app/shop.dbs: names the file that app/shop.dbs names"
                 }
               ]
             }
@@ -2360,7 +2423,8 @@
               "errors": [
                 {
                   "rule": "set.duplicate",
-                  "path": "app/copy.dbs"
+                  "path": "app/copy.dbs",
+                  "message": "app/copy.dbs: names the file that app/shop.dbs names"
                 }
               ]
             }
@@ -2390,7 +2454,8 @@
               "errors": [
                 {
                   "rule": "set.duplicate",
-                  "path": "app/../app/shop.dbs"
+                  "path": "app/../app/shop.dbs",
+                  "message": "app/../app/shop.dbs: names the file that app/shop.dbs names"
                 }
               ]
             }
@@ -2422,15 +2487,18 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "app/gone.dbs"
+                  "path": "app/gone.dbs",
+                  "message": "app/gone.dbs: app lists no name \"gone.dbs\""
                 },
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"bad\\\\x.dbs\" has the character \"\\\\\" that a segment cannot hold"
                 },
                 {
                   "rule": "set.duplicate",
-                  "path": "app/shop.dbs"
+                  "path": "app/shop.dbs",
+                  "message": "app/shop.dbs: names the file that app/shop.dbs names"
                 }
               ]
             }
@@ -2488,7 +2556,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -2518,7 +2587,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -2548,7 +2618,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"a\\\\ud800.dbs\" has the character \"\\\\\" that a segment cannot hold"
                 }
               ]
             }
@@ -2578,7 +2649,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"schema\" appears twice"
                 }
               ]
             }
@@ -2609,7 +2681,7 @@
                 {
                   "rule": "set.key",
                   "path": "app/dbspec-set.json",
-                  "message_holds": "unknown key"
+                  "message": "app/dbspec-set.json: unknown key \"x\""
                 }
               ]
             }
@@ -2639,7 +2711,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"schema\" does not end in .dbs"
                 }
               ]
             }
@@ -2669,7 +2742,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -2699,7 +2773,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -2729,7 +2804,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -2759,7 +2835,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -2789,7 +2866,8 @@
               "errors": [
                 {
                   "rule": "set.schema",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: schema is not the number 1"
                 }
               ]
             }
@@ -2819,7 +2897,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is not an array of strings"
                 }
               ]
             }
@@ -2849,7 +2928,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: external is not an array of strings"
                 }
               ]
             }
@@ -2907,7 +2987,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"lpt³.dbs\" has the segment \"lpt³.dbs\" that names a Windows device"
                 }
               ]
             }
@@ -2965,7 +3046,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"aux/x.dbs\" has the segment \"aux\" that names a Windows device"
                 }
               ]
             }
@@ -2995,7 +3077,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"a:b.dbs\" has the character \":\" that a segment cannot hold"
                 }
               ]
             }
@@ -3025,7 +3108,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"a\\x1fb.dbs\" has the character \"\\x1f\" that a segment cannot hold"
                 }
               ]
             }
@@ -3055,7 +3139,8 @@
               "errors": [
                 {
                   "rule": "set.path",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the documents path \"a\\x00b.dbs\" has the character \"\\x00\" that a segment cannot hold"
                 }
               ]
             }
@@ -3085,7 +3170,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -3116,7 +3202,7 @@
                 {
                   "rule": "set.key",
                   "path": "app/dbspec-set.json",
-                  "message_holds": "\"b\", \"￿\", \"😀\""
+                  "message": "app/dbspec-set.json: unknown keys \"b\", \"￿\", \"😀\""
                 }
               ]
             }
@@ -3174,7 +3260,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file escapes a lone surrogate"
                 }
               ]
             }
@@ -3204,7 +3291,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"schema\" appears twice"
                 }
               ]
             }
@@ -3234,7 +3322,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message_starts": "app/dbspec-set.json: the set file is not JSON"
                 }
               ]
             }
@@ -3264,7 +3353,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is not an array of strings"
                 }
               ]
             }
@@ -3294,7 +3384,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: documents is not an array of strings"
                 }
               ]
             }
@@ -3324,7 +3415,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the key \"documents\" appears twice"
                 }
               ]
             }
@@ -3354,7 +3446,8 @@
               "errors": [
                 {
                   "rule": "set.key",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: unknown key \"x\""
                 }
               ]
             }
@@ -3412,7 +3505,8 @@
               "errors": [
                 {
                   "rule": "set.json",
-                  "path": "app/dbspec-set.json"
+                  "path": "app/dbspec-set.json",
+                  "message": "app/dbspec-set.json: the set file is not one JSON object"
                 }
               ]
             }
@@ -3472,7 +3566,8 @@
               "errors": [
                 {
                   "rule": "set.file",
-                  "path": "a\u0000b/dbspec-set.json"
+                  "path": "a\u0000b/dbspec-set.json",
+                  "message": "a\u0000b/dbspec-set.json: the path contains a NUL byte"
                 }
               ]
             }

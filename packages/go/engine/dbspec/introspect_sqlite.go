@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // SQLite catalog queries. They join sqlite_master with table-valued pragmas, to read every
@@ -330,10 +331,10 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			m := sqliteConstraintItem.FindStringSubmatch(item)
 			kind := map[string]string{"CHECK": "check", "UNIQUE": "unique", "FOREIGN KEY": "foreign_key"}[m[2]]
 			if kind == "" {
-				st.unsupported = fmt.Sprintf("the primary key %q has no dbspec definition", item)
+				st.unsupported = message.Sprintf("the primary key %q has no dbspec definition", item)
 				return st, nil
 			}
-			unsupported = append(unsupported, Unsupported{Kind: kind, Name: m[1], Reason: fmt.Sprintf("the table item %q has no dbspec definition", item)})
+			unsupported = append(unsupported, Unsupported{Kind: kind, Name: m[1], Reason: message.Sprintf("the table item %q has no dbspec definition", item)})
 		case sqliteColumnItem.MatchString(item):
 			// Its definition is read by pragma_table_xinfo, and the text is checked to be in renderer form.
 			m := sqliteColumnItem.FindStringSubmatch(item)
@@ -343,7 +344,7 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			}
 			st.columns[name] = item
 		default:
-			st.unsupported = fmt.Sprintf("the table item %q has no dbspec definition", item)
+			st.unsupported = message.Sprintf("the table item %q has no dbspec definition", item)
 			return st, nil
 		}
 	}

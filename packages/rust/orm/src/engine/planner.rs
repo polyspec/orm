@@ -433,7 +433,7 @@ impl<'m> Planner<'m> {
             "delete" => steps.push(self.delete_step(r)?),
             "restore" => steps.push(self.restore_step(r)?),
             "restart_identity" => steps.push(self.restart_identity_step(r)?),
-            other => return Err(err(codes::IR_INVALID, format!("unknown kind {other:?}"))),
+            other => return Err(err(codes::IR_INVALID, format!("unknown kind {other}", other = polyspec_orm_schema::message::Quoted(&other)))),
         }
         for (i, st) in steps.iter_mut().enumerate() {
             st.id = i as u32;
@@ -617,10 +617,12 @@ impl<'m> Planner<'m> {
                     sb.push_str(&self.limit(&mut b, l)?);
                 }
                 if !q.lock.is_empty() {
-                    let lock = self
-                        .d
-                        .row_lock(&q.lock, self.server)
-                        .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} row lock {:?} is not supported", self.d.name(), q.lock)))?;
+                    let lock = self.d.row_lock(&q.lock, self.server).ok_or_else(|| {
+                        err(
+                            codes::CAPABILITY_UNSUPPORTED,
+                            format!("{} row lock {} is not supported", self.d.name(), polyspec_orm_schema::message::Quoted(&q.lock)),
+                        )
+                    })?;
                     sb.push_str(lock);
                 }
             }

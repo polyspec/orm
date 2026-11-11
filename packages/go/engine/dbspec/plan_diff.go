@@ -1,8 +1,9 @@
 package dbspec
 
 import (
-	"fmt"
 	"slices"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Change is one change of the diff (docs/spec/plans.md "Diff"). Table is the target name,
@@ -274,7 +275,7 @@ func renamedOr(m map[string]string, name string) string {
 }
 
 func planError(format string, args ...any) []Diagnostic {
-	return []Diagnostic{{Rule: RulePlan, Line: 1, Column: 1, Message: fmt.Sprintf(format, args...)}}
+	return []Diagnostic{{Rule: RulePlan, Line: 1, Column: 1, Message: message.Sprintf(format, args...)}}
 }
 
 func hashOrEmpty(h string) string {

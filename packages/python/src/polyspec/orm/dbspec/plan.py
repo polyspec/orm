@@ -9,6 +9,7 @@ from polyspec.orm.dbspec.compare import is_schema_text
 from polyspec.orm.dbspec.emit import emit_document, CANONICAL
 from polyspec.orm.dbspec.model import DbspecPlan, DbspecDiagnostic
 from polyspec.orm.dbspec.parse import RESERVED, parse_dbspec
+from polyspec.orm.message import quote as quote_message
 
 __all__ = [
     "chain_plans",
@@ -43,11 +44,9 @@ def _failed(line: int, message: str) -> dict:
 
 
 def _plan_names(names) -> str:
-    import json
-
     for n in names:
         if n in RESERVED or len(n.encode("utf-8")) > 63:
-            return f"name {json.dumps(n)} is reserved or longer than 63 bytes"
+            return f"name {quote_message(n)} is reserved or longer than 63 bytes"
     return ""
 
 

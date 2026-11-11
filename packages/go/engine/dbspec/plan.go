@@ -1,10 +1,11 @@
 package dbspec
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // RulePlan and RuleChain are the diagnostics of a plan document and a plan chain
@@ -54,7 +55,7 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 	}
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	fail := func(line int, format string, args ...any) (*Plan, []Diagnostic) {
-		return nil, []Diagnostic{{Rule: RulePlan, Line: line, Column: 1, Message: fmt.Sprintf(format, args...)}}
+		return nil, []Diagnostic{{Rule: RulePlan, Line: line, Column: 1, Message: message.Sprintf(format, args...)}}
 	}
 	m := planHeader.FindStringSubmatch(lines[0])
 	if m == nil || reservedWords[m[1]] || len(m[1]) > 63 {
@@ -157,7 +158,7 @@ func planTo(p *Plan, document *Document, schemaText string) (*Plan, []Diagnostic
 func planNames(names []string) string {
 	for _, n := range names {
 		if reservedWords[n] || len(n) > 63 {
-			return fmt.Sprintf("name %q is reserved or longer than 63 bytes", n)
+			return message.Sprintf("name %q is reserved or longer than 63 bytes", n)
 		}
 	}
 	return ""

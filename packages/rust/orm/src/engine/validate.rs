@@ -131,7 +131,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             | "restore"
             | "restart_identity"
     ) {
-        return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
+        return Err(err(codes::IR_INVALID, format!("unknown kind {}", polyspec_orm_schema::message::Quoted(&r.kind))));
     }
     // A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
     if let Some(ent) = m.model.entity(&r.query.entity) {
@@ -379,7 +379,7 @@ impl<'m> Validator<'m> {
         let ent = self.m.entity(&q.entity)?;
         if let Some(c) = &q.columns {
             if !matches!(c.mode.as_str(), "" | "all" | "none") {
-                return Err(err(codes::IR_INVALID, format!("columns.mode {:?}", c.mode)));
+                return Err(err(codes::IR_INVALID, format!("columns.mode {}", polyspec_orm_schema::message::Quoted(&c.mode))));
             }
             for name in c.add.iter().chain(&c.remove) {
                 if ent.field(name).is_none() {
@@ -407,10 +407,10 @@ impl<'m> Validator<'m> {
         let mut joined: Vec<(&str, &ir::Join)> = Vec::new();
         for j in &q.joins {
             if j.kind != "inner" && j.kind != "left" {
-                return Err(err(codes::IR_INVALID, format!("join kind {:?}", j.kind)));
+                return Err(err(codes::IR_INVALID, format!("join kind {}", polyspec_orm_schema::message::Quoted(&j.kind))));
             }
             if j.rel.is_empty() || joined.iter().any(|(n, _)| *n == j.rel) {
-                return Err(err(codes::IR_INVALID, format!("join name {:?} is empty or used twice", j.rel)));
+                return Err(err(codes::IR_INVALID, format!("join name {} is empty or used twice", polyspec_orm_schema::message::Quoted(&j.rel))));
             }
             if j.left.is_empty() || j.right.is_empty() {
                 return Err(err(codes::IR_INVALID, format!("join {}: left, right and query are required", j.rel)));
@@ -444,7 +444,7 @@ impl<'m> Validator<'m> {
         // A top-level group has no preceding sibling, so it has no conn.
         for top in [&q.on, &q.where_].into_iter().flatten() {
             if !top.conn.is_empty() {
-                return Err(err(codes::IR_INVALID, format!("the top-level group takes no conn ({:?})", top.conn)));
+                return Err(err(codes::IR_INVALID, format!("the top-level group takes no conn ({})", polyspec_orm_schema::message::Quoted(&top.conn))));
             }
         }
         if let Some(on) = &q.on {
@@ -458,7 +458,10 @@ impl<'m> Validator<'m> {
         let mut relation_names: Vec<&str> = Vec::new();
         for r in &q.relations {
             if r.rel.is_empty() || relation_names.contains(&r.rel.as_str()) {
-                return Err(err(codes::COLUMN_ALIAS_CONFLICT, format!("relation name {:?} is empty or used twice", r.rel)));
+                return Err(err(
+                    codes::COLUMN_ALIAS_CONFLICT,
+                    format!("relation name {} is empty or used twice", polyspec_orm_schema::message::Quoted(&r.rel)),
+                ));
             }
             relation_names.push(&r.rel);
             if ent.field(&r.rel).is_some() {
@@ -571,7 +574,10 @@ impl<'m> Validator<'m> {
         }
         if !q.lock.is_empty() {
             if !matches!(q.lock.as_str(), "update" | "share" | "update_nowait" | "share_nowait") {
-                return Err(err(codes::IR_INVALID, format!("lock {:?}: want update, share, update_nowait or share_nowait", q.lock)));
+                return Err(err(
+                    codes::IR_INVALID,
+                    format!("lock {}: want update, share, update_nowait or share_nowait", polyspec_orm_schema::message::Quoted(&q.lock)),
+                ));
             }
             if is_join || !q.group_by.is_empty() || q.limit_per_parent > 0 {
                 return Err(err(codes::IR_INVALID, "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by"));
@@ -591,14 +597,17 @@ impl<'m> Validator<'m> {
                 ir::Item::Joined { joined } => &joined.conn,
             };
             if !matches!(conn.as_str(), "" | "and" | "or") {
-                return Err(err(codes::IR_INVALID, format!("conn {conn:?}")));
+                return Err(err(codes::IR_INVALID, format!("conn {conn}", conn = polyspec_orm_schema::message::Quoted(&conn))));
             }
             if i == 0 && conn == "or" {
                 return Err(err(codes::OR_AT_GROUP_START, "a group may not start with OR"));
             }
             // The first item of a group has no preceding sibling, so it has no conn.
             if i == 0 && !conn.is_empty() {
-                return Err(err(codes::IR_INVALID, format!("the first item of a group takes no conn ({conn:?})")));
+                return Err(err(
+                    codes::IR_INVALID,
+                    format!("the first item of a group takes no conn ({conn})", conn = polyspec_orm_schema::message::Quoted(&conn)),
+                ));
             }
             match it {
                 ir::Item::Joined { joined: j } => {
@@ -802,7 +811,7 @@ impl<'m> Validator<'m> {
                     return Err(err(codes::IR_INVALID, "count subquery is only valid as a column"));
                 }
             }
-            other => return Err(err(codes::IR_INVALID, format!("subquery agg {other:?}"))),
+            other => return Err(err(codes::IR_INVALID, format!("subquery agg {other}", other = polyspec_orm_schema::message::Quoted(&other)))),
         }
         if !s.column.is_empty() && ent.field(&s.column).is_none() {
             return Err(unknown_column(&ent.name, &s.column));

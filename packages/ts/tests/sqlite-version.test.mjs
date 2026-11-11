@@ -13,10 +13,11 @@ caseTest('SQLite version parser rejects malformed values as INTERNAL with the ra
   for (const version of ['', '3.46', '3.46.0.0.0', '3..0', '.46.0', ' 3.46.0', '3.46.0 ', '3.46.0\n', '3.46.0\r', '3.46.0\u2028', '3.46.0\u2029', '+3.46.0', '3.46.0-rc1', '3.4294967296.0', '3.46.0.4294967296', '3.46.0.', '٣.46.0']) {
     assert.throws(
       () => checkSqliteVersion(version),
-      error => error.code === 'INTERNAL' && error.message.includes(JSON.stringify(version)),
+      error => error.code === 'INTERNAL',
       version,
     );
   }
+  assert.throws(() => checkSqliteVersion('3.46.0\n'), error => error.message === 'INTERNAL: SQLite library version "3.46.0\\n" is invalid; expected three or four decimal components that each fit u32');
 });
 
 // Requirements: DSL-150.

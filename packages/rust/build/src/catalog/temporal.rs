@@ -259,9 +259,21 @@ pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &Ta
     let table_sql = match rows.as_slice() {
         [row] if row.len() == 1 => match &row[0] {
             crate::tool_db::Val::Text(text) => text.clone(),
-            _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name).into()),
+            _ => {
+                return Err(format!(
+                    "TABLE_METADATA_INVALID: the definition of table {} is not one text",
+                    polyspec_orm_schema::message::Quoted(&metadata.table.name)
+                )
+                .into())
+            }
         },
-        _ => return Err(format!("TABLE_METADATA_INVALID: the definition of table {:?} is not one text", metadata.table.name).into()),
+        _ => {
+            return Err(format!(
+                "TABLE_METADATA_INVALID: the definition of table {} is not one text",
+                polyspec_orm_schema::message::Quoted(&metadata.table.name)
+            )
+            .into())
+        }
     };
     for (check, column) in checks.iter_mut().zip(&metadata.columns) {
         if matches!(column.native_type.to_ascii_uppercase().as_str(), "TIME" | "DATETIME") {

@@ -23,6 +23,9 @@ final class Orm
         'sqlite' => ['timezone', '_pragma', '_txlock'],
     ];
 
+    /** The parameters of a markdown DSN (PRT-63, CFG-19). */
+    private const MARKDOWN_PARAMETERS = ['token', 'timezone', '_pragma'];
+
     /**
      * Opens the database that the DSN URI (mysql://, postgres://, sqlite://, markdown://) selects, and
      * registers the generated schema's set on that connection, as utils()->schema()->register does. Called
@@ -216,7 +219,22 @@ final class Orm
 
     private static function assertSqliteVersion(string $version): void
     {
-        if (version_compare($version, '3.46', '<')) {
+        // Three or four ASCII decimal components, each fitting u32 (DSL-150).
+        $parts = explode('.', $version);
+        $valid = count($parts) === 3 || count($parts) === 4;
+        foreach ($parts as $part) {
+            $digits = ltrim($part, '0');
+            $valid = $valid && preg_match('/^[0-9]+$/D', $part) === 1
+                && strlen($digits) <= 10 && (int) $digits <= 0xFFFFFFFF;
+        }
+        if (!$valid) {
+            throw new OrmException(
+                Code::INTERNAL,
+                'SQLite library version ' . Message::quote($version)
+                    . ' is invalid; expected three or four decimal components that each fit u32'
+            );
+        }
+        if ([(int) $parts[0], (int) $parts[1]] < [3, 46]) {
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
         }
     }
@@ -256,19 +274,39 @@ final class Orm
     private static function scheme(string $dsn): string
     {
         if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
-            throw new OrmException(
-                Code::CONFIG,
-                'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'
-            );
+            throw new OrmException(Code::CONFIG, DsnUrl::NOT_A_URI);
         }
         return strtolower($m[1]);
+    }
+
+    /**
+     * The name and value of a _pragma value of CFG-12: name(value), and a busy_timeout a decimal whole number from 0 to
+     * 2147483647, the largest wait the C int of SQLite holds, since SQLite reads a larger number as 0. Another value is
+     * CONFIG.
+     *
+     * @return array{string, string}
+     */
+    private static function pragmaParts(string $scheme, string $value): array
+    {
+        if (
+            preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/D', $value, $pragma) !== 1
+            || ($pragma[1] === 'busy_timeout' && (
+                !ctype_digit($pragma[2])
+                || strlen(ltrim($pragma[2], '0')) > 10
+                || (int) $pragma[2] > 2147483647
+            ))
+        ) {
+            throw new OrmException(Code::CONFIG, $scheme . ' DSN _pragma ' . Message::quote($value) . ' is invalid');
+        }
+        return [$pragma[1], $pragma[2]];
     }
 
     /**
      * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on
      * 127.0.0.1, and the token travels in plain text, so the host is only 127.0.0.1. Another host, a
      * missing port, a path that is not one name, a missing token, and any parameter but token, timezone (UTC only, the
-     * rule of every scheme) and _pragma, a setting of each session as on a SQLite DSN, are CONFIG (PRT-63).
+     * rule of every scheme) and _pragma, a setting of each session as on a SQLite DSN, are CONFIG (PRT-63). The query
+     * is read by the rule of every scheme (CFG-20).
      *
      * @return array{0: string, 1: string, 2: string, 3: list<array{0: string, 1: string}>} the server address, the
      *     corpus name, the token and the `_pragma=name(value)` parameters
@@ -276,72 +314,53 @@ final class Orm
     public static function parseMarkdownDsn(string $dsn): array
     {
         $form = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
-        $parts = parse_url($dsn);
-        if ($parts === false || strtolower($parts['scheme'] ?? '') !== 'markdown') {
+        if (strncasecmp($dsn, 'markdown://', 11) !== 0) {
             throw new OrmException(Code::CONFIG, "$form; give the port that flowmark serve printed "
                 . "and the corpus name");
+        }
+        // markdown:///x has the host "", never localhost; parse_url refuses an empty authority, so it reads the rest
+        // of the DSN after a placeholder host that the host check never sees.
+        $emptyHost = strncasecmp($dsn, 'markdown:///', 12) === 0;
+        $parts = DsnUrl::uri($emptyHost ? 'markdown://h/' . substr($dsn, 12) : $dsn, 'markdown');
+        // CFG-20 and PRT-63: the query, then the token, is read before the user, the host and the path.
+        $query = DsnUrl::query('markdown', (string) ($parts['query'] ?? ''), self::MARKDOWN_PARAMETERS);
+        if (!isset($query['token'])) {
+            throw new OrmException(Code::CONFIG, 'markdown DSN is missing the parameter "token"');
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
             throw new OrmException(Code::CONFIG, "$form; it takes no user");
         }
-        $host = (string) ($parts['host'] ?? '');
+        $host = $emptyHost ? '' : (string) ($parts['host'] ?? '');
+        DsnUrl::host('markdown', $host);
         if ($host !== '127.0.0.1') {
-            throw new OrmException(Code::CONFIG, "$form; host \"$host\": a flowmark server listens on 127.0.0.1 only");
+            throw new OrmException(Code::CONFIG, "$form; host " . Message::quote($host)
+                . ": a flowmark server listens on 127.0.0.1 only");
         }
         $port = $parts['port'] ?? 0;
         if ($port < 1 || $port > 65535) {
             throw new OrmException(
                 Code::CONFIG,
-                "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed"
+                "$form; port " . Message::quote(isset($parts['port']) ? (string) $parts['port'] : '')
+                    . " is not 1 to 65535: give the port that flowmark serve printed"
             );
         }
         $path = (string) ($parts['path'] ?? '');
-        $corpus = rawurldecode(substr($path, 1));
-        if (!str_starts_with($path, '/') || $corpus === '' || str_contains($corpus, '/')) {
+        // The path is decoded as every DSN path is (CFG-11); one that does not decode is no corpus name.
+        $decoded = self::decodedPath($path);
+        $corpus = $decoded !== null && str_starts_with($decoded, '/') ? substr($decoded, 1) : '';
+        if (in_array($corpus, ['', '.', '..'], true) || strpbrk($corpus, "/\0") !== false) {
             throw new OrmException(
                 Code::CONFIG,
-                "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name"
+                "$form; the path " . Message::quote($path)
+                    . " is not one corpus name: give the corpus root's directory name"
             );
         }
-        $tokens = [];
+        self::checkTimezone($query);
         $pragmas = [];
-        foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
-            if ($pair === '') {
-                continue;
-            }
-            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
-            $key = urldecode($key);
-            $value = urldecode($value);
-            switch ($key) {
-                case 'token':
-                    $tokens[] = $value;
-                    break;
-                case 'timezone':
-                    if (!in_array($value, ['+00:00', 'UTC'], true)) {
-                        throw new OrmException(Code::CONFIG, "dsn timezone $value: every connection reads and writes "
-                            . 'datetime values in UTC');
-                    }
-                    break;
-                case '_pragma':
-                    if (
-                        preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1
-                        || ($pragma[1] === 'busy_timeout' && !ctype_digit($pragma[2]))
-                    ) {
-                        throw new OrmException(Code::CONFIG, "$form; _pragma $value is invalid");
-                    }
-                    $pragmas[] = [$pragma[1], $pragma[2]];
-                    break;
-                default:
-                    throw new OrmException(Code::CONFIG, "$form; it does not accept $key");
-            }
+        foreach ((array) ($query['_pragma'] ?? []) as $value) {
+            $pragmas[] = self::pragmaParts('markdown', (string) $value);
         }
-        if (count($tokens) !== 1 || $tokens[0] === '') {
-            throw new OrmException(
-                Code::CONFIG,
-                "$form; give one token, the token of .flowmark/server.json of the corpus"
-            );
-        }
-        return ["127.0.0.1:$port", $corpus, $tokens[0], $pragmas];
+        return ["127.0.0.1:$port", $corpus, (string) $query['token'], $pragmas];
     }
 
     /**
@@ -367,89 +386,153 @@ final class Orm
                 "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown"
             );
         }
-        [$parts, $query] = DsnUrl::parse($dsn, $driver);
         $accepted = self::DSN_PARAMETERS[$driver];
-        foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
-            $key = urldecode(explode('=', $pair, 2)[0]);
-            if ($pair !== '' && !in_array($key, $accepted, true)) {
-                throw new OrmException(
-                    Code::CONFIG,
-                    "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted)
-                );
-            }
-        }
-        if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
-            throw new OrmException(Code::CONFIG, 'dsn timezone '
-                . (is_string($query['timezone']) ? $query['timezone'] : '')
-                . ': every connection reads and writes datetime values in UTC');
-        }
+        [$parts, $query] = DsnUrl::parse($dsn, $driver, $accepted);
         $user = isset($parts['user']) ? rawurldecode($parts['user']) : null;
         $password = isset($parts['pass']) ? rawurldecode($parts['pass']) : null;
         $path = (string) ($parts['path'] ?? '');
-        $name = ltrim($path, '/');
+        // The database is the path after its first /, as written (CFG-10).
+        $name = substr($path, 1);
+        $host = self::hostStep($driver, $parts, $query, $name);
+        $sqlitePath = '';
+        if ($driver !== 'sqlite') {
+            // CFG-20: the database name is the percent-decoded UTF-8 path, and it goes into the PDO DSN, which
+            // cannot hold ; or NUL.
+            $decoded = self::decodedPath($name);
+            if ($decoded === null) {
+                throw new OrmException(Code::CONFIG, "$driver DSN database " . Message::quote($name)
+                    . ' is not percent-encoded UTF-8');
+            }
+            $name = $decoded;
+            if (strpbrk($name, ";\0") !== false) {
+                throw new OrmException(Code::CONFIG, "$driver DSN database " . Message::quote($name)
+                    . ' holds a character that a connection string cannot hold');
+            }
+        } else {
+            $sqlitePath = self::sqlitePath($dsn, $path);
+        }
+        self::checkTimezone($query);
         switch ($driver) {
             case 'mysql':
-                if ($name === '' || (!isset($query['socket']) && ($parts['host'] ?? '') === '')) {
-                    throw new OrmException(Code::CONFIG, 'mysql DSN must include host and database');
-                }
                 $pdo = isset($query['socket'])
-                    ? 'mysql:unix_socket=' . $query['socket']
-                    : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
+                    ? 'mysql:unix_socket=' . (string) $query['socket']
+                    : 'mysql:host=' . $host . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
                 return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '',
-                    $password ?? '', [], self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
+                    $password ?? '', [], self::mysqlTls($query, $host)];
             case 'postgres':
-                if ($name === '') {
-                    throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
+                // CFG-19: sslmode takes only disable, and a DSN without it connects without TLS, so the PDO DSN
+                // always names sslmode=disable (libpq would otherwise prefer TLS without checking the certificate).
+                if (isset($query['sslmode']) && $query['sslmode'] !== 'disable') {
+                    throw new OrmException(Code::CONFIG, 'postgres DSN sslmode '
+                        . Message::quote((string) $query['sslmode']) . ' is not supported; it accepts disable');
                 }
-                $host = $query['host'] ?? ($parts['host'] ?? '');
-                if ($host === '') {
-                    throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
-                }
-                $pdo = 'pgsql:host=' . $host . ';port=' . ($parts['port'] ?? 5432) . ';dbname=' . $name;
-                if (isset($query['sslmode'])) {
-                    $pdo .= ';sslmode=' . $query['sslmode'];
-                }
-                return [$driver, $pdo, $user, $password, [], null];
+                return [$driver, 'pgsql:host=' . $host . ';port=' . ($parts['port'] ?? 5432) . ';dbname=' . $name
+                    . ';sslmode=disable', $user, $password, [], null];
             default:
-                if (!str_starts_with($dsn, 'sqlite:///') || $path === '' || $path === '/') {
-                    throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
-                }
                 $pragmas = [];
-                foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
-                    [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
-                    $key = urldecode($key);
-                    if ($key === '_txlock') {
-                        throw new OrmException(
-                            Code::CONFIG,
-                            'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE'
-                        );
-                    }
-                    if ($key !== '_pragma') {
-                        continue;
-                    }
-                    $value = urldecode($value);
-                    if (
-                        preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1
-                        || ($pragma[1] === 'busy_timeout' && !ctype_digit($pragma[2]))
-                    ) {
-                        throw new OrmException(Code::CONFIG, "sqlite DSN _pragma $value is invalid");
-                    }
-                    $pragmas[] = [$pragma[1], $pragma[2]];
+                foreach ((array) ($query['_pragma'] ?? []) as $value) {
+                    $pragmas[] = self::pragmaParts('sqlite', (string) $value);
                 }
-                // parse_url does not decode the path. An invalid escape, a NUL, or non-UTF-8
-                // would open a different file, so they are rejected.
-                if (preg_match('/%(?![0-9A-Fa-f]{2})/', $path) === 1) {
-                    throw new OrmException(Code::CONFIG, 'sqlite DSN path has a % without two hexadecimal digits');
+                // The values in the CFG-19 order (CFG-20): _pragma before _txlock.
+                if (isset($query['_txlock'])) {
+                    throw new OrmException(
+                        Code::CONFIG,
+                        'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE'
+                    );
                 }
-                $path = rawurldecode($path);
-                if (str_contains($path, "\0")) {
-                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must not contain a NUL byte');
-                }
-                if (preg_match('//u', $path) !== 1) {
-                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must be UTF-8 after percent-decoding');
-                }
-                return [$driver, 'sqlite:' . $path, null, null, $pragmas, null];
+                return [$driver, 'sqlite:' . $sqlitePath, null, null, $pragmas, null];
         }
+    }
+
+    /**
+     * The timezone parameter of every scheme, which accepts only UTC or +00:00 (CFG-2).
+     *
+     * @param array<string, string|list<string>> $query
+     */
+    private static function checkTimezone(array $query): void
+    {
+        if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
+            throw new OrmException(Code::CONFIG, 'dsn timezone ' . Message::quote((string) $query['timezone'])
+                . ': every connection reads and writes datetime values in UTC');
+        }
+    }
+
+    /**
+     * A DSN path percent-decoded, `+` kept as itself, or null when a `%` lacks two hexadecimal digits or the bytes are
+     * not UTF-8 (CFG-11, CFG-20).
+     */
+    private static function decodedPath(string $written): ?string
+    {
+        $decoded = rawurldecode($written);
+        $broken = preg_match('/%(?![0-9A-Fa-f]{2})/', $written) === 1 || preg_match('//u', $decoded) !== 1;
+        return $broken ? null : $decoded;
+    }
+
+    /**
+     * The percent-decoded path of a sqlite:// DSN, the database step of SQLite (CFG-11, CFG-20): a DSN without an
+     * absolute path or with a host, then a path that is not percent-encoded UTF-8, then a decoded NUL, are CONFIG
+     * errors that name the path as written. parse_url does not decode the path.
+     */
+    private static function sqlitePath(string $dsn, string $written): string
+    {
+        if (strncasecmp($dsn, 'sqlite:///', 10) !== 0 || $written === '' || $written === '/') {
+            throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
+        }
+        $path = self::decodedPath($written);
+        if ($path === null) {
+            throw new OrmException(Code::CONFIG, 'sqlite DSN path ' . Message::quote($written)
+                . ' is not percent-encoded UTF-8');
+        }
+        // An opener that drops what follows a NUL opens a different file.
+        if (str_contains($path, "\0")) {
+            throw new OrmException(Code::CONFIG, 'sqlite DSN path ' . Message::quote($written)
+                . ' holds a NUL byte, which a file name cannot hold');
+        }
+        return $path;
+    }
+
+    /**
+     * The host step of CFG-20 (CFG-10), after the query: a MySQL DSN names a host and a database, the host
+     * localhost with socket, which a socket connection does not read; a PostgreSQL DSN names its host in the URL or
+     * in the host parameter, both only when they are equal. The host is checked before the database is named, the
+     * first check of the database step. Returns the host that the connection uses.
+     *
+     * @param array<string, mixed> $parts
+     * @param array<string, string|list<string>> $query
+     */
+    private static function hostStep(string $driver, array $parts, array $query, string $name): string
+    {
+        $url = (string) ($parts['host'] ?? '');
+        if ($driver === 'mysql') {
+            if ($url === '') {
+                throw new OrmException(Code::CONFIG, 'mysql DSN must include host and database');
+            }
+            if (isset($query['socket']) && $url !== 'localhost') {
+                throw new OrmException(
+                    Code::CONFIG,
+                    'mysql DSN socket needs the host localhost, which names the local server'
+                );
+            }
+            if ($name === '') {
+                throw new OrmException(Code::CONFIG, 'mysql DSN must include host and database');
+            }
+            return $url;
+        }
+        if ($driver === 'postgres') {
+            $parameter = isset($query['host']) ? (string) $query['host'] : '';
+            if ($url === '' && $parameter === '') {
+                throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
+            }
+            if ($url !== '' && $parameter !== '' && $url !== $parameter) {
+                throw new OrmException(Code::CONFIG, 'postgres DSN names two hosts, ' . Message::quote($url)
+                    . ' in the URL and ' . Message::quote($parameter) . ' in the host parameter');
+            }
+            if ($name === '') {
+                throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
+            }
+            return $parameter !== '' ? $parameter : $url;
+        }
+        return $url;
     }
 
     /**
@@ -467,7 +550,7 @@ final class Orm
             return null;
         }
         if ($mode !== 'VERIFY_IDENTITY') {
-            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . json_encode($mode)
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . Message::quote($mode ?? '')
                 . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
         }
         if ($ca === null || $ca === '') {
@@ -477,7 +560,10 @@ final class Orm
             );
         }
         if ($ca[0] !== '/') {
-            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $ca is not an absolute path");
+            throw new OrmException(
+                Code::CONFIG,
+                'mysql DSN ssl-ca ' . Message::quote($ca) . ' is not an absolute path'
+            );
         }
         if (isset($query['socket'])) {
             throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
@@ -505,8 +591,23 @@ final class Orm
         if ($sslCa === null) {
             return [];
         }
-        if (!is_file($sslCa) || !is_readable($sslCa)) {
-            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $sslCa is not a readable file");
+        // The platform error of opening or reading the file follows the text (INT-187); a directory opens and
+        // fails its read.
+        error_clear_last();
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
+        $handle = @fopen($sslCa, 'rb');
+        if ($handle !== false) {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
+            @fread($handle, 1);
+            fclose($handle);
+        }
+        $warning = error_get_last();
+        if ($handle === false || $warning !== null) {
+            throw new OrmException(
+                Code::CONFIG,
+                'mysql DSN ssl-ca ' . Message::quote($sslCa) . ' is not a readable file'
+                    . ($warning === null ? '' : ': ' . $warning['message'])
+            );
         }
         return [\Pdo\Mysql::ATTR_SSL_CA => $sslCa, \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true];
     }

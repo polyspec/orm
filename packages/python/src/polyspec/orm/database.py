@@ -10,14 +10,13 @@ import datetime
 import ipaddress
 import json
 import math
-import os
 import re
 from decimal import Decimal
 import sqlite3
 import threading
 import time
 from dataclasses import dataclass
-from urllib.parse import urlsplit, parse_qsl
+from urllib.parse import urlsplit
 
 from polyspec.orm import codes
 from polyspec.orm._sqlite_codes import result_code_suffix
@@ -44,9 +43,15 @@ from polyspec.orm.engine import Engine
 from polyspec.orm.aes import _stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
-from polyspec.orm.markdown import MarkdownConnection, MarkdownDsn, parse_markdown_dsn
+from polyspec.orm.markdown import (
+    MarkdownConnection,
+    MarkdownDsn,
+    parse_markdown_dsn,
+    pragma_parts,
+)
 from polyspec.orm.ir import IRRequest
 from polyspec.orm.keys import key_text, scalar_key
+from polyspec.orm.message import quote as quote_message
 from polyspec.orm.model import Model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
@@ -80,6 +85,7 @@ DSN_PARAMETERS = {
     "mysql": ("timezone", "socket", "ssl-mode", "ssl-ca"),
     "postgres": ("timezone", "host", "sslmode"),
     "sqlite": ("timezone", "_pragma", "_txlock"),
+    "markdown": ("token", "timezone", "_pragma"),
 }
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
@@ -105,7 +111,7 @@ _ISOLATION_SQL = {
 
 
 class ParsedDsn:
-    __slots__ = ("driver", "zone", "url", "markdown", "ssl_ca")
+    __slots__ = ("driver", "zone", "url", "markdown", "ssl_ca", "parameters")
 
     def __init__(
         self,
@@ -114,6 +120,7 @@ class ParsedDsn:
         url,
         markdown: MarkdownDsn | None = None,
         ssl_ca: str | None = None,
+        parameters: tuple = (),
     ):
         self.driver = driver
         self.zone = zone
@@ -122,6 +129,86 @@ class ParsedDsn:
         self.markdown = markdown
         # The absolute path of the CA file for a MySQL DSN with ssl-mode=VERIFY_IDENTITY. None without TLS.
         self.ssl_ca = ssl_ca
+        # The decoded (name, value) pairs of the query in written order, read by CFG-20; empty for markdown://.
+        self.parameters = parameters
+
+    def parameter(self, name: str) -> str | None:
+        """The value of a parameter that may not repeat, or None when the DSN does not give it."""
+        for given, value in self.parameters:
+            if given == name:
+                return value
+        return None
+
+
+def _form_decode(text: str) -> str | None:
+    """Decodes a query name or value as an HTML form does: `+` is a space and `%` with two hexadecimal digits is that
+    byte. None for a `%` that two hexadecimal digits do not follow or for bytes that are not UTF-8."""
+    data = bytearray()
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "%":
+            digits = text[i + 1 : i + 3]
+            if len(digits) != 2 or not all(
+                d in "0123456789abcdefABCDEF" for d in digits
+            ):
+                return None
+            data.append(int(digits, 16))
+            i += 3
+            continue
+        data.extend(b" " if c == "+" else c.encode("utf-8", "surrogatepass"))
+        i += 1
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _form_decode_path(text: str) -> str | None:
+    """A path percent-decoded, `+` kept as itself, or None when a `%` lacks two hexadecimal digits or the bytes are not
+    UTF-8."""
+    return _form_decode(text.replace("+", "%2B"))
+
+
+def _read_query(scheme: str, query: str) -> tuple:
+    """Reads the query of a DSN by the one rule of CFG-20: the decoded (name, value) pairs in written order, or
+    CONFIG for the first pair that breaks the rule, each pair checked in the order the page states."""
+    accepted = DSN_PARAMETERS[scheme]
+    pairs = []
+    seen = set()
+    for pair in query.split("&") if query != "" else []:
+        written, has_value, raw = pair.partition("=")
+        name = _form_decode(written)
+        if name is None or name not in accepted:
+            raise OrmError(
+                codes.CONFIG,
+                f"{scheme} DSN has the unknown parameter "
+                f"{quote_message(written if name is None else name)}; it accepts {', '.join(accepted)}",
+            )
+        if name in seen and name != "_pragma":
+            raise OrmError(
+                codes.CONFIG,
+                f"{scheme} DSN repeats the parameter {quote_message(name)}",
+            )
+        seen.add(name)
+        value = _form_decode(raw) if has_value else ""
+        if value is None:
+            raise OrmError(
+                codes.CONFIG,
+                f"{scheme} DSN parameter {quote_message(name)} is not percent-encoded UTF-8",
+            )
+        if value == "":
+            raise OrmError(
+                codes.CONFIG, f"{scheme} DSN parameter {quote_message(name)} is empty"
+            )
+        if name in ("socket", "host") and (";" in value or "\0" in value):
+            raise OrmError(
+                codes.CONFIG,
+                f"{scheme} DSN parameter {quote_message(name)} holds a character that a connection string "
+                f"cannot hold",
+            )
+        pairs.append((name, value))
+    return tuple(pairs)
 
 
 def _mysql_tls(parameters: dict, host: str) -> str | None:
@@ -134,7 +221,7 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
     if mode != "VERIFY_IDENTITY":
         raise OrmError(
             codes.CONFIG,
-            f"mysql DSN ssl-mode {json.dumps(mode)} is not supported; the TLS mode is "
+            f"mysql DSN ssl-mode {quote_message('' if mode is None else mode)} is not supported; the TLS mode is "
             f"ssl-mode=VERIFY_IDENTITY with ssl-ca",
         )
     if not ca:
@@ -143,7 +230,10 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
             "mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file",
         )
     if not ca.startswith("/"):
-        raise OrmError(codes.CONFIG, f"mysql DSN ssl-ca {ca} is not an absolute path")
+        raise OrmError(
+            codes.CONFIG,
+            f"mysql DSN ssl-ca {quote_message(ca)} is not an absolute path",
+        )
     if "socket" in parameters:
         raise OrmError(
             codes.CONFIG,
@@ -161,30 +251,65 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
 
 
 def _sqlite_path(url) -> str:
-    """The percent-decoded path of a sqlite:// DSN. A malformed escape, a path that is not UTF-8,
-    or a NUL byte is a CONFIG error."""
-    path = url.path
-    # unquote keeps a % without two hexadecimal digits as text, so the escape is checked before it decodes.
-    if re.search(r"%(?![0-9A-Fa-f]{2})", path):
+    """The percent-decoded path of a sqlite:// DSN, the database step of SQLite (CFG-11, CFG-20): a DSN without an absolute
+    path or with a host, then a path that is not percent-encoded UTF-8, then a decoded NUL, are CONFIG errors that name the
+    path as written."""
+    written = url.path
+    if url.hostname or not written.startswith("/") or written == "/":
         raise OrmError(
-            codes.CONFIG,
-            "sqlite DSN path has a % without two hexadecimal digits "
-            "or is not UTF-8 after percent-decoding",
+            codes.CONFIG, "sqlite DSN must include an absolute database path"
         )
-    try:
-        from urllib.parse import unquote
-
-        path = unquote(path, errors="strict")
-    except UnicodeDecodeError:
+    path = _form_decode_path(written)
+    if path is None:
         raise OrmError(
             codes.CONFIG,
-            "sqlite DSN path has a % without two hexadecimal digits "
-            "or is not UTF-8 after percent-decoding",
-        ) from None
+            f"sqlite DSN path {quote_message(written)} is not percent-encoded UTF-8",
+        )
     # An opener that discards what follows NUL opens a different file.
     if "\0" in path:
-        raise OrmError(codes.CONFIG, "sqlite DSN path must not contain a NUL byte")
+        raise OrmError(
+            codes.CONFIG,
+            f"sqlite DSN path {quote_message(written)} holds a NUL byte, which a file name cannot hold",
+        )
     return path
+
+
+def _written_host(url) -> str:
+    """The host of a DSN as written: the authority without its user information and its port."""
+    host_port = url.netloc.rpartition("@")[2]
+    if host_port.startswith("["):
+        return host_port[: host_port.find("]") + 1]
+    return host_port.rpartition(":")[0] if ":" in host_port else host_port
+
+
+def _check_host(scheme: str, url) -> None:
+    """The host of a DSN, as written, holds no `%` (CFG-20)."""
+    host = _written_host(url)
+    if "%" in host:
+        raise OrmError(
+            codes.CONFIG,
+            f"{scheme} DSN host {quote_message(host)} holds a percent escape, which no host name needs",
+        )
+
+
+def _check_database(scheme: str, url) -> None:
+    """The database name of a MySQL or PostgreSQL DSN (CFG-20): its path is percent-encoded UTF-8 whose decoded name
+    holds no `;` and no NUL, which the PDO DSN of PHP cannot hold. A DSN without a database name is refused here."""
+    # The database is the path after its first /, as written (CFG-10).
+    if len(url.path or "") <= 1:
+        raise OrmError(codes.CONFIG, f"{scheme} DSN must include host and database")
+    written = url.path[1:]
+    database = _form_decode_path(written)
+    if database is None:
+        raise OrmError(
+            codes.CONFIG,
+            f"{scheme} DSN database {quote_message(written)} is not percent-encoded UTF-8",
+        )
+    if ";" in database or "\0" in database:
+        raise OrmError(
+            codes.CONFIG,
+            f"{scheme} DSN database {quote_message(database)} holds a character that a connection string cannot hold",
+        )
 
 
 def _check_timezone(parameters: dict) -> None:
@@ -193,7 +318,7 @@ def _check_timezone(parameters: dict) -> None:
     if requested is not None and requested not in ("UTC", "+00:00"):
         raise OrmError(
             codes.CONFIG,
-            f"dsn timezone {requested}: every connection reads and "
+            f"dsn timezone {quote_message(requested)}: every connection reads and "
             f"writes datetime values in UTC",
         )
 
@@ -209,50 +334,101 @@ def parse_dsn(dsn: str) -> ParsedDsn:
             codes.CONFIG,
             "dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://",
         ) from None
+    # The port of an RFC 3986 URI is digits only; urlsplit keeps any other text and fails only when the port is read.
+    host_port = url.netloc.rpartition("@")[2]
+    port = host_port.rpartition("]")[2] if host_port.startswith("[") else host_port
+    if ":" in port and not all(c in "0123456789" for c in port.rpartition(":")[2]):
+        raise OrmError(
+            codes.CONFIG,
+            "dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://",
+        )
     scheme = url.scheme
+    if scheme in DSN_PARAMETERS and "#" in dsn:
+        raise OrmError(
+            codes.CONFIG, f"{scheme} DSN has a fragment, which no connection reads"
+        )
     if scheme == "markdown":
-        # timezone is the rule of every scheme; a corpus keeps datetime in UTC.
-        _check_timezone(dict(parse_qsl(url.query, keep_blank_values=True)))
-        return ParsedDsn(scheme, "+00:00", url, parse_markdown_dsn(url))
+        # timezone is the rule of every scheme; a corpus keeps datetime in UTC. Its value is checked after the
+        # host and the corpus, before _pragma (CFG-20).
+        pairs = _read_query(scheme, url.query)
+        markdown = parse_markdown_dsn(
+            url,
+            pairs,
+            lambda: _check_host(scheme, url),
+            lambda: _check_timezone(dict(pairs)),
+            _form_decode_path,
+        )
+        return ParsedDsn(scheme, "+00:00", url, markdown, parameters=pairs)
     if scheme not in DSN_PARAMETERS:
         raise OrmError(
             codes.CONFIG,
             f"unsupported DSN scheme {scheme or '(none)'}; want "
             f"mysql, postgres, sqlite, or markdown",
         )
-    parameters = dict(parse_qsl(url.query, keep_blank_values=True))
-    for name in parameters:
-        if name not in DSN_PARAMETERS[scheme]:
-            raise OrmError(
-                codes.CONFIG,
-                f"{scheme} DSN has the unknown parameter {name}; it "
-                f"accepts {', '.join(DSN_PARAMETERS[scheme])}",
-            )
-    _check_timezone(parameters)
+    pairs = _read_query(scheme, url.query)
+    parameters = dict(pairs)
     zone = "+00:00"
     ssl_ca = None
     if scheme == "mysql":
-        if not url.hostname or not (url.path or "").strip("/"):
+        # The host step, then the database step (CFG-10, CFG-20).
+        if not url.hostname:
             raise OrmError(codes.CONFIG, "mysql DSN must include host and database")
+        _check_host(scheme, url)
+        # A socket connection reads no host, so the host is localhost, the name MySQL gives the local server (CFG-10).
+        if "socket" in parameters and _written_host(url) != "localhost":
+            raise OrmError(
+                codes.CONFIG,
+                "mysql DSN socket needs the host localhost, which names the local server",
+            )
+        _check_database(scheme, url)
+        _check_timezone(parameters)
         ssl_ca = _mysql_tls(parameters, url.hostname)
     elif scheme == "postgres":
-        if (not url.hostname and "host" not in parameters) or not (
-            url.path or ""
-        ).strip("/"):
+        # The host step, then the database step (CFG-10, CFG-20).
+        if not url.hostname and "host" not in parameters:
             raise OrmError(codes.CONFIG, "postgres DSN must include host and database")
-    else:
-        if url.hostname or not url.path.startswith("/") or url.path == "/":
+        _check_host(scheme, url)
+        # The host is in the URL or in the host parameter; two that differ would make a client drop one (CFG-10).
+        written = _written_host(url)
+        if written and "host" in parameters and parameters["host"] != written:
             raise OrmError(
-                codes.CONFIG, "sqlite DSN must include an absolute database path"
+                codes.CONFIG,
+                f"postgres DSN names two hosts, {quote_message(written)} in the URL and "
+                f"{quote_message(parameters['host'])} in the host parameter",
             )
+        _check_database(scheme, url)
+        _check_timezone(parameters)
+        mode = parameters.get("sslmode")
+        if mode is not None and mode != "disable":
+            raise OrmError(
+                codes.CONFIG,
+                f"postgres DSN sslmode {quote_message(mode)} is not supported; it accepts disable",
+            )
+    else:
+        _check_host(scheme, url)
+        _sqlite_path(url)
+        _check_timezone(parameters)
+        # The values in the CFG-19 order (CFG-20): _pragma before _txlock.
+        _sqlite_pragmas(pairs)
         if "_txlock" in parameters:
             raise OrmError(
                 codes.CONFIG,
                 "sqlite DSN does not accept _txlock; write "
                 "transactions begin with BEGIN IMMEDIATE",
             )
-        _sqlite_path(url)
-    return ParsedDsn(scheme, zone, url, ssl_ca=ssl_ca)
+    return ParsedDsn(scheme, zone, url, ssl_ca=ssl_ca, parameters=pairs)
+
+
+def _sqlite_pragmas(pairs) -> list[str]:
+    """The PRAGMA statements of the _pragma values of a sqlite DSN, in their order; a value that pragma_parts refuses is CONFIG
+    (CFG-12)."""
+    pragmas = []
+    for name, value in pairs:
+        if name != "_pragma":
+            continue
+        pragma, argument = pragma_parts("sqlite", value)
+        pragmas.append(f"PRAGMA {pragma} = {argument}")
+    return pragmas
 
 
 def _pad2(n: int) -> str:
@@ -860,19 +1036,10 @@ class _SqliteConnection:
 
     def __init__(self, parsed: ParsedDsn):
         path = _sqlite_path(parsed.url)
-        pragmas = []
-        for name, value in parse_qsl(parsed.url.query, keep_blank_values=True):
-            if name != "_pragma":
-                continue
-            match = re.fullmatch(r"([a-z_]+)\(([A-Za-z0-9_]+)\)", value)
-            if match is None or (
-                match.group(1) == "busy_timeout" and not match.group(2).isdigit()
-            ):
-                raise OrmError(codes.CONFIG, f"sqlite DSN _pragma {value} is invalid")
-            pragmas.append(f"PRAGMA {match.group(1)} = {match.group(2)}")
+        pragmas = _sqlite_pragmas(parsed.parameters)
         # The version of the SQLite library that sqlite3 is linked with. The connection does not send a statement to ask for it.
         version = sqlite3.sqlite_version
-        if tuple(int(part) for part in version.split(".")[:2]) < (3, 46):
+        if tuple(_sqlite_version(version)[:2]) < (3, 46):
             raise OrmError(
                 codes.CAPABILITY_UNSUPPORTED, f"SQLite {version} is older than 3.46"
             )
@@ -999,18 +1166,20 @@ class _MysqlConnection:
                 codes.CONFIG, f"the mysql driver needs PyMySQL: {error}"
             ) from None
         url = parsed.url
-        socket = dict(parse_qsl(url.query, keep_blank_values=True)).get("socket")
+        socket = parsed.parameter("socket")
         # A DSN without ssl-mode connects without TLS (CFG-44): PyMySQL would otherwise start TLS, unverified, with
         # any server that offers it.
         tls: dict = {"ssl_disabled": True}
         if parsed.ssl_ca is not None:
-            if not os.path.isfile(parsed.ssl_ca) or not os.access(
-                parsed.ssl_ca, os.R_OK
-            ):
+            # Opening the file for reading is the check, so the error of the platform is the one it gives (CFG-18).
+            try:
+                with open(parsed.ssl_ca, "rb"):
+                    pass
+            except OSError as error:
                 raise OrmError(
                     codes.CONFIG,
-                    f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file",
-                )
+                    f"mysql DSN ssl-ca {quote_message(parsed.ssl_ca)} is not a readable file: {error}",
+                ) from None
             # The server certificate is checked against the CA and the host name, and the password travels only
             # inside TLS: the client keeps no server public key, so it makes no RSA password exchange.
             tls = {"ssl": _verify_identity_context(parsed.ssl_ca)}
@@ -1113,11 +1282,15 @@ class _PostgresConnection:
         name = _unquote(url.path.lstrip("/"))
         try:
             self.connection = psycopg.connect(
-                host=url.hostname or "localhost",
+                # The host parameter is a socket directory or a host, as the URL host is, and replaces it (CFG-19).
+                host=parsed.parameter("host") or url.hostname or "localhost",
                 port=int(url.port) if url.port else 5432,
                 user=_unquote(url.username or ""),
                 password=_unquote(url.password or ""),
                 dbname=name,
+                # A DSN without sslmode connects without TLS, and sslmode accepts only disable (CFG-19): psycopg would
+                # otherwise prefer TLS with any server that offers it.
+                sslmode="disable",
                 # A connection outlives a request, so it prepares a statement text on its first execution and
                 # reuses the server plan from then on (docs/operations/perf.md F1); psycopg's default threshold
                 # of 5 sends a text unprepared four times and then prepares it in a round trip of its own.
@@ -3460,3 +3633,18 @@ def statement(ex: Executor, request: dict, params):
 def connect(dsn: str, options: dict | None = None) -> Db:
     """Opens the database selected by the DSN URI."""
     return Db.connect(dsn, options)
+
+
+def _sqlite_version(version: str) -> list[int]:
+    """Reads three or four ASCII decimal components that each fit u32 (DSL-150)."""
+    parts = version.split(".")
+    if (
+        len(parts) not in (3, 4)
+        or not all(part and part.isascii() and part.isdigit() for part in parts)
+        or any(int(part) > 0xFFFFFFFF for part in parts)
+    ):
+        raise OrmError(
+            codes.INTERNAL,
+            f"SQLite library version {quote_message(version)} is invalid; expected three or four decimal components that each fit u32",
+        )
+    return [int(part) for part in parts]

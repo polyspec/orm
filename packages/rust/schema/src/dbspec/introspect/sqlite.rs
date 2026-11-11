@@ -111,7 +111,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         }
         let item = st.columns.get(&name).cloned().unwrap_or_default();
         if st.identity != name && !column_text(&item, &name, &declared, not_null != 0, dflt.as_deref()) {
-            c.report("column", &table, &name, format!("the column definition {item:?} has clauses that dbspec does not read"));
+            c.report("column", &table, &name, format!("the column definition {} has clauses that dbspec does not read", crate::message::quote(&item)));
             continue;
         }
         let check_name = renderer_name(&table, &name);
@@ -128,7 +128,12 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
                     Type::Uuid
                 }
                 None => {
-                    c.report("column", &table, &name, format!("declared type {declared} with CHECK {:?} has no dbspec type", check.unwrap_or_default()));
+                    c.report(
+                        "column",
+                        &table,
+                        &name,
+                        format!("declared type {declared} with CHECK {} has no dbspec type", crate::message::quote(&check.unwrap_or_default())),
+                    );
                     continue;
                 }
             };
@@ -286,18 +291,18 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
                 "UNIQUE" => "unique",
                 "FOREIGN KEY" => "foreign_key",
                 _ => {
-                    st.unsupported = format!("the primary key {item:?} has no dbspec definition");
+                    st.unsupported = format!("the primary key {} has no dbspec definition", crate::message::quote(item));
                     return (st, Vec::new());
                 }
             };
             let name = m.get(1).map_or("", |g| g.as_str()).to_owned();
-            let reason = format!("the table item {item:?} has no dbspec definition");
+            let reason = format!("the table item {} has no dbspec definition", crate::message::quote(item));
             unsupported.push(Unsupported { kind: kind.to_owned(), table: String::new(), name, reason });
         } else if let Some(m) = COLUMN_ITEM.captures(item) {
             // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
             st.columns.insert(column_item_name(&m).to_owned(), item.to_owned());
         } else {
-            st.unsupported = format!("the table item {item:?} has no dbspec definition");
+            st.unsupported = format!("the table item {} has no dbspec definition", crate::message::quote(item));
             return (st, Vec::new());
         }
     }

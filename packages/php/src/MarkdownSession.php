@@ -114,7 +114,7 @@ final class MarkdownSession
             $this->close();
             throw new OrmException(
                 Code::INTERNAL,
-                'the flowmark server answered ' . json_encode($answer) . ', not a JSON object'
+                'the flowmark server answered ' . Message::quote($answer) . ', not a JSON object'
             );
         }
         if (array_key_exists('error', $decoded)) {

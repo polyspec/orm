@@ -527,7 +527,7 @@ caseTest('the server environment names no bench or decimal database that runs sh
 caseTest('the test-server environment has no SQLite replica endpoint', COMPUTE, () => {
   const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@127.0.0.1:3/orm_test');
-  assert.equal(variables['ORM_TEST_POSTGRES_REPLICA_DSN'], 'postgres://orm@127.0.0.1:4/orm_test?sslmode=disable');
+  assert.equal(variables['ORM_TEST_POSTGRES_REPLICA_DSN'], 'postgres://orm@127.0.0.1:4/orm_test');
   assert.deepEqual(Object.keys(variables).filter(name => /SQLITE.*REPLICA|REPLICA.*SQLITE/.test(name)), []);
 });
 

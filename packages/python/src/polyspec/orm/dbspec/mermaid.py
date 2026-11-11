@@ -3,7 +3,6 @@
 # bytes. Regex whitespace is written as [\t\n\f\r ].
 from __future__ import annotations
 
-import json
 import re
 
 from polyspec.orm.dbspec.emit import type_text
@@ -11,6 +10,7 @@ from polyspec.orm.dbspec.introspect_catalog import Catalog, _CatalogDocumentBuil
 from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecType
 from polyspec.orm.dbspec.parse import valid_name
 from polyspec.orm.dbspec.plan import sorted_by
+from polyspec.orm.message import quote as quote_message
 
 __all__ = ["export_mermaid", "import_mermaid"]
 
@@ -334,7 +334,7 @@ def import_mermaid(text: str, name: str) -> dict:
                         "comment",
                         e["name"],
                         a["name"],
-                        f"the comment {json.dumps(a['comment'])} is not a "
+                        f"the comment {quote_message(a['comment'])} is not a "
                         f"dbspec column suffix",
                     )
             t["columns"].append(column)

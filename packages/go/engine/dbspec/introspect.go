@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Querier is the connection on which introspection sends catalog queries.
@@ -164,7 +166,7 @@ type icheck struct {
 }
 
 func (c *catalog) report(kind, table, name, format string, args ...any) {
-	c.unsupported = append(c.unsupported, Unsupported{Kind: kind, Table: table, Name: name, Reason: fmt.Sprintf(format, args...)})
+	c.unsupported = append(c.unsupported, Unsupported{Kind: kind, Table: table, Name: name, Reason: message.Sprintf(format, args...)})
 }
 
 func (c *catalog) table(name string) *itable {

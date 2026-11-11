@@ -15,6 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 type Planner struct {
@@ -438,7 +439,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			if q.Lock != "" {
 				lock, ok := p.D.RowLock(q.Lock)
 				if !ok {
-					return nil, &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: fmt.Sprintf("%s row lock %q is not supported", p.D.Name(), q.Lock)}
+					return nil, &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: message.Sprintf("%s row lock %q is not supported", p.D.Name(), q.Lock)}
 				}
 				sb.WriteString(lock)
 			}

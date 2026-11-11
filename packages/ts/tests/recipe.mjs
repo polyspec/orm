@@ -280,6 +280,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
+    if (expect.message !== undefined && message !== expect.message) throw new Error(`error message ${JSON.stringify(message)}, want ${JSON.stringify(expect.message)}`);
     checkMessageHolds(message, expect.message_holds);
     return;
   }
@@ -3112,10 +3113,8 @@ function checkReadSet(step, database) {
       assert.equal(result.documents, null);
       assert.equal(result.external, null);
       assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), expect.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
-      result.errors.forEach((e, i) => {
-        assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
-        checkMessageHolds(e.message, expect.errors[i].message_holds);
-      });
+      // The message relative to the root, as the paths (FCV-4 dbspec.read_set): every root followed by / removed, the root itself as `.`.
+      result.errors.forEach((e, i) => checkSetMessage(e.message.split(`${root}/`).join('').split(root).join('.'), expect.errors[i], i));
       return;
     }
     assert.deepEqual(result.errors, []);
@@ -3129,6 +3128,13 @@ function checkReadSet(step, database) {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+}
+
+// checkSetMessage compares the message of a set reader error, relative to the root, with the `message` of the expected error, or its start
+// with `message_starts` followed by `: ` and the error of the platform or the JSON parser (DBS-18a).
+export function checkSetMessage(message, want, index) {
+  if (want.message !== undefined) assert.equal(message, want.message, `error ${index} message`);
+  else assert.ok(message.startsWith(`${want.message_starts}: `), `error ${index} message ${JSON.stringify(message)} does not begin with ${JSON.stringify(`${want.message_starts}: `)}`);
 }
 
 // checkRenderStatements runs a dbspec.render_statements step: it parses each document of the case of the vectors against the

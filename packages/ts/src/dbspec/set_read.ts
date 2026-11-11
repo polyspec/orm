@@ -3,6 +3,7 @@
 // through parseSet (set_file.ts). It is Node-only, so the browser entry (entry.ts) does not reach it.
 import { present } from '../present.js';
 import { inspect } from 'node:util';
+import { quote as messageQuote } from '../message.js';
 import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import {
   parseSetOn,
@@ -87,7 +88,7 @@ function examineFollowed(path: string): Stats | Error {
 }
 
 /** Opens the file once and reads its bytes and its identity from that handle. */
-function readOnce(path: string): { bytes: Uint8Array; identity: string } | { failure: string } {
+function readOnce(path: string): { bytes: Uint8Array; identity: string } | { failure: string } | { notFile: true } {
   let fd: number;
   try {
     fd = openSync(path, OPEN_FLAGS);
@@ -96,7 +97,7 @@ function readOnce(path: string): { bytes: Uint8Array; identity: string } | { fai
   }
   try {
     const stat = fstatSync(fd, { bigint: true });
-    if (!stat.isFile()) return { failure: 'it is not a regular file' };
+    if (!stat.isFile()) return { notFile: true };
     const bytes = readFileSync(fd);
     return { bytes: new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength), identity: `${stat.dev}:${stat.ino}` };
   } catch (error) {
@@ -106,33 +107,35 @@ function readOnce(path: string): { bytes: Uint8Array; identity: string } | { fai
   }
 }
 
-/** Step 1: the set file. Returns its bytes or its one error. */
+/** Step 1 (DBS-12): the set file. Returns its bytes or its one error, with the texts of DBS-18a. */
 function readSetFile(path: string): Uint8Array | DbspecSetError {
   const nameError = setNameError(path, WINDOWS);
   if (nameError !== null) return nameError;
+  const fileError = (detail: string): DbspecSetError => setError('set.file', path, `${path}: ${detail}`);
+  if (path.includes('\0')) return fileError('the path contains a NUL byte');
   const { prefix, name } = splitSetPath(path, WINDOWS);
   const root = rootOf(prefix);
-  const fileError = (detail: string): DbspecSetError => setError('set.file', path, `${path}: ${detail}`);
   const rootStat = examine(root);
-  if (rootStat instanceof Error) return fileError(`its directory ${root} cannot be examined: ${reason(rootStat)}`);
-  if (rootStat.isSymbolicLink()) return setError('set.symlink', path, `${path}: its directory ${root} is a symbolic link`);
-  if (!rootStat.isDirectory()) return fileError(`${root} is not a directory`);
+  if (rootStat instanceof Error) return fileError(`the root ${root} cannot be examined: ${reason(rootStat)}`);
+  if (rootStat.isSymbolicLink()) return setError('set.symlink', path, `${path}: the root ${root} is a symbolic link`);
+  if (!rootStat.isDirectory()) return fileError(`the root ${root} is not a directory`);
   try {
-    if (!lists(root, name)) return fileError(`its directory ${root} lists no file named ${name}`);
+    if (!lists(root, name)) return fileError(`the root ${root} lists no ${name}`);
   } catch (error) {
-    return fileError(`its directory ${root} cannot be listed: ${reason(error)}`);
+    return fileError(`the root ${root} cannot be listed: ${reason(error)}`);
   }
   const fileStat = examine(path);
-  if (fileStat instanceof Error) return fileError(`it cannot be examined: ${reason(fileStat)}`);
-  if (fileStat.isSymbolicLink()) return setError('set.symlink', path, `${path} is a symbolic link`);
-  if (!fileStat.isFile()) return fileError('it is not a regular file');
+  if (fileStat instanceof Error) return fileError(`the set file cannot be examined: ${reason(fileStat)}`);
+  if (fileStat.isSymbolicLink()) return setError('set.symlink', path, `${path}: the set file is a symbolic link`);
+  if (!fileStat.isFile()) return fileError('the set file is not a regular file');
   const read = readOnce(path);
-  if ('failure' in read) return fileError(`it cannot be read: ${read.failure}`);
+  if ('notFile' in read) return fileError('the set file is not a regular file');
+  if ('failure' in read) return fileError(`the set file cannot be read: ${read.failure}`);
   return read.bytes;
 }
 
 /**
- * Step 3 for one path with the normal form: every prefix of its joined path that ends after a segment, examined
+ * Step 3 (DBS-14) for one path with the normal form: every prefix of its joined path that ends after a segment, examined
  * without following a symbolic link, except that an intermediate prefix of an external path that is a link is
  * examined through it. Returns the first error, or null.
  */
@@ -149,7 +152,7 @@ function examinePath(entry: DbspecSetPath, prefix: string, external: boolean): D
     // set.file on every platform, whatever it names there.
     if (segment !== '..') {
       try {
-        if (!lists(parent, segment)) return fileError(`${parent} lists no entry named ${segment}`);
+        if (!lists(parent, segment)) return fileError(`${parent} lists no name ${messageQuote(segment)}`);
       } catch (error) {
         return fileError(`${parent} cannot be listed: ${reason(error)}`);
       }
@@ -193,13 +196,17 @@ export function readDbspecSet(path: string): DbspecSetResult {
   const files = new Map<DbspecSetPath, DbspecSetFile>();
   for (const entry of passed) {
     const read = readOnce(entry.path);
+    if ('notFile' in read) {
+      stepFour.push(setError('set.file', entry.path, `${entry.path}: ${entry.path} is not a regular file`));
+      continue;
+    }
     if ('failure' in read) {
-      stepFour.push(setError('set.file', entry.path, `${entry.path} cannot be read: ${read.failure}`));
+      stepFour.push(setError('set.file', entry.path, `${entry.path}: the file cannot be read: ${read.failure}`));
       continue;
     }
     const earlier = seen.get(read.identity);
     if (earlier !== undefined) {
-      stepFour.push(setError('set.duplicate', entry.path, `${entry.path} names the file that ${earlier} names`));
+      stepFour.push(setError('set.duplicate', entry.path, `${entry.path}: names the file that ${earlier} names`));
       continue;
     }
     seen.set(read.identity, entry.path);

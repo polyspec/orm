@@ -18,13 +18,13 @@ pub(super) fn decode_check(dialect: Dialect, text: &str, columns: &BTreeMap<Stri
         text = &unescaped;
     }
     if dialect == Dialect::Postgres {
-        text = text.strip_prefix("CHECK ").ok_or_else(|| format!("constraint definition {text:?} does not start with CHECK"))?;
+        text = text.strip_prefix("CHECK ").ok_or_else(|| format!("constraint definition {} does not start with CHECK", crate::message::quote(text)))?;
     }
     let tokens = tokens(dialect, text)?;
     let mut d = Decoder { tokens, i: 0, columns, dialect };
     let node = d.expression()?;
     if d.i != d.tokens.len() {
-        return Err(format!("unexpected {:?}", d.tokens[d.i].text));
+        return Err(format!("unexpected {}", crate::message::quote(&d.tokens[d.i].text)));
     }
     match node {
         Node::Predicate(p) => d.write(&p),
@@ -148,7 +148,7 @@ fn tokens(dialect: Dialect, text: &str) -> Result<Vec<Token>, String> {
             i += 1;
         } else {
             let unexpected = rest.chars().next().unwrap_or_default();
-            return Err(format!("unexpected character {unexpected:?}"));
+            return Err(format!("unexpected character {}", crate::message::quote_with(&unexpected.to_string(), '\'')));
         }
     }
     Ok(out)
@@ -242,7 +242,7 @@ impl Decoder<'_> {
         if self.punct(text) {
             Ok(())
         } else {
-            Err(format!("expected {text:?} at token {}", self.i))
+            Err(format!("expected {} at token {}", crate::message::quote(text), self.i))
         }
     }
 
@@ -347,7 +347,7 @@ impl Decoder<'_> {
     }
 
     fn operand(&mut self) -> Result<Operand, String> {
-        let Some(t) = self.peek().cloned() else { return Err(format!("unexpected {:?}", "")) };
+        let Some(t) = self.peek().cloned() else { return Err(format!("unexpected {}", crate::message::quote(""))) };
         let operand = |kind: &'static str, text: String| Operand { kind, text };
         match t.kind {
             TokenKind::Ident => {
@@ -386,7 +386,7 @@ impl Decoder<'_> {
                 self.i += 1;
                 Ok(operand("column", t.text))
             }
-            _ => Err(format!("unexpected {:?}", t.text)),
+            _ => Err(format!("unexpected {}", crate::message::quote(&t.text))),
         }
     }
 

@@ -4,6 +4,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // decodeCheck reads the dialect catalog's check expression as dbspec predicate text
@@ -17,7 +20,7 @@ func decodeCheck(dialect Dialect, text string, columns map[string]Type) (string,
 	if dialect == DialectPostgres {
 		inner, ok := strings.CutPrefix(text, "CHECK ")
 		if !ok {
-			return "", fmt.Errorf("constraint definition %q does not start with CHECK", text)
+			return "", message.Errorf("constraint definition %q does not start with CHECK", text)
 		}
 		text = inner
 	}
@@ -31,7 +34,7 @@ func decodeCheck(dialect Dialect, text string, columns map[string]Type) (string,
 		return "", err
 	}
 	if d.i != len(d.tokens) {
-		return "", fmt.Errorf("unexpected %q", d.tokens[d.i].text)
+		return "", message.Errorf("unexpected %q", d.tokens[d.i].text)
 	}
 	predicate, ok := node.(cPredicate)
 	if !ok {
@@ -131,7 +134,9 @@ func checkTokens(dialect Dialect, text string) ([]cToken, error) {
 			out = append(out, cToken{"punct", string(ch)})
 			i++
 		default:
-			return nil, fmt.Errorf("unexpected character %q", ch)
+			// The whole character at i, as every runtime names it; a byte that is not part of UTF-8 is that byte.
+			_, size := utf8.DecodeRuneInString(text[i:])
+			return nil, message.Errorf("unexpected character %s", message.Quote(text[i:i+size], '\''))
 		}
 	}
 	return out, nil
@@ -222,7 +227,7 @@ func (d *checkDecoder) punct(text string) bool {
 
 func (d *checkDecoder) expect(text string) error {
 	if !d.punct(text) {
-		return fmt.Errorf("expected %q at token %d", text, d.i)
+		return message.Errorf("expected %q at token %d", text, d.i)
 	}
 	return nil
 }
@@ -413,7 +418,7 @@ func (d *checkDecoder) operand() (cOperand, error) {
 		d.i++
 		return cOperand{"column", t.text}, nil
 	}
-	return cOperand{}, fmt.Errorf("unexpected %q", t.text)
+	return cOperand{}, message.Errorf("unexpected %q", t.text)
 }
 
 // list reads the (a, b, ...) after in.

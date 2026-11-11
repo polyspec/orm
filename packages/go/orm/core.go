@@ -1,12 +1,12 @@
 package orm
 
 import (
-	"fmt"
 	"maps"
 	"reflect"
 	"slices"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Model is implemented by every generated model. Orm_ returns the model core;
@@ -196,7 +196,7 @@ func (c *Core) Entity() *Entity { return c.ent }
 
 func (c *Core) fail(format string, args ...any) {
 	if c.err == nil {
-		c.err = &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf(format, args...)}
+		c.err = &ir.Error{Code: CodeConfig, Msg: message.Sprintf(format, args...)}
 	}
 }
 

@@ -263,6 +263,9 @@ func (u *Utils) Local(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if !validKey(key) {
+		return "", configErr("local key %q is invalid", key)
+	}
 	v, ok := t.locals[key]
 	if !ok {
 		return "", &ir.Error{Code: CodeNoRows, Msg: "local value " + key + " is not set"}
@@ -723,9 +726,17 @@ func (p *PrivilegeUtils) RevokeTable(table, privilege, roleName string) error {
 	if err != nil {
 		return err
 	}
-	privilege = strings.ToUpper(strings.TrimSpace(privilege))
+	given := privilege
+	// A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
+	privilege = strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' {
+			return r - 'a' + 'A'
+		}
+		return r
+	}, privilege)
 	if !slices.Contains([]string{"SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"}, privilege) {
-		return configErr("unsupported table privilege %q", privilege)
+		// The refusal names the privilege as the caller gave it.
+		return configErr("unsupported table privilege %q", given)
 	}
 	return p.u.run(func(t *txConn) error {
 		_, err := t.run().exec(t.ctx, KindUtility, []string{table}, "REVOKE "+privilege+" ON "+qualified+" FROM "+r)

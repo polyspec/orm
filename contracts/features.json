@@ -148,6 +148,8 @@
         "packages/python/tests/test_dsn_reject_checked_none.py",
         "packages/python/tests/test_dsn_reject_parameters_none.py",
         "packages/go/orm/recipe_dsn_reject_test.go",
+        "packages/rust/tests/tests/all/dsn_reject_checked_none.rs",
+        "packages/rust/tests/tests/all/dsn_reject_parameters_none.rs",
         "packages/go/orm/recipe_connection_pool_test.go",
         "packages/ts/tests/connection_pool-mysql.test.mjs",
         "packages/ts/tests/connection_pool-postgres.test.mjs",

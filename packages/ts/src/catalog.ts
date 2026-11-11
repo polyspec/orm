@@ -4,6 +4,7 @@ import { isUtf8 } from 'node:buffer';
 // (packages/go/orm/catalog*.go, catalogValue and catalogBytesValue); grid cells follow the Rust reference (packages/rust/build/src/tool_db/grid.rs
 // and src/catalog, docs/spec/interfaces.md "Rust native grid query specification").
 import { createHash } from 'node:crypto';
+import { quote } from './message.js';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
 import { driverError, openDriver, parseDsn, sqlitePath, sqliteStoredCells, sqliteStoredRead, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
@@ -1117,7 +1118,7 @@ function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAs
     const index = metadata.columns.findIndex(column => column.name === assignment.name);
     const column = metadata.columns[index];
     if (index < 0 || column === undefined) throw err(code, `unknown column "${assignment.name}"`);
-    if (seen.has(column.name)) throw err(code, `duplicate column "${column.name}"`);
+    if (seen.has(column.name)) throw err(code, `duplicate column ${quote(column.name)}`);
     if (column.generated) throw err(code, `generated column "${column.name}" is not writable`);
     const value = params[position] ?? null;
     if (value === null && !column.nullable) throw err(code, `NULL in non-null column "${column.name}"`);
@@ -1269,7 +1270,7 @@ function catalogKind(dialect: DriverName, native: string): CatalogTableKind {
   if (dialect === 'postgres' && native === 'f') return 'foreign';
   if (dialect === 'sqlite' && native === 'virtual') return 'virtual';
   if (dialect === 'sqlite' && native === 'shadow') return 'shadow';
-  throw err(CODE_KIND, `relation kind "${native}" of ${dialect}`);
+  throw err(CODE_KIND, `relation kind ${quote(native)} of ${dialect}`);
 }
 
 /** The PostgreSQL settings that the output of a cell depends on by INT-185, as the columns of current_setting (INT-186). */
@@ -1576,7 +1577,7 @@ class Session {
       if (row.length !== 8) throw err(CODE_METADATA, `column shape of ${row.length} values`);
       const name = textOf(row[0], 'column name');
       checkName(name);
-      if (columns.some(existing => existing.name === name)) throw err(CODE_METADATA, `duplicate column "${name}"`);
+      if (columns.some(existing => existing.name === name)) throw err(CODE_METADATA, `duplicate column ${quote(name)}`);
       const ordinal = intOf(row[4], 'key ordinal');
       if (ordinal < 0) throw err(CODE_METADATA, 'negative key ordinal');
       let defaultExpression = row[6] === null ? null : textOf(row[6], `default of column "${name}"`);
@@ -2234,7 +2235,7 @@ export async function connectCatalog(dsn: string): Promise<CatalogConnection> {
     let regular: boolean;
     try {
       // lstat does not follow a symbolic link: a link is not a regular file.
-      regular = lstatSync(sqlitePath(new URL(dsn))).isFile();
+      regular = lstatSync(sqlitePath(dsn)).isFile();
     } catch (error) {
       throw err(codes.CONFIG, `CATALOG_SQLITE_FILE: ${messageOf(error)}`, error);
     }
