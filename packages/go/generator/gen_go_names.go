@@ -8,6 +8,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Method names of generated models are parsed with the grammar of docs/spec/dsl.md.
@@ -50,7 +51,7 @@ func checkFieldName(n string) error {
 	}
 	for _, segment := range strings.Split(n, "_") {
 		if slices.Contains(reservedSegments, segment) {
-			return fmt.Errorf("column name may not contain the segment %q: %s", segment, n)
+			return message.Errorf("column name may not contain the segment %q: %s", segment, n)
 		}
 	}
 	if slices.Contains(reservedColumns, n) {
@@ -58,7 +59,7 @@ func checkFieldName(n string) error {
 	}
 	for _, p := range reservedPrefixes {
 		if n == p || strings.HasPrefix(n, p+"_") {
-			return fmt.Errorf("column name may not start with %q: %s", p, n)
+			return message.Errorf("column name may not start with %q: %s", p, n)
 		}
 	}
 	return nil

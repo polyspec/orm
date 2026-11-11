@@ -98,7 +98,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             continue;
         }
         let Some(typ) = postgres_type(&formatted, &collation)? else {
-            c.report("column", &table, &name, format!("type {formatted} with collation {collation:?} has no dbspec type"));
+            c.report("column", &table, &name, format!("type {formatted} with collation {} has no dbspec type", crate::message::quote(&collation)));
             continue;
         };
         let mut col = IColumn { name: name.clone(), typ, null: !not_null, identity: false, dflt: String::new() };

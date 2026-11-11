@@ -325,7 +325,7 @@ def _json_value_text(value) -> str:
             if not isinstance(name, str):
                 raise OrmError(
                     codes.CODEC_ENCODE,
-                    f"JSON output cannot write the member key {name!r}",
+                    f"JSON output cannot write the member key {name} of type {type(name).__name__}",
                 )
         return (
             "{"

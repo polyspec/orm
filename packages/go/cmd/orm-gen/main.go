@@ -15,6 +15,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/generator"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 func main() {
@@ -59,7 +60,7 @@ func gen(args []string) {
 		usage()
 	}
 	if *lang != "go" {
-		fail(fmt.Errorf("lang %q: orm-gen of the Go module generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
+		fail(message.Errorf("lang %q: orm-gen of the Go module generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
 	}
 	// The set file is read before anything is written: every error of the set
 	// file and every diagnostic of its files is printed, and nothing is written.

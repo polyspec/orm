@@ -7,6 +7,7 @@ import { byteOrder, Catalog, CatalogDocumentBuildError, type DbspecUnsupported, 
 import type { DbspecDiagnostic, DbspecDocument, DbspecSettings, DbspecTable, DbspecType } from './model.js';
 import { validName } from './parse.js';
 import { sortedBy } from './sort.js';
+import { quote as messageQuote } from '../message.js';
 
 /** The Mermaid text and what export left out, ordered by table, kind and name. */
 export interface DbspecMermaidExport {
@@ -254,7 +255,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
           column.identity = m[2] !== undefined;
           column.dflt = m[3] ?? '';
         } else {
-          c.report('comment', e.name, a.name, `the comment ${JSON.stringify(a.comment)} is not a dbspec column suffix`);
+          c.report('comment', e.name, a.name, `the comment ${messageQuote(a.comment)} is not a dbspec column suffix`);
         }
       }
       t.columns.push(column);

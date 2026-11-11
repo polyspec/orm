@@ -4,10 +4,12 @@
  * file identity, in that order, with the same rules, paths and messages. The file system is examined with the
  * platform's calls: lstat, opendir and open with fstat on POSIX; on Windows CreateFileW without following a
  * reparse point, a name surrogate tag (IsReparseTagNameSurrogate) as the symbolic link, FindFirstFileW for the
- * listing and the volume serial number with the 64-bit file index of the opened handle as the identity. The
- * JSON is parsed by PHP's own parser (ext/json), which the PHP client uses too.
+ * listing and the volume serial number with the 64-bit file index of the opened handle as the identity. A failed
+ * call is named by the platform's text, strerror(errno) or FormatMessage, unchanged (DBS-18a, INT-187). The JSON is
+ * parsed by PHP's own parser (ext/json), which the PHP client uses too.
  */
 #include "dbspec.h"
+#include "message_quote.h"
 #include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
 
@@ -22,9 +24,12 @@
 #endif
 
 #define SET_NAME "dbspec-set.json"
-/* The deepest nesting of the set file; PHP's parser counts one level more than the containers. */
+/* The deepest nesting of the set file, the object counting as one. */
 #define SET_DEPTH 64
-/* PHP reads a plain file in chunks of this size; a failed read names it like PHP's notice does. */
+/* The depth that PHP's parser is given: the reader's own scan checks the nesting, so the parser checks only the
+ * syntax. */
+#define SET_PARSER_DEPTH 2147483646
+/* The size of each read of a file. */
 #define SET_CHUNK 8192
 
 typedef struct {
@@ -39,9 +44,11 @@ typedef VEC(set_file) set_files;
 
 typedef enum { KIND_NONE, KIND_LINK, KIND_DIR, KIND_FILE, KIND_OTHER } set_kind;
 
-/* The listing of each directory during one read: a strs, or NULL when the directory cannot be listed. */
+/* The listing of each directory during one read: a strs, or NULL when the directory cannot be listed, and then the
+ * platform's error of the listing in failures. */
 typedef struct {
     smap listings;
+    smap failures;
 } set_reader;
 
 static set_error mkerror(const char *rule, str path, str message)
@@ -74,6 +81,11 @@ static str identity_of(unsigned long long device, unsigned long long index)
     snprintf(text, sizeof text, "%llu:%llu", device, index);
     return str_c(text);
 }
+
+/* Opens path once and takes its identity and then, unless the identity is in seen, its bytes from that handle.
+ * Returns false with *reason, the platform's error, on a failure; *duplicate is the earlier path of the same
+ * identity. Each platform defines it below. */
+static bool open_file(str path, const smap *seen, str *identity, str *bytes, str *duplicate, str *reason);
 
 #ifdef PHP_WIN32
 
@@ -120,22 +132,32 @@ static str system_error(DWORD code)
     return s.s == NULL ? fmt("error %u", (size_t)code) : s;
 }
 
-static set_kind path_kind(str path, bool follow)
+/* The error of a path that is no UTF-8 text, which no Windows call can name. */
+static str not_utf8(void)
+{
+    return system_error(ERROR_NO_UNICODE_TRANSLATION);
+}
+
+static set_kind path_kind(str path, bool follow, str *failure)
 {
     wchar_t *w = wide(path);
     if (w == NULL) {
+        *failure = not_utf8();
         return KIND_NONE;
     }
     HANDLE h = CreateFileW(w, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS | (follow ? 0 : FILE_FLAG_OPEN_REPARSE_POINT), NULL);
     if (h == INVALID_HANDLE_VALUE) {
+        *failure = system_error(GetLastError());
         return KIND_NONE;
     }
     FILE_ATTRIBUTE_TAG_INFO info;
     BOOL ok = GetFileInformationByHandleEx(h, FileAttributeTagInfo, &info, sizeof info);
+    DWORD failed = ok ? 0 : GetLastError();
     DWORD type = GetFileType(h);
     CloseHandle(h);
     if (!ok) {
+        *failure = system_error(failed);
         return KIND_NONE;
     }
     if (!follow && (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && IsReparseTagNameSurrogate(info.ReparseTag)) {
@@ -147,18 +169,20 @@ static set_kind path_kind(str path, bool follow)
     return type == FILE_TYPE_DISK ? KIND_FILE : KIND_OTHER;
 }
 
-/* The names that dir lists, or false when it cannot be listed. A name that is no UTF-16 text (a lone surrogate)
- * equals no segment, since a segment is UTF-8 and so its UTF-16 code units hold no lone surrogate. */
-static bool list_dir(str dir, strs *out)
+/* The names that dir lists, or false with *failure when it cannot be listed. A name that is no UTF-16 text (a lone
+ * surrogate) equals no segment, since a segment is UTF-8 and so its UTF-16 code units hold no lone surrogate. */
+static bool list_dir(str dir, strs *out, str *failure)
 {
     bool bare = dir.n > 0 && (is_separator(dir.s[dir.n - 1]) || (dir.n == 2 && dir.s[1] == ':'));
     wchar_t *pattern = wide(fmt(bare ? "%S*" : "%S\\*", dir));
     if (pattern == NULL) {
+        *failure = not_utf8();
         return false;
     }
     WIN32_FIND_DATAW found;
     HANDLE h = FindFirstFileW(pattern, &found);
     if (h == INVALID_HANDLE_VALUE) {
+        *failure = system_error(GetLastError());
         return false;
     }
     do {
@@ -169,21 +193,23 @@ static bool list_dir(str dir, strs *out)
     } while (FindNextFileW(h, &found));
     DWORD last = GetLastError();
     FindClose(h);
-    return last == ERROR_NO_MORE_FILES;
+    if (last != ERROR_NO_MORE_FILES) {
+        *failure = system_error(last);
+        return false;
+    }
+    return true;
 }
 
-/* Opens path once and takes its identity and then, unless the identity is in seen, its bytes from that handle.
- * Returns false with *reason on a failure; *duplicate is the earlier path of the same identity. */
 static bool open_file(str path, const smap *seen, str *identity, str *bytes, str *duplicate, str *reason)
 {
     wchar_t *w = wide(path);
     if (w == NULL) {
-        *reason = SL("the path is not valid UTF-8");
+        *reason = not_utf8();
         return false;
     }
     HANDLE h = CreateFileW(w, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
-        *reason = fmt("fopen(%S): Failed to open stream: %S", path, system_error(GetLastError()));
+        *reason = system_error(GetLastError());
         return false;
     }
     BY_HANDLE_FILE_INFORMATION info;
@@ -204,7 +230,7 @@ static bool open_file(str path, const smap *seen, str *identity, str *bytes, str
     for (;;) {
         DWORD got = 0;
         if (!ReadFile(h, chunk, SET_CHUNK, &got, NULL)) {
-            *reason = fmt("Read of %u bytes failed: %S", (size_t)SET_CHUNK, system_error(GetLastError()));
+            *reason = system_error(GetLastError());
             CloseHandle(h);
             return false;
         }
@@ -220,10 +246,11 @@ static bool open_file(str path, const smap *seen, str *identity, str *bytes, str
 
 #else
 
-static set_kind path_kind(str path, bool follow)
+static set_kind path_kind(str path, bool follow, str *failure)
 {
     struct stat st;
     if ((follow ? stat(cpath(path), &st) : lstat(cpath(path), &st)) != 0) {
+        *failure = str_c(strerror(errno));
         return KIND_NONE;
     }
     if (S_ISLNK(st.st_mode)) {
@@ -235,11 +262,12 @@ static set_kind path_kind(str path, bool follow)
     return S_ISREG(st.st_mode) ? KIND_FILE : KIND_OTHER;
 }
 
-/* The names that dir lists, or false when it cannot be listed. */
-static bool list_dir(str dir, strs *out)
+/* The names that dir lists, or false with *failure when it cannot be listed. */
+static bool list_dir(str dir, strs *out, str *failure)
 {
     DIR *d = opendir(cpath(dir));
     if (d == NULL) {
+        *failure = str_c(strerror(errno));
         return false;
     }
     for (;;) {
@@ -252,22 +280,23 @@ static bool list_dir(str dir, strs *out)
     }
     int failed = errno;
     closedir(d);
-    return failed == 0;
+    if (failed != 0) {
+        *failure = str_c(strerror(failed));
+        return false;
+    }
+    return true;
 }
 
-/* Opens path once and takes its identity and then, unless the identity is in seen, its bytes from that handle.
- * Returns false with *reason on a failure (PHP's messages for fopen and a failed read); *duplicate is the earlier
- * path of the same identity. */
 static bool open_file(str path, const smap *seen, str *identity, str *bytes, str *duplicate, str *reason)
 {
     int fd = open(cpath(path), O_RDONLY);
     if (fd < 0) {
-        *reason = fmt("fopen(%S): Failed to open stream: %s", path, strerror(errno));
+        *reason = str_c(strerror(errno));
         return false;
     }
     struct stat st;
     if (fstat(fd, &st) != 0) {
-        *reason = fmt("fstat(): %s", strerror(errno));
+        *reason = str_c(strerror(errno));
         close(fd);
         return false;
     }
@@ -286,7 +315,7 @@ static bool open_file(str path, const smap *seen, str *identity, str *bytes, str
             if (errno == EINTR) {
                 continue;
             }
-            *reason = fmt("stream_get_contents(): Read of %u bytes failed with errno=%d %s", (size_t)SET_CHUNK, (zend_long)errno, strerror(errno));
+            *reason = str_c(strerror(errno));
             close(fd);
             return false;
         }
@@ -304,8 +333,8 @@ static bool open_file(str path, const smap *seen, str *identity, str *bytes, str
 
 /* ------------------------------------------------------------ the reader */
 
-/* Whether dir lists name: 1, 0, or -1 when dir cannot be listed. */
-static int lists(set_reader *r, str dir, str name)
+/* Whether dir lists name: 1, 0, or -1 with *failure, the platform's error, when dir cannot be listed. */
+static int lists(set_reader *r, str dir, str name, str *failure)
 {
     strs *listing;
     if (smap_has(&r->listings, dir)) {
@@ -313,12 +342,19 @@ static int lists(set_reader *r, str dir, str name)
     } else {
         listing = dbs_alloc(sizeof *listing);
         *listing = (strs){0};
-        if (!list_dir(dir, listing)) {
+        str *why = dbs_alloc(sizeof *why);
+        *why = SNULL;
+        if (!list_dir(dir, listing, why)) {
             listing = NULL;
+            smap_set(&r->failures, dir, why);
         }
         smap_set(&r->listings, dir, listing);
     }
-    return listing == NULL ? -1 : strs_has(listing, name) ? 1 : 0;
+    if (listing == NULL) {
+        *failure = *(str *)smap_get(&r->failures, dir);
+        return -1;
+    }
+    return strs_has(listing, name) ? 1 : 0;
 }
 
 /* The root without its trailing separators, so that lstat examines the root itself: POSIX lstat of `alias/`
@@ -340,13 +376,10 @@ static str trimmed(str root)
     return str_sub(root, 0, n);
 }
 
-/* The JSON quoting of s that the PHP client's messages use. */
+/* s quoted as INT-187 states. */
 static str quoted(str s)
 {
-    zend_string *z = php_json_encode_string(s.s, s.n, PHP_JSON_UNESCAPED_SLASHES | PHP_JSON_UNESCAPED_UNICODE);
-    str q = str_of(ZSTR_VAL(z), ZSTR_LEN(z));
-    zend_string_release(z);
-    return q;
+    return dbs_quote(s);
 }
 
 /* The kinds the scan gives a value. */
@@ -359,15 +392,16 @@ typedef struct {
 } scan_frame;
 
 /*
- * Scans JSON text that PHP's parser accepted: the kind of the top-level value, the kind of each value of the
- * top-level object by its key (in members, in their order), and the first key repeated in an object at any depth.
- * A key is decoded by PHP's parser, so that escapes compare as the characters they write.
+ * Scans JSON text (RFC 8259): the kind of the top-level value, the deepest nesting of its containers, the kind of
+ * each value of the top-level object by its key (in members, in their order), and the first key repeated in an
+ * object at any depth. A key is decoded by PHP's parser, so that escapes compare as the characters they write.
  */
-static void scan(str text, str *top, smap *members, str *repeated)
+static void scan(str text, str *top, size_t *depth, smap *members, str *repeated)
 {
     VEC(scan_frame) frames = {0};
     str key = SNULL;
     *top = SNULL;
+    *depth = 0;
     *repeated = SNULL;
 #define VALUE(kind) do { \
         if (frames.n == 0) { \
@@ -395,7 +429,7 @@ static void scan(str text, str *top, smap *members, str *repeated)
                 /* PHP's scanner ends its input at a NUL byte past the end, which a copy of the token has. */
                 str token = str_of(text.s + start, i - start + 1);
                 zval decoded;
-                php_json_decode_ex(&decoded, token.s, token.n, 0, SET_DEPTH + 1);
+                php_json_decode_ex(&decoded, token.s, token.n, 0, SET_PARSER_DEPTH);
                 str name = Z_TYPE(decoded) == IS_STRING ? str_z(Z_STR(decoded)) : SNULL;
                 zval_ptr_dtor(&decoded);
                 if (smap_has(&last->keys, name) && repeated->s == NULL) {
@@ -419,6 +453,9 @@ static void scan(str text, str *top, smap *members, str *repeated)
             }
             scan_frame f = {c == '{', c == '{', {0}};
             PUSH(frames, f);
+            if (frames.n > *depth) {
+                *depth = frames.n;
+            }
             continue;
         }
         if (c == '}' || c == ']') {
@@ -488,30 +525,258 @@ static str json_error_message(void)
     return message;
 }
 
-/* Step 2: the set file's bytes as JSON. Returns false with *error, else the two lists. */
+/* The UTF-16 code unit of the escape \uXXXX at text[i], or -1 when none is there. */
+static long unit_at(str text, size_t i)
+{
+    if (i + 6 > text.n || text.s[i] != '\\' || text.s[i + 1] != 'u') {
+        return -1;
+    }
+    long unit = 0;
+    for (size_t k = 2; k < 6; k++) {
+        int digit = orm_hex_digit(text.s[i + k]);
+        if (digit < 0) {
+            return -1;
+        }
+        unit = unit * 16 + digit;
+    }
+    return unit;
+}
+
+/* text with each escape of a lone surrogate written as \u0000; a pair of a high and a low surrogate escape stays, and
+ * so does every other escape, so the text is JSON exactly when text is, but for the surrogates. */
+static str without_lone_surrogates(str text)
+{
+    sbuf b = {0};
+    size_t i = 0;
+    while (i < text.n) {
+        if (text.s[i] != '\\' || i + 1 >= text.n) {
+            sb_add(&b, text.s + i, 1);
+            i++;
+            continue;
+        }
+        long unit = unit_at(text, i);
+        if (unit >= 0xD800 && unit <= 0xDBFF) {
+            long low = unit_at(text, i + 6);
+            if (low >= 0xDC00 && low <= 0xDFFF) {
+                sb_add(&b, text.s + i, 12);
+                i += 12;
+                continue;
+            }
+        }
+        if (unit >= 0xD800 && unit <= 0xDFFF) {
+            sb_add(&b, "\\u0000", 6);
+            i += 6;
+            continue;
+        }
+        sb_add(&b, text.s + i, 2);
+        i += 2;
+    }
+    return b.n == 0 ? SL("") : sb_str(&b);
+}
+
+static size_t json_space(str t, size_t i)
+{
+    while (i < t.n && (t.s[i] == ' ' || t.s[i] == '\t' || t.s[i] == '\n' || t.s[i] == '\r')) {
+        i++;
+    }
+    return i;
+}
+
+/* The end of the JSON string at t.s[i], or 0 when none starts there. */
+static size_t json_string(str t, size_t i)
+{
+    if (i >= t.n || t.s[i] != '"') {
+        return 0;
+    }
+    for (i++; i < t.n; i++) {
+        unsigned char c = (unsigned char)t.s[i];
+        if (c == '"') {
+            return i + 1;
+        }
+        if (c < 0x20) {
+            return 0;
+        }
+        if (c == '\\') {
+            if (i + 1 >= t.n) {
+                return 0;
+            }
+            char e = t.s[i + 1];
+            if (e == 'u') {
+                if (unit_at(t, i) < 0) {
+                    return 0;
+                }
+                i += 5;
+            } else if (strchr("\"\\/bfnrt", e) != NULL && e != '\0') {
+                i++;
+            } else {
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+
+static size_t json_digits(str t, size_t i)
+{
+    while (i < t.n && t.s[i] >= '0' && t.s[i] <= '9') {
+        i++;
+    }
+    return i;
+}
+
+/* The end of the JSON number or literal at t.s[i], or 0 when none starts there. */
+static size_t json_scalar(str t, size_t i)
+{
+    static const char *const literals[] = {"true", "false", "null"};
+    for (size_t k = 0; k < 3; k++) {
+        size_t n = strlen(literals[k]);
+        if (i + n <= t.n && memcmp(t.s + i, literals[k], n) == 0) {
+            return i + n;
+        }
+    }
+    size_t j = i;
+    if (j < t.n && t.s[j] == '-') {
+        j++;
+    }
+    if (j < t.n && t.s[j] == '0') {
+        j++;
+    } else if (j < t.n && t.s[j] >= '1' && t.s[j] <= '9') {
+        j = json_digits(t, j);
+    } else {
+        return 0;
+    }
+    if (j < t.n && t.s[j] == '.') {
+        size_t k = json_digits(t, j + 1);
+        if (k == j + 1) {
+            return 0;
+        }
+        j = k;
+    }
+    if (j < t.n && (t.s[j] == 'e' || t.s[j] == 'E')) {
+        j++;
+        if (j < t.n && (t.s[j] == '+' || t.s[j] == '-')) {
+            j++;
+        }
+        size_t k = json_digits(t, j);
+        if (k == j) {
+            return 0;
+        }
+        j = k;
+    }
+    return j;
+}
+
+/* Whether text is one JSON value (RFC 8259), read without a stack limit. It decides only the texts that PHP's parser
+ * refuses, so that a valid text nested deeper than the parser's stack is JSON. */
+static bool json_valid(str t)
+{
+    enum { S_VALUE, S_VALUE_OR_CLOSE, S_KEY, S_KEY_OR_CLOSE, S_COLON, S_NEXT, S_END } state = S_VALUE;
+    VEC(char) open = {0};
+    size_t i = 0;
+    for (;;) {
+        i = json_space(t, i);
+        if (i >= t.n) {
+            return state == S_END;
+        }
+        char c = t.s[i];
+        if (state == S_END) {
+            return false;
+        }
+        if (state == S_COLON) {
+            if (c != ':') {
+                return false;
+            }
+            i++;
+            state = S_VALUE;
+            continue;
+        }
+        if (state == S_NEXT || (state == S_VALUE_OR_CLOSE && c == ']') || (state == S_KEY_OR_CLOSE && c == '}')) {
+            char last = open.v[open.n - 1];
+            if (state == S_NEXT && c == ',') {
+                i++;
+                state = last == '{' ? S_KEY : S_VALUE;
+                continue;
+            }
+            if (c != (last == '{' ? '}' : ']')) {
+                return false;
+            }
+            open.n--;
+            i++;
+            state = open.n == 0 ? S_END : S_NEXT;
+            continue;
+        }
+        if (state == S_KEY || state == S_KEY_OR_CLOSE) {
+            size_t end = json_string(t, i);
+            if (end == 0) {
+                return false;
+            }
+            i = end;
+            state = S_COLON;
+            continue;
+        }
+        if (c == '{' || c == '[') {
+            PUSH(open, c);
+            i++;
+            state = c == '{' ? S_KEY_OR_CLOSE : S_VALUE_OR_CLOSE;
+            continue;
+        }
+        size_t end = c == '"' ? json_string(t, i) : json_scalar(t, i);
+        if (end == 0) {
+            return false;
+        }
+        i = end;
+        state = open.n == 0 ? S_END : S_NEXT;
+    }
+}
+
+/* Step 2: the set file's bytes as JSON, checked in the order of DBS-13 and DBS-18a. PHP's parser checks the syntax,
+ * with every lone surrogate escape written as another escape, since the parser stops at a lone surrogate before the
+ * rest of the syntax; when it refuses a text whose syntax is valid only for its nesting, which its stack does not
+ * hold, the text is JSON. The scan finds the kind of the top-level value, the nesting, a repeated key and the kind
+ * of each top-level value. Returns false with *error, else the two lists. */
 static bool parse_set(str bytes, str path, strs *documents, strs *external, set_error *error)
 {
 #define FAIL(rule, ...) do { *error = mkerror(rule, path, fmt("%S: %S", path, fmt(__VA_ARGS__))); return false; } while (0)
     if (str_starts(bytes, "\xEF\xBB\xBF")) {
-        FAIL("set.json", "the set file begins with a byte order mark");
+        FAIL("set.json", "the set file starts with a byte order mark");
     }
     if (utf8_valid_prefix(bytes) < bytes.n) {
         FAIL("set.json", "the set file is not valid UTF-8");
     }
+    /* PHP's scanner ends its input at a NUL byte past the end, which a copy of the bytes has. */
+    str text = str_of(bytes.s, bytes.n);
+    str checked = without_lone_surrogates(text);
+    checked = str_of(checked.s, checked.n);
     zval value;
     ZVAL_UNDEF(&value);
-    /* PHP's scanner ends its input at a NUL byte past the end, which a copy of the bytes has. */
-    bytes = str_of(bytes.s, bytes.n);
-    if (php_json_decode_ex(&value, bytes.s, bytes.n, PHP_JSON_OBJECT_AS_ARRAY, SET_DEPTH + 1) == FAILURE) {
+    if (php_json_decode_ex(&value, checked.s, checked.n, PHP_JSON_OBJECT_AS_ARRAY, SET_PARSER_DEPTH) == FAILURE) {
+        str parser = json_error_message();
         zval_ptr_dtor(&value);
-        FAIL("set.json", "the set file is not JSON nested at most %d levels deep: %S", (zend_long)SET_DEPTH, json_error_message());
+        ZVAL_UNDEF(&value);
+        if (!json_valid(checked)) {
+            FAIL("set.json", "the set file is not JSON: %S", parser);
+        }
     }
     str top, repeated;
+    size_t depth;
     smap members = {0};
-    scan(bytes, &top, &members, &repeated);
+    scan(checked, &top, &depth, &members, &repeated);
     bool ok = false;
     if (!str_eqc(top, V_OBJECT)) {
-        *error = mkerror("set.json", path, fmt("%S: the set file is not a JSON object", path));
+        *error = mkerror("set.json", path, fmt("%S: the set file is not one JSON object", path));
+        goto done;
+    }
+    if (depth > SET_DEPTH) {
+        *error = mkerror("set.json", path, fmt("%S: the set file nests deeper than %d levels", path, (zend_long)SET_DEPTH));
+        goto done;
+    }
+    if (!str_eq(checked, text)) {
+        *error = mkerror("set.json", path, fmt("%S: the set file escapes a lone surrogate", path));
+        goto done;
+    }
+    if (Z_TYPE(value) != IS_ARRAY) {
+        /* PHP's parser holds every object nested at most SET_DEPTH levels deep. */
+        *error = mkerror("set.json", path, fmt("%S: the set file is not JSON: %S", path, json_error_message()));
         goto done;
     }
     if (repeated.s != NULL) {
@@ -571,25 +836,27 @@ static bool parse_set(str bytes, str path, strs *documents, strs *external, set_
     }
     ok = true;
 done:
-    zval_ptr_dtor(&value);
+    if (Z_TYPE(value) != IS_UNDEF) {
+        zval_ptr_dtor(&value);
+    }
     return ok;
 #undef FAIL
 }
 
-/* Whether segment is a name that every platform can hold (docs/spec/dbspec.md "Document sets"). */
-static bool segment_ok(str s)
+/* The problem of a segment other than `..` that every platform cannot hold (DBS-8), as DBS-18a words it, or SNULL. */
+static str segment_problem(str s)
 {
-    if (s.n == 0 || str_eqc(s, ".")) {
-        return false;
+    if (str_eqc(s, ".")) {
+        return SL("has a . segment");
     }
     for (size_t i = 0; i < s.n; i++) {
         unsigned char c = (unsigned char)s.s[i];
-        if (c < 0x20 || strchr("\\/:<>\"|?*", c) != NULL) {
-            return false;
+        if (c < 0x20 || strchr("\\:<>\"|?*", c) != NULL) {
+            return fmt("has the character %S that a segment cannot hold", quoted(str_sub(s, i, 1)));
         }
     }
     if (s.s[s.n - 1] == '.' || s.s[s.n - 1] == ' ') {
-        return false;
+        return SL("has a segment that ends in . or a space");
     }
     size_t dot = 0;
     while (dot < s.n && s.s[dot] != '.') {
@@ -600,77 +867,83 @@ static bool segment_ok(str s)
         end--;
     }
     str base = str_upper(str_sub(s, 0, end));
+    bool device = false;
     static const char *const names[] = {"CON", "PRN", "AUX", "NUL"};
     for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
         if (str_eqc(base, names[i])) {
-            return false;
+            device = true;
         }
     }
     if (str_starts(base, "COM") || str_starts(base, "LPT")) {
         str rest = str_sub(base, 3, base.n - 3);
         if ((rest.n == 1 && rest.s[0] >= '0' && rest.s[0] <= '9') || str_eqc(rest, "\xC2\xB9") || str_eqc(rest, "\xC2\xB2") || str_eqc(rest, "\xC2\xB3")) {
-            return false;
+            device = true;
         }
     }
-    return true;
+    return device ? fmt("has the segment %S that names a Windows device", quoted(s)) : SNULL;
 }
 
-/* Why a written path has no normal form, or NULL when it has one. */
-static const char *normal_form(str written, bool documents)
+/* The problem of a written path that has no normal form (DBS-7 to DBS-9), as DBS-18a words it, or SNULL when it has
+ * one: the segments are checked from the first, each against the problems in order, and then the path. */
+static str normal_form(str written, bool documents)
 {
     strs segments = strs_split(written, '/');
-    if (!str_ends(segments.v[segments.n - 1], ".dbs")) {
-        return "has no normal form";
-    }
     bool leading = true;
     for (size_t i = 0; i < segments.n; i++) {
         str s = segments.v[i];
+        if (s.n == 0) {
+            return SL("has an empty segment");
+        }
         if (str_eqc(s, "..")) {
             if (documents) {
-                return "has a .. segment";
+                return SL("has a .. segment");
             }
             if (!leading) {
-                return "has a .. segment after another segment";
+                return SL("has a .. segment after another segment");
             }
             continue;
         }
         leading = false;
-        if (!segment_ok(s)) {
-            return "has no normal form";
+        str wrong = segment_problem(s);
+        if (wrong.s != NULL) {
+            return wrong;
         }
     }
-    return NULL;
+    return str_ends(written, ".dbs") ? SNULL : SL("does not end in .dbs");
 }
 
 /* Step 3 for one path that has its normal form: each prefix of the joined path that ends after a written segment is
  * listed by its directory (a segment other than `..`) and examined with lstat. An intermediate component of an
- * external path that is a link is examined through it (stat). */
-static bool examine(set_reader *r, str root, str prefix, str written, str joined, bool external, set_error *error)
+ * external path that is a link is examined through it (stat). named is the root as the messages name it, the
+ * directory that lists the first segment. */
+static bool examine(set_reader *r, str root, str named, str prefix, str written, str joined, bool external, set_error *error)
 {
     strs segments = strs_split(written, '/');
     str directory = root;
+    str shown = named;
     str component = prefix;
+    str failure = SNULL;
     for (size_t i = 0; i < segments.n; i++) {
         str segment = segments.v[i];
         component = fmt(i == 0 ? "%S%S" : "%S/%S", component, segment);
         if (!str_eqc(segment, "..")) {
-            int listed = lists(r, directory, segment);
+            int listed = lists(r, directory, segment, &failure);
             if (listed < 0) {
-                *error = mkerror("set.file", joined, fmt("%S: the directory %S cannot be listed", joined, directory));
+                *error = mkerror("set.file", joined, fmt("%S: %S cannot be listed: %S", joined, shown, failure));
                 return false;
             }
             if (listed == 0) {
-                *error = mkerror("set.file", joined, fmt("%S: %S is not a name that %S lists", joined, segment, directory));
+                *error = mkerror("set.file", joined, fmt("%S: %S lists no name %S", joined, shown, quoted(segment)));
                 return false;
             }
         }
-        set_kind kind = path_kind(component, false);
+        set_kind kind = path_kind(component, false, &failure);
         bool last = i == segments.n - 1;
         if (kind == KIND_LINK && external && !last) {
-            kind = path_kind(component, true);
+            kind = path_kind(component, true, &failure);
         }
         if (kind == KIND_NONE) {
-            *error = mkerror("set.file", joined, fmt("%S: %S cannot be examined", joined, component));
+            *error = mkerror("set.file", joined, fmt("%S: %S cannot be examined: %S", joined, component, failure));
             return false;
         }
         if (kind == KIND_LINK) {
@@ -686,6 +959,7 @@ static bool examine(set_reader *r, str root, str prefix, str written, str joined
             return false;
         }
         directory = component;
+        shown = component;
     }
     return true;
 }
@@ -693,7 +967,7 @@ static bool examine(set_reader *r, str root, str prefix, str written, str joined
 /* Reads the set; on success the files, else the errors. */
 static bool read_set(str path, set_files *documents, set_files *external, set_errors *errors)
 {
-    set_reader r = {{0}};
+    set_reader r = {{0}, {0}};
     size_t cut = path.n;
     for (size_t i = path.n; i > 0; i--) {
         if (is_separator(path.s[i - 1])) {
@@ -711,26 +985,27 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
     if (memchr(path.s, 0, path.n) != NULL) {
         FAIL1("set.file", "%S: the path contains a NUL byte", path);
     }
-    set_kind kind = path_kind(trimmed(root), false);
+    str named = trimmed(root), failure = SNULL;
+    set_kind kind = path_kind(named, false, &failure);
     if (kind == KIND_NONE) {
-        FAIL1("set.file", "%S: the root %S cannot be examined", path, root);
+        FAIL1("set.file", "%S: the root %S cannot be examined: %S", path, named, failure);
     }
     if (kind == KIND_LINK) {
-        FAIL1("set.symlink", "%S: the root %S is a symbolic link", path, root);
+        FAIL1("set.symlink", "%S: the root %S is a symbolic link", path, named);
     }
     if (kind != KIND_DIR) {
-        FAIL1("set.file", "%S: the root %S is not a directory", path, root);
+        FAIL1("set.file", "%S: the root %S is not a directory", path, named);
     }
-    int listed = lists(&r, root, SL(SET_NAME));
+    int listed = lists(&r, root, SL(SET_NAME), &failure);
     if (listed < 0) {
-        FAIL1("set.file", "%S: the directory %S cannot be listed", path, root);
+        FAIL1("set.file", "%S: the root %S cannot be listed: %S", path, named, failure);
     }
     if (listed == 0) {
-        FAIL1("set.file", "%S: " SET_NAME " is not a name that %S lists", path, root);
+        FAIL1("set.file", "%S: the root %S lists no " SET_NAME, path, named);
     }
-    kind = path_kind(path, false);
+    kind = path_kind(path, false, &failure);
     if (kind == KIND_NONE) {
-        FAIL1("set.file", "%S: the set file cannot be examined", path);
+        FAIL1("set.file", "%S: the set file cannot be examined: %S", path, failure);
     }
     if (kind == KIND_LINK) {
         FAIL1("set.symlink", "%S: the set file is a symbolic link", path);
@@ -740,7 +1015,7 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
     }
     str identity, bytes, duplicate = SNULL, reason;
     if (!open_file(path, NULL, &identity, &bytes, &duplicate, &reason)) {
-        FAIL1("set.file", "cannot read %S: %S", path, reason);
+        FAIL1("set.file", "%S: the set file cannot be read: %S", path, reason);
     }
 #undef FAIL1
 
@@ -760,13 +1035,13 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
     for (int list = 0; list < 2; list++) {
         for (size_t i = 0; i < lists_[list].n; i++) {
             str written = lists_[list].v[i];
-            const char *wrong = normal_form(written, list == 0);
-            if (wrong != NULL) {
-                PUSH(*errors, mkerror("set.path", path, fmt("%S: the %s path %S %s", path, list_names[list], quoted(written), wrong)));
+            str wrong = normal_form(written, list == 0);
+            if (wrong.s != NULL) {
+                PUSH(*errors, mkerror("set.path", path, fmt("%S: the %s path %S %S", path, list_names[list], quoted(written), wrong)));
                 continue;
             }
             str joined = fmt("%S%S", prefix, written);
-            if (!examine(&r, root, prefix, written, joined, list == 1, &error)) {
+            if (!examine(&r, root, named, prefix, written, joined, list == 1, &error)) {
                 PUSH(*errors, error);
                 continue;
             }
@@ -780,11 +1055,11 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
         str joined = passed.v[i].joined;
         duplicate = SNULL;
         if (!open_file(joined, &seen, &identity, &bytes, &duplicate, &reason)) {
-            PUSH(*errors, mkerror("set.file", joined, fmt("cannot read %S: %S", joined, reason)));
+            PUSH(*errors, mkerror("set.file", joined, fmt("%S: the file cannot be read: %S", joined, reason)));
             continue;
         }
         if (duplicate.s != NULL) {
-            PUSH(*errors, mkerror("set.duplicate", joined, fmt("%S names the same file as %S", joined, duplicate)));
+            PUSH(*errors, mkerror("set.duplicate", joined, fmt("%S: names the file that %S names", joined, duplicate)));
             continue;
         }
         str *at = dbs_alloc(sizeof *at);

@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 375444304b326e428550516897649d3c920b087e6c87a181de75d84da819bab8 -->
+<!-- source-sha256: 35f13267f95454cafa79a0c354d1b33e2eb621c7c1174baf14b57c9c48cda7f4 -->
 # dbspec
 
 [English](dbspec.md)
@@ -88,7 +88,18 @@ table users {
 
 - **DBS-17** DBS-12와 DBS-13은 그 뒤를 읽을 수 없으므로 첫 오류에서 멈추고 오류 하나를 보고한다. DBS-14와 DBS-15는 어기는 모든 경로를 각각 그 첫 오류와 함께 보고한다; DBS-15는 DBS-14를 통과한 경로만 판정한다. 오류는 단계 순, 그다음 경로 순으로 `documents` 먼저, 그다음 `external`, 적은 순서로 나열하며, `set.duplicate`의 뒤 경로는 그 순서에서 뒤의 것이다. 읽는 동안 바뀌지 않는 tree에서 symbolic link는 `external` 경로의 마지막을 뺀 prefix(DBS-14)를 제외하고 결코 따르지 않는다: set 파일, root, document 파일, 또는 `documents` 경로의 어느 prefix에서 찾은 symbolic link든 오류다.
 
-- **DBS-18** 성공하면 reader는 `documents`와 `external`을 돌려주며, 각각은 적은 순서로 파일의 결합 경로와 byte를 담은 목록이다. reader는 byte를 검사하지 않는다: tool이 각 파일의 byte를 그 경로와 함께 [byte 검사](#files)에 넘기고, byte 검사가 그 파일의 `signature`와 `encoding`을 보고하며, 그다음 tool이 집합을 parse한다([문서와 `use`](#documents-and-use)). 실패하면 reader는 오류를 돌려주며, 각 오류는 rule, 해당 경로, 그리고 경로를, 읽기에 실패했으면 platform의 오류도 적는 message를 가진다. 경로는 DBS-12와 DBS-13, 그리고 `set.path`에서는 set 파일의 경로이고(`set.path`의 message는 적은 경로를 JSON으로 인용한다), 그 밖에서는 항목의 결합 경로다.
+- **DBS-18** 성공하면 reader는 `documents`와 `external`을 돌려주며, 각각은 적은 순서로 파일의 결합 경로와 byte를 담은 목록이다. reader는 byte를 검사하지 않는다: tool이 각 파일의 byte를 그 경로와 함께 [byte 검사](#files)에 넘기고, byte 검사가 그 파일의 `signature`와 `encoding`을 보고하며, 그다음 tool이 집합을 parse한다([문서와 `use`](#documents-and-use)). 실패하면 reader는 오류를 돌려주며, 각 오류는 rule, 해당 경로, 그리고 경로를, 읽기에 실패했으면 platform의 오류도 적는 message를 가진다. 경로는 DBS-12와 DBS-13, 그리고 `set.path`에서는 set 파일의 경로이고(`set.path`의 message는 적은 경로를 INT-187대로 quote한다), 그 밖에서는 항목의 결합 경로다.
+
+- **DBS-18a** 각 오류의 message는 모든 클라이언트에서 하나의 텍스트이다. message는 오류의 경로(DBS-18)를 받은 그대로 쓰고 콜론과 공백으로 시작한다. `<R>`은 DBS-12가 정한 root이며 `/`가 아니면 끝 구분자를 뺀다. `<C>`는 오류가 가리키는 결합 경로의 prefix이고 `<D>`는 그것을 나열하는 directory이다. `<S>`와 `<W>`는 segment와 적은 경로이며 INT-187대로 quote한다. `<E>`는 앞선 결합 경로이다. 텍스트가 `: <error>`로 끝나면 `<error>`는 platform이나 JSON parser가 준 오류 텍스트를 바꾸지 않은 것이며(INT-187), recipe는 그 앞의 텍스트를 확인한다. 텍스트는 rule별로 적는다. 검사는 DBS-12부터 DBS-15의 순서로 하고(DBS-13에서는 `schema`가 `documents`와 `external`보다 먼저), 한 검사의 텍스트는 적은 순서대로다.
+  - `set.file`: `the set file is not named dbspec-set.json`; `the path contains a NUL byte`; `the root <R> cannot be examined: <error>`; `the root <R> is not a directory`; `the root <R> cannot be listed: <error>`; `the root <R> lists no dbspec-set.json`; `the set file cannot be examined: <error>`; `the set file is not a regular file`; `the set file cannot be read: <error>`;
+  - `set.symlink`: `the root <R> is a symbolic link`; `the set file is a symbolic link`;
+  - `set.json`: UTF-8보다 먼저 검사하는 `the set file starts with a byte order mark`; `the set file is not valid UTF-8`; `the set file is not JSON: <error>`; `the set file is not one JSON object`; `the set file nests deeper than 64 levels`; `the set file escapes a lone surrogate`;
+  - `set.key`: 텍스트 순서로 처음 반복된 key의 `the key <K> appears twice`; key 하나면 `unknown key <K>`, 여럿이면 key의 code point 순서로 `unknown keys <K>, <K>`; `documents is missing`; `documents is not an array of strings`; `external is not an array of strings`. `<K>`는 INT-187대로 quote한 key이다;
+  - `set.schema`: `schema is missing`; `schema is not the number 1`;
+  - `set.empty`: `documents is empty`;
+  - `set.path`: `the documents path <W> <problem>` 또는 `the external path <W> <problem>`. `<problem>`은 첫 segment부터 검사해 처음 해당하는 것이다. `has an empty segment`; `..` segment는 `documents`에서 `has a .. segment`, `external`에서 `has a .. segment after another segment`; `has a . segment`; `has the character <X> that a segment cannot hold`(`<X>`는 처음 나온 그런 문자를 INT-187대로 quote한 것); `has a segment that ends in . or a space`; `has the segment <S> that names a Windows device`; 그다음 경로 전체에 대해 `does not end in .dbs`;
+  - 결합 경로의 component에 대해 `set.file`: `<D> cannot be listed: <error>`; `<D> lists no name <S>`; `<C> cannot be examined: <error>`; `<C> is not a directory`; `<C> is not a regular file`; `set.symlink`: `<C> is a symbolic link`;
+  - 나열된 파일에 대해 `set.file`: `the file cannot be read: <error>`; `set.duplicate`: `names the file that <E> names`.
 
 - **DBS-19** `set.file`: set 파일의 이름이 `dbspec-set.json`이 아니거나, set 파일이나 나열된 파일이 없거나 읽을 수 없거나 일반 파일이 아니다; root나 경로의 component가 directory가 아니다; 또는 segment가 그 directory가 나열하는 이름이 아니다
 - **DBS-20** `set.symlink`: set 파일, root, 경로의 마지막 component, 또는 `documents` 경로의 마지막을 뺀 prefix가 symbolic link다

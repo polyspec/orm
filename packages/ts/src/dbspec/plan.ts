@@ -7,6 +7,7 @@ import { emitDbspec, parseDbspec } from './index.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 import { RESERVED } from './parse.js';
 import { compareText, sortedBy } from './sort.js';
+import { quote as messageQuote } from '../message.js';
 
 /** `rename table <old> <new>`. */
 export interface DbspecTableRename {
@@ -70,7 +71,7 @@ function failed(line: number, message: string): DbspecPlanResult {
 
 function planNames(names: readonly string[]): string {
   for (const n of names) {
-    if (RESERVED.has(n) || Buffer.byteLength(n, 'utf8') > 63) return `name ${JSON.stringify(n)} is reserved or longer than 63 bytes`;
+    if (RESERVED.has(n) || Buffer.byteLength(n, 'utf8') > 63) return `name ${messageQuote(n)} is reserved or longer than 63 bytes`;
   }
   return '';
 }

@@ -140,8 +140,10 @@ final class SetReaderDiagnosticsTest extends TestCase
         $error = SetReader::read(self::SET)->errors[0];
 
         self::assertSame(self::SET, $error->path);
-        self::assertStringContainsString('lstat setdiag://root failed', $error->message);
-        self::assertStringContainsString('lstat(): Lstat failed for setdiag://root', $error->message);
+        self::assertSame(
+            self::SET . ': the root setdiag://root cannot be examined: lstat(): Lstat failed for setdiag://root',
+            $error->message
+        );
         self::assertStringNotContainsString('stale warning', $error->message);
     }
 
@@ -153,8 +155,10 @@ final class SetReaderDiagnosticsTest extends TestCase
 
         $error = SetReader::read(self::SET)->errors[0];
 
-        self::assertStringContainsString('lstat ' . self::SET . ' failed', $error->message);
-        self::assertStringContainsString('lstat(): Lstat failed for ' . self::SET, $error->message);
+        self::assertSame(
+            self::SET . ': the set file cannot be examined: lstat(): Lstat failed for ' . self::SET,
+            $error->message
+        );
     }
 
     public function testEntryStatFailureIncludesItsWarningAndJoinedPath(): void
@@ -167,8 +171,7 @@ final class SetReaderDiagnosticsTest extends TestCase
         $error = SetReader::read(self::SET)->errors[0];
 
         self::assertSame($entry, $error->path);
-        self::assertStringContainsString('lstat ' . $entry . ' failed', $error->message);
-        self::assertStringContainsString('lstat(): Lstat failed for ' . $entry, $error->message);
+        self::assertSame("$entry: $entry cannot be examined: lstat(): Lstat failed for $entry", $error->message);
     }
 
     public function testAllowedIntermediateLinkStatFailureIsReported(): void
@@ -185,8 +188,10 @@ final class SetReaderDiagnosticsTest extends TestCase
         $error = $result->errors[0];
 
         self::assertSame('setdiag://root/../outside/shop.dbs', $error->path);
-        self::assertStringContainsString('stat ' . $link . ' failed', $error->message);
-        self::assertStringContainsString('stat(): stat failed for ' . $link, $error->message);
+        self::assertSame(
+            "setdiag://root/../outside/shop.dbs: $link cannot be examined: stat(): stat failed for $link",
+            $error->message
+        );
     }
 
     public function testRootListingFailureIncludesItsWarning(): void
@@ -195,8 +200,10 @@ final class SetReaderDiagnosticsTest extends TestCase
 
         $error = SetReader::read(self::SET)->errors[0];
 
-        self::assertStringContainsString('scandir setdiag://root/ failed', $error->message);
-        self::assertStringContainsString('scandir():', $error->message);
+        self::assertStringStartsWith(
+            self::SET . ': the root setdiag://root cannot be listed: scandir(',
+            $error->message
+        );
     }
 
     public function testFailedEntryListingIsCachedWithItsWarningAndErrorOrder(): void
@@ -210,12 +217,14 @@ final class SetReaderDiagnosticsTest extends TestCase
         self::assertCount(2, $errors);
         self::assertSame('setdiag://root/sub/one.dbs', $errors[0]->path);
         self::assertSame('setdiag://root/sub/two.dbs', $errors[1]->path);
-        self::assertStringContainsString('scandir setdiag://root/sub failed', $errors[0]->message);
-        self::assertStringContainsString('scandir():', $errors[0]->message);
+        self::assertStringStartsWith(
+            'setdiag://root/sub/one.dbs: setdiag://root/sub cannot be listed: scandir(',
+            $errors[0]->message
+        );
         self::assertSame(1, $GLOBALS['setReaderDiagnostics']['listingCalls']['setdiag://root/sub']);
         self::assertSame(
-            substr($errors[0]->message, strpos($errors[0]->message, ': scandir ')),
-            substr($errors[1]->message, strpos($errors[1]->message, ': scandir '))
+            substr($errors[0]->message, strpos($errors[0]->message, ': scandir(')),
+            substr($errors[1]->message, strpos($errors[1]->message, ': scandir('))
         );
     }
 
@@ -225,7 +234,7 @@ final class SetReaderDiagnosticsTest extends TestCase
 
         $error = SetReader::read(self::SET)->errors[0];
 
-        self::assertStringContainsString('missing.dbs is not a name that setdiag://root/ lists', $error->message);
+        self::assertSame('setdiag://root/missing.dbs: setdiag://root lists no name "missing.dbs"', $error->message);
         self::assertStringNotContainsString('failed', $error->message);
     }
 }

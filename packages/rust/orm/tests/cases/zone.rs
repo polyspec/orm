@@ -58,20 +58,24 @@ fn event(db: &Db) -> ZoneEvent {
     ZoneEvent::from_core(core)
 }
 
-/// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
+/// Only the values that CFG-19 names reach sqlx: `socket` and the PostgreSQL `host` as the socket, with the engine's own
+/// character set, time zone and TLS mode; what sqlx holds of them is a driver option that no public call returns. A
+/// PostgreSQL DSN, with or without `sslmode=disable`, connects without TLS (CFG-19).
 // Requirements: CFG-19, CFG-20, CFG-37, DIA-202.
-fn driver_parameters_reach_sqlx() {
+fn only_the_named_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
-    let polyspec_orm::db::ConnectOptions::Postgres(options) = parsed.options else { panic!("not postgres://") };
-    assert_eq!(options.get_application_name(), Some("orm"), "application_name reaches sqlx");
-    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?socket=/run/mysqld/mysqld.sock").expect("mysql DSN");
+    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@localhost/orm_example?socket=/run/mysqld/mysqld.sock&timezone=UTC").expect("mysql DSN");
     let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
     assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/mysqld/mysqld.sock"), "socket reaches sqlx");
-    // The connection character set is the engine's own, utf8mb4, whatever the DSN names (DIA-202).
-    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?charset=latin1").expect("mysql DSN");
-    let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
+    // The connection character set is the engine's own, utf8mb4 (DIA-202).
     assert_eq!(options.get_charset(), "utf8mb4", "charset is fixed to utf8mb4");
+    assert!(matches!(options.get_ssl_mode(), sqlx::mysql::MySqlSslMode::Disabled), "a DSN without ssl-mode connects without TLS");
+    for dsn in ["postgres:///orm_example?host=/run/postgresql&sslmode=disable", "postgres:///orm_example?host=/run/postgresql"] {
+        let parsed = polyspec_orm::db::parse_dsn(dsn).expect("postgres DSN");
+        let polyspec_orm::db::ConnectOptions::Postgres(options) = parsed.options else { panic!("not postgres://") };
+        assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/postgresql"), "{dsn}: host reaches sqlx as the socket");
+        assert!(matches!(options.get_ssl_mode(), sqlx::postgres::PgSslMode::Disable), "{dsn}: connects without TLS");
+    }
 }
 
 /// A Rust pool opened without `pool_lifetime_ms` keeps the 30-minute lifetime of its pool (CFG-5), which no other client has.
@@ -350,7 +354,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": only_the_named_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }
 
 /// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).

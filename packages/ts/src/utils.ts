@@ -1,5 +1,6 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
+import { quote as messageQuote } from './message.js';
 import { activeFor, registerSet, schemaModel, type Db, type Runner, type Schema, type TxFrame } from './database.js';
 import { driverValue, type DriverPool, type DriverSession, type DriverValue, type PoolStats } from './driver.js';
 import type { StatementKind } from './events.js';
@@ -159,7 +160,7 @@ export class Utils {
   /** Takes a named lock that is released when the transaction ends. */
   public async lock(key: string): Promise<void> {
     const frame = this.active('lock');
-    if (!validKey(key)) throw config(`lock key ${key} is invalid`);
+    if (!validKey(key)) throw config(`lock key ${messageQuote(key)} is invalid`);
     switch (this.db.driver) {
       case 'mysql': {
         const got = (await frame.statement('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
@@ -182,7 +183,7 @@ export class Utils {
    */
   public async setLocal(key: string, value: string): Promise<void> {
     const frame = this.active('setLocal');
-    if (!validKey(key)) throw config(`local key ${key} is invalid`);
+    if (!validKey(key)) throw config(`local key ${messageQuote(key)} is invalid`);
     switch (this.db.driver) {
       case 'postgres':
         await frame.statement('utility', [], 'SELECT set_config($1, $2, true)', [key, value]);
@@ -197,6 +198,7 @@ export class Utils {
   /** Returns a value set with setLocal; NO_ROWS when it is missing. */
   public async local(key: string): Promise<string> {
     const frame = this.active('local');
+    if (!validKey(key)) throw config(`local key ${messageQuote(key)} is invalid`);
     const value = frame.locals.get(key);
     if (value === undefined) throw new OrmError(codes.NO_ROWS, `local value ${key} is not set`);
     return value;
@@ -388,8 +390,9 @@ export class PrivilegeUtils {
   public async revokeTable(table: string, privilege: string, role: string): Promise<void> {
     const qualified = this.table(table);
     const r = this.role(role);
-    const upper = privilege.trim().toUpperCase();
-    if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${privilege}`);
+    // A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
+    const upper = privilege.replace(/[a-z]/g, letter => letter.toUpperCase());
+    if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${messageQuote(privilege)}`);
     await this.u.run(async frame => { await frame.statement('utility', [table], `REVOKE ${upper} ON ${qualified} FROM ${r}`); });
   }
 

@@ -75,7 +75,7 @@ final class Utils
     {
         $frame = $this->active('lock');
         if (!self::validKey($key)) {
-            throw new OrmException(Code::CONFIG, "lock key $key is invalid");
+            throw new OrmException(Code::CONFIG, 'lock key ' . Message::quote($key) . ' is invalid');
         }
         switch ($this->db->dialect()) {
             case 'mysql':
@@ -113,7 +113,7 @@ final class Utils
     {
         $frame = $this->active('setLocal');
         if (!self::validKey($key)) {
-            throw new OrmException(Code::CONFIG, "local key $key is invalid");
+            throw new OrmException(Code::CONFIG, 'local key ' . Message::quote($key) . ' is invalid');
         }
         switch ($this->db->dialect()) {
             case 'postgres':
@@ -136,6 +136,9 @@ final class Utils
     public function local(string $key): string
     {
         $frame = $this->active('local');
+        if (!self::validKey($key)) {
+            throw new OrmException(Code::CONFIG, 'local key ' . Message::quote($key) . ' is invalid');
+        }
         return $frame->locals[$key] ?? throw new OrmException(Code::NO_ROWS, "local value $key is not set");
     }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Config is the connection configuration. Paths and secrets are declared,
@@ -317,7 +318,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	}
 	sqlDriver, ok := lookupDriver(dsn.driver)
 	if !ok {
-		msg := fmt.Sprintf("driver %q is not registered", dsn.driver)
+		msg := message.Sprintf("driver %q is not registered", dsn.driver)
 		// The driver package names are pg and sqlite.
 		if pkg := map[string]string{"postgres": "pg", "sqlite": "sqlite"}[dsn.driver]; pkg != "" {
 			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/packages/go/orm/%s"`, pkg)
@@ -393,12 +394,40 @@ func checkSQLite() error {
 	if version == "" {
 		return &ir.Error{Code: CodeConfig, Msg: "the SQLite driver registered no library version"}
 	}
-	// A version that does not start with major.minor is refused as older, like a version below 3.46.
-	var major, minor int
-	if _, err := fmt.Sscanf(version, "%d.%d", &major, &minor); err != nil || major < 3 || major == 3 && minor < 46 {
+	parts, err := parseSQLiteVersion(version)
+	if err != nil {
+		return err
+	}
+	if parts[0] < 3 || parts[0] == 3 && parts[1] < 46 {
 		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "SQLite " + version + " is older than 3.46"}
 	}
 	return nil
+}
+
+// parseSQLiteVersion reads three or four ASCII decimal components, each fitting u32 (DSL-150).
+func parseSQLiteVersion(version string) ([]uint32, error) {
+	invalid := &ir.Error{Code: CodeInternal, Msg: "SQLite library version " + message.Quote(version, '"') + " is invalid; expected three or four decimal components that each fit u32"}
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 && len(parts) != 4 {
+		return nil, invalid
+	}
+	numbers := make([]uint32, len(parts))
+	for i, part := range parts {
+		if part == "" {
+			return nil, invalid
+		}
+		var n uint64
+		for j := 0; j < len(part); j++ {
+			if part[j] < '0' || part[j] > '9' {
+				return nil, invalid
+			}
+			if n = n*10 + uint64(part[j]-'0'); n > 0xffffffff {
+				return nil, invalid
+			}
+		}
+		numbers[i] = uint32(n)
+	}
+	return numbers, nil
 }
 
 // WithContext returns a handle on the same connection whose statements run
@@ -455,7 +484,7 @@ func (d *DB) Close() error {
 		d.m.stmMu.Lock()
 		for key, st := range d.stmts {
 			if err := st.Close(); err != nil && d.m.closeErr == nil {
-				d.m.closeErr = fmt.Errorf("close statement %q: %w", key, err)
+				d.m.closeErr = message.Errorf("close statement %q: %w", key, err)
 			}
 		}
 		d.stmts = map[string]*sql.Stmt{}
@@ -594,11 +623,11 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 		// secret over TLS, and requests the server's RSA public key only when there is no TLS.
 		pem, err := os.ReadFile(dsn.sslCA)
 		if err != nil {
-			return nil, fmt.Errorf("mysql DSN ssl-ca %s is not a readable file: %w", dsn.sslCA, err)
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s is not a readable file: %w", message.Quote(dsn.sslCA, '"'), err)
 		}
 		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("mysql DSN ssl-ca %s holds no PEM certificate", dsn.sslCA)
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s holds no PEM certificate", message.Quote(dsn.sslCA, '"'))
 		}
 		cfg.TLS = &tls.Config{RootCAs: roots, ServerName: dsn.sslHost, MinVersion: tls.VersionTLS12}
 	}
@@ -645,7 +674,7 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 			// The evicted statement is no longer used by the caller, so its close error is kept for Close,
 			// which reports the statement close errors of the connection.
 			if err := old.Close(); err != nil && d.m.closeErr == nil {
-				d.m.closeErr = fmt.Errorf("close statement %q: %w", oldest, err)
+				d.m.closeErr = message.Errorf("close statement %q: %w", oldest, err)
 			}
 		}
 	}
@@ -835,13 +864,13 @@ func IsConstraint(err error) bool { return ErrorCode(err) == CodeConstraint }
 func IsNoRows(err error) bool { return ErrorCode(err) == CodeNoRows }
 
 func configErr(format string, a ...any) error {
-	return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf(format, a...)}
+	return &ir.Error{Code: CodeConfig, Msg: message.Sprintf(format, a...)}
 }
 
 // internalErr reports a broken invariant of the engine itself, such as a value of a type the
 // engine never stores there; it is INTERNAL, never a result of the caller's input.
 func internalErr(format string, a ...any) error {
-	return &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf(format, a...)}
+	return &ir.Error{Code: CodeInternal, Msg: message.Sprintf(format, a...)}
 }
 
 func quoteText(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }

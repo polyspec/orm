@@ -19,6 +19,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Budgets of the catalog connection (docs/spec/interfaces.md, "Qualified native Rust table metadata" to "Qualified Rust
@@ -771,5 +772,5 @@ func catalogPlaceholder(index int, dialect string) string {
 
 // catalogErr reports a catalog error with its code, in the form CODE: message.
 func catalogErr(code, format string, args ...any) error {
-	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, args...)}
+	return &ir.Error{Code: code, Msg: message.Sprintf(format, args...)}
 }

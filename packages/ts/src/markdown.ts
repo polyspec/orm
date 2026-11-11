@@ -3,9 +3,10 @@
 // markdown connection is a SQLite connection whose statements the server answers: the driver below sends each statement in a
 // statement message and reads its answer as node:sqlite reads a row.
 import { isUtf8 } from 'node:buffer';
+import { quote, quoteBytes } from './message.js';
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, ParseError, type Value } from '@polyspec/ordered-json';
-import { observed, type DriverColumn, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type PoolBounds, type PoolStats, type RowSink, type StatementDone } from './driver.js';
+import { checkHostEscape, checkTimezone, decodedPath, dsnParameter, dsnPragmas, observed, type DriverColumn, type DsnParameters, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type PoolBounds, type PoolStats, type RowSink, type StatementDone } from './driver.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
@@ -24,32 +25,22 @@ const dsnForm = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<tok
  * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and the token
  * travels in plaintext, so the host is 127.0.0.1 only.
  */
-export function parseMarkdownDsn(url: URL): MarkdownDsn {
+export function parseMarkdownDsn(url: URL, path: string, parameters: DsnParameters): MarkdownDsn {
+  // The order of PRT-63, after the fragment and the query that parseDsn has read by CFG-20: the token, the user, the host, the
+  // port, the corpus path, then the timezone and the _pragma values.
+  const token = dsnParameter(parameters, 'token');
+  if (token === undefined) throw new OrmError(codes.CONFIG, `markdown DSN is missing the parameter ${quote('token')}`);
   if (url.username !== '' || url.password !== '') throw new OrmError(codes.CONFIG, `${dsnForm}; it takes no user`);
-  if (url.hostname !== '127.0.0.1') throw new OrmError(codes.CONFIG, `${dsnForm}; host ${JSON.stringify(url.hostname)}: a flowmark server listens on 127.0.0.1 only`);
+  checkHostEscape('markdown', url);
+  if (url.hostname !== '127.0.0.1') throw new OrmError(codes.CONFIG, `${dsnForm}; host ${quote(url.hostname)}: a flowmark server listens on 127.0.0.1 only`);
   const port = Number(url.port);
-  if (!/^[0-9]+$/.test(url.port) || port < 1 || port > 65535) throw new OrmError(codes.CONFIG, `${dsnForm}; port ${JSON.stringify(url.port)} is not 1 to 65535: give the port that flowmark serve printed`);
-  let corpus: string;
-  try {
-    corpus = decodeURIComponent(url.pathname.replace(/^\//, ''));
-  } catch (error) {
-    // A malformed escape is no corpus name, refused below with the path.
-    if (!(error instanceof URIError)) throw error;
-    corpus = '';
-  }
-  if (corpus === '' || corpus.includes('/')) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
-  // timezone is the rule of every scheme, which parseDsn has already checked (a corpus keeps datetime in UTC).
-  for (const key of url.searchParams.keys()) {
-    if (key !== 'token' && key !== 'timezone' && key !== '_pragma') throw new OrmError(codes.CONFIG, `${dsnForm}; it does not accept ${key}`);
-  }
-  const tokens = url.searchParams.getAll('token');
-  const [token] = tokens;
-  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError(codes.CONFIG, `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
-  const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
-    const [, name, value] = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma) ?? [];
-    if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError(codes.CONFIG, `${dsnForm}; _pragma ${pragma} is invalid`);
-    return [name, value] as const;
-  });
+  if (!/^[0-9]+$/.test(url.port) || port < 1 || port > 65535) throw new OrmError(codes.CONFIG, `${dsnForm}; port ${quote(url.port)} is not 1 to 65535: give the port that flowmark serve printed`);
+  // The path is decoded as every DSN path is (CFG-11); one that does not decode is no corpus name.
+  const decoded = decodedPath(path);
+  const corpus = decoded?.startsWith('/') ? decoded.slice(1) : '';
+  if (corpus === '' || corpus === '.' || corpus === '..' || /[/\0]/.test(corpus)) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${quote(path)} is not one corpus name: give the corpus root's directory name`);
+  checkTimezone(parameters);
+  const pragmas = dsnPragmas('markdown', parameters);
   return { address: `${url.hostname}:${port}`, corpus, token, pragmas };
 }
 
@@ -65,18 +56,19 @@ class MarkdownSession {
   /** Means the connection can no longer be used: a read or write failed, a signal cut it, or the server ended it. */
   public broken = false;
   public readonly created = performance.now();
-  private partial = '';
-  private readonly lines: string[] = [];
+  // The bytes of the server's lines: a line is decoded only once it is checked to be UTF-8, so that a byte that is not UTF-8
+  // reaches the message of the answer as it came (INT-187) and is never replaced.
+  private partial: Buffer = Buffer.alloc(0);
+  private readonly lines: Buffer[] = [];
   private ended: Error | undefined;
   private wake: (() => void) | undefined;
 
   private constructor(private readonly socket: Socket) {
-    socket.setEncoding('utf8');
-    socket.on('data', (chunk: string) => {
-      this.partial += chunk;
-      for (let at = this.partial.indexOf('\n'); at >= 0; at = this.partial.indexOf('\n')) {
-        this.lines.push(this.partial.slice(0, at));
-        this.partial = this.partial.slice(at + 1);
+    socket.on('data', (chunk: Buffer) => {
+      this.partial = Buffer.concat([this.partial, chunk]);
+      for (let at = this.partial.indexOf(0x0a); at >= 0; at = this.partial.indexOf(0x0a)) {
+        this.lines.push(this.partial.subarray(0, at));
+        this.partial = this.partial.subarray(at + 1);
       }
       this.notify();
     });
@@ -142,10 +134,10 @@ class MarkdownSession {
     }
     const abort = () => this.close();
     signal?.addEventListener('abort', abort, { once: true });
-    let text: string;
+    let bytes: Buffer;
     try {
       this.socket.write(`${line}\n`);
-      text = await this.next();
+      bytes = await this.next();
     } catch (error) {
       this.close();
       if (signal?.aborted) throw canceled();
@@ -154,15 +146,17 @@ class MarkdownSession {
       signal?.removeEventListener('abort', abort);
     }
     let answer: Value | undefined;
-    try {
-      answer = parseJson(text);
-    } catch (error) {
-      if (!(error instanceof ParseError)) throw error;
-      answer = undefined;
+    if (isUtf8(bytes)) {
+      try {
+        answer = parseJson(bytes.toString('utf8'));
+      } catch (error) {
+        if (!(error instanceof ParseError)) throw error;
+        answer = undefined;
+      }
     }
     if (answer === undefined || answer.kind !== 'object') {
       this.close();
-      throw new OrmError(codes.INTERNAL, `the flowmark server answered ${JSON.stringify(text)}, not a JSON object`);
+      throw new OrmError(codes.INTERNAL, `the flowmark server answered ${quoteBytes(bytes)}, not a JSON object`);
     }
     const failure = answer.get('error');
     if (failure !== undefined) {
@@ -182,7 +176,7 @@ class MarkdownSession {
     return answer;
   }
 
-  private async next(): Promise<string> {
+  private async next(): Promise<Buffer> {
     for (;;) {
       const line = this.lines.shift();
       if (line !== undefined) return line;

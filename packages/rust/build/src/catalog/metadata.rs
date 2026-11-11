@@ -7,7 +7,7 @@ use crate::tool_db::{Conn, QueryLimits, Rows, Val, P};
 /// DEFAULT_GENERATED.
 fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result<TableColumnMetadata, CatalogError> {
     if row.len() != 8 {
-        return Err("TABLE_METADATA_INVALID: column shape".into());
+        return Err(format!("TABLE_METADATA_INVALID: column shape of {} values", row.len()).into());
     }
     let mut column = TableColumnMetadata {
         name: text(&row[0])?,
@@ -24,7 +24,7 @@ fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result
     };
     if server == polyspec_orm_schema::dbspec::Server::MariaDb {
         (column.default_expression, column.expression_default) = polyspec_orm_schema::dbspec::mariadb_catalog_default(column.default_expression.take())
-            .map_err(|error| format!("TABLE_METADATA_INVALID: column {:?}: {error}", column.name))?;
+            .map_err(|error| format!("TABLE_METADATA_INVALID: column {}: {error}", polyspec_orm_schema::message::Quoted(&column.name)))?;
     }
     Ok(column)
 }
@@ -145,7 +145,8 @@ pub(super) async fn describe(
     if result.len() != 1 || result[0].len() != 1 {
         return Err("TABLE_METADATA_INVALID: ambiguous relation".into());
     }
-    let kind = match (dialect, text(&result[0][0])?.as_str()) {
+    let native = text(&result[0][0])?;
+    let kind = match (dialect, native.as_str()) {
         ("mysql", "BASE TABLE") | ("postgres", "r") | ("sqlite", "table") => TableKind::Table,
         ("mysql", "VIEW" | "SYSTEM VIEW") | ("postgres", "v") | ("sqlite", "view") => TableKind::View,
         ("postgres", "p") => TableKind::Partitioned,
@@ -153,7 +154,7 @@ pub(super) async fn describe(
         ("postgres", "f") => TableKind::Foreign,
         ("sqlite", "virtual") => TableKind::Virtual,
         ("sqlite", "shadow") => TableKind::Shadow,
-        _ => return Err("TABLE_KIND_UNSUPPORTED".into()),
+        _ => return Err(format!("TABLE_KIND_UNSUPPORTED: relation kind {} of {dialect}", polyspec_orm_schema::message::Quoted(&native)).into()),
     };
     let sql=match dialect {
         // The key ordinal is a subquery that names the table by constants: a join of KEY_COLUMN_USAGE opens every table of every
@@ -171,7 +172,7 @@ pub(super) async fn describe(
     for row in result {
         let column = column_of(&row, server)?;
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
-            return Err(format!("TABLE_METADATA_INVALID: duplicate column {:?}", column.name).into());
+            return Err(format!("TABLE_METADATA_INVALID: duplicate column {}", polyspec_orm_schema::message::Quoted(&column.name)).into());
         }
         let ordinal = row[4].int().map_err(|e| e.to_string())?;
         if ordinal < 0 {

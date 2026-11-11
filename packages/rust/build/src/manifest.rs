@@ -126,13 +126,13 @@ pub fn check_column_name(n: &str) -> Result<(), String> {
         return Err(format!("column name may not contain '__': {n}"));
     }
     if let Some(s) = n.split('_').find(|s| RESERVED_SEGMENTS.contains(s)) {
-        return Err(format!("column name may not contain the segment {s:?}: {n}"));
+        return Err(format!("column name may not contain the segment {s}: {n}", s = polyspec_orm_schema::message::Quoted(&s)));
     }
     if RESERVED_COLUMNS.contains(&n) {
         return Err(format!("column name is a reserved method name: {n}"));
     }
     if let Some(p) = RESERVED_PREFIXES.iter().find(|p| n == **p || n.starts_with(&format!("{p}_"))) {
-        return Err(format!("column name may not start with {p:?}: {n}"));
+        return Err(format!("column name may not start with {p}: {n}", p = polyspec_orm_schema::message::Quoted(&p)));
     }
     Ok(())
 }

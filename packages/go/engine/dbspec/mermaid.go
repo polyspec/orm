@@ -1,11 +1,12 @@
 package dbspec
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // RuleMermaid is the diagnostic for a Mermaid line that import could not read (docs/spec/mermaid.md).
@@ -226,7 +227,7 @@ func ImportMermaid(text, name string) (*Document, []Unsupported, []Diagnostic) {
 	var open *mermaidEntity
 	header := false
 	fail := func(line int, format string, args ...any) (*Document, []Unsupported, []Diagnostic) {
-		return nil, nil, []Diagnostic{{Rule: RuleMermaid, Line: line, Column: 1, Message: fmt.Sprintf(format, args...)}}
+		return nil, nil, []Diagnostic{{Rule: RuleMermaid, Line: line, Column: 1, Message: message.Sprintf(format, args...)}}
 	}
 	for i, raw := range lines {
 		n, line := i+1, strings.TrimSpace(strings.TrimSuffix(raw, "\r"))

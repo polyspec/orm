@@ -315,7 +315,7 @@ pub(crate) fn parse_datetime(s: &str) -> std::result::Result<NaiveDateTime, Stri
     }
     match NaiveDate::parse_from_str(s, "%Y-%m-%d") {
         Ok(d) => Ok(d.and_hms_opt(0, 0, 0).unwrap()),
-        Err(error) => Err(format!("{s:?} is not a datetime in an accepted form: {error}")),
+        Err(error) => Err(format!("{s} is not a datetime in an accepted form: {error}", s = polyspec_orm_schema::message::Quoted(&s))),
     }
 }
 

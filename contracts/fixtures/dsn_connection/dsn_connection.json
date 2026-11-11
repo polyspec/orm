@@ -73,7 +73,8 @@
       "id": "dsn_parameters_of_this_page",
       "requirements": [
         "CFG-2",
-        "CFG-19"
+        "CFG-19",
+        "CFG-12"
       ],
       "steps": [
         {
@@ -164,6 +165,26 @@
           "op": "dsn.connect",
           "dsn": "case",
           "query": "_pragma=busy_timeout(5000)&timezone=UTC",
+          "expect": {
+            "markdown": {
+              "value": {
+                "text": "markdown"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "sqlite"
+              }
+            }
+          },
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "_pragma=busy_timeout(2147483647)",
           "expect": {
             "markdown": {
               "value": {

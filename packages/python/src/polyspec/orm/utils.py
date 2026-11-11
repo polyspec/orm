@@ -117,6 +117,8 @@ class Utils:
 
     def local(self, key: str) -> str:
         frame = _active(self.db, "local")
+        if not valid_key(key):
+            raise OrmError(codes.CONFIG, f"local key {goq(key)} is invalid")
         if key not in frame.locals:
             raise OrmError(codes.NO_ROWS, f"local value {key} is not set")
         return frame.locals[key]
@@ -369,6 +371,7 @@ class TablePrivileges:
 
 # The table privileges that revoke_table takes.
 _TABLE_PRIVILEGES = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE")
+_ASCII_UPPER = str.maketrans("abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
 class PrivilegeUtils:
@@ -418,7 +421,8 @@ class PrivilegeUtils:
         """Revokes one table privilege of the role: SELECT, INSERT, UPDATE, DELETE or TRUNCATE."""
         qualified = self._table(table)
         r = self._role(role)
-        upper = privilege.strip().upper()
+        # A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
+        upper = privilege.translate(_ASCII_UPPER)
         if upper not in _TABLE_PRIVILEGES:
             raise OrmError(
                 codes.CONFIG, f"unsupported table privilege {goq(privilege)}"

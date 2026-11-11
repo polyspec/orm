@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * The set reader of Dbspec::readSet (docs/spec/dbspec.md "Document sets"): the set file, its JSON, each path
  * and the read with the file identity, in that order.
@@ -15,10 +17,20 @@ final class SetReader
     /** The name of every set file. */
     public const NAME = 'dbspec-set.json';
 
-    /** The deepest nesting of the set file; json_decode counts one level more than the containers. */
+    /** The deepest nesting of the set file, the object counting as one. */
     private const DEPTH = 64;
 
-    private const JSON_QUOTE = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+    /**
+     * The depth that json_decode is given: the set file's own depth check reads the nesting, so the parser checks
+     * only the syntax.
+     */
+    private const PARSER_DEPTH = 2147483646;
+
+    /** A JSON string (RFC 8259), possessive so that a long string does not backtrack. */
+    private const JSON_STRING = '"(?:[^"\\\\\x00-\x1F]++|\\\\(?:["\\\\\/bfnrt]|u[0-9A-Fa-f]{4}))*+"';
+
+    /** A JSON number or literal (RFC 8259). */
+    private const JSON_SCALAR = '-?(?:0|[1-9][0-9]*+)(?:\.[0-9]++)?(?:[eE][+-]?[0-9]++)?|true|false|null';
 
     /** @var array<string, list<string>|false> the listing of each directory during one read */
     private array $listings = [];
@@ -55,26 +67,27 @@ final class SetReader
         if (str_contains($path, "\0")) {
             return $fail('set.file', "$path: the path contains a NUL byte");
         }
-        $kind = $this->kind($this->trimmed($root));
+        $named = $this->trimmed($root);
+        $kind = $this->kind($named);
         if ($kind === null) {
-            return $fail('set.file', "$path: " . $this->failure);
+            return $fail('set.file', "$path: the root $named cannot be examined" . $this->failure);
         }
         if ($kind === 'link') {
-            return $fail('set.symlink', "$path: the root $root is a symbolic link");
+            return $fail('set.symlink', "$path: the root $named is a symbolic link");
         }
         if ($kind !== 'dir') {
-            return $fail('set.file', "$path: the root $root is not a directory");
+            return $fail('set.file', "$path: the root $named is not a directory");
         }
         $listed = $this->lists($root, self::NAME);
         if ($listed === null) {
-            return $fail('set.file', "$path: " . $this->failure);
+            return $fail('set.file', "$path: the root $named cannot be listed" . $this->failure);
         }
         if (!$listed) {
-            return $fail('set.file', "$path: " . self::NAME . " is not a name that $root lists");
+            return $fail('set.file', "$path: the root $named lists no " . self::NAME);
         }
         $kind = $this->kind($path);
         if ($kind === null) {
-            return $fail('set.file', "$path: " . $this->failure);
+            return $fail('set.file', "$path: the set file cannot be examined" . $this->failure);
         }
         if ($kind === 'link') {
             return $fail('set.symlink', "$path: the set file is a symbolic link");
@@ -82,7 +95,7 @@ final class SetReader
         if ($kind !== 'file') {
             return $fail('set.file', "$path: the set file is not a regular file");
         }
-        $opened = self::open($path);
+        $opened = self::open($path, 'the set file');
         if ($opened instanceof SetError) {
             return SetResult::invalid([$opened]);
         }
@@ -102,11 +115,11 @@ final class SetReader
                 $wrong = self::normalForm($written, $list);
                 if ($wrong !== null) {
                     $errors[] = new SetError('set.path', $path, "$path: the $list path "
-                        . json_encode($written, self::JSON_QUOTE) . " $wrong");
+                        . Message::quote($written) . " $wrong");
                     continue;
                 }
                 $joined = $prefix . $written;
-                $error = $this->examine($root, $prefix, $written, $joined, $list === 'external');
+                $error = $this->examine($root, $named, $prefix, $written, $joined, $list === 'external');
                 if ($error !== null) {
                     $errors[] = $error;
                     continue;
@@ -119,7 +132,7 @@ final class SetReader
         $files = ['documents' => [], 'external' => []];
         $identities = [];
         foreach ($passed as [$list, $joined]) {
-            $opened = self::open($joined, $identities);
+            $opened = self::open($joined, 'the file', $identities);
             if ($opened instanceof SetError) {
                 $errors[] = $opened;
                 continue;
@@ -167,12 +180,11 @@ final class SetReader
      */
     private function kind(string $path, bool $follow = false): ?string
     {
-        $operation = $follow ? 'stat' : 'lstat';
         error_clear_last();
         // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a missing path returns false, which means no entry
         $stat = $follow ? @stat($path) : @lstat($path);
         if ($stat === false) {
-            $this->failure = self::operationFailure($operation, $path);
+            $this->failure = self::operationFailure();
             return null;
         }
         $this->failure = null;
@@ -196,7 +208,7 @@ final class SetReader
             // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- an unreadable folder returns false, which means no listing
             $this->listings[$dir] = @scandir($dir, SCANDIR_SORT_NONE);
             if ($this->listings[$dir] === false) {
-                $this->listingFailures[$dir] = self::operationFailure('scandir', $dir);
+                $this->listingFailures[$dir] = self::operationFailure();
             }
         }
         $listing = $this->listings[$dir];
@@ -204,24 +216,32 @@ final class SetReader
         return $listing === false ? null : in_array($name, $listing, true);
     }
 
-    /** The operation's warning, read immediately after its failure and never from an earlier operation. */
-    private static function operationFailure(string $operation, string $path): string
+    /**
+     * `: ` and the warning that PHP gave for the failed operation, unchanged (INT-187), read immediately after its
+     * failure and never from an earlier operation; empty when PHP gave none, since no error text is made up.
+     */
+    private static function operationFailure(): string
     {
         $warning = error_get_last();
-        return "$operation $path failed" . ($warning === null ? '' : ': ' . $warning['message']);
+        return $warning === null ? '' : ': ' . $warning['message'];
     }
 
     /**
      * Opens $path once and reads its bytes and its identity (device and inode of fstat) from that handle.
      * With $identities, a path whose identity is already there is a duplicate and is not read.
      *
+     * @param string $what `the set file` or `the file`, the subject of the message of a failed read
      * @param ?array<string, string> $identities the joined path of each identity read so far
      * @return array{string, string}|SetError the identity and the bytes, or the error
      */
-    private static function open(string $path, ?array $identities = null): array|SetError
+    private static function open(string $path, string $what, ?array $identities = null): array|SetError
     {
-        $failed = static fn(): SetError => new SetError('set.file', $path, "cannot read $path: "
-            . (error_get_last()['message'] ?? 'cannot be read'));
+        $failed = static fn(): SetError => new SetError(
+            'set.file',
+            $path,
+            "$path: $what cannot be read" . self::operationFailure()
+        );
+        error_clear_last();
         // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason of the failure, read by error_get_last
         $handle = @fopen($path, 'rb');
         if ($handle === false) {
@@ -235,7 +255,8 @@ final class SetReader
             }
             $identity = $stat['dev'] . ':' . $stat['ino'];
             if ($identities !== null && isset($identities[$identity])) {
-                return new SetError('set.duplicate', $path, "$path names the same file as {$identities[$identity]}");
+                $earlier = $identities[$identity];
+                return new SetError('set.duplicate', $path, "$path: names the file that $earlier names");
             }
             // A failed read of a plain file is a notice and may still return the bytes read before it.
             error_clear_last();
@@ -251,9 +272,12 @@ final class SetReader
     }
 
     /**
-     * Step 2: the set file's bytes as JSON. The standard parser checks the syntax, the depth and the
-     * escapes; a scan of the checked text, which only checks and parses no value, finds a repeated key in
-     * any object and the kind of each top-level value, which the decoded arrays do not keep.
+     * Step 2: the set file's bytes as JSON, checked in the order of DBS-13 and DBS-18a. The standard parser checks
+     * the syntax, with every lone surrogate escape written as another escape, since the parser stops at a lone
+     * surrogate before the rest of the syntax; when it refuses a text whose syntax is valid only for its nesting,
+     * which its stack does not hold, the text is JSON. A scan of the checked text, which only checks and parses no
+     * value, finds the kind of the top-level value, the nesting, a repeated key in any object and the kind of each
+     * top-level value, which the decoded arrays do not keep.
      *
      * @return array{documents: list<string>, external: list<string>}|SetError
      */
@@ -261,28 +285,39 @@ final class SetReader
     {
         $error = static fn(string $rule, string $message): SetError => new SetError($rule, $path, "$path: $message");
         if (str_starts_with($bytes, "\xEF\xBB\xBF")) {
-            return $error('set.json', 'the set file begins with a byte order mark');
+            return $error('set.json', 'the set file starts with a byte order mark');
         }
         if (preg_match('//u', $bytes) !== 1) {
             return $error('set.json', 'the set file is not valid UTF-8');
         }
-        $value = json_decode($bytes, true, self::DEPTH + 1);
+        $text = self::withoutLoneSurrogates($bytes);
+        $value = json_decode($text, true, self::PARSER_DEPTH);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return $error('set.json', 'the set file is not JSON nested at most ' . self::DEPTH
-                . ' levels deep: ' . json_last_error_msg());
+            $parser = json_last_error_msg();
+            if (!self::json($text)) {
+                return $error('set.json', "the set file is not JSON: $parser");
+            }
         }
-        [$top, $members, $repeated] = self::scan($bytes);
+        [$top, $depth, $members, $repeated] = self::scan($text);
         if ($top !== 'object') {
-            return $error('set.json', 'the set file is not a JSON object');
+            return $error('set.json', 'the set file is not one JSON object');
+        }
+        if ($depth > self::DEPTH) {
+            return $error('set.json', 'the set file nests deeper than ' . self::DEPTH . ' levels');
+        }
+        if ($text !== $bytes) {
+            return $error('set.json', 'the set file escapes a lone surrogate');
         }
         if ($repeated !== null) {
-            return $error('set.key', 'the key ' . json_encode($repeated, self::JSON_QUOTE) . ' appears twice');
+            return $error('set.key', 'the key ' . Message::quote($repeated) . ' appears twice');
         }
+        assert(is_array($value));
         $unknown = array_values(array_diff(array_keys($members), ['schema', 'documents', 'external']));
         if ($unknown !== []) {
             $unknown = array_map('strval', $unknown);
+            // Byte order of UTF-8 is code-point order.
             usort($unknown, 'strcmp');
-            $quoted = array_map(static fn(string $k): string => (string) json_encode($k, self::JSON_QUOTE), $unknown);
+            $quoted = array_map(static fn(string $k): string => Message::quote($k), $unknown);
             return $error('set.key', (count($unknown) === 1 ? 'unknown key ' : 'unknown keys ')
                 . implode(', ', $quoted));
         }
@@ -308,6 +343,84 @@ final class SetReader
         return ['documents' => $value['documents'], 'external' => $value['external'] ?? []];
     }
 
+    /**
+     * $text with each escape of a lone surrogate written as `\u0000`; a pair of a high and a low surrogate escape
+     * stays, and so does every other escape, so the text is JSON exactly when $text is, but for the surrogates.
+     */
+    private static function withoutLoneSurrogates(string $text): string
+    {
+        return (string) preg_replace_callback(
+            '/\\\\(?:u[dD][89abAB][0-9a-fA-F]{2}\\\\u[dD][c-fC-F][0-9a-fA-F]{2}|(u[dD][89a-fA-F][0-9a-fA-F]{2})|.)/s',
+            static fn(array $m): string => isset($m[1]) ? '\\u0000' : $m[0],
+            $text
+        );
+    }
+
+    /**
+     * Whether $text is one JSON value (RFC 8259), read without a stack limit. It decides only the texts that
+     * json_decode refuses, so that a valid text nested deeper than the parser's stack is JSON.
+     */
+    private static function json(string $text): bool
+    {
+        $n = strlen($text);
+        $i = 0;
+        $open = [];
+        // value: a value; value]: a value or ]; key: a key; key}: a key or }; colon; next: , or the close; end.
+        $state = 'value';
+        while (true) {
+            $i += strspn($text, " \t\n\r", $i);
+            if ($i >= $n) {
+                return $state === 'end';
+            }
+            $c = $text[$i];
+            if ($state === 'end') {
+                return false;
+            }
+            if ($state === 'colon') {
+                if ($c !== ':') {
+                    return false;
+                }
+                $i++;
+                $state = 'value';
+                continue;
+            }
+            if ($state === 'next' || ($state === 'value]' && $c === ']') || ($state === 'key}' && $c === '}')) {
+                $last = $open[count($open) - 1];
+                if ($state === 'next' && $c === ',') {
+                    $i++;
+                    $state = $last === '{' ? 'key' : 'value';
+                    continue;
+                }
+                if ($c !== ($last === '{' ? '}' : ']')) {
+                    return false;
+                }
+                array_pop($open);
+                $i++;
+                $state = $open === [] ? 'end' : 'next';
+                continue;
+            }
+            if ($state === 'key' || $state === 'key}') {
+                if (preg_match('/\G' . self::JSON_STRING . '/', $text, $m, 0, $i) !== 1) {
+                    return false;
+                }
+                $i += strlen($m[0]);
+                $state = 'colon';
+                continue;
+            }
+            if ($c === '{' || $c === '[') {
+                $open[] = $c;
+                $i++;
+                $state = $c === '{' ? 'key}' : 'value]';
+                continue;
+            }
+            if (preg_match('/\G(?:' . self::JSON_STRING . '|' . self::JSON_SCALAR . ')/', $text, $m, 0, $i) !== 1) {
+                return false;
+            }
+            $i += strlen($m[0]);
+            $state = $open === [] ? 'end' : 'next';
+        }
+    }
+
     /** Whether a top-level value of the kind $kind, decoded as $value, is an array of strings. */
     private static function strings(string $kind, mixed $value): bool
     {
@@ -315,10 +428,10 @@ final class SetReader
     }
 
     /**
-     * Scans JSON text that json_decode accepted: the kind of the top-level value, the kind of each value of
-     * the top-level object by its key, and the first key repeated in an object, at any depth.
+     * Scans JSON text: the kind of the top-level value, the deepest nesting of its containers, the kind of each
+     * value of the top-level object by its key, and the first key repeated in an object, at any depth.
      *
-     * @return array{string, array<string, string>, ?string}
+     * @return array{string, int, array<string, string>, ?string}
      */
     private static function scan(string $text): array
     {
@@ -326,6 +439,7 @@ final class SetReader
         $top = null;
         $members = [];
         $repeated = null;
+        $depth = 0;
         // A frame per open container: [is object, keys seen, expecting a key].
         $frames = [];
         $key = null;
@@ -367,6 +481,7 @@ final class SetReader
             if ($c === '{' || $c === '[') {
                 $value($c === '{' ? 'object' : 'array');
                 $frames[] = [$c === '{', [], $c === '{'];
+                $depth = max($depth, count($frames));
                 continue;
             }
             if ($c === '}' || $c === ']') {
@@ -388,21 +503,20 @@ final class SetReader
             });
             $i += $length - 1;
         }
-        return [(string) $top, $members, $repeated];
+        return [(string) $top, $depth, $members, $repeated];
     }
 
     /**
-     * Why a written path has no normal form, or null when it has one: segments joined by `/`, the last
-     * ending in `.dbs`, each a name that every platform can hold; `..` only at the start of an external path.
+     * The problem of a written path that has no normal form (DBS-7 to DBS-9), as DBS-18a words it, or null when it
+     * has one: the segments are checked from the first, each against the problems in order, and then the path.
      */
     private static function normalForm(string $written, string $list): ?string
     {
-        $segments = explode('/', $written);
-        if (!str_ends_with($segments[count($segments) - 1], '.dbs')) {
-            return 'has no normal form';
-        }
         $leading = true;
-        foreach ($segments as $segment) {
+        foreach (explode('/', $written) as $segment) {
+            if ($segment === '') {
+                return 'has an empty segment';
+            }
             if ($segment === '..') {
                 if ($list === 'documents') {
                     return 'has a .. segment';
@@ -413,21 +527,25 @@ final class SetReader
                 continue;
             }
             $leading = false;
-            if (!self::segment($segment)) {
-                return 'has no normal form';
+            $wrong = self::segment($segment);
+            if ($wrong !== null) {
+                return $wrong;
             }
         }
-        return null;
+        return str_ends_with($written, '.dbs') ? null : 'does not end in .dbs';
     }
 
-    /** Whether $segment is a name that every platform can hold (docs/spec/dbspec.md "Document sets"). */
-    private static function segment(string $segment): bool
+    /** The problem of a segment other than `..` that every platform cannot hold (DBS-8), or null. */
+    private static function segment(string $segment): ?string
     {
-        if ($segment === '' || $segment === '.' || preg_match('/[\\\\\/:<>"|?*\x00-\x1F]/', $segment) === 1) {
-            return false;
+        if ($segment === '.') {
+            return 'has a . segment';
+        }
+        if (preg_match('/[\\\\:<>"|?*\x00-\x1F]/', $segment, $m) === 1) {
+            return 'has the character ' . Message::quote($m[0]) . ' that a segment cannot hold';
         }
         if (str_ends_with($segment, '.') || str_ends_with($segment, ' ')) {
-            return false;
+            return 'has a segment that ends in . or a space';
         }
         $dot = strpos($segment, '.');
         $base = strtr(
@@ -435,29 +553,41 @@ final class SetReader
             'abcdefghijklmnopqrstuvwxyz',
             'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         );
-        return preg_match('/\A(?:CON|PRN|AUX|NUL|(?:COM|LPT)(?:[0-9]|\xC2\xB9|\xC2\xB2|\xC2\xB3))\z/', $base) !== 1;
+        if (preg_match('/\A(?:CON|PRN|AUX|NUL|(?:COM|LPT)(?:[0-9]|\xC2\xB9|\xC2\xB2|\xC2\xB3))\z/', $base) === 1) {
+            return 'has the segment ' . Message::quote($segment) . ' that names a Windows device';
+        }
+        return null;
     }
 
     /**
      * Step 3 for one path that has its normal form: each prefix of the joined path that ends after a
      * written segment is listed by its directory (a segment other than `..`) and examined with lstat. An
-     * intermediate component of an external path that is a link is examined through it (stat).
+     * intermediate component of an external path that is a link is examined through it (stat). $named is the root
+     * as the messages name it, the directory that lists the first segment.
      */
-    private function examine(string $root, string $prefix, string $written, string $joined, bool $external): ?SetError
-    {
+    private function examine(
+        string $root,
+        string $named,
+        string $prefix,
+        string $written,
+        string $joined,
+        bool $external
+    ): ?SetError {
         $segments = explode('/', $written);
         $last = count($segments) - 1;
         $directory = $root;
+        $shown = $named;
         $component = $prefix;
+        $fail = static fn(string $rule, string $message): SetError => new SetError($rule, $joined, "$joined: $message");
         foreach ($segments as $i => $segment) {
             $component .= ($i === 0 ? '' : '/') . $segment;
             if ($segment !== '..') {
                 $listed = $this->lists($directory, $segment);
                 if ($listed === null) {
-                    return new SetError('set.file', $joined, "$joined: " . $this->failure);
+                    return $fail('set.file', "$shown cannot be listed" . $this->failure);
                 }
                 if (!$listed) {
-                    return new SetError('set.file', $joined, "$joined: $segment is not a name that $directory lists");
+                    return $fail('set.file', "$shown lists no name " . Message::quote($segment));
                 }
             }
             $kind = $this->kind($component);
@@ -465,18 +595,19 @@ final class SetReader
                 $kind = $this->kind($component, true);
             }
             if ($kind === null) {
-                return new SetError('set.file', $joined, "$joined: " . $this->failure);
+                return $fail('set.file', "$component cannot be examined" . $this->failure);
             }
             if ($kind === 'link') {
-                return new SetError('set.symlink', $joined, "$joined: $component is a symbolic link");
+                return $fail('set.symlink', "$component is a symbolic link");
             }
             if ($i < $last && $kind !== 'dir') {
-                return new SetError('set.file', $joined, "$joined: $component is not a directory");
+                return $fail('set.file', "$component is not a directory");
             }
             if ($i === $last && $kind !== 'file') {
-                return new SetError('set.file', $joined, "$joined: $component is not a regular file");
+                return $fail('set.file', "$component is not a regular file");
             }
             $directory = $component;
+            $shown = $component;
         }
         return null;
     }

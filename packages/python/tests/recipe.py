@@ -1336,11 +1336,7 @@ def _dbspec_read_set(step: dict, database: str) -> None:
                 "errors",
             )
             for error, wanted in zip(errors, expect["errors"]):
-                if error.path not in error.message:
-                    raise AssertionError(
-                        f"the message {error.message!r} does not name {error.path!r}"
-                    )
-                _check_message_holds(error.message, wanted.get("message_holds"))
+                _check_set_message(_relative_message(error.message, root), wanted)
             return
         _expect_equal([(error.rule, error.path) for error in errors], [], "errors")
         for files, paths, name in (
@@ -1357,6 +1353,25 @@ def _dbspec_read_set(step: dict, database: str) -> None:
                     _expect_equal(file.data, handle.read(), f"the bytes of {path}")
     finally:
         shutil.rmtree(root)
+
+
+def _relative_message(message: str, root: str) -> str:
+    """A message of the set reader relative to the root of the tree (FCV-4): every occurrence of the root followed by
+    `/` removed and the root itself written as `.`."""
+    return message.replace(root + "/", "").replace(root, ".")
+
+
+def _check_set_message(message: str, wanted: dict) -> None:
+    """The message of a set reader error equals `message`, or is `message_starts`, `: ` and the error of the platform or
+    the JSON parser (DBS-18a)."""
+    if "message" in wanted:
+        _expect_equal(message, wanted["message"], "message")
+        return
+    start = wanted["message_starts"] + ": "
+    if not message.startswith(start) or len(message) == len(start):
+        raise AssertionError(
+            f"the message {message!r} is not {start!r} followed by the error below it"
+        )
 
 
 def _dbspec_render_statements(step: dict, recipe_dir: Path) -> None:
@@ -2238,6 +2253,8 @@ def _dsn_connect(step: dict, database: str) -> None:
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
+        if "message" in outcome and message != outcome["message"]:
+            raise AssertionError(f"message {message}, want {outcome['message']}")
         _check_message_holds(message, outcome.get("message_holds"))
         return
     if got is not None:

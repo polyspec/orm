@@ -189,42 +189,12 @@ impl Token<'_> {
     }
 }
 
-/// Appends `c` as the canonical quoting writes it inside `quote` delimiters: the delimiter and `\` after a backslash,
-/// `\a \b \f \n \r \t \v` as those escapes, any other code point below 0x20 and 0x7F as `\xNN`, and every other
-/// code point as is.
-fn quote_char(out: &mut String, c: char, quote: char) {
-    match c {
-        _ if c == quote || c == '\\' => {
-            out.push('\\');
-            out.push(c);
-        }
-        '\u{7}' => out.push_str("\\a"),
-        '\u{8}' => out.push_str("\\b"),
-        '\u{c}' => out.push_str("\\f"),
-        '\n' => out.push_str("\\n"),
-        '\r' => out.push_str("\\r"),
-        '\t' => out.push_str("\\t"),
-        '\u{b}' => out.push_str("\\v"),
-        _ if (c as u32) < 0x20 || c == '\u{7f}' => out.push_str(&format!("\\x{:02x}", c as u32)),
-        _ => out.push(c),
-    }
-}
-
-/// `text` in double quotes by the canonical quoting, as names are shown.
+/// `text` in double quotes by the quoting of messages (INT-187), as names are shown.
 pub(crate) fn go_quote(text: &str) -> String {
-    let mut out = String::with_capacity(text.len() + 2);
-    out.push('"');
-    for c in text.chars() {
-        quote_char(&mut out, c, '"');
-    }
-    out.push('"');
-    out
+    crate::message::quote(text)
 }
 
-/// `c` in single quotes by the canonical quoting, as a character that no token allows is shown.
+/// `c` in single quotes by the quoting of messages, as a character that no token allows is shown.
 pub(crate) fn go_quote_rune(c: char) -> String {
-    let mut out = String::from("'");
-    quote_char(&mut out, c, '\'');
-    out.push('\'');
-    out
+    crate::message::quote_with(c.encode_utf8(&mut [0; 4]), '\'')
 }

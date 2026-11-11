@@ -1,4 +1,5 @@
 /* The native connection factory and the value-function constructors of Polyspec\\Orm\\Orm. */
+#include "message_quote.h"
 #include "dbspec.h"
 #include "markdown_native.h"
 #include "context_closure.h"
@@ -6,27 +7,50 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "main/php_streams.h"
+#include <errno.h>
+#include <fcntl.h>
+#ifndef PHP_WIN32
+#include <unistd.h>
+#endif
 
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out);
 
 static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener, zend_string *server);
 static bool orm_decoded(zval *input, bool raw, zval *out);
-static bool orm_query_decode(const char *value, size_t length, zval *out);
 
 static bool orm_assert_sqlite_version(zend_string *version)
 {
-    zval args[3], older;
-    ZVAL_STR_COPY(&args[0], version);
-    ZVAL_STRING(&args[1], "3.46");
-    ZVAL_STRING(&args[2], "<");
-    bool compared = scall("version_compare", &older, 3, args);
-    for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
-    if (!compared) return false;
-
-    bool too_old = zend_is_true(&older);
-    zval_ptr_dtor(&older);
-    if (too_old) {
-        db_throw_orm("CAPABILITY_UNSUPPORTED", "SQLite %s is older than 3.46", ZSTR_VAL(version));
+    /* Three or four ASCII decimal components, each fitting u32 (DSL-150). */
+    const char *text = ZSTR_VAL(version);
+    size_t length = ZSTR_LEN(version);
+    uint64_t numbers[4] = {0};
+    size_t count = 0, digits = 0;
+    bool valid = true;
+    for (size_t i = 0; i <= length && valid; i++) {
+        if (i == length || text[i] == '.') {
+            valid = digits > 0 && count < 4;
+            if (valid) count++;
+            /* A separator after the fourth component starts a fifth. */
+            if (valid && i < length && count == 4) valid = false;
+            digits = 0;
+        } else if (text[i] >= '0' && text[i] <= '9') {
+            numbers[count] = numbers[count] * 10 + (uint64_t) (text[i] - '0');
+            valid = numbers[count] <= 0xFFFFFFFFu;
+            digits++;
+        } else {
+            valid = false;
+        }
+    }
+    if (!valid || count < 3) {
+        zend_string *quoted = orm_message_quote(text, length, '"');
+        db_throw_orm("INTERNAL",
+            "SQLite library version %s is invalid; expected three or four decimal components that each fit u32",
+            ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        return false;
+    }
+    if (numbers[0] < 3 || (numbers[0] == 3 && numbers[1] < 46)) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "SQLite %s is older than 3.46", text);
         return false;
     }
     return true;
@@ -140,29 +164,45 @@ ZEND_METHOD(Polyspec_Orm_Orm, transactionConflict)
     zval_ptr_dtor(&args[1]);
 }
 
+/* The parts of a DSN by parse_url. A DSN with an empty authority, scheme:///path, which parse_url refuses, has no host:
+ * its path, query and fragment are split as parse_url splits them, and no host is put in its place. A DSN that is not a
+ * URI is CONFIG. */
 static bool orm_parse_url(zend_string *dsn, zval *parts)
 {
-    zval arg;
-    const char *separator = strstr(ZSTR_VAL(dsn), ":///");
-    if (separator != NULL) {
-        size_t scheme_len = (size_t)(separator - ZSTR_VAL(dsn));
-        smart_str normalized = {0};
-        smart_str_appendl(&normalized, ZSTR_VAL(dsn), scheme_len);
-        smart_str_appends(&normalized, "://localhost/");
-        smart_str_appendl(&normalized, separator + 4, ZSTR_LEN(dsn) - scheme_len - 4);
-        smart_str_0(&normalized);
-        ZVAL_STR(&arg, normalized.s);
-    } else {
-        ZVAL_STR_COPY(&arg, dsn);
+    const char *text = ZSTR_VAL(dsn), *colon = memchr(text, ':', ZSTR_LEN(dsn));
+    size_t length = ZSTR_LEN(dsn);
+    if (colon != NULL && (size_t)(colon - text) + 4 <= length && memcmp(colon, ":///", 4) == 0) {
+        size_t start = (size_t)(colon - text) + 3, end = length;
+        const char *hash = memchr(text + start, '#', length - start);
+        if (hash != NULL) end = (size_t)(hash - text);
+        const char *question = memchr(text + start, '?', end - start);
+        size_t path_end = question != NULL ? (size_t)(question - text) : end;
+        array_init(parts);
+        add_assoc_stringl(parts, "scheme", text, (size_t)(colon - text));
+        add_assoc_stringl(parts, "path", text + start, path_end - start);
+        if (question != NULL) add_assoc_stringl(parts, "query", question + 1, end - path_end - 1);
+        if (hash != NULL) add_assoc_stringl(parts, "fragment", hash + 1, length - end - 1);
+        return true;
     }
+    zval arg;
+    ZVAL_STR_COPY(&arg, dsn);
     bool ok = scall("parse_url", parts, 1, &arg);
     zval_ptr_dtor(&arg);
     if (!ok || Z_TYPE_P(parts) != IS_ARRAY) {
         if (EG(exception) != NULL) zend_clear_exception();
-        db_throw_orm("CONFIG", "invalid DSN URI");
+        if (ok) zval_ptr_dtor(parts);
+        db_throw_orm("CONFIG", "dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://");
         return false;
     }
     return true;
+}
+
+/* A DSN with a fragment, which no connection reads, is CONFIG (CFG-20). */
+static bool orm_no_fragment(zend_string *dsn, const char *scheme)
+{
+    if (memchr(ZSTR_VAL(dsn), '#', ZSTR_LEN(dsn)) == NULL) return true;
+    db_throw_orm("CONFIG", "%s DSN has a fragment, which no connection reads", scheme);
+    return false;
 }
 
 static zval *orm_part(zval *parts, const char *name)
@@ -186,68 +226,10 @@ static bool orm_scheme(zend_string *dsn, zend_string **scheme)
     return true;
 }
 
-static bool orm_query(zval *parts, zval *query)
-{
-    zval *raw = orm_part(parts, "query");
-    if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) {
-        array_init(query);
-        return true;
-    }
-    zval args[2], result;
-    ZVAL_COPY(&args[0], raw);
-    array_init(&args[1]);
-    ZVAL_MAKE_REF(&args[1]);
-    bool ok = scall("parse_str", &result, 2, args);
-    zval_ptr_dtor(&args[0]);
-    if (ok) zval_ptr_dtor(&result);
-    ZVAL_UNREF(&args[1]);
-    ZVAL_COPY_VALUE(query, &args[1]);
-    return ok && Z_TYPE_P(query) == IS_ARRAY;
-}
-
 static zval *orm_query_value(zval *query, const char *key)
 {
     zval *v = zend_hash_str_find(Z_ARRVAL_P(query), key, strlen(key));
     return v != NULL && Z_TYPE_P(v) != IS_NULL ? v : NULL;
-}
-
-typedef struct {
-    const char *key;
-    size_t key_length;
-    const char *value;
-    size_t value_length;
-} orm_query_parameter;
-
-static bool orm_query_next(const char *query, size_t length, size_t *position, orm_query_parameter *parameter)
-{
-    while (*position < length) {
-        size_t start = *position, end = start;
-        while (end < length && query[end] != '&') end++;
-        *position = end < length ? end + 1 : length;
-        if (end == start) continue;
-        const char *equals = memchr(query + start, '=', end - start);
-        parameter->key = query + start;
-        parameter->key_length = equals == NULL ? end - start : (size_t)(equals - parameter->key);
-        parameter->value = equals == NULL ? query + end : equals + 1;
-        parameter->value_length = equals == NULL ? 0 : (size_t)(query + end - parameter->value);
-        return true;
-    }
-    return false;
-}
-
-typedef bool (*orm_query_visitor)(const orm_query_parameter *parameter, void *context);
-
-static bool orm_query_visit(zval *parts, orm_query_visitor visit, void *context)
-{
-    zval *raw = orm_part(parts, "query");
-    if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) return true;
-    const char *p = Z_STRVAL_P(raw);
-    size_t position = 0;
-    orm_query_parameter parameter;
-    while (orm_query_next(p, Z_STRLEN_P(raw), &position, &parameter)) {
-        if (!visit(&parameter, context)) return false;
-    }
-    return true;
 }
 
 static bool orm_decoded(zval *input, bool raw, zval *out)
@@ -259,71 +241,147 @@ static bool orm_decoded(zval *input, bool raw, zval *out)
     return ok && Z_TYPE_P(out) == IS_STRING;
 }
 
-static bool orm_query_decode(const char *value, size_t length, zval *out)
+/* A name or a value of a DSN query decoded as an HTML form is (CFG-20): `+` is a space and `%` with two hexadecimal digits
+ * that byte. NULL when a `%` has no two hexadecimal digits after it or the decoded bytes are not UTF-8. */
+static zend_string *orm_query_form_decode(const char *text, size_t length)
 {
-    zval encoded;
-    ZVAL_STRINGL(&encoded, value, length);
-    bool ok = orm_decoded(&encoded, false, out);
-    zval_ptr_dtor(&encoded);
-    return ok;
-}
-
-typedef struct {
-    const char *driver;
-    const char *const *allowed;
-    size_t count;
-} orm_query_allowed_context;
-
-static bool orm_query_allow(const orm_query_parameter *parameter, void *context)
-{
-    orm_query_allowed_context *allowed = context;
-    zval decoded;
-    if (!orm_query_decode(parameter->key, parameter->key_length, &decoded)) return false;
-    bool found = false;
-    for (size_t k = 0; k < allowed->count; k++) {
-        if (Z_STRLEN(decoded) == strlen(allowed->allowed[k])
-            && memcmp(Z_STRVAL(decoded), allowed->allowed[k], Z_STRLEN(decoded)) == 0) found = true;
-    }
-    if (!found) {
-        smart_str accepted = {0};
-        for (size_t k = 0; k < allowed->count; k++) {
-            if (k != 0) smart_str_appends(&accepted, ", ");
-            smart_str_appends(&accepted, allowed->allowed[k]);
+    zend_string *out = zend_string_alloc(length, 0);
+    size_t n = 0;
+    for (size_t i = 0; i < length; i++) {
+        char c = text[i];
+        if (c == '+') {
+            c = ' ';
+        } else if (c == '%') {
+            int high = i + 2 < length ? orm_hex_digit(text[i + 1]) : -1;
+            int low = high >= 0 ? orm_hex_digit(text[i + 2]) : -1;
+            if (low < 0) {
+                zend_string_efree(out);
+                return NULL;
+            }
+            c = (char) (high * 16 + low);
+            i += 2;
         }
-        smart_str_0(&accepted);
-        db_throw_orm("CONFIG", "%s DSN has the unknown parameter %s; it accepts %s",
-            allowed->driver, Z_STRVAL(decoded), ZSTR_VAL(accepted.s));
-        smart_str_free(&accepted);
-        zval_ptr_dtor(&decoded);
-        return false;
+        ZSTR_VAL(out)[n++] = c;
     }
-    zval_ptr_dtor(&decoded);
-    return true;
+    ZSTR_VAL(out)[n] = '\0';
+    ZSTR_LEN(out) = n;
+    const unsigned char *bytes = (const unsigned char *) ZSTR_VAL(out);
+    for (size_t i = 0; i < n;) {
+        size_t width = orm_message_utf8_width(bytes, n, i);
+        if (width == 0) {
+            zend_string_efree(out);
+            return NULL;
+        }
+        i += width;
+    }
+    return out;
 }
 
-static bool orm_query_allowed(zval *parts, const char *driver, const char *const *keys, size_t count)
-{
-    orm_query_allowed_context context = {driver, keys, count};
-    return orm_query_visit(parts, orm_query_allow, &context);
-}
-
-/* The _pragma values of a DSN as [name, value] pairs, and the form that names an invalid one. */
+/* The parameters that a scheme accepts (CFG-19, PRT-63), and the scheme that its messages name. */
 typedef struct {
-    zval *out;
-    const char *form;
-} orm_pragma_context;
+    const char *scheme;
+    const char *const *accepted;
+    size_t count;
+} orm_query_rule;
 
-static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *context)
+static const char orm_markdown_form[] = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>";
+
+/* Reads the query of a DSN by the one rule of CFG-20, before any connection opens: query gets each parameter but _pragma as
+ * name => decoded value, and pragmas the decoded _pragma values in written order. The query is split at `&` into pairs, and
+ * an empty pair has the name "", which no scheme accepts; an empty query has no pair. Each pair is split at its first `=`. For each pair in written order: a name that the
+ * scheme does not accept (by its written text when it is not percent-encoded UTF-8), a name that an earlier pair gave, a
+ * value that is not percent-encoded UTF-8, an empty value or a pair without `=`, and a socket or host that holds `;` or NUL,
+ * which the PDO DSN cannot hold. */
+static bool orm_query_read(zval *parts, const orm_query_rule *rule, zval *query, zval *pragmas)
 {
-    orm_pragma_context *pragmas = context;
-    zval *out = pragmas->out;
-    zval key;
-    if (!orm_query_decode(parameter->key, parameter->key_length, &key)) return false;
-    if (zend_string_equals_literal(Z_STR(key), "_pragma")) {
-        zval value;
-        if (!orm_query_decode(parameter->value, parameter->value_length, &value)) { zval_ptr_dtor(&key); return false; }
-        const char *text = Z_STRVAL(value);
-        size_t len = Z_STRLEN(value), open = 0;
+    array_init(query);
+    array_init(pragmas);
+    zval *raw = orm_part(parts, "query");
+    if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) return true;
+    const char *text = Z_STRVAL_P(raw);
+    size_t length = Z_STRLEN_P(raw), position = 0;
+    bool more = length > 0;
+    while (more) {
+        size_t start = position, end = start;
+        while (end < length && text[end] != '&') end++;
+        more = end < length;
+        position = end + 1;
+        const char *equals = memchr(text + start, '=', end - start);
+        size_t name_length = equals == NULL ? end - start : (size_t) (equals - (text + start));
+        zend_string *name = orm_query_form_decode(text + start, name_length);
+        bool accepted = false;
+        for (size_t k = 0; name != NULL && k < rule->count; k++) {
+            if (zend_string_equals_cstr(name, rule->accepted[k], strlen(rule->accepted[k]))) accepted = true;
+        }
+        if (!accepted) {
+            zend_string *quoted = name != NULL
+                ? orm_message_quote(ZSTR_VAL(name), ZSTR_LEN(name), '"')
+                : orm_message_quote(text + start, name_length, '"');
+            smart_str names = {0};
+            for (size_t k = 0; k < rule->count; k++) {
+                if (k != 0) smart_str_appends(&names, ", ");
+                smart_str_appends(&names, rule->accepted[k]);
+            }
+            smart_str_0(&names);
+            db_throw_orm("CONFIG", "%s DSN has the unknown parameter %s; it accepts %s",
+                rule->scheme, ZSTR_VAL(quoted), ZSTR_VAL(names.s));
+            smart_str_free(&names);
+            zend_string_release(quoted);
+            if (name != NULL) zend_string_release(name);
+            goto fail;
+        }
+        zend_string *quoted = orm_message_quote(ZSTR_VAL(name), ZSTR_LEN(name), '"');
+        bool pragma = zend_string_equals_literal(name, "_pragma");
+        if (!pragma && zend_hash_exists(Z_ARRVAL_P(query), name)) {
+            db_throw_orm("CONFIG", "%s DSN repeats the parameter %s", rule->scheme, ZSTR_VAL(quoted));
+            goto fail_name;
+        }
+        zend_string *value = equals != NULL ? orm_query_form_decode(equals + 1, (size_t) (text + end - (equals + 1)))
+                                            : ZSTR_EMPTY_ALLOC();
+        if (value == NULL) {
+            db_throw_orm("CONFIG", "%s DSN parameter %s is not percent-encoded UTF-8", rule->scheme, ZSTR_VAL(quoted));
+            goto fail_name;
+        }
+        if (ZSTR_LEN(value) == 0) {
+            zend_string_release(value);
+            db_throw_orm("CONFIG", "%s DSN parameter %s is empty", rule->scheme, ZSTR_VAL(quoted));
+            goto fail_name;
+        }
+        if ((zend_string_equals_literal(name, "socket") || zend_string_equals_literal(name, "host"))
+            && (memchr(ZSTR_VAL(value), ';', ZSTR_LEN(value)) != NULL || memchr(ZSTR_VAL(value), '\0', ZSTR_LEN(value)) != NULL)) {
+            zend_string_release(value);
+            db_throw_orm("CONFIG", "%s DSN parameter %s holds a character that a connection string cannot hold",
+                rule->scheme, ZSTR_VAL(quoted));
+            goto fail_name;
+        }
+        if (pragma) add_next_index_str(pragmas, value);
+        else add_assoc_str_ex(query, ZSTR_VAL(name), ZSTR_LEN(name), value);
+        zend_string_release(quoted);
+        zend_string_release(name);
+        continue;
+fail_name:
+        zend_string_release(quoted);
+        zend_string_release(name);
+        goto fail;
+    }
+    return true;
+fail:
+    zval_ptr_dtor(query);
+    zval_ptr_dtor(pragmas);
+    ZVAL_UNDEF(query);
+    ZVAL_UNDEF(pragmas);
+    return false;
+}
+
+/* The _pragma values of a DSN as [name, value] pairs: a name of `a` to `z` and `_`, and a value of ASCII letters, digits and
+ * `_`, a whole number from 0 to 2147483647 for busy_timeout (CFG-12), appended to out. form is the text before `_pragma` in the message of an
+ * invalid one. */
+static bool orm_sqlite_pragmas(zval *values, zval *out, const char *form)
+{
+    zval *entry;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(values), entry) {
+        const char *text = Z_STRVAL_P(entry);
+        size_t len = Z_STRLEN_P(entry), open = 0;
         while (open < len && ((text[open] >= 'a' && text[open] <= 'z') || text[open] == '_')) open++;
         bool valid = open > 0 && open + 2 < len && text[open] == '(' && text[len - 1] == ')';
         for (size_t j = open + 1; valid && j + 1 < len; j++) {
@@ -331,15 +389,18 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
                   || (text[j] >= '0' && text[j] <= '9') || text[j] == '_')) valid = false;
         }
         if (valid && open == sizeof("busy_timeout") - 1 && memcmp(text, "busy_timeout", open) == 0) {
+            /* A decimal whole number up to 2147483647, the largest wait the C int of SQLite holds, since SQLite reads a
+             * larger number as 0. */
+            uint64_t wait = 0;
             for (size_t j = open + 1; valid && j + 1 < len; j++) {
                 if (text[j] < '0' || text[j] > '9') valid = false;
+                else if ((wait = wait * 10 + (uint64_t) (text[j] - '0')) > 2147483647u) valid = false;
             }
         }
         if (!valid) {
-            zend_string *bad = zend_string_copy(Z_STR(value));
-            zval_ptr_dtor(&value); zval_ptr_dtor(&key);
-            db_throw_orm("CONFIG", "%s_pragma %s is invalid", pragmas->form, ZSTR_VAL(bad));
-            zend_string_release(bad);
+            zend_string *quoted = orm_message_quote(text, len, '"');
+            db_throw_orm("CONFIG", "%s_pragma %s is invalid", form, ZSTR_VAL(quoted));
+            zend_string_release(quoted);
             return false;
         }
         zval pair;
@@ -347,16 +408,81 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
         add_next_index_stringl(&pair, text, open);
         add_next_index_stringl(&pair, text + open + 1, len - open - 2);
         add_next_index_zval(out, &pair);
-        zval_ptr_dtor(&value);
-    }
-    zval_ptr_dtor(&key);
+    } ZEND_HASH_FOREACH_END();
     return true;
 }
 
-static bool orm_sqlite_pragmas(zval *parts, zval *out, const char *form)
+/* The timezone parameter accepts only UTC (+00:00 or UTC): every connection reads and writes datetime values in UTC. */
+static bool orm_dsn_timezone(zval *query)
 {
-    orm_pragma_context context = {out, form};
-    return orm_query_visit(parts, orm_sqlite_pragma, &context);
+    zval *timezone = orm_query_value(query, "timezone");
+    if (timezone == NULL || zend_string_equals_literal(Z_STR_P(timezone), "+00:00")
+        || zend_string_equals_literal(Z_STR_P(timezone), "UTC")) return true;
+    zend_string *quoted = orm_message_quote(Z_STRVAL_P(timezone), Z_STRLEN_P(timezone), '"');
+    db_throw_orm("CONFIG", "dsn timezone %s: every connection reads and writes datetime values in UTC", ZSTR_VAL(quoted));
+    zend_string_release(quoted);
+    return false;
+}
+
+/* The database name of a MySQL or PostgreSQL DSN, its path percent-decoded, appended to pdo; a name that holds `;` or NUL,
+ * which the PDO DSN cannot hold, is CONFIG (CFG-20). */
+/* A DSN path percent-decoded into out, `+` kept as itself (CFG-11, CFG-20): 1, or 0 with out left undefined when a % lacks
+ * two hexadecimal digits or the decoded bytes are not UTF-8, or -1 when rawurldecode failed with its exception. The path of
+ * every scheme is decoded by it. */
+static int orm_path_decoded(const char *path, size_t length, zval *out)
+{
+    ZVAL_UNDEF(out);
+    for (size_t i = 0; i < length; i++) {
+        if (path[i] == '%' && (i + 2 >= length || !isxdigit((unsigned char) path[i + 1]) || !isxdigit((unsigned char) path[i + 2]))) {
+            return 0;
+        }
+    }
+    zval raw;
+    ZVAL_STRINGL(&raw, path, length);
+    bool decoded = orm_decoded(&raw, true, out);
+    zval_ptr_dtor(&raw);
+    if (!decoded) return -1;
+    for (size_t i = 0; i < Z_STRLEN_P(out);) {
+        size_t width = orm_message_utf8_width((const unsigned char *) Z_STRVAL_P(out), Z_STRLEN_P(out), i);
+        if (width == 0) {
+            zval_ptr_dtor(out);
+            ZVAL_UNDEF(out);
+            return 0;
+        }
+        i += width;
+    }
+    return 1;
+}
+
+/* orm_path_decoded with its refusal: `<scheme> DSN <noun> "<path as written>" is not percent-encoded UTF-8` (CFG-11, CFG-20). */
+static bool orm_dsn_decoded_path(const char *scheme, const char *noun, const char *path, size_t length, zval *out)
+{
+    int decoded = orm_path_decoded(path, length, out);
+    if (decoded < 0) return false;
+    if (decoded == 0) {
+        zend_string *quoted = orm_message_quote(path, length, '"');
+        db_throw_orm("CONFIG", "%s DSN %s %s is not percent-encoded UTF-8", scheme, noun, ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        return false;
+    }
+    return true;
+}
+
+static bool orm_dsn_database(smart_str *pdo, const char *scheme, const char *path, size_t length)
+{
+    zval name;
+    if (!orm_dsn_decoded_path(scheme, "database", path, length, &name)) return false;
+    if (memchr(Z_STRVAL(name), ';', Z_STRLEN(name)) != NULL || memchr(Z_STRVAL(name), '\0', Z_STRLEN(name)) != NULL) {
+        zend_string *quoted = orm_message_quote(Z_STRVAL(name), Z_STRLEN(name), '"');
+        db_throw_orm("CONFIG", "%s DSN database %s holds a character that a connection string cannot hold", scheme, ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        zval_ptr_dtor(&name);
+        return false;
+    }
+    smart_str_appends(pdo, ";dbname=");
+    smart_str_append(pdo, Z_STR(name));
+    zval_ptr_dtor(&name);
+    return true;
 }
 
 static bool orm_parse_dsn(zend_string *dsn, zval *out)
@@ -375,26 +501,32 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
         zend_string_release(scheme);
         return false;
     }
-    zval parts, query;
+    zval parts, query, pragma_values;
     ZVAL_UNDEF(&parts);
     ZVAL_UNDEF(&query);
-    if (!orm_parse_url(dsn, &parts) || !orm_query(&parts, &query)) goto fail;
+    ZVAL_UNDEF(&pragma_values);
     static const char *const mysql_keys[] = {"timezone", "socket", "ssl-mode", "ssl-ca"};
     static const char *const pg_keys[] = {"timezone", "host", "sslmode"};
     static const char *const sqlite_keys[] = {"timezone", "_pragma", "_txlock"};
+    orm_query_rule rule = {driver, sqlite_keys, sizeof(sqlite_keys) / sizeof(sqlite_keys[0])};
     if (zend_string_equals_literal(scheme, "mysql")) {
-        if (!orm_query_allowed(&parts, driver, mysql_keys, sizeof(mysql_keys) / sizeof(mysql_keys[0]))) goto fail;
+        rule.accepted = mysql_keys;
+        rule.count = sizeof(mysql_keys) / sizeof(mysql_keys[0]);
     } else if (zend_string_equals_literal(scheme, "postgres")) {
-        if (!orm_query_allowed(&parts, driver, pg_keys, sizeof(pg_keys) / sizeof(pg_keys[0]))) goto fail;
-    } else if (!orm_query_allowed(&parts, driver, sqlite_keys, sizeof(sqlite_keys) / sizeof(sqlite_keys[0]))) goto fail;
-    zval *timezone = orm_query_value(&query, "timezone");
-    if (timezone != NULL && (Z_TYPE_P(timezone) != IS_STRING
-        || (strcmp(Z_STRVAL_P(timezone), "+00:00") != 0 && strcmp(Z_STRVAL_P(timezone), "UTC") != 0))) {
-        db_throw_orm("CONFIG", "dsn timezone %s: every connection reads and writes datetime values in UTC",
-            Z_TYPE_P(timezone) == IS_STRING ? Z_STRVAL_P(timezone) : "");
+        rule.accepted = pg_keys;
+        rule.count = sizeof(pg_keys) / sizeof(pg_keys[0]);
+    }
+    if (!orm_parse_url(dsn, &parts) || !orm_no_fragment(dsn, driver) || !orm_query_read(&parts, &rule, &query, &pragma_values)) goto fail;
+    /* The order of CFG-20: the URI, the fragment, the query, the host, the database name, then the values of the
+     * parameters (timezone, _pragma, ssl-mode and ssl-ca, sslmode). */
+    zval *path = orm_part(&parts, "path"), *host = orm_part(&parts, "host"), *port = orm_part(&parts, "port");
+    if (host != NULL && Z_TYPE_P(host) == IS_STRING && memchr(Z_STRVAL_P(host), '%', Z_STRLEN_P(host)) != NULL) {
+        /* parse_url leaves the host as written; a percent escape names no host (CFG-20). */
+        zend_string *quoted = orm_message_quote(Z_STRVAL_P(host), Z_STRLEN_P(host), '"');
+        db_throw_orm("CONFIG", "%s DSN host %s holds a percent escape, which no host name needs", driver, ZSTR_VAL(quoted));
+        zend_string_release(quoted);
         goto fail;
     }
-    zval *path = orm_part(&parts, "path"), *host = orm_part(&parts, "host"), *port = orm_part(&parts, "port");
     const char *path_s = path != NULL && Z_TYPE_P(path) == IS_STRING ? Z_STRVAL_P(path) : "";
     size_t path_n = path != NULL && Z_TYPE_P(path) == IS_STRING ? Z_STRLEN_P(path) : 0;
     zval *user = orm_part(&parts, "user"), *pass = orm_part(&parts, "pass");
@@ -411,9 +543,20 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
     zval ssl_ca;
     ZVAL_NULL(&ssl_ca);
     if (zend_string_equals_literal(scheme, "mysql")) {
-        while (path_n != 0 && *path_s == '/') { path_s++; path_n--; }
+        /* The database is the path after its first /, as written (CFG-10). */
+        if (path_n != 0 && *path_s == '/') { path_s++; path_n--; }
         zval *socket = orm_query_value(&query, "socket");
-        if (path_n == 0 || (socket == NULL && (host == NULL || Z_TYPE_P(host) != IS_STRING || Z_STRLEN_P(host) == 0))) {
+        /* The host step of CFG-10: a host and a database, and with socket the host localhost. */
+        if (host == NULL || Z_TYPE_P(host) != IS_STRING || Z_STRLEN_P(host) == 0) {
+            db_throw_orm("CONFIG", "mysql DSN must include host and database");
+            goto fail_values;
+        }
+        if (socket != NULL && !zend_string_equals_literal(Z_STR_P(host), "localhost")) {
+            db_throw_orm("CONFIG", "mysql DSN socket needs the host localhost, which names the local server");
+            goto fail_values;
+        }
+        /* The database step, after the host step. */
+        if (path_n == 0) {
             db_throw_orm("CONFIG", "mysql DSN must include host and database");
             goto fail_values;
         }
@@ -428,32 +571,27 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
                 smart_str_append_long(&pdo, Z_LVAL_P(port));
             }
         }
-        smart_str_appends(&pdo, ";dbname=");
-        smart_str_appendl(&pdo, path_s, path_n);
+        if (!orm_dsn_database(&pdo, "mysql", path_s, path_n) || !orm_dsn_timezone(&query)) goto fail_values;
         smart_str_appends(&pdo, ";charset=utf8mb4");
         zval *ca = orm_query_value(&query, "ssl-ca");
         zval *mode = orm_query_value(&query, "ssl-mode");
         if ((ca != NULL || mode != NULL)) {
-            if (mode == NULL || Z_TYPE_P(mode) != IS_STRING || strcmp(Z_STRVAL_P(mode), "VERIFY_IDENTITY") != 0) {
-                zval mode_arg, mode_json;
-                if (mode == NULL) ZVAL_NULL(&mode_arg); else ZVAL_COPY(&mode_arg, mode);
-                bool encoded = scall("json_encode", &mode_json, 1, &mode_arg);
-                zval_ptr_dtor(&mode_arg);
-                if (!encoded || Z_TYPE(mode_json) != IS_STRING) {
-                    if (encoded) zval_ptr_dtor(&mode_json);
-                    goto fail_values;
-                }
+            if (mode == NULL || !zend_string_equals_literal(Z_STR_P(mode), "VERIFY_IDENTITY")) {
+                /* An absent ssl-mode is the empty text (INT-187). */
+                zend_string *quoted = mode != NULL ? orm_message_quote(Z_STRVAL_P(mode), Z_STRLEN_P(mode), '"') : orm_message_quote("", 0, '"');
                 db_throw_orm("CONFIG", "mysql DSN ssl-mode %s is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca",
-                    Z_STRVAL(mode_json));
-                zval_ptr_dtor(&mode_json);
+                    ZSTR_VAL(quoted));
+                zend_string_release(quoted);
                 goto fail_values;
             }
-            if (ca == NULL || Z_TYPE_P(ca) != IS_STRING || Z_STRLEN_P(ca) == 0) {
+            if (ca == NULL) {
                 db_throw_orm("CONFIG", "mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file");
                 goto fail_values;
             }
             if (Z_STRVAL_P(ca)[0] != '/') {
-                db_throw_orm("CONFIG", "mysql DSN ssl-ca %s is not an absolute path", Z_STRVAL_P(ca));
+                zend_string *quoted = orm_message_quote(Z_STRVAL_P(ca), Z_STRLEN_P(ca), '"');
+                db_throw_orm("CONFIG", "mysql DSN ssl-ca %s is not an absolute path", ZSTR_VAL(quoted));
+                zend_string_release(quoted);
                 goto fail_values;
             }
             if (socket != NULL) {
@@ -481,14 +619,22 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
             ZVAL_COPY(&ssl_ca, ca);
         }
     } else if (zend_string_equals_literal(scheme, "postgres")) {
-        while (path_n != 0 && *path_s == '/') { path_s++; path_n--; }
+        /* The database is the path after its first /, as written (CFG-10). */
+        if (path_n != 0 && *path_s == '/') { path_s++; path_n--; }
         zval *dbhost = orm_query_value(&query, "host");
-        if (path_n == 0) {
-            db_throw_orm("CONFIG", "postgres DSN must include host and database");
+        /* The host step of CFG-10: the host in the URL or in the host parameter, and both only when they are equal. */
+        if (host != NULL && (Z_TYPE_P(host) != IS_STRING || Z_STRLEN_P(host) == 0)) host = NULL;
+        if (dbhost != NULL && host != NULL && !zend_string_equals(Z_STR_P(dbhost), Z_STR_P(host))) {
+            zend_string *url_host = orm_message_quote(Z_STRVAL_P(host), Z_STRLEN_P(host), '"');
+            zend_string *parameter = orm_message_quote(Z_STRVAL_P(dbhost), Z_STRLEN_P(dbhost), '"');
+            db_throw_orm("CONFIG", "postgres DSN names two hosts, %s in the URL and %s in the host parameter",
+                ZSTR_VAL(url_host), ZSTR_VAL(parameter));
+            zend_string_release(url_host);
+            zend_string_release(parameter);
             goto fail_values;
         }
         if (dbhost == NULL) dbhost = host;
-        if (dbhost == NULL || Z_TYPE_P(dbhost) != IS_STRING || Z_STRLEN_P(dbhost) == 0) {
+        if (dbhost == NULL || path_n == 0) {
             db_throw_orm("CONFIG", "postgres DSN must include host and database");
             goto fail_values;
         }
@@ -497,44 +643,39 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
         smart_str_appends(&pdo, ";port=");
         if (port != NULL && Z_TYPE_P(port) == IS_LONG) smart_str_append_long(&pdo, Z_LVAL_P(port));
         else smart_str_appends(&pdo, "5432");
-        smart_str_appends(&pdo, ";dbname=");
-        smart_str_appendl(&pdo, path_s, path_n);
+        if (!orm_dsn_database(&pdo, "postgres", path_s, path_n) || !orm_dsn_timezone(&query)) goto fail_values;
+        /* sslmode takes only disable, and a DSN without it connects without TLS too (CFG-19). */
         zval *sslmode = orm_query_value(&query, "sslmode");
-        if (sslmode != NULL && Z_TYPE_P(sslmode) == IS_STRING) {
-            smart_str_appends(&pdo, ";sslmode=");
-            smart_str_append(&pdo, Z_STR_P(sslmode));
+        if (sslmode != NULL && !zend_string_equals_literal(Z_STR_P(sslmode), "disable")) {
+            zend_string *quoted = orm_message_quote(Z_STRVAL_P(sslmode), Z_STRLEN_P(sslmode), '"');
+            db_throw_orm("CONFIG", "postgres DSN sslmode %s is not supported; it accepts disable", ZSTR_VAL(quoted));
+            zend_string_release(quoted);
+            goto fail_values;
         }
+        smart_str_appends(&pdo, ";sslmode=disable");
     } else {
-        if (strncmp(ZSTR_VAL(dsn), "sqlite:///", 10) != 0 || path_n == 0) {
+        /* The scheme in any case, then :/// and an absolute path. */
+        if (ZSTR_LEN(dsn) <= ZSTR_LEN(scheme) + 3 || ZSTR_VAL(dsn)[ZSTR_LEN(scheme) + 3] != '/' || path_n <= 1) {
             db_throw_orm("CONFIG", "sqlite DSN must include an absolute database path");
             goto fail_values;
         }
-        zval *txlock = orm_query_value(&query, "_txlock");
-        if (txlock != NULL) {
-            db_throw_orm("CONFIG", "sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE");
-            goto fail_values;
-        }
-        if (!orm_sqlite_pragmas(&parts, &pragmas, "sqlite DSN ")) goto fail_values;
-        zval path_value, decoded_path;
-        ZVAL_STRINGL(&path_value, path_s, path_n);
-        zval preg_args[2], preg_result;
-        ZVAL_STRING(&preg_args[0], "/%(?![0-9A-Fa-f]{2})/");
-        ZVAL_COPY(&preg_args[1], &path_value);
-        if (scall("preg_match", &preg_result, 2, preg_args) && Z_TYPE(preg_result) == IS_LONG && Z_LVAL(preg_result) == 1) {
-            zval_ptr_dtor(&preg_result); zval_ptr_dtor(&preg_args[0]); zval_ptr_dtor(&preg_args[1]); zval_ptr_dtor(&path_value);
-            db_throw_orm("CONFIG", "sqlite DSN path has a % without two hexadecimal digits");
-            goto fail_values;
-        }
-        if (Z_TYPE(preg_result) != IS_UNDEF) zval_ptr_dtor(&preg_result);
-        zval_ptr_dtor(&preg_args[0]); zval_ptr_dtor(&preg_args[1]);
-        if (!orm_decoded(&path_value, true, &decoded_path)) { zval_ptr_dtor(&path_value); goto fail_values; }
-        zval_ptr_dtor(&path_value);
+        zval decoded_path;
+        if (!orm_dsn_decoded_path("sqlite", "path", path_s, path_n, &decoded_path)) goto fail_values;
+        /* An opener that drops what follows a NUL opens a different file. */
         if (memchr(Z_STRVAL(decoded_path), 0, Z_STRLEN(decoded_path)) != NULL) {
-            zval_ptr_dtor(&decoded_path); db_throw_orm("CONFIG", "sqlite DSN path must not contain a NUL byte"); goto fail_values;
+            zend_string *quoted = orm_message_quote(path_s, path_n, '"');
+            db_throw_orm("CONFIG", "sqlite DSN path %s holds a NUL byte, which a file name cannot hold", ZSTR_VAL(quoted));
+            zend_string_release(quoted);
+            zval_ptr_dtor(&decoded_path);
+            goto fail_values;
         }
-        str decoded_text = {Z_STRVAL(decoded_path), Z_STRLEN(decoded_path)};
-        if (utf8_valid_prefix(decoded_text) != decoded_text.n) {
-            zval_ptr_dtor(&decoded_path); db_throw_orm("CONFIG", "sqlite DSN path must be UTF-8 after percent-decoding"); goto fail_values;
+        if (!orm_dsn_timezone(&query)) { zval_ptr_dtor(&decoded_path); goto fail_values; }
+        /* The values in the CFG-19 order (CFG-20): _pragma before _txlock. */
+        if (!orm_sqlite_pragmas(&pragma_values, &pragmas, "sqlite DSN ")) { zval_ptr_dtor(&decoded_path); goto fail_values; }
+        if (orm_query_value(&query, "_txlock") != NULL) {
+            db_throw_orm("CONFIG", "sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE");
+            zval_ptr_dtor(&decoded_path);
+            goto fail_values;
         }
         smart_str_appends(&pdo, "sqlite:");
         smart_str_append(&pdo, Z_STR(decoded_path));
@@ -554,6 +695,7 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
     add_next_index_zval(out, &ssl_ca);
     zend_string_release(scheme);
     zval_ptr_dtor(&query);
+    zval_ptr_dtor(&pragma_values);
     zval_ptr_dtor(&parts);
     return true;
 fail_values:
@@ -564,6 +706,7 @@ fail_values:
     zval_ptr_dtor(&pass_dec);
 fail:
     if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query);
+    if (Z_TYPE(pragma_values) != IS_UNDEF) zval_ptr_dtor(&pragma_values);
     if (Z_TYPE(parts) != IS_UNDEF) zval_ptr_dtor(&parts);
     zend_string_release(scheme);
     return false;
@@ -578,131 +721,98 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseDsn)
     if (!orm_parse_dsn(dsn, return_value)) ZVAL_UNDEF(return_value);
 }
 
-typedef struct {
-    zend_string **token;
-    size_t *found;
-} orm_markdown_query_context;
-
-/* A query parameter of a markdown DSN: token, and timezone and _pragma, the parameters of every scheme and of a SQLite DSN,
- * which are checked by orm_markdown_settings. Any other is refused by its name before any value is read (PRT-63). */
-static bool orm_markdown_query_parameter(const orm_query_parameter *parameter, void *context)
-{
-    orm_markdown_query_context *markdown = context;
-    zval key;
-    if (!orm_query_decode(parameter->key, parameter->key_length, &key)) return false;
-    if (zend_string_equals_literal(Z_STR(key), "timezone") || zend_string_equals_literal(Z_STR(key), "_pragma")) {
-        zval_ptr_dtor(&key);
-        return true;
-    }
-    if (!zend_string_equals_literal(Z_STR(key), "token")) {
-        zend_string *key_copy = zend_string_copy(Z_STR(key));
-        zval_ptr_dtor(&key);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept %s", ZSTR_VAL(key_copy));
-        zend_string_release(key_copy);
-        return false;
-    }
-    zval_ptr_dtor(&key);
-    zval value;
-    if (!orm_query_decode(parameter->value, parameter->value_length, &value)) return false;
-    (*markdown->found)++;
-    if (*markdown->token != NULL) zend_string_release(*markdown->token);
-    *markdown->token = zend_string_copy(Z_STR(value));
-    zval_ptr_dtor(&value);
-    return true;
-}
-
+/* Reads markdown://127.0.0.1:<port>/<corpus>?token=<token> in the order of PRT-63: the URI, the fragment, the query
+ * (CFG-20, with token, timezone and _pragma), a missing token, a user, the host, the port, the corpus path, then the
+ * timezone and the _pragma values. */
 ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
 {
     zend_string *dsn;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(dsn)
     ZEND_PARSE_PARAMETERS_END();
-    zval parts;
+    zval parts, query, pragma_values, pragmas, corpus;
     ZVAL_UNDEF(&parts);
+    ZVAL_UNDEF(&query);
+    ZVAL_UNDEF(&pragma_values);
+    ZVAL_UNDEF(&pragmas);
+    ZVAL_UNDEF(&corpus);
     if (!orm_parse_url(dsn, &parts)) RETURN_THROWS();
     zval *scheme = orm_part(&parts, "scheme"), *host = orm_part(&parts, "host"), *port = orm_part(&parts, "port");
     zval *path = orm_part(&parts, "path"), *user = orm_part(&parts, "user"), *pass = orm_part(&parts, "pass");
+    static const char *const markdown_keys[] = {"token", "timezone", "_pragma"};
+    orm_query_rule rule = {"markdown", markdown_keys, sizeof(markdown_keys) / sizeof(markdown_keys[0])};
     if (scheme == NULL || Z_TYPE_P(scheme) != IS_STRING || strcasecmp(Z_STRVAL_P(scheme), "markdown") != 0) {
-        zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; give the port that flowmark serve printed and the corpus name");
-        RETURN_THROWS();
+        db_throw_orm("CONFIG", "%s; give the port that flowmark serve printed and the corpus name", orm_markdown_form);
+        goto fail;
+    }
+    if (!orm_no_fragment(dsn, "markdown") || !orm_query_read(&parts, &rule, &query, &pragma_values)) goto fail;
+    zval *token = orm_query_value(&query, "token");
+    if (token == NULL) {
+        db_throw_orm("CONFIG", "markdown DSN is missing the parameter \"token\"");
+        goto fail;
     }
     if (user != NULL || pass != NULL) {
-        zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it takes no user");
-        RETURN_THROWS();
+        db_throw_orm("CONFIG", "%s; it takes no user", orm_markdown_form);
+        goto fail;
     }
-    if (host == NULL || Z_TYPE_P(host) != IS_STRING || strcmp(Z_STRVAL_P(host), "127.0.0.1") != 0) {
-        zend_string *h = host != NULL && Z_TYPE_P(host) == IS_STRING ? zend_string_copy(Z_STR_P(host)) : ZSTR_EMPTY_ALLOC();
-        zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; host \"%s\": a flowmark server listens on 127.0.0.1 only", ZSTR_VAL(h));
-        zend_string_release(h);
-        RETURN_THROWS();
+    const char *host_text = host != NULL && Z_TYPE_P(host) == IS_STRING ? Z_STRVAL_P(host) : "";
+    size_t host_length = host != NULL && Z_TYPE_P(host) == IS_STRING ? Z_STRLEN_P(host) : 0;
+    if (memchr(host_text, '%', host_length) != NULL) {
+        zend_string *quoted = orm_message_quote(host_text, host_length, '"');
+        db_throw_orm("CONFIG", "markdown DSN host %s holds a percent escape, which no host name needs", ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        goto fail;
+    }
+    if (host_length != sizeof("127.0.0.1") - 1 || memcmp(host_text, "127.0.0.1", host_length) != 0) {
+        zend_string *quoted = orm_message_quote(host_text, host_length, '"');
+        db_throw_orm("CONFIG", "%s; host %s: a flowmark server listens on 127.0.0.1 only", orm_markdown_form, ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        goto fail;
     }
     if (port == NULL || Z_TYPE_P(port) != IS_LONG || Z_LVAL_P(port) < 1 || Z_LVAL_P(port) > 65535) {
-        zend_string *p = port == NULL ? zend_string_init("0", 1, 0) : zval_get_string(port);
-        zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; port \"%s\" is not 1 to 65535: give the port that flowmark serve printed", ZSTR_VAL(p));
-        zend_string_release(p);
-        RETURN_THROWS();
+        zend_string *written = port == NULL ? ZSTR_EMPTY_ALLOC() : zval_get_string(port);
+        zend_string *quoted = orm_message_quote(ZSTR_VAL(written), ZSTR_LEN(written), '"');
+        zend_string_release(written);
+        db_throw_orm("CONFIG", "%s; port %s is not 1 to 65535: give the port that flowmark serve printed", orm_markdown_form,
+            ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        goto fail;
     }
-    if (path == NULL || Z_TYPE_P(path) != IS_STRING || Z_STRLEN_P(path) < 2 || Z_STRVAL_P(path)[0] != '/') {
-        zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path is not one corpus name: give the corpus root's directory name");
-        RETURN_THROWS();
+    const char *path_text = path != NULL && Z_TYPE_P(path) == IS_STRING ? Z_STRVAL_P(path) : "";
+    size_t path_length = path != NULL && Z_TYPE_P(path) == IS_STRING ? Z_STRLEN_P(path) : 0;
+    /* The path is decoded as every DSN path is (CFG-11); one that does not decode is no corpus name. */
+    if (path_length >= 2 && path_text[0] == '/') {
+        if (orm_path_decoded(path_text + 1, path_length - 1, &corpus) < 0) goto fail;
     }
-    zval raw_corpus, corpus;
-    ZVAL_STRINGL(&raw_corpus, Z_STRVAL_P(path) + 1, Z_STRLEN_P(path) - 1);
-    if (!orm_decoded(&raw_corpus, true, &corpus)) { zval_ptr_dtor(&raw_corpus); zval_ptr_dtor(&parts); RETURN_THROWS(); }
-    zval_ptr_dtor(&raw_corpus);
-    if (Z_STRLEN(corpus) == 0 || memchr(Z_STRVAL(corpus), '/', Z_STRLEN(corpus)) != NULL) {
-        zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path is not one corpus name: give the corpus root's directory name");
-        RETURN_THROWS();
+    if (Z_TYPE(corpus) == IS_UNDEF || Z_STRLEN(corpus) == 0 || zend_string_equals_literal(Z_STR(corpus), ".")
+        || zend_string_equals_literal(Z_STR(corpus), "..") || memchr(Z_STRVAL(corpus), '/', Z_STRLEN(corpus)) != NULL
+        || memchr(Z_STRVAL(corpus), '\0', Z_STRLEN(corpus)) != NULL) {
+        zend_string *quoted = orm_message_quote(path_text, path_length, '"');
+        db_throw_orm("CONFIG", "%s; the path %s is not one corpus name: give the corpus root's directory name", orm_markdown_form,
+            ZSTR_VAL(quoted));
+        zend_string_release(quoted);
+        goto fail;
     }
-    zend_string *token = NULL;
-    size_t found = 0;
-    orm_markdown_query_context query_context = {&token, &found};
-    if (!orm_query_visit(&parts, orm_markdown_query_parameter, &query_context)) {
-        if (token != NULL) zend_string_release(token);
-        zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
-    }
-    if (found != 1 || token == NULL || ZSTR_LEN(token) == 0) {
-        if (token != NULL) zend_string_release(token);
-        zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
-        db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; give one token, the token of .flowmark/server.json of the corpus");
-        RETURN_THROWS();
-    }
-    /* timezone is the rule of every scheme (a corpus keeps datetime in UTC), and _pragma a setting of each connection, as on a
-     * SQLite DSN. */
-    zval query, pragmas;
-    ZVAL_UNDEF(&query);
+    /* timezone is the rule of every scheme (a corpus keeps datetime in UTC), and _pragma a setting of each connection as
+     * on a SQLite DSN. */
+    if (!orm_dsn_timezone(&query)) goto fail;
     array_init(&pragmas);
-    if (!orm_query(&parts, &query)) {
-        zend_string_release(token); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
-    }
-    zval *timezone = orm_query_value(&query, "timezone");
-    if (timezone != NULL && (Z_TYPE_P(timezone) != IS_STRING
-        || (strcmp(Z_STRVAL_P(timezone), "+00:00") != 0 && strcmp(Z_STRVAL_P(timezone), "UTC") != 0))) {
-        db_throw_orm("CONFIG", "dsn timezone %s: every connection reads and writes datetime values in UTC",
-            Z_TYPE_P(timezone) == IS_STRING ? Z_STRVAL_P(timezone) : "");
-        zend_string_release(token); zval_ptr_dtor(&query); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&query);
-    if (!orm_sqlite_pragmas(&parts, &pragmas, "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; ")) {
-        zend_string_release(token); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
-        RETURN_THROWS();
-    }
+    if (!orm_sqlite_pragmas(&pragma_values, &pragmas, "markdown DSN ")) goto fail;
     smart_str address = {0};
     smart_str_appends(&address, "127.0.0.1:");
     smart_str_append_long(&address, Z_LVAL_P(port));
     smart_str_0(&address);
     array_init(return_value);
     add_next_index_str(return_value, address.s);
-    add_next_index_str(return_value, Z_STR(corpus));
-    add_next_index_str(return_value, token);
+    add_next_index_str(return_value, zend_string_copy(Z_STR(corpus)));
+    add_next_index_str(return_value, zend_string_copy(Z_STR_P(token)));
     add_next_index_zval(return_value, &pragmas);
+    ZVAL_UNDEF(&pragmas);
+fail:
+    if (Z_TYPE(pragmas) != IS_UNDEF) zval_ptr_dtor(&pragmas);
+    if (Z_TYPE(corpus) != IS_UNDEF) zval_ptr_dtor(&corpus);
+    if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query);
+    if (Z_TYPE(pragma_values) != IS_UNDEF) zval_ptr_dtor(&pragma_values);
     zval_ptr_dtor(&parts);
 }
 
@@ -714,20 +824,26 @@ ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
     ZEND_PARSE_PARAMETERS_END();
     array_init(return_value);
     if (ssl_ca == NULL) return;
-    zval arg, is_file, readable;
-    ZVAL_UNDEF(&is_file);
-    ZVAL_UNDEF(&readable);
-    ZVAL_STR_COPY(&arg, ssl_ca);
-    bool ok_file = scall("is_file", &is_file, 1, &arg);
-    bool is_regular = ok_file && zend_is_true(&is_file);
-    if (Z_TYPE(is_file) != IS_UNDEF) zval_ptr_dtor(&is_file);
-    bool ok_read = scall("is_readable", &readable, 1, &arg);
-    bool can_read = ok_read && zend_is_true(&readable);
-    if (Z_TYPE(readable) != IS_UNDEF) zval_ptr_dtor(&readable);
-    zval_ptr_dtor(&arg);
-    if (!is_regular || !can_read) {
+    /* The CA file is opened and read, so that a refusal appends the error that the platform returned (CFG-18, INT-187); a
+     * file that reads is readable. Without blocking, so that a FIFO does not wait for a writer. */
+    int failed = 0;
+    int fd = open(ZSTR_VAL(ssl_ca), O_RDONLY
+#ifdef O_NONBLOCK
+        | O_NONBLOCK
+#endif
+    );
+    if (fd < 0) {
+        failed = errno;
+    } else {
+        char byte;
+        if (read(fd, &byte, 1) < 0) failed = errno;
+        close(fd);
+    }
+    if (failed != 0) {
+        zend_string *quoted = orm_message_quote(ZSTR_VAL(ssl_ca), ZSTR_LEN(ssl_ca), '"');
         zval_ptr_dtor(return_value);
-        db_throw_orm("CONFIG", "mysql DSN ssl-ca %s is not a readable file", ZSTR_VAL(ssl_ca));
+        db_throw_orm("CONFIG", "mysql DSN ssl-ca %s is not a readable file: %s", ZSTR_VAL(quoted), strerror(failed));
+        zend_string_release(quoted);
         ZVAL_UNDEF(return_value);
         return;
     }
@@ -1537,18 +1653,7 @@ void markdown_session_close(zval *self)
 
 static zend_string *markdown_quote(zend_string *value)
 {
-    zval arg, result;
-    ZVAL_STR_COPY(&arg, value);
-    if (!scall("json_encode", &result, 1, &arg)) {
-        zval_ptr_dtor(&arg);
-        return zend_string_init("", 0, 0);
-    }
-    zval_ptr_dtor(&arg);
-    if (Z_TYPE(result) != IS_STRING) {
-        zval_ptr_dtor(&result);
-        return zend_string_init("", 0, 0);
-    }
-    return Z_STR(result);
+    return orm_message_quote(ZSTR_VAL(value), ZSTR_LEN(value), '"');
 }
 
 /* The flowmark server answered a line that is no JSON object: the session closes and an INTERNAL error that quotes

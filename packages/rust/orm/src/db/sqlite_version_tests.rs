@@ -34,8 +34,11 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
     ] {
         let error = check_sqlite_version(version).expect_err(version);
         assert_eq!(error.code(), codes::INTERNAL, "{version:?}: {error}");
-        assert!(error.to_string().contains(&format!("{version:?}")), "{version:?}: {error}");
     }
+    assert_eq!(
+        check_sqlite_version("3.46.0\n").unwrap_err().to_string(),
+        r#"INTERNAL: SQLite library version "3.46.0\n" is invalid; expected three or four decimal components that each fit u32"#
+    );
 }
 
 // Requirements: DSL-150.

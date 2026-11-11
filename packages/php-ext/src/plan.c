@@ -83,7 +83,7 @@ static bool names_error(const str *names, size_t count, str *message)
 {
     for (size_t i = 0; i < count; i++) {
         if (reserved_or_long(names[i])) {
-            *message = fmt("name \"%S\" is reserved or longer than 63 bytes", names[i]);
+            *message = fmt("name %S is reserved or longer than 63 bytes", dbs_quote(names[i]));
             return true;
         }
     }

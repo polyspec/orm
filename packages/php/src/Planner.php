@@ -272,7 +272,7 @@ final class Planner
                 if ($lock !== '') {
                     $suffix = $this->d->rowLock($lock) ?? throw self::err(
                         Code::CAPABILITY_UNSUPPORTED,
-                        "{$this->d->name} row lock \"$lock\" is not supported"
+                        "{$this->d->name} row lock " . Message::quote($lock) . " is not supported"
                     );
                     $sql .= $suffix;
                 }

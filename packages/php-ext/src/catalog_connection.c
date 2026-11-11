@@ -3,6 +3,7 @@
  * SQL, the same sessions and the same error codes. Connection setup is the PHP library's Orm::parseDsn and Orm::connect, which
  * build the PDO handle of the Db that the extension implements (db.c); the catalog operations are here.
  */
+#include "message_quote.h"
 #include "dbspec.h"
 #include "orm_exception_object.h"
 #include "Zend/zend_hrtime.h"
@@ -1310,7 +1311,9 @@ static bool cat_kind(const char *dialect, const char *native, const char **kind)
     if (strcmp(dialect, "postgres") == 0 && strcmp(native, "f") == 0) { *kind = "foreign"; return true; }
     if (strcmp(dialect, "sqlite") == 0 && strcmp(native, "virtual") == 0) { *kind = "virtual"; return true; }
     if (strcmp(dialect, "sqlite") == 0 && strcmp(native, "shadow") == 0) { *kind = "shadow"; return true; }
-    db_throw_orm("TABLE_KIND_UNSUPPORTED", "relation kind %s of %s", native, dialect);
+    zend_string *quoted = orm_message_quote(native, strlen(native), '"');
+    db_throw_orm("TABLE_KIND_UNSUPPORTED", "relation kind %s of %s", ZSTR_VAL(quoted), dialect);
+    zend_string_release(quoted);
     return false;
 }
 
@@ -1515,7 +1518,9 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
         }
         for (size_t k = 0; k < i; k++) {
             if (zend_string_equals(cols[k].name, cname)) {
-                db_throw_orm("TABLE_METADATA_INVALID", "duplicate column \"%s\"", ZSTR_VAL(cname));
+                zend_string *quoted = orm_message_quote(ZSTR_VAL(cname), ZSTR_LEN(cname), '"');
+                db_throw_orm("TABLE_METADATA_INVALID", "duplicate column %s", ZSTR_VAL(quoted));
+                zend_string_release(quoted);
                 goto out_cols;
             }
         }
@@ -4616,7 +4621,9 @@ static bool cat_changes(zval *metadata, zval *values, const char *code, zval *ou
         }
         if (zend_symtable_exists(Z_ARRVAL(map), Z_STR_P(name))) {
             zval_ptr_dtor(&map);
-            db_throw_orm(code, "duplicate column \"%s\"", ZSTR_VAL(Z_STR_P(name)));
+            zend_string *quoted = orm_message_quote(Z_STRVAL_P(name), Z_STRLEN_P(name), '"');
+            db_throw_orm(code, "duplicate column %s", ZSTR_VAL(quoted));
+            zend_string_release(quoted);
             return false;
         }
         Z_TRY_ADDREF_P(value);

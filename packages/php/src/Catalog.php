@@ -2075,7 +2075,10 @@ final class Catalog
             }
             foreach ($columns as $existing) {
                 if ($existing->name === $column->name) {
-                    throw new OrmException(Code::TABLE_METADATA_INVALID, "duplicate column \"$column->name\"");
+                    throw new OrmException(
+                        Code::TABLE_METADATA_INVALID,
+                        'duplicate column ' . Message::quote($column->name),
+                    );
                 }
             }
             $ordinal = self::intValue($row[4]);
@@ -2235,7 +2238,10 @@ final class Catalog
             $dialect === 'postgres' && $native === 'f' => 'foreign',
             $dialect === 'sqlite' && $native === 'virtual' => 'virtual',
             $dialect === 'sqlite' && $native === 'shadow' => 'shadow',
-            default => throw new OrmException(Code::TABLE_KIND_UNSUPPORTED, "relation kind $native of $dialect"),
+            default => throw new OrmException(
+                Code::TABLE_KIND_UNSUPPORTED,
+                'relation kind ' . Message::quote($native) . " of $dialect",
+            ),
         };
     }
 
@@ -2248,7 +2254,7 @@ final class Catalog
         if ($row[6] !== null && !is_string($row[6])) {
             throw new OrmException(
                 Code::TABLE_METADATA_INVALID,
-                "default expression of column \"$name\" is not text"
+                "default expression of column " . Message::quote($name) . " is not text"
             );
         }
         return new CatalogColumn(
@@ -2274,7 +2280,7 @@ final class Catalog
         } catch (\RuntimeException $e) {
             throw new OrmException(
                 Code::TABLE_METADATA_INVALID,
-                "column \"$column->name\": {$e->getMessage()}",
+                "column " . Message::quote($column->name) . ": {$e->getMessage()}",
                 $e
             );
         }
@@ -2973,7 +2979,7 @@ final class Catalog
         $named = [];
         foreach ($normalized as [$name]) {
             if (isset($named[$name])) {
-                throw new OrmException($code, "duplicate column \"$name\"");
+                throw new OrmException($code, 'duplicate column ' . Message::quote($name));
             }
             $named[$name] = true;
         }
@@ -2981,17 +2987,17 @@ final class Catalog
         foreach ($normalized as [$name, $value]) {
             $index = self::indexOf($metadata, $name);
             if ($index < 0) {
-                throw new OrmException($code, "unknown column \"$name\"");
+                throw new OrmException($code, "unknown column " . Message::quote($name));
             }
             $column = $metadata->columns[$index];
             if ($column->generated) {
-                throw new OrmException($code, "generated column \"$name\" is not writable");
+                throw new OrmException($code, "generated column " . Message::quote($name) . " is not writable");
             }
             if ($value === null && !$column->nullable) {
-                throw new OrmException($code, "NULL in non-null column \"$name\"");
+                throw new OrmException($code, "NULL in non-null column " . Message::quote($name));
             }
             if (is_string($value) && self::exceedsDeclaredCapacity($column, $value)) {
-                throw new OrmException($code, "value exceeds the declared capacity of column \"$name\"");
+                throw new OrmException($code, "value exceeds the declared capacity of column " . Message::quote($name));
             }
             $changes[] = [$index, $value];
         }

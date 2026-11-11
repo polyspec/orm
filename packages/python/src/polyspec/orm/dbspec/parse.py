@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 from polyspec.orm.dbspec.emit import CANONICAL, emit_document, type_text
 from polyspec.orm.dbspec.names import generated_names
 from polyspec.orm.meet import meet_kind
+from polyspec.orm.message import quote as quote_message
 from polyspec.orm.dbspec.model import (
     DbspecAnalysis,
     DbspecCheck,
@@ -171,33 +172,8 @@ def describe(tok: Tk) -> str:
 
 
 def message_quote(text: str, delim: str) -> str:
-    """A text quoted in a diagnostic message (table-free): delim, then each code point, delim and backslash escaped with a
-    backslash, \\a \\b \\f \\n \\r \\t \\v as those escapes, any other code point below 0x20 and 0x7F as \\xNN,
-    every other code point as is; then delim."""
-    out = [delim]
-    for c in text:
-        code = ord(c)
-        if c == delim or c == "\\":
-            out.append("\\" + c)
-        elif c in _MESSAGE_ESCAPES:
-            out.append(_MESSAGE_ESCAPES[c])
-        elif code < 0x20 or code == 0x7F:
-            out.append(f"\\x{code:02x}")
-        else:
-            out.append(c)
-    out.append(delim)
-    return "".join(out)
-
-
-_MESSAGE_ESCAPES = {
-    "\a": "\\a",
-    "\b": "\\b",
-    "\f": "\\f",
-    "\n": "\\n",
-    "\r": "\\r",
-    "\t": "\\t",
-    "\v": "\\v",
-}
+    """A text quoted in a diagnostic message by the quoting of every message (INT-187)."""
+    return quote_message(text, delim)
 
 
 def goq(value: str) -> str:

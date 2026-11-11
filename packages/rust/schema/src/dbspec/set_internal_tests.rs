@@ -83,3 +83,18 @@ fn schema_values() {
         assert!(!schema_is_one(raw), "{raw}");
     }
 }
+
+// A text far deeper than the recursion limit of serde_json is judged without recursion: valid, it nests too deep; broken,
+// it is not JSON.
+#[test]
+fn deep_text_is_judged_without_recursion() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let path = Path::new("dbspec-set.json");
+    let depth = 100_000;
+    let valid = format!("{{\"x\": {}{}}}", "[".repeat(depth), "]".repeat(depth));
+    let broken = format!("{{\"x\": {}{}}}", "[".repeat(depth), "]".repeat(depth - 1));
+    for (text, message) in [(valid, "dbspec-set.json: the set file nests deeper than 64 levels"), (broken, "dbspec-set.json: the set file is not JSON: ")] {
+        let got = parse(text.as_bytes(), path).err().map(|e| e.message).unwrap_or_default();
+        assert!(got.starts_with(message), "{got}");
+    }
+}

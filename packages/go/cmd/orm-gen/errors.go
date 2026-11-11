@@ -15,6 +15,8 @@ import (
 	"go/format"
 	"os"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 type errCode struct{ Code, Origin, Comment string }
@@ -128,7 +130,7 @@ func errorsCmd(args []string) {
 			fmt.Fprintf(&sb, "# %s\n%s = \"%s\"\n", note, c.Code, c.Code)
 		}
 	default:
-		fail(fmt.Errorf("unknown lang %q", *lang))
+		fail(message.Errorf("unknown lang %q", *lang))
 	}
 	body := []byte(sb.String())
 	if *lang == "php-extension" {
@@ -176,11 +178,11 @@ const (
 func replaceBlock(stub, block string) ([]byte, error) {
 	begin, end := strings.Count(stub, phpExtensionBegin+"\n"), strings.Count(stub, phpExtensionEnd+"\n")
 	if begin != 1 || end != 1 {
-		return nil, fmt.Errorf("the stub holds the line %q %d times and the line %q %d times, not once each", phpExtensionBegin, begin, phpExtensionEnd, end)
+		return nil, message.Errorf("the stub holds the line %q %d times and the line %q %d times, not once each", phpExtensionBegin, begin, phpExtensionEnd, end)
 	}
 	from, to := strings.Index(stub, phpExtensionBegin+"\n"), strings.Index(stub, phpExtensionEnd+"\n")+len(phpExtensionEnd)+1
 	if to < from {
-		return nil, fmt.Errorf("the line %q comes before the line %q", phpExtensionEnd, phpExtensionBegin)
+		return nil, message.Errorf("the line %q comes before the line %q", phpExtensionEnd, phpExtensionBegin)
 	}
 	return []byte(stub[:from] + block + stub[to:]), nil
 }

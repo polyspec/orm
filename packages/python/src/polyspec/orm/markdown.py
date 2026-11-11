@@ -12,11 +12,11 @@ import math
 import re
 import socket
 from dataclasses import dataclass, field
-from urllib.parse import parse_qsl
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 from polyspec.orm.dbspec.parse import goq
+from polyspec.orm.message import quote as quote_message, quote_bytes
 
 __all__ = ["MarkdownDsn", "parse_markdown_dsn"]
 
@@ -35,11 +35,22 @@ class MarkdownDsn:
     pragmas: tuple = field(default=())
 
 
-def parse_markdown_dsn(url) -> MarkdownDsn:
-    """Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and
+def parse_markdown_dsn(
+    url, parameters: tuple, check_host, check_values, decode_path
+) -> MarkdownDsn:
+    """Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>, its query already read into `parameters`, the decoded
+    (name, value) pairs in written order; `check_host` checks the written host as for every scheme (CFG-20), at the
+    host step; `decode_path` decodes the path as every DSN path is (CFG-11), None when it does not decode;
+    `check_values` checks the values that every scheme shares (timezone), after
+    the host and the corpus and before _pragma (CFG-20). The flowmark server listens only on 127.0.0.1, and
     the token travels in plain text, so the host is only 127.0.0.1."""
+    # CFG-20: the token is a part of the query, which is read before the user, host, port and corpus.
+    token = next((value for name, value in parameters if name == "token"), None)
+    if token is None:
+        raise OrmError(codes.CONFIG, 'markdown DSN is missing the parameter "token"')
     if url.username is not None or url.password is not None:
         raise OrmError(codes.CONFIG, f"{_FORM}; it takes no user")
+    check_host()
     if url.hostname != "127.0.0.1":
         raise OrmError(
             codes.CONFIG,
@@ -56,35 +67,42 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
             f"{_FORM}; port {goq(given)} is not 1 to 65535: give the port that flowmark serve "
             f"printed",
         )
-    corpus = url.path[1:] if url.path.startswith("/") else url.path
-    if corpus == "" or "/" in corpus:
+    decoded = decode_path(url.path)
+    corpus = decoded[1:] if decoded is not None and decoded.startswith("/") else ""
+    if corpus in ("", ".", "..") or "/" in corpus or "\0" in corpus:
         raise OrmError(
             codes.CONFIG,
             f"{_FORM}; the path {goq(url.path)} is not one corpus name: give the corpus root's "
             f"directory name",
         )
-    parameters = parse_qsl(url.query, keep_blank_values=True)
-    for name, _ in parameters:
-        # timezone is the rule of every scheme, which parse_dsn has already checked (a corpus keeps datetime in UTC).
-        if name not in ("token", "timezone", "_pragma"):
-            raise OrmError(codes.CONFIG, f"{_FORM}; it does not accept {name}")
-    tokens = [value for name, value in parameters if name == "token"]
-    if len(tokens) != 1 or tokens[0] == "":
-        raise OrmError(
-            codes.CONFIG,
-            f"{_FORM}; give one token, the token of .flowmark/server.json of the corpus",
-        )
+    # The query was read by the rule of CFG-20 (parse_dsn): every name is token, timezone or _pragma, only _pragma
+    # repeats and no value is empty.
+    check_values()
     pragmas = []
     for name, value in parameters:
         if name != "_pragma":
             continue
-        match = _PRAGMA.fullmatch(value)
-        if match is None or (
-            match.group(1) == "busy_timeout" and not match.group(2).isdigit()
-        ):
-            raise OrmError(codes.CONFIG, f"{_FORM}; _pragma {value} is invalid")
-        pragmas.append((match.group(1), match.group(2)))
-    return MarkdownDsn(f"127.0.0.1:{port}", corpus, tokens[0], tuple(pragmas))
+        pragmas.append(pragma_parts("markdown", value))
+    return MarkdownDsn(f"127.0.0.1:{port}", corpus, token, tuple(pragmas))
+
+
+def pragma_parts(scheme: str, value: str) -> tuple[str, str]:
+    """The name and value of a _pragma value of CFG-12: name(value), and a busy_timeout a decimal whole number from 0 to
+    2147483647, the largest wait the C int of SQLite holds, since SQLite reads a larger number as 0. Another value is
+    CONFIG."""
+    match = _PRAGMA.fullmatch(value)
+    if match is None or (
+        match.group(1) == "busy_timeout"
+        and not (
+            match.group(2).isascii()
+            and match.group(2).isdigit()
+            and int(match.group(2)) <= 2147483647
+        )
+    ):
+        raise OrmError(
+            codes.CONFIG, f"{scheme} DSN _pragma {quote_message(value)} is invalid"
+        )
+    return match.group(1), match.group(2)
 
 
 def _plain(value) -> str:
@@ -147,7 +165,7 @@ class MarkdownSession:
             self.close()
             raise OrmError(
                 codes.INTERNAL,
-                f"the flowmark server answered {goq(answer.decode('utf-8', 'backslashreplace'))}, not a JSON object",
+                f"the flowmark server answered {quote_bytes(answer)}, not a JSON object",
             )
         if "error" in probe:
             e = probe["error"]

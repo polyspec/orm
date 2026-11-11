@@ -264,7 +264,11 @@ impl From<sqlx::Error> for Error {
                         Err(error) => {
                             return Error::Engine {
                                 code: codes::DRIVER.into(),
-                                msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}; {}", s.message()),
+                                msg: format!(
+                                    "sqlite reported extended result code {text}, which is not a number: {error}; {}",
+                                    s.message(),
+                                    text = polyspec_orm_schema::message::Quoted(&text)
+                                ),
                                 source: None,
                             };
                         }
@@ -365,7 +369,7 @@ pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     };
     let n: i64 = text.parse().map_err(|error| Error::Engine {
         code: codes::DRIVER.into(),
-        msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}"),
+        msg: format!("sqlite reported extended result code {text}, which is not a number: {error}", text = polyspec_orm_schema::message::Quoted(&text)),
         source: None,
     })?;
     Ok(n & 0xff == 5)

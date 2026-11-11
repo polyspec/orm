@@ -12,6 +12,7 @@ import { sqliteResultCodeSuffix } from './sqlite-codes.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 import * as codes from './codes.js';
 import type { MySqlServer } from './engine/dialect.js';
+import { quote as messageQuote } from './message.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -134,12 +135,13 @@ const SQLITE_BUSY_TIMEOUT_MS = 5000;
 /** Checks the SQLite library version. @internal */
 export function checkSqliteVersion(version: string): void {
   const parts = version.split('.');
-  if ((parts.length !== 3 && parts.length !== 4) || parts.some(part => part.length === 0 || !/^[0-9]+$/.test(part))) {
-    throw new OrmError(codes.INTERNAL, `SQLite library version ${JSON.stringify(version)} is invalid; expected three or four decimal components`);
-  }
   const numbers = parts.map(Number);
-  if (numbers.some(number => !Number.isInteger(number) || number > 0xffff_ffff)) {
-    throw new OrmError(codes.INTERNAL, `SQLite library version ${JSON.stringify(version)} is invalid; each component must fit u32`);
+  if (
+    (parts.length !== 3 && parts.length !== 4)
+    || parts.some(part => !/^[0-9]+$/.test(part))
+    || numbers.some(number => number > 0xffff_ffff)
+  ) {
+    throw new OrmError(codes.INTERNAL, `SQLite library version ${messageQuote(version)} is invalid; expected three or four decimal components that each fit u32`);
   }
   const [major = 0, minor = 0] = numbers;
   if (major < 3 || (major === 3 && minor < 46)) {
@@ -933,33 +935,133 @@ class SqliteSession implements DriverSession {
   }
 }
 
-/** A DSN of a SQL database: the driver, the connection time zone and the MySQL TLS CA. */
-export interface SqlDsn { driver: DriverName; zone: string; sslCa?: string; }
+/**
+ * A DSN of a SQL database: the driver, the connection time zone, the MySQL TLS CA, the MySQL socket or the PostgreSQL socket
+ * directory, and the SQLite pragmas, name and value. These are the only values of the query that reach the driver (CFG-20).
+ */
+export interface SqlDsn {
+  driver: DriverName;
+  zone: string;
+  sslCa?: string;
+  socket?: string;
+  host?: string;
+  pragmas?: ReadonlyArray<readonly [string, string]>;
+}
 
 /** A markdown:// DSN: the flowmark server address, the corpus and the token of a flowmark server (docs/spec/protocol.md §5). */
 interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
 
 export type ParsedDsn = SqlDsn | MarkdownParsedDsn;
 
-/** The parameters a DSN accepts for each scheme (docs/spec/config.md). Any other parameter is CONFIG. */
-const DSN_PARAMETERS: Record<string, readonly string[]> = {
-  'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
-  'postgres:': ['timezone', 'host', 'sslmode'],
-  'sqlite:': ['timezone', '_pragma', '_txlock'],
+/** The parameters of a DSN query (CFG-20): each accepted name with its decoded values in written order. */
+export type DsnParameters = ReadonlyMap<string, readonly string[]>;
+
+/** The parameters a DSN accepts for each scheme, in the order of CFG-19 and PRT-63. Any other parameter is CONFIG. */
+const DSN_PARAMETERS: Readonly<Record<string, readonly string[]>> = {
+  mysql: ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
+  postgres: ['timezone', 'host', 'sslmode'],
+  sqlite: ['timezone', '_pragma', '_txlock'],
+  markdown: ['token', 'timezone', '_pragma'],
 };
+
+const HEX = /^[0-9A-Fa-f]{2}$/;
+
+/**
+ * Decodes one name or value of a DSN query as an HTML form is: `+` as a space and `%` with two hexadecimal digits as that
+ * byte. Returns undefined for a `%` without two hexadecimal digits, a lone surrogate in the text, or bytes that are not UTF-8.
+ */
+function formDecode(text: string): string | undefined {
+  if (!text.isWellFormed()) return undefined;
+  const bytes: number[] = [];
+  for (let at = 0; at < text.length;) {
+    const ch = text[at] ?? '';
+    if (ch === '+') { bytes.push(0x20); at += 1; continue; }
+    if (ch === '%') {
+      const hex = text.slice(at + 1, at + 3);
+      if (!HEX.test(hex)) return undefined;
+      bytes.push(Number.parseInt(hex, 16));
+      at += 3;
+      continue;
+    }
+    const cp = text.codePointAt(at) ?? 0;
+    const char = String.fromCodePoint(cp);
+    bytes.push(...Buffer.from(char, 'utf8'));
+    at += char.length;
+  }
+  const buffer = Buffer.from(bytes);
+  return isUtf8(buffer) ? buffer.toString('utf8') : undefined;
+}
+
+/** The query of a DSN without a fragment as written: the text after the first `?`, or empty. */
+function dsnQuery(dsn: string): string {
+  const query = dsn.indexOf('?');
+  return query < 0 ? '' : dsn.slice(query + 1);
+}
+
+/**
+ * Reads the query of a DSN by the one rule of CFG-20, before a connection opens: pairs split at `&` and at the first `=`, each
+ * checked in written order for a name that the scheme does not accept, a repeated name (only `_pragma` repeats), a value that
+ * is not percent-encoded UTF-8, an empty value and a `socket` or `host` that holds `;` or NUL.
+ */
+function readDsnQuery(scheme: string, query: string): DsnParameters {
+  const accepted = DSN_PARAMETERS[scheme];
+  if (accepted === undefined) throw new OrmError(codes.INTERNAL, `the DSN scheme ${messageQuote(scheme)} has no parameter list`);
+  const parameters = new Map<string, string[]>();
+  if (query === '') return parameters;
+  for (const pair of query.split('&')) {
+    const eq = pair.indexOf('=');
+    const written = eq < 0 ? pair : pair.slice(0, eq);
+    const decoded = formDecode(written);
+    if (decoded === undefined || !accepted.includes(decoded)) {
+      throw new OrmError(codes.CONFIG, `${scheme} DSN has the unknown parameter ${messageQuote(decoded ?? written)}; it accepts ${accepted.join(', ')}`);
+    }
+    const name = messageQuote(decoded);
+    const values = parameters.get(decoded);
+    if (values !== undefined && decoded !== '_pragma') throw new OrmError(codes.CONFIG, `${scheme} DSN repeats the parameter ${name}`);
+    const value = eq < 0 ? '' : formDecode(pair.slice(eq + 1));
+    if (value === undefined) throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} is not percent-encoded UTF-8`);
+    if (value === '') throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} is empty`);
+    if ((decoded === 'socket' || decoded === 'host') && /[;\0]/.test(value)) {
+      throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} holds a character that a connection string cannot hold`);
+    }
+    if (values === undefined) parameters.set(decoded, [value]);
+    else values.push(value);
+  }
+  return parameters;
+}
+
+/** The one value of a parameter that does not repeat, or undefined. */
+export function dsnParameter(parameters: DsnParameters, name: string): string | undefined {
+  return parameters.get(name)?.[0];
+}
+
+/**
+ * The `_pragma` values of a SQLite or markdown DSN (CFG-12): `name(value)`, the name one or more of `a` to `z` and `_`, the
+ * value one or more of ASCII letters, digits and `_`, and a busy_timeout a whole number from 0 to 2147483647, the largest
+ * wait the C int of SQLite holds, since SQLite reads a larger number as 0.
+ */
+export function dsnPragmas(scheme: string, parameters: DsnParameters): ReadonlyArray<readonly [string, string]> {
+  return (parameters.get('_pragma') ?? []).map(pragma => {
+    const [, name, value] = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma) ?? [];
+    if (name === undefined || value === undefined || (name === 'busy_timeout' && !(/^[0-9]+$/.test(value) && Number(value) <= 2147483647))) {
+      throw new OrmError(codes.CONFIG, `${scheme} DSN _pragma ${messageQuote(pragma)} is invalid`);
+    }
+    return [name, value] as const;
+  });
+}
 
 /**
  * Checks the MySQL TLS parameters: a TCP connection that puts the absolute path of the CA file in `ssl-ca`
  * with `ssl-mode=VERIFY_IDENTITY`, or neither. Returns the CA path or undefined.
  */
-function mysqlTls(url: URL): string | undefined {
-  const mode = url.searchParams.get('ssl-mode');
-  const ca = url.searchParams.get('ssl-ca');
-  if (mode === null && ca === null) return undefined;
-  if (mode !== 'VERIFY_IDENTITY') throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode ${JSON.stringify(mode)} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
-  if (ca === null || ca === '') throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
-  if (!ca.startsWith('/')) throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${ca} is not an absolute path`);
-  if (url.searchParams.has('socket')) throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+function mysqlTls(url: URL, parameters: DsnParameters): string | undefined {
+  const mode = dsnParameter(parameters, 'ssl-mode');
+  const ca = dsnParameter(parameters, 'ssl-ca');
+  if (mode === undefined && ca === undefined) return undefined;
+  if (mode !== 'VERIFY_IDENTITY') throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode ${messageQuote(mode ?? '')} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
+  if (ca === undefined) throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+  if (!ca.startsWith('/')) throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${messageQuote(ca)} is not an absolute path`);
+  if (parameters.has('socket')) throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
   // The identity check compares the host name with the certificate. The driver compares a host that is an IP address with the name localhost.
   if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
   return ca;
@@ -972,14 +1074,90 @@ function mysqlTls(url: URL): string | undefined {
 function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
-    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} is not a readable file: ${errorText(error)}`, error);
+    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${messageQuote(parsed.sslCa)} is not a readable file: ${errorText(error)}`, error);
   }
 }
 
 /**
- * Splits a DSN URI into the dialect and the connection time zone. Every
- * connection reads and writes datetime values in UTC (docs/spec/dialects.md "Date
- * and time"), so the timezone parameter accepts only UTC or +00:00.
+ * The host step of CFG-20 (CFG-10), before the database step: a host is named, holds no `%`, and is localhost with a MySQL
+ * `socket`. A PostgreSQL DSN names its host in the URL or in its `host` parameter, both only when they are equal.
+ */
+function checkHost(scheme: 'mysql' | 'postgres', url: URL, parameters: DsnParameters): void {
+  const missing = `${scheme} DSN must include host and database`;
+  if (scheme === 'mysql') {
+    if (url.hostname === '') throw new OrmError(codes.CONFIG, missing);
+    checkHostEscape(scheme, url);
+    if (parameters.has('socket') && url.hostname !== 'localhost') throw new OrmError(codes.CONFIG, 'mysql DSN socket needs the host localhost, which names the local server');
+    return;
+  }
+  const host = dsnParameter(parameters, 'host');
+  if (url.hostname === '' && host === undefined) throw new OrmError(codes.CONFIG, missing);
+  checkHostEscape(scheme, url);
+  if (url.hostname !== '' && host !== undefined && host !== url.hostname) {
+    throw new OrmError(codes.CONFIG, `postgres DSN names two hosts, ${messageQuote(url.hostname)} in the URL and ${messageQuote(host)} in the host parameter`);
+  }
+}
+
+/** A host that holds `%`, which no host name needs (CFG-20). */
+export function checkHostEscape(scheme: string, url: URL): void {
+  if (url.hostname.includes('%')) throw new OrmError(codes.CONFIG, `${scheme} DSN host ${messageQuote(url.hostname)} holds a percent escape, which no host name needs`);
+}
+
+/** The zone of every connection: datetime values are read and written in UTC. */
+const UTC_ZONE = '+00:00';
+
+/** The timezone parameter of a DSN, which accepts only UTC or +00:00 (docs/spec/dialects.md "Date and time"). */
+export function checkTimezone(parameters: DsnParameters): void {
+  const requested = dsnParameter(parameters, 'timezone');
+  if (requested !== undefined && requested !== 'UTC' && requested !== '+00:00') throw new OrmError(codes.CONFIG, `dsn timezone ${messageQuote(requested)}: every connection reads and writes datetime values in UTC`);
+}
+
+/**
+ * The path of a DSN as written: after the authority, before the query and the fragment. The URL parser removes the dot
+ * segments of a path, so the path of a DSN is read from its text (CFG-11, PRT-63).
+ */
+function dsnPath(dsn: string): string {
+  const rest = dsn.slice(dsn.indexOf('://') + 3).split('#')[0] ?? '';
+  const authorityEnd = rest.search(/[/?]/);
+  if (authorityEnd < 0 || rest[authorityEnd] === '?') return '';
+  return rest.slice(authorityEnd).split('?')[0] ?? '';
+}
+
+/** The database of a MySQL or PostgreSQL DSN that checkDatabase accepted: the path after its first /, decoded (CFG-10). */
+function dsnDatabase(dsn: string): string {
+  return decodedPath(dsnPath(dsn).slice(1)) ?? '';
+}
+
+/**
+ * A DSN path percent-decoded, `+` kept as itself, or undefined when a `%` lacks two hexadecimal digits or the bytes are not
+ * UTF-8 (CFG-11, CFG-20). The path of every scheme is decoded by it.
+ */
+export function decodedPath(written: string): string | undefined {
+  try {
+    return decodeURIComponent(written);
+  } catch (error) {
+    if (!(error instanceof URIError)) throw error;
+    return undefined;
+  }
+}
+
+/**
+ * The database step of CFG-20, after the host step: a MySQL or PostgreSQL DSN names a database, whose path is percent-encoded UTF-8 and
+ * does not hold `;` or NUL after percent-decoding, which the PDO DSN of PHP cannot hold.
+ */
+function checkDatabase(scheme: string, dsn: string): void {
+  // The database is the path after its first /, as written (CFG-10).
+  const written = dsnPath(dsn).slice(1);
+  if (written === '') throw new OrmError(codes.CONFIG, `${scheme} DSN must include host and database`);
+  const database = decodedPath(written);
+  if (database === undefined) throw new OrmError(codes.CONFIG, `${scheme} DSN database ${messageQuote(written)} is not percent-encoded UTF-8`);
+  if (/[;\0]/.test(database)) throw new OrmError(codes.CONFIG, `${scheme} DSN database ${messageQuote(database)} holds a character that a connection string cannot hold`);
+}
+
+/**
+ * Splits a DSN URI into the dialect, the connection time zone and the values of its query that reach the driver. The checks run
+ * in the order of CFG-20: the URI, the fragment, the query, the host and the database name; the first error wins. Every connection reads and writes datetime values in UTC (docs/spec/dialects.md "Date and time"), so
+ * the timezone parameter accepts only UTC or +00:00.
  */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
@@ -989,49 +1167,57 @@ export function parseDsn(dsn: string): ParsedDsn {
     if (!(error instanceof TypeError && 'code' in error && error.code === 'ERR_INVALID_URL')) throw error;
     throw new OrmError(codes.CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://', error);
   }
-  const accepted = DSN_PARAMETERS[url.protocol];
-  if (accepted !== undefined) {
-    for (const name of url.searchParams.keys()) {
-      if (!accepted.includes(name)) throw new OrmError(codes.CONFIG, `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
+  const scheme = url.protocol.replace(/:$/, '');
+  if (!Object.hasOwn(DSN_PARAMETERS, scheme)) throw new OrmError(codes.CONFIG, `unsupported DSN scheme ${scheme}; want mysql, postgres, sqlite, or markdown`);
+  // No part of a DSN is dropped unread (CFG-20): a fragment is refused, not ignored.
+  if (dsn.includes('#')) throw new OrmError(codes.CONFIG, `${scheme} DSN has a fragment, which no connection reads`);
+  const parameters = readDsnQuery(scheme, dsnQuery(dsn));
+  // A markdown DSN checks the rest in the order of PRT-63, its host among them.
+  if (scheme === 'markdown') return { driver: 'markdown', zone: UTC_ZONE, markdown: parseMarkdownDsn(url, dsnPath(dsn), parameters) };
+  if (scheme === 'mysql' || scheme === 'postgres') {
+    checkHost(scheme, url, parameters);
+    checkDatabase(scheme, dsn);
+  } else {
+    checkHostEscape(scheme, url);
+    sqlitePath(dsn);
+  }
+  checkTimezone(parameters);
+  const zone = UTC_ZONE;
+  switch (scheme) {
+    case 'mysql': {
+      const sslCa = mysqlTls(url, parameters);
+      const socket = dsnParameter(parameters, 'socket');
+      return { driver: 'mysql', zone, ...(sslCa === undefined ? {} : { sslCa }), ...(socket === undefined ? {} : { socket }) };
+    }
+    case 'postgres': {
+      const host = dsnParameter(parameters, 'host');
+      const sslmode = dsnParameter(parameters, 'sslmode');
+      if (sslmode !== undefined && sslmode !== 'disable') throw new OrmError(codes.CONFIG, `postgres DSN sslmode ${messageQuote(sslmode)} is not supported; it accepts disable`);
+      return { driver: 'postgres', zone, ...(host === undefined ? {} : { host }) };
+    }
+    case 'sqlite': {
+      // The values in the CFG-19 order (CFG-20): _pragma before _txlock.
+      const pragmas = dsnPragmas('sqlite', parameters);
+      if (parameters.has('_txlock')) throw new OrmError(codes.CONFIG, 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+      return { driver: 'sqlite', zone, pragmas };
     }
   }
-  const requested = url.searchParams.get('timezone');
-  if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError(codes.CONFIG, `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
-  const zone = '+00:00';
-  switch (url.protocol) {
-    case 'mysql:': {
-      if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError(codes.CONFIG, 'mysql DSN must include host and database');
-      const sslCa = mysqlTls(url);
-      return sslCa === undefined ? { driver: 'mysql', zone } : { driver: 'mysql', zone, sslCa };
-    }
-    case 'postgres:':
-      if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError(codes.CONFIG, 'postgres DSN must include host and database');
-      return { driver: 'postgres', zone };
-    case 'sqlite:':
-      if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError(codes.CONFIG, 'sqlite DSN must include an absolute database path');
-      if (url.searchParams.has('_txlock')) throw new OrmError(codes.CONFIG, 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
-      sqlitePath(url);
-      return { driver: 'sqlite', zone };
-    case 'markdown:':
-      return { driver: 'markdown', zone, markdown: parseMarkdownDsn(url) };
-  }
-  throw new OrmError(codes.CONFIG, `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, sqlite, or markdown`);
+  throw new OrmError(codes.INTERNAL, `the DSN scheme ${messageQuote(scheme)} has no reader`);
 }
 
 /**
- * Returns the percent-decoded path of a sqlite:// DSN. An invalid escape, a
- * path that is not UTF-8 after decoding and a NUL byte are CONFIG errors.
+ * Returns the percent-decoded path of a sqlite:// DSN, the database step of SQLite (CFG-11, CFG-20): a DSN without an
+ * absolute path or with a host, then a path that is not percent-encoded UTF-8, then a decoded NUL, are CONFIG errors that
+ * name the path as written.
  */
-export function sqlitePath(url: URL): string {
-  let path: string;
-  try {
-    path = decodeURIComponent(url.pathname);
-  } catch (error) {
-    if (!(error instanceof URIError)) throw error;
-    throw new OrmError(codes.CONFIG, 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
-  }
+export function sqlitePath(dsn: string): string {
+  const url = new URL(dsn);
+  const written = dsnPath(dsn);
+  if (url.hostname !== '' || !written.startsWith('/') || written === '/') throw new OrmError(codes.CONFIG, 'sqlite DSN must include an absolute database path');
+  const path = decodedPath(written);
+  if (path === undefined) throw new OrmError(codes.CONFIG, `sqlite DSN path ${messageQuote(written)} is not percent-encoded UTF-8`);
   // An opener that drops what follows a NUL opens a different file.
-  if (path.includes('\0')) throw new OrmError(codes.CONFIG, 'sqlite DSN path must not contain a NUL byte');
+  if (path.includes('\0')) throw new OrmError(codes.CONFIG, `sqlite DSN path ${messageQuote(written)} holds a NUL byte, which a file name cannot hold`);
   return path;
 }
 
@@ -1122,11 +1308,11 @@ const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZER
  * instead of a rounded number, and PostgreSQL int8 as text, so the catalog connection reads every integer without rounding.
  */
 export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0, exact = false): DriverPool {
+  // The driver receives only the values that parseDsn read from the query (CFG-20), never the query.
   const url = new URL(dsn);
-  url.searchParams.delete('timezone');
   switch (parsed.driver) {
     case 'mysql': {
-      const socket = url.searchParams.get('socket');
+      const socket = parsed.socket;
       // ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate against the CA and the host name, and
       // is the Node TLS default with rejectUnauthorized. The password travels only inside TLS, and the client
       // does not request the server's RSA public key.
@@ -1136,7 +1322,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         ...(ssl ? { ssl } : {}),
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
-        database: decodeURIComponent(url.pathname.slice(1)),
+        database: dsnDatabase(dsn),
         connectionLimit: bounds.size,
         namedPlaceholders: false,
         dateStrings: true,
@@ -1173,7 +1359,16 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       return new MySqlPoolDriver(created, setup, bounds.size);
     }
     case 'postgres': {
-      const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
+      // The connection without sslmode, or with sslmode=disable, sends no TLS (CFG-19); ssl: false keeps PGSSLMODE from choosing it.
+      const config: pg.PoolConfig = {
+        host: parsed.host ?? url.hostname.replace(/^\[|\]$/g, ''),
+        ...(url.port ? { port: Number(url.port) } : {}),
+        ...(url.username ? { user: decodeURIComponent(url.username) } : {}),
+        ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+        database: dsnDatabase(dsn),
+        ssl: false,
+        max: bounds.size,
+      };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
       // The catalog reads every value as the text that the server sends and converts it by its type itself (catalog.ts): int8 is not
@@ -1186,18 +1381,13 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
     }
     case 'sqlite': {
-      const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
-        const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
-        const [, name, value] = match ?? [];
-        if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError(codes.CONFIG, `sqlite DSN _pragma ${pragma} is invalid`);
-        return [name, value] as const;
-      });
+      const pragmas = parsed.pragmas ?? [];
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
       // The version of the SQLite library that node:sqlite links. The connection does not send a statement that asks for it.
       const version = process.versions.sqlite ?? '';
       checkSqliteVersion(version);
-      const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
+      const db = new DatabaseSync(sqlitePath(dsn), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       db.exec('PRAGMA foreign_keys = ON');
       for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);
       return new SqlitePoolDriver(db, statementCacheSize);

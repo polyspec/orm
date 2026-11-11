@@ -566,5 +566,5 @@ fn number<T: std::str::FromStr>(text: &str, what: &str) -> Result<T, String>
 where
     T::Err: std::fmt::Display,
 {
-    text.parse().map_err(|error| format!("{what} {text:?} is not a number: {error}"))
+    text.parse().map_err(|error| format!("{what} {} is not a number: {error}", crate::message::quote(text)))
 }

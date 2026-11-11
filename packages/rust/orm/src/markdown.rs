@@ -35,51 +35,45 @@ pub struct MarkdownDsn {
 const DSN_FORM: &str = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>";
 
 /// Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and
-/// since the token travels in plain text, the host is only 127.0.0.1. `corpus` is the percent-decoded path, `pairs` are
-/// the query parameters without `timezone` and `_pragma`, and `pragmas` are the `_pragma` values.
-pub(crate) fn parse_markdown_dsn(url: &url::Url, corpus: &str, pairs: &[(String, String)], pragmas: &[String]) -> Result<MarkdownDsn> {
+/// since the token travels in plain text, the host is only 127.0.0.1. `path` is the path of the DSN as written, `tokens` are
+/// the `token` values and `pragmas` the `_pragma` values of the query, which parse_dsn has read (CFG-20) and whose
+/// `_pragma` values it checks after the timezone.
+pub(crate) fn parse_markdown_dsn(url: &url::Url, path: &str, tokens: &[&str], pragmas: &[String]) -> Result<MarkdownDsn> {
     let bad = |reason: String| Error::Config(format!("{DSN_FORM}; {reason}"));
+    // The query reader refused a repeated or empty token (CFG-20); the token, the user, the host, the port and the corpus are
+    // checked in that order, before the values of timezone and _pragma (PRT-63).
+    let Some(token) = tokens.first().map(|token| (*token).to_owned()) else {
+        return Err(Error::Config("markdown DSN is missing the parameter \"token\"".into()));
+    };
     if !url.username().is_empty() || url.password().is_some() {
         return Err(bad("it takes no user".into()));
     }
     let host = url.host_str().unwrap_or("");
+    if host.contains('%') {
+        return Err(Error::Config(format!(
+            "markdown DSN host {} holds a percent escape, which no host name needs",
+            polyspec_orm_schema::message::Quoted(host)
+        )));
+    }
     if host != "127.0.0.1" {
-        return Err(bad(format!("host {host:?}: a flowmark server listens on 127.0.0.1 only")));
+        return Err(bad(format!("host {host}: a flowmark server listens on 127.0.0.1 only", host = polyspec_orm_schema::message::Quoted(&host))));
     }
     let port = match url.port() {
         Some(port) if port > 0 => port,
-        other => return Err(bad(format!("port {other:?} is not 1 to 65535: give the port that flowmark serve printed"))),
-    };
-    let corpus = corpus.strip_prefix('/').unwrap_or(corpus);
-    if corpus.is_empty() || corpus.contains('/') {
-        return Err(bad(format!("the path {:?} is not one corpus name: give the corpus root's directory name", url.path())));
-    }
-    let mut tokens = Vec::new();
-    for (key, value) in pairs {
-        if key != "token" {
-            return Err(bad(format!("it does not accept {key}")));
+        other => {
+            return Err(bad(format!(
+                "port {other} is not 1 to 65535: give the port that flowmark serve printed",
+                other = polyspec_orm_schema::message::Quoted(other.map(|port| port.to_string()).unwrap_or_default())
+            )))
         }
-        tokens.push(value.clone());
-    }
-    let token = match tokens.as_slice() {
-        [token] if !token.is_empty() => token.clone(),
-        _ => return Err(bad("give one token, the token of .flowmark/server.json of the corpus".into())),
     };
-    if let Some(pragma) = pragmas.iter().find(|pragma| !valid_pragma(pragma)) {
-        return Err(bad(format!("_pragma {pragma} is invalid")));
+    // The path is decoded as every DSN path is (CFG-11); one that does not decode is no corpus name.
+    let decoded = crate::db::percent_decoded(path);
+    let corpus = decoded.as_deref().and_then(|decoded| decoded.strip_prefix('/')).unwrap_or("");
+    if matches!(corpus, "" | "." | "..") || corpus.contains(['/', '\0']) {
+        return Err(bad(format!("the path {} is not one corpus name: give the corpus root's directory name", polyspec_orm_schema::message::Quoted(path))));
     }
     Ok(MarkdownDsn { address: format!("127.0.0.1:{port}"), corpus: corpus.to_owned(), token, pragmas: pragmas.to_vec() })
-}
-
-/// A `_pragma` value is `name(value)`: a name of lower-case letters and `_`, and a value of letters, digits and `_`; the value
-/// of `busy_timeout` is digits.
-fn valid_pragma(pragma: &str) -> bool {
-    let Some((name, value)) = pragma.strip_suffix(')').and_then(|text| text.split_once('(')) else { return false };
-    !name.is_empty()
-        && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
-        && !value.is_empty()
-        && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
-        && (name != "busy_timeout" || value.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// The refusal that the flowmark server answered, or the failure of a session, as the database error of a driver. `code`
@@ -336,7 +330,9 @@ pub fn wire_bytes(bytes: &[u8]) -> Value {
 
 /// Reads one cell of an answer: an integer, a float, a text, NULL or bytes, as a SQLite connection reads them.
 fn wire_cell(value: Value) -> std::result::Result<MarkdownCell, sqlx::Error> {
-    let base64 = |text: &str| base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| answer_error(format!("the cell {text:?}: {e}")));
+    let base64 = |text: &str| {
+        base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| answer_error(format!("the cell {}: {e}", polyspec_orm_schema::message::quote(text))))
+    };
     Ok(match value {
         Value::Null => MarkdownCell::Null,
         Value::Bool(b) => MarkdownCell::Integer(i64::from(b)),
@@ -349,7 +345,7 @@ fn wire_cell(value: Value) -> std::result::Result<MarkdownCell, sqlx::Error> {
             (Some(Value::String(f)), _, _) => MarkdownCell::Real(match f.as_str() {
                 "+Inf" | "Inf" => f64::INFINITY,
                 "-Inf" => f64::NEG_INFINITY,
-                other => other.parse().map_err(|e| answer_error(format!("the float {other:?}: {e}")))?,
+                other => other.parse().map_err(|e| answer_error(format!("the float {}: {e}", polyspec_orm_schema::message::quote(other))))?,
             }),
             (_, Some(Value::String(t)), _) => {
                 let bytes = base64(t)?;
@@ -393,7 +389,10 @@ impl MarkdownSession {
         self.broken = false;
         let Ok(object) = serde_json::from_slice::<serde_json::Map<String, Value>>(&answer) else {
             self.broken = true;
-            return Err(answer_error(format!("{:?} is not a JSON object", String::from_utf8_lossy(&answer))));
+            return Err(session_error(
+                codes::INTERNAL,
+                format!("the flowmark server answered {}, not a JSON object", polyspec_orm_schema::message::quote_bytes(&answer)),
+            ));
         };
         let Some(error) = object.get("error") else { return Ok(answer) };
         let code = error.get("code").and_then(Value::as_str).unwrap_or_default();
@@ -423,7 +422,7 @@ impl MarkdownSession {
     }
 
     fn answer(raw: &[u8], of: &str) -> std::result::Result<MarkdownAnswer, sqlx::Error> {
-        serde_json::from_slice(raw).map_err(|e| answer_error(format!("the answer of a {of} {:?}: {e}", String::from_utf8_lossy(raw))))
+        serde_json::from_slice(raw).map_err(|e| answer_error(format!("the answer of a {of} {}: {e}", polyspec_orm_schema::message::quote_bytes(raw))))
     }
 
     /// Runs one statement and reads every batch of its rows (PRT-66).

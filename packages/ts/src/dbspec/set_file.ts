@@ -1,5 +1,6 @@
 import { present } from '../present.js';
 import { invalidEncoding } from './utf8.js';
+import { quote as messageQuote } from '../message.js';
 // The rules of a set file that read no file (docs/spec/dbspec.md "Document sets"): the name dbspec-set.json of the last
 // segment of the set file's path (step 1), the JSON of step 2 and the normal form of each path (step 3). This module
 // reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array, so it runs in a browser
@@ -74,7 +75,7 @@ export function splitSetPath(path: string, windows: boolean): { readonly prefix:
 export function setNameError(path: string, windows: boolean): DbspecSetError | null {
   const { name } = splitSetPath(path, windows);
   if (name === DBSPEC_SET_NAME) return null;
-  return setError('set.file', path, `${path} is not a set file: its name is not ${DBSPEC_SET_NAME}`);
+  return setError('set.file', path, `${path}: the set file is not named ${DBSPEC_SET_NAME}`);
 }
 
 /**
@@ -97,6 +98,8 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
 
   // UTF-8 with no byte order mark, before parsing. The decoder keeps a byte order mark (ignoreBOM) and rejects an
   // invalid byte (fatal).
+  // The byte order mark is checked before UTF-8 (DBS-18a).
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return json('set.json', 'the set file starts with a byte order mark');
   let text: string;
   try {
     text = utf8.decode(bytes);
@@ -104,7 +107,6 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
     if (!invalidEncoding(error)) throw error;
     return json('set.json', 'the set file is not valid UTF-8');
   }
-  if (text.startsWith('﻿')) return json('set.json', 'the set file starts with a byte order mark');
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -116,25 +118,26 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
   // JSON.parse reports neither the depth, nor a lone surrogate escape, nor a repeated key: a token scan checks them.
   const scan = scanJson(text);
   if (scan.depth) return json('set.json', `the set file nests deeper than ${MAX_DEPTH} levels`);
-  if (scan.loneSurrogate) return json('set.json', 'a string of the set file escapes a lone surrogate');
-  if (scan.repeated !== null) return json('set.key', `the key ${JSON.stringify(scan.repeated)} appears twice`);
+  if (scan.loneSurrogate) return json('set.json', 'the set file escapes a lone surrogate');
+  if (scan.repeated !== null) return json('set.key', `the key ${messageQuote(scan.repeated)} appears twice`);
 
   const object: Record<string, unknown> = Object.fromEntries(Object.entries(value));
   const unknown = Object.keys(object).filter(key => !KEYS.has(key)).sort(compareCodePoints);
-  if (unknown.length > 0) return json('set.key', `unknown key${unknown.length > 1 ? 's' : ''} ${unknown.map(k => JSON.stringify(k)).join(', ')}`);
-  if (!Object.hasOwn(object, 'schema')) return json('set.schema', 'the key "schema" is missing');
-  if (object.schema !== 1) return json('set.schema', `"schema" is ${JSON.stringify(object.schema) ?? String(object.schema)}, not the number 1`);
-  if (!Object.hasOwn(object, 'documents')) return json('set.key', 'the key "documents" is missing');
-  if (!isStrings(object.documents)) return json('set.key', '"documents" is not an array of strings');
-  if (object.documents.length === 0) return json('set.empty', '"documents" is empty');
+  if (unknown.length > 0) return json('set.key', `unknown key${unknown.length > 1 ? 's' : ''} ${unknown.map(k => messageQuote(k)).join(', ')}`);
+  // DBS-13 order: schema, then documents, then external.
+  if (!Object.hasOwn(object, 'schema')) return json('set.schema', 'schema is missing');
+  if (object.schema !== 1) return json('set.schema', 'schema is not the number 1');
+  if (!Object.hasOwn(object, 'documents')) return json('set.key', 'documents is missing');
+  if (!isStrings(object.documents)) return json('set.key', 'documents is not an array of strings');
+  if (object.documents.length === 0) return json('set.empty', 'documents is empty');
   const externalPaths: unknown = Object.hasOwn(object, 'external') ? object.external : [];
-  if (!isStrings(externalPaths)) return json('set.key', '"external" is not an array of strings');
+  if (!isStrings(externalPaths)) return json('set.key', 'external is not an array of strings');
 
   const { prefix } = splitSetPath(path, windows);
   const errors: DbspecSetError[] = [];
   const entries = (written: readonly string[], external: boolean): readonly DbspecSetPath[] => Object.freeze(written.map(w => {
     const problem = normalFormProblem(w, external);
-    const error = problem === null ? null : setError('set.path', path, `${path}: the ${external ? 'external' : 'document'} path ${JSON.stringify(w)} ${problem}`);
+    const error = problem === null ? null : setError('set.path', path, `${path}: the ${external ? 'external' : 'documents'} path ${messageQuote(w)} ${problem}`);
     if (error !== null) errors.push(error);
     return Object.freeze({ written: w, path: prefix + w, error });
   }));
@@ -222,34 +225,39 @@ function hasLoneSurrogateEscape(token: string): boolean {
   return false;
 }
 
-/** The characters that a segment never holds: `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*`, NUL and U+0001 to U+001F. */
-const FORBIDDEN = /[/\\:<>"|?*]/;
+/** The characters that a segment never holds: `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*` and U+0000 to U+001F. */
+const FORBIDDEN = new Set(['/', '\\', ':', '<', '>', '"', '|', '?', '*']);
 
-/** Whether `segment` holds a control character, U+0000 to U+001F, which a path name cannot hold. */
-function hasControl(segment: string): boolean {
-  for (let i = 0; i < segment.length; i++) if (segment.charCodeAt(i) < 0x20) return true;
-  return false;
+/** The first character of `segment` that a segment cannot hold, or undefined. */
+function forbiddenCharacter(segment: string): string | undefined {
+  for (const ch of segment) if (FORBIDDEN.has(ch) || ch.charCodeAt(0) < 0x20) return ch;
+  return undefined;
 }
+
 /** The device names of Windows, matched against the part of a segment before its first `.`, trailing spaces removed. */
 const DEVICE = /^(?:CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³])$/i;
 
-/** Why a written path has no normal form, or null when it has one. */
+/**
+ * Why a written path has no normal form, or null when it has one (DBS-18a `set.path`): the first problem of the segments from
+ * the first, each checked for an empty segment, `..`, `.`, a character that a segment cannot hold, a trailing dot or space and a
+ * Windows device; then whether the path ends in `.dbs`.
+ */
 function normalFormProblem(path: string, external: boolean): string | null {
-  const segments = path.split('/');
-  if (!present(segments.at(-1), 'segments.at(-1)').endsWith('.dbs')) return 'does not end in a segment ending in .dbs';
   let leading = true;
-  for (const segment of segments) {
+  for (const segment of path.split('/')) {
+    if (segment === '') return 'has an empty segment';
     if (segment === '..') {
       if (!external) return 'has a .. segment';
       if (!leading) return 'has a .. segment after another segment';
       continue;
     }
     leading = false;
-    if (segment === '') return 'has an empty segment';
-    if (FORBIDDEN.test(segment) || hasControl(segment)) return `has the segment ${JSON.stringify(segment)} with a character that a path name cannot hold`;
     if (segment === '.') return 'has a . segment';
-    if (segment.endsWith('.') || segment.endsWith(' ')) return `has the segment ${JSON.stringify(segment)} ending in a dot or a space`;
-    if (DEVICE.test(present(segment.split('.')[0], 'segment.split(\'.\')[0]').replace(/ +$/, ''))) return `has the segment ${JSON.stringify(segment)} named after a Windows device`;
+    const forbidden = forbiddenCharacter(segment);
+    if (forbidden !== undefined) return `has the character ${messageQuote(forbidden)} that a segment cannot hold`;
+    if (segment.endsWith('.') || segment.endsWith(' ')) return 'has a segment that ends in . or a space';
+    if (DEVICE.test(present(segment.split('.')[0], "segment.split('.')[0]").replace(/ +$/, ''))) return `has the segment ${messageQuote(segment)} that names a Windows device`;
   }
+  if (!path.endsWith('.dbs')) return 'does not end in .dbs';
   return null;
 }

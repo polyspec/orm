@@ -58,9 +58,12 @@ final class PrivilegeUtils
     {
         $qualified = $this->table($table);
         $r = self::role($role);
-        $privilege = strtoupper(trim($privilege));
+        $given = $privilege;
+        // A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
+        $privilege = strtoupper($privilege);
         if (!in_array($privilege, ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'], true)) {
-            throw new OrmException(Code::CONFIG, "unsupported table privilege $privilege");
+            // The refusal names the privilege as the caller gave it.
+            throw new OrmException(Code::CONFIG, 'unsupported table privilege ' . Message::quote($given));
         }
         $this->u->run(fn() => $this->u->exec(
             StatementEvent::UTILITY,

@@ -2,16 +2,9 @@
 # server for found rows, not only changed rows. The test reads the connection flags and needs no server.
 import unittest
 from unittest import mock
-from urllib.parse import urlparse
-
 
 from polyspec.orm import database
 from . import testcase
-
-
-class _Parsed:
-    url = urlparse("mysql://root@127.0.0.1:3306/orm")
-    ssl_ca = None
 
 
 class MysqlFoundRowsTest(unittest.TestCase):
@@ -23,7 +16,9 @@ class MysqlFoundRowsTest(unittest.TestCase):
             mock.patch.object(pymysql, "connect") as connect,
             mock.patch.object(database._MysqlConnection, "execute"),
         ):
-            database._MysqlConnection(_Parsed)
+            database._MysqlConnection(
+                database.parse_dsn("mysql://root@127.0.0.1:3306/orm")
+            )
         flags = connect.call_args.kwargs["client_flag"]
         self.assertTrue(flags & CLIENT.FOUND_ROWS)
 

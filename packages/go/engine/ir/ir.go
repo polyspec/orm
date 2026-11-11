@@ -6,7 +6,6 @@ package ir
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"slices"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/internal/meet"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 const Version = 1
@@ -211,7 +211,7 @@ func (e *Error) Error() string { return e.Code + ": " + e.Msg }
 func (e *Error) Unwrap() error { return e.Cause }
 
 func errf(code, format string, a ...any) *Error {
-	return &Error{Code: code, Msg: fmt.Sprintf(format, a...)}
+	return &Error{Code: code, Msg: message.Sprintf(format, a...)}
 }
 
 // opsByType is the operators allowed for each dbspec type kind.

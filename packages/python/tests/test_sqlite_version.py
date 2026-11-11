@@ -23,7 +23,7 @@ class SqliteVersionTest(unittest.TestCase):
 
     # Requirements: DSL-150.
     def test_refuses_older_than_3_46(self):
-        for version in ["3.45.3", "3.9.0", "2.8.17"]:
+        for version in ["3.45.3", "3.9.0", "2.8.17", "3.45.999", "003.045.999.0"]:
             with self.subTest(version=version):
                 with self.assertRaises(OrmError) as raised:
                     self.connect(version)
@@ -34,8 +34,41 @@ class SqliteVersionTest(unittest.TestCase):
                 )
 
     # Requirements: DSL-150.
+    def test_refuses_a_malformed_version_as_internal(self):
+        for version in [
+            "",
+            "3.46",
+            "3.46.0.0.0",
+            "3..0",
+            ".46.0",
+            " 3.46.0",
+            "3.46.0 ",
+            "3.46.0\n",
+            "3.46.0\r",
+            "3.46.0\u2028",
+            "3.46.0\u2029",
+            "+3.46.0",
+            "3.46.0-rc1",
+            "3.4294967296.0",
+            "3.46.0.4294967296",
+            "3.46.0.",
+            "\u0663.46.0",
+            "3.\u00b246.0",
+        ]:
+            with self.subTest(version=version):
+                with self.assertRaises(OrmError) as raised:
+                    self.connect(version)
+                self.assertEqual(raised.exception.code, "INTERNAL")
+        with self.assertRaises(OrmError) as raised:
+            self.connect("3.46.0\n")
+        self.assertEqual(
+            str(raised.exception),
+            r'INTERNAL: SQLite library version "3.46.0\n" is invalid; expected three or four decimal components that each fit u32',
+        )
+
+    # Requirements: DSL-150.
     def test_accepts_3_46_and_later(self):
-        for version in ["3.46.0", "3.50.4", "4.0.0"]:
+        for version in ["3.46.0", "3.50.4", "4.0.0", "3.046.000.0", "4294967295.0.0"]:
             with self.subTest(version=version):
                 self.connect(version)
 

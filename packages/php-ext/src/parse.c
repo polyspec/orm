@@ -4,6 +4,7 @@
  * after the last line. Diagnostics carry the token's line and column (Unicode code points) and are sorted by line, column, then rule table order. Encoding,
  * header, and limit errors stop parsing and come after the diagnostics found before them.
  */
+#include "message_quote.h"
 #include "dbspec.h"
 #include "dbspec_str_list.h"
 #include <setjmp.h>
@@ -254,46 +255,18 @@ static ZEND_NORETURN void stop(parser *p, const char *rule, zend_long line, zend
 }
 
 /* Writes the escape of a control character as Go's strconv quoting does: \a \b \f \n \r \t \v, otherwise \xNN. */
-static bool sb_control(sbuf *b, unsigned char c)
+str dbs_quote_with(str s, char delim)
 {
-    static const char hex[] = "0123456789abcdef";
-    const char *named = NULL;
-    switch (c) {
-        case '\a': named = "\\a"; break;
-        case '\b': named = "\\b"; break;
-        case '\f': named = "\\f"; break;
-        case '\n': named = "\\n"; break;
-        case '\r': named = "\\r"; break;
-        case '\t': named = "\\t"; break;
-        case '\v': named = "\\v"; break;
-        default:
-            if (c >= 0x20 && c != 0x7f) {
-                return false;
-            }
-            sb_c(b, "\\x");
-            sb_ch(b, hex[c >> 4]);
-            sb_ch(b, hex[c & 0xf]);
-            return true;
-    }
-    sb_c(b, named);
-    return true;
+    zend_string *quoted = orm_message_quote(s.s, s.n, delim);
+    sbuf b = {0};
+    sb_add(&b, ZSTR_VAL(quoted), ZSTR_LEN(quoted));
+    zend_string_release(quoted);
+    return sb_str(&b);
 }
 
 str dbs_quote(str s)
 {
-    sbuf b = {0};
-    sb_ch(&b, '"');
-    for (size_t i = 0; i < s.n; i++) {
-        unsigned char c = (unsigned char)s.s[i];
-        if (c == '"' || c == '\\') {
-            sb_ch(&b, '\\');
-            sb_ch(&b, (char)c);
-        } else if (!sb_control(&b, c)) {
-            sb_ch(&b, (char)c);
-        }
-    }
-    sb_ch(&b, '"');
-    return sb_str(&b);
+    return dbs_quote_with(s, '"');
 }
 
 /* A closed string literal token; its text keeps the quotes. */
@@ -310,21 +283,10 @@ str dbs_describe(str token)
     return fmt("'%S'", token);
 }
 
-/* The canonical quote of the character at s[i] of the given width: single quotes, `'` and `\` escaped by a backslash, a control
- * character below 0x20 and 0x7F escaped, and every other character as is. */
+/* The character at s[i] of the given width in single quotes, with the message quoting of INT-187. */
 static str quote_rune(str s, size_t i, size_t width)
 {
-    sbuf b = {0};
-    sb_ch(&b, '\'');
-    unsigned char c = (unsigned char)s.s[i];
-    if (c == '\'' || c == '\\') {
-        sb_ch(&b, '\\');
-        sb_ch(&b, (char)c);
-    } else if (c >= 0x80 || !sb_control(&b, c)) {
-        sb_add(&b, s.s + i, width);
-    }
-    sb_ch(&b, '\'');
-    return sb_str(&b);
+    return dbs_quote_with(str_sub(s, i, width), '\'');
 }
 
 /* Go's lexical word token (not a number): a run of word runes that is not digits with an optional fraction. */

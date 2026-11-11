@@ -1,10 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 21958b2cf82c506428fb5aab0017d1cd0c8031547ed801c856d17830135b2eab -->
+<!-- source-sha256: 6f72af2e699f1f1bcd742da1c65da7a8797f0a79816b2dbb4b34da3b2f42408d -->
 # 변경 이력
 
 ## Unreleased
 
+- 오류 message는 모든 runtime에서 같은 텍스트이다(T430, INT-187). message가 인용하는 이름, key, 거부한 입력, 데이터베이스의 텍스트는 runtime마다 함수 하나로 DBS-144의 quoting을 써서 큰따옴표 안에 쓰고, dbspec 진단도 같은 함수를 쓴다. 어떤 message도 host 언어의 quoting(Go `%q`, Rust `{:?}`, Python `repr`, TypeScript `JSON.stringify`, PHP `json_encode`)을 쓰지 않는다. 일부 runtime에서 따옴표 없이 쓰던 lock key, local key, privilege 거부와 MySQL `ssl-mode` 거부, role 거부가 모든 곳에서 같고, recipe가 그 전체 텍스트를 확인한다. `local`은 key 문법 밖의 key를 `lock`, `setLocal`처럼 `CONFIG`로 거부한다. 전에는 key를 따옴표 없이 쓴 `NO_ROWS`였다. UTF-8이 아닌 flowmark 응답은 그 byte로 보고한다. 전에는 TypeScript가 byte를 바꿔 썼고 extension은 빈 텍스트를 썼다.
 - Rust catalog에도 다른 다섯 runtime처럼 test용 driver seam이 생겼다(T431). polyspec-orm-build의 feature `test-faults`에서 `tool_db::script::run`은 그 안의 catalog 연결이 보내는 문에 driver보다 먼저 `Script`로 답한다. 읽기에는 행을, 문에는 오류를 준다. DIA-205(literal 하나가 아닌 MariaDB default)와 INT-118(확인 응답 없는 commit) case가 Rust에서도 다른 runtime처럼 `CatalogConnection`에서 돈다. 어떤 기본 feature도 이를 켜지 않는다.
+- Breaking (0.x): DSN은 모든 runtime에서 같은 규칙으로 읽는다(T433, CFG-10~CFG-12, CFG-18~CFG-20, CFG-36, CFG-37, PRT-63). scheme마다 받는 매개변수가 닫혀 있고, query는 값을 쓰기 전에 쌍마다 읽으며, 검사는 URI, fragment, query, host, database나 path, 그리고 CFG-19 순서의 값으로 한 순서를 따른다. 모든 거부는 여섯 runtime에서 한 텍스트이다. 이제 같게 거부한다: host가 `localhost`가 아닌 MySQL socket DSN, 서로 다른 PostgreSQL host 둘, 2147483647을 넘는 `busy_timeout`(SQLite는 이를 0으로 읽어 기다리지 않았다), 뒤에 줄바꿈이 있는 `_pragma`, `.`이나 `..`이거나 percent-encoded UTF-8이 아닌 markdown corpus. database는 첫 `/` 뒤의 path를 쓴 그대로 읽고 path는 dot segment를 지키므로, 어떤 runtime도 DSN의 `/`나 `..`을 버리지 않는다. Rust는 그 값만으로 sqlx option을 만들고 query를 sqlx에 넘기지 않는다. Go `database/sql`의 `markdown` driver도 같은 reader로 DSN을 읽는다. `PrivilegeUtils`의 privilege는 잘라 내지 않고 ASCII 대소문자만 무시해 비교한다(INT-59).
+- dbspec set file의 진단은 모든 runtime에서 같은 텍스트이다(T432, DBS-18a). tests/dbspec/set-files.json의 각 오류는 message를 적고, platform이나 JSON parser의 오류는 reader의 텍스트 뒤 `: ` 다음에 붙는다.
+- 모든 runtime은 SQLite library version을 같은 규칙으로 읽는다(T434, DSL-150). 각각 u32에 드는 십진 구성 요소 셋이나 넷이어야 하고, 아니면 `INTERNAL: SQLite library version "<v>" is invalid; expected three or four decimal components that each fit u32`이다.
 
 ## 0.0.29
 

@@ -737,7 +737,7 @@ def creates(c: Core, models, batch: int) -> int:
     CONFIG; a batch whose binds exceed the bind limit is BATCH_TOO_LARGE; both before any statement."""
     if isinstance(batch, bool) or not isinstance(batch, int) or batch < 1:
         raise OrmError(
-            codes.CONFIG, f"creates batch must be a positive integer, got {batch!r}"
+            codes.CONFIG, f"creates batch must be a positive integer, got {batch}"
         )
     ex = _terminal(c)
     if len(models) == 0:

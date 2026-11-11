@@ -16,6 +16,7 @@ import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
 import { rendererName } from './names.js';
 import { present } from '../present.js';
+import { quote as messageQuote } from '../message.js';
 import { meetKind } from '../meet.js';
 
 interface RawDiagnostic {
@@ -381,7 +382,7 @@ function isWordRune(cp: number): boolean {
 
 /** The character as the `character <c> is not allowed here` message quotes it. */
 function goRune(cp: number): string {
-  return quoteText(String.fromCodePoint(cp), "'");
+  return messageQuote(String.fromCodePoint(cp), "'");
 }
 
 /** Splits one line into tokens (engine/dbspec/lex.go's lexLine); only the space separates tokens. */
@@ -496,28 +497,9 @@ function describe(tok: Tk): string {
   return tok.k === K.Str ? `string '${stringValue(tok)}'` : `'${tok.t}'`;
 }
 
-/**
- * The canonical quoting of a text (Go's quote): the delimiter, then per code point the delimiter or `\` as a backslash and
- * the character, \a \b \f \n \r \t \v as those escapes, another code point below 0x20 or 0x7F as \xNN, and any other code
- * point as is; then the delimiter.
- */
-function quoteText(text: string, delim: '"' | "'"): string {
-  const escapes: Record<number, string> = { 7: '\\a', 8: '\\b', 9: '\\t', 10: '\\n', 11: '\\v', 12: '\\f', 13: '\\r' };
-  let out = delim;
-  for (const ch of text) {
-    const cp = present(ch.codePointAt(0), 'ch.codePointAt(0)');
-    const escape = escapes[cp];
-    if (ch === delim || ch === '\\') out += '\\' + ch;
-    else if (escape !== undefined) out += escape;
-    else if (cp < 0x20 || cp === 0x7f) out += `\\x${cp.toString(16).padStart(2, '0')}`;
-    else out += ch;
-  }
-  return out + delim;
-}
-
-/** A name as the messages quote it. */
+/** A name as the messages quote it (INT-187). */
 function goQuote(text: string): string {
-  return quoteText(text, '"');
+  return messageQuote(text, '"');
 }
 
 /** Go's nameDiagnostics messages for a name: its format, then its length. */

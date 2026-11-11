@@ -1,4 +1,5 @@
 /* Native PostgreSQL table privileges for Polyspec\Orm\PrivilegeUtils. */
+#include "message_quote.h"
 #include "dbspec.h"
 #include "Zend/zend_interfaces.h"
 
@@ -68,12 +69,6 @@ static zval *privilege_utils_table_role(zval *object, zend_string *table, zend_s
     if (*qualified != NULL) zend_string_release(*qualified);
     if (*schema != NULL) zend_string_release(*schema);
     return NULL;
-}
-
-static bool privilege_utils_trim_character(unsigned char character)
-{
-    return character == ' ' || character == '\n' || character == '\r' || character == '\t'
-        || character == '\v' || character == '\0';
 }
 
 typedef struct {
@@ -171,19 +166,24 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, revokeTable)
         Z_PARAM_STR(role)
     ZEND_PARSE_PARAMETERS_END();
     PRIVILEGE_RESOLVE_TABLE_ROLE();
-    size_t start = 0, end = ZSTR_LEN(privilege);
-    while (start < end && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[start])) start++;
-    while (end > start && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[end - 1])) end--;
-    zend_string *normalized = zend_string_alloc(end - start, 0);
-    for (size_t i = 0; i < end - start; i++) ZSTR_VAL(normalized)[i] = (char)toupper((unsigned char)ZSTR_VAL(privilege)[start + i]);
-    ZSTR_VAL(normalized)[end - start] = '\0';
+    /* A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59). */
+    size_t length = ZSTR_LEN(privilege);
+    zend_string *normalized = zend_string_alloc(length, 0);
+    for (size_t i = 0; i < length; i++) {
+        char c = ZSTR_VAL(privilege)[i];
+        ZSTR_VAL(normalized)[i] = c >= 'a' && c <= 'z' ? (char)(c - 'a' + 'A') : c;
+    }
+    ZSTR_VAL(normalized)[length] = '\0';
     static const char *const allowed[] = {"SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"};
     bool accepted = false;
     for (size_t i = 0; i < sizeof(allowed) / sizeof(allowed[0]); i++) {
         if (zend_string_equals_cstr(normalized, allowed[i], strlen(allowed[i]))) accepted = true;
     }
     if (!accepted) {
-        db_throw_orm("CONFIG", "unsupported table privilege %s", ZSTR_VAL(normalized));
+        /* The refusal names the privilege as the caller gave it. */
+        zend_string *quoted = orm_message_quote(ZSTR_VAL(privilege), ZSTR_LEN(privilege), '"');
+        db_throw_orm("CONFIG", "unsupported table privilege %s", ZSTR_VAL(quoted));
+        zend_string_release(quoted);
         zend_string_release(normalized);
         zend_string_release(qualified);
         zend_string_release(schema);

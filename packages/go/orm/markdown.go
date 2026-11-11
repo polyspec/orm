@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/polyspec/orm/packages/go/engine"
+	"github.com/polyspec/orm/packages/go/internal/message"
 	"io"
 	"net"
 	"net/url"
@@ -29,10 +30,20 @@ type markdownDSN struct {
 	pragmas []string
 }
 
+// markdownForm is the form of a markdown DSN that its refusals name (PRT-63).
+const markdownForm = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>"
+
 // parseMarkdownDSN reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. flowmark
 // server listens only on 127.0.0.1, and since the token travels in plain text, the host is only 127.0.0.1.
-func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
-	const form = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>"
+// path is the path of the DSN as written, decoded here as every DSN path is (CFG-11).
+func parseMarkdownDSN(u *url.URL, path string, q map[string][]string) (markdownDSN, error) {
+	const form = markdownForm
+	// readDSNQuery has refused another parameter, a repeated or empty token and an invalid encoding (CFG-20); the token,
+	// the user, the host, the port and the corpus follow in that order, and parseDSN checks timezone and then _pragma.
+	tokens := q["token"]
+	if len(tokens) == 0 {
+		return markdownDSN{}, configErr("markdown DSN is missing the parameter %q", "token")
+	}
 	if u.User != nil {
 		return markdownDSN{}, configErr("%s; it takes no user", form)
 	}
@@ -43,30 +54,10 @@ func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
 	if err != nil || port < 1 || port > 65535 {
 		return markdownDSN{}, configErr("%s; port %q is not 1 to 65535: give the port that flowmark serve printed", form, u.Port())
 	}
-	corpus := strings.TrimPrefix(u.Path, "/")
-	if corpus == "" || strings.Contains(corpus, "/") {
-		return markdownDSN{}, configErr("%s; the path %q is not one corpus name: give the corpus root's directory name", form, u.Path)
-	}
-	// A parameter other than token is refused by its name, before any value is read: url.Values drops a pair
-	// whose value does not decode, so the names come from the raw query.
-	for _, pair := range strings.Split(u.RawQuery, "&") {
-		key, _, _ := strings.Cut(pair, "=")
-		if decoded, err := url.QueryUnescape(key); err == nil {
-			key = decoded
-		}
-		// timezone is the rule of every scheme, which parseDSN has already checked (a corpus keeps datetime in UTC).
-		if key != "" && key != "token" && key != "timezone" && key != "_pragma" {
-			return markdownDSN{}, configErr("%s; it does not accept %s", form, key)
-		}
-	}
-	tokens := q["token"]
-	if len(tokens) != 1 || tokens[0] == "" {
-		return markdownDSN{}, configErr("%s; give one token, the token of .flowmark/server.json of the corpus", form)
-	}
-	for _, pragma := range q["_pragma"] {
-		if !sqlitePragma.MatchString(pragma) || (strings.HasPrefix(pragma, "busy_timeout(") && !sqliteBusyTimeout.MatchString(pragma)) {
-			return markdownDSN{}, configErr("%s; _pragma %s is invalid", form, pragma)
-		}
+	decoded, ok := decodedPath(path)
+	corpus := strings.TrimPrefix(decoded, "/")
+	if !ok || !strings.HasPrefix(decoded, "/") || corpus == "" || corpus == "." || corpus == ".." || strings.ContainsAny(corpus, "/\x00") {
+		return markdownDSN{}, configErr("%s; the path %q is not one corpus name: give the corpus root's directory name", form, path)
 	}
 	return markdownDSN{address: u.Host, corpus: corpus, token: tokens[0], pragmas: q["_pragma"]}, nil
 }
@@ -153,7 +144,7 @@ func (s *mdSession) call(ctx context.Context, msg any) (json.RawMessage, error) 
 	var probe map[string]json.RawMessage
 	if err := json.Unmarshal(answer, &probe); err != nil || probe == nil {
 		s.close()
-		return nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("the flowmark server answered %q, not a JSON object", answer)}
+		return nil, &ir.Error{Code: CodeInternal, Msg: message.Sprintf("the flowmark server answered %q, not a JSON object", answer)}
 	}
 	if raw, ok := probe["error"]; ok {
 		var e struct {

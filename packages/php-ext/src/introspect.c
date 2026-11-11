@@ -628,7 +628,7 @@ static bool ctokenize(cdecoder *c, str text)
             PUSH(c->tokens, ((ctoken){T_PUNCT, str_sub(text, i, 1)}));
             i++;
         } else {
-            cfail(c, fmt("unexpected character \"%S\"", str_sub(text, i, 1)));
+            cfail(c, fmt("unexpected character %S", dbs_quote_with(str_sub(text, i, utf8_char_width(text, i)), '\'')));
             return false;
         }
     }
@@ -722,7 +722,7 @@ static cnode *coperand(cdecoder *c)
         c->i++;
         return operand_node("column", t.text);
     }
-    cfail(c, fmt("unexpected \"%S\"", t.text));
+    cfail(c, fmt("unexpected %S", dbs_quote(t.text)));
     c->i = c->tokens.n;
     return operand_node("column", SL(""));
 }
@@ -1037,7 +1037,7 @@ bool check_decode(dialect d, str text, const smap *columns, str *out, str *failu
     }
     if (d == D_POSTGRES) {
         if (!str_starts(text, "CHECK ")) {
-            *failure = fmt("constraint definition \"%S\" does not start with CHECK", text);
+            *failure = fmt("constraint definition %S does not start with CHECK", dbs_quote(text));
             return false;
         }
         text = str_sub(text, 6, text.n - 6);
@@ -1045,7 +1045,7 @@ bool check_decode(dialect d, str text, const smap *columns, str *out, str *failu
     if (ctokenize(c, text)) {
         cnode *node = cexpression(c);
         if (!c->failed && c->i != c->tokens.n) {
-            cfail(c, fmt("unexpected \"%S\"", c->tokens.v[c->i].text));
+            cfail(c, fmt("unexpected %S", dbs_quote(c->tokens.v[c->i].text)));
         }
         if (!c->failed && !node->predicate) {
             cfail(c, SL("an operand alone is not a predicate"));
@@ -2528,7 +2528,7 @@ static catalog *pg_read(zval *pdo)
             }
             ctype *type = pg_type(formatted, collation);
             if (type == NULL) {
-                catalog_report(c, SL("column"), table, name, fmt("type %S with collation \"%S\" has no dbspec type", formatted, collation));
+                catalog_report(c, SL("column"), table, name, fmt("type %S with collation %S has no dbspec type", formatted, dbs_quote(collation)));
                 continue;
             }
             icolumn col = {name, type, !not_null, false, SL(""), false, SL("")};
@@ -2911,11 +2911,11 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
             }
             if (found >= 0) {
                 if (found == 3) {
-                    st->unsupported = fmt("the primary key \"%S\" has no dbspec definition", item);
+                    st->unsupported = fmt("the primary key %S has no dbspec definition", dbs_quote(item));
                     return st;
                 }
                 const char *kinds[] = {"check", "unique", "foreign_key"};
-                PUSH(*unsupported, ((sqlite_unsupported){str_c(kinds[found]), found_name, fmt("the table item \"%S\" has no dbspec definition", item)}));
+                PUSH(*unsupported, ((sqlite_unsupported){str_c(kinds[found]), found_name, fmt("the table item %S has no dbspec definition", dbs_quote(item))}));
                 continue;
             }
         }
@@ -2927,7 +2927,7 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
             smap_set(&st->columns, name, v);
             continue;
         }
-        st->unsupported = fmt("the table item \"%S\" has no dbspec definition", item);
+        st->unsupported = fmt("the table item %S has no dbspec definition", dbs_quote(item));
         return st;
     }
     return st;
@@ -3159,7 +3159,7 @@ static catalog *sqlite_read(zval *pdo)
             str *item = smap_get(&st->columns, name);
             str item_text = item != NULL ? *item : SL("");
             if (!str_eq(st->identity, name) && !sqlite_column_text(item_text, name, declared, not_null != 0, def_null, def)) {
-                catalog_report(c, SL("column"), table, name, fmt("the column definition \"%S\" has clauses that dbspec does not read", item_text));
+                catalog_report(c, SL("column"), table, name, fmt("the column definition %S has clauses that dbspec does not read", dbs_quote(item_text)));
                 continue;
             }
             icolumn col = {name, NULL, not_null == 0, false, SL(""), false, SL("")};
@@ -3179,7 +3179,7 @@ static catalog *sqlite_read(zval *pdo)
                     catalog_report(c, SL("column"), table, name, SL(DBS_TEXT_STORAGE_REASON));
                 }
                 if (type == NULL) {
-                    catalog_report(c, SL("column"), table, name, fmt("declared type %S with CHECK \"%S\" has no dbspec type", declared, check));
+                    catalog_report(c, SL("column"), table, name, fmt("declared type %S with CHECK %S has no dbspec type", declared, dbs_quote(check)));
                     continue;
                 }
                 col.type = type;

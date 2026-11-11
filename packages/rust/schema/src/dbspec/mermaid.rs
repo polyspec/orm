@@ -307,7 +307,7 @@ pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupport
                         col.identity = !group(&m, 2).is_empty();
                         col.dflt = group(&m, 3).to_owned();
                     }
-                    None => c.report("comment", &e.name, &a.name, format!("the comment {:?} is not a dbspec column suffix", a.comment)),
+                    None => c.report("comment", &e.name, &a.name, format!("the comment {} is not a dbspec column suffix", crate::message::quote(&a.comment))),
                 }
             }
             t.columns.push(col);

@@ -14,7 +14,8 @@
     "INT-59",
     "CFG-22",
     "DIA-154",
-    "DIA-188"
+    "DIA-188",
+    "INT-187"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -745,6 +746,87 @@
       ]
     },
     {
+      "id": "a_key_outside_its_grammar_is_refused_with_its_quoted_text",
+      "requirements": [
+        "INT-50",
+        "INT-51",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm test\n",
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                }
+              }
+            },
+            {
+              "op": "utils.set_local",
+              "connection": "conn",
+              "name": "orm\tkey",
+              "value": {
+                "text": "kept"
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                }
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.é\u0007\"",
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "stats_report_the_pool_of_the_connection",
       "requirements": [
         "INT-79"
@@ -856,7 +938,8 @@
     {
       "id": "table_privileges_on_postgres_only",
       "requirements": [
-        "INT-59"
+        "INT-59",
+        "INT-187"
       ],
       "steps": [
         {
@@ -1027,13 +1110,14 @@
           "call": "revoke",
           "table": "public.privilege_probe",
           "role": "orm_priv_probe",
-          "privilege": "drop",
+          "privilege": " drop\u0007",
           "expect": {
             "mysql": {
               "error": "CAPABILITY_UNSUPPORTED"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" drop\\a\""
             },
             "sqlite": {
               "error": "CAPABILITY_UNSUPPORTED"
@@ -1085,6 +1169,46 @@
           "table": "public.privilege_probe",
           "role": "orm_priv_probe",
           "privilege": " select ",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" select \""
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "\u017felect",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \"\u017felect\""
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "select",
           "expect": {
             "mysql": {
               "error": "CAPABILITY_UNSUPPORTED"

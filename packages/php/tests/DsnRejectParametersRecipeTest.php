@@ -1,7 +1,7 @@
 <?php
 
 // The recipe contracts/fixtures/dsn_reject/dsn_reject_parameters.json without a database (docs/spec/feature-coverage.md
-// FCV-3). Go and Rust pass another parameter to their drivers.
+// FCV-3).
 // Requirements: CFG-19, CFG-20, CFG-37.
 declare(strict_types=1);
 

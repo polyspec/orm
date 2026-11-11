@@ -11,13 +11,16 @@
     "CFG-26",
     "PRT-64",
     "PRT-63",
-    "CFG-6"
+    "CFG-6",
+    "CFG-20",
+    "INT-187"
   ],
   "cases": [
     {
       "id": "timezone_mysql_offset",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -25,7 +28,8 @@
           "dsn": "mysql://root@localhost/orm_example?timezone=%2B09:00",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"+09:00\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -34,7 +38,8 @@
     {
       "id": "timezone_postgres_zone",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -42,7 +47,8 @@
           "dsn": "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -51,7 +57,8 @@
     {
       "id": "timezone_sqlite_zone",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -59,7 +66,8 @@
           "dsn": "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -68,7 +76,8 @@
     {
       "id": "timezone_mysql_system",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -76,7 +85,8 @@
           "dsn": "mysql://root@localhost/orm_example?timezone=SYSTEM",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"SYSTEM\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -85,7 +95,8 @@
     {
       "id": "timezone_unknown_zone",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -93,7 +104,8 @@
           "dsn": "mysql://root@localhost/orm_example?timezone=Nowhere/City",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Nowhere/City\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -408,7 +420,8 @@
     {
       "id": "postgres_timezone_zone_name",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "INT-187"
       ],
       "steps": [
         {
@@ -416,7 +429,8 @@
           "dsn": "postgres://localhost/app?timezone=Nowhere",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Nowhere\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -425,7 +439,9 @@
     {
       "id": "sqlite_path_percent_without_hex",
       "requirements": [
-        "CFG-11"
+        "CFG-11",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -433,7 +449,8 @@
           "dsn": "sqlite:///tmp/app%2.sqlite",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN path \"/tmp/app%2.sqlite\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -442,7 +459,9 @@
     {
       "id": "sqlite_path_not_utf8",
       "requirements": [
-        "CFG-11"
+        "CFG-11",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -450,7 +469,8 @@
           "dsn": "sqlite:///tmp/app%FF.sqlite",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN path \"/tmp/app%FF.sqlite\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -542,7 +562,322 @@
           "dsn": "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(soon)",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"busy_timeout(soon)\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_busy_timeout_beyond_int",
+      "requirements": [
+        "CFG-12",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(2147483648)",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"busy_timeout(2147483648)\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_busy_timeout_beyond_u64",
+      "requirements": [
+        "CFG-12",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(99999999999999999999)",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"busy_timeout(99999999999999999999)\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_busy_timeout_beyond_int",
+      "requirements": [
+        "CFG-12",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/tracker?token=a&_pragma=busy_timeout(2147483648)",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN _pragma \"busy_timeout(2147483648)\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_with_an_encoded_slash",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a%2Fb?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a%2Fb\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_with_a_bad_escape",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a%zz?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a%zz\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_not_utf8",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a%FF?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a%FF\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_with_a_nul",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a%00b?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a%00b\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_is_named_as_written_with_dot_segments",
+      "requirements": [
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/../x/%2e%2e/a%2.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN path \"/tmp/../x/%2e%2e/a%2.sqlite\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_dot_dot",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/%2e%2e?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/%2e%2e\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_corpus_dot",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/.?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/.\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_token_is_refused_before_a_bad_corpus",
+      "requirements": [
+        "PRT-63",
+        "CFG-11",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a%zz",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is missing the parameter \"token\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_pragma_with_a_line_feed_after_it",
+      "requirements": [
+        "CFG-12",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app.sqlite?_pragma=foreign_keys(1)%0A",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"foreign_keys(1)\\n\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_with_a_nul",
+      "requirements": [
+        "CFG-11",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app%00.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN path \"/tmp/app%00.sqlite\" holds a NUL byte, which a file name cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_is_refused_before_a_parameter_value",
+      "requirements": [
+        "CFG-11",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app%2.sqlite?timezone=Asia%2FSeoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN path \"/tmp/app%2.sqlite\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_host_with_a_percent_escape",
+      "requirements": [
+        "CFG-11",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite://a%2Eb/tmp/app.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN host \"a%2Eb\" holds a percent escape, which no host name needs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_with_a_host",
+      "requirements": [
+        "CFG-11",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite://db.local/tmp/app.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN must include an absolute database path"
             }
           }
         }
@@ -572,7 +907,10 @@
     {
       "id": "markdown_no_token",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -580,7 +918,8 @@
           "dsn": "markdown://127.0.0.1:4100/tracker",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is missing the parameter \"token\""
             }
           }
         }
@@ -589,7 +928,10 @@
     {
       "id": "markdown_empty_token",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -597,7 +939,8 @@
           "dsn": "markdown://127.0.0.1:4100/tracker?token=",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN parameter \"token\" is empty"
             }
           }
         }
@@ -606,7 +949,10 @@
     {
       "id": "markdown_two_tokens",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -614,7 +960,8 @@
           "dsn": "markdown://127.0.0.1:4100/tracker?token=a&token=b",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN repeats the parameter \"token\""
             }
           }
         }
@@ -623,7 +970,10 @@
     {
       "id": "markdown_other_parameter",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -631,7 +981,8 @@
           "dsn": "markdown://127.0.0.1:4100/tracker?token=a&mode=ro",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN has the unknown parameter \"mode\"; it accepts token, timezone, _pragma"
             }
           }
         }
@@ -640,7 +991,8 @@
     {
       "id": "markdown_no_port",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -648,7 +1000,8 @@
           "dsn": "markdown://127.0.0.1/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; port \"\" is not 1 to 65535: give the port that flowmark serve printed"
             }
           }
         }
@@ -657,7 +1010,8 @@
     {
       "id": "markdown_port_zero",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -665,7 +1019,8 @@
           "dsn": "markdown://127.0.0.1:0/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; port \"0\" is not 1 to 65535: give the port that flowmark serve printed"
             }
           }
         }
@@ -674,7 +1029,8 @@
     {
       "id": "markdown_port_not_a_number",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -682,7 +1038,8 @@
           "dsn": "markdown://127.0.0.1:port/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://"
             }
           }
         }
@@ -691,7 +1048,8 @@
     {
       "id": "markdown_host_name",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -699,7 +1057,8 @@
           "dsn": "markdown://localhost:4100/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; host \"localhost\": a flowmark server listens on 127.0.0.1 only"
             }
           }
         }
@@ -708,7 +1067,8 @@
     {
       "id": "markdown_other_address",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -716,7 +1076,8 @@
           "dsn": "markdown://10.0.0.1:4100/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; host \"10.0.0.1\": a flowmark server listens on 127.0.0.1 only"
             }
           }
         }
@@ -725,7 +1086,8 @@
     {
       "id": "markdown_user_info",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -733,7 +1095,8 @@
           "dsn": "markdown://user@127.0.0.1:4100/tracker?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it takes no user"
             }
           }
         }
@@ -742,7 +1105,8 @@
     {
       "id": "markdown_no_corpus",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -750,7 +1114,8 @@
           "dsn": "markdown://127.0.0.1:4100/?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/\" is not one corpus name: give the corpus root's directory name"
             }
           }
         }
@@ -759,7 +1124,8 @@
     {
       "id": "markdown_corpus_of_two_names",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "INT-187"
       ],
       "steps": [
         {
@@ -767,7 +1133,8 @@
           "dsn": "markdown://127.0.0.1:4100/a/b?token=a",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a/b\" is not one corpus name: give the corpus root's directory name"
             }
           }
         }
@@ -776,7 +1143,10 @@
     {
       "id": "markdown_other_parameter_before_its_value_is_decoded",
       "requirements": [
-        "PRT-63"
+        "PRT-63",
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
       ],
       "steps": [
         {
@@ -785,7 +1155,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept extra"
+              "message": "CONFIG: markdown DSN has the unknown parameter \"extra\"; it accepts token, timezone, _pragma"
             }
           }
         }
@@ -804,6 +1174,126 @@
             "none": {
               "error": "DRIVER",
               "message_holds": "connecting to the flowmark server 127.0.0.1:1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_pragma_with_a_statement_after_it",
+      "requirements": [
+        "PRT-63",
+        "CFG-12",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/tracker?token=a&_pragma=foreign_keys(1)%3Bx",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN _pragma \"foreign_keys(1);x\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_without_a_host",
+      "requirements": [
+        "PRT-63",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown:///x?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; host \"\": a flowmark server listens on 127.0.0.1 only"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_missing_token_is_refused_before_the_user",
+      "requirements": [
+        "PRT-63",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://user@127.0.0.1:4100/tracker",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is missing the parameter \"token\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_path_is_refused_before_the_timezone",
+      "requirements": [
+        "PRT-63",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/a/b?token=a&timezone=Asia%2FSeoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; the path \"/a/b\" is not one corpus name: give the corpus root's directory name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_timezone_is_refused_before_the_pragma",
+      "requirements": [
+        "PRT-63",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/tracker?token=a&timezone=Asia%2FSeoul&_pragma=x(1)%3By",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_host_with_a_percent_escape",
+      "requirements": [
+        "PRT-63",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127%2E0.0.1:4100/tracker?token=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN host \"127%2E0.0.1\" holds a percent escape, which no host name needs"
             }
           }
         }

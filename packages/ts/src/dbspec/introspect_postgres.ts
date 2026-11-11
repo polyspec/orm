@@ -6,6 +6,7 @@ import { renderedColumn } from './names.js';
 import { addCheck, markChecked } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecAction, DbspecType } from './model.js';
+import { quote as messageQuote } from '../message.js';
 
 const TABLES_QUERY = `SELECT c.relname, c.relkind::text, c.relispartition FROM pg_class c
 WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname NOT LIKE 'dbspec$%' ORDER BY c.relname`;
@@ -78,7 +79,7 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
     }
     const type = postgresType(formatted, collation);
     if (type === null) {
-      c.report('column', table, name, `type ${formatted} with collation ${JSON.stringify(collation)} has no dbspec type`);
+      c.report('column', table, name, `type ${formatted} with collation ${messageQuote(collation)} has no dbspec type`);
       continue;
     }
     const col = { name, type, nullable: !notNull, identity: false, dflt: '' };

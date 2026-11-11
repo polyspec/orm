@@ -6,10 +6,9 @@
 //! (step 3), and the read of each file with its identity from the same handle (step 4). Steps 1
 //! and 2 stop at their first error; steps 3 and 4 report each path that breaks them.
 
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, MapAccess, Visitor};
 use serde::Deserializer as _;
 use serde_json::value::RawValue;
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -92,8 +91,8 @@ pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>> {
     let entries = lists.documents.iter().map(|w| (false, w)).chain(lists.external.iter().map(|w| (true, w)));
     for (external, written) in entries {
         if let Err(reason) = normal_form(written, external) {
-            let quoted = serde_json::to_string(written).expect("a string encodes as JSON");
-            errors.push(error(RULE_SET_PATH, path, format!("{}: the path {quoted} {reason}", path.display())));
+            let list = if external { "external" } else { "documents" };
+            errors.push(error(RULE_SET_PATH, path, format!("{}: the {list} path {} {reason}", path.display(), crate::message::quote(written))));
             continue;
         }
         let mut joined = prefix.clone();
@@ -105,20 +104,22 @@ pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>> {
         }
     }
     // Step 4: one open per file, its bytes and its identity from that handle.
-    let mut identities: HashSet<same_file::Handle> = HashSet::new();
+    // The identity of each file read, with the joined path that named it first.
+    let mut identities: HashMap<same_file::Handle, PathBuf> = HashMap::new();
     let mut set = Set { documents: Vec::new(), external: Vec::new() };
     for (external, joined) in passed {
         let (bytes, handle) = match read_with_identity(&joined) {
             Ok(read) => read,
             Err(e) => {
-                errors.push(error(RULE_SET_FILE, &joined, format!("{}: cannot be read: {e}", joined.display())));
+                errors.push(error(RULE_SET_FILE, &joined, format!("{}: the file cannot be read: {e}", joined.display())));
                 continue;
             }
         };
-        if !identities.insert(handle) {
-            errors.push(error(RULE_SET_DUPLICATE, &joined, format!("{}: names a file that an earlier path names", joined.display())));
+        if let Some(earlier) = identities.get(&handle) {
+            errors.push(error(RULE_SET_DUPLICATE, &joined, format!("{}: names the file that {} names", joined.display(), earlier.display())));
             continue;
         }
+        identities.insert(handle, joined.clone());
         let file = SetFile { path: joined, bytes };
         if external {
             set.external.push(file);
@@ -148,26 +149,32 @@ fn set_file(tree: &mut Tree, path: &Path) -> Result<(OsString, Vec<u8>), SetErro
     if !platform::same_name(&last, SET_FILE_NAME) {
         return Err(error(RULE_SET_FILE, path, format!("{shown}: the set file is not named {SET_FILE_NAME}")));
     }
+    if platform::has_nul(path.as_os_str()) {
+        return Err(error(RULE_SET_FILE, path, format!("{shown}: the path contains a NUL byte")));
+    }
     let root = platform::root(&prefix);
+    let r = Path::new(&root).display();
     match tree.kind(&root) {
-        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {} cannot be examined: {e}", Path::new(&root).display()))),
-        Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, path, format!("{shown}: the root {} is a symbolic link", Path::new(&root).display()))),
+        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {r} cannot be examined: {e}"))),
+        Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, path, format!("{shown}: the root {r} is a symbolic link"))),
         Ok(Kind::Dir) => {}
-        Ok(_) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {} is not a directory", Path::new(&root).display()))),
+        Ok(_) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {r} is not a directory"))),
     }
     match tree.lists(&root, SET_FILE_NAME) {
-        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {} cannot be listed: {e}", Path::new(&root).display()))),
-        Ok(false) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root does not list {SET_FILE_NAME}"))),
+        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {r} cannot be listed: {e}"))),
+        Ok(false) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the root {r} lists no {SET_FILE_NAME}"))),
         Ok(true) => {}
     }
     match tree.kind(path.as_os_str()) {
-        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: cannot be examined: {e}"))),
-        Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, path, format!("{shown}: is a symbolic link"))),
+        Err(e) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the set file cannot be examined: {e}"))),
+        Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, path, format!("{shown}: the set file is a symbolic link"))),
         Ok(Kind::File) => {}
-        Ok(_) => return Err(error(RULE_SET_FILE, path, format!("{shown}: is not a regular file"))),
+        Ok(_) => return Err(error(RULE_SET_FILE, path, format!("{shown}: the set file is not a regular file"))),
     }
     let mut bytes = Vec::new();
-    File::open(path).and_then(|mut file| file.read_to_end(&mut bytes)).map_err(|e| error(RULE_SET_FILE, path, format!("{shown}: cannot be read: {e}")))?;
+    File::open(path)
+        .and_then(|mut file| file.read_to_end(&mut bytes))
+        .map_err(|e| error(RULE_SET_FILE, path, format!("{shown}: the set file cannot be read: {e}")))?;
     Ok((prefix, bytes))
 }
 
@@ -248,6 +255,14 @@ impl Tree {
             current.push(segment);
             let component = Path::new(&current).display().to_string();
             let last = index + 1 == segments.len();
+            if *segment != ".." {
+                let listing = Path::new(&dir).display();
+                match self.lists(&dir, segment) {
+                    Err(e) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {listing} cannot be listed: {e}"))),
+                    Ok(false) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {listing} lists no name {}", crate::message::quote(segment)))),
+                    Ok(true) => {}
+                }
+            }
             match self.component_kind(&current, external, last) {
                 Err(e) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {component} cannot be examined: {e}"))),
                 Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, joined, format!("{shown}: {component} is a symbolic link"))),
@@ -255,13 +270,6 @@ impl Tree {
                 Ok(Kind::Dir) if !last => {}
                 Ok(_) if last => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {component} is not a regular file"))),
                 Ok(_) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {component} is not a directory"))),
-            }
-            if *segment != ".." {
-                match self.lists(&dir, segment) {
-                    Err(e) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {} cannot be listed: {e}", Path::new(&dir).display()))),
-                    Ok(false) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {} does not list {segment:?}", Path::new(&dir).display()))),
-                    Ok(true) => {}
-                }
             }
             dir = current.clone();
             current.push("/");
@@ -276,42 +284,55 @@ struct Lists {
     external: Vec<String>,
 }
 
-/// Step 2: the bytes are UTF-8 without a byte order mark; they hold one JSON object nested at most
-/// 64 levels deep with no lone surrogate escaped and no key twice; then the keys, `schema`,
-/// `documents` and `external`. Stops at the first error.
+/// Step 2 (DBS-13): the bytes have no byte order mark and are UTF-8; they are one JSON text, which the JSON parser
+/// judges with its own error; it is one object, nested at most 64 levels deep, with no lone surrogate escaped and no key
+/// twice in any object; then the keys, `schema`, `documents` and `external`. Stops at the first error.
 fn parse(bytes: &[u8], path: &Path) -> Result<Lists, SetError> {
     let shown = path.display();
-    let json = |message: String| error(RULE_SET_JSON, path, format!("{shown}: {message}"));
-    let text = std::str::from_utf8(bytes).map_err(|e| json(format!("is not valid UTF-8: {e}")))?;
-    if text.starts_with('\u{feff}') {
-        return Err(json("begins with a byte order mark".into()));
+    let json = |message: &str| error(RULE_SET_JSON, path, format!("{shown}: {message}"));
+    if bytes.starts_with(b"\xef\xbb\xbf") {
+        return Err(json("the set file starts with a byte order mark"));
     }
-    let twice = RefCell::new(None);
-    let mut deserializer = serde_json::Deserializer::from_str(text);
-    let pairs = deserializer.deserialize_map(Object { depth: 1, twice: &twice, keep: true }).and_then(|pairs| deserializer.end().map(|()| pairs));
-    let pairs = pairs.map_err(|e| json(format!("is not one JSON object nested at most {MAX_DEPTH} levels deep: {e}")))?;
-    if let Some(repeated) = twice.into_inner() {
-        return Err(error(RULE_SET_KEY, path, format!("{shown}: the key {repeated:?} appears twice in an object")));
+    let Ok(text) = std::str::from_utf8(bytes) else { return Err(json("the set file is not valid UTF-8")) };
+    // serde_json skips a value without recursion and without decoding a string, so it judges the syntax of a text of any
+    // depth, and a lone surrogate is left to the scan below.
+    if let Err(e) = serde_json::from_str::<de::IgnoredAny>(text) {
+        return Err(json(&format!("the set file is not JSON: {e}")));
+    }
+    let scan = scan(text).ok_or_else(|| json("the set file is not one JSON object"))?;
+    if scan.too_deep {
+        return Err(json(&format!("the set file nests deeper than {MAX_DEPTH} levels")));
+    }
+    if scan.lone_surrogate {
+        return Err(json("the set file escapes a lone surrogate"));
     }
     let key = |message: String| error(RULE_SET_KEY, path, format!("{shown}: {message}"));
+    if let Some(repeated) = scan.twice {
+        return Err(key(format!("the key {} appears twice", crate::message::quote(&repeated))));
+    }
+    // The text is now valid JSON, at most 64 levels deep and with no lone surrogate, so serde reads its top object.
+    let pairs = serde_json::Deserializer::from_str(text).deserialize_map(TopObject).map_err(|e| json(&format!("the set file is not JSON: {e}")))?;
     let mut unknown: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).filter(|k| !matches!(*k, "schema" | "documents" | "external")).collect();
     if !unknown.is_empty() {
         // Rust orders strings by their UTF-8 bytes, which is code-point order.
         unknown.sort_unstable();
-        let names: Vec<String> = unknown.iter().map(|k| serde_json::to_string(k).expect("a string encodes as JSON")).collect();
-        return Err(key(format!("has the unknown keys {}", names.join(", "))));
+        let names: Vec<String> = unknown.iter().map(|k| crate::message::quote(k)).collect();
+        let noun = if names.len() == 1 { "key" } else { "keys" };
+        return Err(key(format!("unknown {noun} {}", names.join(", "))));
     }
     let value = |name: &str| pairs.iter().find(|(k, _)| k == name).map(|(_, v)| v.get());
+    let schema = |message: &str| error(RULE_SET_SCHEMA, path, format!("{shown}: {message}"));
     match value("schema") {
-        None => return Err(error(RULE_SET_SCHEMA, path, format!("{shown}: schema is missing"))),
+        None => return Err(schema("schema is missing")),
         Some(raw) if schema_is_one(raw) => {}
-        Some(raw) => return Err(error(RULE_SET_SCHEMA, path, format!("{shown}: schema is {raw}, not the number 1"))),
+        Some(_) => return Err(schema("schema is not the number 1")),
     }
     let documents = match value("documents") {
         None => return Err(key("documents is missing".into())),
         Some(raw) => match serde_json::from_str::<Vec<String>>(raw) {
-            Ok(documents) => documents,
-            Err(error) => return Err(key(format!("documents is not an array of strings: {error}"))),
+            Ok(list) => list,
+            // The text states the shape that DBS-13 asks for; the value is no failure of the parser, whose text is not stated.
+            Err(_not_strings) => return Err(key("documents is not an array of strings".into())),
         },
     };
     if documents.is_empty() {
@@ -320,8 +341,9 @@ fn parse(bytes: &[u8], path: &Path) -> Result<Lists, SetError> {
     let external = match value("external") {
         None => Vec::new(),
         Some(raw) => match serde_json::from_str::<Vec<String>>(raw) {
-            Ok(external) => external,
-            Err(error) => return Err(key(format!("external is not an array of strings: {error}"))),
+            Ok(list) => list,
+            // The text states the shape that DBS-13 asks for; the value is no failure of the parser, whose text is not stated.
+            Err(_not_strings) => return Err(key("external is not an array of strings".into())),
         },
     };
     Ok(Lists { documents, external })
@@ -333,99 +355,166 @@ fn schema_is_one(raw: &str) -> bool {
     raw.starts_with(|c: char| c == '-' || c.is_ascii_digit()) && raw.parse::<f64>() == Ok(1.0)
 }
 
-/// Checks a raw JSON value at nesting level `depth`: an object or array is at most [`MAX_DEPTH`]
-/// deep and its members are checked in turn; a string is decoded, which rejects a lone surrogate.
-/// A number is not converted, so one beyond the range of a double stays valid JSON.
-fn check(raw: &str, depth: usize, twice: &RefCell<Option<String>>) -> Result<(), serde_json::Error> {
-    match raw.as_bytes().first() {
-        Some(b'{') | Some(b'[') if depth > MAX_DEPTH => Err(de::Error::custom(format!("nested more than {MAX_DEPTH} levels deep"))),
-        Some(b'{') => serde_json::Deserializer::from_str(raw).deserialize_map(Object { depth, twice, keep: false }).map(|_| ()),
-        Some(b'[') => serde_json::Deserializer::from_str(raw).deserialize_seq(Object { depth, twice, keep: false }).map(|_| ()),
-        Some(b'"') => serde_json::from_str::<String>(raw).map(|_| ()),
-        _ => Ok(()),
+/// What the scan of a valid JSON text found: a container nested deeper than [`MAX_DEPTH`], a lone surrogate escaped in a
+/// string, and the first key, in text order, that appears twice in its object.
+struct Scan {
+    too_deep: bool,
+    lone_surrogate: bool,
+    twice: Option<String>,
+}
+
+/// Scans a text that the JSON parser accepted, without recursion, so that a text of any depth is judged; None when its
+/// value is not an object. The object counts as one level.
+fn scan(text: &str) -> Option<Scan> {
+    let bytes = text.as_bytes();
+    let mut at = bytes.iter().position(|b| !b" \t\r\n".contains(b))?;
+    if bytes[at] != b'{' {
+        return None;
     }
+    let mut result = Scan { too_deep: false, lone_surrogate: false, twice: None };
+    // One entry per open container: the keys of an object, or None for an array; and whether a key comes next.
+    let mut open: Vec<(Option<HashSet<String>>, bool)> = Vec::new();
+    while at < bytes.len() {
+        match bytes[at] {
+            b'{' | b'[' => {
+                let object = bytes[at] == b'{';
+                open.push((object.then(HashSet::new), object));
+                result.too_deep |= open.len() > MAX_DEPTH;
+                at += 1;
+            }
+            b'}' | b']' => {
+                open.pop();
+                at += 1;
+            }
+            b',' => {
+                if let Some((keys, wants_key)) = open.last_mut() {
+                    *wants_key = keys.is_some();
+                }
+                at += 1;
+            }
+            b'"' => {
+                let (decoded, lone, end) = json_string(bytes, at);
+                result.lone_surrogate |= lone;
+                if let Some((Some(keys), wants_key)) = open.last_mut() {
+                    if *wants_key {
+                        *wants_key = false;
+                        if !keys.insert(decoded.clone()) && result.twice.is_none() {
+                            result.twice = Some(decoded);
+                        }
+                    }
+                }
+                at = end;
+            }
+            _ => at += 1,
+        }
+    }
+    Some(result)
 }
 
-/// The serde visitor of an object or array at level `depth`: it takes each member as a raw value,
-/// records the first key that appears twice in an object in `twice`, and checks each member at the
-/// next level. The top
-/// object keeps its pairs.
-struct Object<'a> {
-    depth: usize,
-    twice: &'a RefCell<Option<String>>,
-    keep: bool,
+/// Decodes the JSON string that starts at the quote at `start` of a valid JSON text: its text, whether it escapes a lone
+/// surrogate (written as U+FFFD in the text), and the position after its closing quote.
+fn json_string(bytes: &[u8], start: usize) -> (String, bool, usize) {
+    // The JSON parser accepted the text, so four hexadecimal digits follow each \u.
+    let hex = |at: usize| bytes[at..at + 4].iter().fold(0, |unit, &b| unit * 16 + char::from(b).to_digit(16).unwrap_or(0));
+    let mut out: Vec<u8> = Vec::new();
+    let mut lone = false;
+    let mut at = start + 1;
+    while bytes[at] != b'"' {
+        if bytes[at] != b'\\' {
+            out.push(bytes[at]);
+            at += 1;
+            continue;
+        }
+        let escaped = bytes[at + 1];
+        at += 2;
+        let unit = match escaped {
+            b'u' => {
+                let unit = hex(at);
+                at += 4;
+                unit
+            }
+            b'b' => 0x08,
+            b'f' => 0x0c,
+            b'n' => 0x0a,
+            b'r' => 0x0d,
+            b't' => 0x09,
+            other => u32::from(other),
+        };
+        let code = match unit {
+            0xD800..=0xDBFF if bytes.get(at..at + 2) == Some(b"\\u") && (0xDC00..=0xDFFF).contains(&hex(at + 2)) => {
+                let low = hex(at + 2);
+                at += 6;
+                0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00)
+            }
+            0xD800..=0xDFFF => {
+                lone = true;
+                0xFFFD
+            }
+            unit => unit,
+        };
+        let mut buffer = [0; 4];
+        out.extend_from_slice(char::from_u32(code).unwrap_or('\u{fffd}').encode_utf8(&mut buffer).as_bytes());
+    }
+    (String::from_utf8_lossy(&out).into_owned(), lone, at + 1)
 }
 
-impl<'de> Visitor<'de> for Object<'_> {
+/// The serde visitor of the top object of a scanned text: its pairs, each value kept raw, so that a number is not
+/// converted.
+struct TopObject;
+
+impl<'de> Visitor<'de> for TopObject {
     type Value = Vec<(String, &'de RawValue)>;
 
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(if self.depth == 1 { "a JSON object" } else { "a JSON value" })
+        f.write_str("a JSON object")
     }
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-        let mut keys = HashSet::new();
         let mut pairs = Vec::new();
         while let Some(key) = map.next_key::<String>()? {
-            // A key twice is set.key, which the reader reports only after the whole text met the
-            // set.json conditions, so the first one is recorded and the parse goes on.
-            if !keys.insert(key.clone()) {
-                self.twice.borrow_mut().get_or_insert_with(|| key.clone());
-            }
-            let value: &'de RawValue = map.next_value()?;
-            check(value.get(), self.depth + 1, self.twice).map_err(de::Error::custom)?;
-            if self.keep {
-                pairs.push((key, value));
-            }
+            pairs.push((key, map.next_value()?));
         }
         Ok(pairs)
     }
-
-    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        while let Some(value) = seq.next_element::<&'de RawValue>()? {
-            check(value.get(), self.depth + 1, self.twice).map_err(de::Error::custom)?;
-        }
-        Ok(Vec::new())
-    }
 }
 
-/// The normal form of a written path, or the reason it has none. An `external` path may begin
-/// with `..` segments; a `documents` path has none.
-fn normal_form(written: &str, external: bool) -> Result<(), &'static str> {
+/// The normal form of a written path, or the reason it has none, the first problem of the first segment that has one
+/// (DBS-18a). An `external` path may begin with `..` segments; a `documents` path has none.
+fn normal_form(written: &str, external: bool) -> Result<(), String> {
     let mut leading = external;
     let segments: Vec<&str> = written.split('/').collect();
     for segment in &segments {
+        if segment.is_empty() {
+            return Err("has an empty segment".into());
+        }
         if *segment == ".." {
             if leading {
                 continue;
             }
-            return Err(if external { "has a .. segment after another segment" } else { "has a .. segment" });
+            return Err(if external { "has a .. segment after another segment" } else { "has a .. segment" }.into());
         }
         leading = false;
         segment_form(segment)?;
     }
     if !segments.last().is_some_and(|last| last.ends_with(".dbs")) {
-        return Err("does not end in .dbs");
+        return Err("does not end in .dbs".into());
     }
     Ok(())
 }
 
-fn segment_form(segment: &str) -> Result<(), &'static str> {
-    if segment.is_empty() {
-        return Err("has an empty segment");
-    }
-    if segment.chars().any(|c| matches!(c, '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*' | '\0'..='\u{1f}')) {
-        return Err("has a character that a segment cannot hold");
-    }
+fn segment_form(segment: &str) -> Result<(), String> {
     if segment == "." {
-        return Err("has a . segment");
+        return Err("has a . segment".into());
+    }
+    if let Some(c) = segment.chars().find(|c| matches!(c, '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*' | '\0'..='\u{1f}')) {
+        return Err(format!("has the character {} that a segment cannot hold", crate::message::quote(c.encode_utf8(&mut [0; 4]))));
     }
     if segment.ends_with('.') || segment.ends_with(' ') {
-        return Err("has a segment ending in . or a space");
+        return Err("has a segment that ends in . or a space".into());
     }
     let base = segment.split('.').next().unwrap_or("").trim_end_matches(' ');
     if device(base) {
-        return Err("has a segment that is a device name of Windows");
+        return Err(format!("has the segment {} that names a Windows device", crate::message::quote(segment)));
     }
     Ok(())
 }
@@ -475,6 +564,11 @@ mod posix {
     pub fn same_name(listed: &OsStr, name: &str) -> bool {
         listed.as_bytes() == name.as_bytes()
     }
+
+    /// Whether `path` holds a NUL byte, which no file name holds.
+    pub fn has_nul(path: &OsStr) -> bool {
+        path.as_bytes().contains(&0)
+    }
 }
 
 #[cfg(windows)]
@@ -514,6 +608,11 @@ mod windows {
     /// Whether a listed name equals `name`: their UTF-16 code units are equal.
     pub fn same_name(listed: &OsStr, name: &str) -> bool {
         listed.encode_wide().eq(name.encode_utf16())
+    }
+
+    /// Whether `path` holds a NUL code unit, which no file name holds.
+    pub fn has_nul(path: &OsStr) -> bool {
+        path.encode_wide().any(|unit| unit == 0)
     }
 }
 

@@ -1,4 +1,5 @@
 /* Native non-query operations for Polyspec\\Orm\\Utils. */
+#include "message_quote.h"
 #include "dbspec.h"
 #include "Zend/zend_closures.h"
 #include "Zend/zend_interfaces.h"
@@ -144,7 +145,9 @@ static bool utils_driver(zval *db, zval *driver)
 static bool utils_key_or_throw(zend_string *key, const char *kind)
 {
     if (utils_valid_key(key)) return true;
-    db_throw_orm("CONFIG", "%s key %s is invalid", kind, ZSTR_VAL(key));
+    zend_string *quoted = orm_message_quote(ZSTR_VAL(key), ZSTR_LEN(key), '"');
+    db_throw_orm("CONFIG", "%s key %s is invalid", kind, ZSTR_VAL(quoted));
+    zend_string_release(quoted);
     return false;
 }
 

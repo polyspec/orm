@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+use Polyspec\Orm\Message;
+
 /**
  * Reads the current PostgreSQL schema into an intermediate model. Every query reads the whole schema
  * in one go (docs/spec/dialects.md "Introspection").
@@ -94,7 +96,8 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
             }
             $type = self::type($formatted, $collation);
             if ($type === null) {
-                $c->report('column', $table, $name, "type $formatted with collation \"$collation\" has no dbspec type");
+                $c->report('column', $table, $name, "type $formatted with collation " . Message::quote($collation)
+                    . " has no dbspec type");
                 continue;
             }
             $column = ['name' => $name, 'type' => $type, 'null' => !$notNull, 'identity' => false, 'default' => ''];

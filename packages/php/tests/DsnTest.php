@@ -39,7 +39,11 @@ class DsnTest extends TestCase
         [, $pdo] = Orm::parseDsn('mysql://root@localhost/orm_example?socket=/tmp/mysql.sock');
         self::assertSame('mysql:unix_socket=/tmp/mysql.sock;dbname=orm_example;charset=utf8mb4', $pdo, 'mysql socket');
         [$driver, $pdo] = Orm::parseDsn('postgres:///orm_example?host=/tmp&timezone=%2B00:00');
-        self::assertSame(['postgres', 'pgsql:host=/tmp;port=5432;dbname=orm_example'], [$driver, $pdo], 'postgres');
+        self::assertSame(
+            ['postgres', 'pgsql:host=/tmp;port=5432;dbname=orm_example;sslmode=disable'],
+            [$driver, $pdo],
+            'postgres'
+        );
         [$driver, $pdo, , , $pragmas] = Orm::parseDsn(
             'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)&_pragma=journal_mode(WAL)'
         );
@@ -51,9 +55,9 @@ class DsnTest extends TestCase
             'the whole mysql tuple'
         );
         self::assertSame(
-            ['postgres', 'pgsql:host=pool.example;port=5432;dbname=app;sslmode=require', 'user', 'secret', [], null],
-            Orm::parseDsn('postgres://user:secret@db.example/app?host=pool.example&sslmode=require'),
-            'the host parameter over the host of the URL'
+            ['postgres', 'pgsql:host=pool.example;port=5432;dbname=app;sslmode=disable', 'user', 'secret', [], null],
+            Orm::parseDsn('postgres://user:secret@pool.example/app?host=pool.example&sslmode=disable'),
+            'the host parameter equal to the host of the URL'
         );
         self::assertSame(
             ['sqlite', 'sqlite:/tmp/app db.sqlite', null, null, [['journal_mode', 'WAL']], null],
@@ -61,9 +65,14 @@ class DsnTest extends TestCase
             'a decoded sqlite path'
         );
         self::assertSame(
+            ['sqlite', 'sqlite:/tmp/app.sqlite', null, null, [], null],
+            Orm::parseDsn('SQLite:///tmp/app.sqlite'),
+            'the scheme in another case'
+        );
+        self::assertSame(
             ['sqlite', 'sqlite:/tmp/app.sqlite', null, null, [['busy_timeout', '200'], ['journal_mode', 'WAL']], null],
-            Orm::parseDsn('sqlite:///tmp/app.sqlite?&_pragma=busy_timeout(200)&&_pragma=journal_mode(WAL)&'),
-            'empty query parts'
+            Orm::parseDsn('sqlite:///tmp/app.sqlite?_pragma=busy_timeout(200)&_pragma=journal_mode(WAL)'),
+            'the _pragma parameters in order'
         );
         self::assertSame(
             ['127.0.0.1:49152', 'corpus', 'a token', []],
@@ -79,9 +88,17 @@ class DsnTest extends TestCase
         );
         // The text of a refusal in the two PHP modes; the recipes dsn_reject and dsn_reject_parameters hold the parts
         // that every runtime that refuses it shares.
-        $accepts = 'CONFIG: mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca';
+        $accepts = 'CONFIG: mysql DSN has the unknown parameter "extra"; it accepts timezone, socket, ssl-mode, ssl-ca';
         foreach (
             [
+                [
+                    'mysql://root@db.local/?socket=/tmp/s.sock',
+                    'CONFIG: mysql DSN socket needs the host localhost, which names the local server',
+                ],
+                [
+                    'postgres://h1/?host=h2',
+                    'CONFIG: postgres DSN names two hosts, "h1" in the URL and "h2" in the host parameter',
+                ],
                 ['mysql://db.example/app?extra=value', $accepts],
                 ['mysql://db.example/app?extra=%ZZ', $accepts],
                 [
@@ -98,14 +115,40 @@ class DsnTest extends TestCase
                 self::assertSame($message, $error->getMessage());
             }
         }
-        try {
-            Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?extra=%ZZ');
-            self::fail('an unknown markdown parameter was accepted');
-        } catch (OrmException $error) {
-            self::assertSame(
-                'CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept extra',
-                $error->getMessage()
-            );
+        $form = 'CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
+        foreach (
+            [
+                [
+                    'markdown://127.0.0.1:49152/corpus?extra=%ZZ',
+                    'CONFIG: markdown DSN has the unknown parameter "extra"; it accepts token, timezone, _pragma',
+                ],
+                ['markdown:///x?token=a', "$form; host \"\": a flowmark server listens on 127.0.0.1 only"],
+                ['markdown:///x?token=a#y', 'CONFIG: markdown DSN has a fragment, which no connection reads'],
+                [
+                    'markdown://127%2E0.0.1:1/x?token=a',
+                    'CONFIG: markdown DSN host "127%2E0.0.1" holds a percent escape, which no host name needs',
+                ],
+                [
+                    'markdown://127.0.0.1:port/x?token=a',
+                    'CONFIG: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://',
+                ],
+                ['markdown://127.0.0.1:1/x?token=a&token=b', 'CONFIG: markdown DSN repeats the parameter "token"'],
+                ['markdown://127.0.0.1:1/x', 'CONFIG: markdown DSN is missing the parameter "token"'],
+                ['markdown://127.0.0.1:1/x?token=a&', 'CONFIG: markdown DSN has the unknown parameter ""; '
+                    . 'it accepts token, timezone, _pragma'],
+                ['markdown://127.0.0.1:1/x?token=a&_pragma=a;b', 'CONFIG: markdown DSN _pragma "a;b" is invalid'],
+                [
+                    'markdown://127.0.0.1:1/x?token=a&timezone=%2B09:00',
+                    'CONFIG: dsn timezone "+09:00": every connection reads and writes datetime values in UTC',
+                ],
+            ] as [$dsn, $message]
+        ) {
+            try {
+                Orm::parseMarkdownDsn($dsn);
+                self::fail("$dsn was accepted");
+            } catch (OrmException $error) {
+                self::assertSame($message, $error->getMessage(), $dsn);
+            }
         }
         // The fields of a function value in the two PHP modes; the plans of these functions are in the planner vectors.
         foreach (
@@ -134,8 +177,24 @@ class DsnTest extends TestCase
 
     public function testSharedDsnUrlPartsPreserveEmptyAuthorityRules(): void
     {
-        [$parts, $query] = DsnUrl::parse('postgres:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres');
-        self::assertSame('localhost', $parts['host']);
+        $accepted = ['timezone', 'host', 'sslmode'];
+        [$parts, $query] = DsnUrl::parse('POSTGRES:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres', $accepted);
+        self::assertSame('', $parts['host'], 'an empty authority is the host "", never localhost');
         self::assertSame(['host' => '/tmp', 'timezone' => 'UTC'], $query);
+        self::assertSame(
+            ['_pragma' => ['a(1)', 'b c(2)']],
+            DsnUrl::query('sqlite', '_pragma=a(1)&_pragma=b+c%282%29', ['timezone', '_pragma', '_txlock']),
+            'the _pragma values in written order, form-decoded'
+        );
+        self::assertSame([], DsnUrl::query('sqlite', '', ['timezone']), 'an empty query has no pair');
+        try {
+            DsnUrl::query('sqlite', '_pragma=a(1)&&_pragma=b(2)', ['timezone', '_pragma', '_txlock']);
+            self::fail('an empty pair was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(
+                'CONFIG: sqlite DSN has the unknown parameter ""; it accepts timezone, _pragma, _txlock',
+                $error->getMessage()
+            );
+        }
     }
 }

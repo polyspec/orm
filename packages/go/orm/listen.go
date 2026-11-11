@@ -3,11 +3,11 @@ package orm
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/message"
 )
 
 // Notification is one notification that a LISTEN subscription receives
@@ -102,7 +102,7 @@ func (d *DB) Listen(channel string) (*Subscription, error) {
 	}
 	open, ok := listenOpener(d.driver)
 	if !ok {
-		return nil, &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf("driver %q has no LISTEN connection", d.driver)}
+		return nil, &ir.Error{Code: CodeConfig, Msg: message.Sprintf("driver %q has no LISTEN connection", d.driver)}
 	}
 	ctx := d.context()
 	conn, err := open(ctx, d.m.native)
