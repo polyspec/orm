@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6f72af2e699f1f1bcd742da1c65da7a8797f0a79816b2dbb4b34da3b2f42408d -->
+<!-- source-sha256: 391c0a7089b40c9f1738ddf5d179fee20ce32234ad0c7ef71204e6bae78c1c53 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.30
 
 - 오류 message는 모든 runtime에서 같은 텍스트이다(T430, INT-187). message가 인용하는 이름, key, 거부한 입력, 데이터베이스의 텍스트는 runtime마다 함수 하나로 DBS-144의 quoting을 써서 큰따옴표 안에 쓰고, dbspec 진단도 같은 함수를 쓴다. 어떤 message도 host 언어의 quoting(Go `%q`, Rust `{:?}`, Python `repr`, TypeScript `JSON.stringify`, PHP `json_encode`)을 쓰지 않는다. 일부 runtime에서 따옴표 없이 쓰던 lock key, local key, privilege 거부와 MySQL `ssl-mode` 거부, role 거부가 모든 곳에서 같고, recipe가 그 전체 텍스트를 확인한다. `local`은 key 문법 밖의 key를 `lock`, `setLocal`처럼 `CONFIG`로 거부한다. 전에는 key를 따옴표 없이 쓴 `NO_ROWS`였다. UTF-8이 아닌 flowmark 응답은 그 byte로 보고한다. 전에는 TypeScript가 byte를 바꿔 썼고 extension은 빈 텍스트를 썼다.
 - Rust catalog에도 다른 다섯 runtime처럼 test용 driver seam이 생겼다(T431). polyspec-orm-build의 feature `test-faults`에서 `tool_db::script::run`은 그 안의 catalog 연결이 보내는 문에 driver보다 먼저 `Script`로 답한다. 읽기에는 행을, 문에는 오류를 준다. DIA-205(literal 하나가 아닌 MariaDB default)와 INT-118(확인 응답 없는 commit) case가 Rust에서도 다른 runtime처럼 `CatalogConnection`에서 돈다. 어떤 기본 feature도 이를 켜지 않는다.
