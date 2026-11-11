@@ -20,6 +20,7 @@ if (getenv('ORM_PHP_MODE') === 'extension') {
     guardExtensionRun($librarySource, (new ReflectionExtension('polyspec_orm'))->getClassNames());
 }
 require_once __DIR__ . '/bench.php';
+require_once __DIR__ . '/memory_budget.php';
 require_once __DIR__ . '/generated_classes.php';
 requireGeneratedClasses(dirname(__DIR__) . '/complexmodel');
 require_once dirname(__DIR__) . '/gen/bootstrap.php';

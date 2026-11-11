@@ -25,7 +25,7 @@ final class DbspecIntrospectStressTest extends TestCase
         // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects
         // it. The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory
         // flag.
-        ini_set('memory_limit', '512M');
+        requireMemoryBudget('512M', 'the dbspec introspection stress test');
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
         $text = dbspec_stress_document();
         $parsed = Dbspec::parse($text, []);
