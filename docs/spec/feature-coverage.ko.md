@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: b12add2dfe966c4ba6f7abb8ad5987fc4325c394ba2ee495b617724e658d891b -->
+<!-- source-sha256: 5981b54aa3244ac786ec5903cd145b19cc3f967feceb0c0f35d3ec536ae7d48e -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -95,7 +95,6 @@
   - `packages/go/orm/aes_rotation_test.go`의 `TestHostAESDecodesByStoredVersion`, `TestRotateAESRowDoesNotReturnPartialResult`는 native 시험으로 남는다: recipe 값으로 쓸 수 없는 이 언어의 값(bytes, 언어 object, driver cell, 바꿔 끼운 decoder)을 넘기거나 cause object 자체를 읽는다. 같은 호출의 code는 recipe가 지킨다.
   - `packages/go/orm/audit_transaction_test.go`의 `TestAuditSourceReceivesTheTransactionContext`는 native 시험으로 남는다: 그 요구사항(CFG-8a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/go/orm/cancel_test.go`의 `TestRootIdentifiesTheConnection`는 native 시험으로 남는다: 이 언어만의 표면을 읽는다: 언어의 타입이나 값, reflection, 생성된 member, 언어의 compiler나 analyser가 보고하는 것이다.
-  - `packages/go/orm/catalog_values_test.go`의 `TestCatalogPostgresQueryModeKeepsBinaryTemporals`는 native 시험으로 남는다: query mode는 Go PostgreSQL driver의 option이며(INT-153), 모든 runtime이 읽는 것은 recipe 사례 `catalog_temporal_values_under_a_query_datestyle`가 지킨다.
   - `packages/go/orm/codec_test.go`의 `TestOrderedJSONCodecConvertsTaggedGoStructs`, `TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull`, `TestOrderedJSONCodecFlattensAnonymousStruct`, `TestOrderedJSONCodecParsesJSONRawMessage`, `TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit`, `TestOrderedJSONCodecTakesGoJSONInputs`, `TestOrderedJSONCodecUsesCustomJSONMarshaler`는 native 시험으로 남는다: 이 언어만의 표면을 읽는다: 언어의 타입이나 값, reflection, 생성된 member, 언어의 compiler나 analyser가 보고하는 것이다.
   - `packages/go/orm/collection_identity_test.go`의 `TestNullableCompositeRowHasNoCollectionKey`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/go/orm/collection_key_test.go`의 `TestCollectionLookupRejectsUnsupportedKey`, `TestJoinedByteColumnsAndInvalidValues`, `TestKeyValuesPreserveTheirTypes`, `TestModelCollectionKeyRejectsMissingColumn`, `TestRelationKeyCollectionPropagatesInvalidValue`, `TestScalarComparisonPreservesTypesAndRejectsInvalidValues`, `TestSelectedByteKeyPreservesByteType`, `TestSplitQueryPropagatesInvalidKey`, `TestSplitQueryRetainsDistinctTypedValues`, `TestUnsupportedKeyIsAnError`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.

@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -65,55 +64,5 @@ func TestCatalogValueDriverDecodeFailure(t *testing.T) {
 	}
 	if unwrapped := errors.Unwrap(err); unwrapped == nil || !errors.Is(unwrapped, cause) {
 		t.Fatalf("errors.Unwrap = %v; want the driver failure", unwrapped)
-	}
-}
-
-// TestCatalogPostgresQueryModeKeepsBinaryTemporals reads a date and a timestamp through a DSN whose pgx query mode would
-// send their text: the catalog reads them in the binary form, so each keeps its cell in a plain and a grid query, and a
-// query that changes DateStyle is refused by INT-186, where pgx would fail to parse the text of its date.
-//
-// Requirements: INT-153, INT-186.
-// Runtime-unique (FCV-14): the query mode is an option of the Go PostgreSQL driver; the recipe case
-// catalog_temporal_values_under_a_query_datestyle reads a query that changes DateStyle through the DSN of every runtime.
-func TestCatalogPostgresQueryModeKeepsBinaryTemporals(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	dsn := os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if dsn == "" {
-		t.Fatal("ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers")
-	}
-	query := "SELECT '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt"
-	changing := "SELECT set_config('DateStyle', 'German', true) AS style, '2026-01-02'::date AS d"
-	for _, mode := range []string{"simple_protocol", "exec"} {
-		t.Run(mode, func(t *testing.T) {
-			catalog, err := ConnectCatalog(dsn + "&default_query_exec_mode=" + mode)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := catalog.Close(); err != nil {
-					t.Errorf("close: %v", err)
-				}
-			})
-			ctx := context.Background()
-			plain, err := catalog.ReadOnlyQuery(ctx, query, nil, CatalogQueryLimits{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(plain.Rows) != 1 || plain.Rows[0][0] != "2026-01-02" || plain.Rows[0][1] != "2026-01-02 03:04:05.500000" {
-				t.Fatalf("ReadOnlyQuery rows = %#v", plain.Rows)
-			}
-			grid, err := catalog.ReadOnlyGridQuery(ctx, query, nil, CatalogQueryLimits{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := []CatalogGridCell{{Kind: CatalogGridDate, Value: "2026-01-02"}, {Kind: CatalogGridDateTime, Value: "2026-01-02 03:04:05.500000"}}
-			if len(grid.Rows) != 1 || grid.Rows[0][0] != want[0] || grid.Rows[0][1] != want[1] {
-				t.Fatalf("ReadOnlyGridQuery rows = %#v; want the cells %#v", grid.Rows, want)
-			}
-			const refused = "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
-			if _, err := catalog.ReadOnlyGridQuery(ctx, changing, nil, CatalogQueryLimits{}); ErrorCode(err) != CodeCatalogValue || err.Error() != refused {
-				t.Fatalf("ReadOnlyGridQuery of a query that changes DateStyle = %v; want %s", err, refused)
-			}
-		})
 	}
 }

@@ -8367,7 +8367,7 @@
         },
         {
           "id": "catalog-values-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure|TestCatalogPostgresQueryModeKeepsBinaryTemporals)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/catalog_values_test.go",

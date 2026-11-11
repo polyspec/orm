@@ -118,9 +118,7 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 // On PostgreSQL the catalog also reads each value of a fixed-length built-in type in its binary form, which no setting
 // changes: pgx's database/sql driver asks for that form when it describes a statement, and parses the text form of a date
 // or a timestamp, which follows DateStyle, so a query that sets DateStyle would fail that parse before INT-186 refuses the
-// read. A query mode
-// that does not describe (simple_protocol, exec) becomes describe_exec, which uses no named statement either; the session
-// is one transaction, which holds its server connection through a transaction pooler (CFG-28).
+// read. A DSN names no query mode (CFG-19), so pgx describes every statement.
 func catalogNativeDSN(parsed parsedDSN) (string, error) {
 	if parsed.driver == "postgres" {
 		u, err := url.Parse(parsed.native)
@@ -129,9 +127,6 @@ func catalogNativeDSN(parsed parsedDSN) (string, error) {
 		}
 		q := u.Query()
 		q.Set("client_encoding", "UTF8")
-		if mode := q.Get("default_query_exec_mode"); mode == "simple_protocol" || mode == "exec" {
-			q.Set("default_query_exec_mode", "describe_exec")
-		}
 		// PostgreSQL reads the option string literally, so a space stays percent-encoded, as parseDSN writes it.
 		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
 		return u.String(), nil
