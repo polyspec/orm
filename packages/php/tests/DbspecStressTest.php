@@ -30,9 +30,7 @@ final class DbspecStressTest extends TestCase
 {
     public function testStress(): void
     {
-        if (ini_set('memory_limit', '512M') === false) {
-            throw new RuntimeException('the dbspec stress benchmark requires its declared 512M memory_limit');
-        }
+        requireMemoryBudget('512M', 'the dbspec stress benchmark');
         // The CPU baseline for the stress case is 60 s. It covers document creation (one node process), five parses,
         // and two emits. Warns if exceeded.
         $clock = cpuCaseBegin(60.0);

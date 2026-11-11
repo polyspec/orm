@@ -55,14 +55,10 @@ trait RecipeCases
         return Recipe::casesOn(static::recipe(), 'mariadb');
     }
 
-    /** Sets the memory limit that the recipe of the test class declares it needs. */
-    private static function requireMemoryLimit(string $limit): void
+    /** Makes room for the memory that the recipe of the test class declares it needs (memory_budget.php). */
+    private static function requireMemoryLimit(string $budget): void
     {
-        if (ini_set('memory_limit', $limit) === false) {
-            throw new \RuntimeException(
-                'the recipe ' . static::recipe() . " requires its declared $limit memory_limit"
-            );
-        }
+        requireMemoryBudget($budget, 'the recipe ' . static::recipe());
     }
 
     private function runCase(string $id, string $database): void
