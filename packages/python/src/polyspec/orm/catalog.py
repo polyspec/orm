@@ -1902,53 +1902,13 @@ class _Session:
         _same_names(raw.names, metadata.columns)
         return raw.rows
 
-    def mysql_partial_revokes_off(self) -> None:
-        """Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
-        hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
-        partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207)."""
-        partial = self.run(
-            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
-            [],
-            1,
-            4096,
-        ).rows
-        if len(partial) != 0:
-            raise _error(
-                codes.ROW_MUTATION_UNSUPPORTED,
-                "MySQL partial-revoke visibility requires verification",
-            )
-
     def mysql_safety(self, metadata: CatalogTableMetadata) -> None:
-        """Refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
-        the table is InnoDB and it has no triggers (mutation.rs, mysql_safety)."""
-
-        def unsupported(reason: str):
-            return _error(codes.ROW_MUTATION_UNSUPPORTED, reason)
-
-        account = self.run("SELECT CURRENT_USER()", [], 1, 4096).rows
-        if len(account) != 1:
-            raise unsupported("unverifiable MySQL account")
-        text = account[0][0]
-        at = text.rfind("@") if isinstance(text, str) else -1
-        if at < 0:
-            raise unsupported("unverifiable MySQL account")
-        grantee = f"'{text[:at]}'@'{text[at + 1 :]}'"
-
-        namespace, name = metadata.table["namespace"], metadata.table["name"]
-        grants = self.run(
-            "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' "
-            "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' "
-            "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-            [grantee, grantee, namespace, grantee, namespace, name],
-            16,
-            4096,
-        ).rows
-        if not any(len(row) == 1 and row[0] == "TRIGGER" for row in grants):
-            raise unsupported("MySQL trigger visibility is unverified")
+        """Refuses a MySQL row change on a table whose engine is not InnoDB, as only InnoDB rolls a failed verification back
+        (INT-106). A trigger of the table needs no check: the verification of the written row sees what it changed (INT-110)."""
 
         engine = self.run(
             "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
-            [namespace, name],
+            [metadata.table["namespace"], metadata.table["name"]],
             2,
             4096,
         ).rows
@@ -1958,16 +1918,7 @@ class _Session:
             or not isinstance(engine[0][0], str)
             or engine[0][0].casefold() != "innodb"
         ):
-            raise unsupported("MySQL requires InnoDB")
-
-        triggers = self.run(
-            "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1",
-            [namespace, name],
-            1,
-            4096,
-        ).rows
-        if triggers:
-            raise unsupported("MySQL triggers require effect verification")
+            raise _error(codes.ROW_MUTATION_UNSUPPORTED, "MySQL requires InnoDB")
 
 
 class CatalogConnection:
@@ -2154,8 +2105,6 @@ class CatalogConnection:
     def _write(self, work: Callable[[_Session], T]) -> T:
         session = self._begin(read_only=False)
         try:
-            if self._dialect == "mysql":
-                session.mysql_partial_revokes_off()
             value = work(session)
             session.settings_unchanged()
         except Exception as error:

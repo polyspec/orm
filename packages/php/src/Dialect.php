@@ -200,7 +200,8 @@ final class Dialect
                 " || ' ' || ",
                 array_map(static fn(string $c): string => "coalesce($c, '')", $cols)
             )
-                . ') @@ ' . ($boolean ? 'websearch_to_tsquery' : 'plainto_tsquery') . "('simple', " . $value('') . ')',
+                . ') @@ ' . ($boolean ? 'websearch_to_tsquery' : 'plainto_tsquery') . "('simple', "
+                . $value($boolean ? 'fulltext_text' : '') . ')',
             default => null,
         };
     }

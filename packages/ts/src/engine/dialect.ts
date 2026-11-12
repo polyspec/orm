@@ -290,7 +290,7 @@ const postgres: Dialect = {
     });
   },
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
-  fulltext: (cols, value, boolean) => `to_tsvector('simple', ${cols.map(c => `coalesce(${c}, '')`).join(" || ' ' || ")}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${value('')})`,
+  fulltext: (cols, value, boolean) => `to_tsvector('simple', ${cols.map(c => `coalesce(${c}, '')`).join(" || ' ' || ")}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${value(boolean ? 'fulltext_text' : '')})`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'random()',
   nullsOrder: desc => (desc ? ' NULLS LAST' : ' NULLS FIRST'),

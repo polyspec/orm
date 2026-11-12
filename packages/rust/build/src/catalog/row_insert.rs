@@ -3,7 +3,7 @@ use super::CatalogError;
 use super::{
     metadata,
     mutation::{
-        assigned_slot, cancelled, cell, lookup, mysql_partial_revokes_off, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher,
+        assigned_slot, cancelled, cell, lookup, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher,
     },
     mutation_finish,
     page::quote,
@@ -43,9 +43,6 @@ impl CatalogConnection {
         super::begin_session(&mut connection, write_transaction_statement(&self.dialect)).await?;
         let result: Result<_, CatalogError> = async {
             cancelled(&cancellation)?;
-            if self.dialect == "mysql" {
-                mysql_partial_revokes_off(&mut connection).await?;
-            }
             if self.dialect == "mysql" && keys.is_none() {
                 // Information-schema reads alone do not retain the target's
                 // metadata lock. Acquire it before checking engine or schema.

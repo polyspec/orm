@@ -2398,8 +2398,9 @@ const TABLE_OPS = {
   },
   // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
   async 'pool.transactions'(s, context) {
-    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
-    // connections that they take at once (CFG-4, CFG-5).
+    // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
+    // connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no write lock, so SQLite and a flowmark
+    // corpus hold them at once too (DIA-221).
     const db = connectionOf(s, context);
     let [active, peak, open, begun] = [0, 0, 0, 0];
     let release;
@@ -2412,7 +2413,7 @@ const TABLE_OPS = {
       if (begun === s.hold) release();
       await gate;
       active -= 1;
-    }, { retry: 0 })));
+    }, { retry: 0, readOnly: true })));
     return { json: { peak, open } };
   },
   'utils.stats'(s, context) {
@@ -2607,6 +2608,8 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+      if (s.hold_ms !== undefined) await new Promise(resolve => { setTimeout(resolve, s.hold_ms); });
       if (s.conflict !== undefined) throw transactionConflict(s.conflict);
       return last;
     });

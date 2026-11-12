@@ -4,7 +4,7 @@
 //! each statement over a session of the server: `{"op": "statement", "sql", "params"}`, answered with its columns, rows,
 //! `affected`, `last_insert_id` and `more`.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use base64::Engine as _;
@@ -13,7 +13,7 @@ use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{Notify, OwnedSemaphorePermit, Semaphore};
 
 use crate::db::DbStats;
 use crate::value::{Param, Val};
@@ -472,14 +472,16 @@ impl MarkdownSession {
 }
 
 /// The session pool of a markdown connection. Open sessions do not exceed the pool size, and idle sessions are kept, up to the idle size.
-/// Sessions past their lifetime are closed while idle or when they come back.
+/// With a lifetime, a session past it is closed when it comes back, and an idle one when its lifetime ends (CFG-5).
 pub struct MarkdownPool {
     dsn: MarkdownDsn,
     size: u32,
     idle_size: usize,
-    lifetime: Duration,
+    lifetime: Option<Duration>,
     slots: Arc<Semaphore>,
     state: Mutex<MarkdownPoolState>,
+    /// Wakes the reaper of the lifetimes: a session became idle, or the pool closed or dropped.
+    idled: Arc<Notify>,
 }
 
 #[derive(Default)]
@@ -565,21 +567,64 @@ impl Drop for Opening<'_> {
     }
 }
 
-/// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/spec/config.md).
-const DEFAULT_LIFETIME: Duration = Duration::from_secs(30 * 60);
+/// Closes each idle session of the pool when its lifetime ends (CFG-5). It sleeps until the first idle session expires, or, with
+/// no idle session, until one becomes idle; a session that becomes idle wakes it. It ends when the pool is closed or dropped.
+async fn reap(pool: Weak<MarkdownPool>, lifetime: Duration, idled: Arc<Notify>) {
+    loop {
+        let next = {
+            let Some(pool) = pool.upgrade() else { return };
+            let mut state = pool.state.lock().unwrap();
+            if state.closed {
+                return;
+            }
+            let before = state.idle.len();
+            state.idle.retain(|session| session.created.elapsed() < lifetime);
+            state.open -= (before - state.idle.len()) as u32;
+            state.idle.iter().map(|session| session.created + lifetime).min()
+        };
+        match next {
+            Some(at) => {
+                tokio::select! {
+                    () = tokio::time::sleep_until(tokio::time::Instant::from_std(at)) => {}
+                    () = idled.notified() => {}
+                }
+            }
+            None => idled.notified().await,
+        }
+    }
+}
+
+impl Drop for MarkdownPool {
+    fn drop(&mut self) {
+        // The reaper holds no strong reference: woken, it finds the pool gone and ends.
+        self.idled.notify_one();
+    }
+}
 
 impl MarkdownPool {
-    /// A pool that opens up to `size` sessions. Idle sessions are kept up to `idle`, for `lifetime_ms` (30 minutes if 0).
+    /// A pool that opens up to `size` sessions. Idle sessions are kept up to `idle`, and with `lifetime_ms` other than 0 each
+    /// session is closed once it is that old (CFG-5); 0 keeps sessions without a lifetime.
     pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MarkdownPool> {
-        let lifetime = if lifetime_ms == 0 { DEFAULT_LIFETIME } else { Duration::from_millis(lifetime_ms.into()) };
-        Arc::new(MarkdownPool {
+        let lifetime = (lifetime_ms > 0).then(|| Duration::from_millis(lifetime_ms.into()));
+        let idled = Arc::new(Notify::new());
+        let pool = Arc::new(MarkdownPool {
             dsn,
             size,
             idle_size: idle as usize,
             lifetime,
             slots: Arc::new(Semaphore::new(size as usize)),
             state: Mutex::new(MarkdownPoolState::default()),
-        })
+            idled: idled.clone(),
+        });
+        if let Some(lifetime) = lifetime {
+            tokio::spawn(reap(Arc::downgrade(&pool), lifetime, idled));
+        }
+        pool
+    }
+
+    /// Whether the session has passed the lifetime of the pool.
+    fn expired(&self, session: &MarkdownSession) -> bool {
+        self.lifetime.is_some_and(|lifetime| session.created.elapsed() >= lifetime)
     }
 
     /// Hands out an idle session or connects a new one. If open sessions equal the pool size, it waits until one returns.
@@ -592,7 +637,7 @@ impl MarkdownPool {
                 return Err(sqlx::Error::PoolClosed);
             }
             while let Some(session) = state.idle.pop() {
-                if session.created.elapsed() >= self.lifetime {
+                if self.expired(&session) {
                     state.open -= 1;
                     continue;
                 }
@@ -606,7 +651,7 @@ impl MarkdownPool {
         Ok(MarkdownLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot })
     }
 
-    /// A pool of up to `size` sessions of the DSN, which keeps them idle for 30 minutes. It connects one session to check that the
+    /// A pool of up to `size` sessions of the DSN, which keeps them without a lifetime. It connects one session to check that the
     /// server accepts the corpus and token.
     pub async fn connect(dsn: MarkdownDsn, size: u32) -> std::result::Result<Arc<MarkdownPool>, sqlx::Error> {
         let pool = MarkdownPool::new(dsn, size, size, 0);
@@ -622,11 +667,12 @@ impl MarkdownPool {
     /// Returns a session to the pool. Broken sessions, sessions past their lifetime, and sessions of a closed pool are closed.
     fn release(&self, session: MarkdownSession) {
         let mut state = self.state.lock().unwrap();
-        if session.broken || state.closed || state.idle.len() >= self.idle_size || session.created.elapsed() >= self.lifetime {
+        if session.broken || state.closed || state.idle.len() >= self.idle_size || self.expired(&session) {
             state.open -= 1;
             return;
         }
         state.idle.push(session);
+        self.idled.notify_one();
     }
 
     /// Closes the pool: idle sessions are closed now, and sessions in use are closed when they return.
@@ -636,6 +682,7 @@ impl MarkdownPool {
         let idle = std::mem::take(&mut state.idle);
         state.open -= idle.len() as u32;
         self.slots.close();
+        self.idled.notify_one();
     }
 
     pub(crate) fn stats(&self) -> DbStats {

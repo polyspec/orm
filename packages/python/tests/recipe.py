@@ -4442,8 +4442,9 @@ def _utils_groups(step: dict, context: dict) -> dict:
 
 
 def _pool_transactions(step: dict, context: dict) -> dict:
-    """Count transactions in threads of their own: the first hold of them stay open until hold have
-    begun, so the pool shows the connections that they take at once (CFG-4, CFG-5)."""
+    """Count read-only transactions in threads of their own: the first hold of them stay open until hold
+    have begun, so the pool shows the connections that they take at once (CFG-4, CFG-5). A read-only
+    transaction takes no write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221)."""
     db = _connection_of(step, context)
     lock = threading.Lock()
     gate = threading.Event()
@@ -4464,7 +4465,7 @@ def _pool_transactions(step: dict, context: dict) -> dict:
 
     with ThreadPoolExecutor(max_workers=step["transactions"]) as pool:
         flows = [
-            pool.submit(db.transaction, body, {"retry": 0})
+            pool.submit(db.transaction, body, {"retry": 0, "readOnly": True})
             for _ in range(step["transactions"])
         ]
     for flow in flows:
@@ -4561,6 +4562,9 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        # hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+        if "hold_ms" in step:
+            time.sleep(step["hold_ms"] / 1000)
         if "conflict" in step:
             raise transaction_conflict(step["conflict"])
         return last

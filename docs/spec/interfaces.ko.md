@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 916b31b9965833f31f508587abc59fef382f4df3659d0d8946211774b8295215 -->
+<!-- source-sha256: c30fd2dc055dc500d786d05f4227677e44896b931a829a3c476c95e23e656c04 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -190,7 +190,7 @@ recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client
 - **INT-56** `schema().addTablesAndColumns(schema)`: generated schema 값을 받아 설치한 그 document set에 데이터베이스에 없는 테이블과, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼과, 기존 테이블에 빠진 index를 dialect의 plan step으로 더하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`, 만든 index를 `table.index`로 반환하고, 다른 set의 테이블은 바꾸지 않으며 set을 등록하지 않는다. 다른 차이는 변경 전에 `SCHEMA_DIFFERS`이며, 빠진 unique key는 있는 row에서 실패할 수 있어 plan에서 다룬다는 이유와 함께 `SCHEMA_DIFFERS`. MySQL과 SQLite에서 트랜잭션 안의 호출은 `CONFIG`
 - **INT-57** `schema().exists(schema)`, `schema().installed(schema, table)`: 스키마 확인
 - **INT-58** `schema().empty()`: 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다
-- **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환. `revokeTable`의 privilege는 `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE` 중 하나이며, SQL keyword처럼 ASCII 글자의 대소문자는 가리지 않는다. 그 밖의 텍스트, 곧 앞뒤에 공백이 있거나 ASCII 밖의 글자가 섞인 텍스트는 `CONFIG: unsupported table privilege "<privilege>"`이고, privilege는 받은 그대로 INT-187대로 quote한다
+- **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 인자를 검사한 뒤 `CAPABILITY_UNSUPPORTED`를 반환하므로, 잘못된 인자는 모든 database에서 `CONFIG`다(DIA-225). `revokeTable`의 privilege는 `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE` 중 하나이며, SQL keyword처럼 ASCII 글자의 대소문자는 가리지 않는다. 그 밖의 텍스트, 곧 앞뒤에 공백이 있거나 ASCII 밖의 글자가 섞인 텍스트는 `CONFIG: unsupported table privilege "<privilege>"`이고, privilege는 받은 그대로 INT-187대로 quote한다
 - **INT-59a** PHP-extension package `polyspec/orm-php-ext`는 `PrivilegeUtils`와 그 세 table privilege method를 native로 구현한다.
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전
 - **INT-61** `stats()`: 연결 풀 통계
@@ -478,10 +478,9 @@ pre-commit permit을 요구한다. 허가는 트랜잭션
 Rust update 실행기는 원본 `RowSnapshot`, 명시적 타입형 `P` 대입,
 원자적 취소 플래그와 필수 단계 이벤트 구독자를 받는다. 새 discard-on-drop
 트랜잭션에서 원본 키 행 잠금(SQLite는 `BEGIN IMMEDIATE`), descriptor/원본
-비교와 정확한 쓰기 후 검증을 commit 전에 수행한다. MySQL은 비InnoDB와
-트리거를 거부한다.
-트리거 조회 가시성을 확인할 직접 계정 grant가 필요하다. 역할 전용 grant와
-partial revoke 활성화는 가시성을 추정하지 않고 현재 거부한다.
+비교와 정확한 쓰기 후 검증을 commit 전에 수행한다. rollback이 쓰기를 되돌리지
+못하는 비InnoDB MySQL 테이블은 거부한다. 테이블의 trigger는 모든 database에서
+허용한다. 쓰기 후 검증이 trigger가 바꾼 것을 본다.
 commit 시작 전 취소 체크포인트는 rollback하지만 시작 후 취소를
 rollback이라고 보고하지 않는다. commit은 소유 태스크에서 실행하여 호출자가
 대기를 중단해도 Committed/Indeterminate를 발행한다. commit 응답을 확인할 수 없으면 불명 상태이며
@@ -594,7 +593,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-153** `read_only_query`는 temporal 값을 그 temporal grid cell(INT-103)의 텍스트로 돌려준다: UTC의 `HH:MM:SS`, `YYYY-MM-DD` 또는 `YYYY-MM-DD HH:MM:SS`이며, 조회에는 선언된 정밀도가 없으므로 MySQL과 PostgreSQL에서는 소수 6자리다; SQLite에서는 저장된 텍스트다. binary 값과 유효한 UTF-8이 아닌 모든 값은 거부하지 않고 runtime의 byte 형식으로 돌려주며, 읽기 전용 grid 질의는 그런 값을 binary cell로, described table 읽기는 그 byte로 돌려준다.
 - **INT-104** 읽기 전용 그리드 조회와 일반 읽기 전용 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행되며, 일반 읽기 전용 조회의 쓰는 문은 `QUERY_READ_ONLY`로 실패하며, 데이터베이스의 읽기 전용 범위가 거부하는 쓰기, 예컨대 쓰는 루틴을 그리드 조회에서 호출하는 것도 `QUERY_READ_ONLY`로 실패한다.
 - **INT-105** `polyspec-orm-build`의 커밋 허가(permit)는 거부된 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
-- **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
+- **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. rollback이 쓰기를 되돌리지 못하는 InnoDB가 아닌 MySQL 테이블은 거부된다. 테이블의 트리거는 모든 database에서 허용된다. 검증이 트리거가 바꾼 것을 보기 때문이다(INT-110).
 - **INT-106a** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 트랜잭션 순서대로 `MutationPhase`를 알린다. 커밋 전에 본 취소는 `JOB_CANCELLED`로 롤백하고, `Locked`는 다른 연결이 행 잠금을 보는 시점이며, `CommitStarted` 뒤의 취소는 커밋을 멈추지 않고, 버려진 future도 시작한 커밋을 끝내며, 명시적 커밋 거부는 `RolledBack`으로, 커밋 중 끊긴 연결은 `Indeterminate`로 끝난다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림과 취소 flag가 없다.
 - **INT-106b** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 commit된 변경의 연결을 catalog의 pool로 돌려주어, 그 catalog의 다음 변경이 그 연결을 새 transaction으로 쓰고 연속된 변경이 연결 하나만 열게 한다. 다른 모든 종료는 transaction이 아직 열려 있을 수 있으므로 연결을 닫는다.
 - **INT-106c** `github.com/polyspec/orm/packages/go`의 `UpdateRow`, `DeleteRow`, `InsertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다. 모든 runtime에서, 변경을 하나씩 실행하는 catalog의 commit된 insert는 서버 연결 하나에서 쓰며, catalog가 연결 하나를 가지는 PHP와 PHP 확장(INT-157)도 그렇고, `ROW_CONFLICT`로 거부된 insert 뒤에도 다음 insert는 commit된다: recipe `catalog_connection`의 case `committed_mutations_share_one_connection`은 MySQL과 PostgreSQL에서 column의 default가 쓰는 연결 id를 읽는다.
@@ -614,7 +613,6 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다. 연결을 잃은 commit이 catalog를 끝내지는 않는다. 다음 호출은 새 연결로 읽는다.
 - **INT-118a** `polyspec-orm-build`의 commit 분류기는 `COMMIT` 중의 끊긴 전송이나 protocol 오류를 응답 없음으로 보며, 명시적 거부로 보지 않는다. 이는 Rust driver 오류에만 해당한다.
-- **INT-119** trigger가 없다는 판단은 표, 그 database 또는 모든 database에 대해 검증된 계정 직접 grant가 있을 때만 유효하다. role 전용 grant와 켜진 partial revoke는 보이는 것으로 가정하지 않고 `ROW_MUTATION_UNSUPPORTED`로 거부한다. 켜진 partial revoke는 변경이 무엇도 잠그기 전에 DIA-207의 한 statement로 읽어 `partial-revoke`를 담은 메시지로, grant 없음은 `trigger visibility`를 담은 메시지로 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 준비된 열 이름이 descriptor와 맞지 않거나 읽기 범위 안에서 metadata가 바뀌면, 열이 사라져 문장이 실패한 경우를 포함해, 표 페이지를 `TABLE_PAGE_METADATA_CHANGED`로 거부한다. MySQL 읽기 범위는 READ COMMITTED로 읽는다. REPEATABLE READ에서는 information schema가 transaction의 snapshot으로 답하므로 descriptor를 다시 읽어도 변경이 보이지 않는다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.

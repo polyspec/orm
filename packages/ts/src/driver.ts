@@ -9,6 +9,7 @@ import pg from 'pg';
 import { PostgresListener } from './listen.js';
 import { OrmError } from './runtime_error.js';
 import { sqliteResultCodeSuffix } from './sqlite-codes.js';
+import { ConnectionPool, type PooledConnection } from './pool.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 import * as codes from './codes.js';
 import type { MySqlServer } from './engine/dialect.js';
@@ -86,9 +87,10 @@ export interface DriverPool extends DriverConnection {
   readonly server: MySqlServer | 'postgres' | 'sqlite';
   /**
    * Takes one connection. It is used by a transaction, and by statements that must run on one connection outside a transaction (MySQL
-   * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys).
+   * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys). shared says that the
+   * connection runs a read-only transaction, which takes no write lock, so that the SQLite pool holds such connections at once.
    */
-  reserve(): Promise<DriverSession>;
+  reserve(shared?: boolean): Promise<DriverSession>;
   /** Opens a LISTEN connection of its own, outside the pool (DIA-194); only PostgreSQL has one. */
   openListener?(): Promise<PostgresListener>;
   stats(): PoolStats;
@@ -109,8 +111,7 @@ export interface DriverSession extends DriverConnection {
    */
   readonly threadId?: number;
   /**
-   * Returns the connection. With discard, it is not returned to the pool but closed, so the server ends that session. For SQLite
-   * a single connection is not closed.
+   * Returns the connection. With discard, it is not returned to the pool but closed, so the server ends that session.
    */
   release(discard: boolean): void;
 }
@@ -796,7 +797,6 @@ class PostgresSession implements DriverSession {
 }
 
 class SqliteState {
-  public busy = false;
   private readonly statements = new Map<string, ReturnType<DatabaseSync['prepare']>>();
   public constructor(public readonly db: DatabaseSync, private readonly cacheSize: number) {}
   public statement(sql: string): ReturnType<DatabaseSync['prepare']> {
@@ -879,31 +879,79 @@ function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValu
   }
 }
 
+/** One SQLite connection of a pool: its file handle and its prepared statements. */
+class SqliteConnection implements PooledConnection {
+  public readonly created = performance.now();
+  /** Set when a session is released with discard: the pool closes it instead of keeping it. */
+  public broken = false;
+  public constructor(public readonly state: SqliteState) {}
+  public close(): void { this.state.db.close(); }
+}
+
+/**
+ * The SQLite pool of a Db (CFG-4, CFG-5a): its connections follow the bounds of the pool as on every database. node:sqlite runs a
+ * statement to its end without yielding, and a lock that another connection holds is waited for inside the statement, which would
+ * stop the one thread that could release it. So the pool keeps its connections from waiting for each other's locks: a session
+ * of a read-only transaction, which takes no write lock, is held beside the other read-only ones; any other session, the
+ * connection of a transaction or of the statements that must run on one connection, is held alone; and a statement outside a
+ * session runs while no session is held. A lock of another process is waited for up to busy_timeout.
+ */
 class SqlitePoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
   public readonly server = 'sqlite' as const;
-  private readonly state: SqliteState;
+  /** The sessions held: the read-only ones, which share the pool, or one other, which holds it alone. */
+  private readers = 0;
+  private writer = false;
+  private running = 0;
   private waiters: Array<{ wake: () => void }> = [];
-  public constructor(db: DatabaseSync, cacheSize: number) { this.state = new SqliteState(db, cacheSize); }
+  public constructor(private readonly pool: ConnectionPool<SqliteConnection>) {}
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     // Reject cancellation before waiting for the connection, then check again
     // after the wait to cover an abort while this statement is queued.
     if (signal?.aborted) throw canceled(this.name);
-    await this.idle(signal);
-    // node:sqlite runs a statement to its end without yielding, so the signal
-    // is read before the statement starts.
-    if (signal?.aborted) throw canceled(this.name);
-    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
+    await this.until(() => !this.writer && this.readers === 0, signal);
+    this.running++;
+    try {
+      const connection = await this.pool.acquire(signal);
+      try {
+        // node:sqlite runs a statement to its end without yielding, so the signal
+        // is read before the statement starts.
+        if (signal?.aborted) throw canceled(this.name);
+        return await observed(this.name, sql, done, 'statement', () => sqliteExecute(connection.state, sql, params));
+      } finally {
+        this.pool.release(connection);
+      }
+    } finally {
+      this.running--;
+      this.wake();
+    }
   }
-  /** Takes the one SQLite connection when no transaction or session uses it. */
-  public async reserve(): Promise<DriverSession> {
-    await this.idle();
-    this.state.busy = true;
-    return new SqliteSession(this.state, () => this.release());
+  /** Takes a connection of the pool for a session once no statement runs and the sessions held admit it (see the class). */
+  public async reserve(shared = false): Promise<DriverSession> {
+    await this.until(() => this.running === 0 && !this.writer && (shared || this.readers === 0));
+    const end = (): void => {
+      if (shared) this.readers--;
+      else this.writer = false;
+      this.wake();
+    };
+    if (shared) this.readers++;
+    else this.writer = true;
+    let connection: SqliteConnection;
+    try {
+      connection = await this.pool.acquire(undefined);
+    } catch (error) {
+      end();
+      throw error;
+    }
+    return new SqliteSession(connection, discard => {
+      if (discard) connection.broken = true;
+      this.pool.release(connection);
+      end();
+    });
   }
-  /** Waits until no session holds the single SQLite connection. */
-  private async idle(signal?: AbortSignal): Promise<void> {
-    while (this.state.busy) {
+  /** Waits until ready holds; each change of the reservation or of the running statements wakes the waiters to check again. */
+  private async until(ready: () => boolean, signal?: AbortSignal): Promise<void> {
+    while (!ready()) {
       if (signal?.aborted) throw canceled(this.name);
       await new Promise<void>((resolve, reject) => {
         let settled = false;
@@ -932,35 +980,34 @@ class SqlitePoolDriver implements DriverPool {
       });
     }
   }
-  private release(): void {
-    this.state.busy = false;
+  private wake(): void {
     const waiters = this.waiters;
     this.waiters = [];
     for (const waiter of waiters) waiter.wake();
   }
-  public stats(): PoolStats { return { maxOpenConnections: 1, openConnections: 1, inUse: this.state.busy ? 1 : 0, idle: this.state.busy ? 0 : 1 }; }
-  public async close(): Promise<void> { this.state.db.close(); }
+  public stats(): PoolStats { return this.pool.stats(); }
+  public async close(): Promise<void> { this.pool.close(); }
 }
 
 class SqliteSession implements DriverSession {
   public readonly name = 'sqlite' as const;
   private released = false;
-  public constructor(private readonly state: SqliteState, private readonly done: () => void) {}
+  public constructor(private readonly connection: SqliteConnection, private readonly done: (discard: boolean) => void) {}
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     if (signal?.aborted) throw canceled(this.name);
-    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
+    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.connection.state, sql, params));
   }
   public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
-    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
+    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.connection.state, sql, params));
   }
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
-    return observed(this.name, sql, done, 'statement', () => sqliteScan(this.state, sql, params, sink));
+    return observed(this.name, sql, done, 'statement', () => sqliteScan(this.connection.state, sql, params, sink));
   }
-  public inTransaction(): boolean { return this.state.db.isTransaction; }
-  public release(): void {
+  public inTransaction(): boolean { return this.connection.state.db.isTransaction; }
+  public release(discard: boolean): void {
     if (this.released) return;
     this.released = true;
-    this.done();
+    this.done(discard);
   }
 }
 
@@ -1443,10 +1490,20 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       // The version of the SQLite library that node:sqlite links. The connection does not send a statement that asks for it.
       const version = process.versions.sqlite ?? '';
       checkSqliteVersion(version);
-      const db = new DatabaseSync(sqlitePath(dsn), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
-      db.exec('PRAGMA foreign_keys = ON');
-      for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);
-      return new SqlitePoolDriver(db, statementCacheSize);
+      const path = sqlitePath(dsn);
+      // Each connection of the pool opens the file with the same busy timeout and pragmas.
+      const dial = async (): Promise<SqliteConnection> => {
+        const db = new DatabaseSync(path, { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
+        try {
+          db.exec('PRAGMA foreign_keys = ON');
+          for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);
+        } catch (error) {
+          db.close();
+          throw error;
+        }
+        return new SqliteConnection(new SqliteState(db, statementCacheSize));
+      };
+      return new SqlitePoolDriver(new ConnectionPool(bounds, dial, () => canceled('sqlite')));
     }
   }
 }

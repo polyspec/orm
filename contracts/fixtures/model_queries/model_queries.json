@@ -814,11 +814,7 @@
         {
           "op": "sql.exec",
           "reason": "996 rows after the five of the seed, so that the 1001 rows of the read span more than one batch of a flowmark answer (PRT-66)",
-          "sql": {
-            "mysql": "INSERT INTO author (name, user_seq, service_seq, service_region_seq, service_member_seq, start_dt, end_dt) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT CONCAT('author-', s.v), 1, 1, 1, 1, '2026-06-01 00:00:00.000000', '2026-06-01 00:00:00.000000' FROM (SELECT a.n + 10 * b.n + 100 * c.n + 6 AS v FROM d a, d b, d c) s WHERE s.v <= 1001",
-            "postgres": "INSERT INTO author (name, user_seq, service_seq, service_region_seq, service_member_seq, start_dt, end_dt) SELECT 'author-' || g, 1, 1, 1, 1, '2026-06-01 00:00:00.000000', '2026-06-01 00:00:00.000000' FROM generate_series(6, 1001) AS g",
-            "sqlite": "WITH RECURSIVE g(i) AS (SELECT 6 UNION ALL SELECT i + 1 FROM g WHERE i < 1001) INSERT INTO author (name, user_seq, service_seq, service_region_seq, service_member_seq, start_dt, end_dt) SELECT 'author-' || i, 1, 1, 1, 1, '2026-06-01 00:00:00.000000', '2026-06-01 00:00:00.000000' FROM g"
-          }
+          "sql": "INSERT INTO author (name, user_seq, service_seq, service_region_seq, service_member_seq, start_dt, end_dt) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT CONCAT('author-', s.v), 1, 1, 1, 1, '2026-06-01 00:00:00.000000', '2026-06-01 00:00:00.000000' FROM (SELECT a.n + 10 * b.n + 100 * c.n + 6 AS v FROM d a, d b, d c) s WHERE s.v <= 1001"
         },
         {
           "op": "sql.exec",

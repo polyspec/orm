@@ -4190,16 +4190,13 @@ static bool cat_commit(zval *db, zval *pdo)
 
 typedef bool (*cat_write_operation)(zval *db, const char *dialect, zval *pdo, void *context, zval *result);
 
-static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo);
-
 /* Runs every Catalog mutation body in the same commit/rollback boundary. */
 static bool cat_write_transaction(zval *db, const char *dialect, cat_write_operation operation, void *context, zval *result)
 {
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin(db, dialect, &pdo, true)) return false;
-    bool ok = (strcmp(dialect, "mysql") != 0 || cat_mysql_partial_revokes_off(db, &pdo))
-        && operation(db, dialect, &pdo, context, result);
+    bool ok = operation(db, dialect, &pdo, context, result);
     if (ok) {
         if (!cat_commit(db, &pdo)) {
             zval_ptr_dtor(result);
@@ -4224,91 +4221,14 @@ static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, z
     return true;
 }
 
-/* Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger
- * from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no
- * row, the one form that both servers answer with the same result (DIA-207). */
-static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo)
-{
-    zval rows;
-    zval none;
-    array_init(&none);
-    bool queried = cat_query_params(db, pdo, "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", &none, 1, &rows);
-    zval_ptr_dtor(&none);
-    if (!queried) return false;
-    bool partial_off = zend_hash_num_elements(Z_ARRVAL(rows)) == 0;
-    zval_ptr_dtor(&rows);
-    if (!partial_off) {
-        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL partial-revoke visibility requires verification");
-        return false;
-    }
-    return true;
-}
-
-/* The MySQL row-change safety rule (Catalog::mysqlSafety): the account holds TRIGGER on the table, the table
- * is InnoDB and has no triggers. A rule that cannot be verified is ROW_MUTATION_UNSUPPORTED. */
+/* The MySQL row-change safety rule (Catalog::mysqlSafety): the table is InnoDB, as only InnoDB rolls a failed verification back
+ * (INT-106); a trigger of the table needs no check, as the verification of the written row sees what it changed (INT-110). */
 static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
 {
     zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
-    zval rows, args;
-
-    zval user_none;
-    array_init(&user_none);
-    bool user_queried = cat_query_params(db, pdo, "SELECT CURRENT_USER()", &user_none, 1, &rows);
-    zval_ptr_dtor(&user_none);
-    if (!user_queried) return false;
-    zval *account = NULL;
-    if (zend_hash_num_elements(Z_ARRVAL(rows)) == 1) {
-        zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
-        account = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
-    }
-    const char *at = account != NULL && Z_TYPE_P(account) == IS_STRING ? strrchr(Z_STRVAL_P(account), '@') : NULL;
-    if (at == NULL) {
-        zval_ptr_dtor(&rows);
-        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "unverifiable MySQL account");
-        return false;
-    }
-    smart_str grantee = {0};
-    smart_str_appendc(&grantee, '\'');
-    smart_str_appendl(&grantee, Z_STRVAL_P(account), (size_t)(at - Z_STRVAL_P(account)));
-    smart_str_appends(&grantee, "'@'");
-    smart_str_appends(&grantee, at + 1);
-    smart_str_appendc(&grantee, '\'');
-    smart_str_0(&grantee);
-    zval_ptr_dtor(&rows);
-
-    zval grant_args[6];
-    for (int i = 0; i < 6; i++) ZVAL_UNDEF(&grant_args[i]);
-    ZVAL_STR(&grant_args[0], zend_string_copy(grantee.s));
-    ZVAL_STR(&grant_args[1], zend_string_copy(grantee.s));
-    ZVAL_COPY(&grant_args[2], ns);
-    ZVAL_STR(&grant_args[3], zend_string_copy(grantee.s));
-    ZVAL_COPY(&grant_args[4], ns);
-    ZVAL_COPY(&grant_args[5], tname);
-    zval grant_list;
-    array_init(&args);
-    for (int i = 0; i < 6; i++) add_next_index_zval(&args, &grant_args[i]);
-    bool ok = cat_query_params(db, pdo,
-        "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' "
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' "
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-        &args, 16, &grant_list);
-    zval_ptr_dtor(&args);
-    smart_str_free(&grantee);
-    if (!ok) return false;
-    bool trigger = false;
-    zval *g;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(grant_list), g) {
-        zval *cell = Z_TYPE_P(g) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(g)) == 1 ? zend_hash_index_find(Z_ARRVAL_P(g), 0) : NULL;
-        if (cell != NULL && Z_TYPE_P(cell) == IS_STRING && zend_string_equals_literal(Z_STR_P(cell), "TRIGGER")) trigger = true;
-    } ZEND_HASH_FOREACH_END();
-    zval_ptr_dtor(&grant_list);
-    if (!trigger) {
-        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL trigger visibility is unverified");
-        return false;
-    }
-
+    zval rows;
     zval engine_args;
     array_init(&engine_args);
     Z_TRY_ADDREF_P(ns);
@@ -4329,26 +4249,6 @@ static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
     zval_ptr_dtor(&rows);
     if (!innodb) {
         db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL requires InnoDB");
-        return false;
-    }
-
-    zval trigger_args;
-    array_init(&trigger_args);
-    Z_TRY_ADDREF_P(ns);
-    add_next_index_zval(&trigger_args, ns);
-    Z_TRY_ADDREF_P(tname);
-    add_next_index_zval(&trigger_args, tname);
-    if (!cat_query_params(db, pdo,
-            "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1",
-            &trigger_args, 1, &rows)) {
-        zval_ptr_dtor(&trigger_args);
-        return false;
-    }
-    zval_ptr_dtor(&trigger_args);
-    bool no_triggers = zend_hash_num_elements(Z_ARRVAL(rows)) == 0;
-    zval_ptr_dtor(&rows);
-    if (!no_triggers) {
-        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL triggers require effect verification");
         return false;
     }
     return true;

@@ -481,11 +481,6 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 	if err != nil {
 		return zero, err
 	}
-	if c.dialect == "mysql" {
-		if err := s.mysqlPartialRevokesOff(); err != nil {
-			return zero, s.end(err)
-		}
-	}
 	value, err := fn(s)
 	if err != nil {
 		return zero, s.end(err)

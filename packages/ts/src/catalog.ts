@@ -1679,47 +1679,17 @@ class Session {
   }
 
   /**
-   * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger from the account (INT-119).
-   * The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
+   * Refuses a MySQL row change on a table whose engine is not InnoDB, as only InnoDB rolls a failed verification back (INT-106).
+   * A trigger of the table needs no check: the verification of the written row sees what it changed (INT-110).
    */
-  public async mysqlPartialRevokesOff(): Promise<void> {
-    const partial = (await this.rawRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", [], 1, 4096)).rows;
-    if (partial.length !== 0) {
-      throw err(CODE_UNSUPPORTED, 'MySQL partial-revoke visibility requires verification');
-    }
-  }
-
-  /** Refuses a MySQL row change unless the account and the table are verified (mutation.rs, mysql_safety). */
   public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
     const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
-    const account = (await this.rawRows('SELECT CURRENT_USER()', [], 1, 4096)).rows;
-    const [accountRow] = account;
-    if (account.length !== 1 || accountRow === undefined || accountRow.length !== 1) throw unsupported('unverifiable MySQL account');
-    const text = textOf(accountRow[0], 'MySQL account');
-    const at = text.lastIndexOf('@');
-    if (at < 0) throw unsupported('unverifiable MySQL account');
-    const grantee = `'${text.slice(0, at)}'@'${text.slice(at + 1)}'`;
-
-    const grants = (await this.rawRows(
-      "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' " +
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' " +
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-      [grantee, grantee, metadata.table.namespace, grantee, metadata.table.namespace, metadata.table.name],
-      16,
-      4096,
-    )).rows;
-    if (!grants.some(row => row.length === 1 && row[0] === 'TRIGGER')) throw unsupported('MySQL trigger visibility is unverified');
-
     const engine = (await this.rawRows('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
       [metadata.table.namespace, metadata.table.name], 2, 4096)).rows;
     const [engineRow] = engine;
     if (engine.length !== 1 || engineRow === undefined || engineRow.length !== 1 || typeof engineRow[0] !== 'string' || engineRow[0].toLowerCase() !== 'innodb') {
       throw unsupported('MySQL requires InnoDB');
     }
-
-    const triggers = (await this.rawRows('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
-      [metadata.table.namespace, metadata.table.name], 1, 4096)).rows;
-    if (triggers.length !== 0) throw unsupported('MySQL triggers require effect verification');
   }
 }
 
@@ -1870,7 +1840,6 @@ export class CatalogConnection {
     const session = await this.begin(false);
     let value: T;
     try {
-      if (this.dialect === 'mysql') await session.mysqlPartialRevokesOff();
       value = await work(session);
       await session.settingsUnchanged();
     } catch (error) {

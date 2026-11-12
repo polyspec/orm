@@ -17,6 +17,7 @@
   "cases": [
     {
       "id": "model_statements",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -1302,6 +1303,7 @@
     },
     {
       "id": "transaction_reads_its_own_write",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8), and a transaction begins with the statement of each dialect (DIA-221).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -1904,6 +1906,7 @@
     },
     {
       "id": "transaction_savepoint",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8), and a transaction begins with the statement of each dialect (DIA-221).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -2907,6 +2910,7 @@
     },
     {
       "id": "transaction_rollback",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8), and a transaction begins with the statement of each dialect (DIA-221).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -3522,6 +3526,7 @@
     },
     {
       "id": "savepoint_rollback",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8), and a transaction begins with the statement of each dialect (DIA-221).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -4657,6 +4662,7 @@
     },
     {
       "id": "failed_statement",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -5179,6 +5185,7 @@
     },
     {
       "id": "subscriber_error",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -5623,6 +5630,7 @@
     },
     {
       "id": "unsubscribe",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2): an insert reads its generated key with RETURNING on PostgreSQL and SQLite and with LAST_INSERT_ID on MySQL (DIA-8).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -5862,6 +5870,7 @@
     },
     {
       "id": "install",
+      "databases_differ": "The statements of an install are the DDL that each dialect renders (DIA-119, DIA-127, DIA-63), and a SQLite install first makes the lock row table of INT-49 (DIA-221).",
       "requirements": [
         "INT-55",
         "INT-77",
@@ -6772,6 +6781,7 @@
     },
     {
       "id": "notify",
+      "databases_differ": "A notification is a client operation of the PostgreSQL dialect alone (DIA-192).",
       "requirements": [
         "INT-91"
       ],
@@ -6998,6 +7008,7 @@
     },
     {
       "id": "server_transactions_mysql",
+      "databases_differ": "The transactions of a server connection are counted from the server's own tables, performance_schema on MySQL and pg_locks on PostgreSQL, and SQLite has no server (INT-149).",
       "requirements": [
         "INT-149"
       ],
@@ -7142,6 +7153,7 @@
     },
     {
       "id": "server_transactions_postgres",
+      "databases_differ": "The transactions of a server connection are counted from the server's own tables, performance_schema on MySQL and pg_locks on PostgreSQL, and SQLite has no server (INT-149).",
       "requirements": [
         "INT-149"
       ],

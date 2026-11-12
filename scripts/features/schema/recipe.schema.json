@@ -232,6 +232,11 @@
         "only": {
           "$ref": "#/$defs/only"
         },
+        "databases_differ": {
+          "description": "Why the case runs a step on some databases only, or states a different statement or outcome per database: the server lacks the feature or gives its own answer, which the item of docs/spec that the text names states, most often a DIA item (T426). A branch where the orm answers differently, or where one statement valid on every server would do, is fixed instead; scripts/features/recipe-branches.mts refuses a branch without this reason and a reason without a branch.",
+          "type": "string",
+          "minLength": 1
+        },
         "not_through_pooler": {
           "description": "Why the case needs a direct server. The pooler lane (client-pooler-check) leaves it out; the direct lanes run it.",
           "type": "string",
@@ -757,12 +762,9 @@
           "minLength": 1
         },
         {
+          "description": "The statement of each database that runs the step, where no one statement is valid on every server: its keys are exactly those databases (mysql, postgres and sqlite, or those that the only of the step, else of its case, names), with mariadb beside mysql and markdown beside sqlite where their statement differs (FCV-4, DIA-200); scripts/features/recipes.test.mts checks the names, and the case states why in databases_differ (T426).",
           "type": "object",
-          "required": [
-            "mysql",
-            "postgres",
-            "sqlite"
-          ],
+          "minProperties": 1,
           "additionalProperties": false,
           "properties": {
             "mariadb": {
@@ -782,25 +784,6 @@
               "minLength": 1
             },
             "sqlite": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        },
-        {
-          "description": "The statement of a case or a step that runs on the mysql dialect alone (only: [\"mysql\"]), with the body of MariaDB where its answer differs and no common body exists (DIA-200, rule 2).",
-          "type": "object",
-          "required": [
-            "mysql",
-            "mariadb"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "mysql": {
-              "type": "string",
-              "minLength": 1
-            },
-            "mariadb": {
               "type": "string",
               "minLength": 1
             }
@@ -2374,8 +2357,20 @@
             "type": "string"
           },
           "catalog_of": {
-            "type": "string",
-            "description": "Introspects the empty case database with the catalog queries of this other dialect, which fail."
+            "description": "Introspects the empty case database with the catalog queries of this other dialect, which fail: one dialect for every database, or the other dialect of each database.",
+            "oneOf": [
+              { "enum": ["mysql", "postgres", "sqlite"] },
+              {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": { "enum": ["postgres", "sqlite"] },
+                  "postgres": { "enum": ["mysql", "sqlite"] },
+                  "sqlite": { "enum": ["mysql", "postgres"] }
+                }
+              }
+            ]
           },
           "expect": {
             "type": "object",
@@ -4376,6 +4371,9 @@
           "op": {
             "const": "catalog.row_snapshot"
           },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
           "page": {
             "$ref": "#/$defs/ref"
           },
@@ -4497,6 +4495,9 @@
         "properties": {
           "op": {
             "const": "catalog.update_row"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "snapshot": {
             "$ref": "#/$defs/ref"
@@ -6113,6 +6114,11 @@
             "description": "After its statements the function fails with the retryable DEADLOCK error of this message (INT-48).",
             "type": "string",
             "minLength": 1
+          },
+          "hold_ms": {
+            "description": "After its statements the function keeps its frame, and so its connection, for this many milliseconds (CFG-5).",
+            "type": "integer",
+            "minimum": 1
           },
           "statements": {
             "type": "array",

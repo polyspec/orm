@@ -4325,6 +4325,10 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if let Some(hold) = crate::recipe_reads::read(step, "hold_ms")["hold_ms"].as_u64() {
+                            tokio::time::sleep(std::time::Duration::from_millis(hold)).await;
+                        }
                         if let Some(message) = crate::recipe_reads::read(step, "conflict")["conflict"].as_str() {
                             return Err(polyspec_orm::transaction_conflict(message));
                         }
@@ -4619,8 +4623,8 @@ mod database {
             }
             // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
             // dbspec.introspect (FCV-4, DIA-133, DIA-198): the rendered documents on the case database, then the public introspect.
-            "dbspec.introspect" if crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_string() => {
-                introspect_failure_step(step, &context.dsn).await.map_err(fault)?;
+            "dbspec.introspect" if !crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_null() => {
+                introspect_failure_step(step, context.database, &context.dsn).await.map_err(fault)?;
                 Output::fields(json!({ "failed": true }))
             }
             "dbspec.introspect" => Output::fields(introspect_step(step, context.database, &context.dsn, context.dir).await.map_err(fault)?),
@@ -5597,13 +5601,16 @@ mod database {
         Ok(dbspec::manifest(&[&combined]).map_err(|e| format!("{e:?}"))?.schema_text)
     }
 
-    /// The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
-    /// The only case runs on SQLite, and on a corpus, with the queries of MySQL.
-    async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
+    /// The empty case database with the catalog queries of another dialect, which catalog_of names for every database or per
+    /// database: their failure is the error of the call (DIA-133).
+    async fn introspect_failure_step(step: &Value, database: &str, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
-        let (dialect, server) = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
+        let other = &crate::recipe_reads::read(step, "catalog_of")["catalog_of"];
+        let other = other.as_str().or_else(|| other[dialect_key(database, other)].as_str());
+        let (dialect, server) = match other {
             Some("mysql") => (dbspec::Dialect::MySql, Server::MySql),
             Some("postgres") => (dbspec::Dialect::Postgres, Server::Postgres),
+            Some("sqlite") => (dbspec::Dialect::Sqlite, Server::Sqlite),
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
         };
         let failed =
@@ -7514,9 +7521,10 @@ mod tables {
                 }
                 // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
                 "pool.transactions" => {
-                    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool
-                    // shows the connections that they take at once (CFG-4, CFG-5). A transaction future is not Send, so
-                    // the tasks run on a LocalSet.
+                    // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the
+                    // pool shows the connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no
+                    // write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221). A transaction future is
+                    // not Send, so the tasks run on a LocalSet.
                     use std::sync::atomic::{AtomicU32, Ordering};
                     use std::sync::Arc;
                     let count = crate::recipe_reads::read(step, "transactions")["transactions"].as_u64().unwrap_or(0);
@@ -7543,6 +7551,7 @@ mod tables {
                                 active.fetch_sub(1, Ordering::SeqCst);
                                 Ok(())
                             })
+                            .read_only()
                             .await
                         }));
                     }

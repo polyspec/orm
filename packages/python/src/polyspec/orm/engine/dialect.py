@@ -463,14 +463,17 @@ class PostgresDialect(Dialect):
         )
 
     def fulltext(self, cols, value, boolean):
-        # to_tsvector over the simple configuration; the boolean mode uses websearch_to_tsquery (DIA-6).
+        # to_tsvector over the simple configuration; the boolean mode uses websearch_to_tsquery and binds the value through
+        # the transform fulltext_text, which refuses a value with no term as MySQL does (DIA-6).
         doc = (
             "to_tsvector('simple', "
             + " || ' ' || ".join(f"coalesce({c}, '')" for c in cols)
             + ")"
         )
         query = "websearch_to_tsquery" if boolean else "plainto_tsquery"
-        return f"{doc} @@ {query}('simple', {value('')})"
+        return (
+            f"{doc} @@ {query}('simple', {value('fulltext_text' if boolean else '')})"
+        )
 
 
 class SqliteDialect(Dialect):

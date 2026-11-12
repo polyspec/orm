@@ -938,7 +938,7 @@ export class Db {
     const driver = this.pool.name;
     const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
     if (driver === 'sqlite') await this.rowLockTable();
-    const session = await this.pool.reserve();
+    const session = await this.pool.reserve(options.readOnly);
     const frame = new TxFrame(this, session, this.nextTransaction(), options);
     const steps: Array<[StatementKind, string]> = [];
     switch (driver) {

@@ -41,7 +41,15 @@ final class RecipeIntrospect
         $database = RecipeApply::dialect($context['database']);
         $server = RecipeApply::server($context['database']);
         if (isset($step['catalog_of'])) {
-            return self::catalogQueryFailure($step['catalog_of'], $context['dsn']);
+            // The other dialect, for every database or per database.
+            $other = $step['catalog_of'];
+            if (is_array($other)) {
+                if (!array_key_exists($database, $other)) {
+                    throw new RuntimeException("catalog_of has no entry for $database");
+                }
+                $other = $other[$database];
+            }
+            return self::catalogQueryFailure($other, $context['dsn']);
         }
         [$texts, $vector] = self::source($step, $context['dir']);
         $documents = self::parseSet($texts);

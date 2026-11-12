@@ -6170,6 +6170,7 @@
  "cases": [
   {
    "id": "conditions_connectors",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-11",
     "DSL-12",
@@ -6531,6 +6532,7 @@
   },
   {
    "id": "conditions_group",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-15",
     "DSL-16",
@@ -6910,6 +6912,7 @@
   },
   {
    "id": "conditions_leading_group",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-15",
     "DSL-18"
@@ -7272,6 +7275,7 @@
   },
   {
    "id": "conditions_leading_prefix",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-11"
    ],
@@ -7545,6 +7549,7 @@
   },
   {
    "id": "conditions_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DIA-37",
     "DSL-29",
@@ -9556,6 +9561,7 @@
   },
   {
    "id": "terminal_by",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-36",
     "DSL-58",
@@ -10383,6 +10389,7 @@
   },
   {
    "id": "terminal_reuse",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-60",
     "DSL-57",
@@ -10992,6 +10999,7 @@
   },
   {
    "id": "expression_forms",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-16",
     "DSL-22",
@@ -11713,6 +11721,7 @@
   },
   {
    "id": "columns",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a date part is read with each dialect's own function (DIA-14).",
    "requirements": [
     "DSL-72",
     "DSL-73",
@@ -12305,6 +12314,7 @@
   },
   {
    "id": "joins",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-90",
     "DSL-91",
@@ -13157,6 +13167,7 @@
   },
   {
    "id": "relations",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DIA-37",
     "DSL-79",
@@ -14809,6 +14820,7 @@
   },
   {
    "id": "collection_connect_reaches_every_model",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
    "requirements": [
     "INT-85",
     "INT-37",
@@ -15210,6 +15222,7 @@
   },
   {
    "id": "relation_empty",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-79",
     "DSL-81"
@@ -15517,6 +15530,7 @@
   },
   {
    "id": "external_read",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-79",
     "DSL-53",
@@ -16177,6 +16191,7 @@
   },
   {
    "id": "subqueries",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-53",
     "DSL-74"
@@ -16567,6 +16582,7 @@
   },
   {
    "id": "aggregates",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-61",
     "DSL-62",
@@ -17532,6 +17548,7 @@
   },
   {
    "id": "lookahead_page",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-164",
     "PRT-2",
@@ -19986,6 +20003,7 @@
   },
   {
    "id": "empty_reads",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-56",
     "DSL-57",
@@ -22032,6 +22050,7 @@
   },
   {
    "id": "audit_lazy",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a rolled-back insert leaves a gap in the key on MySQL and PostgreSQL, where SQLite gives the key again (DIA-63).",
    "requirements": [
     "DBS-85"
    ],
@@ -24092,6 +24111,7 @@
   },
   {
    "id": "functions",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "DIA-14",
     "DIA-37",
@@ -25333,6 +25353,7 @@
   },
   {
    "id": "get_query",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DSL-65",
     "DSL-68"
@@ -25462,6 +25483,7 @@
   },
   {
    "id": "aes_values",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "COD-6",
     "COD-15"
@@ -25868,6 +25890,7 @@
   },
   {
    "id": "write_cycle",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221), and the clock binds of PostgreSQL and SQLite, which MySQL writes with CURRENT_TIMESTAMP, sit at their own positions (PRT-33).",
    "requirements": [
     "DSL-100",
     "DSL-102",
@@ -27591,6 +27614,7 @@
   },
   {
    "id": "required_columns",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-100"
    ],
@@ -28248,6 +28272,7 @@
   },
   {
    "id": "creates_and_save",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DIA-11",
     "DIA-37",
@@ -30875,6 +30900,7 @@
   },
   {
    "id": "creates_batch",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
    "requirements": [
     "DSL-104"
    ],
@@ -33194,6 +33220,7 @@
   },
   {
    "id": "creates_batch_too_large",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-104"
    ],
@@ -33440,6 +33467,7 @@
   },
   {
    "id": "transactions",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a row lock is each dialect's own: FOR UPDATE, an advisory lock, and the lock row of INT-49 on SQLite (DIA-209).",
    "requirements": [
     "DSL-10",
     "DSL-118",
@@ -35357,6 +35385,7 @@
   },
   {
    "id": "restore",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-38"
    ],
@@ -37285,6 +37314,7 @@
   },
   {
    "id": "restore_or_create",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-39",
     "DSL-119"
@@ -39215,6 +39245,7 @@
   },
   {
    "id": "restore_or_create_connected",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-39",
     "DSL-119"
@@ -41985,6 +42016,7 @@
   },
   {
    "id": "joins_soft_deleted",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-90"
    ],
@@ -43543,6 +43575,7 @@
   },
   {
    "id": "relative_time_out_of_range",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "DSL-143"
    ],
@@ -45120,6 +45153,7 @@
   },
   {
    "id": "hex_malformed",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "COD-41",
     "COD-42"
@@ -45504,6 +45538,7 @@
   },
   {
    "id": "datetime_p0_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -46294,6 +46329,7 @@
   },
   {
    "id": "time_p3_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -47084,6 +47120,7 @@
   },
   {
    "id": "date_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -47890,6 +47927,7 @@
   },
   {
    "id": "date_null",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "PRT-67"
    ],
@@ -48671,6 +48709,7 @@
   },
   {
    "id": "upsert_one_key",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DSL-105",
     "PRT-6"
@@ -50105,6 +50144,7 @@
   },
   {
    "id": "uuid_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a uuid is PostgreSQL's own type and 16 bytes elsewhere (DIA-27).",
    "requirements": [
     "DIA-27"
    ],
@@ -50882,6 +50922,7 @@
   },
   {
    "id": "ip_hex_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "COD-3"
    ],
@@ -51659,6 +51700,7 @@
   },
   {
    "id": "affected_counts",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DSL-105"
    ],
@@ -53309,6 +53351,7 @@
   },
   {
    "id": "uuid_stored_in_16_bytes",
+   "databases_differ": "A uuid column holds 16 bytes in each server's own type, uuid on PostgreSQL, binary(16) on MySQL and a BLOB on SQLite, which the server's catalog and byte functions read (DIA-27, DIA-48, DIA-224).",
    "requirements": [
     "DIA-27",
     "DIA-48"
@@ -54698,6 +54741,7 @@
   },
   {
    "id": "contains_null",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DSL-29",
     "DSL-48"
@@ -54937,6 +54981,7 @@
   },
   {
    "id": "null_into_not_null",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
    "requirements": [
     "PRT-67"
    ],
@@ -55256,6 +55301,7 @@
   },
   {
    "id": "order_nulls",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); NULLS FIRST or LAST on PostgreSQL, where MySQL and SQLite order a NULL first ascending by themselves (DIA-13).",
    "requirements": [
     "DSL-99",
     "DSL-86"
@@ -56766,6 +56812,7 @@
   },
   {
    "id": "scalar_column_subquery",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); NULLS FIRST or LAST on PostgreSQL, where MySQL and SQLite order a NULL first ascending by themselves (DIA-13).",
    "requirements": [
     "DSL-74"
    ],
@@ -57319,6 +57366,7 @@
   },
   {
    "id": "relations_flatten",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-84",
     "DSL-85",
@@ -58618,6 +58666,7 @@
   },
   {
    "id": "added_sum_fractional",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160",
     "DIA-218",
@@ -59070,6 +59119,7 @@
   },
   {
    "id": "added_text_not_exact",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160"
    ],
@@ -59541,6 +59591,7 @@
   },
   {
    "id": "added_text_not_a_time",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160"
    ],
@@ -61244,6 +61295,7 @@
   },
   {
    "id": "core_writes",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PLN-12",
     "PLN-27",
@@ -61921,6 +61973,7 @@
   },
   {
    "id": "core_in_list_padding",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "CPX-4"
    ],
@@ -63095,6 +63148,7 @@
   },
   {
    "id": "core_projected_reads",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-2",
     "PRT-34"
@@ -63975,6 +64029,7 @@
   },
   {
    "id": "page_statement_does_not_hold_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-78"
    ],
@@ -64425,6 +64480,7 @@
   },
   {
    "id": "value_function_parameter_indexes",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "PRT-77"
    ],
@@ -64735,6 +64791,7 @@
   },
   {
    "id": "now_defaults",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the clock is bound by the client on PostgreSQL and SQLite and is SQLite text of a fixed form (PRT-33, DIA-24).",
    "requirements": [
     "PRT-33"
    ],
@@ -65711,6 +65768,7 @@
   },
   {
    "id": "contains_ascii_fold",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "PRT-25"
    ],
@@ -68658,6 +68716,7 @@
   },
   {
    "id": "contains_binary_code_point",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains_binary compares code points with LIKE on MySQL and PostgreSQL and with instr on SQLite, whose LIKE folds ASCII case (PRT-25).",
    "requirements": [
     "PRT-25",
     "DSL-30"
@@ -71558,6 +71617,7 @@
   },
   {
    "id": "delete_recursive",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-111"
    ],
@@ -73713,6 +73773,7 @@
   },
   {
    "id": "relation_row_lock",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); SQLite has no row lock clause and locks the file (DIA-209).",
    "requirements": [
     "PRT-8",
     "DSL-123"
@@ -74456,6 +74517,7 @@
   },
   {
    "id": "expect_revision",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the clock is bound by the client on PostgreSQL and SQLite, where MySQL writes CURRENT_TIMESTAMP (PRT-33, DIA-18).",
    "requirements": [
     "DSL-108",
     "DSL-114"
@@ -76573,6 +76635,7 @@
   },
   {
    "id": "column_pairs",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-20",
     "PRT-22"
@@ -77823,6 +77886,7 @@
   },
   {
    "id": "aes_status",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "INT-60",
     "INT-75"
@@ -78127,6 +78191,7 @@
   },
   {
    "id": "delete_lock",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-87",
     "DSL-111"
@@ -82954,6 +83019,7 @@
   },
   {
    "id": "invalid_stored_cells_mysql",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "mysql"
    ],
@@ -83071,6 +83137,7 @@
   },
   {
    "id": "invalid_stored_cells_postgres",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "postgres"
    ],
@@ -83149,6 +83216,7 @@
   },
   {
    "id": "invalid_stored_cells_sqlite",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "sqlite"
    ],
@@ -83719,6 +83787,7 @@
   },
   {
    "id": "invalid_stored_dates_sqlite",
+   "databases_differ": "Only SQLite stores a date as text, which can hold a text that is not a date (COD-61, DIA-52).",
    "requirements": [
     "COD-1",
     "COD-61"
@@ -83833,6 +83902,7 @@
   },
   {
    "id": "driver_bytes_cells_are_exact",
+   "databases_differ": "A bytes literal is X'…' on MySQL and SQLite and an escaped bytea on PostgreSQL (DIA-47).",
    "requirements": [
     "PRT-69",
     "INT-5",
@@ -84135,6 +84205,7 @@
   },
   {
    "id": "slot_value_forms_roundtrip",
+   "databases_differ": "MySQL stores no infinity and refuses it, where PostgreSQL and SQLite store it and every client refuses to read it as a finite f64 (DIA-42).",
    "requirements": [
     "PRT-67",
     "PRT-69",
@@ -84506,11 +84577,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT ratio FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84570,11 +84637,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT ratio FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84725,11 +84788,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT payload FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84856,11 +84915,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 2",
-        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2",
-        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2"
-       }
+       "sql": "SELECT payload FROM typed_value WHERE seq = 2"
       }
      ],
      "expect": {
@@ -84909,6 +84964,7 @@
   },
   {
    "id": "core_decimal_values",
+   "databases_differ": "SQLite has no decimal storage and returns the text of a number without its scale (DIA-41).",
    "requirements": [
     "DIA-25",
     "COD-2"
@@ -85487,11 +85543,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -85749,11 +85801,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -85825,11 +85873,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "UPDATE `author` SET `json_setting` = '' WHERE `seq` = 1",
-        "postgres": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1",
-        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1"
-       }
+       "sql": "UPDATE author SET json_setting = '' WHERE seq = 1"
       }
      ]
     },
@@ -85867,6 +85911,7 @@
   },
   {
    "id": "plan_cache_reads_each_request_with_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "CPX-4"
    ],
@@ -87124,6 +87169,7 @@
   },
   {
    "id": "plan_cache_writes_each_request_with_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "CPX-4"
    ],
@@ -90618,6 +90664,133 @@
   },
   {
    "id": "aggregate_of_a_stored_nan_or_infinity_is_codec_decode",
+   "databases_differ": "MySQL stores no infinity, where PostgreSQL and SQLite store one, each in its own literal (DIA-42, DIA-216).",
+   "requirements": [
+    "DSL-66",
+    "DIA-216",
+    "COD-1"
+   ],
+   "only": [
+    "postgres",
+    "sqlite"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "postgres": "UPDATE typed_value SET ratio = 'Infinity' WHERE seq = 2",
+        "sqlite": "UPDATE typed_value SET ratio = 9e999 WHERE seq = 2"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "ratio"
+     },
+     "expect": {
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_of_a_stored_nan_is_codec_decode",
+   "databases_differ": "Only PostgreSQL stores a NaN in a float column; MySQL stores no NaN and SQLite stores it as NULL (DIA-42, DIA-216).",
    "requirements": [
     "DSL-66",
     "DIA-216",
@@ -90704,13 +90877,6 @@
         "typed_value"
        ],
        "sql": "UPDATE typed_value SET ratio = 'NaN' WHERE seq = 1"
-      },
-      {
-       "kind": "update",
-       "tables": [
-        "typed_value"
-       ],
-       "sql": "UPDATE typed_value SET ratio = 'Infinity' WHERE seq = 2"
       }
      ]
     },
@@ -90731,31 +90897,6 @@
      },
      "aggregate": {
       "agg": "avg",
-      "column": "ratio"
-     },
-     "expect": {
-      "postgres": {
-       "error": "CODEC_DECODE"
-      }
-     }
-    },
-    {
-     "op": "model.query",
-     "connection": "db",
-     "model": "TypedValue",
-     "where": {
-      "seq": {
-       "in": {
-        "array": [
-         {
-          "int": "2"
-         }
-        ]
-       }
-      }
-     },
-     "aggregate": {
-      "agg": "sum",
       "column": "ratio"
      },
      "expect": {
@@ -91743,6 +91884,7 @@
   },
   {
    "id": "decimal_text_reads_as_the_nearest_f64",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again with a column of no affinity, the only one that keeps a decimal text as text (DIA-222, DIA-41).",
    "requirements": [
     "COD-1",
     "INT-141"
@@ -91876,21 +92018,19 @@
     },
     {
      "op": "sql.exec",
+     "only": [
+      "sqlite"
+     ],
      "reason": "SQLite keeps a text only in a column with no type affinity",
-     "sql": {
-      "mysql": "SELECT 1",
-      "postgres": "SELECT 1",
-      "sqlite": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, ratio)"
-     }
+     "sql": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, ratio)"
     },
     {
      "op": "sql.exec",
+     "only": [
+      "sqlite"
+     ],
      "reason": "the rows again in the table made again",
-     "sql": {
-      "mysql": "SELECT 1",
-      "postgres": "SELECT 1",
-      "sqlite": "INSERT INTO typed_value (seq) VALUES (1), (2), (3), (4)"
-     }
+     "sql": "INSERT INTO typed_value (seq) VALUES (1), (2), (3), (4)"
     },
     {
      "op": "sql.exec",
@@ -92116,6 +92256,7 @@
   },
   {
    "id": "decimal_text_past_28_digits_reads_exactly",
+   "databases_differ": "Only MySQL and PostgreSQL have a decimal type of more than 28 digits; SQLite has no decimal storage (DIA-41, DIA-219).",
    "requirements": [
     "DIA-25",
     "COD-1",
@@ -92140,8 +92281,7 @@
        "tables": [],
        "sql": {
         "mysql": "SELECT CAST('1234567890123456789012345678901.123456789' AS DECIMAL(40,9)), CAST('-0.000000000000000000000000000001' AS DECIMAL(40,30))",
-        "postgres": "SELECT CAST('1234567890123456789012345678901.123456789' AS NUMERIC(40,9)), CAST('-0.000000000000000000000000000001' AS NUMERIC(40,30))",
-        "sqlite": "SELECT 1"
+        "postgres": "SELECT CAST('1234567890123456789012345678901.123456789' AS NUMERIC(40,9)), CAST('-0.000000000000000000000000000001' AS NUMERIC(40,30))"
        }
       }
      ],
@@ -92303,11 +92443,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92577,11 +92713,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92758,11 +92890,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92871,11 +92999,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92966,11 +93090,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92995,6 +93115,7 @@
   },
   {
    "id": "styled_column_states_at_the_setter_and_getter",
+   "databases_differ": "The column or table json_value is a reserved word of MySQL, so the statement quotes it in each dialect's form, a backquote on MySQL and a double quote on PostgreSQL and SQLite (DIA-1); its other identifiers are written without quotes.",
    "requirements": [
     "COD-20",
     "COD-32",
@@ -98293,6 +98414,7 @@
   },
   {
    "id": "clock_microseconds",
+   "databases_differ": "The clock is a timestamp read with each server's own functions on MySQL and PostgreSQL and UTC text of a fixed form on SQLite (DIA-18, DIA-24).",
    "requirements": [
     "DIA-18"
    ],
@@ -98558,6 +98680,7 @@
   },
   {
    "id": "clock_soft_delete_microseconds",
+   "databases_differ": "The clock is a timestamp read with each server's own functions on MySQL and PostgreSQL and UTC text of a fixed form on SQLite (DIA-18, DIA-24).",
    "requirements": [
     "DIA-18"
    ],
@@ -100469,6 +100592,7 @@
   },
   {
    "id": "temporal_stored_text",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -100956,6 +101080,7 @@
   },
   {
    "id": "text_not_utf8_refused",
+   "databases_differ": "MySQL and PostgreSQL refuse a text that is not UTF-8, where SQLite stores its bytes and every client refuses to read it (DIA-220, COD-69).",
    "requirements": [
     "COD-69"
    ],

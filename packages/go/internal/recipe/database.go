@@ -92,7 +92,7 @@ type databaseStep struct {
 	// Paths is the document files of dbspec.introspect, relative to the recipe.
 	Paths []string `json:"paths"`
 	// CatalogOf is the other dialect whose catalog queries dbspec.introspect sends, which fail.
-	CatalogOf      string          `json:"catalog_of"`
+	CatalogOf      json.RawMessage `json:"catalog_of"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -157,6 +157,8 @@ type databaseStep struct {
 	Statements      []frameStatement `json:"statements"`
 	// Conflict is the message of the retryable error that the function of utils.run returns after its statements (INT-48).
 	Conflict string `json:"conflict"`
+	// HoldMs is how long the function of utils.run keeps its frame, and so its connection, after its statements (CFG-5).
+	HoldMs int `json:"hold_ms"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection   string          `json:"connection"`
 	Model        string          `json:"model"`
@@ -1443,7 +1445,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
 	case "dbspec.introspect":
-		if s.k("catalog_of").CatalogOf != "" {
+		if len(s.k("catalog_of").CatalogOf) != 0 {
 			if err := introspectFailureStep(s, c); err != nil {
 				return outcome{}, err
 			}

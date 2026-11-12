@@ -199,6 +199,8 @@ func openMarkdown(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	pool := markdownStatementPool(dsn.markdown)
 	pool.SetMaxOpenConns(cfg.PoolSize)
 	pool.SetMaxIdleConns(cfg.PoolIdleSize)
+	// The lifetime of a session is that of a connection of a SQL pool (CFG-5); zero keeps sessions without one.
+	pool.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
 	if err := pool.PingContext(ctx); err != nil {
 		return nil, errors.Join(mapDriverErr(err, ""), pool.Close())
 	}

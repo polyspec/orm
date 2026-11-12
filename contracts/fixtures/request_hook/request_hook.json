@@ -19,6 +19,7 @@
   "cases": [
     {
       "id": "without_hook",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "INT-78"
       ],
@@ -595,6 +596,7 @@
     },
     {
       "id": "read_filter",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "INT-78",
         "PRT-2"

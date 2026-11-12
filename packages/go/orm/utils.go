@@ -674,10 +674,16 @@ type TablePrivileges struct {
 	Truncate bool
 }
 
-func (p *PrivilegeUtils) table(table string) (string, error) {
+// supported refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument
+// is the same CONFIG on every database (INT-59, DIA-225).
+func (p *PrivilegeUtils) supported() error {
 	if p.u.db.driver != "postgres" {
-		return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table privileges are supported only by postgres"}
+		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "table privileges are supported only by postgres"}
 	}
+	return nil
+}
+
+func (p *PrivilegeUtils) table(table string) (string, error) {
 	parts := strings.Split(table, ".")
 	if len(parts) != 2 || !validKey(parts[0]) || !validKey(parts[1]) {
 		return "", configErr("a qualified table name is required")
@@ -700,6 +706,9 @@ func (p *PrivilegeUtils) GrantTable(table, roleName string) error {
 	}
 	r, err := role(roleName)
 	if err != nil {
+		return err
+	}
+	if err := p.supported(); err != nil {
 		return err
 	}
 	schemaName := qualified[:strings.Index(qualified, ".")]
@@ -738,6 +747,9 @@ func (p *PrivilegeUtils) RevokeTable(table, privilege, roleName string) error {
 		// The refusal names the privilege as the caller gave it.
 		return configErr("unsupported table privilege %q", given)
 	}
+	if err := p.supported(); err != nil {
+		return err
+	}
 	return p.u.run(func(t *txConn) error {
 		_, err := t.run().exec(t.ctx, KindUtility, []string{table}, "REVOKE "+privilege+" ON "+qualified+" FROM "+r)
 		return err
@@ -748,6 +760,9 @@ func (p *PrivilegeUtils) RevokeTable(table, privilege, roleName string) error {
 func (p *PrivilegeUtils) InspectTable(table string) (TablePrivileges, error) {
 	qualified, err := p.table(table)
 	if err != nil {
+		return TablePrivileges{}, err
+	}
+	if err := p.supported(); err != nil {
 		return TablePrivileges{}, err
 	}
 	var out TablePrivileges
