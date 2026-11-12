@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 063fb7eabdf8137faa3ef95229c1b8f8bb007e5da7ce41677eb35fefea185548 -->
+<!-- source-sha256: 96d5a038cdaeb882c8ff7126c9c2b709a8f8e24577706ff22b8bb89737ce8739 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.31
 
 - Breaking (0.x): insert는 model의 조건이 성립할 때만 쓴다(T436, PRT-85에서 PRT-89까지, DSL-162). `create()`, `creates()`, 그리고 `duplication()`과 `create()`는 model에 둔 조건을 insert의 `where`로 받으며, column에 대한 조건은 insert가 쓰는 값을 비교한다. 문은 모든 row를 쓰거나 하나도 쓰지 않는 `INSERT ... SELECT` 하나이고, subquery는 쓰는 table을 포함한 모든 table을 문 이전 상태로 읽으며, 성립하지 않는 조건은 새 code `CONDITION_NOT_MET`으로 실패하고 아무것도 쓰지 않으며, 그런 insert가 열었을 감사 기록도 함께 취소된다(DBS-87). 이전에는 insert가 model의 조건을 버렸다. limepie의 요청이다.
 

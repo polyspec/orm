@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.31
+
 - Breaking (0.x): an insert writes only when the conditions of its model hold (T436, PRT-85 to PRT-89, DSL-162). `create()`, `creates()` and `duplication()` with `create()` take the conditions set on the model as the `where` of the insert; a condition on a column compares the value that the insert writes. The statement is one `INSERT ... SELECT` that writes every row or none, a subquery reads every table, the written one too, as before the statement, and a condition that does not hold fails with the new code `CONDITION_NOT_MET` and writes nothing; an audit record that such an insert would have opened is undone with it (DBS-87). Before, the conditions of a model were dropped by an insert. Requested by limepie.
 
 ## 0.0.30
