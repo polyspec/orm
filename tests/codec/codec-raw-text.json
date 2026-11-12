@@ -15,7 +15,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text_hex": "61ff"
@@ -103,7 +103,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [

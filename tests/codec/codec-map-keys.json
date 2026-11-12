@@ -15,7 +15,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "map_entries": [
@@ -39,7 +39,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "map_entries": [
@@ -71,7 +71,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [
@@ -150,7 +150,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "map_entries": [

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 191d4916b723055359695888217facfaa25b645ed5e7ac6e8ccf060dbd1d4c58 -->
+<!-- source-sha256: aeb4706e5fdc224a837ef0b69cb4197db9ee01d52d7c10592d55f66953780f3b -->
 # 변경 이력
 
 ## Unreleased
 
 - Go, PHP, PHP 확장, Python, TypeScript 언어 구현은 `legacy/packages/`로 옮겨 모든 릴리스에서 빠진다(CORE-1). 그 시험은 `legacy/contracts/fixtures/`와 `legacy/tests/`에 둔 공유 case·fixture·vector의 고정 사본을 읽고, `packages/rust/interface.json`에서 생성하는 바인딩이 그 자리를 대신한다.
 - Breaking (0.x): Rust 코어 `polyspec-orm`은 docs/spec/core.md의 규칙(CORE-1~CORE-60)을 따르고, 언어 구현은 각자 없어질 때까지 자기 규칙을 유지한다: 오류는 닫힌 enum `Kind`의 kind 하나를 가지며(docs/spec/errors.md), 트랜잭션 callback은 handle `Tx`를 받고 savepoint는 `Tx::savepoint`이며, 실행 흐름이 활성 트랜잭션을 두지 않는다.
+- Breaking (0.x): Rust 코어에서 codec stage `ordered_json`은 `json`이고, 공유 case의 값 wrapper `{"ordered_json": ...}`는 `{"json_value": ...}`다(CORE-61). 옛 이름은 그 stage를 쓰던 라이브러리의 이름이었고 코어는 그 라이브러리를 더는 쓰지 않는다. 코어의 dbspec 문서는 `codec <column> json`을 쓰고, 그 stage를 시험하는 case는 id에서 그것을 `json`으로 부르며, legacy 언어 구현의 고정 사본은 옛 이름을 지킨다. Rust crate는 ordered-json release `v0.0.25` 대신 `polyspec-json`과 `polyspec-binding-core`를 받고, 생성된 model은 `polyspec_orm::polyspec_json::Value`를 쓴다.
 - PostgreSQL DSN은 모든 runtime에서 검증된 TLS로 연결한다(T435, CFG-45~CFG-47). `sslmode=verify-full`과 인증 기관 PEM 파일의 절대 경로 `sslrootcert`를 함께 쓰면 server 인증서를 그 인증 기관만으로 검사하고, DSN의 host를 인증서와 대조한다. 다른 인증 기관이 서명했거나 다른 host를 가리키는 인증서는 `CONFIG`로 실패하며, message에 `TLS connection failed`가 들어간다. 어떤 client도 `~/.postgresql/root.crt`나 platform store 같은 기본 인증 기관을 읽지 않는다. 두 매개변수의 거부는 여섯 runtime에서 같은 텍스트이고 같은 순서로 나온다. `sslrootcert`는 `socket`, `host`와 함께 `;`나 NUL을 담을 수 없는 값이 된다(CFG-20). `sslmode`가 없거나 `sslmode=disable`인 DSN은 TLS를 제공하는 server에도 TLS 없이 연결한다. Rust는 fork release `v0.9.0-polyspec.2`의 sqlx를 쓴다. 이 release에서 CA 파일을 지정한 연결은 그 파일만 신뢰한다. 전에는 Rust가 PostgreSQL처럼 MySQL(CFG-16)에서도 platform store까지 신뢰했다. PHP extension은 거부된 PostgreSQL 연결의 이유를 library처럼 알린다. 전에는 `cannot connect to PostgreSQL`만 알리고 `pg_connect`의 warning을 그대로 흘렸다.
 
 ## 0.0.31

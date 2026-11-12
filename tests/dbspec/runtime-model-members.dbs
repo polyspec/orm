@@ -18,7 +18,7 @@ table member_row {
     updated updated_at
     soft_delete deleted_at
     select explicit aes_key_version
-    codec secret ordered_json aes
+    codec secret json aes
     aes_version aes_key_version
   }
 }

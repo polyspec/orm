@@ -11,7 +11,7 @@ import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
-const repeatedMemberCase = 'ordered_json_keeps_a_repeated_member_name';
+const repeatedMemberCase = 'json_keeps_a_repeated_member_name';
 
 caseTest('the pooler lane caps the Rust test threads at the backend count per pool', COMPUTE, () => {
   assert.deepEqual(rustPoolerThreadArguments(4, 4), ['--test-threads=1']);

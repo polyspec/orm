@@ -25,7 +25,7 @@ keys are not strings, Go and Python), `codec-styled-unset.json` (an unset styled
 257 levels under each value stage, encode and decode, every runtime).
 
 `codec-raw-text.json` and `codec-lone-surrogate.json` hold the cases of a text that is not a sequence of Unicode scalar
-values under `ordered_json`, so no native test holds them: the native tests that did were removed when those recipes were
+values under `json`, so no native test holds them: the native tests that did were removed when those recipes were
 green in their runtimes, Go `TestOrderedJSONRefusesATextThatIsNotUnicode` (`legacy/packages/go/orm/codec_test.go`), PHP
 `CodecOrderedJsonTextTest` (`legacy/packages/php/tests/CodecOrderedJsonTextTest.php`) and its PHP extension twin
 `CodecOrderedJsonTextExtensionTest` (`legacy/packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php`), TypeScript

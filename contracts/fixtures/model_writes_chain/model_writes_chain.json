@@ -66,7 +66,7 @@
  },
  "cases": [
   {
-   "id": "ordered_json_keeps_its_member_order_and_number_text",
+   "id": "json_keeps_its_member_order_and_number_text",
    "requirements": [
     "COD-15",
     "DIA-26"
@@ -228,7 +228,7 @@
    ]
   },
   {
-   "id": "ordered_json_keeps_a_repeated_member_name",
+   "id": "json_keeps_a_repeated_member_name",
    "requirements": [
     "COD-15",
     "DIA-26"
@@ -384,7 +384,7 @@
    ]
   },
   {
-   "id": "ordered_json_keeps_nested_member_order",
+   "id": "json_keeps_nested_member_order",
    "requirements": [
     "COD-15",
     "DIA-26"
@@ -2846,7 +2846,7 @@
    ]
   },
   {
-   "id": "ordered_json_keeps_its_text_in_the_model_json_output",
+   "id": "json_keeps_its_text_in_the_model_json_output",
    "requirements": [
     "COD-16",
     "COD-26"

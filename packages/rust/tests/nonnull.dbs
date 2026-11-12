@@ -5,6 +5,6 @@ table nonnull_document {
   body text
   primary key (seq)
   settings {
-    codec body ordered_json
+    codec body json
   }
 }

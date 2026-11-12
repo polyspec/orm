@@ -13,7 +13,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "styled_unset": true

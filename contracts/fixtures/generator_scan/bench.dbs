@@ -58,8 +58,8 @@ table author {
     codec base64_extra base64
     codec gz_extend gz
     codec ip ip
-    codec json_setting ordered_json
-    codec jsons_tags ordered_json
+    codec json_setting json
+    codec jsons_tags json
     codec serialize_data serialize
     aes_version aes_key_version
     blind_index aes_hex_email email_blind_index

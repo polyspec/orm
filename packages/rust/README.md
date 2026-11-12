@@ -107,7 +107,7 @@ group result does not contain partially populated model fields.
 `GroupRow::value(name)` returns `Result<&Val>` and reports `COLUMN_UNSELECTED` for a name that
 was not selected. A selected SQL NULL remains `Val::Null`.
 
-Generated setters for columns with an `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` codec stage take
+Generated setters for columns with an `json`, `serialize`, `yaml`, `gz`, or `base64` codec stage take
 `StyledValue<T>` and return `Result<Self>`. `StyledValue::SqlNull` writes SQL NULL;
 `StyledValue::Value(v)` stores the encoded value, including a JSON or other encoded null.
 A non-null column rejects `SqlNull` with `CODEC_ENCODE` at the setter. Getters return

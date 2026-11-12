@@ -226,7 +226,7 @@ fn generated_field_types_follow_the_runtime_model() {
     assert!(text.contains("pub fn get_aes_hex_email(&self) -> polyspec_orm::Result<Option<&str>>"), "aes hex is a string");
     assert!(text.contains("pub fn force_index_uq_author_uuid(mut self) -> Self"), "a unique key takes an index hint");
 
-    let document = "dbspec 1 typed\n\ntable typed {\n  seq i64 identity\n  amount decimal(10,2) null\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n";
+    let document = "dbspec 1 typed\n\ntable typed {\n  seq i64 identity\n  amount decimal(10,2) null\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value json\n  }\n}\n";
     let types = generate_with_document(
         document,
         "fn main() { let row = Typed::new(); let _ = row.get_ratio(); let _ = row.get_enabled(); let _ = row.get_body(); let _ = row.get_payload(); let _ = row.get_day(); let _ = row.get_clock(); let _ = row.get_moment(); let _ = row.get_json_value(); }",

@@ -15,7 +15,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "bytes_hex": "00ff"
@@ -30,7 +30,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [

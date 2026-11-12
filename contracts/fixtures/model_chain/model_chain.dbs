@@ -27,7 +27,7 @@ table author {
     codec base64_extra base64
     codec gz_extend gz
     codec ip ip
-    codec json_setting ordered_json
+    codec json_setting json
   }
 }
 

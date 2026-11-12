@@ -102,11 +102,11 @@ fn index_method(name: &str) -> String {
 }
 
 /// The Rust value type of a column without null (docs/spec/dbspec.md, "Runtime model"). If the column has a codec
-/// first stage is `ordered_json`, it is an ordered-JSON styled value; otherwise
+/// first stage is `json`, it is an ordered-JSON styled value; otherwise
 /// if there is a styled-value stage, it is a styled value of the common value model; with `aes`, `hex`,
 /// with only `ip`, it is a string.
 fn base(c: &Field) -> &'static str {
-    if c.codec.first().is_some_and(|s| s == "ordered_json") {
+    if c.codec.first().is_some_and(|s| s == "json") {
         return ORDERED;
     }
     if c.styled_value() {
@@ -155,8 +155,8 @@ mod field_type_tests {
         assert_eq!(base(&field_of(Type::I16, &[])), "i16");
         assert_eq!(base(&field_of(Type::Uuid, &[])), "String");
         assert_eq!(base(&field_of(Type::Time(3), &[])), "String");
-        assert_eq!(base(&field_of(Type::Text, &["ordered_json"])), ORDERED);
-        assert_eq!(base(&field_of(Type::Bytes, &["ordered_json", "aes"])), ORDERED);
+        assert_eq!(base(&field_of(Type::Text, &["json"])), ORDERED);
+        assert_eq!(base(&field_of(Type::Bytes, &["json", "aes"])), ORDERED);
         assert_eq!(base(&field_of(Type::Varchar(255), &["aes", "hex"])), "String");
         assert_eq!(base(&field_of(Type::Bytes, &["ip"])), "String");
         for codec in [&["gz"][..], &["base64"], &["serialize"], &["yaml"]] {
@@ -167,7 +167,7 @@ mod field_type_tests {
     }
 }
 
-/// The type of a column with the `ordered_json` stage.
+/// The type of a column with the `json` stage.
 const ORDERED: &str = "polyspec_orm::polyspec_json::Value";
 
 fn field(c: &Field) -> String {

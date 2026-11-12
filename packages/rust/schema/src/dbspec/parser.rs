@@ -49,7 +49,7 @@ pub(crate) fn reserved(text: &str) -> bool {
 /// What a column name position of a setting line expects.
 const COLUMN: &str = "a column name";
 
-pub(crate) const CODEC_STAGES: [&str; 8] = ["ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];
+pub(crate) const CODEC_STAGES: [&str; 8] = ["json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];
 
 #[derive(Clone, Debug)]
 pub(crate) struct Diag {
@@ -1431,8 +1431,8 @@ impl Parser {
                 for (index, stage) in stages.iter().enumerate() {
                     if !CODEC_STAGES.contains(&stage.text.as_str()) {
                         self.report(err(stage.pos, "setting", format!("codec stage {} is unknown", go_quote(&stage.text))));
-                    } else if stage.text == "ordered_json" && index > 0 {
-                        self.report(err(stage.pos, "setting", "ordered_json is the first codec stage"));
+                    } else if stage.text == "json" && index > 0 {
+                        self.report(err(stage.pos, "setting", "json is the first codec stage"));
                     }
                 }
                 Some(Setting::Codec(column, stages))

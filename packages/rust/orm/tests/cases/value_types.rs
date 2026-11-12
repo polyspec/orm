@@ -31,7 +31,7 @@ table value_record {
   primary key (seq)
   settings {
     select explicit note
-    codec payload ordered_json
+    codec payload json
   }
 }
 ";

@@ -99,7 +99,7 @@
                     },
                     "json_setting": {
                       "codec": [
-                        "ordered_json"
+                        "json"
                       ]
                     },
                     "gz_extend": {
@@ -237,12 +237,12 @@
                 "    updated updated_at",
                 "    soft_delete deleted_at",
                 "    select explicit aes_key_version",
-                "    codec secret ordered_json aes",
+                "    codec secret json aes",
                 "    aes_version aes_key_version",
                 "  }",
                 "}"
               ],
-              "manifest_hash": "sha256:2e217b76a2ae17adcc3afdae1ff64e41f32244e575f06d51c507fcf5ba65f652",
+              "manifest_hash": "sha256:c814215f1e925296b1342ba971ee64dbc0e075a281189a208a6c522fd87c81cd",
               "models": {
                 "member": {
                   "table": "member_row",
@@ -255,7 +255,7 @@
                       "type": "bytes",
                       "nullable": true,
                       "codec": [
-                        "ordered_json",
+                        "json",
                         "aes"
                       ]
                     },

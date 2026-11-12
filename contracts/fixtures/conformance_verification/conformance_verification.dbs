@@ -58,8 +58,8 @@ table author {
     codec base64_extra base64
     codec gz_extend gz
     codec ip ip
-    codec json_setting ordered_json
-    codec jsons_tags ordered_json
+    codec json_setting json
+    codec jsons_tags json
     codec serialize_data serialize
     aes_version aes_key_version
     blind_index aes_hex_email email_blind_index
@@ -281,7 +281,7 @@ table typed_value {
   settings {
     codec address ip
     codec packed gz
-    codec payload ordered_json
+    codec payload json
   }
 }
 
@@ -305,8 +305,8 @@ table styled_cell {
   serialize_value text null
   primary key (seq)
   settings {
-    codec required_json ordered_json
-    codec json_value ordered_json
+    codec required_json json
+    codec json_value json
     codec serialize_value serialize
   }
 }

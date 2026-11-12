@@ -15,7 +15,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text_code_points": [
@@ -121,7 +121,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [
@@ -217,7 +217,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text_code_points": [

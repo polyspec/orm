@@ -113043,7 +113043,7 @@
             "  settings {",
             "    codec a gz base64",
             "    codec b gz",
-            "    codec c hex ordered_json",
+            "    codec c hex json",
             "  }",
             "}"
           ],
@@ -113066,7 +113066,7 @@
                   "rule": "setting",
                   "line": 12,
                   "column": 17,
-                  "message": "ordered_json is the first codec stage"
+                  "message": "json is the first codec stage"
                 }
               ]
             }
@@ -113086,7 +113086,7 @@
             "  settings {",
             "    codec a gz base64",
             "    codec b gz",
-            "    codec c hex ordered_json",
+            "    codec c hex json",
             "  }",
             "}"
           ],
@@ -113306,7 +113306,7 @@
                 [
                   12,
                   16,
-                  28,
+                  20,
                   "keyword"
                 ],
                 [
@@ -135133,7 +135133,7 @@
             "  config bytes",
             "  primary key (seq)",
             "  settings {",
-            "    codec config ordered_json aes",
+            "    codec config json aes",
             "  }",
             "}"
           ],
@@ -135160,7 +135160,7 @@
             "  config bytes",
             "  primary key (seq)",
             "  settings {",
-            "    codec config ordered_json aes",
+            "    codec config json aes",
             "  }",
             "}"
           ],
@@ -135290,13 +135290,13 @@
                 [
                   8,
                   17,
-                  29,
+                  21,
                   "keyword"
                 ],
                 [
                   8,
-                  30,
-                  33,
+                  22,
+                  25,
                   "keyword"
                 ],
                 [
@@ -135335,7 +135335,7 @@
             "  config text",
             "  primary key (seq)",
             "  settings {",
-            "    codec config ordered_json aes",
+            "    codec config json aes",
             "    aes_version aes_key_version",
             "  }",
             "}"
@@ -135364,7 +135364,7 @@
             "  config text",
             "  primary key (seq)",
             "  settings {",
-            "    codec config ordered_json aes",
+            "    codec config json aes",
             "    aes_version aes_key_version",
             "  }",
             "}"
@@ -135507,13 +135507,13 @@
                 [
                   9,
                   17,
-                  29,
+                  21,
                   "keyword"
                 ],
                 [
                   9,
-                  30,
-                  33,
+                  22,
+                  25,
                   "keyword"
                 ],
                 [

@@ -56,7 +56,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "null": "text"
@@ -72,7 +72,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "null": "text"
@@ -89,7 +89,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -119,7 +119,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "true"
@@ -135,7 +135,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "bool": true
@@ -152,7 +152,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -182,7 +182,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "42"
@@ -198,7 +198,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "int": "42"
@@ -215,7 +215,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -245,7 +245,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "-7"
@@ -261,7 +261,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "int": "-7"
@@ -278,7 +278,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -308,7 +308,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "1.5"
@@ -324,7 +324,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "float": "1.5"
@@ -341,7 +341,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -371,7 +371,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "0.1"
@@ -387,7 +387,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "float": "0.1"
@@ -404,7 +404,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -434,7 +434,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "2"
@@ -450,7 +450,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "int": "2"
@@ -467,7 +467,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -497,7 +497,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "\"hello\""
@@ -513,7 +513,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text": "hello"
@@ -530,7 +530,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -560,7 +560,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "\"\ud55c\uae00/slash \\\"q\\\" \\\\ back\""
@@ -576,7 +576,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text": "\ud55c\uae00/slash \"q\" \\ back"
@@ -593,7 +593,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -623,7 +623,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "\"\""
@@ -639,7 +639,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "text": ""
@@ -656,7 +656,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -686,7 +686,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "[]"
@@ -702,7 +702,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": []
@@ -719,7 +719,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -749,7 +749,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "[1,\"two\",3.5,null,false]"
@@ -781,7 +781,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [
@@ -814,7 +814,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -860,7 +860,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"a\":1,\"b\":[1,2,{\"c\":\"\ud55c\"}],\"d\":null,\"e\":true,\"f\":1.5}"
@@ -924,7 +924,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -989,7 +989,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -1067,7 +1067,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"1\":\"x\",\"5\":\"y\"}"
@@ -1096,7 +1096,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -1126,7 +1126,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -1169,7 +1169,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"-3\":\"neg\",\"07\":\"zero-padded\",\"10\":\"ten\"}"
@@ -1204,7 +1204,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -1240,7 +1240,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -1289,7 +1289,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"files\":[{\"$type\":\"upload_file\",\"mime\":\"text/plain\",\"name\":\"report.txt\",\"path\":\"/tmp/report.txt\"},{\"$type\":\"upload_file\",\"mime\":\"\",\"name\":\"raw.bin\",\"path\":\"/tmp/raw.bin\"}],\"title\":\"request\"}"
@@ -1375,7 +1375,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -1462,7 +1462,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "ref": "cell"
@@ -3730,7 +3730,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": ""
@@ -3791,7 +3791,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json",
+            "json",
             "base64",
             "gz"
           ],
@@ -12139,7 +12139,7 @@
       ]
     },
     {
-      "id": "decode_ordered_json_empty_text",
+      "id": "decode_json_empty_text",
       "requirements": [
         "COD-3",
         "COD-9",
@@ -12155,7 +12155,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": ""
@@ -12704,7 +12704,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{bad"
@@ -12736,7 +12736,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": ""
@@ -13089,7 +13089,7 @@
       ]
     },
     {
-      "id": "ordered_json_keeps_empty_values",
+      "id": "json_keeps_empty_values",
       "requirements": [
         "COD-16",
         "COD-33"
@@ -13098,7 +13098,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "[[],{},0,\"\"]"
@@ -13127,7 +13127,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [
@@ -14759,7 +14759,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "null": "text"
@@ -14839,20 +14839,20 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "nil": true
           },
-          "as": "ordered_json_null"
+          "as": "json_value_null"
         },
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
-            "ref": "ordered_json_null"
+            "ref": "json_value_null"
           },
           "expect": {
             "none": {
@@ -14865,7 +14865,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "null": "text"
@@ -14965,7 +14965,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "nil": true
@@ -14981,7 +14981,7 @@
       ]
     },
     {
-      "id": "text_and_ordered_json_under_byte_stages",
+      "id": "text_and_json_under_byte_stages",
       "requirements": [
         "COD-11",
         "COD-12",
@@ -15019,7 +15019,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json",
+            "json",
             "gz"
           ],
           "value": {
@@ -15055,7 +15055,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json",
+            "json",
             "gz"
           ],
           "raw": {
@@ -15123,7 +15123,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json",
+            "json",
             "base64"
           ],
           "value": {
@@ -15159,7 +15159,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json",
+            "json",
             "base64"
           ],
           "raw": {
@@ -15331,7 +15331,7 @@
           "op": "codec.encode",
           "styles": [
             "base64",
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": []
@@ -15339,7 +15339,7 @@
           "expect": {
             "none": {
               "error": "codec_unsupported",
-              "message": "codec_unsupported: ordered_json must be the first style"
+              "message": "codec_unsupported: json must be the first style"
             }
           }
         },
@@ -15347,7 +15347,7 @@
           "op": "codec.encode",
           "styles": [
             "serialize",
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": []
@@ -15355,7 +15355,7 @@
           "expect": {
             "none": {
               "error": "codec_unsupported",
-              "message": "codec_unsupported: ordered_json must be the first style"
+              "message": "codec_unsupported: json must be the first style"
             }
           }
         },
@@ -15379,7 +15379,7 @@
           "op": "codec.decode",
           "styles": [
             "gz",
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "a"
@@ -15387,14 +15387,14 @@
           "expect": {
             "none": {
               "error": "codec_unsupported",
-              "message": "codec_unsupported: ordered_json must be the first style"
+              "message": "codec_unsupported: json must be the first style"
             }
           }
         }
       ]
     },
     {
-      "id": "ordered_json_kinds_and_order",
+      "id": "json_kinds_and_order",
       "requirements": [
         "COD-16",
         "COD-30"
@@ -15403,7 +15403,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1.50}}"
@@ -15451,7 +15451,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "text": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
@@ -15492,7 +15492,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -16710,7 +16710,7 @@
       ]
     },
     {
-      "id": "ordered_json_text_is_utf8",
+      "id": "json_text_is_utf8",
       "requirements": [
         "COD-14",
         "COD-70"
@@ -16719,7 +16719,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "bytes_hex": "22ff22"
@@ -16734,7 +16734,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "bytes_hex": "22eda08022"
@@ -16749,7 +16749,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json",
+            "json",
             "base64"
           ],
           "raw": {
@@ -17027,7 +17027,7 @@
       ]
     },
     {
-      "id": "ordered_json_value_stages",
+      "id": "json_value_stages",
       "requirements": [
         "COD-16",
         "COD-70"
@@ -17036,10 +17036,10 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17067,11 +17067,11 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json",
+            "json",
             "gz"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17093,7 +17093,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json",
+            "json",
             "gz"
           ],
           "raw": {
@@ -17126,7 +17126,7 @@
             "serialize"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17146,7 +17146,7 @@
           "expect": {
             "none": {
               "error": "codec_encode",
-              "message": "codec_encode: serialize: an ordered-json value is written only by the ordered_json stage"
+              "message": "codec_encode: serialize: an ordered-json value is written only by the json stage"
             }
           }
         },
@@ -17156,7 +17156,7 @@
             "yaml"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17176,7 +17176,7 @@
           "expect": {
             "none": {
               "error": "codec_encode",
-              "message": "codec_encode: yaml: an ordered-json value is written only by the ordered_json stage"
+              "message": "codec_encode: yaml: an ordered-json value is written only by the json stage"
             }
           }
         },
@@ -17186,7 +17186,7 @@
             "gz"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17216,7 +17216,7 @@
             "base64"
           ],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -17244,7 +17244,7 @@
           "op": "codec.encode",
           "styles": [],
           "value": {
-            "ordered_json": {
+            "json_value": {
               "object": [
                 [
                   "b",
@@ -18474,7 +18474,7 @@
         {
           "op": "codec.decode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "raw": {
             "int": "1"

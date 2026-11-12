@@ -109,9 +109,9 @@ impl Entity {
 
 impl Field {
     /// The field holds a styled value of the common value model: one of its codec stages
-    /// is `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` (docs/spec/dbspec.md, "Runtime model").
+    /// is `json`, `serialize`, `yaml`, `gz`, or `base64` (docs/spec/dbspec.md, "Runtime model").
     pub fn styled_value(&self) -> bool {
-        self.codec.iter().any(|s| matches!(s.as_str(), "ordered_json" | "serialize" | "yaml" | "gz" | "base64"))
+        self.codec.iter().any(|s| matches!(s.as_str(), "json" | "serialize" | "yaml" | "gz" | "base64"))
     }
 
     /// The field is encrypted by the `aes` stage.

@@ -3680,7 +3680,7 @@
       ]
     },
     {
-      "id": "ordered_json_column_round_trip_and_rotation",
+      "id": "json_column_round_trip_and_rotation",
       "requirements": [
         "COD-7"
       ],

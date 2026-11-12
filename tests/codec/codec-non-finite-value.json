@@ -15,7 +15,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "f64": "NaN"
@@ -30,7 +30,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "f64": "Infinity"
@@ -45,7 +45,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "f64": "-Infinity"
@@ -60,7 +60,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "array": [
@@ -82,7 +82,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json"
+            "json"
           ],
           "value": {
             "object": [
@@ -108,7 +108,7 @@
         {
           "op": "codec.encode",
           "styles": [
-            "ordered_json",
+            "json",
             "gz",
             "base64"
           ],

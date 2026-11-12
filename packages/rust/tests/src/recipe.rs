@@ -1187,7 +1187,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         Ok(Produced::Read(Val::Null)) if want.get("null").is_some() => Ok(()),
         Ok(Produced::Read(read)) if op == "codec.host_decode" => compare_cell(want, &read_param(read)),
         Ok(Produced::Read(read)) => {
-            let ordered = styles.iter().any(|s| s == "ordered_json");
+            let ordered = styles.iter().any(|s| s == "json");
             let got = from_val(&read)?;
             if equal(&got, want, ordered) {
                 Ok(())
@@ -2718,7 +2718,7 @@ fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String>
     }
 }
 
-/// An encode: SQL NULL for null, an ordered-json value for an ordered_json stage, so that its member order and number
+/// An encode: SQL NULL for null, an ordered-json value for a json stage, so that its member order and number
 /// text are those of the recipe, and the common value model otherwise.
 fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> Result<polyspec_orm::Result<Param>, String> {
     let stages: Vec<&str> = styles.iter().map(String::as_str).collect();
@@ -2734,18 +2734,18 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
     if raw.get("null").is_some() {
         return Ok(codec::encode(&stages, StyledValue::SqlNull));
     }
-    // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+    // A json_value wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
     // The text is parsed as a caller parses one, so `?` states a refusal of the library as its orm error (COD-81).
     let ordered = |text: &str| -> polyspec_orm::Result<Param> {
         let value = polyspec_json::parse(text.as_bytes(), &polyspec_json::ParseOptions::default())?;
         codec::encode_ordered(&stages, StyledValue::Value(&value))
     };
-    if let Some(inner) = raw.get("ordered_json") {
+    if let Some(inner) = raw.get("json_value") {
         return Ok(ordered(&json_text(inner)?));
     }
     // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
     // one Rust value that holds it (COD-70 `json-depth`).
-    if styles.iter().any(|s| s == "ordered_json") && u64::try_from(depth(raw)).is_ok_and(|levels| levels <= polyspec_json::MAX_DEPTH) {
+    if styles.iter().any(|s| s == "json") && u64::try_from(depth(raw)).is_ok_and(|levels| levels <= polyspec_json::MAX_DEPTH) {
         return Ok(ordered(&json_text(raw)?));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
@@ -6261,7 +6261,7 @@ mod tables {
             let Some(field) = entity.field(name) else { return Ok(false) };
             let converted = if value.is_null() {
                 Val::Null
-            } else if field.codec.first().is_some_and(|stage| stage == "ordered_json") {
+            } else if field.codec.first().is_some_and(|stage| stage == "json") {
                 // The styled form of SQL NULL carries no ordered value.
                 if matches!(value, Val::Json(Value::Null)) {
                     Val::Null
@@ -6917,8 +6917,8 @@ mod tables {
         // The setter of a column with codec stages encodes the value by them and fails at the call (COD-73).
         let check = |value: &Value| if styles.is_empty() { Ok(()) } else { polyspec_orm::codec::check_setter(&styles, value).map_err(orm) };
         if let Some(inner) = raw.get("styled") {
-            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
-                // The generated setter of an ordered_json column takes an ordered-json value, which the runner builds
+            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "json")) {
+                // The generated setter of a json column takes an ordered-json value, which the runner builds
                 // from the recipe value by the builders of the library, as a caller of the setter does (COD-73).
                 let ordered = ordered_of(&ordered_parts(inner)?).map_err(orm)?;
                 polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
@@ -6936,7 +6936,7 @@ mod tables {
             return Ok(());
         }
         if raw.get("object").is_some() {
-            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
+            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
                 let parsed = |text: &str| -> polyspec_orm::Result<polyspec_orm::polyspec_json::Value> {
                     Ok(polyspec_orm::polyspec_json::parse(text.as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default())?)

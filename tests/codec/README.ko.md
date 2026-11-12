@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: 707eb705a7261abca10857631cc9f4ceddb72d44ad031d33b00434ed22e0324f -->
+<!-- source-sha256: c76f35fe0411c3d1a10781dca86c500a2264d440ef58d071d637906a3fc3fff4 -->
 # 코덱 recipe
 
 `codec.json`은 `docs/spec/feature-coverage.md`(FCV-2~FCV-4)의 코덱 recipe다. 각 case는 database 없이 공개 코덱 호출
@@ -24,7 +24,7 @@ PHP 확장을 뺀 모든 runtime), `codec-non-finite-value.json`(유한하지 �
 `codec-styled-unset.json`(unset인 styled 값, Go와 Python), `codec-undefined-member.json`(undefined인 member,
 TypeScript), `codec-json-depth.json`(값 단계마다 encode와 decode에서 256 단계와 257 단계로 중첩된 값이나 cell, 모든 runtime).
 
-`ordered_json`에서 Unicode scalar 값의 열이 아닌 text의 case는 `codec-raw-text.json`과 `codec-lone-surrogate.json`이
+`json`에서 Unicode scalar 값의 열이 아닌 text의 case는 `codec-raw-text.json`과 `codec-lone-surrogate.json`이
 담으므로 그것을 담는 native test는 없다: 그 case를 담던 native test는 그 recipe가 각 runtime에서 green이 되었을 때
 제거했다. Go `TestOrderedJSONRefusesATextThatIsNotUnicode`(`legacy/packages/go/orm/codec_test.go`), PHP
 `CodecOrderedJsonTextTest`(`legacy/packages/php/tests/CodecOrderedJsonTextTest.php`)와 그 PHP 확장 짝

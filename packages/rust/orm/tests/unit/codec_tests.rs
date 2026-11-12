@@ -38,7 +38,7 @@ fn codec_parser_refusals_state_the_stage_text() {
     for (styles, raw, message) in [
         (vec!["gz"], Val::Bytes(b"not-zlib".to_vec()), "codec_decode: gz: bad zlib stream"),
         (vec!["base64"], Val::Str("!".into()), "codec_decode: base64: bad input"),
-        (vec!["ordered_json"], Val::Str("{".into()), "codec_decode: json: the cell is not JSON"),
+        (vec!["json"], Val::Str("{".into()), "codec_decode: json: the cell is not JSON"),
         (vec!["yaml"], Val::Str("a: [".into()), "codec_decode: yaml: the stream does not parse"),
     ] {
         let error = decode(&styles.into_iter().map(str::to_owned).collect::<Vec<_>>(), &raw).expect_err("malformed input must fail");
@@ -80,7 +80,7 @@ fn yaml_parse_keeps_the_position_of_the_reader() {
 /// `?` on an error of the json library gives the rule of COD-70 of its fact, with the library error as its source
 /// (COD-81): one input of each kind that a caller can meet.
 #[test]
-fn ordered_json_errors_state_the_rule_of_their_fact() {
+fn json_errors_state_the_rule_of_their_fact() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let deep = format!("{}{}", "[".repeat(257), "]".repeat(257));
     let parse = |text: &[u8]| strict_json::parse(text, &strict_json::ParseOptions::default());

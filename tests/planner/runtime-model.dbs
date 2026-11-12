@@ -11,7 +11,7 @@ table note {
   primary key (id)
   settings {
     select explicit secret_note
-    codec meta ordered_json
+    codec meta json
   }
 }
 

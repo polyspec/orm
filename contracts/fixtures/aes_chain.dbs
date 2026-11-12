@@ -36,7 +36,7 @@ table json_aes_cell {
   primary key (seq)
   index ix_json_aes_cell_token_index (token_index)
   settings {
-    codec token ordered_json aes
+    codec token json aes
     aes_version aes_key_version
     blind_index token token_index
   }

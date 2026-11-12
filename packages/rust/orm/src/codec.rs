@@ -1,4 +1,4 @@
-//! Column-style codecs (docs/spec/codec.md): ordered_json, serialize, base64, gz, yaml.
+//! Column-style codecs (docs/spec/codec.md): json, serialize, base64, gz, yaml.
 //! Styles are listed in write order; `decode` applies them in reverse. A first `gz` or
 //! `base64` stage takes a string value and stores its UTF-8 text (docs/spec/codec.md, Stage lists).
 
@@ -67,14 +67,14 @@ impl From<strict_json::Error> for Error {
 /// (COD-70 `json-depth`, `serialize-depth`, `yaml-depth` and their write rules).
 const NESTING_LEVELS: usize = 256;
 
-/// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `ordered_json`
+/// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `json`
 /// stage returns `Val::Ordered`; the other stages return `Val::Json`.
 pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     check_styles(styles.iter().map(String::as_str))?;
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
         // a driver-parsed JSON cell: only a bare json style applies
-        Val::Json(v) if styles.len() == 1 && styles[0] == "ordered_json" => v.to_string().into_bytes(),
+        Val::Json(v) if styles.len() == 1 && styles[0] == "json" => v.to_string().into_bytes(),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
         _ => return Err(err(Kind::CodecDecode, "cell is not bytes")),
@@ -106,7 +106,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             "yaml" => {
                 value = Some(Val::Json(yaml_decode(&cur)?));
             }
-            "ordered_json" => {
+            "json" => {
                 value = Some(Val::Ordered(strict_json::parse(&cur, &strict_json::ParseOptions::default()).map_err(|error| {
                     // The json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
                     let text = if matches!(error, strict_json::Error::MaximumDepthExceeded { .. }) {
@@ -133,8 +133,8 @@ fn check_styles<'a>(styles: impl IntoIterator<Item = &'a str>) -> Result<()> {
     for (i, st) in styles.into_iter().enumerate() {
         match st {
             "gz" | "base64" => {}
-            "ordered_json" | "serialize" | "yaml" if i == 0 => {}
-            "ordered_json" | "serialize" | "yaml" => return Err(err(Kind::CodecUnsupported, format!("{st} must be the first style"))),
+            "json" | "serialize" | "yaml" if i == 0 => {}
+            "json" | "serialize" | "yaml" => return Err(err(Kind::CodecUnsupported, format!("{st} must be the first style"))),
             other => return Err(err(Kind::CodecUnsupported, format!("style {other}"))),
         }
     }
@@ -183,15 +183,15 @@ pub(crate) fn ordered_text(v: &strict_json::Value) -> String {
 }
 
 /// An ordered-json value → stored representation. The first stage is
-/// `ordered_json` and writes the stored text of the value (`ordered_text`), including JSON null.
+/// `json` and writes the stored text of the value (`ordered_text`), including JSON null.
 pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> Result<Param> {
     check_styles(styles.iter().copied())?;
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     match styles.first() {
-        Some(&"ordered_json") => finish(&styles[1..], Written::Text(ordered_text(v))),
-        // An ordered-json value is written by the ordered_json stage only (COD-16); a first gz or base64 stage and an
+        Some(&"json") => finish(&styles[1..], Written::Text(ordered_text(v))),
+        // An ordered-json value is written by the json stage only (COD-16); a first gz or base64 stage and an
         // empty list take a string value.
-        Some(&st @ ("serialize" | "yaml")) => Err(err(Kind::CodecEncode, format!("{st}: an ordered-json value is written only by the ordered_json stage"))),
+        Some(&st @ ("serialize" | "yaml")) => Err(err(Kind::CodecEncode, format!("{st}: an ordered-json value is written only by the json stage"))),
         first => Err(err(Kind::CodecEncode, text_kind(first.copied()))),
     }
 }
@@ -255,7 +255,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
             Written::Text(s)
         }
         Some("yaml") => Written::Text(yaml_encode(value)?),
-        Some("ordered_json") => Written::Text(json_encode(value)?),
+        Some("json") => Written::Text(json_encode(value)?),
         _ => match value {
             Value::String(text) => Written::Text(text.clone()),
             _ => return Err(err(Kind::CodecEncode, text_kind(first))),
@@ -274,7 +274,7 @@ pub fn check_setter(styles: &[&str], value: &Value) -> Result<()> {
     encode(&codec, StyledValue::Value(value)).map(drop)
 }
 
-/// [`check_setter`] for the ordered-json value of a column whose first stage is `ordered_json`.
+/// [`check_setter`] for the ordered-json value of a column whose first stage is `json`.
 pub fn check_setter_ordered(styles: &[&str], value: &strict_json::Value) -> Result<()> {
     let codec: Vec<&str> = styles.iter().copied().filter(|style| !is_host(style)).collect();
     encode_ordered(&codec, StyledValue::Value(value)).map(drop)
