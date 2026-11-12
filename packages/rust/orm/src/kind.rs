@@ -4,7 +4,7 @@
 //! core has (CORE-14). The enum has no wildcard variant, so a binding that matches every kind does not compile when a
 //! kind is added or removed (bindgen design I-2 (3)).
 
-use bindgen_core::Category;
+use binding_core::Category;
 use std::fmt;
 
 /// The kind of an error of the core: one row of the table of docs/spec/errors.md.

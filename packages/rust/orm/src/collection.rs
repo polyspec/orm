@@ -371,7 +371,7 @@ impl GroupRow {
         for (name, value) in &self.values {
             let text = match value {
                 Val::Bytes(_) => return Err(Error::new(crate::Kind::CodecEncode, format!("group column {name}: JSON output cannot write bytes"))),
-                Val::Ordered(value) => value.compact(),
+                Val::Ordered(value) => value.to_string(),
                 other => other.to_json()?.to_string(),
             };
             parts.push(format!("{}:{text}", serde_json::Value::String(name.clone())));

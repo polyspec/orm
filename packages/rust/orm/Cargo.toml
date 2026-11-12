@@ -21,11 +21,11 @@ test-faults = []
 [dependencies]
 # The boundary types that the generated bindings and this core share: the failure of a function that calls back
 # (Failure, Raised), the wait tokens (Io), cancellation (Cancel), the map types (OrderedMap, KeyedMap), the out values
-# of orm_value (OutValue) and the name conversion that generate uses (bindgen design E-1c, I-2 (4), T-1, T-2, U-1, N-2;
+# of orm_value (OutValue) and the name conversion that generate uses (binding design E-1c, I-2 (4), T-1, T-2, U-1, N-2;
 # CORE-27, CORE-50, CORE-60).
-polyspec-bindgen-core = { git = "https://github.com/polyspec/bindgen.git", branch = "v1/rust-core" }
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core" }
 polyspec-orm-schema = { version = "=0.0.31", path = "../schema" }
-ordered-json = { package = "polyspec-ordered-json", version = ">=0.0.25, <0.1.0", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.25" }
+polyspec-json = { git = "https://github.com/polyspec/json.git", branch = "v1/rust-core" }
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"] }
 # The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
@@ -52,8 +52,8 @@ hmac = "0.12"
 serde-saphyr = { version = "2.0.0", default-features = false, features = ["serialize"] }
 
 [dev-dependencies]
-# The tests make the wait tokens and raised exceptions that only generated code makes (bindgen design I-2 (4), U-3).
-polyspec-bindgen-core = { git = "https://github.com/polyspec/bindgen.git", branch = "v1/rust-core", features = ["construct"] }
+# The tests make the wait tokens and raised exceptions that only generated code makes (binding design I-2 (4), U-3).
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core", features = ["construct"] }
 # The fault entry point exists only with the feature test-faults. The integration tests of this crate
 # enable it through their own crate, so a test target runs with the feature and the normal build does not.
 polyspec-orm = { path = ".", features = ["test-faults"] }

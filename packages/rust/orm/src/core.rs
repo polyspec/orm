@@ -129,7 +129,7 @@ pub(crate) struct OrderSpec {
 pub(crate) enum SetValue {
     Value(Param),
     Json(serde_json::Value),
-    Ordered(ordered_json::Value),
+    Ordered(polyspec_json::Value),
     Null,
     Plus(Param),
     Minus(Param),
@@ -620,7 +620,7 @@ impl Core {
 
     /// Records the ordered-json value of a column with the `json` or `jsons`
     /// stage, including a JSON literal null.
-    pub fn set_ordered(&mut self, column: &str, value: ordered_json::Value) {
+    pub fn set_ordered(&mut self, column: &str, value: polyspec_json::Value) {
         self.put_set(column, SetValue::Ordered(value));
     }
 

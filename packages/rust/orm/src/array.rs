@@ -17,7 +17,7 @@ pub enum ArrayValue {
     /// A serde_json value: a styled value that a codec reads, or a value added to the row.
     Json(serde_json::Value),
     /// An ordered-json value, with its member order and number text as stored.
-    Ordered(ordered_json::Value),
+    Ordered(polyspec_json::Value),
     /// A row: its values by name, in row order.
     Map(IndexMap<String, ArrayValue>),
     /// The rows of a collection, in collection order.
@@ -112,7 +112,7 @@ impl PartialEq for ArrayValue {
             (ArrayValue::Text(a), ArrayValue::Text(b)) => a == b,
             (ArrayValue::Bytes(a), ArrayValue::Bytes(b)) => a == b,
             (ArrayValue::Json(a), ArrayValue::Json(b)) => a == b,
-            (ArrayValue::Ordered(a), ArrayValue::Ordered(b)) => a.compact() == b.compact(),
+            (ArrayValue::Ordered(a), ArrayValue::Ordered(b)) => a.to_string() == b.to_string(),
             (ArrayValue::Map(a), ArrayValue::Map(b)) => a.len() == b.len() && a.iter().zip(b).all(|((ka, va), (kb, vb))| ka == kb && va == vb),
             (ArrayValue::List(a), ArrayValue::List(b)) => a == b,
             _ => false,

@@ -13,7 +13,7 @@ use polyspec_orm::codec;
 use polyspec_orm::dbspec::{self, Dialect, Document, Position, Server};
 use polyspec_orm::dbspec::{export_mermaid, import_mermaid, Unsupported};
 use polyspec_orm::engine;
-use polyspec_orm::ordered_json::{self, Kind};
+use polyspec_orm::polyspec_json::{self, Kind};
 use polyspec_orm::{Param, StyledValue, Val};
 use serde_json::{json, Map, Number, Value};
 
@@ -2737,7 +2737,7 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
     // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
     // The text is parsed as a caller parses one, so `?` states a refusal of the library as its orm error (COD-81).
     let ordered = |text: &str| -> polyspec_orm::Result<Param> {
-        let value = ordered_json::parse(text)?;
+        let value = polyspec_json::parse(text.as_bytes(), &polyspec_json::ParseOptions::default())?;
         codec::encode_ordered(&stages, StyledValue::Value(&value))
     };
     if let Some(inner) = raw.get("ordered_json") {
@@ -2745,7 +2745,7 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
     }
     // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
     // one Rust value that holds it (COD-70 `json-depth`).
-    if styles.iter().any(|s| s == "ordered_json") && depth(raw) <= ordered_json::MAX_DEPTH {
+    if styles.iter().any(|s| s == "ordered_json") && u64::try_from(depth(raw)).is_ok_and(|levels| levels <= polyspec_json::MAX_DEPTH) {
         return Ok(ordered(&json_text(raw)?));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
@@ -2844,24 +2844,24 @@ fn from_json(value: &Value) -> Value {
     }
 }
 
-fn from_ordered(value: &ordered_json::Value) -> Result<Value, String> {
+fn from_ordered(value: &polyspec_json::Value) -> Result<Value, String> {
     Ok(match value.kind() {
         Kind::Null => serde_json::json!({ "nil": true }),
-        Kind::Boolean => serde_json::json!({ "bool": value.boolean_value() }),
-        Kind::String => serde_json::json!({ "text": String::from_utf8(value.string_value().map_err(|e| e.to_string())?).map_err(|e| e.to_string())? }),
+        Kind::Boolean => serde_json::json!({ "bool": value.boolean_value().map_err(|e| e.to_string())? }),
+        Kind::String => serde_json::json!({ "text": value.string_value().map_err(|e| e.to_string())? }),
         Kind::Number => {
-            let text = value.number_literal().unwrap_or_default();
+            let text = value.number_literal().map_err(|e| e.to_string())?;
             if text.contains(['.', 'e', 'E']) {
                 serde_json::json!({ "float": text })
             } else {
                 serde_json::json!({ "int": text })
             }
         }
-        Kind::Array => serde_json::json!({ "array": value.items().unwrap_or_default().iter().map(from_ordered).collect::<Result<Vec<_>, _>>()? }),
+        Kind::Array => serde_json::json!({ "array": value.items().map_err(|e| e.to_string())?.iter().map(from_ordered).collect::<Result<Vec<_>, _>>()? }),
         Kind::Object => {
             let mut pairs = Vec::new();
-            for (k, v) in value.members().into_iter().flat_map(|m| m.iter()) {
-                let name = String::from_utf8(k.string_value().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+            for (k, v) in value.members().map_err(|e| e.to_string())?.iter() {
+                let name = k.string_value().map_err(|e| e.to_string())?;
                 pairs.push(serde_json::json!([name, from_ordered(v)?]));
             }
             serde_json::json!({ "object": pairs })
@@ -6140,7 +6140,7 @@ mod tables {
         create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_count_lookahead_page,
         gets_lookahead_page, gets_page, restore, restore_or_create, save, to_array, update,
     };
-    use polyspec_orm::ordered_json;
+    use polyspec_orm::polyspec_json;
     use polyspec_orm::{
         AesKeyring, Collection, Config, Connection, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, TransactionOptions, Tx, Val,
     };
@@ -6862,19 +6862,19 @@ mod tables {
     /// The ordered-json value of the parts, built level by level by the builders of the library (Value::array,
     /// Value::object and the scalar constructors), not by parsing a text, as a caller does: a builder that refuses a value
     /// returns its error, which `?` states as the orm error of its rule (COD-81).
-    fn ordered_of(parts: &OrderedParts) -> polyspec_orm::Result<ordered_json::Value> {
+    fn ordered_of(parts: &OrderedParts) -> polyspec_orm::Result<polyspec_json::Value> {
         Ok(match parts {
-            OrderedParts::Null => ordered_json::Value::null(),
-            OrderedParts::Bool(value) => ordered_json::Value::boolean(*value),
-            OrderedParts::Number(literal) => ordered_json::Value::number(literal)?,
-            OrderedParts::Text(text) => ordered_json::Value::string(text),
-            OrderedParts::Array(items) => ordered_json::Value::array(&items.iter().map(ordered_of).collect::<polyspec_orm::Result<Vec<_>>>()?)?,
+            OrderedParts::Null => polyspec_json::Value::null(),
+            OrderedParts::Bool(value) => polyspec_json::Value::boolean(*value),
+            OrderedParts::Number(literal) => polyspec_json::Value::number(literal)?,
+            OrderedParts::Text(text) => polyspec_json::Value::string(text),
+            OrderedParts::Array(items) => polyspec_json::Value::array(&items.iter().map(ordered_of).collect::<polyspec_orm::Result<Vec<_>>>()?)?,
             OrderedParts::Object(pairs) => {
-                let mut members = ordered_json::OrderedMap::new();
+                let mut members = polyspec_json::OrderedMap::new();
                 for (key, value) in pairs {
-                    members.insert(ordered_json::Value::string(key), ordered_of(value)?)?;
+                    members.insert(polyspec_json::Value::string(key), ordered_of(value)?)?;
                 }
-                ordered_json::Value::object(&members)?
+                polyspec_json::Value::object(&members)?
             }
         })
     }
@@ -6909,7 +6909,9 @@ mod tables {
         if raw.get("object").is_some() {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
-                let parsed = |text: &str| -> polyspec_orm::Result<polyspec_orm::ordered_json::Value> { Ok(polyspec_orm::ordered_json::parse(text)?) };
+                let parsed = |text: &str| -> polyspec_orm::Result<polyspec_orm::polyspec_json::Value> {
+                    Ok(polyspec_orm::polyspec_json::parse(text.as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default())?)
+                };
                 let ordered = parsed(&super::json_text(raw)?).map_err(orm)?;
                 polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
@@ -7652,7 +7654,7 @@ mod tables {
                     if let Some(column) = crate::recipe_reads::read(step, "array_text")["array_text"].as_str() {
                         let values = to_array(&row).map_err(orm)?;
                         return match &values[column]["value"] {
-                            polyspec_orm::ArrayValue::Ordered(document) => Ok(json!({ "json": document.compact() })),
+                            polyspec_orm::ArrayValue::Ordered(document) => Ok(json!({ "json": document.to_string() })),
                             other => Err(format!("array_text: the array form of {column} holds {other:?}").into()),
                         };
                     }

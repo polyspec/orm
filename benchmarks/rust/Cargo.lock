@@ -1236,19 +1236,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
-name = "polyspec-bindgen-core"
+name = "polyspec-binding-core"
 version = "0.0.1"
-source = "git+https://github.com/polyspec/bindgen.git?branch=v1%2Frust-core#1507c4e5677190b685057713f28f64d5c8a07795"
+source = "git+https://github.com/polyspec/binding.git?branch=v1%2Frust-core#20ad79002d99ccc0bdb2b2f861049142a48cc63e"
 dependencies = [
  "indexmap",
  "tokio-util",
 ]
 
 [[package]]
-name = "polyspec-ordered-json"
+name = "polyspec-json"
 version = "0.0.25"
-source = "git+https://github.com/polyspec/ordered-json.git?tag=v0.0.25#01dc5da4456e06e30c041ba26c3c0cfb6dc5112b"
+source = "git+https://github.com/polyspec/json.git?branch=v1%2Frust-core#fb5177e0a7c119e862b24de5e9de62719322edb4"
 dependencies = [
+ "polyspec-binding-core",
+ "ryu-js",
  "serde",
  "serde_json",
 ]
@@ -1265,8 +1267,8 @@ dependencies = [
  "hmac 0.12.1",
  "indexmap",
  "libsqlite3-sys",
- "polyspec-bindgen-core",
- "polyspec-ordered-json",
+ "polyspec-binding-core",
+ "polyspec-json",
  "polyspec-orm-schema",
  "rand",
  "regex",
@@ -1523,6 +1525,12 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "ryu-js"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04d056b875a9d2e6cb9a61d127afee9ac5999b9f87bcb32079d1318e505be714"
 
 [[package]]
 name = "same-file"

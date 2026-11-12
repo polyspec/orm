@@ -1,7 +1,7 @@
 //! The error of the core (docs/spec/core.md CORE-10 to CORE-14, CORE-25, docs/spec/errors.md).
 
 use crate::kind::Kind;
-use bindgen_core::{Category, Failure, Kinds};
+use binding_core::{Category, Failure, Kinds};
 use std::fmt;
 
 /// The failure of a callback that a rollback failure carries unopened (CORE-25): an error of orm, or the exception of

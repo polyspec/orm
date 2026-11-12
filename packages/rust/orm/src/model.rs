@@ -1108,7 +1108,7 @@ fn encode(ent: &dbspec::Entity, column: &str, v: &serde_json::Value) -> Result<P
     crate::codec::encode(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
-fn encode_ordered(ent: &dbspec::Entity, column: &str, v: &ordered_json::Value) -> Result<Param> {
+fn encode_ordered(ent: &dbspec::Entity, column: &str, v: &polyspec_json::Value) -> Result<Param> {
     let col = entity_field(ent, column)?;
     crate::codec::encode_ordered(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
@@ -1837,7 +1837,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
     for (name, v) in row_values(m)? {
         // The JSON form writes a datetime(p) column as the array form does (PRT-69).
         let document = match (datetime_precision(c, &name)?, &v) {
-            (_, Val::Ordered(o)) => o.compact(),
+            (_, Val::Ordered(o)) => o.to_string(),
             (Some(precision), Val::DateTime(t)) => serde_json::json!(datetime_text(t, precision)).to_string(),
             (_, other) => other.to_json().map_err(|error| column_output_error(c.ent.name, &name, other, error))?.to_string(),
         };

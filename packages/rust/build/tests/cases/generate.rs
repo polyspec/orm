@@ -140,17 +140,17 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
     let root = bench();
     let text = generate_with_schema(
         root,
-        "fn main() { let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())); let _ = row.get_jsons_tags(); }",
+        "fn main() { let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())); let _ = row.get_jsons_tags(); }",
     )
     .unwrap();
-    assert!(text.contains("jsons_tags: Option<polyspec_orm::ordered_json::Value>"), "nullable ordered JSON must represent SQL NULL separately");
+    assert!(text.contains("jsons_tags: Option<polyspec_orm::polyspec_json::Value>"), "nullable ordered JSON must represent SQL NULL separately");
     assert!(text.contains("serialize_data: Option<polyspec_orm::serde_json::Value>"), "nullable styled JSON must represent SQL NULL separately");
     assert!(
-        text.contains("pub fn set_jsons_tags(mut self, v: polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>) -> polyspec_orm::Result<Self>"),
+        text.contains("pub fn set_jsons_tags(mut self, v: polyspec_orm::StyledValue<polyspec_orm::polyspec_json::Value>) -> polyspec_orm::Result<Self>"),
         "styled setter requires an explicit state"
     );
     assert!(
-        text.contains("pub fn get_jsons_tags(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>>"),
+        text.contains("pub fn get_jsons_tags(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::polyspec_json::Value>>"),
         "styled getter reports a checked state"
     );
     assert!(text.contains("self.jsons_tags = Some(value);"), "setter retains a stored JSON value");
@@ -242,7 +242,7 @@ fn generated_field_types_follow_the_runtime_model() {
         "get_day(&self) -> polyspec_orm::Result<polyspec_orm::chrono::NaiveDate>",
         "get_clock(&self) -> polyspec_orm::Result<&str>",
         "get_moment(&self) -> polyspec_orm::Result<Option<polyspec_orm::chrono::NaiveDateTime>>",
-        "get_json_value(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>>",
+        "get_json_value(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::polyspec_json::Value>>",
         "pub fn set_day(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self>",
         "pub fn set_moment(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self>",
     ] {
@@ -254,7 +254,7 @@ fn styled_setter_result_handling_preserves_model_calls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     for handler in ["expect(\"assigned config\")", "unwrap()"] {
-        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
         let text = generate_with_schema(root.clone(), &source).expect("Result handling must not be a column call");
         assert!(text.contains("pub fn get_jsons_tags"));
         assert!(!text.contains("pub fn expect("), "Result handling is not a model method");
@@ -267,7 +267,7 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
     let root = bench();
     let error = generate_with_schema(
         root,
-        "fn main() { let _ = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).expect(\"config\").missing_method(); }",
+        "fn main() { let _ = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())).expect(\"config\").missing_method(); }",
     )
     .expect_err("unknown model call must fail");
     assert!(error.contains("missing_method"), "{error}");
@@ -278,7 +278,7 @@ fn styled_setter_result_transformations_are_not_column_calls() {
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).map(Some)"] {
         let source = format!(
-            "fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handling}; }}"
+            "fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())).{handling}; }}"
         );
         let text = generate_with_schema(root.clone(), &source).expect("Result transformations are not columns");
         assert!(!text.contains("pub fn map_err"));
@@ -290,7 +290,7 @@ fn unknown_model_after_result_error_mapping_still_fails() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).unwrap()"] {
-        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())).{handling}; row.missing_method(); }}");
         let error = generate_with_schema(root.clone(), &source).expect_err("unknown model call must fail");
         assert!(error.contains("missing_method"), "{error}");
         assert!(!error.contains("MapErr"), "{error}");
@@ -308,7 +308,7 @@ fn infallible_setter_does_not_accept_result_methods() {
 fn bound_setter_results_preserve_model_calls_after_extraction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
-    let source = "fn main() { let result = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
+    let source = "fn main() { let result = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
     let error = generate_with_schema(root, source).expect_err("bound Result must retain its model after extraction");
     assert!(error.contains("missing_method"), "{error}");
     assert!(!error.contains("MapErr"), "{error}");

@@ -77,24 +77,31 @@ fn yaml_parse_keeps_the_position_of_the_reader() {
     }
 }
 
-/// `?` on an error of the ordered-json library gives the rule of COD-70 of its fact, with the library error as its source
+/// `?` on an error of the json library gives the rule of COD-70 of its fact, with the library error as its source
 /// (COD-81): one input of each kind that a caller can meet.
 #[test]
 fn ordered_json_errors_state_the_rule_of_their_fact() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let deep = format!("{}{}", "[".repeat(257), "]".repeat(257));
+    let parse = |text: &[u8]| strict_json::parse(text, &strict_json::ParseOptions::default());
     let cases: Vec<(strict_json::Error, &str)> = vec![
-        (strict_json::parse(&deep).unwrap_err(), "codec_encode: json: value nesting exceeds 256 levels"),
-        (strict_json::parse_with_max_depth("1", 257).unwrap_err(), "codec_encode: json: value nesting exceeds 256 levels"),
+        (parse(deep.as_bytes()).unwrap_err(), "codec_encode: json: value nesting exceeds 256 levels"),
+        (
+            strict_json::parse(b"1", &strict_json::ParseOptions { max_depth: Some(257), ..Default::default() }).unwrap_err(),
+            "codec_encode: json: value nesting exceeds 256 levels",
+        ),
         (
             strict_json::OrderedMap::new().insert(strict_json::Value::null(), strict_json::Value::null()).unwrap_err(),
             "codec_encode: json: member keys must be strings",
         ),
         (strict_json::Value::null().string_value().unwrap_err(), "codec_decode: json: the value is not a string"),
-        (strict_json::parse("").unwrap_err(), "codec_encode: json: the value has no JSON text"),
-        (strict_json::parse("[1 2]").unwrap_err(), "codec_encode: json: the value has no JSON text"),
-        (strict_json::parse_bytes(&[0xff]).unwrap_err(), "codec_encode: json: the value has no JSON text"),
-        (strict_json::parse_bytes_reject_duplicates(br#"{"a":1,"a":2}"#).unwrap_err(), "codec_encode: json: the value has no JSON text"),
+        (parse(b"").unwrap_err(), "codec_encode: json: the value has no JSON text"),
+        (parse(b"[1 2]").unwrap_err(), "codec_encode: json: the value has no JSON text"),
+        (parse(&[0xff]).unwrap_err(), "codec_encode: json: the value has no JSON text"),
+        (
+            strict_json::parse(br#"{"a":1,"a":2}"#, &strict_json::ParseOptions { reject_duplicates: Some(true), ..Default::default() }).unwrap_err(),
+            "codec_encode: json: the value has no JSON text",
+        ),
         (strict_json::Value::number("\"1\"").unwrap_err(), "codec_encode: json: the value has no JSON text"),
     ];
     for (library, want) in cases {

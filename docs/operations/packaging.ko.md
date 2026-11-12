@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: bee8ae2d6707acf54f9e26e1be06706b68973f003fb1dcef502a275ecc3b01fe -->
+<!-- source-sha256: 92ddd3668fdd7889ac755df0d84e4a6f236349b1c72b1d2f01f67e0ca02789f0 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -59,6 +59,8 @@ release하는 manifest는 legacy/packages/ts/package.json, legacy/packages/php/c
 
 - 저장소 root의 package.json은 `workspaces`에 `packages/*`를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL(release tag를 적는다)에서 받고, vitepress의 최신 release가 advisory가 있는 `vite` 5에 의존하므로 `vite` 7을 받는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
 - 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. purrphp/yaml은 fork min-0-max/yaml의 `vcs` repository에서 설치한다. development dependency인 opis/json-schema `2.6.0-p1`은 fork min-0-max/json-schema의 `vcs` repository(`no-api`)에서 설치한다. 이 release는 모든 error를 모으는 mode에서 모든 거부를 보고하며 PHP vector runner(tests/dbspec/vectors.php)가 쓴다. 공개되는 manifest는 이를 요구하지 않으므로 consumer는 아무것도 선언하지 않는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.
+
+Rust crate는 다른 언어의 manifest를 release하지 않는다. packages/rust/orm/Cargo.toml은 생성된 binding과 함께 쓰는 polyspec crate 둘을 branch `v1/rust-core`의 git dependency로 받는다: `polyspec-json`(`orm_value`와 codec stage `ordered_json`의 JSON 값)은 github.com/polyspec/json에서, `polyspec-binding-core`(경계 type과 generate의 이름 변환)는 github.com/polyspec/binding에서 받으며, packages/rust/Cargo.lock과 benchmarks/rust/Cargo.lock이 각각의 commit을 고정한다. `polyspec-json`은 같은 `polyspec-binding-core`에 의존하므로 lock에는 그것이 하나만 있다. Rust crate는 ordered-json release `v0.0.25`에 더는 의존하지 않는다. 그 release는 위 legacy client의 의존성으로 남는다.
 
 ## 생성되는 error code source
 

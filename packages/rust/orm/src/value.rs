@@ -40,9 +40,9 @@ mod checked_value_tests {
         let mut json = Val::Json(serde_json::json!({}));
         assert_eq!(json.take_json().unwrap(), Some(serde_json::json!({})));
         assert_eq!(json, Val::Null);
-        let literal_null = ordered_json::Value::null();
+        let literal_null = polyspec_json::Value::null();
         assert_eq!(Val::ordered(literal_null.clone()), Val::Ordered(literal_null));
-        assert_ne!(Val::ordered(ordered_json::Value::null()), Val::Null);
+        assert_ne!(Val::ordered(polyspec_json::Value::null()), Val::Null);
         assert_eq!(Param::try_from(u64::MAX).unwrap_err().kind(), crate::Kind::CodecEncode);
         assert_eq!(transform("unknown", "input").unwrap_err().kind(), crate::Kind::Config);
     }
@@ -228,7 +228,7 @@ pub enum Val {
     Date(NaiveDate),
     Bool(bool),
     Json(serde_json::Value),
-    Ordered(ordered_json::Value),
+    Ordered(polyspec_json::Value),
 }
 
 fn decode_value(message: impl Into<String>) -> crate::Error {
@@ -253,7 +253,7 @@ impl PartialEq for Val {
             (Val::Date(a), Val::Date(b)) => a == b,
             (Val::Bool(a), Val::Bool(b)) => a == b,
             (Val::Json(a), Val::Json(b)) => a == b,
-            (Val::Ordered(a), Val::Ordered(b)) => a.compact() == b.compact(),
+            (Val::Ordered(a), Val::Ordered(b)) => a.to_string() == b.to_string(),
             _ => false,
         }
     }
@@ -261,12 +261,12 @@ impl PartialEq for Val {
 
 impl Val {
     /// An ordered-json value, including a JSON literal null.
-    pub fn ordered(v: ordered_json::Value) -> Val {
+    pub fn ordered(v: polyspec_json::Value) -> Val {
         Val::Ordered(v)
     }
 
     /// Moves an ordered-json value out (leaves Null); SQL NULL is not ordered JSON.
-    pub fn take_ordered(&mut self) -> crate::Result<ordered_json::Value> {
+    pub fn take_ordered(&mut self) -> crate::Result<polyspec_json::Value> {
         match self {
             Val::Ordered(_) => {
                 let Val::Ordered(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
@@ -393,7 +393,7 @@ impl Val {
             Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
             Val::Date(d) => d.to_string(),
             Val::Json(v) => v.to_string(),
-            Val::Ordered(v) => v.compact(),
+            Val::Ordered(v) => v.to_string(),
             _ => return Err(crate::cell::cell_refusal("text")),
         })
     }
@@ -472,6 +472,6 @@ fn esc(s: &str) -> String {
 
 /// The serde_json form of an ordered-json value (the array form of a row).
 /// A number outside the serde_json range, such as 1e400, returns CODEC_ENCODE.
-pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> crate::Result<serde_json::Value> {
-    serde_json::from_str(&v.compact()).map_err(|e| crate::Error::new(crate::Kind::CodecEncode, format!("json: the value has no serde_json form: {e}")))
+pub(crate) fn ordered_to_json(v: &polyspec_json::Value) -> crate::Result<serde_json::Value> {
+    serde_json::from_str(&v.to_string()).map_err(|e| crate::Error::new(crate::Kind::CodecEncode, format!("json: the value has no serde_json form: {e}")))
 }

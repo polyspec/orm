@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::sync::LazyLock;
 
 use base64::Engine as _;
-use ordered_json as strict_json;
+use polyspec_json as strict_json;
 use regex::Regex;
 use serde_json::Value;
 
@@ -30,27 +30,34 @@ fn err_cause(kind: crate::Kind, msg: impl Into<String>, cause: impl std::error::
 /// that the library adds fails this build until COD-81 states its rule.
 impl From<strict_json::Error> for Error {
     fn from(error: strict_json::Error) -> Self {
-        use strict_json::ErrorKind;
-        let (code, text) = match error.kind() {
+        use strict_json::Error as E;
+        let (code, text) = match &error {
             // A depth limit above 256 asks for a value nested deeper than the 256 levels of every stage (`json-depth`).
-            ErrorKind::MaximumDepthExceeded | ErrorKind::DepthLimitOutOfRange => (Kind::CodecEncode, "json: value nesting exceeds 256 levels"),
-            ErrorKind::NonStringKey => (Kind::CodecEncode, "json: member keys must be strings"),
-            ErrorKind::WrongKind => (Kind::CodecDecode, "json: the value is not a string"),
-            // The library refuses the text of a value (`json-text`): a parse, a strict parse and a number literal.
-            ErrorKind::ExpectedValue
-            | ErrorKind::ExpectedDigit
-            | ErrorKind::ExpectedColon
-            | ErrorKind::ExpectedDelimiter
-            | ErrorKind::ExpectedObjectKey
-            | ErrorKind::InvalidEscape
-            | ErrorKind::InvalidUnicodeEscape
-            | ErrorKind::UnfinishedEscape
-            | ErrorKind::UnterminatedString
-            | ErrorKind::UnescapedControlCharacter
-            | ErrorKind::InvalidUtf8
-            | ErrorKind::TrailingInput
-            | ErrorKind::DuplicateObjectKey
-            | ErrorKind::InvalidNumberLiteral => (Kind::CodecEncode, "json: the value has no JSON text"),
+            E::MaximumDepthExceeded { .. } | E::DepthLimitOutOfRange => (Kind::CodecEncode, "json: value nesting exceeds 256 levels"),
+            E::NonStringKey => (Kind::CodecEncode, "json: member keys must be strings"),
+            E::WrongKind => (Kind::CodecDecode, "json: the value is not a string"),
+            // The library refuses the text of a value (`json-text`): a parse, a strict parse, a number literal and a
+            // value that has no JSON form.
+            E::ExpectedValue { .. }
+            | E::ExpectedDigit { .. }
+            | E::ExpectedColon { .. }
+            | E::ExpectedDelimiter { .. }
+            | E::ExpectedObjectKey { .. }
+            | E::InvalidEscape { .. }
+            | E::InvalidUnicodeEscape { .. }
+            | E::UnfinishedEscape { .. }
+            | E::UnterminatedString { .. }
+            | E::UnescapedControlCharacter { .. }
+            | E::InvalidUtf8 { .. }
+            | E::TrailingInput { .. }
+            | E::DuplicateObjectKey { .. }
+            | E::InvalidNumberLiteral
+            | E::InvalidCodeUnit
+            | E::UnpairedSurrogate
+            | E::NonFiniteNumber
+            | E::HostSerializationRefused => (Kind::CodecEncode, "json: the value has no JSON text"),
+            // A fault of the library itself is no fact of the value.
+            E::Internal { .. } => (Kind::Internal, "json: the library failed"),
         };
         err_cause(code, text, error)
     }
@@ -100,9 +107,9 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 value = Some(Val::Json(yaml_decode(&cur)?));
             }
             "ordered_json" => {
-                value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| {
-                    // The ordered-json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
-                    let text = if error.kind() == strict_json::ErrorKind::MaximumDepthExceeded {
+                value = Some(Val::Ordered(strict_json::parse(&cur, &strict_json::ParseOptions::default()).map_err(|error| {
+                    // The json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
+                    let text = if matches!(error, strict_json::Error::MaximumDepthExceeded { .. }) {
                         "json: value nesting exceeds 256 levels"
                     } else {
                         "json: the cell is not JSON"
@@ -146,7 +153,7 @@ fn takes_text(stage: Option<&str>) -> bool {
 pub(crate) fn ordered_text(v: &strict_json::Value) -> String {
     let raw = v.raw();
     if raw.is_empty() {
-        return v.compact();
+        return v.to_string();
     }
     let mut out = String::with_capacity(raw.len());
     let mut in_string = false;
@@ -279,8 +286,9 @@ pub fn check_setter_ordered(styles: &[&str], value: &strict_json::Value) -> Resu
 fn json_encode(value: &Value) -> Result<String> {
     write_check(value, "json", false)?;
     let raw = serde_json::to_vec(value).map_err(|error| err_cause(Kind::CodecEncode, "json: the value has no JSON text", error))?;
-    let parsed = strict_json::parse_bytes(&raw).map_err(|error| err_cause(Kind::CodecEncode, "json: the value has no JSON text", error))?;
-    Ok(strict_json::stringify(&parsed))
+    let parsed = strict_json::parse(&raw, &strict_json::ParseOptions::default())
+        .map_err(|error| err_cause(Kind::CodecEncode, "json: the value has no JSON text", error))?;
+    Ok(strict_json::stringify(&parsed, &strict_json::StringifyOptions::default()))
 }
 
 /// Walks a value to write in its node order, without recursion: a list or a map at level 257 is `<style>-depth-write`

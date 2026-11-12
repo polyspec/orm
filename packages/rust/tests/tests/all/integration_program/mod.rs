@@ -86,7 +86,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
         Err(err) => err,
     };
     assert_eq!(err.kind(), polyspec_orm::Kind::CodecEncode);
-    let value = polyspec_orm::ordered_json::Value::null();
+    let value = polyspec_orm::polyspec_json::Value::null();
     let row = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::Value(value.clone())) {
         Ok(row) => row,
         Err(err) => panic!("JSON null must be an encoded value: {err}"),
@@ -96,7 +96,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
         Err(err) => panic!("assigned value must be readable: {err}"),
     };
     match got {
-        polyspec_orm::StyledValue::Value(got) => assert_eq!(got.compact(), value.compact()),
+        polyspec_orm::StyledValue::Value(got) => assert_eq!(got.to_string(), value.to_string()),
         polyspec_orm::StyledValue::SqlNull => panic!("encoded JSON null became SQL NULL"),
     }
 }
@@ -499,9 +499,9 @@ async fn read_only_sqlite(t: &Target) {
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
 /// from a JSON literal null.
 async fn json_values_case(t: &Target) {
-    fn expect_ordered(value: polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>, text: &str) {
+    fn expect_ordered(value: polyspec_orm::StyledValue<polyspec_orm::polyspec_json::Value>, text: &str) {
         match value {
-            polyspec_orm::StyledValue::Value(value) => assert_eq!(value.compact(), text),
+            polyspec_orm::StyledValue::Value(value) => assert_eq!(value.to_string(), text),
             polyspec_orm::StyledValue::SqlNull => panic!("expected an encoded JSON value"),
         }
     }
@@ -513,9 +513,13 @@ async fn json_values_case(t: &Target) {
     let seq = f.authors[0].get_seq().unwrap();
     let b = Author::new().connect(db).get_by_seq(seq).await.unwrap().expect("a row");
     let mut b = b
-        .set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(text).unwrap()))
+        .set_json_setting(polyspec_orm::StyledValue::Value(
+            polyspec_orm::polyspec_json::parse(text.as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default()).unwrap(),
+        ))
         .unwrap()
-        .set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(tags).unwrap()))
+        .set_jsons_tags(polyspec_orm::StyledValue::Value(
+            polyspec_orm::polyspec_json::parse(tags.as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default()).unwrap(),
+        ))
         .unwrap();
     b.update(false).await.unwrap();
     let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap().expect("a row");
@@ -547,11 +551,13 @@ async fn json_values_case(t: &Target) {
         .unwrap()
         .set_end_dt(txt(start()))
         .unwrap();
-    let created = match created.set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse("[]").unwrap())) {
+    let created = match created.set_json_setting(polyspec_orm::StyledValue::Value(
+        polyspec_orm::polyspec_json::parse("[]".as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default()).unwrap(),
+    )) {
         Ok(row) => row,
         Err(error) => panic!("set json_setting: {error}"),
     };
-    let mut created = match created.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())) {
+    let mut created = match created.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::polyspec_json::Value::null())) {
         Ok(row) => row,
         Err(error) => panic!("set jsons_tags: {error}"),
     };
@@ -567,7 +573,11 @@ async fn json_values_case(t: &Target) {
     assert!(matches!(sql_null.get_jsons_tags().unwrap(), polyspec_orm::StyledValue::SqlNull), "SQL NULL remains explicit");
     assert_eq!(sql_null.to_array().unwrap().plain().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
     assert!(sql_null.to_json().unwrap().contains(r#""jsons_tags":{"kind":"sql-null"}"#), "SQL NULL model JSON output");
-    let mut object = sql_null.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
+    let mut object = sql_null
+        .set_jsons_tags(polyspec_orm::StyledValue::Value(
+            polyspec_orm::polyspec_json::parse(r#"{"kind":"sql-null"}"#.as_bytes(), &polyspec_orm::polyspec_json::ParseOptions::default()).unwrap(),
+        ))
+        .unwrap();
     object.update(false).await.unwrap();
     let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(

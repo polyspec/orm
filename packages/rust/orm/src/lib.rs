@@ -52,7 +52,7 @@ pub use error::{CallbackFailure, Error};
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
 pub use kind::Kind;
 pub use model::{AnyModel, Entity, Model};
-pub use ordered_json;
+pub use polyspec_json;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;

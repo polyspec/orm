@@ -168,7 +168,7 @@ mod field_type_tests {
 }
 
 /// The type of a column with the `ordered_json` stage.
-const ORDERED: &str = "polyspec_orm::ordered_json::Value";
+const ORDERED: &str = "polyspec_orm::polyspec_json::Value";
 
 fn field(c: &Field) -> String {
     let t = base(c);
@@ -907,7 +907,7 @@ fn model_source(gm: &Model<'_>) -> String {
         let init = if c.nullable {
             "None"
         } else if base(c) == ORDERED {
-            "polyspec_orm::ordered_json::Value::null()"
+            "polyspec_orm::polyspec_json::Value::null()"
         } else {
             "Default::default()"
         };

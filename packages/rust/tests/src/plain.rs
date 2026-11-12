@@ -23,7 +23,7 @@ impl Plain for ArrayValue {
             ArrayValue::Ordered(v) => {
                 // An ordered-json value holds 256 levels, past the 128 that serde_json reads by default.
                 use serde::Deserialize as _;
-                let text = v.compact();
+                let text = v.to_string();
                 let mut reader = serde_json::Deserializer::from_str(&text);
                 reader.disable_recursion_limit();
                 Value::deserialize(&mut reader).map_err(|e| encode(format!("the document has no serde_json form: {e}")))?
