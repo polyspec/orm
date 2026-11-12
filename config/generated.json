@@ -36,10 +36,6 @@
       "reason": "the error code constants of the Go module, which orm-gen errors writes from docs/spec/errors.yaml: a go.mod consumer installs the tagged tree, which must hold them (P34)"
     },
     {
-      "path": "packages/rust/orm/src/codes.rs",
-      "reason": "the error code constants of the Rust crate, which orm-gen errors writes from docs/spec/errors.yaml: a Cargo.toml consumer installs the tagged tree, which must hold them (P34)"
-    },
-    {
       "path": "legacy/packages/go/orm/sqlite/result_codes.go",
       "reason": "the SQLite result code names of the Go module, which orm-gen sqlite-codes writes from docs/spec/sqlite-result-codes.yaml: a go.mod consumer installs the tagged tree, which must hold them (P34)"
     },

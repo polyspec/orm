@@ -10082,7 +10082,7 @@
         "docs/spec/errors.yaml",
         "legacy/packages/go/cmd/orm-gen/errors.go",
         "legacy/packages/go/orm/codes.go",
-        "packages/rust/orm/src/codes.rs"
+        "packages/rust/orm/src/kind.rs"
       ],
       "tests": [
         "legacy/packages/go/orm/codes_test.go",
@@ -10091,7 +10091,7 @@
         "legacy/packages/ts/tests/code-catalog.mjs",
         "legacy/packages/python/tests/test_code_catalog.py"
       ],
-      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:legacy/packages/go/orm/codes.go php-extension:legacy/packages/php-ext/src/polyspec_orm.stub.php rust:packages/rust/orm/src/codes.rs; do cp \"${pair#*:}\" \"$dir/${pair%%:*}\" && node tests/go-run.mts orm-gen ./legacy/packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
+      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:legacy/packages/go/orm/codes.go php-extension:legacy/packages/php-ext/src/polyspec_orm.stub.php; do cp \"${pair#*:}\" \"$dir/${pair%%:*}\" && node tests/go-run.mts orm-gen ./legacy/packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
     },
     {
       "id": "go-decimal-model-generated",
