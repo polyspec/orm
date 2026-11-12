@@ -908,6 +908,33 @@ mod tests {
         db.close().await;
     }
 
+    // A statement on a pool whose one connection a transaction holds waits up to pool_acquire_timeout_ms and fails with
+    // pool_timeout (CORE-30); after close, every call is closed and a second close succeeds (CORE-31).
+    #[tokio::test]
+    // Requirements: CORE-30, CORE-31.
+    async fn an_exhausted_pool_is_pool_timeout_and_a_closed_one_is_closed() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let tmp = Scratch::new("orm-pool-timeout");
+        let config = crate::Config { pool_acquire_timeout_ms: 200, ..crate::Config::default() };
+        let db = Db::connect(&format!("sqlite://{}", tmp.join("pool.sqlite").display()), 1, config).await.expect("connect");
+        let other = db.clone();
+        let inside = db
+            .transaction(
+                |_tx: Tx| {
+                    let other = other.clone();
+                    async move { Ok(other.transaction(|_inner: Tx| async { Ok(()) }, once()).await.err().map(|error| error.kind())) }
+                },
+                once(),
+            )
+            .await
+            .expect("the outer transaction commits");
+        assert_eq!(inside, Some(Kind::PoolTimeout), "the second transaction waits for the one connection");
+        db.close().await;
+        let after = db.transaction(|_tx: Tx| async { Ok(()) }, once()).await;
+        assert!(matches!(&after, Err(error) if error.kind() == Kind::Closed), "{after:?}");
+        db.close().await;
+    }
+
     // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
     #[test]
     fn the_retry_wait_doubles() {

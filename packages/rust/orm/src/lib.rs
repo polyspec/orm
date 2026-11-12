@@ -46,7 +46,7 @@ pub use array::ArrayValue;
 pub use chrono;
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 pub use core::Core;
-pub use db::{AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement};
+pub use db::{AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS};
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
@@ -247,6 +247,14 @@ impl From<sqlx::Error> for Error {
             if matches!(io.kind(), UnexpectedEof | ConnectionReset | ConnectionAborted | BrokenPipe | NotConnected) {
                 return Error::driver(Kind::ConnectionLost, e.to_string(), e);
             }
+        }
+        // A wait for a connection of the pool beyond its bound (CORE-30), and a pool that was closed while a call waited for
+        // one (CORE-31).
+        if let sqlx::Error::PoolTimedOut = &e {
+            return Error::driver(Kind::PoolTimeout, "no connection of the pool became free within pool_acquire_timeout_ms", e);
+        }
+        if let sqlx::Error::PoolClosed = &e {
+            return Error::driver(Kind::Closed, "database is closed", e);
         }
         // A certificate that the CA or the host of the DSN refuses is CONFIG (CFG-16).
         if let sqlx::Error::Tls(_) = &e {

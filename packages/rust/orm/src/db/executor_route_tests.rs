@@ -37,14 +37,14 @@ async fn query_and_execute_share_pool_and_transaction_routing() {
         Ok(_) => panic!("querying a closed database must fail"),
         Err(error) => error,
     };
-    assert!(query_error.kind() == crate::Kind::Config && query_error.text() == "database is closed");
+    assert!(query_error.kind() == crate::Kind::Closed && query_error.text() == "database is closed");
     let execute_error = Executor::Db(db.clone()).execute(&select, &[]).await.expect_err("executing through a closed database must fail");
-    assert!(execute_error.kind() == crate::Kind::Config && execute_error.text() == "database is closed");
+    assert!(execute_error.kind() == crate::Kind::Closed && execute_error.text() == "database is closed");
     let direct_execute_error = db.execute(&select, &[]).await.expect_err("direct execution on a closed database must fail");
-    assert!(direct_execute_error.kind() == crate::Kind::Config && direct_execute_error.text() == "database is closed");
+    assert!(direct_execute_error.kind() == crate::Kind::Closed && direct_execute_error.text() == "database is closed");
     let transaction_error = db
         .transaction(|_tx: crate::Tx| async { Ok::<_, crate::Error>(()) }, crate::TransactionOptions::default())
         .await
         .expect_err("starting a transaction on a closed database must fail");
-    assert!(transaction_error.kind() == crate::Kind::Config && transaction_error.text() == "database is closed");
+    assert!(transaction_error.kind() == crate::Kind::Closed && transaction_error.text() == "database is closed");
 }

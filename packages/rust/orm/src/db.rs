@@ -71,6 +71,9 @@ pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
     result
 }
 
+/// The bound of the wait for a connection of the pool when the configuration states none (CORE-30).
+pub const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS: u32 = 30_000;
+
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
@@ -90,6 +93,9 @@ pub struct Config {
     /// Lifetime of a pool connection in milliseconds; zero keeps the pool
     /// default of 30 minutes.
     pub pool_lifetime_ms: u32,
+    /// The bound of the wait for a connection of the pool in milliseconds; a longer wait fails with `pool_timeout`
+    /// (CORE-30). The default is [`DEFAULT_POOL_ACQUIRE_TIMEOUT_MS`].
+    pub pool_acquire_timeout_ms: u32,
     /// The audit values of the transactions that record an audit; `None`
     /// fails such a transaction with CONFIG.
     pub audit_source: Option<AuditSource>,
@@ -105,6 +111,7 @@ impl Default for Config {
             statement_timeout_ms: 0,
             pool_idle_size: 0,
             pool_lifetime_ms: 0,
+            pool_acquire_timeout_ms: DEFAULT_POOL_ACQUIRE_TIMEOUT_MS,
             plan_cache_size: 256,
             statement_cache_size: 256,
             audit_source: None,
@@ -671,8 +678,9 @@ async fn close_idle_beyond<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, idle: usiz
     }
 }
 
-fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owner: &PoolOwner) -> sqlx::pool::PoolOptions<DB> {
-    let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size);
+fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, acquire_ms: u32, owner: &PoolOwner) -> sqlx::pool::PoolOptions<DB> {
+    // A wait for a connection beyond the bound fails with pool_timeout (CORE-30).
+    let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size).acquire_timeout(std::time::Duration::from_millis(acquire_ms.into()));
     if lifetime_ms > 0 {
         options = options.max_lifetime(std::time::Duration::from_millis(lifetime_ms.into()));
     }
@@ -883,7 +891,7 @@ impl Db {
             // SELECT statements with max_execution_time and MariaDB every statement with max_statement_time, so the statement
             // timeout is set by the server (DIA-208) before the connection runs a statement of the caller.
             ConnectOptions::MySql(o) => Pool::MySql(
-                pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, &owner)
+                pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, cfg.pool_acquire_timeout_ms, &owner)
                     .after_connect(move |conn, _| {
                         let read = Arc::clone(&pool_read);
                         Box::pin(async move {
@@ -913,7 +921,9 @@ impl Db {
             ConnectOptions::Postgres(o) => {
                 let o = if timeout > 0 { o.options([("statement_timeout", timeout.to_string())]) } else { o };
                 Pool::Postgres(
-                    pool_options::<sqlx::Postgres>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?,
+                    pool_options::<sqlx::Postgres>(pool_size, idle, cfg.pool_lifetime_ms, cfg.pool_acquire_timeout_ms, &owner)
+                        .connect_with(o.statement_cache_capacity(cache))
+                        .await?,
                 )
             }
             // SQLite has no session timeout: its bound is the busy_timeout of the DSN (CFG-6), which the
@@ -928,7 +938,9 @@ impl Db {
                     ))
                 })?;
                 check_sqlite_version(version)?;
-                let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
+                let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, cfg.pool_acquire_timeout_ms, &owner)
+                    .connect_with(o.statement_cache_capacity(cache))
+                    .await?;
                 Pool::Sqlite(pool)
             }
         };
@@ -1435,7 +1447,7 @@ impl Db {
 
     pub(crate) fn ensure_open(&self) -> Result<()> {
         if self.inner.closed.load(Ordering::Acquire) {
-            return Err(Error::config("database is closed"));
+            return Err(Error::new(crate::Kind::Closed, "database is closed"));
         }
         Ok(())
     }
