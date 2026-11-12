@@ -24,7 +24,7 @@ pub(super) fn quote(value: &str, dialect: &str) -> Result<String, CatalogError> 
     let mark = match dialect {
         "mysql" => '`',
         "postgres" | "sqlite" => '"',
-        _ => return Err("TABLE_DIALECT_UNSUPPORTED".into()),
+        _ => return Err("internal: the catalog reads no other dialect".into()),
     };
     Ok(format!("{mark}{}{mark}", value.replace(mark, &format!("{mark}{mark}"))))
 }

@@ -90,11 +90,11 @@ pub(super) async fn current_namespace(connection: &mut Conn, dialect: &str) -> R
     let sql = match dialect {
         "mysql" => "SELECT DATABASE()",
         "postgres" => "SELECT current_schema()",
-        _ => return Err("TABLE_DIALECT_UNSUPPORTED".into()),
+        _ => return Err("internal: the catalog reads no other dialect".into()),
     };
     let result = rows(connection, sql, &[]).await?;
     if result.len() != 1 || result[0].len() != 1 {
-        return Err("TABLE_NAMESPACE_UNAVAILABLE".into());
+        return Err("table_namespace_unavailable".into());
     }
     let namespace = text(&result[0][0])?;
     validate_name(&namespace)?;
@@ -136,11 +136,11 @@ pub(super) async fn describe(
         "mysql" => "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
         "postgres" => "SELECT c.relkind::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relname=$2",
         "sqlite" => "SELECT type FROM pragma_table_list WHERE schema=? AND name=?",
-        _ => return Err("TABLE_DIALECT_UNSUPPORTED".into()),
+        _ => return Err("internal: the catalog reads no other dialect".into()),
     };
     let result = rows(connection, kind_sql, &params).await?;
     if result.is_empty() {
-        return Err("TABLE_NOT_FOUND".into());
+        return Err("table_not_found".into());
     }
     if result.len() != 1 || result[0].len() != 1 {
         return Err("table_metadata_invalid: ambiguous relation".into());
