@@ -1,0 +1,592 @@
+{
+  "$schema": "../../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CORE-2",
+    "CORE-20"
+  ],
+  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
+  "cases": [
+    {
+      "id": "an_unconnected_restore_or_create_runs_in_no_transaction",
+      "requirements": [
+        "CORE-20",
+        "INT-39",
+        "DSL-119"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": []
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "events"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "SoftLink",
+              "values": {
+                "code": {
+                  "text": "roc-1"
+                },
+                "label": {
+                  "text": "first"
+                }
+              },
+              "as": "created",
+              "unconnected": true
+            },
+            {
+              "op": "model.update",
+              "connection": "db",
+              "row": "created",
+              "set": {
+                "deleted_at": {
+                  "datetime": "2026-01-02 03:04:05.000000"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "model": "SoftLink",
+              "values": {
+                "code": {
+                  "text": "roc-1"
+                },
+                "label": {
+                  "text": "second"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": {
+                    "code": "roc-1",
+                    "deleted_at": null,
+                    "label": "second",
+                    "seq": 1
+                  }
+                },
+                "postgres": {
+                  "json": {
+                    "code": "roc-1",
+                    "deleted_at": null,
+                    "label": "second",
+                    "seq": 1
+                  }
+                },
+                "sqlite": {
+                  "json": {
+                    "code": "roc-1",
+                    "deleted_at": null,
+                    "label": "second",
+                    "seq": 1
+                  }
+                }
+              },
+              "restore_or_create": true,
+              "unconnected": true
+            },
+            {
+              "op": "model.create",
+              "model": "SoftLink",
+              "values": {
+                "code": {
+                  "text": "roc-1"
+                },
+                "label": {
+                  "text": "third"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "row_not_deleted"
+                },
+                "postgres": {
+                  "error": "row_not_deleted"
+                },
+                "sqlite": {
+                  "error": "row_not_deleted"
+                }
+              },
+              "restore_or_create": true,
+              "unconnected": true
+            },
+            {
+              "op": "model.create",
+              "model": "SoftLink",
+              "values": {
+                "code": {
+                  "text": "roc-2"
+                },
+                "label": {
+                  "text": "new"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": {
+                    "code": "roc-2",
+                    "label": "new",
+                    "seq": 2
+                  }
+                },
+                "postgres": {
+                  "json": {
+                    "code": "roc-2",
+                    "label": "new",
+                    "seq": 2
+                  }
+                },
+                "sqlite": {
+                  "json": {
+                    "code": "roc-2",
+                    "label": "new",
+                    "seq": 2
+                  }
+                }
+              },
+              "restore_or_create": true,
+              "unconnected": true
+            }
+          ],
+          "fail": true,
+          "expect": {
+            "mysql": {
+              "error": "config"
+            },
+            "postgres": {
+              "error": "config"
+            },
+            "sqlite": {
+              "error": "config"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "SoftLink",
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            },
+            "sqlite": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "events",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "START TRANSACTION"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "soft_link"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "soft_link"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN IMMEDIATE"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "soft_link"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "supersedes": "restore_or_create"
+    }
+  ]
+}
