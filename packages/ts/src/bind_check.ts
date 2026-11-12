@@ -131,10 +131,10 @@ export function transformParam(kind: string, value: unknown): unknown {
   if (kind === 'like_contains') return `%${escaped}%`;
   if (kind === 'like_starts') return `${escaped}%`;
   if (kind === 'like_ends') return `%${escaped}`;
-  if (kind === 'fulltext_boolean') {
+  if (kind === 'fulltext_boolean' || kind === 'fulltext_text') {
     const out = fulltextBoolean(value);
     if (out === '') throw new OrmError(codes.IR_INVALID, 'fulltext search text has no term');
-    return out;
+    return kind === 'fulltext_text' ? value : out;
   }
   return value;
 }

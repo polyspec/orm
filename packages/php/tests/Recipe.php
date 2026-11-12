@@ -3459,6 +3459,10 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if (isset($s['hold_ms'])) {
+                            usleep($s['hold_ms'] * 1000);
+                        }
                         if (isset($s['conflict'])) {
                             throw Orm::transactionConflict($s['conflict']);
                         }
@@ -4173,8 +4177,8 @@ final class Recipe
     /**
      * query.search (FCV-4, PRT-75): the count of a fulltext_boolean chain over the columns, through the fulltext
      * chain of the model. The request is compiled on the dialect of the case connection (DIA-187 refuses SQLite), and
-     * its bind values are those of the statement: the DIA-6 transform on MySQL, which refuses a blank text with
-     * IR_INVALID, and the text as it is on PostgreSQL.
+     * its bind values are those of the statement: the DIA-6 transform of the dialect, which refuses a blank text with
+     * IR_INVALID, and binds its terms on MySQL and the text as it is on PostgreSQL.
      */
     private static function querySearch(RecipeStep $s, array $context): array
     {

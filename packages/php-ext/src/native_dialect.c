@@ -483,8 +483,10 @@ ZEND_METHOD(Polyspec_Orm_Dialect, fulltext)
     } ZEND_HASH_FOREACH_END();
     smart_str_0(&expressions);
 
+    /* The boolean mode binds the value through the transform fulltext_text, which refuses a value with no term as
+     * MySQL does (DIA-6). */
     zval tag;
-    ZVAL_EMPTY_STRING(&tag);
+    ZVAL_STRING(&tag, boolean ? "fulltext_text" : "");
     zend_string *placeholder = dialect_call_text(value, 1, &tag);
     zval_ptr_dtor(&tag);
     if (placeholder == NULL) {

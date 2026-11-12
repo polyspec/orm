@@ -575,6 +575,7 @@
  "cases": [
   {
    "id": "product_search_page",
+   "databases_differ": "A fulltext condition is MATCH on MySQL and to_tsvector on PostgreSQL and is refused with OPERATOR_NOT_ALLOWED on SQLite (DIA-6); MySQL needs a FULLTEXT index for MATCH, which dbspec does not declare (DIA-71), and the plans name each dialect's form.",
    "requirements": [
     "CPX-1",
     "CPX-2",
@@ -2179,6 +2180,7 @@
   },
   {
    "id": "page_plan_steps",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11). A fulltext condition is refused with OPERATOR_NOT_ALLOWED on SQLite (DIA-6).",
    "requirements": [
     "DSL-159"
    ],

@@ -72,7 +72,6 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
         "packages/ts/tests/model.mjs",
-        "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/cases/zone.rs",
         "packages/php/tests/CoverageDsnTest.php",

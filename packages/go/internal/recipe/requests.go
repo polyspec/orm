@@ -100,8 +100,9 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.privilege", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
 		return utilsOp(s, c)
 	case "pool.transactions":
-		// Count transactions in flows of their own: the first hold of them stay open until hold have begun, so the pool
-		// shows the connections that they take at once (CFG-4, CFG-5).
+		// Count read-only transactions in flows of their own: the first hold of them stay open until hold have begun, so the
+		// pool shows the connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no write lock, so
+		// SQLite and a flowmark corpus hold them at once too (DIA-221).
 		db, err := connectionOf(s, c)
 		if err != nil {
 			return outcome{}, err
@@ -128,7 +129,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 					<-gate
 					active.Add(-1)
 					return nil
-				})
+				}, orm.ReadOnly())
 			}()
 		}
 		for range s.k("transactions").Transactions {

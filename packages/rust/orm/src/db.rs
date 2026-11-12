@@ -675,10 +675,10 @@ async fn close_idle_beyond<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, idle: usiz
 }
 
 fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owner: &PoolOwner) -> sqlx::pool::PoolOptions<DB> {
-    let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size);
-    if lifetime_ms > 0 {
-        options = options.max_lifetime(std::time::Duration::from_millis(lifetime_ms.into()));
-    }
+    // A connection has no lifetime unless lifetime_ms gives one, and an idle connection closes only by the idle size or its
+    // lifetime (CFG-5): sqlx would otherwise close it after 30 minutes and an idle one after 10.
+    let lifetime = (lifetime_ms > 0).then(|| std::time::Duration::from_millis(lifetime_ms.into()));
+    let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size).max_lifetime(lifetime).idle_timeout(None);
     if idle < size {
         let owner = owner.clone();
         // A released connection is closed when the pool already keeps `idle`

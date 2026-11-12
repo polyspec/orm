@@ -16,11 +16,19 @@ final class PrivilegeUtils
     {
     }
 
-    private function table(string $table): string
+    /**
+     * Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument
+     * is the same CONFIG on every database (INT-59, DIA-225).
+     */
+    private function supported(): void
     {
         if ($this->db->driver() !== 'postgres') {
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'table privileges are supported only by postgres');
         }
+    }
+
+    private function table(string $table): string
+    {
         $parts = explode('.', $table);
         if (
             count($parts) !== 2 || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $parts[0]) !== 1
@@ -43,6 +51,7 @@ final class PrivilegeUtils
     {
         $qualified = $this->table($table);
         $r = self::role($role);
+        $this->supported();
         $schema = substr($qualified, 0, (int) strpos($qualified, '.'));
         $this->u->run(function () use ($table, $qualified, $r, $schema): void {
             $this->u->exec(StatementEvent::UTILITY, [$table], "GRANT USAGE ON SCHEMA $schema TO $r");
@@ -65,6 +74,7 @@ final class PrivilegeUtils
             // The refusal names the privilege as the caller gave it.
             throw new OrmException(Code::CONFIG, 'unsupported table privilege ' . Message::quote($given));
         }
+        $this->supported();
         $this->u->run(fn() => $this->u->exec(
             StatementEvent::UTILITY,
             [$table],
@@ -76,6 +86,7 @@ final class PrivilegeUtils
     public function inspectTable(string $table): array
     {
         $qualified = $this->table($table);
+        $this->supported();
         // Reads the five privileges in one statement. Every client runs the same statement.
         $row = $this->db->fetch(
             StatementEvent::UTILITY,

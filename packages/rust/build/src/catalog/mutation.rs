@@ -44,9 +44,6 @@ pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &A
     connection.discard_on_drop();
     cancelled(cancellation)?;
     super::begin_session(&mut connection, write_transaction_statement(&catalog.dialect)).await?;
-    if catalog.dialect == "mysql" {
-        mysql_partial_revokes_off(&mut connection).await?;
-    }
     Ok(connection)
 }
 
@@ -152,37 +149,9 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
     let sql = format!("SELECT {columns} FROM {} WHERE {} LIMIT 2{suffix}", qualified(metadata, dialect)?, predicate(metadata, dialect, 1)?);
     super::temporal::read(connection, metadata, dialect, &sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await
 }
-/// Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a
-/// trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no partial revokes and
-/// lists no row, the one form that both servers answer with the same result (DIA-207).
-pub(super) async fn mysql_partial_revokes_off(connection: &mut Conn) -> Result<(), CatalogError> {
-    let revokes = connection
-        .grid_query_bounded(
-            "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'",
-            &[],
-            QueryLimits { max_rows: 1, max_bytes: 65536 },
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    require_partial_revokes_disabled(&revokes)
-}
+/// Refuses a MySQL row change on a table whose engine is not InnoDB, as only InnoDB rolls a failed verification back
+/// (INT-106). A trigger of the table needs no check: the verification of the written row sees what it changed (INT-110).
 pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), CatalogError> {
-    let account =
-        connection.grid_query_bounded("SELECT CURRENT_USER()", &[], QueryLimits { max_rows: 1, max_bytes: 65536 }).await.map_err(|e| e.to_string())?;
-    let grantee = match account.rows.as_slice() {
-        [row] => match row.as_slice() {
-            [GridCell::Text(account)] => {
-                let (user, host) = account.rsplit_once('@').ok_or_else(|| "ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".to_owned())?;
-                format!("'{user}'@'{host}'")
-            }
-            _ => return Err("ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".into()),
-        },
-        _ => return Err("ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".into()),
-    };
-    let grants=connection.grid_query_bounded(
-        "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-        &[P::S(grantee.clone()),P::S(grantee.clone()),P::S(metadata.table.namespace.clone()),P::S(grantee),P::S(metadata.table.namespace.clone()),P::S(metadata.table.name.clone())],QueryLimits{max_rows:3,max_bytes:65536}).await.map_err(|e|e.to_string())?;
-    require_trigger_privilege(&grants)?;
     let result = connection
         .grid_query_bounded(
             "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
@@ -194,32 +163,7 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
     if !matches!(result.rows.as_slice(),[row] if matches!(row.as_slice(),[GridCell::Text(engine)] if engine.eq_ignore_ascii_case("InnoDB"))) {
         return Err("ROW_MUTATION_UNSUPPORTED: MySQL requires InnoDB".into());
     }
-    let triggers = connection
-        .grid_query_bounded(
-            "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1",
-            &[P::S(metadata.table.namespace.clone()), P::S(metadata.table.name.clone())],
-            QueryLimits { max_rows: 1, max_bytes: 65536 },
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    if !triggers.rows.is_empty() {
-        return Err("ROW_MUTATION_UNSUPPORTED: MySQL triggers require effect verification".into());
-    }
     Ok(())
-}
-fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), CatalogError> {
-    if result.rows.is_empty() {
-        Ok(())
-    } else {
-        Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into())
-    }
-}
-fn require_trigger_privilege(result: &GridQueryResult) -> Result<(), CatalogError> {
-    if result.rows.iter().any(|row| matches!(row.as_slice(),[GridCell::Text(value)] if value=="TRIGGER")) {
-        Ok(())
-    } else {
-        Err("ROW_MUTATION_UNSUPPORTED: MySQL trigger visibility is unverified".into())
-    }
 }
 impl CatalogConnection {
     /// Explicit caller-authorized update. No automatic retries or durable identity.

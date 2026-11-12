@@ -3019,19 +3019,6 @@
         "packages/php/src/OrmException.php"
       ]
     },
-    "connection-pool-resource-bounds-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/pool_bounds.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-utc-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -3717,6 +3704,22 @@
         "packages/python/tests/recipe.py",
         "packages/rust/tests/tests/all/ir_validate_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs"
+      ]
+    },
+    "recipe-branches-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/features/recipe-branches.mts",
+        "scripts/features/recipe-branches.test.mts",
+        "scripts/features/recipe-files.mts",
+        "contracts/**/*.json",
+        "tests/**/*.json",
+        "docs/spec/*.md",
+        "tests/testcase.mts"
       ]
     },
     "recipe-runners-check": {

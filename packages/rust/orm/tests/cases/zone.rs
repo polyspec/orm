@@ -14,18 +14,6 @@ use std::time::Duration;
 use crate::or_panic;
 use or_panic::OrPanic;
 
-/// Removes the directory at path; one that is already gone is not an error, any other failure panics with its cause.
-fn remove_dir(path: &std::path::Path) {
-    match std::fs::remove_dir_all(path) {
-        Ok(()) => {}
-        Err(error) => {
-            if error.kind() != std::io::ErrorKind::NotFound {
-                panic!("remove {}: {error}", path.display());
-            }
-        }
-    }
-}
-
 /// Returns the DSN in `var`; an unset or empty variable fails the test.
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
@@ -76,21 +64,6 @@ fn only_the_named_parameters_reach_sqlx() {
         assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/postgresql"), "{dsn}: host reaches sqlx as the socket");
         assert!(matches!(options.get_ssl_mode(), sqlx::postgres::PgSslMode::Disable), "{dsn}: connects without TLS");
     }
-}
-
-/// A Rust pool opened without `pool_lifetime_ms` keeps the 30-minute lifetime of its pool (CFG-5), which no other client has.
-#[tokio::main(flavor = "current_thread")]
-// Requirements: CFG-5.
-async fn pool_keeps_the_thirty_minute_lifetime_when_unset() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-pool-lifetime-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
-    let db = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap();
-    let Pool::Sqlite(unset) = db.pool().clone() else { unreachable!() };
-    assert_eq!(unset.options().get_max_lifetime(), Some(std::time::Duration::from_secs(30 * 60)), "default lifetime");
-    db.close().await;
-    remove_dir(&tmp);
 }
 
 /// An idle direct server connection is discarded; the next statement uses a new one. Poolers may multiplex a client
@@ -354,7 +327,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": only_the_named_parameters_reach_sqlx, pool_keeps_the_thirty_minute_lifetime_when_unset, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": only_the_named_parameters_reach_sqlx, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }
 
 /// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).

@@ -126,6 +126,7 @@
   "cases": [
     {
       "id": "catalog_read",
+      "databases_differ": "The setup and the probes are each server's SQL: MySQL quotes the reserved name user with backticks (CFG-3), each casts and writes literals in its own form (DIA-47, DIA-41, DIA-52, DIA-53), the namespace of a table is the database on MySQL, the schema public on PostgreSQL and main on SQLite (DIA-224), SQLite has no decimal or temporal type and returns text (DIA-24, DIA-41), and each states its read-only scope in its own setting while only MySQL has a stored routine that writes (INT-104).",
       "requirements": [
         "SCH-6a",
         "INT-103",
@@ -1410,6 +1411,7 @@
     },
     {
       "id": "described_temporal_text",
+      "databases_differ": "SQLite has no temporal type, so only a SQLite column with no renderer CHECK holds a text that is no dbspec datetime (DIA-24, DIA-52).",
       "requirements": [
         "INT-103",
         "INT-178",
@@ -1540,6 +1542,7 @@
     },
     {
       "id": "undeclared_temporal_reads",
+      "databases_differ": "Each server has its own temporal types outside dbspec, MySQL TIMESTAMP, PostgreSQL timestamptz and timetz, and SQLite declared names with no CHECK (DBS-42, DIA-55, DIA-57).",
       "requirements": [
         "INT-103",
         "INT-167",
@@ -1774,6 +1777,7 @@
     },
     {
       "id": "grid_declared_columns",
+      "databases_differ": "Each server declares its temporal and byte columns in its own types (DIA-47, DIA-55), and its zone types are refused with its own message, while SQLite has none and returns the stored text (DIA-24, DIA-57).",
       "requirements": [
         "INT-103",
         "SCH-6a",
@@ -2027,6 +2031,7 @@
     },
     {
       "id": "read_statements",
+      "databases_differ": "The column or table user is a reserved word of PostgreSQL, so the statement quotes it in each dialect's form, a backquote on MySQL and a double quote on PostgreSQL and SQLite (DIA-1); its other identifiers are written without quotes.",
       "requirements": [
         "INT-104",
         "INT-136"
@@ -2215,6 +2220,7 @@
     },
     {
       "id": "catalog_read_budgets",
+      "databases_differ": "MySQL quotes the reserved name user with backticks (CFG-3), each builds its rows with its own text concatenation, and a stopped statement is looked up in each server's own statement list, which SQLite, with no server, has not (CFG-35).",
       "requirements": [
         "INT-115",
         "CFG-34",
@@ -2423,19 +2429,25 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
-            "postgres": "SELECT pg_sleep(2)",
-            "sqlite": "SELECT 1"
+            "postgres": "SELECT pg_sleep(2)"
           }
         },
         {
           "op": "catalog.read_only_query",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "sql": {
             "mysql": "SELECT COUNT(*) FROM information_schema.processlist WHERE db = DATABASE() AND info LIKE CONCAT('%CROSS', ' JOIN `user` c%')",
-            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'",
-            "sqlite": "SELECT 0"
+            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'"
           },
           "expect": {
             "mysql": {
@@ -2448,15 +2460,6 @@
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  }
-                ]
-              ]
-            },
-            "sqlite": {
               "rows": [
                 [
                   {
@@ -2489,19 +2492,25 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
-            "postgres": "SELECT pg_sleep(2)",
-            "sqlite": "SELECT 1"
+            "postgres": "SELECT pg_sleep(2)"
           }
         },
         {
           "op": "catalog.read_only_query",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "sql": {
             "mysql": "SELECT COUNT(*) FROM information_schema.processlist WHERE db = DATABASE() AND info LIKE CONCAT('%CROSS', ' JOIN `user` c%')",
-            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'",
-            "sqlite": "SELECT 0"
+            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'"
           },
           "expect": {
             "mysql": {
@@ -2514,15 +2523,6 @@
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  }
-                ]
-              ]
-            },
-            "sqlite": {
               "rows": [
                 [
                   {
@@ -2812,6 +2812,7 @@
     },
     {
       "id": "converted_cell_budgets",
+      "databases_differ": "Each casts in its own form, and SQLite has no temporal or decimal type and returns text (DIA-24, DIA-41, DIA-53).",
       "requirements": [
         "INT-115"
       ],
@@ -2936,6 +2937,7 @@
     },
     {
       "id": "query_temporal_values",
+      "databases_differ": "Each casts in its own form, and SQLite has no temporal type and returns the stored text with its own fraction (DIA-24, DIA-54).",
       "requirements": [
         "INT-153"
       ],
@@ -3055,6 +3057,7 @@
     },
     {
       "id": "grid_zero_date",
+      "databases_differ": "Only MySQL stores the zero date 0000-00-00, under a lax sql_mode (DIA-52).",
       "requirements": [
         "INT-103",
         "INT-173"
@@ -3106,6 +3109,7 @@
     },
     {
       "id": "temporal_default_precision",
+      "databases_differ": "Each declares its temporal columns in its own types, SQLite by its renderer CHECK, and a time or timestamp with no precision keeps 0 fraction digits on MySQL and 6 on PostgreSQL (DIA-54, DIA-55).",
       "requirements": [
         "INT-101",
         "INT-103",
@@ -3218,11 +3222,7 @@
         },
         {
           "op": "catalog.read_only_query",
-          "sql": {
-            "mysql": "SELECT COUNT(*) FROM precision_cell WHERE id=2",
-            "postgres": "SELECT COUNT(*) FROM precision_cell WHERE id=2",
-            "sqlite": "SELECT COUNT(*) FROM precision_cell WHERE id=2"
-          },
+          "sql": "SELECT COUNT(*) FROM precision_cell WHERE id=2",
           "expect": {
             "mysql": {
               "rows": [
@@ -4964,6 +4964,7 @@
     },
     {
       "id": "catalog_describe_metadata",
+      "databases_differ": "The namespace and the native type names are each catalog's own (DIA-224, DIA-137).",
       "requirements": [
         "INT-101",
         "INT-117"
@@ -5123,6 +5124,7 @@
     },
     {
       "id": "catalog_describe_integer_width",
+      "databases_differ": "Only MySQL keeps an integer display width, unsigned and zerofill, and a YEAR (DIA-204, DIA-39).",
       "requirements": [
         "DIA-204"
       ],
@@ -5217,6 +5219,7 @@
     },
     {
       "id": "catalog_describe_column_defaults",
+      "databases_differ": "The column default text of the MySQL catalog differs on MariaDB, which writes no character set introducer (DIA-205).",
       "requirements": [
         "DIA-205",
         "INT-101"
@@ -5324,6 +5327,7 @@
     },
     {
       "id": "catalog_describe_default_text_and_expression_flag",
+      "databases_differ": "Each declares an automatic key and an expression default in its own DDL (DIA-62, DIA-63), and its catalog writes the default text in its own form, PostgreSQL with casts (DIA-61, DIA-140); an expression default is flagged on PostgreSQL and SQLite, which insert by RETURNING, for every default (INT-34).",
       "requirements": [
         "INT-101",
         "INT-123"
@@ -5438,6 +5442,7 @@
     },
     {
       "id": "catalog_read_binds",
+      "databases_differ": "PostgreSQL types an untyped parameter of a bare SELECT by a cast, which MySQL and SQLite do not need (DIA-2, INT-104).",
       "requirements": [
         "INT-104"
       ],
@@ -5500,6 +5505,7 @@
     },
     {
       "id": "catalog_grid_cells",
+      "databases_differ": "Each casts in its own form, MySQL alone has unsigned integers, a TIME past a day, DATETIME, DATE and YEAR, PostgreSQL alone has a negative zero, NaN, 24:00:00, infinite timestamps and a 4-byte real, and SQLite has a single 8-byte REAL and no temporal type (DIA-39, DIA-42, DIA-52, DIA-53, DIA-55).",
       "requirements": [
         "INT-97",
         "INT-103",
@@ -6190,6 +6196,7 @@
     },
     {
       "id": "catalog_plain_values",
+      "databases_differ": "Only PostgreSQL has a 4-byte real besides the 8-byte float (DIA-42).",
       "requirements": [
         "INT-97",
         "INT-103"
@@ -6450,6 +6457,7 @@
     },
     {
       "id": "generated_keys",
+      "databases_differ": "Each declares an automatic key in its own DDL and SQLite has no VARCHAR length (DIA-43, DIA-63); MySQL, which has no RETURNING, identifies a row of an omitted expression key by its supplied values and refuses an insert whose values already match a row with ROW_IDENTITY_AMBIGUOUS, while PostgreSQL and SQLite read the key back and report the duplicate key (DIA-8, INT-34).",
       "requirements": [
         "DBS-113",
         "INT-34"
@@ -6457,11 +6465,7 @@
       "steps": [
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL) ENGINE=InnoDB",
-            "postgres": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)",
-            "sqlite": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)"
-          },
+          "sql": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)",
           "reason": "a primary key with no database-generated value (DBS-113), for the refused keyless insert"
         },
         {
@@ -6743,11 +6747,7 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq)) ENGINE=InnoDB",
-            "postgres": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))",
-            "sqlite": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))"
-          },
+          "sql": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))",
           "reason": "a literal column default in a composite key (DBS-113), which dbspec cannot declare here"
         },
         {
@@ -7388,6 +7388,7 @@
     },
     {
       "id": "generated_key_lifecycle",
+      "databases_differ": "Each declares an automatic key in its own DDL and SQLite has no VARCHAR length (DIA-43, DIA-63); a default is flagged on PostgreSQL and SQLite for every column, which insert by RETURNING (INT-34), and only PostgreSQL and SQLite have a trigger that inserts a row with a higher key into the table it fires on, which MySQL refuses (DIA-104).",
       "requirements": [
         "DBS-113",
         "INT-34"
@@ -8365,6 +8366,7 @@
     },
     {
       "id": "sqlite_extended_code_names",
+      "databases_differ": "Only SQLite names its extended result code, which the message of its driver error holds (INT-154).",
       "requirements": [
         "INT-154"
       ],
@@ -8389,6 +8391,7 @@
     },
     {
       "id": "trigger_refused_insert",
+      "databases_differ": "dbspec declares no trigger that refuses a write, so each server creates it in its own syntax, PostgreSQL by a function (DIA-104), and SQLite names its extended result code in the message of its driver error (INT-154).",
       "requirements": [
         "INT-155"
       ],
@@ -8409,11 +8412,10 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW EXECUTE FUNCTION refused_row_refuse()",
-            "sqlite": "SELECT 1"
-          },
+          "only": [
+            "postgres"
+          ],
+          "sql": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW EXECUTE FUNCTION refused_row_refuse()",
           "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
@@ -8442,7 +8444,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "DRIVER"
             },
             "postgres": {
               "error": "DRIVER"
@@ -8501,6 +8503,7 @@
     },
     {
       "id": "temporal_precision_limit",
+      "databases_differ": "MySQL refuses a fraction precision of 7, while PostgreSQL lowers it to 6 and SQLite keeps the declared name (DIA-54).",
       "requirements": [
         "INT-101"
       ],
@@ -9351,6 +9354,7 @@
     },
     {
       "id": "deferred_foreign_key_at_commit",
+      "databases_differ": "MySQL has no deferrable foreign key, so it refuses the child row at once, while PostgreSQL and SQLite refuse the commit (DIA-76).",
       "requirements": [
         "INT-118"
       ],
@@ -9598,6 +9602,7 @@
     },
     {
       "id": "describe_native_forms",
+      "databases_differ": "Only SQLite has a primary key that takes NULL, a rowid alias, WITHOUT ROWID tables, untyped columns and the temp namespace (DIA-65, DIA-224).",
       "requirements": [
         "INT-113"
       ],
@@ -9951,6 +9956,7 @@
     },
     {
       "id": "quoted_composite_table_page",
+      "databases_differ": "MySQL quotes with backticks (CFG-3), a MySQL TEXT holds 64 KiB so the large value needs LONGTEXT, and SQLite has no repeat function (DIA-45).",
       "requirements": [
         "INT-114"
       ],
@@ -10628,6 +10634,7 @@
     },
     {
       "id": "budget_stop_with_the_kill_refused",
+      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection, which the server can refuse to open (CFG-35); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
@@ -10642,11 +10649,7 @@
         {
           "op": "sql.exec",
           "reason": "the bench user table of 5000 rows: 4995 rows join the 5 of the seed, so the stream budgets read the whole table",
-          "sql": {
-            "mysql": "INSERT INTO `user` (name) WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) SELECT CONCAT('bulk-', i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
-            "postgres": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
-            "sqlite": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995"
-          }
+          "sql": "INSERT INTO `user` (name) WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) SELECT CONCAT('bulk-', i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995"
         },
         {
           "op": "sql.exec",
@@ -10705,6 +10708,7 @@
     },
     {
       "id": "budget_stops_keep_the_connections_of_the_catalog",
+      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection (CFG-35); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
@@ -10718,11 +10722,7 @@
         {
           "op": "sql.exec",
           "reason": "the bench user table of 5000 rows: 4995 rows join the 5 of the seed, so the stream budgets read the whole table",
-          "sql": {
-            "mysql": "INSERT INTO `user` (name) WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) SELECT CONCAT('bulk-', i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
-            "postgres": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
-            "sqlite": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995"
-          }
+          "sql": "INSERT INTO `user` (name) WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) SELECT CONCAT('bulk-', i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995"
         },
         {
           "op": "sql.exec",
@@ -10807,6 +10807,7 @@
     },
     {
       "id": "plain_connect_on_a_held_place_is_refused_once",
+      "databases_differ": "Only MySQL counts the refused connects of an account (DIA-211).",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
@@ -11121,6 +11122,7 @@
     },
     {
       "id": "grid_binary_row",
+      "databases_differ": "Each writes a byte literal in its own form (DIA-47), and PostgreSQL types an untyped parameter of a bare SELECT by a cast (DIA-2).",
       "requirements": [
         "INT-115"
       ],
@@ -11257,11 +11259,7 @@
         },
         {
           "op": "catalog.read_only_grid_query",
-          "sql": {
-            "mysql": "SELECT 'x' AS a, 'y' AS b FROM (SELECT 1 AS one) d WHERE 1=0",
-            "postgres": "SELECT 'x' AS a, 'y' AS b WHERE 1=0",
-            "sqlite": "SELECT 'x' AS a, 'y' AS b WHERE 1=0"
-          },
+          "sql": "SELECT 'x' AS a, 'y' AS b FROM (SELECT 1 AS one) d WHERE 1=0",
           "expect": {
             "mysql": {
               "columns": [
@@ -11332,6 +11330,7 @@
     },
     {
       "id": "row_baseline_exact_values",
+      "databases_differ": "Each declares its byte and generated columns in its own types and writes a byte literal in its own form (DIA-47, DIA-64).",
       "requirements": [
         "INT-107"
       ],
@@ -11635,6 +11634,7 @@
     },
     {
       "id": "row_baseline_exact_values_postgres",
+      "databases_differ": "Only PostgreSQL keeps the written scale of an unconstrained NUMERIC and a negative zero apart from zero in a way the baseline sees (DIA-41, DIA-42).",
       "only": [
         "postgres"
       ],
@@ -11787,39 +11787,36 @@
       ]
     },
     {
-      "id": "row_byte_capacity_mysql",
-      "only": [
-        "mysql"
-      ],
+      "id": "row_byte_capacity",
+      "databases_differ": "A byte capacity is declared by VARBINARY on MySQL and SQLite, while a PostgreSQL bytea has no length, and a fixed BINARY that pads with zero bytes is MySQL's own (DIA-47); the catalog enforces each declared capacity, which SQLite itself does not (DIA-43).",
       "requirements": [
         "INT-111"
       ],
       "steps": [
         {
           "op": "sql.exec",
-          "reason": "columns whose capacity counts bytes",
-          "sql": "CREATE TABLE byte_cell (id BIGINT NOT NULL PRIMARY KEY, vb VARBINARY(3) NOT NULL, bn BINARY(3) NOT NULL)"
+          "reason": "a character capacity that each database declares, which SQLite itself does not enforce",
+          "sql": "CREATE TABLE char_cell (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(3) NOT NULL)"
         },
         {
           "op": "sql.exec",
           "reason": "the start",
-          "sql": "INSERT INTO byte_cell VALUES (1, X'00', X'000000')"
+          "sql": "INSERT INTO char_cell VALUES (1, 'old')"
         },
         {
           "op": "catalog.table_page",
-          "table": "byte_cell",
+          "table": "char_cell",
           "limit": 1,
           "offset": 0,
           "columns": [
             "id"
           ],
-          "as": "bytes",
+          "as": "chars",
           "expect": {
             "mysql": {
               "columns": [
                 "id",
-                "vb",
-                "bn"
+                "label"
               ],
               "order_by": [
                 "id"
@@ -11832,170 +11829,28 @@
                   }
                 ]
               ]
-            }
-          }
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "bytes"
-          },
-          "index": 0,
-          "as": "start"
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "start"
-          },
-          "set": [
-            [
-              "vb",
-              {
-                "bytes_hex": "00010203"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_UPDATE_INVALID"
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "start"
-          },
-          "set": [
-            [
-              "bn",
-              {
-                "text": "éé"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_UPDATE_INVALID"
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "start"
-          },
-          "set": [
-            [
-              "vb",
-              {
-                "bytes_hex": "000102"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "bytes_hex": "000102"
-                  },
-                  {
-                    "bytes_hex": "000000"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "byte_cell",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id"
-          ],
-          "as": "bytes2"
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "bytes2"
-          },
-          "index": 0,
-          "as": "next"
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "next"
-          },
-          "set": [
-            [
-              "bn",
-              {
-                "bytes_hex": "c3a961"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "bytes_hex": "000102"
-                  },
-                  {
-                    "bytes_hex": "c3a961"
-                  }
-                ]
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "row_byte_capacity_postgres",
-      "only": [
-        "postgres"
-      ],
-      "requirements": [
-        "INT-111"
-      ],
-      "steps": [
-        {
-          "op": "sql.exec",
-          "reason": "a capacity spelled in the long form",
-          "sql": "CREATE TABLE char_cell (id BIGINT PRIMARY KEY, c CHARACTER VARYING(3) NOT NULL)"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the start",
-          "sql": "INSERT INTO char_cell VALUES (1, 'a')"
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "char_cell",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id"
-          ],
-          "as": "chars",
-          "expect": {
+            },
             "postgres": {
               "columns": [
                 "id",
-                "c"
+                "label"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "label"
               ],
               "order_by": [
                 "id"
@@ -12026,15 +11881,24 @@
           },
           "set": [
             [
-              "c",
+              "label",
               {
                 "text": "界界界界"
               }
             ]
           ],
           "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
+            },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
             }
           }
         },
@@ -12045,14 +11909,38 @@
           },
           "set": [
             [
-              "c",
+              "label",
               {
                 "text": "界界界"
               }
             ]
           ],
           "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界"
+                  }
+                ]
+              ]
+            },
             "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
               "rows": [
                 [
                   {
@@ -12065,11 +11953,257 @@
               ]
             }
           }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "reason": "a capacity that counts bytes",
+          "sql": "CREATE TABLE byte_cell (id BIGINT NOT NULL PRIMARY KEY, vb VARBINARY(3) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "reason": "the start",
+          "sql": "INSERT INTO byte_cell VALUES (1, X'00')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "table": "byte_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "bytes",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "vb"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "vb"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "page": {
+            "ref": "bytes"
+          },
+          "index": 0,
+          "as": "byte_start"
+        },
+        {
+          "op": "catalog.update_row",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "snapshot": {
+            "ref": "byte_start"
+          },
+          "set": [
+            [
+              "vb",
+              {
+                "bytes_hex": "c3a97879"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"vb\""
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"vb\""
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "only": [
+            "mysql",
+            "sqlite"
+          ],
+          "snapshot": {
+            "ref": "byte_start"
+          },
+          "set": [
+            [
+              "vb",
+              {
+                "bytes_hex": "c3a978"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "c3a978"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "c3a978"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a fixed BINARY, which the server pads to its width",
+          "sql": "CREATE TABLE fixed_cell (id BIGINT NOT NULL PRIMARY KEY, bn BINARY(3) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "the start",
+          "sql": "INSERT INTO fixed_cell VALUES (1, X'000000')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "fixed_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "fixed"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "only": [
+            "mysql"
+          ],
+          "page": {
+            "ref": "fixed"
+          },
+          "index": 0,
+          "as": "fixed_start"
+        },
+        {
+          "op": "catalog.update_row",
+          "only": [
+            "mysql"
+          ],
+          "snapshot": {
+            "ref": "fixed_start"
+          },
+          "set": [
+            [
+              "bn",
+              {
+                "text": "éé"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "only": [
+            "mysql"
+          ],
+          "snapshot": {
+            "ref": "fixed_start"
+          },
+          "set": [
+            [
+              "bn",
+              {
+                "bytes_hex": "c3a961"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "c3a961"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     },
     {
       "id": "described_temporal_matrix",
+      "databases_differ": "Each declares its own temporal precisions (DIA-54, DIA-55), MySQL alone has TIMESTAMP, a TIME past a day and zero dates, PostgreSQL alone has zone types, and SQLite has no temporal type (DIA-24, DIA-52, DIA-53, DIA-57).",
       "requirements": [
         "INT-101",
         "INT-167",
@@ -12469,6 +12603,7 @@
     },
     {
       "id": "generated_identity_sqlite",
+      "databases_differ": "Only SQLite has the rowid alias and AUTOINCREMENT forms of an automatic key (DIA-63).",
       "only": [
         "sqlite"
       ],
@@ -12852,6 +12987,7 @@
     },
     {
       "id": "temporal_text_row_cycle_sqlite",
+      "databases_differ": "SQLite has no temporal type, so only a SQLite row holds its temporal values as text, which the catalog writes back unchanged (DIA-24).",
       "only": [
         "sqlite"
       ],
@@ -13075,6 +13211,7 @@
     },
     {
       "id": "row_baseline_unsigned_mysql",
+      "databases_differ": "Only MySQL has unsigned 64-bit integers (DIA-39).",
       "only": [
         "mysql"
       ],
@@ -13279,6 +13416,7 @@
     },
     {
       "id": "row_update_verification",
+      "databases_differ": "dbspec declares no trigger that changes a written row, so each server creates it in its own syntax: MySQL and PostgreSQL assign NEW in a BEFORE trigger, PostgreSQL by a function, and SQLite, which cannot assign NEW, updates the row in an AFTER trigger (DIA-104, DIA-105).",
       "requirements": [
         "INT-106",
         "INT-110",
@@ -13306,11 +13444,10 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "CREATE TRIGGER audited_row_change BEFORE UPDATE ON audited_row FOR EACH ROW EXECUTE FUNCTION audited_row_touch()",
-            "sqlite": "SELECT 1"
-          },
+          "only": [
+            "postgres"
+          ],
+          "sql": "CREATE TRIGGER audited_row_change BEFORE UPDATE ON audited_row FOR EACH ROW EXECUTE FUNCTION audited_row_touch()",
           "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
         },
         {
@@ -13422,7 +13559,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "ROW_WRITE_MISMATCH"
             },
             "postgres": {
               "error": "ROW_WRITE_MISMATCH"
@@ -13529,8 +13666,11 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "postgres",
+            "sqlite"
+          ],
           "sql": {
-            "mysql": "SELECT 1",
             "postgres": "CREATE FUNCTION coerced_row_upper() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.name := upper(NEW.name); RETURN NEW; END$$",
             "sqlite": "CREATE TRIGGER coerced_row_change AFTER UPDATE OF name ON coerced_row BEGIN UPDATE coerced_row SET name = upper(NEW.name) WHERE seq = NEW.seq; END"
           },
@@ -13538,10 +13678,13 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "sql": {
             "mysql": "CREATE TRIGGER coerced_row_change BEFORE UPDATE ON coerced_row FOR EACH ROW SET NEW.name = upper(NEW.name)",
-            "postgres": "CREATE TRIGGER coerced_row_change BEFORE UPDATE ON coerced_row FOR EACH ROW EXECUTE FUNCTION coerced_row_upper()",
-            "sqlite": "SELECT 1"
+            "postgres": "CREATE TRIGGER coerced_row_change BEFORE UPDATE ON coerced_row FOR EACH ROW EXECUTE FUNCTION coerced_row_upper()"
           },
           "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
         },
@@ -13641,7 +13784,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "ROW_WRITE_MISMATCH"
             },
             "postgres": {
               "error": "ROW_WRITE_MISMATCH"
@@ -14348,6 +14491,7 @@
     },
     {
       "id": "row_baseline_rejected",
+      "databases_differ": "Only SQLite takes NULL in a primary key column that is no rowid alias (DIA-65).",
       "requirements": [
         "INT-109"
       ],
@@ -14819,6 +14963,7 @@
     },
     {
       "id": "grid_decimal_values",
+      "databases_differ": "Each casts in its own form, SQLite has no decimal type and returns the stored text, integer or real (DIA-41), and only PostgreSQL has an unconstrained numeric and NaN.",
       "requirements": [
         "INT-97",
         "INT-169"
@@ -14974,6 +15119,7 @@
     },
     {
       "id": "grid_number_values",
+      "databases_differ": "Each casts in its own form, SQLite has no DOUBLE name besides REAL, and only MySQL has unsigned 64-bit integers (DIA-39, DIA-42).",
       "requirements": [
         "INT-102"
       ],
@@ -15094,6 +15240,7 @@
     },
     {
       "id": "catalog_value_year",
+      "databases_differ": "Only MySQL has a YEAR type (DIA-204).",
       "requirements": [
         "INT-165",
         "INT-166"
@@ -15292,6 +15439,7 @@
     },
     {
       "id": "catalog_value_zerofill",
+      "databases_differ": "Only MySQL has ZEROFILL (DIA-204).",
       "requirements": [
         "INT-102",
         "INT-153",
@@ -15400,6 +15548,7 @@
     },
     {
       "id": "catalog_value_calendar_date",
+      "databases_differ": "Only MySQL stores a day past the end of its month, under ALLOW_INVALID_DATES (DIA-52).",
       "requirements": [
         "INT-165",
         "INT-174"
@@ -15503,6 +15652,7 @@
     },
     {
       "id": "catalog_value_time_of_day",
+      "databases_differ": "Only a MySQL TIME reaches past a day (DIA-53).",
       "requirements": [
         "INT-165",
         "INT-175"
@@ -15538,6 +15688,7 @@
     },
     {
       "id": "catalog_value_boolean",
+      "databases_differ": "PostgreSQL boolean holds no 2, while a MySQL TINYINT(1) and a SQLite BOOLEAN do (DIA-40).",
       "requirements": [
         "INT-165",
         "INT-182"
@@ -15615,6 +15766,7 @@
     },
     {
       "id": "catalog_value_date_range",
+      "databases_differ": "Only PostgreSQL has dates before year 1, after year 9999 and infinite, and only SQLite stores the year 0 as text (DIA-52).",
       "requirements": [
         "INT-165",
         "INT-173"
@@ -15718,6 +15870,7 @@
     },
     {
       "id": "catalog_value_native_type",
+      "databases_differ": "Only PostgreSQL has interval, money, point, regclass and array types (DIA-112).",
       "requirements": [
         "INT-165",
         "INT-170",
@@ -15902,6 +16055,7 @@
     },
     {
       "id": "catalog_value_multirange",
+      "databases_differ": "Only PostgreSQL has multirange types (DIA-112).",
       "requirements": [
         "INT-165",
         "INT-170",
@@ -16039,6 +16193,7 @@
     },
     {
       "id": "committed_mutations_share_one_connection",
+      "databases_differ": "Each server names the connection that writes a row in its own function, and SQLite holds one connection with no id (CFG-4).",
       "not_through_pooler": "it counts the server connections that wrote the rows; a pooler gives the writes of one client connection to its server connections as it chooses",
       "requirements": [
         "INT-106b",
@@ -16257,6 +16412,7 @@
     },
     {
       "id": "catalog_value_text_types",
+      "databases_differ": "Each server has its own types outside dbspec, uuid, json, enum and arrays on PostgreSQL and ENUM, SET, JSON, BIT and geometry on MySQL (DIA-48, DIA-49, DIA-50).",
       "requirements": [
         "INT-165",
         "INT-185"
@@ -16519,6 +16675,7 @@
     },
     {
       "id": "catalog_value_numeric_described",
+      "databases_differ": "Only PostgreSQL stores a numeric NaN (DIA-41).",
       "requirements": [
         "INT-165",
         "INT-169"
@@ -16562,6 +16719,7 @@
     },
     {
       "id": "catalog_value_non_finite_float",
+      "databases_differ": "PostgreSQL stores NaN and the infinities in both float types, MySQL none, and SQLite the infinities in one REAL (DIA-42).",
       "requirements": [
         "INT-102",
         "INT-165",
@@ -16974,6 +17132,7 @@
     },
     {
       "id": "catalog_value_sqlite_declared_types",
+      "databases_differ": "Only SQLite keeps the storage class of a value whatever its column declares (DIA-51).",
       "requirements": [
         "INT-165",
         "INT-184"
@@ -17040,6 +17199,7 @@
     },
     {
       "id": "catalog_value_sqlite_untyped_real",
+      "databases_differ": "Only SQLite has a column with no declared type (DIA-51).",
       "requirements": [
         "INT-152",
         "INT-165",
@@ -17149,6 +17309,7 @@
     },
     {
       "id": "catalog_value_sqlite_fraction",
+      "databases_differ": "SQLite has no temporal type, so only a SQLite DATETIME column with no CHECK holds a fraction past its precision (DIA-24, DIA-54).",
       "requirements": [
         "INT-165",
         "INT-179"
@@ -17192,6 +17353,7 @@
     },
     {
       "id": "row_commit_outcomes",
+      "databases_differ": "Only PostgreSQL refuses a commit by a deferred constraint, as MySQL has none and SQLite reports it in its own form (DIA-76, PRT-79).",
       "only": [
         "postgres"
       ],
@@ -17422,11 +17584,7 @@
       "steps": [
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED) ENGINE=InnoDB",
-            "postgres": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)",
-            "sqlite": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)"
-          },
+          "sql": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)",
           "reason": "dbspec declares no such table, so only the native driver creates it"
         },
         {
@@ -18127,11 +18285,7 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id)) ENGINE=InnoDB",
-            "postgres": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))",
-            "sqlite": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))"
-          },
+          "sql": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))",
           "reason": "dbspec declares no such table, so only the native driver creates it"
         },
         {
@@ -18859,6 +19013,7 @@
     },
     {
       "id": "plain_binary_value",
+      "databases_differ": "Each writes a byte literal in its own form (DIA-47).",
       "requirements": [
         "INT-153"
       ],
@@ -18913,6 +19068,7 @@
     },
     {
       "id": "budget_exact_boundary",
+      "databases_differ": "A MySQL TEXT holds 64 KiB, so the large value needs LONGTEXT, and SQLite has no repeat function (DIA-45).",
       "requirements": [
         "INT-115"
       ],
@@ -19255,6 +19411,7 @@
     },
     {
       "id": "temporal_write_and_limits",
+      "databases_differ": "Each declares its temporal columns in its own types, SQLite by its renderer CHECK (DIA-24), MySQL alone has a TIME past a day and a TIMESTAMP that follows a time zone, PostgreSQL alone has 24:00:00, infinite values and timestamptz (DIA-53, DIA-55, DIA-57), and only SQLite stores a temporal text that no type checks.",
       "requirements": [
         "INT-103",
         "INT-165",
@@ -20304,6 +20461,7 @@
     },
     {
       "id": "non_utf8_text_sqlite",
+      "databases_differ": "Only SQLite stores a text that is not UTF-8 (DIA-220).",
       "only": [
         "sqlite"
       ],
@@ -20452,6 +20610,7 @@
     },
     {
       "id": "catalog_session_after_a_schema_change_through_a_pooler",
+      "databases_differ": "Only PostgreSQL connects through a transaction pooler here, and only its prepared statements are refused after a schema change (CFG-28, CFG-41).",
       "requirements": [
         "CFG-28",
         "CFG-41"
@@ -20522,6 +20681,7 @@
     },
     {
       "id": "catalog_temporal_values_under_a_query_datestyle",
+      "databases_differ": "Only PostgreSQL has a DateStyle setting that changes how a temporal value is written (CFG-28).",
       "requirements": [
         "INT-165",
         "INT-186",
@@ -20661,909 +20821,8 @@
       ]
     },
     {
-      "id": "row_change_on_a_direct_trigger_grant",
-      "not_through_pooler": "its own user and role are accounts of the server; a pooler knows no such account and shares its server connections",
-      "requirements": [
-        "INT-119"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "catalog.describe_table",
-          "table": "composite_account",
-          "as": "account",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts",
-          "sql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a rerun finds the accounts of a run that failed",
-          "sql": "CALL trigger_user('drop')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the user of this case, which may read and change the rows of the database and holds no TRIGGER",
-          "sql": "CALL trigger_user('create')"
-        },
-        {
-          "op": "catalog.reconnect",
-          "user_from_database": "tg_"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "no grant"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "trigger visibility"
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": []
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "TRIGGER on the database of the case, granted to the user itself",
-          "sql": "CALL trigger_user('schema')"
-        },
-        {
-          "op": "catalog.reconnect",
-          "user_from_database": "tg_"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "schema"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "schema"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "as": "first",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "schema"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "first"
-          },
-          "index": 0,
-          "as": "first_row"
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "first_row"
-          },
-          "set": [
-            [
-              "name",
-              {
-                "text": "schema changed"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "schema changed"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "takes that grant back",
-          "sql": "CALL trigger_user('no schema')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "TRIGGER on the one table, granted to the user itself",
-          "sql": "CALL trigger_user('table')"
-        },
-        {
-          "op": "catalog.reconnect",
-          "user_from_database": "tg_"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "2"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "table"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "2"
-                  },
-                  {
-                    "text": "table"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "takes that grant back",
-          "sql": "CALL trigger_user('no table')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "TRIGGER on every database, granted to the user itself",
-          "sql": "CALL trigger_user('global')"
-        },
-        {
-          "op": "catalog.reconnect",
-          "user_from_database": "tg_"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "3"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "global"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "3"
-                  },
-                  {
-                    "text": "global"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "as": "last",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "schema changed"
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "2"
-                  },
-                  {
-                    "text": "table"
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "3"
-                  },
-                  {
-                    "text": "global"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "last"
-          },
-          "index": 0,
-          "as": "last_row"
-        },
-        {
-          "op": "catalog.delete_row",
-          "snapshot": {
-            "ref": "last_row"
-          },
-          "expect": {
-            "mysql": {
-              "value": {
-                "int": "1"
-              }
-            }
-          }
-        },
-        {
-          "op": "catalog.close"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "drops that user",
-          "sql": "CALL trigger_user('drop')"
-        }
-      ]
-    },
-    {
-      "id": "row_change_on_a_role_only_trigger_grant",
-      "not_through_pooler": "its own user and role are accounts of the server; a pooler knows no such account and shares its server connections",
-      "requirements": [
-        "INT-119"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "catalog.describe_table",
-          "table": "composite_account",
-          "as": "account",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the row that the refused update and delete name, written by the account of the server",
-          "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (1, 1, 'kept')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts; a MySQL role is a locked account that the user is granted, a MariaDB role a role of its own with no host, made the default by SET DEFAULT ROLE; no one body serves both servers (docs/spec/dialects.md DIA-214)",
-          "sql": {
-            "mysql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END",
-            "mariadb": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP ROLE IF EXISTS `', grouped, '`'); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE ROLE `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO `', grouped, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT `', grouped, '` TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('SET DEFAULT ROLE `', grouped, '` FOR ''', account, '''@''%'''); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a rerun finds the accounts of a run that failed",
-          "sql": "CALL trigger_user('drop')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the user of this case, which may read and change the rows of the database and holds no TRIGGER",
-          "sql": "CALL trigger_user('create')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "TRIGGER only through a role, on every database and on the database of the case, which is the default role of the user",
-          "sql": "CALL trigger_user('role')"
-        },
-        {
-          "op": "catalog.reconnect",
-          "user_from_database": "tg_"
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT CURRENT_ROLE() <> 'NONE' AS active",
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "as": "held_page",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "kept"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "held_page"
-          },
-          "index": 0,
-          "as": "held"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "2"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "refused"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "trigger visibility"
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "held"
-          },
-          "set": [
-            [
-              "name",
-              {
-                "text": "refused"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "trigger visibility"
-            }
-          }
-        },
-        {
-          "op": "catalog.delete_row",
-          "snapshot": {
-            "ref": "held"
-          },
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "trigger visibility"
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "kept"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.close"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "drops that user and that role",
-          "sql": "CALL trigger_user('drop')"
-        }
-      ]
-    },
-    {
-      "id": "row_change_with_partial_revokes_enabled",
-      "requirements": [
-        "INT-119"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "catalog.describe_table",
-          "table": "composite_account",
-          "as": "account",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            }
-          }
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the row that the refused update and delete name, written by the account of the server",
-          "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (1, 1, 'kept')"
-        },
-        {
-          "op": "replica.await"
-        },
-        {
-          "op": "catalog.reconnect",
-          "dsn": "case-replica"
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED) AS enabled",
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  }
-                ]
-              ]
-            },
-            "mariadb": {
-              "error": "DRIVER",
-              "message_holds": "partial_revokes"
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "as": "held_page",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "kept"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "held_page"
-          },
-          "index": 0,
-          "as": "held"
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "2"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "refused"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "partial-revoke"
-            },
-            "mariadb": {
-              "error": "READ_ONLY",
-              "message_holds": "read-only"
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "held"
-          },
-          "set": [
-            [
-              "name",
-              {
-                "text": "refused"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "partial-revoke"
-            },
-            "mariadb": {
-              "error": "READ_ONLY",
-              "message_holds": "read-only"
-            }
-          }
-        },
-        {
-          "op": "catalog.delete_row",
-          "snapshot": {
-            "ref": "held"
-          },
-          "expect": {
-            "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
-              "message_holds": "partial-revoke"
-            },
-            "mariadb": {
-              "error": "READ_ONLY",
-              "message_holds": "read-only"
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "composite_account",
-          "limit": 10,
-          "offset": 0,
-          "columns": [
-            "tenant_id",
-            "account_id",
-            "name"
-          ],
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "order_by": [
-                "tenant_id",
-                "account_id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "kept"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.close"
-        }
-      ]
-    },
-    {
       "id": "table_page_descriptor_changes_within_its_read",
+      "databases_differ": "A MySQL table change commits apart from the read of a page, while on PostgreSQL and SQLite it is transactional and waits for the read (DIA-109).",
       "requirements": [
         "INT-121"
       ],
@@ -21935,6 +21194,7 @@
     },
     {
       "id": "row_delete_that_a_trigger_ignores",
+      "databases_differ": "Only PostgreSQL and SQLite have a trigger that skips the delete of a row, while a MySQL trigger can only refuse it (DIA-223).",
       "requirements": [
         "INT-110"
       ],
@@ -21965,7 +21225,6 @@
           "op": "sql.exec",
           "reason": "a trigger that makes the delete affect no row",
           "sql": {
-            "mysql": "SELECT 1",
             "postgres": "CREATE TRIGGER ignored_delete_before BEFORE DELETE ON ignored_delete FOR EACH ROW EXECUTE FUNCTION ignored_delete_drop()",
             "sqlite": "CREATE TRIGGER ignored_delete_before BEFORE DELETE ON ignored_delete BEGIN SELECT RAISE(IGNORE); END"
           }
@@ -22103,6 +21362,7 @@
     },
     {
       "id": "row_insert_that_an_after_trigger_rewrites",
+      "databases_differ": "Only PostgreSQL has an AFTER trigger that changes the row it fires on, which MySQL refuses (DIA-105) and SQLite runs as a later update.",
       "requirements": [
         "INT-110"
       ],
@@ -22169,6 +21429,7 @@
     },
     {
       "id": "row_insert_that_a_trigger_rewrites",
+      "databases_differ": "Each declares an automatic key in its own DDL and SQLite has no VARCHAR length (DIA-43, DIA-63), and dbspec declares no trigger that changes a written row, so each server creates it in its own syntax, PostgreSQL by a function and SQLite by an update in an AFTER trigger, as it cannot assign NEW (DIA-104, DIA-105).",
       "requirements": [
         "INT-110"
       ],
@@ -22219,7 +21480,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
             },
             "postgres": {
               "error": "ROW_WRITE_MISMATCH",
@@ -22258,122 +21520,6 @@
                 [
                   {
                     "int": "0"
-                  }
-                ]
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "row_byte_capacity_sqlite",
-      "requirements": [
-        "INT-111"
-      ],
-      "only": [
-        "sqlite"
-      ],
-      "steps": [
-        {
-          "op": "sql.exec",
-          "reason": "declared capacities that SQLite itself does not enforce",
-          "sql": "CREATE TABLE capacity_values (id INTEGER PRIMARY KEY, label VARCHAR(3) NOT NULL, payload VARBINARY(3) NOT NULL)"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "the start",
-          "sql": "INSERT INTO capacity_values (id, label, payload) VALUES (1, 'old', X'6f6c64')"
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "capacity_values",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id"
-          ],
-          "as": "start"
-        },
-        {
-          "op": "catalog.row_snapshot",
-          "page": {
-            "ref": "start"
-          },
-          "index": 0,
-          "as": "at_start"
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "at_start"
-          },
-          "set": [
-            [
-              "label",
-              {
-                "text": "界界界界"
-              }
-            ]
-          ],
-          "expect": {
-            "sqlite": {
-              "error": "ROW_UPDATE_INVALID",
-              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "at_start"
-          },
-          "set": [
-            [
-              "payload",
-              {
-                "bytes_hex": "c3a97879"
-              }
-            ]
-          ],
-          "expect": {
-            "sqlite": {
-              "error": "ROW_UPDATE_INVALID",
-              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"payload\""
-            }
-          }
-        },
-        {
-          "op": "catalog.update_row",
-          "snapshot": {
-            "ref": "at_start"
-          },
-          "set": [
-            [
-              "label",
-              {
-                "text": "界界界"
-              }
-            ],
-            [
-              "payload",
-              {
-                "bytes_hex": "c3a978"
-              }
-            ]
-          ],
-          "expect": {
-            "sqlite": {
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "界界界"
-                  },
-                  {
-                    "bytes_hex": "c3a978"
                   }
                 ]
               ]

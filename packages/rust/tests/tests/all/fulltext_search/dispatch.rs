@@ -58,12 +58,13 @@ async fn search(db: &Db, dialect: Dialect, step: &Value) -> Result<Value, ModelE
         return Err(format!("query.search compiled {} statements, want 1", plan.steps.len()).into());
     };
     // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
-    // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
-    let boolean = statement.bind_slots.first().is_some_and(|slot| slot.transform == "fulltext_boolean");
-    let value = if boolean { polyspec_orm::value::fulltext_boolean(text) } else { text.to_owned() };
-    if boolean && value.is_empty() {
+    // fulltext_boolean on MySQL and fulltext_text, which binds the text as it is, on PostgreSQL). Both refuse a text with
+    // no term.
+    let transform = statement.bind_slots.first().map(|slot| slot.transform.as_str()).unwrap_or("");
+    if !transform.is_empty() && polyspec_orm::value::fulltext_boolean(text).is_empty() {
         polyspec_orm::model::get_count(&core).await.map_err(fail)?;
         return Err("query.search ran a blank text without a bind-check error".to_owned().into());
     }
+    let value = if transform.is_empty() { text.to_owned() } else { polyspec_orm::value::transform(transform, text).map_err(fail)? };
     Ok(json!({ "sql": statement.sql, "params": [{ "text": value }] }))
 }

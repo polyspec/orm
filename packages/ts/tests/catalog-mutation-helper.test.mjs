@@ -73,11 +73,7 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
       rows: columns.map(column => [column.name, column.nativeType, Number(column.nullable), Number(column.generated),
         keyOrdinals.get(column.name) ?? 0, Number(column.automaticKey), column.defaultExpression, Number(column.expressionDefault)]),
     };
-    if (sql === "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'") return { names: ['Variable_name', 'Value'], rows: [] };
-    if (sql === 'SELECT CURRENT_USER()') return { names: ['CURRENT_USER()'], rows: [['orm@localhost']] };
-    if (sql.includes('information_schema.USER_PRIVILEGES')) return { names: ['PRIVILEGE_TYPE'], rows: [['TRIGGER']] };
     if (sql.startsWith('SELECT ENGINE')) return { names: ['ENGINE'], rows: [['InnoDB']] };
-    if (sql.startsWith('SELECT TRIGGER_NAME')) return { names: ['TRIGGER_NAME'], rows: [] };
     if (sql.startsWith('SELECT ' + columns.map(column => `\`${column.name}\``).join(','))) {
       if (expressionDefault) {
         locatorReads++;

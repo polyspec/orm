@@ -1,8 +1,18 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: da8461b1ca9a2652c39d161114b70bfbbedcde4ad56fbbdefe36898f975cac4a -->
+<!-- source-sha256: 85609329d493afd8679afbc6293e8c87dd517221bfee09fd952e4d253e147c1b -->
 # 변경 이력
 
 ## Unreleased
+
+- fixture가 있는 recipe는 모든 database에서 한 시험을 실행합니다(T426-1, FCV-16). 일부 database에서만 step을 실행하거나 database마다 다른 문이나 결과를 적는 case는 server에 기능이 없거나 server가 자기 답을 줄 때만 그 분기를 남기고, `databases_differ`에 명세 항목을 들어 이유를 적습니다. `make recipe-branches-check`는 이유 없는 분기, 분기 없는 이유, 정의된 항목을 가리키지 않는 이유에서 실패합니다. orm이 database마다 다르게 답하던 분기는 고쳤고(T426-2부터 T426-5), 모든 server에서 유효한 한 형태로 바꿀 수 있는 문은 합쳤으며, 남은 분기 421개는 새 DIA-222부터 DIA-225를 포함해 각자 항목을 가리킵니다.
+
+- Breaking (0.x): MySQL catalog의 행 변경은 PostgreSQL과 SQLite에서처럼 trigger가 있는 table에서도 실행됩니다(T426-2, INT-106, INT-110). 전에는 계정이 table의 TRIGGER 권한을 볼 수 있고 `partial_revokes`가 꺼져 있을 때만 허용했는데, 이 규칙에는 server 쪽 이유가 없습니다. 쓴 행의 검증이 trigger가 바꾼 것을 보기 때문입니다. InnoDB만 실패한 검증을 rollback하므로, engine이 InnoDB가 아닌 table만 거부합니다. INT-119, DIA-207, DIA-214는 없어졌습니다.
+
+- Breaking (0.x): PostgreSQL의 boolean fulltext 검색은 MySQL처럼 검색어가 없는 글을 `IR_INVALID`로 거부합니다(T426-3, DIA-6, PRT-32). 글은 같은 규칙으로 검사한 뒤 새 transform `fulltext_text`로 바꾸지 않고 bind합니다. 전에는 PostgreSQL이 검색을 실행해 아무것도 찾지 못했습니다.
+
+- 권한 유틸리티는 방언보다 인자를 먼저 검사합니다(T426-4, INT-59, DIA-225). schema가 없는 table, 잘못된 role, 모르는 권한은 모든 database에서 `CONFIG`입니다. 유효한 호출은 MySQL, MariaDB, SQLite에서 `CAPABILITY_UNSUPPORTED`입니다. 이 database들에는 유틸리티가 부여하고 취소하고 조회하는 schema `USAGE`와 `TRUNCATE` 권한이 없기 때문입니다. 전에는 MySQL과 SQLite가 잘못된 인자에도 `CAPABILITY_UNSUPPORTED`로 답했습니다.
+
+- Breaking (0.x): Go, TypeScript, Python, Rust에서 연결의 pool은 모든 database에서 한 규칙을 따릅니다(T426-5, CFG-4, CFG-5, CFG-5a, CFG-22a). TypeScript는 SQLite 연결의 pool을 둡니다. 이 pool은 읽기 전용 transaction은 동시에, 다른 transaction은 혼자 잡게 하여, 문 안에서 잠금을 기다리는 node:sqlite가 자기 pool의 연결을 기다리는 일이 없습니다. TypeScript와 Rust의 markdown pool은 수명이 끝난 유휴 session을 그때 닫고, Go markdown pool은 빠뜨리던 `poolLifetimeMs`를 적용하며, Rust는 `pool_lifetime_ms`가 0이면 연결을 수명 없이 두고 유휴 연결을 10분 뒤에 닫지 않습니다. 전에는 sqlx가 30분과 10분 뒤에 닫았습니다. recipe `connection_pool`은 모든 case를 모든 database에서 실행합니다. 잡아 둔 연결에는 읽기 전용 transaction을, 연결을 잡아 둘 시간에는 `utils.run`의 `hold_ms`를 씁니다. 이 recipe가 대신하는 native SQLite pool 시험은 지웠습니다.
 
 ## 0.0.32
 

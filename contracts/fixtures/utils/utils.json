@@ -542,6 +542,7 @@
     },
     {
       "id": "session_state_ends_with_the_transaction",
+      "databases_differ": "A session variable is a server's own: a user variable on MySQL and a setting of current_setting on PostgreSQL (CFG-30); SQLite has no session, so only the servers read the variable again once the transaction ends.",
       "requirements": [
         "CFG-30",
         "INT-50",
@@ -600,6 +601,10 @@
         },
         {
           "op": "utils.run",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "connection": "conn",
           "statements": [
             {
@@ -607,8 +612,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT COALESCE(@`orm.ormtest.session`, '')",
-                "postgres": "SELECT COALESCE(current_setting('ormtest.session', true), '')",
-                "sqlite": "SELECT ''"
+                "postgres": "SELECT COALESCE(current_setting('ormtest.session', true), '')"
               }
             }
           ],
@@ -638,19 +642,6 @@
                   }
                 ]
               }
-            },
-            "sqlite": {
-              "value": {
-                "array": [
-                  {
-                    "array": [
-                      {
-                        "text": ""
-                      }
-                    ]
-                  }
-                ]
-              }
             }
           }
         },
@@ -669,6 +660,7 @@
     },
     {
       "id": "a_lock_released_early_is_reported_at_the_end_of_its_transaction",
+      "databases_differ": "Only a MySQL named lock belongs to the session, so a statement of the transaction can release it before the transaction ends; the lock of utils().lock on PostgreSQL is a transaction lock that no statement releases early (CFG-30, INT-72).",
       "requirements": [
         "INT-72"
       ],
@@ -937,6 +929,7 @@
     },
     {
       "id": "table_privileges_on_postgres_only",
+      "databases_differ": "Only PostgreSQL has the schema USAGE and TRUNCATE privileges that the privilege utilities grant, revoke and inspect, so a valid call is CAPABILITY_UNSUPPORTED on MySQL and SQLite (DIA-225), and a role is a cluster object that only the PostgreSQL steps create and read.",
       "requirements": [
         "INT-59",
         "INT-187"
@@ -986,13 +979,13 @@
           "table": "privilege_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             },
             "postgres": {
               "error": "CONFIG"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             }
           }
         },
@@ -1012,13 +1005,13 @@
           "role": "orm_priv_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             },
             "postgres": {
               "error": "CONFIG"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             }
           }
         },
@@ -1030,13 +1023,13 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             },
             "postgres": {
               "error": "CONFIG"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             }
           }
         },
@@ -1113,14 +1106,16 @@
           "privilege": " drop\u0007",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" drop\\a\""
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: unsupported table privilege \" drop\\a\""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" drop\\a\""
             }
           }
         },
@@ -1133,13 +1128,13 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             },
             "postgres": {
               "error": "CONFIG"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             }
           }
         },
@@ -1152,13 +1147,13 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             },
             "postgres": {
               "error": "CONFIG"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG"
             }
           }
         },
@@ -1171,14 +1166,16 @@
           "privilege": " select ",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" select \""
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: unsupported table privilege \" select \""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" select \""
             }
           }
         },
@@ -1188,17 +1185,19 @@
           "call": "revoke",
           "table": "public.privilege_probe",
           "role": "orm_priv_probe",
-          "privilege": "\u017felect",
+          "privilege": "ſelect",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \"ſelect\""
             },
             "postgres": {
               "error": "CONFIG",
-              "message": "CONFIG: unsupported table privilege \"\u017felect\""
+              "message": "CONFIG: unsupported table privilege \"ſelect\""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \"ſelect\""
             }
           }
         },
@@ -1290,14 +1289,16 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: a qualified table name is required"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
             }
           }
         },
@@ -1310,14 +1311,16 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: a qualified table name is required"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
             }
           }
         },
@@ -1329,14 +1332,16 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: role invalid-role is invalid"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
             }
           }
         },
@@ -1349,14 +1354,16 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
             },
             "postgres": {
               "error": "CONFIG",
               "message": "CONFIG: role invalid-role is invalid"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
             }
           }
         },
@@ -1385,6 +1392,7 @@
     },
     {
       "id": "a_session_setting_stays_on_its_connection",
+      "databases_differ": "A session setting is a server's own: a user variable on MySQL, set_config on PostgreSQL and the cache_size of a SQLite connection (CFG-22).",
       "requirements": [
         "CFG-22"
       ],
@@ -1581,6 +1589,7 @@
     },
     {
       "id": "a_prepared_statement_stays_on_its_connection",
+      "databases_differ": "A prepared statement of SQL is a server's own: MySQL prepares one inside a procedure and lists it in performance_schema, PostgreSQL lists one in pg_prepared_statements, and SQLite has no PREPARE statement (CFG-22).",
       "requirements": [
         "CFG-22"
       ],
@@ -1617,8 +1626,7 @@
               "tables": [],
               "sql": {
                 "mysql": "CALL cfg22_prepare()",
-                "postgres": "PREPARE cfg22_statement AS SELECT 1",
-                "sqlite": "SELECT 0"
+                "postgres": "PREPARE cfg22_statement AS SELECT 1"
               }
             },
             {
@@ -1626,8 +1634,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
-                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
-                "sqlite": "SELECT 0"
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'"
               }
             }
           ],
@@ -1669,8 +1676,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
-                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
-                "sqlite": "SELECT 0"
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'"
               }
             }
           ],

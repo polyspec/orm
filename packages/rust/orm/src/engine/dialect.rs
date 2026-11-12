@@ -209,7 +209,7 @@ impl Dialect {
             Dialect::Postgres => {
                 let doc = format!("to_tsvector('simple', {})", cols.iter().map(|c| format!("coalesce({c}, '')")).collect::<Vec<_>>().join(" || ' ' || "));
                 let query = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
-                Some(format!("{doc} @@ {query}('simple', {})", value("")))
+                Some(format!("{doc} @@ {query}('simple', {})", value(if boolean { "fulltext_text" } else { "" })))
             }
             Dialect::Sqlite => None,
         }

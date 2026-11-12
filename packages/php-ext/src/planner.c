@@ -1988,12 +1988,12 @@ static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, Ha
 }
 
 /* Planner::renderPred of a full-text predicate: Dialect::fulltext over the qualified columns, the value bound as text through
- * the transform fulltext_boolean in the boolean mode (DIA-6). A dialect without full-text search gives null (DIA-187). */
+ * the transform of the dialect in the boolean mode (DIA-6). A dialect without full-text search gives null (DIA-187). */
 static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops)
 {
     fns_init();
-    /* Dialect::fulltext over the qualified columns; the value is bound as text through the transform fulltext_boolean in
-     * the boolean mode (DIA-6). A dialect without full-text search gives null: OPERATOR_NOT_ALLOWED (DIA-187). */
+    /* Dialect::fulltext over the qualified columns; the value is bound as text through the transform of the dialect in the
+     * boolean mode (DIA-6). A dialect without full-text search gives null: OPERATOR_NOT_ALLOWED (DIA-187). */
     zval *qcols = qualified(c, s, lst(p, "cols"));
     OKP(qcols);
     pthunk tv = {c, b, gl(p, "p", 0), 0, NULL, NULL};
