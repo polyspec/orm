@@ -21,7 +21,7 @@
   - 범위에 드는 것은 소유자가 없고 여섯 구현(go, php, php-extension, typescript, python, rust) 모두에 네이티브 테스트를 최소 하나 묶는 `config/parity.json`의 기능 단위 328개다. 그중 159개는 구현마다 테스트를 정확히 하나씩 묶고, 나머지 169개는 적어도 한 구현에서 둘 이상을 묶으며, 그런 단위마다 recipe 하나가 된다.
     - recipe는 구현들의 묶음이 공유하는 동작마다 사례 하나를 가지며, 각 묶음은 자신의 사례에 대응된다.
     - 다른 구현에 대응이 없는 묶음은, 그 단위를 변환하는 T334-3 변환 행이 결정할 사항으로서 그 행에서 판정된다.
-  - Go 패키지별로 보면 다음과 같다: packages/go/orm 185, model 63, generator 31, engine/dbspec 15, decimalmodel 11, internal/dialects 8, engine 5, engine/planner 3, bench 3, complexquery 2, engine/runtimemodel 1, engine/ir 1.
+  - Go 패키지별로 보면 다음과 같다: legacy/packages/go/orm 185, model 63, generator 31, engine/dbspec 15, decimalmodel 11, internal/dialects 8, engine 5, engine/planner 3, bench 3, complexquery 2, engine/runtimemodel 1, engine/ir 1.
 - S4. 변환 범위 밖:
   - 소유자가 지정된 기능 단위 110개: 각각 runtime 고유의 동작을 묶으므로(FCV-2) 네이티브로 남는다.
   - suite 단위 41개: 이미 공유 벡터 파일 하나를 여섯 구현 모두에서 실행한다(`contracts/fixtures/*.json`, tests/conformance, tests/dbspec, tests/codec, tests/events, tests/markdown, tests/ir, tests/dsn).
@@ -34,13 +34,13 @@
     - scripts/client-db-test.mts는 지금 한 번의 실행으로 SQLite, MySQL, PostgreSQL을 모두 실행하고 클라이언트만 고른다(ORM_CLIENT_DB_LANGS, 1-4행). 이 파일은 ORM_TEST_DATABASE의 lane만 실행하도록 바뀐다. 다른 데이터베이스의 lane은 그 파트가 실행하지 않는다. 그 lane들은 각자의 셀을 가진 별도의 파트이기 때문이다.
     - client-pooler-check(Makefile:407)는 명령 하나에서 두 DSN을 모두 다시 연결하지만 두 DSN 사이를 비교하지는 않으므로 목적 1의 예외가 아니다. `client-pooler-check/<runtime>/mysql`(ProxySQL)과 `client-pooler-check/<runtime>/postgres`(PgBouncer)로 나뉜다.
   - 변경 범위는 목록을 손으로 정하지 않고 실행 결과로 정한다.
-    - 셀 작업에서 환경 파일에는 그 셀의 DSN만 들어 있다(B1-2a). 다른 데이터베이스를 여는 테스트는 실패한다. 필요한 DSN이 설정되지 않은 테스트는 실패한다는 규칙 때문이다(scripts/client-db-test.mts:4; testdb.go:70; packages/php/testing/required_dsn.php:9-11).
+    - 셀 작업에서 환경 파일에는 그 셀의 DSN만 들어 있다(B1-2a). 다른 데이터베이스를 여는 테스트는 실패한다. 필요한 DSN이 설정되지 않은 테스트는 실패한다는 규칙 때문이다(scripts/client-db-test.mts:4; testdb.go:70; legacy/packages/php/testing/required_dsn.php:9-11).
     - 상한은 다음 검색으로 MySQL과 PostgreSQL DSN을 모두 이름 붙이는 추적 파일이다. 체크아웃의 루트에서 실행한다:
       `git ls-files 'packages/**' 'tests/**' 'scripts/**' | grep -E '(_test\.go|\.test\.mts|\.mjs|\.py|Test\.php|\.rs|\.mts)$'
       | xargs grep -lE 'MYSQL_DSN|mysqlDSN|mysql_dsn' | xargs grep -lE 'POSTGRES_DSN|postgresDSN|postgres_dsn'`.
-      - 2026-10-31에 128개 파일이 나왔다: packages/ts/tests에 28개, packages/python/tests에 22개, packages/rust에 27개, packages/php와 packages/php-ext에 21개, packages/go에 17개, 나머지는 tests와 scripts에 있다.
+      - 2026-10-31에 128개 파일이 나왔다: legacy/packages/ts/tests에 28개, legacy/packages/python/tests에 22개, packages/rust에 27개, packages/php와 packages/php-ext에 21개, packages/go에 17개, 나머지는 tests와 scripts에 있다.
       - 검색은 B1-1의 첫 행에서 다시 실행하고, 그 목록을 그 행에 기록한다.
-    - packages/go/internal/dialects에만 그중 10개가 있다. 그중 plans_physical_test.go는 :58에서 MySQL과 PostgreSQL을 열고 :77에서 세 데이터베이스 모두를 순회한다.
+    - legacy/packages/go/internal/dialects에만 그중 10개가 있다. 그중 plans_physical_test.go는 :58에서 MySQL과 PostgreSQL을 열고 :77에서 세 데이터베이스 모두를 순회한다.
   - conformance-check/run과 conformance 결과 검사처럼 데이터베이스 사이를 비교하는 검사는, 각 셀의 작업이 기록한 결과를 비교한다. 이 검사는 셀 none_none의 집계 작업 하나에서 실행된다. 이 작업은 서버를 시작하지 않고, 보고 단계가 이미 업로드하는 `check-<group>-<run_id>-<run_attempt>` 아티팩트(.github/workflows/ci.yml:247-251)에서 결과를 읽는다. 집계 작업은 이 아티팩트를 actions/download-artifact로 내려받는다.
 - S6. 모든 행의 절차:
   1. 행의 기준 트리에서 Red를 재현한다.
@@ -101,7 +101,7 @@
   - Red: scripts/check/run.test.mts의 테스트는 가짜 make와 GITHUB_ACTIONS=true로, 실패한 첫 target의 `::error` 줄이 두 번째 target이 시작되기 전에 출력되는지 확인한다. 지금은 출력되지 않는다.
   - Green: 테스트가 통과한다.
 - B1-4. 기존 위치에 직접 쓰는 writer는 동시성의 전제 조건이 아니라 정확성 결함으로 고친다. 멈춘 빌드는 나중 실행이 읽는 반쯤 쓰인 파일을 남긴다(scripts/repo/testcases.mts:484-497의 `unpublishedOutputErrors`가 있는 이유).
-  - writer는 php-models(Makefile:2820-2825에서 packages/php/gen을 기존 위치에 직접 쓴다), arginfo 헤더(scripts/php/php-ext-arginfo.mts:29에서 기존 위치에 직접 복사된다), docs-verify-idempotent(scripts/docs/idempotent.mts:9-19에서 docs/.vitepress/dist를 기존 위치에 직접 빌드한다)다.
+  - writer는 php-models(Makefile:2820-2825에서 legacy/packages/php/gen을 기존 위치에 직접 쓴다), arginfo 헤더(scripts/php/php-ext-arginfo.mts:29에서 기존 위치에 직접 복사된다), docs-verify-idempotent(scripts/docs/idempotent.mts:9-19에서 docs/.vitepress/dist를 기존 위치에 직접 빌드한다)다.
     - php-models는 디렉터리를 생성하므로 `<dir>.tmp`로 빌드한 뒤 `rm -rf <dir> && mv <dir>.tmp <dir>`을 실행한다. 이는 Makefile:2044-2046의 패턴이다.
     - docs 빌드도 디렉터리이므로 `docs/.vitepress/dist.tmp`로 빌드한다(그 출력 디렉터리를 준 vitepress build). 그 뒤 `rm -rf docs/.vitepress/dist && mv docs/.vitepress/dist.tmp docs/.vitepress/dist`를 실행한다. $(PUBLISH)는 파일 하나만 게시하므로(scripts/publish-output.mts:4, :38) 이것이 Makefile:2044-2046의 패턴이다.
     - arginfo 헤더는 Node 스크립트 자신이 복사하므로, 스크립트는 `<header>.next-<pid>`로 복사한 뒤 scripts/publish-output.mts:38이 하는 것처럼 헤더 위로 이름을 바꾼다.
@@ -149,16 +149,16 @@
   - FCV-4: 단계 규약.
   이 계획은 이 규칙들을 구현한다. 규칙을 다시 적지 않는다.
 - B2-2. 각 runtime의 recipe 실행기는 FCV-3을 구현한다.
-  - 사례마다 사례 데이터베이스가 있다(사례 데이터베이스 팩토리, packages/go/internal/testdb/testdb.go:72, 그리고 각 runtime의 대응 코드).
+  - 사례마다 사례 데이터베이스가 있다(사례 데이터베이스 팩토리, legacy/packages/go/internal/testdb/testdb.go:72, 그리고 각 runtime의 대응 코드).
   - fixture가 설치된다.
   - seed 행이 삽입된다.
   - 그다음 mysql, postgres, sqlite에서 단계들이 실행된다.
-  - DSN이 없으면 사례가 실패하며, 이는 현재의 설정 누락 시 실패 정책과 맞는다(testdb.go:70; packages/php/testing/required_dsn.php:9-11). 건너뛰지 않는다.
+  - DSN이 없으면 사례가 실패하며, 이는 현재의 설정 누락 시 실패 정책과 맞는다(testdb.go:70; legacy/packages/php/testing/required_dsn.php:9-11). 건너뛰지 않는다.
   - 스키마가 정의하는 op `model.connect`와 `sql.exec`(recipe.schema.json:133, :141, :218)는 여섯 도우미 중 어느 것에도 아직 구현되어 있지 않다. 둘 다 같은 커밋에서 여섯 곳에 모두 추가한다:
-    - packages/go/internal/recipe/recipe.go
-    - packages/ts/tests/recipe.mjs
-    - packages/python/tests/recipe.py
-    - packages/php/tests/Recipe.php (PHP와 PHP 확장)
+    - legacy/packages/go/internal/recipe/recipe.go
+    - legacy/packages/ts/tests/recipe.mjs
+    - legacy/packages/python/tests/recipe.py
+    - legacy/packages/php/tests/Recipe.php (PHP와 PHP 확장)
     - packages/rust/tests/src/recipe.rs
   - Red와 Green은 이 행이 추가하는 target `recipe-fixture-check/<runtime>/<database>`이다. runtime과 데이터베이스마다 part 하나를 가지며, `scripts/features/fixtures/recipes/database.json`을 실행한다. 이는 `codec-check/<runtime>`(Makefile:2684-2700)을 따른다.
     - Red: 기준 트리에서는 모든 도우미가 `none` 이외의 데이터베이스를 거부하므로 모든 part가 실패한다.
@@ -218,9 +218,9 @@
 | - | B1-4 php-models writer | 등재된 행 T341(docs/plans/execution/checklist.md:1499), 자신의 Red를 가진다 | T341이 말하는 대로 |
 | 3 | B1-4 docs writer | 이 행에 이름이 있는 자신의 테스트 파일에 있는 중단 테스트가 docs/.vitepress/dist를 반쯤 남긴다 | 테스트가 통과한다; `make docs-verify-idempotent` |
 | 4 | B1-4 arginfo writer | 이 행에 이름이 있는 자신의 테스트 파일에 있는 중단 테스트가 헤더를 반쯤 남긴다 | 테스트가 통과한다; `make native-arginfo-php-extension-check` |
-| 5a | B1-7 소스와 모드마다 PHP 확장 빌드 하나: Makefile의 `$(call php_ext_build,...)` 사이트 69개(그중 46개는 target별 실행 디렉터리로 빌드)가 같은 소스를 다시 빌드한다. 실행 41215303803의 test(client_db_php_extension)에서 13번, 약 196초다. php-ext-build는 빌드를 모든 RUN_DIR 밖의 선언된 위치(`var/php-ext/build/<key>/`, 어떤 사이트의 trap도 지우지 않는다)에 원자적으로 게시한다. 키는 다음의 해시다: packages/php-ext의 추적되는 소스(src/, config.m4, composer.json, testing/native/module.c), arginfo 헤더와 sqlite_cancel.c 사본(php-ext-sources 뒤에 계산), `php-config --version`의 출력, 모드와 configure 인자, 환경의 CC와 CFLAGS, kit 빌더의 버전. 그 위치가 없을 때만 빌드하며, kit의 holder lock 선례를 따르는 그 위치의 holder lock 아래에서 빌드한다. 그래서 두 번째 호출자는 기다렸다가 첫 빌드를 읽는다. 각 사이트는 그것을 자신의 실행 디렉터리에 복사한다 | `node --test packages/php-ext/tests/build-cache.test.mts`(새 파일): 한 실행에서 확장 사이트 두 개는 phpize를 두 번 실행한다고 계수한다 | 같은 테스트는 한 번으로 계수한다; CI 작업의 빌드 시간을 행에 기록한다 |
-| 5b | B3-1 소스마다 TypeScript 클라이언트 빌드 하나: `$(TSC_BUILD)`는 45개 target에서, `typescript-build`(`npm run typescript:build`, packages/ts와 packages/dbspec-lsp를 함께 빌드, package.json:26)는 추가로 33줄에서 실행되며, scripts/typescript/build.mts에는 최신 여부 검사가 없다(매번 부트스트랩 tsc, orm-gen, 전체 tsc). 이 행은 먼저 두 경로의 packages/ts 출력이 같음을 보인다. dbspec-lsp 빌드는 자신의 출력과 키를 유지한다. packages/ts 빌드는 한 경로를 얻고, 소스, 설정, models.mts와 도구 버전의 해시로 키를 준 dist를 보유자 잠금 아래에서 게시하며, 그 키가 없을 때만 빌드한다. 행 5a와 같다 | `scripts/typescript/build.test.mts`(새 파일)의 사례는 같은 소스로 빌드를 두 번 실행하고 tsc 실행을 두 번 계수한다 | 같은 사례는 한 번으로 계수한다; static 작업의 시간을 기록한다 |
-| 5c | B3-2 입력마다 생성은 한 번만 실행: php-models(.PHONY, 선행 조건 줄 58개), orm-codes-*(.PHONY, 선행 조건 줄 64개, 각각 orm-install-go-codes를 거침, go mod download, Makefile:2788-2792), go-models와 python-models가 target마다 같은 출력을 다시 생성한다. 실행 41213234811의 로그에 `orm-gen: ` 줄이 1451개 있으며, 그 줄들의 시간은 행의 첫 커밋에 기록한다. 생성기 target 각각은 자신의 출력에 대한 파일 target이며, 원자적으로 게시되고, 다음의 해시로 키를 가진다: 그 spec 또는 set 파일, 생성기의 소스와 잠긴 의존성(orm-codes-*와 go-models는 packages/go/cmd/orm-gen과 그것이 import하는 패키지, packages/go/go.mod, go.sum과 Go 툴체인 버전; php-models는 루트 composer.lock(vendor-php의 프로젝트, composer.json:41)과 packages/php의 소스(src/와 bin/orm-gen), vendor-php/bin/orm-gen이 경로 저장소 vendor-php/polyspec/orm(composer.json:17-23)을 통해 읽는다; python-models는 packages/python/uv.lock과 packages/python/src, venv가 편집 가능하게 설치한다), 그리고 호출 인자(--lang, --yaml, --out, --set, --scan과 models 파일의 항목). 그래서 바뀌지 않은 키는 아무것도 쓰지 않는다. 이 행은 T341과 B1-4의 3-4행 뒤에 들어가며, 그것들을 바꾸지 않는다. --check target(php-model-check, go-model-check, python-model-check)은 읽기 전용으로 바뀌지 않은 채 남는다 | `scripts/repo/check.test.mts`의 사례는 생성기 target을 두 번 실행하고 같은 출력의 두 번째 쓰기를 기록한다 | 두 번째 실행은 아무것도 쓰지 않는다; `make php-model-check go-model-check python-model-check`가 통과한다 |
+| 5a | B1-7 소스와 모드마다 PHP 확장 빌드 하나: Makefile의 `$(call php_ext_build,...)` 사이트 69개(그중 46개는 target별 실행 디렉터리로 빌드)가 같은 소스를 다시 빌드한다. 실행 41215303803의 test(client_db_php_extension)에서 13번, 약 196초다. php-ext-build는 빌드를 모든 RUN_DIR 밖의 선언된 위치(`var/php-ext/build/<key>/`, 어떤 사이트의 trap도 지우지 않는다)에 원자적으로 게시한다. 키는 다음의 해시다: packages/php-ext의 추적되는 소스(src/, config.m4, composer.json, testing/native/module.c), arginfo 헤더와 sqlite_cancel.c 사본(php-ext-sources 뒤에 계산), `php-config --version`의 출력, 모드와 configure 인자, 환경의 CC와 CFLAGS, kit 빌더의 버전. 그 위치가 없을 때만 빌드하며, kit의 holder lock 선례를 따르는 그 위치의 holder lock 아래에서 빌드한다. 그래서 두 번째 호출자는 기다렸다가 첫 빌드를 읽는다. 각 사이트는 그것을 자신의 실행 디렉터리에 복사한다 | `node --test legacy/packages/php-ext/tests/build-cache.test.mts`(새 파일): 한 실행에서 확장 사이트 두 개는 phpize를 두 번 실행한다고 계수한다 | 같은 테스트는 한 번으로 계수한다; CI 작업의 빌드 시간을 행에 기록한다 |
+| 5b | B3-1 소스마다 TypeScript 클라이언트 빌드 하나: `$(TSC_BUILD)`는 45개 target에서, `typescript-build`(`npm run typescript:build`, packages/ts와 packages/dbspec-lsp를 함께 빌드, package.json:26)는 추가로 33줄에서 실행되며, scripts/typescript/build.mts에는 최신 여부 검사가 없다(매번 부트스트랩 tsc, orm-gen, 전체 tsc). 이 행은 먼저 두 경로의 legacy/packages/ts 출력이 같음을 보인다. dbspec-lsp 빌드는 자신의 출력과 키를 유지한다. legacy/packages/ts 빌드는 한 경로를 얻고, 소스, 설정, models.mts와 도구 버전의 해시로 키를 준 dist를 보유자 잠금 아래에서 게시하며, 그 키가 없을 때만 빌드한다. 행 5a와 같다 | `scripts/typescript/build.test.mts`(새 파일)의 사례는 같은 소스로 빌드를 두 번 실행하고 tsc 실행을 두 번 계수한다 | 같은 사례는 한 번으로 계수한다; static 작업의 시간을 기록한다 |
+| 5c | B3-2 입력마다 생성은 한 번만 실행: php-models(.PHONY, 선행 조건 줄 58개), orm-codes-*(.PHONY, 선행 조건 줄 64개, 각각 orm-install-go-codes를 거침, go mod download, Makefile:2788-2792), go-models와 python-models가 target마다 같은 출력을 다시 생성한다. 실행 41213234811의 로그에 `orm-gen: ` 줄이 1451개 있으며, 그 줄들의 시간은 행의 첫 커밋에 기록한다. 생성기 target 각각은 자신의 출력에 대한 파일 target이며, 원자적으로 게시되고, 다음의 해시로 키를 가진다: 그 spec 또는 set 파일, 생성기의 소스와 잠긴 의존성(orm-codes-*와 go-models는 legacy/packages/go/cmd/orm-gen과 그것이 import하는 패키지, legacy/packages/go/go.mod, go.sum과 Go 툴체인 버전; php-models는 루트 composer.lock(vendor-php의 프로젝트, composer.json:41)과 packages/php의 소스(src/와 bin/orm-gen), vendor-php/bin/orm-gen이 경로 저장소 vendor-php/polyspec/orm(composer.json:17-23)을 통해 읽는다; python-models는 legacy/packages/python/uv.lock과 legacy/packages/python/src, venv가 편집 가능하게 설치한다), 그리고 호출 인자(--lang, --yaml, --out, --set, --scan과 models 파일의 항목). 그래서 바뀌지 않은 키는 아무것도 쓰지 않는다. 이 행은 T341과 B1-4의 3-4행 뒤에 들어가며, 그것들을 바꾸지 않는다. --check target(php-model-check, go-model-check, python-model-check)은 읽기 전용으로 바뀌지 않은 채 남는다 | `scripts/repo/check.test.mts`의 사례는 생성기 target을 두 번 실행하고 같은 출력의 두 번째 쓰기를 기록한다 | 두 번째 실행은 아무것도 쓰지 않는다; `make php-model-check go-model-check python-model-check`가 통과한다 |
 | 5d | B3-3 작업의 데이터베이스 단계는 자신의 target이 선언한 것만 만든다: parity-context.mts:106이 모든 parity 맥락에 COMPLEX_QUERY=1을 넘기므로, 그것을 읽지 않는 kit parity 작업 7개에서 complex-query fixture 데이터베이스 18개가 만들어지며, 실행 41213234811의 36개 작업에서 databases/create는 평균 약 60초 걸렸다(`databases/create elapsed=` 줄). fixture는 맥락의 target이 그것을 필요로 할 때만 만든다. 정의는 다음과 같다: `contracts/check-inputs.json`의 입력이 `contracts/fixtures/complex_query/**`를 포함하거나, 그 recipe가 `COMPLEX_QUERY_*_DSN`을 읽는다(Makefile:796-800과 :1822-1824가 그렇듯). 이는 Makefile:316의 규칙이다. 이 행은 그 정의를 scripts/check/parity-context.test.mts의 검사로 추가한다 | `scripts/check/parity-context.test.mts`의 사례는, target이 두 조건 중 어느 것도 충족하지 않는 맥락에 COMPLEX_QUERY가 없음을 확인한다 | 사례가 통과한다; 단계 시간을 기록한다 |
 | 5e | B3-4 CI 설정이 잠긴 캐시를 복원한다: 모든 setup-node가 package-manager-cache를 false로 설정하며(ci.yml:79, :269, :325, :373), composer, uv, Go 모듈과 mise 도구에는 캐시가 없어서 모든 작업이 다시 내려받는다. PHP 그룹의 setup-php 단계 세 개는 남는다: `php-bootstrap`(:106)은 make install-tools에 .php-version의 PHP를 주고(ci.yml:105), `php-min-release`(:176)는 가장 낮은 릴리스를 설치하며, `php`(:186)는 그 뒤에 검사의 확장과 함께 .php-version의 PHP를 PATH의 php로 만든다(ci.yml:172). lease-runner 단계의 x/sys 다운로드와 전체 모듈 단계(ci.yml:121-132)는 두 입력이다. npm, Go 모듈, composer, uv, mise 캐시는 잠금 파일을 키로 복원한다 | `scripts/repo/check.test.mts`의 사례가 ci.yml을 읽고, 캐시가 꺼진 setup-node와 잠금으로 키 지정된 캐시 없이 composer, uv, Go 모듈 또는 mise를 설치하는 단계를 찾는다 | 사례가 ci.yml에서 통과한다; 작업의 설정 시간을 기록한다 |
 | 5f | B3-5 어떤 CI 작업도 다른 작업의 target을 다시 실행하지 않는다: docs 작업은 `make docs-ci`(docs-verify-idempotent, docs-check, docs-site-check)를 실행하는데, CI_TARGETS_static도 docs-verify-idempotent와 docs-site-check를 나열한다(Makefile:259). editor 작업은 `make ci-vscode-integration`(ci.yml:357, Makefile:2559-2560)을 실행하며, 이는 dbspec-vscode-integration을 실행하고, 이는 static도 나열하는 dbspec-vscode-check에 의존한다(Makefile:2553, :259). 이것은 Makefile 목록의 사실이므로, Red는 로그 횟수가 아니라 repo-check 사례다. docs-site-check는 멱등성 검사의 두 빌드 뒤에 docs를 세 번째로 빌드한다 | `scripts/repo/check.test.mts`의 사례가 두 작업이 실행하는 target을 찾는다 | 사례가 통과한다; 각 target은 한 작업에서 실행되고, docs-site-check는 멱등성 검사의 빌드를 읽는다 |

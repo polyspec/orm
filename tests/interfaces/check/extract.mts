@@ -1,6 +1,6 @@
 // Reads native declarations with each language's extractor. An extractor is a program that reads declarations with that language's own parser: Go (go/parser,
-// packages/go/internal/symbols), PHP(Reflection, packages/php/testing/interfaces/php.php), Rust(syn, packages/rust/testing/interfaces), TypeScript(TypeScript
-// compiler API, packages/ts/testing/interfaces/typescript.mts), Python (ast, packages/python/testing/interfaces/python.py). The Go and Rust extractors are execution files built in this run's
+// legacy/packages/go/internal/symbols), PHP(Reflection, legacy/packages/php/testing/interfaces/php.php), Rust(syn, packages/rust/testing/interfaces), TypeScript(TypeScript
+// compiler API, legacy/packages/ts/testing/interfaces/typescript.mts), Python (ast, legacy/packages/python/testing/interfaces/python.py). The Go and Rust extractors are execution files built in this run's
 // temporary directory. Prohibited multi_statement calls are found in the source text.
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -97,7 +97,7 @@ export async function extract(
   if (lang === 'go') [program, args] = [tools.go ?? '', [root, ...roots]];
   else if (lang === 'php') {
     const loadPhpAutoloader = options.loadPhpAutoloader ?? true;
-    [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), ...(loadPhpAutoloader ? [] : ['--no-autoload']), root, ...roots]];
+    [program, args] = ['php', [join(toolRoot, 'legacy/packages/php/testing/interfaces/php.php'), ...(loadPhpAutoloader ? [] : ['--no-autoload']), root, ...roots]];
     // The parser requires each file of its roots, the extension's stub among them, and a test of an extension run loads
     // the extension through PHP_INI_SCAN_DIR (kit K900): the child leaves it out, or the stub redeclares the classes.
     if (!loadPhpAutoloader) {
@@ -105,11 +105,11 @@ export async function extract(
       env = rest;
     }
   }
-  else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
+  else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'legacy/packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
   else if (lang === 'python') {
     program = process.env['ORM_PYTHON'] ?? '';
     if (program === '') throw new Error('ORM_PYTHON is unset; run this extractor through make interface-check, which uses the pinned Python test environment');
-    args = [join(toolRoot, 'packages/python/testing/interfaces/python.py'), root, ...roots];
+    args = [join(toolRoot, 'legacy/packages/python/testing/interfaces/python.py'), root, ...roots];
   }
   else [program, args] = [tools.rust ?? '', [root, ...roots]];
   if (program === '') throw new Error(`${lang} declarations: this run built no ${lang} symbol extractor`);
@@ -124,14 +124,14 @@ export async function extract(
 }
 
 /**
- * buildGo builds the Go symbol extractor (packages/go/internal/symbols) into a directory and returns its execution file. The compiler's output is shown as step
+ * buildGo builds the Go symbol extractor (legacy/packages/go/internal/symbols) into a directory and returns its execution file. The compiler's output is shown as step
  * lines.
  */
 export async function buildGo(step: Step, root: string, directory: string): Promise<string> {
   const executable = join(directory, 'polyspec-orm-interface-symbols-go');
   const lines = stepLines(step);
-  step('run go build -o <directory> ./packages/go/internal/symbols');
-  const output = await run('go', ['build', '-o', executable, './packages/go/internal/symbols'], { cwd: root, onOutput: chunk => lines.write(chunk) });
+  step('run go build -o <directory> ./legacy/packages/go/internal/symbols');
+  const output = await run('go', ['build', '-o', executable, './legacy/packages/go/internal/symbols'], { cwd: root, onOutput: chunk => lines.write(chunk) });
   lines.flush();
   if (output.code !== 0) throw new Error(`go build: ${exitText(output)}`);
   return executable;

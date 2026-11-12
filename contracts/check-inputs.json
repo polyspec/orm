@@ -10,23 +10,23 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/src/Collection.php",
-        "packages/php/tests/CollectionIdentityTest.php",
-        "packages/php/tests/CollectionIdentityCases.php",
-        "packages/php/tests/collection-weak-caller.php",
-        "packages/php-ext/src/collection.c",
-        "packages/php-ext/src/collection.h",
-        "packages/php-ext/src/object_zval_pair.h",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/tests/CollectionTest.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/TransactionTrackingPdo.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/declarations_functions.php"
+        "legacy/packages/php/src/Collection.php",
+        "legacy/packages/php/tests/CollectionIdentityTest.php",
+        "legacy/packages/php/tests/CollectionIdentityCases.php",
+        "legacy/packages/php/tests/collection-weak-caller.php",
+        "legacy/packages/php-ext/src/collection.c",
+        "legacy/packages/php-ext/src/collection.h",
+        "legacy/packages/php-ext/src/object_zval_pair.h",
+        "legacy/packages/php-ext/src/polyspec_orm.c",
+        "legacy/packages/php-ext/src/polyspec_orm.stub.php",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/tests/CollectionTest.php",
+        "legacy/packages/php/tests/UninitializedRecordingPdo.php",
+        "legacy/packages/php/tests/TransactionTrackingPdo.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php",
+        "legacy/packages/php-ext/tests/declarations_functions.php"
       ]
     },
     "collection-get-phpstan-check": {
@@ -38,8 +38,8 @@
       "inputs": [
         "Makefile",
         "tests/repo/pinned-node-recipes.test.mts",
-        "packages/php/src/Collection.php",
-        "packages/php/tests/phpstan/CollectionGet.php"
+        "legacy/packages/php/src/Collection.php",
+        "legacy/packages/php/tests/phpstan/CollectionGet.php"
       ]
     },
     "runner-check": {
@@ -80,7 +80,7 @@
         "scripts/typescript/**",
         "scripts/json/**",
         "tests/errors.mts",
-        "packages/ts/**",
+        "legacy/packages/ts/**",
         "contracts/fixtures/**",
         "examples/thin-slice/ts/**",
         "Makefile"
@@ -245,7 +245,7 @@
       ],
       "inputs": [
         "scripts/schema/binaries.schema.json",
-        "packages/go/testcase/**",
+        "legacy/packages/go/testcase/**",
         "scripts/json/**",
         "tests/testcase.mts",
         "tests/errors.mts",
@@ -289,7 +289,7 @@
         "scripts/test-servers-mysql.test.mts",
         "tests/stop-process/**",
         "tests/lease/**",
-        "packages/go/procevent/**",
+        "legacy/packages/go/procevent/**",
         "tests/testcase.mts",
         "tests/environment.mts"
       ]
@@ -340,7 +340,7 @@
       "inputs": [
         "packages/dbspec-lsp/**",
         "packages/dbspec-language/**",
-        "packages/ts/src/dbspec/**",
+        "legacy/packages/ts/src/dbspec/**",
         "tests/editor/**"
       ]
     },
@@ -352,7 +352,7 @@
       "inputs": [
         "packages/dbspec-codemirror/**",
         "packages/dbspec-language/**",
-        "packages/ts/src/dbspec/**",
+        "legacy/packages/ts/src/dbspec/**",
         "tests/editor/**"
       ]
     },
@@ -365,7 +365,7 @@
         "packages/dbspec-vscode/**",
         "packages/dbspec-lsp/**",
         "packages/dbspec-language/**",
-        "packages/ts/src/dbspec/**",
+        "legacy/packages/ts/src/dbspec/**",
         "package-lock.json"
       ]
     },
@@ -451,9 +451,9 @@
         "go"
       ],
       "inputs": [
-        "packages/go/models.txt",
-        "packages/go/generator/*.go",
-        "packages/go/cmd/orm-gen/*.go"
+        "legacy/packages/go/models.txt",
+        "legacy/packages/go/generator/*.go",
+        "legacy/packages/go/cmd/orm-gen/*.go"
       ]
     },
     "php-model-check": {
@@ -463,9 +463,9 @@
         "composer"
       ],
       "inputs": [
-        "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "packages/php/src/OrmGen.php"
+        "legacy/packages/php/models.txt",
+        "legacy/packages/php/bin/orm-gen",
+        "legacy/packages/php/src/OrmGen.php"
       ]
     },
     "client-unit-check": {
@@ -476,26 +476,26 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/php/tests/DsnTest.php",
-        "packages/php/tests/DbspecRunnerTest.php",
-        "packages/php/testing/dbspec/apply/runner.php",
-        "packages/php/testing/dbspec/apply/php.php",
-        "packages/php-ext/testing/dbspec/apply/php-extension.php",
-        "packages/php/testing/dbspec/introspect/runner.php",
-        "packages/php/testing/dbspec/introspect/php.php",
-        "packages/php-ext/testing/dbspec/introspect/php-extension.php",
-        "packages/php/testing/dbspec/compare/php-interface.php",
-        "packages/php/testing/dbspec/compare/php.php",
-        "packages/php-ext/testing/dbspec/compare/php-extension.php",
-        "packages/php/tests/MarkdownTest.php",
-        "packages/php/tests/markdown_test_server.php",
-        "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/EngineTest.php",
+        "legacy/packages/php/tests/DsnTest.php",
+        "legacy/packages/php/tests/DbspecRunnerTest.php",
+        "legacy/packages/php/testing/dbspec/apply/runner.php",
+        "legacy/packages/php/testing/dbspec/apply/php.php",
+        "legacy/packages/php-ext/testing/dbspec/apply/php-extension.php",
+        "legacy/packages/php/testing/dbspec/introspect/runner.php",
+        "legacy/packages/php/testing/dbspec/introspect/php.php",
+        "legacy/packages/php-ext/testing/dbspec/introspect/php-extension.php",
+        "legacy/packages/php/testing/dbspec/compare/php-interface.php",
+        "legacy/packages/php/testing/dbspec/compare/php.php",
+        "legacy/packages/php-ext/testing/dbspec/compare/php-extension.php",
+        "legacy/packages/php/tests/MarkdownTest.php",
+        "legacy/packages/php/tests/markdown_test_server.php",
+        "legacy/packages/php/tests/RelationKeysTest.php",
+        "legacy/packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
-        "packages/php/tests/RuntimeModelTest.php",
-        "packages/php/tests/OrmGenTest.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/tests/PerfExtensionsTest.php"
+        "legacy/packages/php/tests/RuntimeModelTest.php",
+        "legacy/packages/php/tests/OrmGenTest.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php/tests/PerfExtensionsTest.php"
       ]
     },
     "php-gen-unit-check": {
@@ -507,18 +507,18 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/bin/orm-gen",
-        "packages/php/src/OrmGen.php",
-        "packages/php/src/Generator.php",
-        "packages/php/src/ScanVisitor.php",
-        "packages/php/tests/OrmGenCliTest.php",
-        "packages/php/tests/OrmGenParsedModelTest.php",
-        "packages/php/tests/OrmGenLazyModelTest.php",
-        "packages/php/tests/OrmGenProcessCase.php",
-        "packages/php/tests/OrmGenScanTest.php",
-        "packages/php/tests/OrmGenPackageTest.php",
-        "packages/php/composer.json",
-        "packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php/bin/orm-gen",
+        "legacy/packages/php/src/OrmGen.php",
+        "legacy/packages/php/src/Generator.php",
+        "legacy/packages/php/src/ScanVisitor.php",
+        "legacy/packages/php/tests/OrmGenCliTest.php",
+        "legacy/packages/php/tests/OrmGenParsedModelTest.php",
+        "legacy/packages/php/tests/OrmGenLazyModelTest.php",
+        "legacy/packages/php/tests/OrmGenProcessCase.php",
+        "legacy/packages/php/tests/OrmGenScanTest.php",
+        "legacy/packages/php/tests/OrmGenPackageTest.php",
+        "legacy/packages/php/composer.json",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
         "tests/generator/php-scan-vectors.json",
         "contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",
@@ -534,7 +534,7 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/php/tests/GoSerializationTest.php"
+        "legacy/packages/php/tests/GoSerializationTest.php"
       ]
     },
     "generator-consumer-check": {
@@ -551,34 +551,34 @@
       "inputs": [
         "Makefile",
         "contracts/fixtures/bench/dbspec-set.json",
-        "packages/go/generator/gen_go.go",
-        "packages/go/generator/gen_go_test.go",
-        "packages/go/generator/gen_go_scan_test.go",
-        "packages/go/generator/gen_go_scan_internal_test.go",
-        "packages/go/orm/model.go",
-        "packages/php/src/Generator.php",
-        "packages/php/src/Model.php",
-        "packages/php/tests/OrmGenTest.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/tests/OrmGenScanTest.php",
-        "packages/php/tests/ModelMethodsTest.php",
-        "packages/php-ext/src/model_native_methods.c",
-        "packages/php-ext/src/model_native_methods.h",
-        "packages/php-ext/src/model_state.c",
-        "packages/php-ext/src/model_state.h",
-        "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/php-ext/tests/ModelDslNativeTest.php",
-        "packages/ts/src/generate/typescript.ts",
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/generate.mjs",
-        "packages/ts/tests/generate-scan.mjs",
-        "packages/python/src/polyspec/orm/core.py",
-        "packages/python/src/polyspec/orm/generate/python.py",
-        "packages/python/src/polyspec/orm/model.py",
-        "packages/python/tests/test_orm_gen.py",
-        "packages/python/tests/test_query_methods.py",
+        "legacy/packages/go/generator/gen_go.go",
+        "legacy/packages/go/generator/gen_go_test.go",
+        "legacy/packages/go/generator/gen_go_scan_test.go",
+        "legacy/packages/go/generator/gen_go_scan_internal_test.go",
+        "legacy/packages/go/orm/model.go",
+        "legacy/packages/php/src/Generator.php",
+        "legacy/packages/php/src/Model.php",
+        "legacy/packages/php/tests/OrmGenTest.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php/tests/OrmGenScanTest.php",
+        "legacy/packages/php/tests/ModelMethodsTest.php",
+        "legacy/packages/php-ext/src/model_native_methods.c",
+        "legacy/packages/php-ext/src/model_native_methods.h",
+        "legacy/packages/php-ext/src/model_state.c",
+        "legacy/packages/php-ext/src/model_state.h",
+        "legacy/packages/php-ext/src/polyspec_orm.stub.php",
+        "legacy/packages/php-ext/tests/ModelNativeTest.php",
+        "legacy/packages/php/tests/NativeFixtureVectors.php",
+        "legacy/packages/php-ext/tests/ModelDslNativeTest.php",
+        "legacy/packages/ts/src/generate/typescript.ts",
+        "legacy/packages/ts/src/model.ts",
+        "legacy/packages/ts/tests/generate.mjs",
+        "legacy/packages/ts/tests/generate-scan.mjs",
+        "legacy/packages/python/src/polyspec/orm/core.py",
+        "legacy/packages/python/src/polyspec/orm/generate/python.py",
+        "legacy/packages/python/src/polyspec/orm/model.py",
+        "legacy/packages/python/tests/test_orm_gen.py",
+        "legacy/packages/python/tests/test_query_methods.py",
         "packages/rust/build/src/generate.rs",
         "packages/rust/build/tests/cases/generate.rs",
         "packages/rust/tests/tests/all/integration_program/mod.rs"
@@ -597,20 +597,20 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/orm/sqlite_lock.go",
-        "packages/go/orm/sqlite_lock_restore_test.go",
-        "packages/ts/src/database.ts",
-        "packages/ts/tests/sqlite-row-lock-restore.mjs",
-        "packages/php/src/Db.php",
-        "packages/php/src/Assembly.php",
-        "packages/php/src/Config.php",
-        "packages/php/src/OrmException.php",
-        "packages/php/tests/SqliteRowLockRestoreTest.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php-ext/src/db.c",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/tests/test_sqlite_row_lock_restore.py",
+        "legacy/packages/go/orm/sqlite_lock.go",
+        "legacy/packages/go/orm/sqlite_lock_restore_test.go",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/tests/sqlite-row-lock-restore.mjs",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Assembly.php",
+        "legacy/packages/php/src/Config.php",
+        "legacy/packages/php/src/OrmException.php",
+        "legacy/packages/php/tests/SqliteRowLockRestoreTest.php",
+        "legacy/packages/php/tests/UninitializedRecordingPdo.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/rust/orm/src/db.rs",
         "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
         "packages/rust/orm/src/lib.rs",
@@ -646,20 +646,20 @@
       "inputs": [
         "scripts/typescript/models.mts",
         "contracts/fixtures/complex_query/**",
-        "packages/ts/src/names.ts",
-        "packages/ts/src/generate/names.ts",
-        "packages/ts/src/generate/typescript.ts",
-        "packages/ts/src/core.ts",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/bind_check.ts",
-        "packages/ts/src/engine/dialect.ts",
-        "packages/ts/src/engine/params.ts",
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query.types.ts",
-        "packages/ts/tests/fulltext-chain-types.mjs",
-        "packages/ts/tests/paginate-order.mjs",
-        "packages/ts/tests/typecheck.ts"
+        "legacy/packages/ts/src/names.ts",
+        "legacy/packages/ts/src/generate/names.ts",
+        "legacy/packages/ts/src/generate/typescript.ts",
+        "legacy/packages/ts/src/core.ts",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/bind_check.ts",
+        "legacy/packages/ts/src/engine/dialect.ts",
+        "legacy/packages/ts/src/engine/params.ts",
+        "legacy/packages/ts/src/engine/planner.ts",
+        "legacy/packages/ts/src/engine/validate.ts",
+        "legacy/packages/ts/tests/complex-query.types.ts",
+        "legacy/packages/ts/tests/fulltext-chain-types.mjs",
+        "legacy/packages/ts/tests/paginate-order.mjs",
+        "legacy/packages/ts/tests/typecheck.ts"
       ]
     },
     "complex-query-typescript-request-check": {
@@ -672,15 +672,15 @@
         "Makefile",
         "contracts/fixtures/complex_query/**",
         "scripts/typescript/models.mts",
-        "packages/ts/src/core.ts",
-        "packages/ts/src/model.ts",
-        "packages/ts/src/generate/names.ts",
-        "packages/ts/src/generate/typescript.ts",
-        "packages/ts/src/engine/dialect.ts",
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query-request.types.ts",
-        "packages/ts/tests/complex-query-request-types.mjs"
+        "legacy/packages/ts/src/core.ts",
+        "legacy/packages/ts/src/model.ts",
+        "legacy/packages/ts/src/generate/names.ts",
+        "legacy/packages/ts/src/generate/typescript.ts",
+        "legacy/packages/ts/src/engine/dialect.ts",
+        "legacy/packages/ts/src/engine/planner.ts",
+        "legacy/packages/ts/src/engine/validate.ts",
+        "legacy/packages/ts/tests/complex-query-request.types.ts",
+        "legacy/packages/ts/tests/complex-query-request-types.mjs"
       ]
     },
     "ts-aes-auth-check": {
@@ -690,8 +690,8 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/src/codec.ts",
-        "packages/ts/tests/codec-aes-errors.test.mjs"
+        "legacy/packages/ts/src/codec.ts",
+        "legacy/packages/ts/tests/codec-aes-errors.test.mjs"
       ]
     },
     "ts-codec-errors-check": {
@@ -701,9 +701,9 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/src/codec.ts",
-        "packages/ts/src/yaml_reader.ts",
-        "packages/ts/tests/codec-errors.test.mjs"
+        "legacy/packages/ts/src/codec.ts",
+        "legacy/packages/ts/src/yaml_reader.ts",
+        "legacy/packages/ts/tests/codec-errors.test.mjs"
       ]
     },
     "sqlite-version-ts-check": {
@@ -713,8 +713,8 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/src/driver.ts",
-        "packages/ts/tests/sqlite-version.test.mjs"
+        "legacy/packages/ts/src/driver.ts",
+        "legacy/packages/ts/tests/sqlite-version.test.mjs"
       ]
     },
     "sqlite-version-rust-check": {
@@ -739,13 +739,13 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/orm/root_in.go",
-        "packages/go/orm/exec.go",
-        "packages/go/orm/split_plan_test.go",
-        "packages/ts/src/database.ts",
-        "packages/ts/tests/split-plan.test.mjs",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/tests/test_split_plan.py",
+        "legacy/packages/go/orm/root_in.go",
+        "legacy/packages/go/orm/exec.go",
+        "legacy/packages/go/orm/split_plan_test.go",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/tests/split-plan.test.mjs",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/tests/test_split_plan.py",
         "packages/rust/orm/src/db.rs",
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/request.rs"
@@ -765,23 +765,23 @@
       "inputs": [
         "Makefile",
         "tests/collection/keys.json",
-        "packages/go/orm/collection.go",
-        "packages/go/orm/collection_identity_test.go",
-        "packages/go/orm/collection_key_test.go",
-        "packages/go/orm/collection_key_internal_test.go",
-        "packages/php/src/Db.php",
-        "packages/php/tests/CollectionIdentityTest.php",
-        "packages/php/tests/CollectionIdentityCases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/CollectionTest.php",
-        "packages/php-ext/tests/ModelAssemblyTest.php",
-        "packages/ts/src/database.ts",
-        "packages/ts/tests/collection_identity.mjs",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/keys.py",
-        "packages/python/src/polyspec/orm/model.py",
-        "packages/python/src/polyspec/orm/__init__.py",
-        "packages/python/tests/test_collection_identity.py",
+        "legacy/packages/go/orm/collection.go",
+        "legacy/packages/go/orm/collection_identity_test.go",
+        "legacy/packages/go/orm/collection_key_test.go",
+        "legacy/packages/go/orm/collection_key_internal_test.go",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/tests/CollectionIdentityTest.php",
+        "legacy/packages/php/tests/CollectionIdentityCases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/tests/CollectionTest.php",
+        "legacy/packages/php-ext/tests/ModelAssemblyTest.php",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/tests/collection_identity.mjs",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/keys.py",
+        "legacy/packages/python/src/polyspec/orm/model.py",
+        "legacy/packages/python/src/polyspec/orm/__init__.py",
+        "legacy/packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/tests/cases/collection_identity.rs",
         "packages/rust/orm/src/model.rs"
@@ -796,12 +796,12 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/public_interface-none.test.mjs",
-        "packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/public_interface-none.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
         "contracts/fixtures/public_interface/public_interface.json",
         "contracts/interfaces.json",
         "tests/interfaces/check/*.mts",
-        "packages/ts/testing/interfaces/typescript.mts"
+        "legacy/packages/ts/testing/interfaces/typescript.mts"
       ]
     },
     "interface-typescript-extractor-check": {
@@ -812,9 +812,9 @@
         "go-lease"
       ],
       "inputs": [
-        "packages/ts/testing/interfaces/tsconfig.json",
-        "packages/ts/testing/interfaces/typescript.mts",
-        "packages/ts/testing/interfaces/typescript/package-lock.json",
+        "legacy/packages/ts/testing/interfaces/tsconfig.json",
+        "legacy/packages/ts/testing/interfaces/typescript.mts",
+        "legacy/packages/ts/testing/interfaces/typescript/package-lock.json",
         "tests/interfaces/check/typescript-extractor.test.mts",
         "tests/interfaces/check/fixtures/typescript-constructor.ts",
         "Makefile"
@@ -848,14 +848,14 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/go/models.txt",
-        "packages/go/generator/*.go",
-        "packages/go/cmd/orm-gen/*.go",
-        "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "packages/php/src/OrmGen.php",
+        "legacy/packages/go/models.txt",
+        "legacy/packages/go/generator/*.go",
+        "legacy/packages/go/cmd/orm-gen/*.go",
+        "legacy/packages/php/models.txt",
+        "legacy/packages/php/bin/orm-gen",
+        "legacy/packages/php/src/OrmGen.php",
         "contracts/fixtures/bench/dbspec-set.json",
-        "packages/python/examples/thin_slice/main.py",
+        "legacy/packages/python/examples/thin_slice/main.py",
         "ruff.toml",
         "phpcs.xml.dist",
         "phpstan.dist.neon",
@@ -1018,36 +1018,36 @@
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
-        "packages/go/engine/ir/params.go",
-        "packages/go/engine/ir/params_test.go",
-        "packages/go/engine/planner/planner.go",
-        "packages/go/engine/planner/scalar_subquery_type_test.go",
-        "packages/go/orm/recipe_planner_test.go",
-        "packages/go/orm/markdown.go",
+        "legacy/packages/go/engine/ir/params.go",
+        "legacy/packages/go/engine/ir/params_test.go",
+        "legacy/packages/go/engine/planner/planner.go",
+        "legacy/packages/go/engine/planner/scalar_subquery_type_test.go",
+        "legacy/packages/go/orm/recipe_planner_test.go",
+        "legacy/packages/go/orm/markdown.go",
         "packages/rust/orm/src/engine/params.rs",
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/all/planner_compile_none.rs",
-        "packages/ts/src/engine/params.ts",
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/src/markdown.ts",
-        "packages/ts/tests/column_function_metadata.mjs",
-        "packages/php/src/Validator.php",
-        "packages/php/src/Planner.php",
-        "packages/php/src/MarkdownSession.php",
-        "packages/php/src/Internal/MarkdownPdoAdapter.php",
-        "packages/php/src/Internal/MarkdownStatementAdapter.php",
-        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
-        "packages/php/tests/CoveragePlannerTest.php",
-        "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-        "packages/php-ext/src/validator.c",
-        "packages/php-ext/src/planner.c",
-        "packages/python/src/polyspec/orm/engine/params.py",
-        "packages/python/src/polyspec/orm/engine/planner.py",
-        "packages/python/src/polyspec/orm/markdown.py",
-        "packages/python/tests/test_column_function_internal.py",
-        "packages/python/tests/test_planner_compile_none.py",
+        "legacy/packages/ts/src/engine/params.ts",
+        "legacy/packages/ts/src/engine/planner.ts",
+        "legacy/packages/ts/src/markdown.ts",
+        "legacy/packages/ts/tests/column_function_metadata.mjs",
+        "legacy/packages/php/src/Validator.php",
+        "legacy/packages/php/src/Planner.php",
+        "legacy/packages/php/src/MarkdownSession.php",
+        "legacy/packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "legacy/packages/php/src/Internal/MarkdownStatementAdapter.php",
+        "legacy/packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "legacy/packages/php/tests/CoveragePlannerTest.php",
+        "legacy/packages/php-ext/tests/ColumnFunctionMetadataTest.php",
+        "legacy/packages/php-ext/src/validator.c",
+        "legacy/packages/php-ext/src/planner.c",
+        "legacy/packages/python/src/polyspec/orm/engine/params.py",
+        "legacy/packages/python/src/polyspec/orm/engine/planner.py",
+        "legacy/packages/python/src/polyspec/orm/markdown.py",
+        "legacy/packages/python/tests/test_column_function_internal.py",
+        "legacy/packages/python/tests/test_planner_compile_none.py",
         "tests/planner/compile.json",
         "tests/planner/shared_blind_index.dbs"
       ]
@@ -1093,21 +1093,21 @@
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
-        "packages/go/engine/planner/planner.go",
-        "packages/go/engine/planner/scalar_subquery_type_test.go",
+        "legacy/packages/go/engine/planner/planner.go",
+        "legacy/packages/go/engine/planner/scalar_subquery_type_test.go",
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/all/planner_compile_none.rs",
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/src/markdown.ts",
-        "packages/ts/tests/scalar_subquery_type.mjs",
-        "packages/php/src/Planner.php",
-        "packages/php/tests/CoveragePlannerTest.php",
-        "packages/python/src/polyspec/orm/engine/planner.py",
-        "packages/python/src/polyspec/orm/markdown.py",
-        "packages/python/tests/test_scalar_subquery_type.py",
-        "packages/php-ext/src/planner.c"
+        "legacy/packages/ts/src/engine/planner.ts",
+        "legacy/packages/ts/src/markdown.ts",
+        "legacy/packages/ts/tests/scalar_subquery_type.mjs",
+        "legacy/packages/php/src/Planner.php",
+        "legacy/packages/php/tests/CoveragePlannerTest.php",
+        "legacy/packages/python/src/polyspec/orm/engine/planner.py",
+        "legacy/packages/python/src/polyspec/orm/markdown.py",
+        "legacy/packages/python/tests/test_scalar_subquery_type.py",
+        "legacy/packages/php-ext/src/planner.c"
       ]
     },
     "relation-parent-bind-rust-check": {
@@ -1151,10 +1151,10 @@
         "Makefile",
         "contracts/check-inputs.json",
         "contracts/fixtures/identity_load.dbs",
-        "packages/php/src/Db.php",
-        "packages/php/src/DbState.php",
-        "packages/php/src/Engine.php",
-        "packages/php/tests/PlanCacheMemoryTest.php"
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/DbState.php",
+        "legacy/packages/php/src/Engine.php",
+        "legacy/packages/php/tests/PlanCacheMemoryTest.php"
       ]
     },
     "page-cache-unit-check": {
@@ -1172,30 +1172,30 @@
         "Makefile",
         "contracts/check-inputs.json",
         "contracts/interfaces.json",
-        "packages/go/engine/dialect/*.go",
-        "packages/go/engine/engine.go",
-        "packages/go/engine/ir/ir.go",
-        "packages/go/engine/planner/planner.go",
-        "packages/go/orm/canonical.go",
-        "packages/go/orm/exec.go",
-        "packages/go/orm/plan_cache_test.go",
-        "packages/php-ext/src/model_types.c",
-        "packages/php-ext/src/planner.c",
-        "packages/php-ext/src/validator.c",
-        "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-        "packages/php/src/CanonicalRequest.php",
-        "packages/php/src/Dialect.php",
-        "packages/php/src/Engine.php",
-        "packages/php/src/Planner.php",
-        "packages/php/src/Validator.php",
-        "packages/php/tests/PlanCacheBoundTest.php",
-        "packages/php/tests/PageCacheBoundCases.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/python/src/polyspec/orm/canonical.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/engine/*.py",
-        "packages/python/src/polyspec/orm/ir.py",
-        "packages/python/tests/test_plan_cache_bound.py",
+        "legacy/packages/go/engine/dialect/*.go",
+        "legacy/packages/go/engine/engine.go",
+        "legacy/packages/go/engine/ir/ir.go",
+        "legacy/packages/go/engine/planner/planner.go",
+        "legacy/packages/go/orm/canonical.go",
+        "legacy/packages/go/orm/exec.go",
+        "legacy/packages/go/orm/plan_cache_test.go",
+        "legacy/packages/php-ext/src/model_types.c",
+        "legacy/packages/php-ext/src/planner.c",
+        "legacy/packages/php-ext/src/validator.c",
+        "legacy/packages/php-ext/tests/ModelTypesSurfaceTest.php",
+        "legacy/packages/php/src/CanonicalRequest.php",
+        "legacy/packages/php/src/Dialect.php",
+        "legacy/packages/php/src/Engine.php",
+        "legacy/packages/php/src/Planner.php",
+        "legacy/packages/php/src/Validator.php",
+        "legacy/packages/php/tests/PlanCacheBoundTest.php",
+        "legacy/packages/php/tests/PageCacheBoundCases.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/python/src/polyspec/orm/canonical.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/engine/*.py",
+        "legacy/packages/python/src/polyspec/orm/ir.py",
+        "legacy/packages/python/tests/test_plan_cache_bound.py",
         "packages/rust/orm/src/db.rs",
         "packages/rust/orm/src/engine/*.rs",
         "packages/rust/orm/src/ir.rs",
@@ -1203,9 +1203,9 @@
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/all/planner_compile_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs",
-        "packages/ts/src/engine/*.ts",
-        "packages/ts/src/ir.ts",
-        "packages/ts/tests/plan-cache-in.mjs",
+        "legacy/packages/ts/src/engine/*.ts",
+        "legacy/packages/ts/src/ir.ts",
+        "legacy/packages/ts/tests/plan-cache-in.mjs",
         "tests/ir/validate.json"
       ]
     },
@@ -1218,8 +1218,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/src/Catalog.php",
-        "packages/php/tests/CatalogQueryBoundsTest.php"
+        "legacy/packages/php/src/Catalog.php",
+        "legacy/packages/php/tests/CatalogQueryBoundsTest.php"
       ]
     },
     "rust-driver-check": {
@@ -1286,9 +1286,9 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/python/src/polyspec/orm/clock.py",
-        "packages/python/tests/test_clock_source.py",
-        "packages/python/tests/test_rollback_fault.py"
+        "legacy/packages/python/src/polyspec/orm/clock.py",
+        "legacy/packages/python/tests/test_clock_source.py",
+        "legacy/packages/python/tests/test_rollback_fault.py"
       ]
     },
     "client-db-python-check": {
@@ -1318,44 +1318,44 @@
       ],
       "inputs": [
         "tests/codec/**",
-        "packages/go/orm/recipe_codec_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/php/tests/CodecRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
-        "packages/ts/tests/codec-none.test.mjs",
-        "packages/ts/src/yaml_reader.ts",
-        "packages/ts/tests/recipe.mjs",
-        "packages/python/tests/test_codec_none.py",
-        "packages/python/tests/recipe.py",
+        "legacy/packages/go/orm/recipe_codec_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/php/tests/CodecRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+        "legacy/packages/ts/tests/codec-none.test.mjs",
+        "legacy/packages/ts/src/yaml_reader.ts",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/python/tests/test_codec_none.py",
+        "legacy/packages/python/tests/recipe.py",
         "packages/rust/tests/tests/all/codec_none.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/go/orm/codec_test.go",
-        "packages/php/tests/CodecBytesValueRecipeTest.php",
-        "packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
-        "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
-        "packages/ts/tests/codec-bytes-value-none.test.mjs",
-        "packages/python/tests/test_codec_integer_beyond_i64_none.py",
-        "packages/python/tests/test_codec_bytes_value_none.py",
-        "packages/php/tests/CodecNonFiniteValueRecipeTest.php",
-        "packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php",
-        "packages/ts/tests/codec-non-finite-value-none.test.mjs",
-        "packages/python/tests/test_codec_non_finite_value_none.py",
-        "packages/php/tests/CodecJsonDepthRecipeTest.php",
-        "packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php",
-        "packages/ts/tests/codec-json-depth-none.test.mjs",
-        "packages/python/tests/test_codec_json_depth_none.py",
-        "packages/python/tests/test_codec_stack_depth.py",
-        "packages/python/tests/test_codec_yaml_reader_cause.py",
+        "legacy/packages/go/orm/codec_test.go",
+        "legacy/packages/php/tests/CodecBytesValueRecipeTest.php",
+        "legacy/packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
+        "legacy/packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
+        "legacy/packages/ts/tests/codec-bytes-value-none.test.mjs",
+        "legacy/packages/python/tests/test_codec_integer_beyond_i64_none.py",
+        "legacy/packages/python/tests/test_codec_bytes_value_none.py",
+        "legacy/packages/php/tests/CodecNonFiniteValueRecipeTest.php",
+        "legacy/packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php",
+        "legacy/packages/ts/tests/codec-non-finite-value-none.test.mjs",
+        "legacy/packages/python/tests/test_codec_non_finite_value_none.py",
+        "legacy/packages/php/tests/CodecJsonDepthRecipeTest.php",
+        "legacy/packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php",
+        "legacy/packages/ts/tests/codec-json-depth-none.test.mjs",
+        "legacy/packages/python/tests/test_codec_json_depth_none.py",
+        "legacy/packages/python/tests/test_codec_stack_depth.py",
+        "legacy/packages/python/tests/test_codec_yaml_reader_cause.py",
         "packages/rust/tests/tests/all/codec_json_depth_none.rs",
-        "packages/ts/tests/codec-lone-surrogate-none.test.mjs",
-        "packages/python/tests/test_codec_lone_surrogate_none.py",
-        "packages/python/tests/test_codec_map_keys_none.py",
-        "packages/python/tests/test_codec_styled_unset_none.py",
-        "packages/ts/tests/codec-undefined-member-none.test.mjs",
-        "packages/php/tests/CodecRawTextRecipeTest.php",
-        "packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php",
+        "legacy/packages/ts/tests/codec-lone-surrogate-none.test.mjs",
+        "legacy/packages/python/tests/test_codec_lone_surrogate_none.py",
+        "legacy/packages/python/tests/test_codec_map_keys_none.py",
+        "legacy/packages/python/tests/test_codec_styled_unset_none.py",
+        "legacy/packages/ts/tests/codec-undefined-member-none.test.mjs",
+        "legacy/packages/php/tests/CodecRawTextRecipeTest.php",
+        "legacy/packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php",
         "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
         "packages/rust/orm/src/codec.rs"
       ]
@@ -1371,10 +1371,10 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/go/orm/recipe_schema_install_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/utils.go"
+        "legacy/packages/go/orm/recipe_schema_install_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/utils.go"
       ]
     },
     "schema-install-check/typescript": {
@@ -1388,12 +1388,12 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/ts/tests/schema_install-mysql.test.mjs",
-        "packages/ts/tests/schema_install-postgres.test.mjs",
-        "packages/ts/tests/schema_install-sqlite.test.mjs",
-        "packages/ts/tests/schema_install-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/catalog.ts"
+        "legacy/packages/ts/tests/schema_install-mysql.test.mjs",
+        "legacy/packages/ts/tests/schema_install-postgres.test.mjs",
+        "legacy/packages/ts/tests/schema_install-sqlite.test.mjs",
+        "legacy/packages/ts/tests/schema_install-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/catalog.ts"
       ]
     },
     "schema-install-check/python": {
@@ -1407,12 +1407,12 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/python/tests/test_schema_install_mysql.py",
-        "packages/python/tests/test_schema_install_postgres.py",
-        "packages/python/tests/test_schema_install_sqlite.py",
-        "packages/python/tests/test_schema_install_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/database.py"
+        "legacy/packages/python/tests/test_schema_install_mysql.py",
+        "legacy/packages/python/tests/test_schema_install_postgres.py",
+        "legacy/packages/python/tests/test_schema_install_sqlite.py",
+        "legacy/packages/python/tests/test_schema_install_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/database.py"
       ]
     },
     "schema-install-check/php": {
@@ -1427,12 +1427,12 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/php/tests/SchemaInstallRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/src/Catalog.php",
-        "packages/php/src/Schema.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/tests/SchemaInstallRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/src/Catalog.php",
+        "legacy/packages/php/src/Schema.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "schema-install-check/php-extension": {
@@ -1448,12 +1448,12 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/SchemaInstallRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/src/Catalog.php"
+        "legacy/packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/SchemaInstallRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/src/Catalog.php"
       ]
     },
     "schema-install-check/rust": {
@@ -1484,11 +1484,11 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/go/orm/recipe_catalog_connection_test.go",
-        "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/catalog*.go"
+        "legacy/packages/go/orm/recipe_catalog_connection_test.go",
+        "legacy/packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/catalog*.go"
       ]
     },
     "catalog-connection-check/rust": {
@@ -1542,10 +1542,10 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/go/orm/recipe_statement_events_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/statement.go"
+        "legacy/packages/go/orm/recipe_statement_events_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/statement.go"
       ]
     },
     "statement-events-check/typescript": {
@@ -1557,11 +1557,11 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/ts/tests/statement_events-mysql.test.mjs",
-        "packages/ts/tests/statement_events-postgres.test.mjs",
-        "packages/ts/tests/statement_events-sqlite.test.mjs",
-        "packages/ts/tests/statement_events-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/tests/statement_events-mysql.test.mjs",
+        "legacy/packages/ts/tests/statement_events-postgres.test.mjs",
+        "legacy/packages/ts/tests/statement_events-sqlite.test.mjs",
+        "legacy/packages/ts/tests/statement_events-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "statement-events-check/python": {
@@ -1573,11 +1573,11 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/python/tests/test_statement_events_mysql.py",
-        "packages/python/tests/test_statement_events_postgres.py",
-        "packages/python/tests/test_statement_events_sqlite.py",
-        "packages/python/tests/test_statement_events_markdown.py",
-        "packages/python/tests/recipe.py"
+        "legacy/packages/python/tests/test_statement_events_mysql.py",
+        "legacy/packages/python/tests/test_statement_events_postgres.py",
+        "legacy/packages/python/tests/test_statement_events_sqlite.py",
+        "legacy/packages/python/tests/test_statement_events_markdown.py",
+        "legacy/packages/python/tests/recipe.py"
       ]
     },
     "statement-events-check/php": {
@@ -1590,10 +1590,10 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/php/tests/StatementEventsRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/tests/StatementEventsRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "statement-events-check/php-extension": {
@@ -1607,11 +1607,11 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/StatementEventsRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "legacy/packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/StatementEventsRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php"
       ]
     },
     "catalog-connection-check/typescript": {
@@ -1623,14 +1623,14 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
-        "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
-        "packages/ts/tests/catalog_connection-mysql.test.mjs",
-        "packages/ts/tests/catalog_connection-postgres.test.mjs",
-        "packages/ts/tests/catalog_connection-sqlite.test.mjs",
-        "packages/ts/tests/catalog_connection-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/catalog.ts"
+        "legacy/packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "legacy/packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
+        "legacy/packages/ts/tests/catalog_connection-mysql.test.mjs",
+        "legacy/packages/ts/tests/catalog_connection-postgres.test.mjs",
+        "legacy/packages/ts/tests/catalog_connection-sqlite.test.mjs",
+        "legacy/packages/ts/tests/catalog_connection-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/catalog.ts"
       ]
     },
     "catalog-connection-check/python": {
@@ -1642,14 +1642,14 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/python/tests/test_catalog_connection_sqlite_only.py",
-        "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
-        "packages/python/tests/test_catalog_connection_mysql.py",
-        "packages/python/tests/test_catalog_connection_postgres.py",
-        "packages/python/tests/test_catalog_connection_sqlite.py",
-        "packages/python/tests/test_catalog_connection_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/catalog.py"
+        "legacy/packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "legacy/packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
+        "legacy/packages/python/tests/test_catalog_connection_mysql.py",
+        "legacy/packages/python/tests/test_catalog_connection_postgres.py",
+        "legacy/packages/python/tests/test_catalog_connection_sqlite.py",
+        "legacy/packages/python/tests/test_catalog_connection_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/catalog.py"
       ]
     },
     "catalog-connection-check/php": {
@@ -1662,12 +1662,12 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
-        "packages/php/tests/CatalogConnectionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/src/Catalog.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+        "legacy/packages/php/tests/CatalogConnectionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/src/Catalog.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "catalog-connection-check/php-extension": {
@@ -1681,13 +1681,13 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/CatalogConnectionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/src/catalog_connection.c"
+        "legacy/packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/CatalogConnectionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/src/catalog_connection.c"
       ]
     },
     "dsn-connection-check/go": {
@@ -1699,10 +1699,10 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/go/orm/recipe_dsn_connection_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/dsn.go"
+        "legacy/packages/go/orm/recipe_dsn_connection_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/dsn.go"
       ]
     },
     "dsn-connection-check/rust": {
@@ -1731,11 +1731,11 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/ts/tests/dsn_connection-mysql.test.mjs",
-        "packages/ts/tests/dsn_connection-postgres.test.mjs",
-        "packages/ts/tests/dsn_connection-sqlite.test.mjs",
-        "packages/ts/tests/dsn_connection-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/tests/dsn_connection-mysql.test.mjs",
+        "legacy/packages/ts/tests/dsn_connection-postgres.test.mjs",
+        "legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs",
+        "legacy/packages/ts/tests/dsn_connection-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "dsn-connection-check/python": {
@@ -1747,11 +1747,11 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/python/tests/test_dsn_connection_mysql.py",
-        "packages/python/tests/test_dsn_connection_postgres.py",
-        "packages/python/tests/test_dsn_connection_sqlite.py",
-        "packages/python/tests/test_dsn_connection_markdown.py",
-        "packages/python/tests/recipe.py"
+        "legacy/packages/python/tests/test_dsn_connection_mysql.py",
+        "legacy/packages/python/tests/test_dsn_connection_postgres.py",
+        "legacy/packages/python/tests/test_dsn_connection_sqlite.py",
+        "legacy/packages/python/tests/test_dsn_connection_markdown.py",
+        "legacy/packages/python/tests/recipe.py"
       ]
     },
     "dsn-connection-check/php": {
@@ -1764,11 +1764,11 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/php/tests/DsnConnectionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/src/DsnUrl.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/tests/DsnConnectionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/src/DsnUrl.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "dsn-connection-check/php-extension": {
@@ -1782,11 +1782,11 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/DsnConnectionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/DsnConnectionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php"
       ]
     },
     "markdown-session-check/go": {
@@ -1798,10 +1798,10 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/go/bindmessages/markdown_session_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/orm/markdown.go",
-        "packages/go/orm/markdown_sql.go"
+        "legacy/packages/go/bindmessages/markdown_session_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/orm/markdown.go",
+        "legacy/packages/go/orm/markdown_sql.go"
       ]
     },
     "markdown-session-check/rust": {
@@ -1828,9 +1828,9 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/ts/tests/markdown_session.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/markdown.ts"
+        "legacy/packages/ts/tests/markdown_session.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/markdown.ts"
       ]
     },
     "markdown-session-check/python": {
@@ -1842,9 +1842,9 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/python/tests/test_markdown_session_none.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/markdown.py"
+        "legacy/packages/python/tests/test_markdown_session_none.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/markdown.py"
       ]
     },
     "markdown-session-check/php": {
@@ -1857,12 +1857,12 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/php/tests/MarkdownSessionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/markdown_test_server.php",
-        "packages/php/src/Internal/MarkdownPdoAdapter.php",
-        "packages/php/src/Internal/MarkdownStatementAdapter.php"
+        "legacy/packages/php/tests/MarkdownSessionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/markdown_test_server.php",
+        "legacy/packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "legacy/packages/php/src/Internal/MarkdownStatementAdapter.php"
       ]
     },
     "markdown-session-check/php-extension": {
@@ -1876,12 +1876,12 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/MarkdownSessionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/src/markdown_native.c"
+        "legacy/packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/MarkdownSessionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/src/markdown_native.c"
       ]
     },
     "connection-pool-check/go": {
@@ -1893,10 +1893,10 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
-        "packages/go/orm/recipe_connection_pool_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/dsn.go"
+        "legacy/packages/go/orm/recipe_connection_pool_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/dsn.go"
       ]
     },
     "connection-pool-check/rust": {
@@ -1925,11 +1925,11 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
-        "packages/ts/tests/connection_pool-mysql.test.mjs",
-        "packages/ts/tests/connection_pool-postgres.test.mjs",
-        "packages/ts/tests/connection_pool-sqlite.test.mjs",
-        "packages/ts/tests/connection_pool-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/tests/connection_pool-mysql.test.mjs",
+        "legacy/packages/ts/tests/connection_pool-postgres.test.mjs",
+        "legacy/packages/ts/tests/connection_pool-sqlite.test.mjs",
+        "legacy/packages/ts/tests/connection_pool-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "connection-pool-check/python": {
@@ -1941,11 +1941,11 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
-        "packages/python/tests/test_connection_pool_mysql.py",
-        "packages/python/tests/test_connection_pool_postgres.py",
-        "packages/python/tests/test_connection_pool_sqlite.py",
-        "packages/python/tests/test_connection_pool_markdown.py",
-        "packages/python/tests/recipe.py"
+        "legacy/packages/python/tests/test_connection_pool_mysql.py",
+        "legacy/packages/python/tests/test_connection_pool_postgres.py",
+        "legacy/packages/python/tests/test_connection_pool_sqlite.py",
+        "legacy/packages/python/tests/test_connection_pool_markdown.py",
+        "legacy/packages/python/tests/recipe.py"
       ]
     },
     "php-codec-causes-check": {
@@ -1957,14 +1957,14 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/src/Codec.php",
-        "packages/php/tests/CodecErrorCauseTest.php",
-        "packages/php/tests/CodecYamlCauseTest.php",
-        "packages/php/tests/CodecYamlProbe.php",
-        "packages/php/tests/codec-yaml-probe.php",
-        "packages/php/tests/fixtures/CodecProbeDumper.php",
-        "packages/php-ext/tests/CodecCauseTest.php",
-        "packages/php-ext/src/codec.c"
+        "legacy/packages/php/src/Codec.php",
+        "legacy/packages/php/tests/CodecErrorCauseTest.php",
+        "legacy/packages/php/tests/CodecYamlCauseTest.php",
+        "legacy/packages/php/tests/CodecYamlProbe.php",
+        "legacy/packages/php/tests/codec-yaml-probe.php",
+        "legacy/packages/php/tests/fixtures/CodecProbeDumper.php",
+        "legacy/packages/php-ext/tests/CodecCauseTest.php",
+        "legacy/packages/php-ext/src/codec.c"
       ]
     },
     "native-error-cause-check": {
@@ -1982,31 +1982,31 @@
         "Makefile",
         "docs/spec/protocol.md",
         "docs/spec/protocol.ko.md",
-        "packages/go/orm/driver_error_test.go",
-        "packages/go/orm/driver_error_internal_test.go",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php",
-        "packages/php/src/OrmException.php",
-        "packages/php/tests/MarkdownTest.php",
-        "packages/php/tests/NativeCellReadTest.php",
-        "packages/php/tests/OrmExceptionLockWaitTest.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c",
-        "packages/php-ext/tests/ModelStreamReadTest.php",
-        "packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/python/tests/test_driver_cells.py",
-        "packages/python/src/polyspec/orm/driver_cells.py",
-        "packages/python/tests/test_driver_errors.py",
-        "packages/python/tests/test_markdown.py",
+        "legacy/packages/go/orm/driver_error_test.go",
+        "legacy/packages/go/orm/driver_error_internal_test.go",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Model.php",
+        "legacy/packages/php/src/OrmException.php",
+        "legacy/packages/php/tests/MarkdownTest.php",
+        "legacy/packages/php/tests/NativeCellReadTest.php",
+        "legacy/packages/php/tests/OrmExceptionLockWaitTest.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c",
+        "legacy/packages/php-ext/tests/ModelStreamReadTest.php",
+        "legacy/packages/php-ext/tests/OrmExceptionNativeTest.php",
+        "legacy/packages/python/tests/test_driver_cells.py",
+        "legacy/packages/python/src/polyspec/orm/driver_cells.py",
+        "legacy/packages/python/tests/test_driver_errors.py",
+        "legacy/packages/python/tests/test_markdown.py",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/src/row.rs",
-        "packages/ts/tests/driver-integer-param.mjs",
-        "packages/ts/tests/driver-error-lock-wait.mjs",
-        "packages/ts/tests/markdown.mjs",
-        "packages/ts/src/codec.ts",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/driver.ts",
-        "packages/ts/src/model.ts",
+        "legacy/packages/ts/tests/driver-integer-param.mjs",
+        "legacy/packages/ts/tests/driver-error-lock-wait.mjs",
+        "legacy/packages/ts/tests/markdown.mjs",
+        "legacy/packages/ts/src/codec.ts",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/driver.ts",
+        "legacy/packages/ts/src/model.ts",
         "contracts/implementations.json"
       ]
     },
@@ -2022,9 +2022,9 @@
       ],
       "inputs": [
         "tests/bind/**",
-        "packages/php/tests/MarkdownTest.php",
-        "packages/ts/tests/markdown.mjs",
-        "packages/python/tests/test_markdown.py",
+        "legacy/packages/php/tests/MarkdownTest.php",
+        "legacy/packages/ts/tests/markdown.mjs",
+        "legacy/packages/python/tests/test_markdown.py",
         "packages/rust/orm/tests/unit/bind_vectors.rs"
       ]
     },
@@ -2042,19 +2042,19 @@
       "inputs": [
         "tests/collection/collection.json",
         "scripts/features/schema/recipe.schema.json",
-        "packages/go/markdownmodel/recipe_collection_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/php/tests/CollectionRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
-        "packages/python/tests/test_collection_none.py",
-        "packages/python/tests/recipe.py",
+        "legacy/packages/go/markdownmodel/recipe_collection_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/php/tests/CollectionRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "legacy/packages/python/tests/test_collection_none.py",
+        "legacy/packages/python/tests/recipe.py",
         "packages/rust/tests/tests/all/collection_none.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/ts/tests/collection-none.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/markdown_cases.mjs"
+        "legacy/packages/ts/tests/collection-none.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/markdown_cases.mjs"
       ]
     },
     "fuzz-check": {
@@ -2063,8 +2063,8 @@
         "go"
       ],
       "inputs": [
-        "packages/go/orm/fuzz_test.go",
-        "packages/go/engine/ir/fuzz_test.go"
+        "legacy/packages/go/orm/fuzz_test.go",
+        "legacy/packages/go/engine/ir/fuzz_test.go"
       ]
     },
     "case-database-check": {
@@ -2084,9 +2084,9 @@
         "go"
       ],
       "inputs": [
-        "packages/go/internal/dialects/probe.go",
-        "packages/go/internal/dialects/probe_test.go",
-        "packages/go/internal/dialects/probes_*.go",
+        "legacy/packages/go/internal/dialects/probe.go",
+        "legacy/packages/go/internal/dialects/probe_test.go",
+        "legacy/packages/go/internal/dialects/probes_*.go",
         "docs/spec/dialects.md",
         "docs/spec/dialects.ko.md"
       ]
@@ -2110,7 +2110,7 @@
         "go"
       ],
       "inputs": [
-        "packages/go/orm/package_entry_test.go"
+        "legacy/packages/go/orm/package_entry_test.go"
       ]
     },
     "php-package-entry-check": {
@@ -2120,11 +2120,11 @@
         "composer"
       ],
       "inputs": [
-        "packages/php/composer.json",
-        "packages/php/src/**",
-        "packages/php/testing/Faults.php",
-        "packages/php/tests/ComposerExtensionsTest.php",
-        "packages/php/tests/PackageEntryPointTest.php"
+        "legacy/packages/php/composer.json",
+        "legacy/packages/php/src/**",
+        "legacy/packages/php/testing/Faults.php",
+        "legacy/packages/php/tests/ComposerExtensionsTest.php",
+        "legacy/packages/php/tests/PackageEntryPointTest.php"
       ]
     },
     "php-extension-package-entry-check": {
@@ -2134,9 +2134,9 @@
         "composer"
       ],
       "inputs": [
-        "packages/php-ext/composer.json",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/tests/DeclarationsTest.php"
+        "legacy/packages/php-ext/composer.json",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php"
       ]
     },
     "rust-package-entry-check": {
@@ -2154,9 +2154,9 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/package.json",
-        "packages/ts/src/index.ts",
-        "packages/ts/tests/statement_fault_entry.mjs"
+        "legacy/packages/ts/package.json",
+        "legacy/packages/ts/src/index.ts",
+        "legacy/packages/ts/tests/statement_fault_entry.mjs"
       ]
     },
     "python-package-entry-check": {
@@ -2165,10 +2165,10 @@
         "python"
       ],
       "inputs": [
-        "packages/python/pyproject.toml",
-        "packages/python/src/polyspec/orm/__init__.py",
-        "packages/python/tests/test_package_entry.py",
-        "packages/python/tests/test_rollback_fault.py"
+        "legacy/packages/python/pyproject.toml",
+        "legacy/packages/python/src/polyspec/orm/__init__.py",
+        "legacy/packages/python/tests/test_package_entry.py",
+        "legacy/packages/python/tests/test_rollback_fault.py"
       ]
     },
     "package-check": {
@@ -2191,8 +2191,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/internal/dialects/ddl_physical_test.go",
-        "packages/go/internal/dialects/schema_documents_physical_test.go"
+        "legacy/packages/go/internal/dialects/ddl_physical_test.go",
+        "legacy/packages/go/internal/dialects/schema_documents_physical_test.go"
       ]
     },
     "dbspec-introspect-check": {
@@ -2202,10 +2202,10 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/orm/recipe_dbspec_introspect_test.go",
-        "packages/go/internal/recipe/introspect_step.go",
-        "packages/go/engine/dbspec/introspect.go",
-        "packages/go/engine/dbspec/introspect_sqlite.go",
+        "legacy/packages/go/orm/recipe_dbspec_introspect_test.go",
+        "legacy/packages/go/internal/recipe/introspect_step.go",
+        "legacy/packages/go/engine/dbspec/introspect.go",
+        "legacy/packages/go/engine/dbspec/introspect_sqlite.go",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
         "tests/dbspec/ddl.json"
@@ -2220,13 +2220,13 @@
         "flowmark"
       ],
       "inputs": [
-        "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
-        "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
-        "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
-        "packages/ts/tests/dbspec_introspect-markdown.test.mjs",
-        "packages/ts/tests/recipe_introspect.mjs",
-        "packages/ts/src/dbspec/introspect.ts",
-        "packages/ts/src/dbspec/introspect_sqlite.ts",
+        "legacy/packages/ts/tests/dbspec_introspect-mysql.test.mjs",
+        "legacy/packages/ts/tests/dbspec_introspect-postgres.test.mjs",
+        "legacy/packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
+        "legacy/packages/ts/tests/dbspec_introspect-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe_introspect.mjs",
+        "legacy/packages/ts/src/dbspec/introspect.ts",
+        "legacy/packages/ts/src/dbspec/introspect_sqlite.ts",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
         "tests/dbspec/ddl.json"
@@ -2243,12 +2243,12 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/DbspecIntrospectRecipeTest.php",
-        "packages/php/tests/RecipeIntrospect.php",
-        "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php/tests/DbspecCatalogChecksTest.php",
-        "packages/php/src/Dbspec/CatalogRows.php",
+        "legacy/packages/php/tests/DbspecIntrospectRecipeTest.php",
+        "legacy/packages/php/tests/RecipeIntrospect.php",
+        "legacy/packages/php/tests/CountingPdo.php",
+        "legacy/packages/php/tests/DbspecIntrospectTest.php",
+        "legacy/packages/php/tests/DbspecCatalogChecksTest.php",
+        "legacy/packages/php/src/Dbspec/CatalogRows.php",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
         "tests/dbspec/ddl.json"
@@ -2265,13 +2265,13 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecIntrospectRecipeTest.php",
-        "packages/php/tests/RecipeIntrospect.php",
-        "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
-        "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-        "packages/php-ext/src/introspect.c",
+        "legacy/packages/php/tests/DbspecIntrospectRecipeTest.php",
+        "legacy/packages/php/tests/RecipeIntrospect.php",
+        "legacy/packages/php/tests/DbspecIntrospectTest.php",
+        "legacy/packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+        "legacy/packages/php-ext/src/introspect.c",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
         "tests/dbspec/ddl.json"
@@ -2285,10 +2285,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/CannedCatalogPdo.php",
-        "packages/php/tests/dbspec_behaviour.php",
-        "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-        "packages/php/tests/DbspecBehaviourTest.php"
+        "legacy/packages/php/tests/CannedCatalogPdo.php",
+        "legacy/packages/php/tests/dbspec_behaviour.php",
+        "legacy/packages/php/tests/DbspecShowCreateIntrospectTest.php",
+        "legacy/packages/php/tests/DbspecBehaviourTest.php"
       ]
     },
     "dbspec-introspect-rust-check": {
@@ -2318,16 +2318,16 @@
         "flowmark"
       ],
       "inputs": [
-        "packages/python/tests/test_dbspec_introspect_mysql.py",
-        "packages/python/tests/test_dbspec_introspect_postgres.py",
-        "packages/python/tests/test_dbspec_introspect_sqlite.py",
-        "packages/python/tests/test_dbspec_introspect_markdown.py",
-        "packages/python/tests/recipe_introspect.py",
-        "packages/python/tests/dbspec_introspect_runner.py",
-        "packages/python/tests/test_dbspec_introspect_messages_none.py",
-        "packages/python/tests/testcase.py",
-        "packages/python/src/polyspec/orm/dbspec/introspect.py",
-        "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
+        "legacy/packages/python/tests/test_dbspec_introspect_mysql.py",
+        "legacy/packages/python/tests/test_dbspec_introspect_postgres.py",
+        "legacy/packages/python/tests/test_dbspec_introspect_sqlite.py",
+        "legacy/packages/python/tests/test_dbspec_introspect_markdown.py",
+        "legacy/packages/python/tests/recipe_introspect.py",
+        "legacy/packages/python/tests/dbspec_introspect_runner.py",
+        "legacy/packages/python/tests/test_dbspec_introspect_messages_none.py",
+        "legacy/packages/python/tests/testcase.py",
+        "legacy/packages/python/src/polyspec/orm/dbspec/introspect.py",
+        "legacy/packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
         "tests/dbspec/ddl.json"
@@ -2341,9 +2341,9 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/dbspec-php-interface-program.php",
-        "packages/php/tests/DbspecRunnerTest.php",
-        "packages/php/tests/DbspecPlanTest.php"
+        "legacy/packages/php/tests/dbspec-php-interface-program.php",
+        "legacy/packages/php/tests/DbspecRunnerTest.php",
+        "legacy/packages/php/tests/DbspecPlanTest.php"
       ]
     },
     "phpstan-test-runner-helper-check": {
@@ -2354,10 +2354,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/phpstan-runner.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/tests/ClientGenericsTest.php",
-        "packages/php/tests/ModelMethodsTest.php"
+        "legacy/packages/php/tests/phpstan-runner.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php/tests/ClientGenericsTest.php",
+        "legacy/packages/php/tests/ModelMethodsTest.php"
       ]
     },
     "catalog-mutation-helper-ts-check": {
@@ -2367,8 +2367,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/src/catalog.ts",
-        "packages/ts/tests/catalog-mutation-helper.test.mjs"
+        "legacy/packages/ts/src/catalog.ts",
+        "legacy/packages/ts/tests/catalog-mutation-helper.test.mjs"
       ]
     },
     "typescript-internal-column-error-helper-check": {
@@ -2378,8 +2378,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/internal-column-error.test.mjs"
+        "legacy/packages/ts/tests/internal-column-error.mjs",
+        "legacy/packages/ts/tests/internal-column-error.test.mjs"
       ]
     },
     "typescript-dbspec-plan-fixture-check": {
@@ -2389,8 +2389,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/dbspec-plan-fixture.mjs",
-        "packages/ts/tests/dbspec-plan-fixture.test.mjs"
+        "legacy/packages/ts/tests/dbspec-plan-fixture.mjs",
+        "legacy/packages/ts/tests/dbspec-plan-fixture.test.mjs"
       ]
     },
     "physical-command-case-helper-check": {
@@ -2413,8 +2413,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/capture-error.mjs",
-        "packages/ts/tests/capture-error.test.mjs"
+        "legacy/packages/ts/tests/capture-error.mjs",
+        "legacy/packages/ts/tests/capture-error.test.mjs"
       ]
     },
     "typescript-check-state-helper-check": {
@@ -2424,8 +2424,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/check-state.mjs",
-        "packages/ts/tests/check-state.test.mjs"
+        "legacy/packages/ts/tests/check-state.mjs",
+        "legacy/packages/ts/tests/check-state.test.mjs"
       ]
     },
     "typescript-test-exact-keys-check": {
@@ -2435,8 +2435,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/assertions.mjs",
-        "packages/ts/tests/assertions.test.mjs"
+        "legacy/packages/ts/tests/assertions.mjs",
+        "legacy/packages/ts/tests/assertions.test.mjs"
       ]
     },
     "typescript-performance-gate-unit-check": {
@@ -2447,9 +2447,9 @@
       "inputs": [
         "Makefile",
         "contracts/performance-references.json",
-        "packages/ts/tests/coverage_performance_gate.mjs",
-        "packages/ts/tests/coverage_performance_report.mjs",
-        "packages/ts/tests/coverage_performance_gate.test.mjs"
+        "legacy/packages/ts/tests/coverage_performance_gate.mjs",
+        "legacy/packages/ts/tests/coverage_performance_report.mjs",
+        "legacy/packages/ts/tests/coverage_performance_gate.test.mjs"
       ]
     },
     "mysql-test-options-helper-check": {
@@ -2459,8 +2459,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/mysql-test-options.mjs",
-        "packages/ts/tests/mysql-test-options.test.mjs"
+        "legacy/packages/ts/tests/mysql-test-options.mjs",
+        "legacy/packages/ts/tests/mysql-test-options.test.mjs"
       ]
     },
     "database-case-tests-helper-check": {
@@ -2470,8 +2470,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/database-case-tests.mjs",
-        "packages/ts/tests/database-case-tests.test.mjs"
+        "legacy/packages/ts/tests/database-case-tests.mjs",
+        "legacy/packages/ts/tests/database-case-tests.test.mjs"
       ]
     },
     "typescript-conditional-entry-helper-check": {
@@ -2481,8 +2481,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/conditional-entry.mjs",
-        "packages/ts/tests/conditional-entry.test.mjs"
+        "legacy/packages/ts/tests/conditional-entry.mjs",
+        "legacy/packages/ts/tests/conditional-entry.test.mjs"
       ]
     },
     "typescript-database-case-fixture-helper-check": {
@@ -2492,8 +2492,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/database-case-fixture.mjs",
-        "packages/ts/tests/database-case-fixture.test.mjs"
+        "legacy/packages/ts/tests/database-case-fixture.mjs",
+        "legacy/packages/ts/tests/database-case-fixture.test.mjs"
       ]
     },
     "catalog-mutation-helper-python-check": {
@@ -2503,9 +2503,9 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/python/src/polyspec/orm/catalog.py",
-        "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_described_temporal.py"
+        "legacy/packages/python/src/polyspec/orm/catalog.py",
+        "legacy/packages/python/tests/test_catalog_mutation_helper.py",
+        "legacy/packages/python/tests/test_catalog_described_temporal.py"
       ]
     },
     "dbspec-introspect-compare-check": {
@@ -2524,11 +2524,11 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/internal/dialects/introspect_compare_physical_test.go",
+        "legacy/packages/go/internal/dialects/introspect_compare_physical_test.go",
         "packages/rust/orm/examples/dbspec_introspect.rs",
         "tests/dbspec/stress.mts",
-        "packages/go/internal/dbspec/introspect/**",
-        "packages/python/tests/dbspec_introspect_runner.py"
+        "legacy/packages/go/internal/dbspec/introspect/**",
+        "legacy/packages/python/tests/dbspec_introspect_runner.py"
       ]
     },
     "perf-check": {
@@ -2540,7 +2540,7 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/bench/performance_measurement_test.go",
+        "legacy/packages/go/bench/performance_measurement_test.go",
         "scripts/perf-test.mts"
       ]
     },
@@ -2550,7 +2550,7 @@
         "go"
       ],
       "inputs": [
-        "packages/go/engine/dbspec/names_test.go"
+        "legacy/packages/go/engine/dbspec/names_test.go"
       ]
     },
     "dbspec-lock-go-check": {
@@ -2560,8 +2560,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/engine/dbspec/apply.go",
-        "packages/go/engine/dbspec/sqlite_lock_result_test.go"
+        "legacy/packages/go/engine/dbspec/apply.go",
+        "legacy/packages/go/engine/dbspec/sqlite_lock_result_test.go"
       ]
     },
     "dbspec-lock-php-check": {
@@ -2572,11 +2572,11 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/src/Dbspec/PlanApply.php",
-        "packages/php/tests/DbspecSqliteLockTest.php",
-        "packages/php/tests/DbspecSqliteLockCases.php",
-        "packages/php/tests/FakeSqliteLockStatement.php",
-        "packages/php/tests/FailingSqliteLockPdo.php"
+        "legacy/packages/php/src/Dbspec/PlanApply.php",
+        "legacy/packages/php/tests/DbspecSqliteLockTest.php",
+        "legacy/packages/php/tests/DbspecSqliteLockCases.php",
+        "legacy/packages/php/tests/FakeSqliteLockStatement.php",
+        "legacy/packages/php/tests/FailingSqliteLockPdo.php"
       ]
     },
     "dbspec-lock-php-extension-check": {
@@ -2588,12 +2588,12 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/src/apply.c",
-        "packages/php/tests/DbspecSqliteLockTest.php",
-        "packages/php/tests/DbspecSqliteLockCases.php",
-        "packages/php/tests/FakeSqliteLockStatement.php",
-        "packages/php/tests/FailingSqliteLockPdo.php",
-        "packages/php-ext/tests/DbspecSqliteLockNativeTest.php"
+        "legacy/packages/php-ext/src/apply.c",
+        "legacy/packages/php/tests/DbspecSqliteLockTest.php",
+        "legacy/packages/php/tests/DbspecSqliteLockCases.php",
+        "legacy/packages/php/tests/FakeSqliteLockStatement.php",
+        "legacy/packages/php/tests/FailingSqliteLockPdo.php",
+        "legacy/packages/php-ext/tests/DbspecSqliteLockNativeTest.php"
       ]
     },
     "dbspec-lock-python-check": {
@@ -2603,8 +2603,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/python/src/polyspec/orm/dbspec/apply.py",
-        "packages/python/tests/test_dbspec_sqlite_lock.py"
+        "legacy/packages/python/src/polyspec/orm/dbspec/apply.py",
+        "legacy/packages/python/tests/test_dbspec_sqlite_lock.py"
       ]
     },
     "dbspec-lock-rust-check": {
@@ -2626,8 +2626,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/src/dbspec/apply.ts",
-        "packages/ts/tests/dbspec-begin-exclusive-lock.mjs"
+        "legacy/packages/ts/src/dbspec/apply.ts",
+        "legacy/packages/ts/tests/dbspec-begin-exclusive-lock.mjs"
       ]
     },
     "ts-model-check": {
@@ -2637,8 +2637,8 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/tests/models-scan.mjs",
-        "packages/ts/tsconfig.build.json",
+        "legacy/packages/ts/tests/models-scan.mjs",
+        "legacy/packages/ts/tsconfig.build.json",
         "scripts/typescript/models.mts",
         "contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",
@@ -2657,8 +2657,8 @@
       ],
       "inputs": [
         "packages/dbspec-language/**",
-        "packages/ts/src/dbspec/**",
-        "packages/ts/tsconfig.build.json",
+        "legacy/packages/ts/src/dbspec/**",
+        "legacy/packages/ts/tsconfig.build.json",
         "tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
@@ -2680,9 +2680,9 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecPlanApplyTest.php",
-        "packages/php/tests/DbspecPlanReaderTest.php",
-        "packages/php/tests/dbspec_plan_cases.php"
+        "legacy/packages/php/tests/DbspecPlanApplyTest.php",
+        "legacy/packages/php/tests/DbspecPlanReaderTest.php",
+        "legacy/packages/php/tests/dbspec_plan_cases.php"
       ]
     },
     "dbspec-php-check/set": {
@@ -2692,10 +2692,10 @@
         "composer"
       ],
       "inputs": [
-        "packages/php/src/Dbspec/SetReader.php",
-        "packages/php/tests/DbspecSetTest.php",
-        "packages/php/tests/DbspecReadSetRecipeTest.php",
-        "packages/php/tests/SetReaderDiagnosticsTest.php"
+        "legacy/packages/php/src/Dbspec/SetReader.php",
+        "legacy/packages/php/tests/DbspecSetTest.php",
+        "legacy/packages/php/tests/DbspecReadSetRecipeTest.php",
+        "legacy/packages/php/tests/SetReaderDiagnosticsTest.php"
       ]
     },
     "dbspec-php-check/render": {
@@ -2707,8 +2707,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecRenderStatementsRecipeTest.php",
-        "packages/php/tests/DbspecTimedCases.php",
+        "legacy/packages/php/tests/DbspecRenderStatementsRecipeTest.php",
+        "legacy/packages/php/tests/DbspecTimedCases.php",
         "tests/dbspec/ddl.json"
       ]
     },
@@ -2723,11 +2723,11 @@
         "databases"
       ],
       "inputs": [
-        "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
-        "packages/php-ext/tests/DbspecRulesNativeTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/src/**",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php",
+        "legacy/packages/php-ext/tests/DbspecBehaviourNativeTest.php",
+        "legacy/packages/php-ext/tests/DbspecRulesNativeTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/src/**",
         "tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
@@ -2736,13 +2736,13 @@
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
         "tests/dbspec/schema-definition.json",
-        "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
@@ -2765,19 +2765,19 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-        "packages/php-ext/tests/ModelTypesPendingFixture.php",
-        "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
-        "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
-        "packages/php/tests/PlanCacheMemoryTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/declarations_functions.php",
-        "packages/php/tests/ModelTypesSourceTest.php",
-        "packages/php/tests/FuncSourceAdapterTest.php",
-        "packages/php/tests/DecimalModelDbTest.php",
-        "packages/php/tests/model-types-weak-caller.php",
-        "packages/php-ext/src/**"
+        "legacy/packages/php-ext/tests/ModelTypesSurfaceTest.php",
+        "legacy/packages/php-ext/tests/ModelTypesPendingFixture.php",
+        "legacy/packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+        "legacy/packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+        "legacy/packages/php/tests/PlanCacheMemoryTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php",
+        "legacy/packages/php-ext/tests/declarations_functions.php",
+        "legacy/packages/php/tests/ModelTypesSourceTest.php",
+        "legacy/packages/php/tests/FuncSourceAdapterTest.php",
+        "legacy/packages/php/tests/DecimalModelDbTest.php",
+        "legacy/packages/php/tests/model-types-weak-caller.php",
+        "legacy/packages/php-ext/src/**"
       ]
     },
     "model-query-write-php-extension-unit-check": {
@@ -2789,15 +2789,15 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/php/testing/conformance/runner.php",
+        "legacy/packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+        "legacy/packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
-        "packages/php/tests/bench.php",
-        "packages/php/src/Model.php",
-        "packages/php-ext/src/model_read.c",
-        "packages/php-ext/src/model_write.c",
-        "packages/php-ext/src/model_assembly.c",
-        "packages/php-ext/src/model_query.c"
+        "legacy/packages/php/tests/bench.php",
+        "legacy/packages/php/src/Model.php",
+        "legacy/packages/php-ext/src/model_read.c",
+        "legacy/packages/php-ext/src/model_write.c",
+        "legacy/packages/php-ext/src/model_assembly.c",
+        "legacy/packages/php-ext/src/model_query.c"
       ]
     },
     "model-native-php-extension-check": {
@@ -2808,32 +2808,32 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php/src/Model.php",
-        "packages/php/tests/ModelMethodsTest.php",
-        "packages/php/tests/ModelTypesSourceTest.php",
-        "packages/php/tests/DecimalModelDbTest.php",
-        "packages/php/tests/model-types-weak-caller.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/php-ext/tests/MarkdownNativeTest.php",
-        "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-        "packages/php-ext/tests/ModelDslNativeTest.php",
-        "packages/php-ext/tests/ModelReadNativeTest.php",
-        "packages/php-ext/tests/ModelStreamReadTest.php",
-        "packages/php-ext/tests/ModelWriteSurfaceTest.php",
-        "packages/php-ext/tests/ModelAssemblyTest.php",
-        "packages/php-ext/tests/RuntimeModelTest.php",
-        "packages/php-ext/tests/ChainNativeSurfaceTest.php",
-        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
-        "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
-        "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-        "packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
-        "packages/php/tests/PlanCacheMemoryTest.php",
-        "packages/php-ext/tests/model-weak-caller.php",
-        "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/declarations_functions.php",
-        "packages/php-ext/src/**",
+        "legacy/packages/php/src/Model.php",
+        "legacy/packages/php/tests/ModelMethodsTest.php",
+        "legacy/packages/php/tests/ModelTypesSourceTest.php",
+        "legacy/packages/php/tests/DecimalModelDbTest.php",
+        "legacy/packages/php/tests/model-types-weak-caller.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php-ext/tests/ModelNativeTest.php",
+        "legacy/packages/php/tests/NativeFixtureVectors.php",
+        "legacy/packages/php-ext/tests/MarkdownNativeTest.php",
+        "legacy/packages/php-ext/tests/AuditLazyFakePdoTest.php",
+        "legacy/packages/php-ext/tests/ModelDslNativeTest.php",
+        "legacy/packages/php-ext/tests/ModelReadNativeTest.php",
+        "legacy/packages/php-ext/tests/ModelStreamReadTest.php",
+        "legacy/packages/php-ext/tests/ModelWriteSurfaceTest.php",
+        "legacy/packages/php-ext/tests/ModelAssemblyTest.php",
+        "legacy/packages/php-ext/tests/RuntimeModelTest.php",
+        "legacy/packages/php-ext/tests/ChainNativeSurfaceTest.php",
+        "legacy/packages/php-ext/tests/RegistrySchemaNativeTest.php",
+        "legacy/packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+        "legacy/packages/php-ext/tests/DecimalModelDbNativeTest.php",
+        "legacy/packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
+        "legacy/packages/php/tests/PlanCacheMemoryTest.php",
+        "legacy/packages/php-ext/tests/model-weak-caller.php",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php",
+        "legacy/packages/php-ext/tests/declarations_functions.php",
+        "legacy/packages/php-ext/src/**",
         "Makefile"
       ]
     },
@@ -2845,9 +2845,9 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php-ext/tests/ParameterChunkingNativeTest.php",
-        "packages/php-ext/tests/NativeQueryProbePdo.php",
-        "packages/php-ext/tests/NativeQueryProbeStatement.php",
+        "legacy/packages/php-ext/tests/ParameterChunkingNativeTest.php",
+        "legacy/packages/php-ext/tests/NativeQueryProbePdo.php",
+        "legacy/packages/php-ext/tests/NativeQueryProbeStatement.php",
         "Makefile"
       ]
     },
@@ -2861,8 +2861,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php"
+        "legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php"
       ]
     },
     "mysql-session-php-extension-check": {
@@ -2875,8 +2875,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlSessionNativeTest.php",
-        "packages/php-ext/tests/bootstrap.php"
+        "legacy/packages/php-ext/tests/MysqlSessionNativeTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php"
       ]
     },
     "transaction-failure-php-extension-check": {
@@ -2888,11 +2888,11 @@
         "databases"
       ],
       "inputs": [
-        "packages/php-ext/tests/TransactionFailureNativeTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/TransactionFailureCases.php",
-        "packages/php/tests/ModelTestFailingPdo.php",
-        "packages/php-ext/src/**",
+        "legacy/packages/php-ext/tests/TransactionFailureNativeTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/TransactionFailureCases.php",
+        "legacy/packages/php/tests/ModelTestFailingPdo.php",
+        "legacy/packages/php-ext/src/**",
         "Makefile"
       ]
     },
@@ -2902,10 +2902,10 @@
         "go"
       ],
       "inputs": [
-        "packages/go/orm/coverage_transaction_failure_test.go",
-        "packages/go/orm/failing_driver_test.go",
-        "packages/go/orm/test_helpers_test.go",
-        "packages/go/orm/schema_helpers_test.go",
+        "legacy/packages/go/orm/coverage_transaction_failure_test.go",
+        "legacy/packages/go/orm/failing_driver_test.go",
+        "legacy/packages/go/orm/test_helpers_test.go",
+        "legacy/packages/go/orm/schema_helpers_test.go",
         "Makefile"
       ]
     },
@@ -2916,13 +2916,13 @@
         "composer"
       ],
       "inputs": [
-        "packages/php/src/Db.php",
-        "packages/php/tests/TransactionFailureTest.php",
-        "packages/php/tests/TransactionFailureCases.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/TransactionTrackingPdo.php",
-        "packages/php/tests/ModelTestFailingPdo.php",
-        "packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/tests/TransactionFailureTest.php",
+        "legacy/packages/php/tests/TransactionFailureCases.php",
+        "legacy/packages/php/tests/UninitializedRecordingPdo.php",
+        "legacy/packages/php/tests/TransactionTrackingPdo.php",
+        "legacy/packages/php/tests/ModelTestFailingPdo.php",
+        "legacy/packages/php/tests/bootstrap.php",
         "Makefile"
       ]
     },
@@ -2935,16 +2935,16 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/bin/orm-sqlite-cancel-build.php",
-        "packages/php/composer.json",
-        "packages/php/src/Cancellation.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/DbState.php",
-        "packages/php/src/Orm.php",
-        "packages/php/src/SqliteCancellation.php",
-        "packages/php/src/TxFrame.php",
-        "packages/php/src/native/sqlite_cancel.c",
-        "packages/php/tests/QueryCancellationTest.php",
+        "legacy/packages/php/bin/orm-sqlite-cancel-build.php",
+        "legacy/packages/php/composer.json",
+        "legacy/packages/php/src/Cancellation.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/DbState.php",
+        "legacy/packages/php/src/Orm.php",
+        "legacy/packages/php/src/SqliteCancellation.php",
+        "legacy/packages/php/src/TxFrame.php",
+        "legacy/packages/php/src/native/sqlite_cancel.c",
+        "legacy/packages/php/tests/QueryCancellationTest.php",
         "contracts/features.json"
       ]
     },
@@ -2954,11 +2954,11 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/tests/transaction-failure.mjs",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/driver.ts",
-        "packages/ts/src/runtime_error.ts",
-        "packages/ts/src/testing.ts",
+        "legacy/packages/ts/tests/transaction-failure.mjs",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/driver.ts",
+        "legacy/packages/ts/src/runtime_error.ts",
+        "legacy/packages/ts/src/testing.ts",
         "Makefile"
       ]
     },
@@ -2968,13 +2968,13 @@
         "python"
       ],
       "inputs": [
-        "packages/python/tests/test_rollback_fault.py",
-        "packages/python/tests/test_sqlite.py",
-        "packages/python/tests/entry_point_check.py",
-        "packages/python/tests/testcase.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/errors.py",
-        "packages/python/src/polyspec/orm/testing/__init__.py",
+        "legacy/packages/python/tests/test_rollback_fault.py",
+        "legacy/packages/python/tests/test_sqlite.py",
+        "legacy/packages/python/tests/entry_point_check.py",
+        "legacy/packages/python/tests/testcase.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/errors.py",
+        "legacy/packages/python/src/polyspec/orm/testing/__init__.py",
         "Makefile"
       ]
     },
@@ -3000,10 +3000,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
-        "packages/php/src/OrmException.php"
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
+        "legacy/packages/php/src/OrmException.php"
       ]
     },
     "connection-pool-resource-bounds-typescript-check": {
@@ -3014,8 +3014,8 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/ts/tests/pool_bounds.mjs",
-        "packages/ts/tests/case-database.mjs",
+        "legacy/packages/ts/tests/pool_bounds.mjs",
+        "legacy/packages/ts/tests/case-database.mjs",
         "tests/testcase.mts"
       ]
     },
@@ -3029,15 +3029,15 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/src/orm.c",
-        "packages/php/src/Orm.php",
-        "packages/php/src/Db.php",
-        "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "packages/php/tests/case_database.php",
-        "packages/php/tests/bench.php",
+        "legacy/packages/php-ext/tests/ConnectionUtcNativeTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/src/orm.c",
+        "legacy/packages/php/src/Orm.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/models.txt",
+        "legacy/packages/php/bin/orm-gen",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
       ]
     },
@@ -3055,28 +3055,28 @@
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
-        "packages/go/engine/dbspec/apply.go",
-        "packages/go/engine/dbspec/apply_test.go",
-        "packages/php-ext/src/apply.c",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php/src/Dbspec/PlanApply.php",
-        "packages/php-ext/tests/DbspecReleaseHooksTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/DbspecApplyCleanupTest.php",
-        "packages/php/tests/dbspec_verify_errors_case.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/FailingPdo.php",
-        "packages/python/src/polyspec/orm/dbspec/apply.py",
-        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+        "legacy/packages/go/engine/dbspec/apply.go",
+        "legacy/packages/go/engine/dbspec/apply_test.go",
+        "legacy/packages/php-ext/src/apply.c",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php/src/Dbspec/PlanApply.php",
+        "legacy/packages/php-ext/tests/DbspecReleaseHooksTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/DbspecApplyCleanupTest.php",
+        "legacy/packages/php/tests/dbspec_verify_errors_case.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/tests/FailingPdo.php",
+        "legacy/packages/python/src/polyspec/orm/dbspec/apply.py",
+        "legacy/packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/rust/orm/src/dbspec/apply.rs",
-        "packages/ts/src/dbspec/apply.ts",
-        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+        "legacy/packages/ts/src/dbspec/apply.ts",
+        "legacy/packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "tests/dbspec/apply-verification-errors.json",
-        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
-        "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+        "legacy/packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+        "legacy/packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
         "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
-        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
+        "legacy/packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
       ]
     },
     "dbspec-apply-pairs-check": {
@@ -3095,10 +3095,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/internal/dialects/apply_clients_physical_test.go",
+        "legacy/packages/go/internal/dialects/apply_clients_physical_test.go",
         "packages/rust/orm/examples/dbspec_apply.rs",
-        "packages/go/internal/dbspec/apply/**",
-        "packages/python/tests/dbspec_apply_runner.py"
+        "legacy/packages/go/internal/dbspec/apply/**",
+        "legacy/packages/python/tests/dbspec_apply_runner.py"
       ]
     },
     "feature-unit-check": {
@@ -3128,16 +3128,16 @@
         "docs/features.ko.md",
         "tests/testcase.mts",
         "Makefile",
-        "packages/go/orm/group_rows_test.go",
-        "packages/php/tests/GroupRowsTest.php",
-        "packages/php-ext/tests/ModelAssemblyTest.php",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/python/src/polyspec/orm/model_exec.py",
-        "packages/python/tests/test_group_rows.py",
+        "legacy/packages/go/orm/group_rows_test.go",
+        "legacy/packages/php/tests/GroupRowsTest.php",
+        "legacy/packages/php-ext/tests/ModelAssemblyTest.php",
+        "legacy/packages/php-ext/tests/ModelNativeTest.php",
+        "legacy/packages/php/tests/NativeFixtureVectors.php",
+        "legacy/packages/python/src/polyspec/orm/model_exec.py",
+        "legacy/packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/row.rs",
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/group_rows.mjs",
+        "legacy/packages/ts/src/model.ts",
+        "legacy/packages/ts/tests/group_rows.mjs",
         "contracts/implementations.json"
       ]
     },
@@ -3156,20 +3156,20 @@
         "Makefile",
         "contracts/features.json",
         "contracts/check-inputs.json",
-        "packages/go/orm/group_rows.go",
-        "packages/go/orm/group_rows_test.go",
-        "packages/php/src/GroupRow.php",
-        "packages/php/tests/GroupRowsTest.php",
-        "packages/php-ext/src/model_assembly.c",
-        "packages/php-ext/tests/ModelAssemblyTest.php",
-        "packages/python/src/polyspec/orm/group_rows.py",
-        "packages/python/src/polyspec/orm/model_exec.py",
-        "packages/python/tests/test_group_rows.py",
+        "legacy/packages/go/orm/group_rows.go",
+        "legacy/packages/go/orm/group_rows_test.go",
+        "legacy/packages/php/src/GroupRow.php",
+        "legacy/packages/php/tests/GroupRowsTest.php",
+        "legacy/packages/php-ext/src/model_assembly.c",
+        "legacy/packages/php-ext/tests/ModelAssemblyTest.php",
+        "legacy/packages/python/src/polyspec/orm/group_rows.py",
+        "legacy/packages/python/src/polyspec/orm/model_exec.py",
+        "legacy/packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/src/row.rs",
-        "packages/ts/src/group_rows.ts",
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/group_rows.mjs",
+        "legacy/packages/ts/src/group_rows.ts",
+        "legacy/packages/ts/src/model.ts",
+        "legacy/packages/ts/tests/group_rows.mjs",
         "contracts/implementations.json"
       ]
     },
@@ -3256,15 +3256,15 @@
       ],
       "inputs": [
         "mise.toml",
-        "packages/python/src/**",
-        "packages/python/testing/**",
-        "packages/python/examples/**",
-        "packages/python/pyproject.toml",
-        "packages/python/uv.lock",
-        "packages/python/vulture_whitelist.py",
+        "legacy/packages/python/src/**",
+        "legacy/packages/python/testing/**",
+        "legacy/packages/python/examples/**",
+        "legacy/packages/python/pyproject.toml",
+        "legacy/packages/python/uv.lock",
+        "legacy/packages/python/vulture_whitelist.py",
         "tests/interfaces/contracts/python_signature_test.go",
-        "packages/python/testing/interfaces/python.py",
-        "packages/python/testing/conformance/runner_python.py",
+        "legacy/packages/python/testing/interfaces/python.py",
+        "legacy/packages/python/testing/conformance/runner_python.py",
         "tests/dbspec/show-create.json",
         "tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
@@ -3286,11 +3286,11 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/python/src/polyspec/orm/names.py",
-        "packages/python/src/polyspec/orm/core.py",
-        "packages/python/src/polyspec/orm/engine/planner.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/tests/test_complex_query.py",
+        "legacy/packages/python/src/polyspec/orm/names.py",
+        "legacy/packages/python/src/polyspec/orm/core.py",
+        "legacy/packages/python/src/polyspec/orm/engine/planner.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/tests/test_complex_query.py",
         "contracts/fixtures/complex_query/complex_query.dbs"
       ]
     },
@@ -3300,9 +3300,9 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/ts/src/dbspec/introspect_catalog.ts",
-        "packages/ts/src/dbspec/mermaid.ts",
-        "packages/ts/tests/dbspec-mermaid-errors.mjs",
+        "legacy/packages/ts/src/dbspec/introspect_catalog.ts",
+        "legacy/packages/ts/src/dbspec/mermaid.ts",
+        "legacy/packages/ts/tests/dbspec-mermaid-errors.mjs",
         "Makefile"
       ]
     },
@@ -3312,9 +3312,9 @@
         "python"
       ],
       "inputs": [
-        "packages/python/src/polyspec/orm/dbspec/introspect_catalog.py",
-        "packages/python/src/polyspec/orm/dbspec/mermaid.py",
-        "packages/python/tests/mermaid_error_boundary.py",
+        "legacy/packages/python/src/polyspec/orm/dbspec/introspect_catalog.py",
+        "legacy/packages/python/src/polyspec/orm/dbspec/mermaid.py",
+        "legacy/packages/python/tests/mermaid_error_boundary.py",
         "Makefile"
       ]
     },
@@ -3325,10 +3325,10 @@
         "composer"
       ],
       "inputs": [
-        "packages/php/src/Dbspec/Catalog.php",
-        "packages/php/src/Dbspec/CatalogDocumentBuildException.php",
-        "packages/php/src/Dbspec/Mermaid.php",
-        "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+        "legacy/packages/php/src/Dbspec/Catalog.php",
+        "legacy/packages/php/src/Dbspec/CatalogDocumentBuildException.php",
+        "legacy/packages/php/src/Dbspec/Mermaid.php",
+        "legacy/packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
         "Makefile"
       ]
     },
@@ -3340,15 +3340,15 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php-ext/src/catalog.c",
-        "packages/php-ext/src/mermaid.c",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/util.c",
-        "packages/php-ext/src/dbspec.h",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/testing/native/module.c",
-        "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+        "legacy/packages/php-ext/src/catalog.c",
+        "legacy/packages/php-ext/src/mermaid.c",
+        "legacy/packages/php-ext/src/polyspec_orm.c",
+        "legacy/packages/php-ext/src/util.c",
+        "legacy/packages/php-ext/src/dbspec.h",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/testing/native/module.c",
+        "legacy/packages/php-ext/tests/MermaidErrorBoundaryTest.php",
         "Makefile"
       ]
     },
@@ -3360,15 +3360,15 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/mermaid.c",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/parent_slot_sql.c",
-        "packages/php-ext/src/parent_slot_sql.h",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/testing/native/module.c",
-        "packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/mermaid.c",
+        "legacy/packages/php-ext/src/polyspec_orm.c",
+        "legacy/packages/php-ext/src/parent_slot_sql.c",
+        "legacy/packages/php-ext/src/parent_slot_sql.h",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/testing/native/module.c",
+        "legacy/packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
         "Makefile"
       ]
     },
@@ -3379,7 +3379,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/scripts/build.sh",
         "tests/php-ext/build-logs.test.mts"
       ]
     },
@@ -3392,10 +3392,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c",
-        "packages/php-ext/src/polyspec_orm.stub.php"
+        "legacy/packages/php/tests/request_hook_cases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c",
+        "legacy/packages/php-ext/src/polyspec_orm.stub.php"
       ]
     },
     "rust-causes-check": {
@@ -3438,9 +3438,9 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/orm/catalog.go",
-        "packages/go/orm/catalog_session_error_test.go",
-        "packages/go/orm/failing_driver_test.go"
+        "legacy/packages/go/orm/catalog.go",
+        "legacy/packages/go/orm/catalog_session_error_test.go",
+        "legacy/packages/go/orm/failing_driver_test.go"
       ]
     },
     "catalog-value-go-check": {
@@ -3450,10 +3450,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/orm/catalog.go",
-        "packages/go/orm/catalog_values.go",
-        "packages/go/orm/catalog_values_test.go",
-        "packages/go/orm/failing_driver_test.go"
+        "legacy/packages/go/orm/catalog.go",
+        "legacy/packages/go/orm/catalog_values.go",
+        "legacy/packages/go/orm/catalog_values_test.go",
+        "legacy/packages/go/orm/failing_driver_test.go"
       ]
     },
     "catalog-described-temporal-go-check": {
@@ -3463,16 +3463,16 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/go/orm/catalog.go",
-        "packages/go/orm/catalog_insert_defaults.go",
-        "packages/go/orm/catalog_metadata.go",
-        "packages/go/orm/catalog_mutation.go",
-        "packages/go/orm/catalog_mutation_test.go",
-        "packages/go/orm/catalog_page.go",
-        "packages/go/orm/catalog_query.go",
-        "packages/go/orm/catalog_temporal.go",
-        "packages/go/orm/catalog_temporal_test.go",
-        "packages/go/orm/catalog_values.go"
+        "legacy/packages/go/orm/catalog.go",
+        "legacy/packages/go/orm/catalog_insert_defaults.go",
+        "legacy/packages/go/orm/catalog_metadata.go",
+        "legacy/packages/go/orm/catalog_mutation.go",
+        "legacy/packages/go/orm/catalog_mutation_test.go",
+        "legacy/packages/go/orm/catalog_page.go",
+        "legacy/packages/go/orm/catalog_query.go",
+        "legacy/packages/go/orm/catalog_temporal.go",
+        "legacy/packages/go/orm/catalog_temporal_test.go",
+        "legacy/packages/go/orm/catalog_values.go"
       ]
     },
     "catalog-php-extension-surface-check": {
@@ -3485,20 +3485,20 @@
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
-        "packages/php/src/**",
-        "packages/php-ext/**",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/CatalogPageValidationTest.php",
-        "packages/php/tests/CatalogAnswerPdo.php",
-        "packages/php/tests/CatalogAnswerStatement.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/coverage_cases.php",
-        "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-        "packages/php-ext/tests/CatalogPageMutationPdo.php",
-        "packages/php-ext/tests/CatalogPageMutationStatement.php",
-        "packages/php/tests/CatalogPostgresTemporalCases.php",
-        "packages/php/tests/CatalogPostgresTemporalPdo.php",
-        "packages/php/tests/CatalogUnreadableStream.php"
+        "legacy/packages/php/src/**",
+        "legacy/packages/php-ext/**",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/tests/CatalogPageValidationTest.php",
+        "legacy/packages/php/tests/CatalogAnswerPdo.php",
+        "legacy/packages/php/tests/CatalogAnswerStatement.php",
+        "legacy/packages/php/tests/UninitializedRecordingPdo.php",
+        "legacy/packages/php/tests/coverage_cases.php",
+        "legacy/packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+        "legacy/packages/php-ext/tests/CatalogPageMutationPdo.php",
+        "legacy/packages/php-ext/tests/CatalogPageMutationStatement.php",
+        "legacy/packages/php/tests/CatalogPostgresTemporalCases.php",
+        "legacy/packages/php/tests/CatalogPostgresTemporalPdo.php",
+        "legacy/packages/php/tests/CatalogUnreadableStream.php"
       ]
     },
     "native-arginfo-php-extension-check": {
@@ -3510,39 +3510,39 @@
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php/src/Model.php",
-        "packages/php/models.txt",
-        "packages/php-ext/scripts/build.sh",
+        "legacy/packages/php/src/Model.php",
+        "legacy/packages/php/models.txt",
+        "legacy/packages/php-ext/scripts/build.sh",
         "scripts/php/php-ext-build.mts",
         "scripts/php/php-ext-build-cache.test.mts",
-        "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/aes_utils.c",
-        "packages/php-ext/src/aes_utils.h",
-        "packages/php-ext/src/privilege_utils.c",
-        "packages/php-ext/src/privilege_utils.h",
-        "packages/php-ext/src/utils.c",
-        "packages/php-ext/src/utils.h",
-        "packages/php-ext/src/schema_utils.c",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/introspect.c",
-        "packages/php-ext/src/dbspec.h",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/src/aes_keyring.c",
-        "packages/php-ext/src/aes_keyring.h",
-        "packages/php-ext/src/codec.c",
-        "packages/php-ext/src/codec.h",
-        "packages/php-ext/tests/ArginfoBuildTest.php",
-        "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/php-ext/tests/CollectionTest.php",
-        "packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/php-ext/tests/AesUtilsNativeTest.php",
-        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
-        "packages/php-ext/tests/UtilsNativeTest.php",
-        "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-        "packages/php-ext/tests/declarations_functions.php",
+        "legacy/packages/php-ext/src/polyspec_orm.stub.php",
+        "legacy/packages/php-ext/src/polyspec_orm.c",
+        "legacy/packages/php-ext/src/aes_utils.c",
+        "legacy/packages/php-ext/src/aes_utils.h",
+        "legacy/packages/php-ext/src/privilege_utils.c",
+        "legacy/packages/php-ext/src/privilege_utils.h",
+        "legacy/packages/php-ext/src/utils.c",
+        "legacy/packages/php-ext/src/utils.h",
+        "legacy/packages/php-ext/src/schema_utils.c",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/introspect.c",
+        "legacy/packages/php-ext/src/dbspec.h",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/src/aes_keyring.c",
+        "legacy/packages/php-ext/src/aes_keyring.h",
+        "legacy/packages/php-ext/src/codec.c",
+        "legacy/packages/php-ext/src/codec.h",
+        "legacy/packages/php-ext/tests/ArginfoBuildTest.php",
+        "legacy/packages/php-ext/tests/DeclarationsTest.php",
+        "legacy/packages/php-ext/tests/ModelNativeTest.php",
+        "legacy/packages/php/tests/NativeFixtureVectors.php",
+        "legacy/packages/php-ext/tests/CollectionTest.php",
+        "legacy/packages/php-ext/tests/OrmExceptionNativeTest.php",
+        "legacy/packages/php-ext/tests/AesUtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/UtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/SchemaUtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/declarations_functions.php",
         "Makefile"
       ]
     },
@@ -3557,15 +3557,15 @@
         "Makefile",
         "config/release.json",
         "contracts/features.json",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/**",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
-        "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-        "packages/php-ext/tests/QueryCancellationNativeTest.php",
-        "packages/php/src/native/sqlite_cancel.c",
-        "packages/php/tests/CoverageDsnTest.php",
-        "packages/php/models.txt"
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/src/**",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+        "legacy/packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+        "legacy/packages/php-ext/tests/QueryCancellationNativeTest.php",
+        "legacy/packages/php/src/native/sqlite_cancel.c",
+        "legacy/packages/php/tests/CoverageDsnTest.php",
+        "legacy/packages/php/models.txt"
       ]
     },
     "php-query-cancellation-extension-check": {
@@ -3580,14 +3580,14 @@
         "Makefile",
         "config/release.json",
         "contracts/features.json",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/**",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/QueryCancellationNativeTest.php",
-        "packages/php/src/native/sqlite_cancel.c",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/models.txt"
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/src/**",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/QueryCancellationNativeTest.php",
+        "legacy/packages/php/src/native/sqlite_cancel.c",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/models.txt"
       ]
     },
     "audit-native-method-assertions-helper-check": {
@@ -3600,12 +3600,12 @@
       "inputs": [
         "Makefile",
         "contracts/features.json",
-        "packages/php/models.txt",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/NativeMethodAssertions.php",
-        "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/models.txt",
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/NativeMethodAssertions.php",
+        "legacy/packages/php-ext/tests/AuditNativeMethodsTest.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "request-hook-audit-native-binding-check": {
@@ -3617,10 +3617,10 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/tests/coverage_cases.php",
+        "legacy/packages/php-ext/tests/AuditNativeMethodsTest.php",
+        "legacy/packages/php/tests/request_hook_cases.php",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/tests/coverage_cases.php",
         "contracts/fixtures/request_hook/request_hook.dbs",
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
@@ -3646,9 +3646,9 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php/tests/DatabaseTestAssertions.php",
-        "packages/php/tests/DatabaseTestAssertionsTest.php",
-        "packages/php/tests/WarningStreamProtocol.php"
+        "legacy/packages/php/tests/DatabaseTestAssertions.php",
+        "legacy/packages/php/tests/DatabaseTestAssertionsTest.php",
+        "legacy/packages/php/tests/WarningStreamProtocol.php"
       ]
     },
     "native-api-equivalence-check": {
@@ -3661,21 +3661,21 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/src/aes_utils.c",
-        "packages/php-ext/src/orm.c",
-        "packages/php-ext/src/schema_utils.c",
-        "packages/php-ext/src/utils.c",
-        "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-        "packages/php-ext/tests/UtilsNativeTest.php",
-        "packages/php-ext/tests/NativeTestEventLog.php",
-        "packages/php/tests/WasInsertedCases.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php-ext/tests/AesUtilsNativeTest.php",
-        "packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/php/tests/case_database.php"
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/src/aes_utils.c",
+        "legacy/packages/php-ext/src/orm.c",
+        "legacy/packages/php-ext/src/schema_utils.c",
+        "legacy/packages/php-ext/src/utils.c",
+        "legacy/packages/php-ext/tests/SchemaUtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/UtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/NativeTestEventLog.php",
+        "legacy/packages/php/tests/WasInsertedCases.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/AesUtilsNativeTest.php",
+        "legacy/packages/php-ext/tests/OrmExceptionNativeTest.php",
+        "legacy/packages/php/tests/case_database.php"
       ]
     },
     "ir-validate-check": {
@@ -3692,16 +3692,16 @@
       "inputs": [
         "tests/ir/validate.json",
         "scripts/features/schema/recipe.schema.json",
-        "packages/go/engine/ir/recipe_validate_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/php/tests/IrValidateRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
-        "packages/ts/tests/engine.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/python/tests/test_ir_validate_none.py",
-        "packages/python/tests/recipe.py",
+        "legacy/packages/go/engine/ir/recipe_validate_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/php/tests/IrValidateRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
+        "legacy/packages/ts/tests/engine.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/python/tests/test_ir_validate_none.py",
+        "legacy/packages/python/tests/recipe.py",
         "packages/rust/tests/tests/all/ir_validate_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
@@ -3740,7 +3740,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/go/internal/conformance/**"
+        "legacy/packages/go/internal/conformance/**"
       ]
     },
     "conformance-generated-methods-check/typescript": {
@@ -3756,8 +3756,8 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/ts/testing/conformance/runner_typescript.mts",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/testing/conformance/runner_typescript.mts",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "conformance-generated-methods-check/python": {
@@ -3774,7 +3774,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/python/testing/conformance/runner_python.py"
+        "legacy/packages/python/testing/conformance/runner_python.py"
       ]
     },
     "conformance-generated-methods-check/php": {
@@ -3792,7 +3792,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/php/testing/conformance/runner.php"
+        "legacy/packages/php/testing/conformance/runner.php"
       ]
     },
     "conformance-generated-methods-check/php-extension": {
@@ -3811,7 +3811,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/php/testing/conformance/runner.php"
+        "legacy/packages/php/testing/conformance/runner.php"
       ]
     },
     "conformance-generated-methods-check/rust": {
@@ -3847,7 +3847,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/go/internal/conformance/**"
+        "legacy/packages/go/internal/conformance/**"
       ]
     },
     "conformance-fixed-clock-check/typescript": {
@@ -3863,8 +3863,8 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/ts/testing/conformance/runner_typescript.mts",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/testing/conformance/runner_typescript.mts",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "conformance-fixed-clock-check/python": {
@@ -3881,7 +3881,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/python/testing/conformance/runner_python.py"
+        "legacy/packages/python/testing/conformance/runner_python.py"
       ]
     },
     "conformance-fixed-clock-check/php": {
@@ -3899,7 +3899,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/php/testing/conformance/runner.php"
+        "legacy/packages/php/testing/conformance/runner.php"
       ]
     },
     "conformance-fixed-clock-check/php-extension": {
@@ -3918,7 +3918,7 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/php/testing/conformance/runner.php"
+        "legacy/packages/php/testing/conformance/runner.php"
       ]
     },
     "conformance-fixed-clock-check/rust": {
@@ -3948,9 +3948,9 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/go/model/refusal_test.go",
-        "packages/ts/tests/refusal-before-request.mjs",
-        "packages/ts/tests/tsc-diagnostics.mjs",
+        "legacy/packages/go/model/refusal_test.go",
+        "legacy/packages/ts/tests/refusal-before-request.mjs",
+        "legacy/packages/ts/tests/tsc-diagnostics.mjs",
         "packages/rust/testing/compiler-fixtures/cases.json"
       ]
     },
@@ -3968,15 +3968,15 @@
       "inputs": [
         "scripts/features/schema/recipe.schema.json",
         "scripts/features/schema/recipe-keys.json",
-        "packages/go/internal/recipe/keys.go",
-        "packages/go/internal/recipe/keys_test.go",
-        "packages/ts/tests/recipe_keys.mjs",
-        "packages/ts/tests/recipe_keys.test.mjs",
-        "packages/python/tests/recipe_keys.py",
-        "packages/python/tests/test_recipe_keys.py",
-        "packages/php/tests/RecipeKeys.php",
-        "packages/php/tests/RecipeKeysTest.php",
-        "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+        "legacy/packages/go/internal/recipe/keys.go",
+        "legacy/packages/go/internal/recipe/keys_test.go",
+        "legacy/packages/ts/tests/recipe_keys.mjs",
+        "legacy/packages/ts/tests/recipe_keys.test.mjs",
+        "legacy/packages/python/tests/recipe_keys.py",
+        "legacy/packages/python/tests/test_recipe_keys.py",
+        "legacy/packages/php/tests/RecipeKeys.php",
+        "legacy/packages/php/tests/RecipeKeysTest.php",
+        "legacy/packages/php-ext/tests/RecipeKeysExtensionTest.php",
         "packages/rust/tests/src/recipe_keys.rs",
         "packages/rust/tests/tests/all/recipe_keys.rs"
       ]
@@ -3991,17 +3991,17 @@
       "inputs": [
         "Makefile",
         "contracts/features.json",
-        "packages/php/tests/PgsqlPdoAdapterTest.php",
-        "packages/php/tests/PgsqlPdoAdapterCases.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Internal/PgsqlPdoAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementIterator.php",
-        "packages/php/src/Internal/PgsqlLargeObjectStream.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/testing/required_dsn.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Orm.php"
+        "legacy/packages/php/tests/PgsqlPdoAdapterTest.php",
+        "legacy/packages/php/tests/PgsqlPdoAdapterCases.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "legacy/packages/php/src/Internal/PgsqlStatementAdapter.php",
+        "legacy/packages/php/src/Internal/PgsqlStatementIterator.php",
+        "legacy/packages/php/src/Internal/PgsqlLargeObjectStream.php",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/testing/required_dsn.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Orm.php"
       ]
     },
     "pgsql-pdo-adapter-php-extension-check": {
@@ -4015,29 +4015,29 @@
       "inputs": [
         "Makefile",
         "contracts/features.json",
-        "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
-        "packages/php/tests/PgsqlPdoAdapterCases.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/src/pgsql_adapter_native.c",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/pgsql_adapter_native.h",
-        "packages/php-ext/src/pgsql_statement_iterator_native.c",
-        "packages/php-ext/src/pgsql_statement_iterator_native.h",
-        "packages/php-ext/src/pgsql_lob_native.c",
-        "packages/php-ext/src/pgsql_lob_native.h",
-        "packages/php/tests/case_database.php",
-        "packages/php/testing/required_dsn.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Orm.php",
-        "packages/php/src/Internal/PgsqlPdoAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementIterator.php",
-        "packages/php/src/Internal/PgsqlLargeObjectStream.php",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/polyspec_orm.stub.php"
+        "legacy/packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
+        "legacy/packages/php/tests/PgsqlPdoAdapterCases.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/src/pgsql_adapter_native.c",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/pgsql_adapter_native.h",
+        "legacy/packages/php-ext/src/pgsql_statement_iterator_native.c",
+        "legacy/packages/php-ext/src/pgsql_statement_iterator_native.h",
+        "legacy/packages/php-ext/src/pgsql_lob_native.c",
+        "legacy/packages/php-ext/src/pgsql_lob_native.h",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/testing/required_dsn.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Orm.php",
+        "legacy/packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "legacy/packages/php/src/Internal/PgsqlStatementAdapter.php",
+        "legacy/packages/php/src/Internal/PgsqlStatementIterator.php",
+        "legacy/packages/php/src/Internal/PgsqlLargeObjectStream.php",
+        "legacy/packages/php-ext/src/config.m4",
+        "legacy/packages/php-ext/scripts/build.sh",
+        "legacy/packages/php-ext/src/polyspec_orm.c",
+        "legacy/packages/php-ext/src/polyspec_orm.stub.php"
       ]
     },
     "go-sqlite-version-check": {
@@ -4046,9 +4046,9 @@
         "go"
       ],
       "inputs": [
-        "packages/go/orm/sqlite_version_test.go",
-        "packages/go/orm/db.go",
-        "packages/go/orm/sqlite/sqlite.go"
+        "legacy/packages/go/orm/sqlite_version_test.go",
+        "legacy/packages/go/orm/db.go",
+        "legacy/packages/go/orm/sqlite/sqlite.go"
       ]
     },
     "feature-performance-check": {
@@ -4076,7 +4076,7 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/go/markdownmodel/conformance_test.go"
+        "legacy/packages/go/markdownmodel/conformance_test.go"
       ]
     },
     "markdown-conformance-check/php": {
@@ -4092,8 +4092,8 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/php/tests/MarkdownConformanceTest.php",
-        "packages/php/tests/OrmGenTestSupport.php"
+        "legacy/packages/php/tests/MarkdownConformanceTest.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php"
       ]
     },
     "markdown-conformance-check/php-extension": {
@@ -4110,7 +4110,7 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/php-ext/tests/MarkdownConformanceNativeTest.php"
+        "legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php"
       ]
     },
     "markdown-conformance-check/python": {
@@ -4125,9 +4125,9 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/python/tests/markdown_conformance.py",
-        "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py"
+        "legacy/packages/python/tests/markdown_conformance.py",
+        "legacy/packages/python/tests/testcase.py",
+        "legacy/packages/python/tests/vector_case.py"
       ]
     },
     "markdown-conformance-check/rust": {
@@ -4156,8 +4156,8 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/ts/tests/markdown_conformance.mjs",
-        "packages/ts/tests/markdown_cases.mjs"
+        "legacy/packages/ts/tests/markdown_conformance.mjs",
+        "legacy/packages/ts/tests/markdown_cases.mjs"
       ]
     },
     "bind-models-check": {
@@ -4173,8 +4173,8 @@
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
         "scripts/typescript/models.mts",
-        "packages/go/models.txt",
-        "packages/php/models.txt",
+        "legacy/packages/go/models.txt",
+        "legacy/packages/php/models.txt",
         "packages/rust/tests/build.rs"
       ]
     },
@@ -4189,10 +4189,10 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/go/orm/recipe_model_queries_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/recipe_model_queries_chain_test.go"
+        "legacy/packages/go/orm/recipe_model_queries_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/recipe_model_queries_chain_test.go"
       ]
     },
     "model-queries-check/rust": {
@@ -4229,15 +4229,15 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/ts/tests/model_queries-mysql.test.mjs",
-        "packages/ts/tests/model_queries-postgres.test.mjs",
-        "packages/ts/tests/model_queries-sqlite.test.mjs",
-        "packages/ts/tests/model_queries-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/model_queries_chain-mysql.test.mjs",
-        "packages/ts/tests/model_queries_chain-postgres.test.mjs",
-        "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
-        "packages/ts/tests/model_queries_chain-markdown.test.mjs"
+        "legacy/packages/ts/tests/model_queries-mysql.test.mjs",
+        "legacy/packages/ts/tests/model_queries-postgres.test.mjs",
+        "legacy/packages/ts/tests/model_queries-sqlite.test.mjs",
+        "legacy/packages/ts/tests/model_queries-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/model_queries_chain-mysql.test.mjs",
+        "legacy/packages/ts/tests/model_queries_chain-postgres.test.mjs",
+        "legacy/packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+        "legacy/packages/ts/tests/model_queries_chain-markdown.test.mjs"
       ]
     },
     "model-queries-check/python": {
@@ -4251,15 +4251,15 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/python/tests/test_model_queries_mysql.py",
-        "packages/python/tests/test_model_queries_postgres.py",
-        "packages/python/tests/test_model_queries_sqlite.py",
-        "packages/python/tests/test_model_queries_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/tests/test_model_queries_chain_mysql.py",
-        "packages/python/tests/test_model_queries_chain_postgres.py",
-        "packages/python/tests/test_model_queries_chain_sqlite.py",
-        "packages/python/tests/test_model_queries_chain_markdown.py"
+        "legacy/packages/python/tests/test_model_queries_mysql.py",
+        "legacy/packages/python/tests/test_model_queries_postgres.py",
+        "legacy/packages/python/tests/test_model_queries_sqlite.py",
+        "legacy/packages/python/tests/test_model_queries_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/tests/test_model_queries_chain_mysql.py",
+        "legacy/packages/python/tests/test_model_queries_chain_postgres.py",
+        "legacy/packages/python/tests/test_model_queries_chain_sqlite.py",
+        "legacy/packages/python/tests/test_model_queries_chain_markdown.py"
       ]
     },
     "model-queries-check/php": {
@@ -4274,11 +4274,11 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/php/tests/ModelQueriesRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/ModelQueriesChainRecipeTest.php"
+        "legacy/packages/php/tests/ModelQueriesRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "model-queries-check/php-extension": {
@@ -4294,13 +4294,13 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/ModelQueriesRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
-        "packages/php/tests/ModelQueriesChainRecipeTest.php"
+        "legacy/packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/ModelQueriesRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+        "legacy/packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "constraints-and-relations-check/go": {
@@ -4313,10 +4313,10 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/go/orm/recipe_constraints_and_relations_test.go",
-        "packages/go/orm/recipe_immutable_write_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go"
+        "legacy/packages/go/orm/recipe_constraints_and_relations_test.go",
+        "legacy/packages/go/orm/recipe_immutable_write_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go"
       ]
     },
     "constraints-and-relations-check/rust": {
@@ -4351,15 +4351,15 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
-        "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
-        "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
-        "packages/ts/tests/constraints_and_relations-markdown.test.mjs",
-        "packages/ts/tests/immutable_write-mysql.test.mjs",
-        "packages/ts/tests/immutable_write-postgres.test.mjs",
-        "packages/ts/tests/immutable_write-sqlite.test.mjs",
-        "packages/ts/tests/immutable_write-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "legacy/packages/ts/tests/constraints_and_relations-mysql.test.mjs",
+        "legacy/packages/ts/tests/constraints_and_relations-postgres.test.mjs",
+        "legacy/packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+        "legacy/packages/ts/tests/constraints_and_relations-markdown.test.mjs",
+        "legacy/packages/ts/tests/immutable_write-mysql.test.mjs",
+        "legacy/packages/ts/tests/immutable_write-postgres.test.mjs",
+        "legacy/packages/ts/tests/immutable_write-sqlite.test.mjs",
+        "legacy/packages/ts/tests/immutable_write-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs"
       ]
     },
     "constraints-and-relations-check/python": {
@@ -4372,15 +4372,15 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/python/tests/test_constraints_and_relations_mysql.py",
-        "packages/python/tests/test_constraints_and_relations_postgres.py",
-        "packages/python/tests/test_constraints_and_relations_sqlite.py",
-        "packages/python/tests/test_constraints_and_relations_markdown.py",
-        "packages/python/tests/test_immutable_write_mysql.py",
-        "packages/python/tests/test_immutable_write_postgres.py",
-        "packages/python/tests/test_immutable_write_sqlite.py",
-        "packages/python/tests/test_immutable_write_markdown.py",
-        "packages/python/tests/recipe.py"
+        "legacy/packages/python/tests/test_constraints_and_relations_mysql.py",
+        "legacy/packages/python/tests/test_constraints_and_relations_postgres.py",
+        "legacy/packages/python/tests/test_constraints_and_relations_sqlite.py",
+        "legacy/packages/python/tests/test_constraints_and_relations_markdown.py",
+        "legacy/packages/python/tests/test_immutable_write_mysql.py",
+        "legacy/packages/python/tests/test_immutable_write_postgres.py",
+        "legacy/packages/python/tests/test_immutable_write_sqlite.py",
+        "legacy/packages/python/tests/test_immutable_write_markdown.py",
+        "legacy/packages/python/tests/recipe.py"
       ]
     },
     "constraints-and-relations-check/php": {
@@ -4394,11 +4394,11 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
-        "packages/php/tests/ImmutableWriteRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php"
+        "legacy/packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "legacy/packages/php/tests/ImmutableWriteRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/bootstrap.php"
       ]
     },
     "constraints-and-relations-check/php-extension": {
@@ -4413,13 +4413,13 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
-        "packages/php/tests/ImmutableWriteRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "legacy/packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "legacy/packages/php/tests/ImmutableWriteRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php"
       ]
     },
     "php-ext-memory-check": {
@@ -4527,12 +4527,12 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/ts/tests/request_hook-mysql.test.mjs",
-        "packages/ts/tests/request_hook-postgres.test.mjs",
-        "packages/ts/tests/request_hook-sqlite.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/model.ts"
+        "legacy/packages/ts/tests/request_hook-mysql.test.mjs",
+        "legacy/packages/ts/tests/request_hook-postgres.test.mjs",
+        "legacy/packages/ts/tests/request_hook-sqlite.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/model.ts"
       ]
     },
     "audit-triggers-check/typescript": {
@@ -4546,17 +4546,17 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/ts/tests/external_audit-mysql.test.mjs",
-        "packages/ts/tests/external_audit-postgres.test.mjs",
-        "packages/ts/tests/external_audit-sqlite.test.mjs",
-        "packages/ts/tests/external_audit-markdown.test.mjs",
-        "packages/ts/tests/audit_triggers-mysql.test.mjs",
-        "packages/ts/tests/audit_triggers-postgres.test.mjs",
-        "packages/ts/tests/audit_triggers-sqlite.test.mjs",
-        "packages/ts/tests/audit_triggers-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/model.ts"
+        "legacy/packages/ts/tests/external_audit-mysql.test.mjs",
+        "legacy/packages/ts/tests/external_audit-postgres.test.mjs",
+        "legacy/packages/ts/tests/external_audit-sqlite.test.mjs",
+        "legacy/packages/ts/tests/external_audit-markdown.test.mjs",
+        "legacy/packages/ts/tests/audit_triggers-mysql.test.mjs",
+        "legacy/packages/ts/tests/audit_triggers-postgres.test.mjs",
+        "legacy/packages/ts/tests/audit_triggers-sqlite.test.mjs",
+        "legacy/packages/ts/tests/audit_triggers-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/model.ts"
       ]
     },
     "parameter-chunking-check/typescript": {
@@ -4568,13 +4568,13 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/ts/tests/parameter_chunking-mysql.test.mjs",
-        "packages/ts/tests/parameter_chunking-postgres.test.mjs",
-        "packages/ts/tests/parameter_chunking-sqlite.test.mjs",
-        "packages/ts/tests/parameter_chunking-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/model.ts"
+        "legacy/packages/ts/tests/parameter_chunking-mysql.test.mjs",
+        "legacy/packages/ts/tests/parameter_chunking-postgres.test.mjs",
+        "legacy/packages/ts/tests/parameter_chunking-sqlite.test.mjs",
+        "legacy/packages/ts/tests/parameter_chunking-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/model.ts"
       ]
     },
     "aes-rotation-check/typescript": {
@@ -4586,15 +4586,15 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/ts/tests/aes_rotation-mysql.test.mjs",
-        "packages/ts/tests/aes_rotation-postgres.test.mjs",
-        "packages/ts/tests/aes_rotation-sqlite.test.mjs",
-        "packages/ts/tests/aes_rotation-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/model.ts",
-        "packages/ts/src/utils.ts",
-        "packages/ts/src/aes.ts"
+        "legacy/packages/ts/tests/aes_rotation-mysql.test.mjs",
+        "legacy/packages/ts/tests/aes_rotation-postgres.test.mjs",
+        "legacy/packages/ts/tests/aes_rotation-sqlite.test.mjs",
+        "legacy/packages/ts/tests/aes_rotation-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/src/database.ts",
+        "legacy/packages/ts/src/model.ts",
+        "legacy/packages/ts/src/utils.ts",
+        "legacy/packages/ts/src/aes.ts"
       ]
     },
     "request-hook-check/python": {
@@ -4606,12 +4606,12 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/python/tests/test_request_hook_mysql.py",
-        "packages/python/tests/test_request_hook_postgres.py",
-        "packages/python/tests/test_request_hook_sqlite.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/model.py"
+        "legacy/packages/python/tests/test_request_hook_mysql.py",
+        "legacy/packages/python/tests/test_request_hook_postgres.py",
+        "legacy/packages/python/tests/test_request_hook_sqlite.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/model.py"
       ]
     },
     "audit-triggers-check/python": {
@@ -4625,17 +4625,17 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/python/tests/test_external_audit_mysql.py",
-        "packages/python/tests/test_external_audit_postgres.py",
-        "packages/python/tests/test_external_audit_sqlite.py",
-        "packages/python/tests/test_external_audit_markdown.py",
-        "packages/python/tests/test_audit_triggers_mysql.py",
-        "packages/python/tests/test_audit_triggers_postgres.py",
-        "packages/python/tests/test_audit_triggers_sqlite.py",
-        "packages/python/tests/test_audit_triggers_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/model.py"
+        "legacy/packages/python/tests/test_external_audit_mysql.py",
+        "legacy/packages/python/tests/test_external_audit_postgres.py",
+        "legacy/packages/python/tests/test_external_audit_sqlite.py",
+        "legacy/packages/python/tests/test_external_audit_markdown.py",
+        "legacy/packages/python/tests/test_audit_triggers_mysql.py",
+        "legacy/packages/python/tests/test_audit_triggers_postgres.py",
+        "legacy/packages/python/tests/test_audit_triggers_sqlite.py",
+        "legacy/packages/python/tests/test_audit_triggers_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/model.py"
       ]
     },
     "parameter-chunking-check/python": {
@@ -4647,13 +4647,13 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/python/tests/test_parameter_chunking_mysql.py",
-        "packages/python/tests/test_parameter_chunking_postgres.py",
-        "packages/python/tests/test_parameter_chunking_sqlite.py",
-        "packages/python/tests/test_parameter_chunking_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/model.py"
+        "legacy/packages/python/tests/test_parameter_chunking_mysql.py",
+        "legacy/packages/python/tests/test_parameter_chunking_postgres.py",
+        "legacy/packages/python/tests/test_parameter_chunking_sqlite.py",
+        "legacy/packages/python/tests/test_parameter_chunking_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/model.py"
       ]
     },
     "aes-rotation-check/python": {
@@ -4665,13 +4665,13 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/python/tests/test_aes_rotation_mysql.py",
-        "packages/python/tests/test_aes_rotation_postgres.py",
-        "packages/python/tests/test_aes_rotation_sqlite.py",
-        "packages/python/tests/test_aes_rotation_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/src/polyspec/orm/model.py"
+        "legacy/packages/python/tests/test_aes_rotation_mysql.py",
+        "legacy/packages/python/tests/test_aes_rotation_postgres.py",
+        "legacy/packages/python/tests/test_aes_rotation_sqlite.py",
+        "legacy/packages/python/tests/test_aes_rotation_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/src/polyspec/orm/database.py",
+        "legacy/packages/python/src/polyspec/orm/model.py"
       ]
     },
     "request-hook-check/php": {
@@ -4684,15 +4684,15 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/php/tests/RequestHookMysqlRecipeTest.php",
-        "packages/php/tests/RequestHookPostgresRecipeTest.php",
-        "packages/php/tests/RequestHookSqliteRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/generated_classes.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php"
+        "legacy/packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "legacy/packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "legacy/packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/generated_classes.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Model.php"
       ]
     },
     "audit-triggers-check/php": {
@@ -4707,14 +4707,14 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/php/tests/ExternalAuditRecipeTest.php",
-        "packages/php/tests/AuditTriggersRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/generated_classes.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php"
+        "legacy/packages/php/tests/ExternalAuditRecipeTest.php",
+        "legacy/packages/php/tests/AuditTriggersRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/generated_classes.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Model.php"
       ]
     },
     "parameter-chunking-check/php": {
@@ -4727,16 +4727,16 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/php/tests/ParameterChunkingMysqlTest.php",
-        "packages/php/tests/ParameterChunkingPostgresTest.php",
-        "packages/php/tests/ParameterChunkingSqliteTest.php",
-        "packages/php/tests/ParameterChunkingMarkdownTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/generated_classes.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php"
+        "legacy/packages/php/tests/ParameterChunkingMysqlTest.php",
+        "legacy/packages/php/tests/ParameterChunkingPostgresTest.php",
+        "legacy/packages/php/tests/ParameterChunkingSqliteTest.php",
+        "legacy/packages/php/tests/ParameterChunkingMarkdownTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/generated_classes.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Model.php"
       ]
     },
     "aes-rotation-check/php": {
@@ -4749,16 +4749,16 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/php/tests/AesRotationMysqlTest.php",
-        "packages/php/tests/AesRotationPostgresTest.php",
-        "packages/php/tests/AesRotationSqliteTest.php",
-        "packages/php/tests/AesRotationMarkdownTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/generated_classes.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php"
+        "legacy/packages/php/tests/AesRotationMysqlTest.php",
+        "legacy/packages/php/tests/AesRotationPostgresTest.php",
+        "legacy/packages/php/tests/AesRotationSqliteTest.php",
+        "legacy/packages/php/tests/AesRotationMarkdownTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/generated_classes.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/src/Db.php",
+        "legacy/packages/php/src/Model.php"
       ]
     },
     "request-hook-check/php-extension": {
@@ -4772,18 +4772,18 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/RequestHookMysqlRecipeTest.php",
-        "packages/php/tests/RequestHookPostgresRecipeTest.php",
-        "packages/php/tests/RequestHookSqliteRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c"
+        "legacy/packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "legacy/packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "legacy/packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/request_hook_cases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c"
       ]
     },
     "audit-triggers-check/php-extension": {
@@ -4799,15 +4799,15 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/AuditTriggersRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c"
+        "legacy/packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/AuditTriggersRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/request_hook_cases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c"
       ]
     },
     "parameter-chunking-check/php-extension": {
@@ -4821,19 +4821,19 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
-        "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
-        "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
-        "packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/ParameterChunkingMysqlTest.php",
-        "packages/php/tests/ParameterChunkingPostgresTest.php",
-        "packages/php/tests/ParameterChunkingSqliteTest.php",
-        "packages/php/tests/ParameterChunkingMarkdownTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c"
+        "legacy/packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/ParameterChunkingMysqlTest.php",
+        "legacy/packages/php/tests/ParameterChunkingPostgresTest.php",
+        "legacy/packages/php/tests/ParameterChunkingSqliteTest.php",
+        "legacy/packages/php/tests/ParameterChunkingMarkdownTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c"
       ]
     },
     "aes-rotation-check/php-extension": {
@@ -4847,19 +4847,19 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
-        "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
-        "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
-        "packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/AesRotationMysqlTest.php",
-        "packages/php/tests/AesRotationPostgresTest.php",
-        "packages/php/tests/AesRotationSqliteTest.php",
-        "packages/php/tests/AesRotationMarkdownTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/model_read.c"
+        "legacy/packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php/tests/AesRotationMysqlTest.php",
+        "legacy/packages/php/tests/AesRotationPostgresTest.php",
+        "legacy/packages/php/tests/AesRotationSqliteTest.php",
+        "legacy/packages/php/tests/AesRotationMarkdownTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php-ext/src/db.c",
+        "legacy/packages/php-ext/src/model_read.c"
       ]
     },
     "request-hook-check/go": {
@@ -4871,10 +4871,10 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/go/orm/recipe_request_hook_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go"
+        "legacy/packages/go/orm/recipe_request_hook_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go"
       ]
     },
     "conformance-verification-check/go": {
@@ -4886,10 +4886,10 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/go/orm/recipe_conformance_verification_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go"
+        "legacy/packages/go/orm/recipe_conformance_verification_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go"
       ]
     },
     "conformance-verification-check/rust": {
@@ -4917,12 +4917,12 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/ts/tests/conformance_verification-mysql.test.mjs",
-        "packages/ts/tests/conformance_verification-postgres.test.mjs",
-        "packages/ts/tests/conformance_verification-sqlite.test.mjs",
-        "packages/ts/tests/conformance_verification-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/recipe_model.mjs"
+        "legacy/packages/ts/tests/conformance_verification-mysql.test.mjs",
+        "legacy/packages/ts/tests/conformance_verification-postgres.test.mjs",
+        "legacy/packages/ts/tests/conformance_verification-sqlite.test.mjs",
+        "legacy/packages/ts/tests/conformance_verification-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/recipe_model.mjs"
       ]
     },
     "conformance-verification-check/python": {
@@ -4934,12 +4934,12 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/python/tests/test_conformance_verification_mysql.py",
-        "packages/python/tests/test_conformance_verification_postgres.py",
-        "packages/python/tests/test_conformance_verification_sqlite.py",
-        "packages/python/tests/test_conformance_verification_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/tests/recipe_model.py"
+        "legacy/packages/python/tests/test_conformance_verification_mysql.py",
+        "legacy/packages/python/tests/test_conformance_verification_postgres.py",
+        "legacy/packages/python/tests/test_conformance_verification_sqlite.py",
+        "legacy/packages/python/tests/test_conformance_verification_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/tests/recipe_model.py"
       ]
     },
     "conformance-verification-check/php": {
@@ -4952,12 +4952,12 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
-        "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
-        "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
-        "packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeModel.php"
+        "legacy/packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+        "legacy/packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+        "legacy/packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+        "legacy/packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeModel.php"
       ]
     },
     "conformance-verification-check/php-extension": {
@@ -4971,12 +4971,12 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeModel.php"
+        "legacy/packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeModel.php"
       ]
     },
     "raw-text-check/go": {
@@ -4990,10 +4990,10 @@
         "contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
-        "packages/go/orm/recipe_raw_text_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/orm/bind_check.go"
+        "legacy/packages/go/orm/recipe_raw_text_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/orm/bind_check.go"
       ]
     },
     "raw-text-check/php": {
@@ -5008,9 +5008,9 @@
         "contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
-        "packages/php/tests/RawTextRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/src/ParamCheck.php"
+        "legacy/packages/php/tests/RawTextRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/src/ParamCheck.php"
       ]
     },
     "raw-text-check/php-extension": {
@@ -5026,10 +5026,10 @@
         "contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
-        "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
-        "packages/php/tests/RawTextRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php-ext/src/param_check_native.c"
+        "legacy/packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+        "legacy/packages/php/tests/RawTextRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php-ext/src/param_check_native.c"
       ]
     },
     "audit-triggers-check/go": {
@@ -5043,11 +5043,11 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/go/orm/recipe_external_audit_test.go",
-        "packages/go/orm/recipe_audit_triggers_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go"
+        "legacy/packages/go/orm/recipe_external_audit_test.go",
+        "legacy/packages/go/orm/recipe_audit_triggers_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go"
       ]
     },
     "parameter-chunking-check/go": {
@@ -5059,10 +5059,10 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/go/orm/recipe_parameter_chunking_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go"
+        "legacy/packages/go/orm/recipe_parameter_chunking_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go"
       ]
     },
     "aes-rotation-check/go": {
@@ -5074,11 +5074,11 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/go/orm/recipe_aes_rotation_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go",
-        "packages/go/orm/aes_rotation.go"
+        "legacy/packages/go/orm/recipe_aes_rotation_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go",
+        "legacy/packages/go/orm/aes_rotation.go"
       ]
     },
     "complex-query-check/go": {
@@ -5090,10 +5090,10 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/go/orm/recipe_complex_query_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/requests.go"
+        "legacy/packages/go/orm/recipe_complex_query_test.go",
+        "legacy/packages/go/internal/recipe/recipe.go",
+        "legacy/packages/go/internal/recipe/database.go",
+        "legacy/packages/go/internal/recipe/requests.go"
       ]
     },
     "complex-query-check/typescript": {
@@ -5105,12 +5105,12 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/ts/tests/complex_query-mysql.test.mjs",
-        "packages/ts/tests/complex_query-postgres.test.mjs",
-        "packages/ts/tests/complex_query-sqlite.test.mjs",
-        "packages/ts/tests/complex_query-markdown.test.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/recipe_model.mjs"
+        "legacy/packages/ts/tests/complex_query-mysql.test.mjs",
+        "legacy/packages/ts/tests/complex_query-postgres.test.mjs",
+        "legacy/packages/ts/tests/complex_query-sqlite.test.mjs",
+        "legacy/packages/ts/tests/complex_query-markdown.test.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/recipe_model.mjs"
       ]
     },
     "complex-query-check/python": {
@@ -5122,12 +5122,12 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/python/tests/test_complex_query_mysql.py",
-        "packages/python/tests/test_complex_query_postgres.py",
-        "packages/python/tests/test_complex_query_sqlite.py",
-        "packages/python/tests/test_complex_query_markdown.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/tests/recipe_model.py"
+        "legacy/packages/python/tests/test_complex_query_mysql.py",
+        "legacy/packages/python/tests/test_complex_query_postgres.py",
+        "legacy/packages/python/tests/test_complex_query_sqlite.py",
+        "legacy/packages/python/tests/test_complex_query_markdown.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/tests/recipe_model.py"
       ]
     },
     "complex-query-check/php": {
@@ -5140,12 +5140,12 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
-        "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
-        "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
-        "packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeModel.php"
+        "legacy/packages/php/tests/ComplexQueryMysqlRecipeTest.php",
+        "legacy/packages/php/tests/ComplexQueryPostgresRecipeTest.php",
+        "legacy/packages/php/tests/ComplexQuerySqliteRecipeTest.php",
+        "legacy/packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeModel.php"
       ]
     },
     "complex-query-check/php-extension": {
@@ -5159,12 +5159,12 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeModel.php"
+        "legacy/packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+        "legacy/packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeModel.php"
       ]
     },
     "complex-query-check/rust": {
@@ -5190,7 +5190,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/python/tests/connection_pool.py"
+        "legacy/packages/python/tests/connection_pool.py"
       ]
     },
     "client-pooler-go-check": {
@@ -5417,7 +5417,7 @@
     },
     "go.work": {
       "scope": "suite",
-      "reason": "it joins the Go modules packages/go, tests and examples, so every Go build and test resolves the orm packages from the checkout"
+      "reason": "it joins the Go modules legacy/packages/go, tests and examples, so every Go build and test resolves the orm packages from the checkout"
     },
     "go.work.sum": {
       "scope": "suite",
@@ -5431,53 +5431,53 @@
       "scope": "suite",
       "reason": "its tool node selects the Node release of every check, locally and in CI, so it changes the runtime of every Node and TypeScript target"
     },
-    "packages/go/go.mod": {
+    "legacy/packages/go/go.mod": {
       "scope": "suite",
       "reason": "it pins the Go toolchain and the modules of every Go build and test"
     },
-    "packages/go/go.sum": {
+    "legacy/packages/go/go.sum": {
       "scope": "suite",
       "reason": "it pins the module checksums of every Go build and test"
     },
-    "packages/go/internal/testdb/testdb.go": {
+    "legacy/packages/go/internal/testdb/testdb.go": {
       "scope": "suite",
       "reason": "every Go database test opens its database through it, so it changes the setup of every Go database target"
     },
-    "packages/python/uv.lock": {
+    "legacy/packages/python/uv.lock": {
       "scope": "suite",
       "reason": "it pins the native uv development environment of the Python client used by its checks"
     },
-    "packages/php-ext/testing/dbspec/apply/php-extension.php": {
+    "legacy/packages/php-ext/testing/dbspec/apply/php-extension.php": {
       "scope": "suite",
       "reason": "the dbspec apply runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"
     },
-    "packages/php-ext/testing/dbspec/compare/php-extension.php": {
+    "legacy/packages/php-ext/testing/dbspec/compare/php-extension.php": {
       "scope": "suite",
       "reason": "the dbspec compare runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"
     },
-    "packages/php-ext/testing/dbspec/introspect/php-extension.php": {
+    "legacy/packages/php-ext/testing/dbspec/introspect/php-extension.php": {
       "scope": "suite",
       "reason": "the dbspec introspect runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"
     },
-    "packages/php/testing/dbspec/apply/php.php": {
+    "legacy/packages/php/testing/dbspec/apply/php.php": {
       "scope": "suite",
       "reason": "the dbspec apply runner of the PHP client, run by the perf test and the decimal physical check (scripts/perf-test.mts, scripts/decimal-physical-check.mts)"
     },
-    "packages/php/testing/dbspec/compare/php-interface.php": {
+    "legacy/packages/php/testing/dbspec/compare/php-interface.php": {
       "scope": "suite",
-      "reason": "the interface of the PHP compare runner, loaded by the PHP and PHP extension compare runners (packages/php/testing/dbspec/compare/php.php)"
+      "reason": "the interface of the PHP compare runner, loaded by the PHP and PHP extension compare runners (legacy/packages/php/testing/dbspec/compare/php.php)"
     },
-    "packages/php/testing/dbspec/compare/php.php": {
+    "legacy/packages/php/testing/dbspec/compare/php.php": {
       "scope": "suite",
       "reason": "the dbspec compare runner of the PHP client, run by the perf test and the client database test (scripts/perf-test.mts, scripts/client-db-test.mts)"
     },
-    "packages/php/testing/dbspec/introspect/php.php": {
+    "legacy/packages/php/testing/dbspec/introspect/php.php": {
       "scope": "suite",
       "reason": "the dbspec introspect runner of the PHP client, run by the perf test and the client database test (scripts/perf-test.mts, scripts/client-db-test.mts)"
     },
-    "packages/php/testing/required_dsn.php": {
+    "legacy/packages/php/testing/required_dsn.php": {
       "scope": "suite",
-      "reason": "the shared DSN helper of the PHP coverage cases (packages/php/tests/coverage_cases.php), which the PHP library and the PHP extension both run"
+      "reason": "the shared DSN helper of the PHP coverage cases (legacy/packages/php/tests/coverage_cases.php), which the PHP library and the PHP extension both run"
     },
     "packages/rust/case-clock/src/lib.rs": {
       "scope": "suite",
@@ -5495,19 +5495,19 @@
       "scope": "suite",
       "reason": "the crate root of the one Rust test program: it generates the models and lists every test module as a group, so it changes which Rust feature cases compile and run"
     },
-    "packages/ts/testing/dbspec/apply/typescript.mts": {
+    "legacy/packages/ts/testing/dbspec/apply/typescript.mts": {
       "scope": "suite",
       "reason": "the dbspec apply runner of the TypeScript client, selected by the feature check (scripts/features/check.mts, contracts/features.json)"
     },
-    "packages/ts/testing/dbspec/compare/typescript.mts": {
+    "legacy/packages/ts/testing/dbspec/compare/typescript.mts": {
       "scope": "suite",
       "reason": "the dbspec compare runner of the TypeScript client, selected by the feature check (scripts/features/check.mts, contracts/features.json)"
     },
-    "packages/ts/testing/dbspec/introspect/typescript.mts": {
+    "legacy/packages/ts/testing/dbspec/introspect/typescript.mts": {
       "scope": "suite",
       "reason": "the dbspec introspect runner of the TypeScript client, selected by the feature check (scripts/features/check.mts, contracts/features.json)"
     },
-    "packages/ts/tsconfig.bootstrap.json": {
+    "legacy/packages/ts/tsconfig.bootstrap.json": {
       "scope": "suite",
       "reason": "scripts/typescript/build.mts compiles the generator sources with it before the models exist, so every make target and npm script that builds the TypeScript client reads it"
     },
@@ -5541,7 +5541,7 @@
     },
     "scripts/typescript/build.mts": {
       "scope": "suite",
-      "reason": "every make target and npm script that builds the TypeScript client publishes packages/ts/dist through it"
+      "reason": "every make target and npm script that builds the TypeScript client publishes legacy/packages/ts/dist through it"
     },
     "tests/go.mod": {
       "scope": "suite",

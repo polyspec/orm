@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: a6a0d46ad7b9b69c5c01a0a9952de7e6240850e0440dd4c0690f21ab5b9f2e28 -->
+<!-- source-sha256: 46bdc1339e9e78ea5985de941ae760da112609f3db3c495210e3d3d7b60b7d07 -->
 # orm
 
 **Go, PHP, PHP-extension, Python, Rust, TypeScript**가 공유하는 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
@@ -70,12 +70,12 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ```sh
 make orm-test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
-(cd packages/go/model && go generate)                                # Go models
-vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
-(cd packages/ts && npm run build)                            # TypeScript models and library
+(cd legacy/packages/go/model && go generate)                                # Go models
+vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+(cd legacy/packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
-go test ./packages/go/... ./tests/... ./examples/...
+go test ./legacy/packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
 make conformance-check                                                # the native bodies and the state contracts of the conformance recipe

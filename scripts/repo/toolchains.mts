@@ -1,7 +1,7 @@
 // Development PHP and Rust version check. Like Node (node.mts), PHP and Rust that run the check each have one file
 // declaring one thing, and both the local checks and every workflow run with it.
 //   - PHP: x.y of `.php-version`. setup-php and Homebrew's php pick x.y patch releases, so the declaration is
-//     x.y. require.php (">=x.y") in packages/php/composer.json is the lowest release that the PHP client supports,
+//     x.y. require.php (">=x.y") in legacy/packages/php/composer.json is the lowest release that the PHP client supports,
 //     and make php-min-check runs it.
 //   - Rust: channel x.y.z of rust-toolchain.toml. The Makefile reads that channel, and workflows
 //     install that file's toolchain with `rustup toolchain install` without arguments.
@@ -48,9 +48,9 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
   if (!exact) errors.push(`.php-version must hold one release x.y and a newline, found ${JSON.stringify(declared)}`);
   const lowest = /^>=(\d+\.\d+)$/.exec(minimum ?? '')?.[1];
-  if (!lowest) errors.push(`packages/php/composer.json require.php must be ">=x.y", found ${JSON.stringify(minimum)}`);
+  if (!lowest) errors.push(`legacy/packages/php/composer.json require.php must be ">=x.y", found ${JSON.stringify(minimum)}`);
   if (exact && lowest && below(declared.trim(), lowest))
-    errors.push(`.php-version ${declared.trim()} is below packages/php/composer.json require.php ${minimum}`);
+    errors.push(`.php-version ${declared.trim()} is below legacy/packages/php/composer.json require.php ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
     if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && actionSteps(workflow, 'shivammathur/setup-php').length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);

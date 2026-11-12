@@ -1,0 +1,855 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-4",
+    "CFG-5",
+    "CFG-5a",
+    "FCV-2",
+    "FCV-3",
+    "FCV-4",
+    "CFG-22a",
+    "DIA-199"
+  ],
+  "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
+  "cases": [
+    {
+      "id": "the_pool_size_is_the_open_maximum",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unset_or_zero_pool_size_opens_at_most_ten",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "unset"
+        },
+        {
+          "op": "utils.stats",
+          "connection": "unset",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 0
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "transactions_wait_at_the_open_maximum",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 2
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 2,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 2,
+                "open": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 2,
+                "open": 2
+              }
+            }
+          },
+          "transactions": 6
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 2,
+                "open_connections": 2,
+                "in_use": 0,
+                "idle": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 2,
+                "open_connections": 2,
+                "in_use": 0,
+                "idle": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_idle_size_closes_what_it_does_not_keep",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3,
+          "pool_idle_size": 1
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          },
+          "transactions": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unset_idle_size_keeps_the_pool_size",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          },
+          "transactions": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_size_above_the_pool_size_is_refused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "pool_size": 3,
+            "pool_idle_size": 4
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_connection_within_its_lifetime_is_reused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 600000
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 500
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 1 FROM (SELECT SLEEP(1)) AS slept",
+                "postgres": "SELECT 1 FROM pg_sleep(1)",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_connection_past_its_lifetime_is_closed",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 100
+        },
+        {
+          "op": "model.connect",
+          "as": "other",
+          "pool_size": 1
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "other",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 1 FROM (SELECT SLEEP(2)) AS slept",
+                "postgres": "SELECT 1 FROM pg_sleep(2)",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 0,
+                "in_use": 0,
+                "idle": 0
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 0,
+                "in_use": 0,
+                "idle": 0
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_size_above_the_default_pool_size_is_refused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "pool_idle_size": 11
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "each_connection_counts_its_own_pool",
+      "requirements": [
+        "CFG-22a"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 3
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 5
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "first",
+          "hold": 3,
+          "transactions": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "first",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "second",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 5,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 5,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

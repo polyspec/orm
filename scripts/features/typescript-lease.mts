@@ -1,5 +1,5 @@
 // typescript-lease decides which TypeScript lease a verify command holds, and runs the command under it. The TypeScript build
-// output (packages/ts/dist and the generated models) is rebuilt in place, so a command that reads it holds the shared lease of
+// output (legacy/packages/ts/dist and the generated models) is rebuilt in place, so a command that reads it holds the shared lease of
 // READ_TYPESCRIPT, and a command that builds it holds the exclusive lease of HOLD_TYPESCRIPT (Makefile). A reader never runs
 // while a build runs, and readers run together. The lease program divides the holding of the ancestor (make owner-check) for
 // its children by the same rule, so a command under that holding is not refused by its own run.
@@ -8,10 +8,10 @@ import { spawn } from 'node:child_process';
 export type TypeScriptLease = 'shared' | 'exclusive';
 
 /** The lease of a check: exclusive for a build of the TypeScript output or a make target that holds it, shared for a command that
- *  reads packages/ts (in its command or its declared inputs), and none for any other command. */
+ *  reads legacy/packages/ts (in its command or its declared inputs), and none for any other command. */
 export function typescriptLease(check: { command: string; inputs?: string[] }): TypeScriptLease | undefined {
   if (/typescript:build|\bmake\b/.test(check.command)) return 'exclusive';
-  if (check.command.includes('packages/ts') || (check.inputs ?? []).some(input => input.startsWith('packages/ts/'))) return 'shared';
+  if (check.command.includes('legacy/packages/ts') || (check.inputs ?? []).some(input => input.startsWith('legacy/packages/ts/'))) return 'shared';
   return undefined;
 }
 

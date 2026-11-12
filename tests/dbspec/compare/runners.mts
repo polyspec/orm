@@ -21,17 +21,17 @@ function phpExtension() {
 }
 
 // pythonCommand is the interpreter with the Python client's dependencies (cryptography, PyYAML) installed. make dbspec-compare-check
-// gives ORM_PYTHON the interpreter of packages/python/.venv that make orm-install-python created.
+// gives ORM_PYTHON the interpreter of legacy/packages/python/.venv that make orm-install-python created.
 function pythonCommand() {
   const path = process.env.ORM_PYTHON;
-  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make orm-install-python, which creates packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
+  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make orm-install-python, which creates legacy/packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
   return path;
 }
 
 export const runners: (Runner & { reads: string[] })[] = [
-  { name: 'go', command: 'go', args: ['run', './packages/go/internal/dbspec/compare'], reads: INPUTS },
-  { name: 'php', command: 'php', args: ['packages/php/testing/dbspec/compare/php.php'], reads: INPUTS },
-  { name: 'typescript', command: process.execPath, args: ['packages/ts/testing/dbspec/compare/typescript.mts'], reads: INPUTS },
+  { name: 'go', command: 'go', args: ['run', './legacy/packages/go/internal/dbspec/compare'], reads: INPUTS },
+  { name: 'php', command: 'php', args: ['legacy/packages/php/testing/dbspec/compare/php.php'], reads: INPUTS },
+  { name: 'typescript', command: process.execPath, args: ['legacy/packages/ts/testing/dbspec/compare/typescript.mts'], reads: INPUTS },
   {
     name: 'python',
     get command() {
@@ -45,7 +45,7 @@ export const runners: (Runner & { reads: string[] })[] = [
     name: 'php-extension',
     command: 'php',
     get args() {
-      return ['-d', `extension=${phpExtension()}`, 'packages/php-ext/testing/dbspec/compare/php-extension.php'];
+      return ['-d', `extension=${phpExtension()}`, 'legacy/packages/php-ext/testing/dbspec/compare/php-extension.php'];
     },
     reads: INPUTS,
   },

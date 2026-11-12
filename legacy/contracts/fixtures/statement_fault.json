@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "code": "DRIVER",
+  "message": "the insert is refused",
+  "cases": [
+    "empty_argument_refused"
+  ],
+  "requirements": ["PRT-48", "PRT-49", "PRT-50", "PRT-51", "PRT-52"]
+}

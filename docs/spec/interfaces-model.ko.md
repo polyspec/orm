@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: f0bf26c7215c24359c332fa6bb249caaca031fc95f94e9d945fb89fefd104ff8 -->
+<!-- source-sha256: 08f6ab2a4ca9a54eb94aded0cc4bdfc22ac2fdc44bcdab199aa7d3d0bb165a1c -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -296,11 +296,11 @@ classDiagram
 
 | API | Host | Semantic requirement | Native declaration |
 |---|---|---|---|
-| Db.withContext | go | CFG-9 | `packages/go/orm/db.go::DB.WithContext` |
-| Cancellation.cancel | php | CFG-9 | `packages/php/src/Cancellation.php::Polyspec\Orm\Cancellation::cancel` |
-| Db.withCancellation | php | CFG-9 | `packages/php/src/Db.php::Polyspec\Orm\Db::withCancellation` |
-| Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
-| Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
+| Db.withContext | go | CFG-9 | `legacy/packages/go/orm/db.go::DB.WithContext` |
+| Cancellation.cancel | php | CFG-9 | `legacy/packages/php/src/Cancellation.php::Polyspec\Orm\Cancellation::cancel` |
+| Db.withCancellation | php | CFG-9 | `legacy/packages/php/src/Db.php::Polyspec\Orm\Db::withCancellation` |
+| Db.withSignal | typescript | CFG-9 | `legacy/packages/ts/src/database.ts::Db.withSignal` |
+| Db.withFuture | python | CFG-9 | `legacy/packages/python/src/polyspec/orm/database.py::Db.with_future` |
 
 Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 test case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.
 
@@ -310,12 +310,12 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 
 | 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |
 |---|---|---|---|---|---|
-| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels<br>packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransaction<br>packages/go/orm/cancel_test.go::TestWithContextCancelsMariadb<br>packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransactionMariadb |
-| CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
-| CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
-| CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_sqlite<br>packages/python/tests/test_query_cancel_mysql.py::test_abandoned_query_is_canceled_and_rolled_back_mysql<br>packages/python/tests/query_cancel_mariadb.py::test_abandoned_query_is_canceled_and_rolled_back_mariadb<br>packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_postgres<br>packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |
+| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | legacy/packages/go/orm/cancel_test.go::TestWithContextCancels<br>legacy/packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransaction<br>legacy/packages/go/orm/cancel_test.go::TestWithContextCancelsMariadb<br>legacy/packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransactionMariadb |
+| CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | legacy/packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>legacy/packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>legacy/packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
+| CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
+| CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | legacy/packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_sqlite<br>legacy/packages/python/tests/test_query_cancel_mysql.py::test_abandoned_query_is_canceled_and_rolled_back_mysql<br>legacy/packages/python/tests/query_cancel_mariadb.py::test_abandoned_query_is_canceled_and_rolled_back_mariadb<br>legacy/packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_postgres<br>legacy/packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |
 | CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/cases/zone.rs::dropping_a_query_cancels_it |
-| CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres]<br>packages/ts/tests/model.mjs::cancellation |
+| CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres]<br>legacy/packages/ts/tests/model.mjs::cancellation |
 
 모든 runtime에 정확한 실행 case가 있어야 공통 동작이 완료된다. `unresolved` 상태는 지정된 checklist 작업이 해결될 때까지 완료를 막는다.
 

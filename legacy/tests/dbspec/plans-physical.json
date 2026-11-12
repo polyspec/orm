@@ -1,0 +1,376 @@
+{
+  "version": 1,
+  "note": "The database data of each case of plan-cases.json, keyed by case id: before runs before the plan steps, after runs after them (docs/spec/plans.md, physical run). The source and plan of the case are the dbspec.parse and dbspec.parse_plan steps of plan-cases.json.",
+  "cases": {
+    "create-from-empty": {
+      "before": [],
+      "after": [
+        {
+          "sql": "INSERT INTO users (mail, age) VALUES ('a@x', 3)"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO users (mail, age) VALUES ('b@x', -1)"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM users",
+          "want": "1"
+        }
+      ]
+    },
+    "rename-table-and-column": {
+      "before": [
+        {
+          "sql": "INSERT INTO users (mail, age) VALUES ('a@x', 3)"
+        },
+        {
+          "dialects": [
+            "mysql",
+            "postgres"
+          ],
+          "sql": "INSERT INTO orders (user_id, total) VALUES (1, 5.50)"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO orders (user_id, total) VALUES (1, 550)"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT email FROM clients",
+          "want": "a@x"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM orders WHERE user_id = 1",
+          "want": "1"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO clients (email, age) VALUES ('c@x', -2)"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO orders (user_id) VALUES (9)"
+        }
+      ]
+    },
+    "add-and-drop": {
+      "before": [
+        {
+          "sql": "INSERT INTO users (mail, age) VALUES ('a@x', 3)"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT status FROM users",
+          "want": "new"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM users WHERE nick IS NULL",
+          "want": "1"
+        }
+      ]
+    },
+    "widen-columns": {
+      "before": [
+        {
+          "dialects": [
+            "mysql",
+            "postgres"
+          ],
+          "sql": "INSERT INTO w (small, name, note, price, at, stamp, flag) VALUES (7, 'abc', 'n', 12.34, '10:20:30', '2026-01-02 03:04:05', TRUE)"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO w (small, name, note, price, at, stamp, flag) VALUES (7, 'abc', 'n', 1234, '10:20:30', '2026-01-02 03:04:05', 1)"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT small FROM w",
+          "want": "7"
+        },
+        {
+          "dialects": [
+            "mysql",
+            "postgres"
+          ],
+          "query": "SELECT price FROM w",
+          "want": "12.34"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "query": "SELECT price FROM w",
+          "want": "1234"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "query": "SELECT at || '' FROM w",
+          "want": "10:20:30.000"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "query": "SELECT stamp || '' FROM w",
+          "want": "2026-01-02 03:04:05.000000"
+        },
+        {
+          "sql": "INSERT INTO w (small, name, note, at, stamp, flag) VALUES (2147483648, 'abcdefghijklmnop', 'x', '01:02:03.456', '2026-01-02 03:04:05.123456', FALSE)"
+        }
+      ]
+    },
+    "change-objects": {
+      "before": [
+        {
+          "sql": "INSERT INTO a (code, n) VALUES ('x', 1)"
+        },
+        {
+          "sql": "INSERT INTO b (a_id) VALUES (1)"
+        }
+      ],
+      "after": [
+        {
+          "sql": "INSERT INTO a (code, n) VALUES ('y', -5)"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO a (code, n) VALUES ('x', 2)"
+        },
+        {
+          "sql": "DELETE FROM a WHERE code = 'x'"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM b",
+          "want": "0"
+        }
+      ]
+    },
+    "triggers-follow-columns": {
+      "before": [
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
+        },
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('b')"
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('s', 1)"
+        }
+      ],
+      "after": [
+        {
+          "sql": "UPDATE service SET note = 'n', audit_seq = 2"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM service_history WHERE note = 'n'",
+          "want": "1"
+        },
+        {
+          "sql": "INSERT INTO config (v) VALUES (1)"
+        },
+        {
+          "fails": true,
+          "sql": "UPDATE config SET v = 2"
+        }
+      ]
+    },
+    "rename-column-check-non-ascii-literal": {
+      "before": [],
+      "after": []
+    },
+    "rename-with-renderer-checks": {
+      "before": [
+        {
+          "dialects": [
+            "mysql"
+          ],
+          "sql": "INSERT INTO flags (active, ref, at) VALUES (TRUE, X'00000000000000000000000000000001', '10:00:00')"
+        },
+        {
+          "dialects": [
+            "postgres"
+          ],
+          "sql": "INSERT INTO flags (active, ref, at) VALUES (TRUE, '00000000-0000-0000-0000-000000000001', '10:00:00')"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO flags (active, ref, at) VALUES (1, X'00000000000000000000000000000001', '10:00:00')"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT COUNT(*) FROM switches",
+          "want": "1"
+        },
+        {
+          "dialects": [
+            "mysql",
+            "sqlite"
+          ],
+          "fails": true,
+          "sql": "INSERT INTO switches (enabled, ref) VALUES (1, 'not-a-uuid-of-16-bytes')"
+        },
+        {
+          "dialects": [
+            "mysql",
+            "sqlite"
+          ],
+          "fails": true,
+          "sql": "INSERT INTO switches (enabled, at) VALUES (2, '10:00:00')"
+        }
+      ]
+    },
+    "replace-index-under-foreign-key": {
+      "before": [
+        {
+          "sql": "INSERT INTO p (id) VALUES (1)"
+        },
+        {
+          "sql": "INSERT INTO c (p_id) VALUES (1)"
+        }
+      ],
+      "after": [
+        {
+          "fails": true,
+          "sql": "INSERT INTO c (p_id) VALUES (5)"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM c",
+          "want": "1"
+        }
+      ]
+    },
+    "drop-tables-with-triggers-and-keys": {
+      "before": [
+        {
+          "sql": "INSERT INTO a (id) VALUES (1)"
+        },
+        {
+          "sql": "INSERT INTO b (a_id) VALUES (1)"
+        }
+      ],
+      "after": [
+        {
+          "sql": "INSERT INTO k (id) VALUES (1)"
+        },
+        {
+          "fails": true,
+          "sql": "DELETE FROM k"
+        },
+        {
+          "dialects": [
+            "postgres"
+          ],
+          "query": "SELECT COUNT(*) FROM pg_proc WHERE proname LIKE 'a$%'",
+          "want": "0"
+        }
+      ]
+    },
+    "rebuild-keeps-key-counter": {
+      "before": [
+        {
+          "sql": "INSERT INTO k (n) VALUES (1), (2), (3)"
+        },
+        {
+          "sql": "DELETE FROM k WHERE id = 3"
+        }
+      ],
+      "after": [
+        {
+          "sql": "INSERT INTO k (n) VALUES (4)"
+        },
+        {
+          "query": "SELECT MAX(id) FROM k",
+          "want": "4"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM k WHERE id = 3",
+          "want": "0"
+        }
+      ]
+    },
+    "representative": {
+      "before": [
+        {
+          "sql": "INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')"
+        },
+        {
+          "dialects": [
+            "mysql",
+            "postgres"
+          ],
+          "sql": "INSERT INTO orders (user_id, total, memo) VALUES (1, 5.50, 'm')"
+        },
+        {
+          "dialects": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO orders (user_id, total, memo) VALUES (1, 550, 'm')"
+        },
+        {
+          "sql": "INSERT INTO archive (user_id, note) VALUES (1, 'old')"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT email FROM clients",
+          "want": "a@x"
+        },
+        {
+          "query": "SELECT status FROM clients",
+          "want": "new"
+        },
+        {
+          "query": "SELECT nick FROM clients",
+          "want": "n1"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM orders WHERE user_id = 1",
+          "want": "1"
+        },
+        {
+          "sql": "INSERT INTO events (client_id) VALUES (1)"
+        },
+        {
+          "fails": true,
+          "sql": "UPDATE events SET client_id = 1"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO clients (email, age) VALUES ('c@x', -2)"
+        },
+        {
+          "fails": true,
+          "sql": "INSERT INTO events (client_id) VALUES (9)"
+        }
+      ]
+    },
+    "drop-required-column": {
+      "before": [
+        {
+          "sql": "INSERT INTO t (a, b) VALUES ('x', 1)"
+        }
+      ],
+      "after": [
+        {
+          "query": "SELECT a FROM t",
+          "want": "x"
+        },
+        {
+          "sql": "INSERT INTO t (a) VALUES ('y')"
+        }
+      ]
+    }
+  }
+}

@@ -30,11 +30,11 @@ type output struct {
 }
 
 var outputs = []output{
-	{"packages/php-ext/src/unicode_word.h", renderC},
+	{"legacy/packages/php-ext/src/unicode_word.h", renderC},
 	{"packages/rust/schema/src/dbspec/unicode_word.rs", renderRust},
-	{"packages/python/src/polyspec/orm/dbspec/unicode_word.py", renderPython},
-	{"packages/php/src/Dbspec/UnicodeWord.php", renderPHP},
-	{"packages/ts/src/dbspec/unicode_word.ts", renderTS},
+	{"legacy/packages/python/src/polyspec/orm/dbspec/unicode_word.py", renderPython},
+	{"legacy/packages/php/src/Dbspec/UnicodeWord.php", renderPHP},
+	{"legacy/packages/ts/src/dbspec/unicode_word.ts", renderTS},
 }
 
 func main() { os.Exit(run()) }

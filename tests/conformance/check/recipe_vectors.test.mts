@@ -78,9 +78,9 @@ caseTest('a body declared in any runner form is read by its name', COMPUTE, () =
 caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
   const extension = '/run/php-extension/polyspec_orm.so';
   assert.deepEqual(runnerCommand('php-extension', 'dsn', [], { POLYSPEC_ORM_EXTENSION: extension }), [
-    'php', ['-d', `extension=${extension}`, 'packages/php/testing/conformance/runner.php', '--dsn', 'dsn'],
+    'php', ['-d', `extension=${extension}`, 'legacy/packages/php/testing/conformance/runner.php', '--dsn', 'dsn'],
   ], 'php-extension command line');
-  assert.deepEqual(runnerCommand('php', 'dsn', ['one']), ['php', ['packages/php/testing/conformance/runner.php', '--dsn', 'dsn', '--vector', 'one']], 'php command line');
+  assert.deepEqual(runnerCommand('php', 'dsn', ['one']), ['php', ['legacy/packages/php/testing/conformance/runner.php', '--dsn', 'dsn', '--vector', 'one']], 'php command line');
 });
 
 const contracts = (): Sequence[] => readJsonFile<{ sequences: Sequence[] }>(join(import.meta.dirname, '../../../contracts/interfaces.json'), INTERFACES_SCHEMA).sequences;

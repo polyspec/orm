@@ -1,0 +1,186 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-108",
+    "DIA-154",
+    "SCH-7"
+  ],
+  "fixture": "contracts/fixtures/dbspec-set.json",
+  "cases": [
+    {
+      "id": "decimal_schema",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "model.create",
+          "connection": "conn",
+          "model": "DecimalCase",
+          "values": {
+            "seq": {
+              "int": "1"
+            },
+            "amount": {
+              "decimal": "48.0450"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "conn",
+          "model": "DecimalCase",
+          "values": {
+            "seq": {
+              "int": "2"
+            },
+            "amount": {
+              "decimal": "123456789.1234"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            },
+            "sqlite": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "conn",
+          "model": "DecimalCase",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "amount": "48.0450",
+                "seq": 1
+              }
+            }
+          },
+          "pick": [
+            "amount",
+            "seq"
+          ]
+        },
+        {
+          "op": "model.get_by",
+          "connection": "conn",
+          "model": "DecimalCase",
+          "key": {
+            "seq": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            },
+            "sqlite": {
+              "json": {
+                "amount": "123456789.1234",
+                "seq": 2
+              }
+            }
+          },
+          "pick": [
+            "amount",
+            "seq"
+          ]
+        },
+        {
+          "op": "model.count",
+          "connection": "conn",
+          "model": "DecimalCase",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

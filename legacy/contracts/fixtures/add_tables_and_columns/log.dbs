@@ -1,0 +1,7 @@
+dbspec 1 addcol_log
+
+table addcol_log_entry {
+  id i64 identity
+  message varchar(64)
+  primary key (id)
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="shop" id="Project_1" database="MySql" >
+	<schema name="shop" >
+		<table name="users" spec="" >
+			<column name="id" type="BIGINT" jt="-5" mandatory="y" />
+			<column name="email" type="VARCHAR" length="191" jt="12" mandatory="y" />
+			<index name="pk_users" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+	</schema>
+</project>

@@ -1,0 +1,7 @@
+dbspec 1 bench_shared
+
+table shared_note {
+  seq i64
+  title varchar(191)
+  primary key (seq)
+}

@@ -2,7 +2,7 @@
 // compile does not report cases. So first, with the same package, build tags, and build flags, run
 // `go test -run '^$' -count=1`, which runs no tests, as the long task `go-build/<packages>`
 // without a deadline (runLong: compiler output and exit code as STEP lines) to fill the build cache, then run `go test`
-// with the received arguments, whose tags are merged with GO_TEST_TAGS. Test cases in the run step get their own deadlines via packages/go/testcase.
+// with the received arguments, whose tags are merged with GO_TEST_TAGS. Test cases in the run step get their own deadlines via legacy/packages/go/testcase.
 // The run step runs `go test -json` (test2json) and passes the Output of its events through as human-readable output.
 // A run that selects tests with `-run` fails if no test was run (no `"Action":"run"` event): a misspelled
 // pattern runs nothing and still exits 0, so unless treated as failure, it passes without testing anything. The count

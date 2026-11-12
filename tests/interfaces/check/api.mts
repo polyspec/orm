@@ -7,11 +7,11 @@ import { readImplementations } from '../../../scripts/json/formats.mts';
 
 /** The catalog file of each implementation and the pattern of its line, whose group 1 is the code. */
 export const ERROR_CATALOGS: Record<string, { file: string; pattern: string }> = {
-  go: { file: 'packages/go/orm/codes.go', pattern: '^\\tCode\\w+\\s+= "(\\w+)"' },
-  php: { file: 'packages/php/src/Code.php', pattern: "^    public const (\\w+) = '\\w+';$" },
-  'php-extension': { file: 'packages/php-ext/src/polyspec_orm.stub.php', pattern: "^    public const (?:string )?(\\w+) = '\\1';$" },
-  typescript: { file: 'packages/ts/src/codes.ts', pattern: "^export const (\\w+) = '\\w+';$" },
-  python: { file: 'packages/python/src/polyspec/orm/codes.py', pattern: '^(\\w+) = "\\w+"$' },
+  go: { file: 'legacy/packages/go/orm/codes.go', pattern: '^\\tCode\\w+\\s+= "(\\w+)"' },
+  php: { file: 'legacy/packages/php/src/Code.php', pattern: "^    public const (\\w+) = '\\w+';$" },
+  'php-extension': { file: 'legacy/packages/php-ext/src/polyspec_orm.stub.php', pattern: "^    public const (?:string )?(\\w+) = '\\1';$" },
+  typescript: { file: 'legacy/packages/ts/src/codes.ts', pattern: "^export const (\\w+) = '\\w+';$" },
+  python: { file: 'legacy/packages/python/src/polyspec/orm/codes.py', pattern: '^(\\w+) = "\\w+"$' },
   rust: { file: 'packages/rust/orm/src/codes.rs', pattern: '^pub const (\\w+): &str = "\\w+";$' },
 };
 

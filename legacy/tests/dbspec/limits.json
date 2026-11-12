@@ -1,0 +1,545 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-123",
+    "DBS-144",
+    "DBS-151",
+    "DBS-170"
+  ],
+  "cases": [
+    {
+      "id": "document-size",
+      "requirements": [
+        "DBS-144",
+        "DBS-151",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            {
+              "fill": {
+                "text": "#",
+                "count": 33554432
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 1,
+                  "column": 1,
+                  "message": "document has 33554447 bytes, more than 33554432"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "document-size-counts-bytes",
+      "requirements": [
+        "DBS-144",
+        "DBS-151",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "#",
+            "#",
+            {
+              "fill": {
+                "text": "#é",
+                "count": 11184805
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 1,
+                  "column": 1,
+                  "message": "document has 33554435 bytes, more than 33554432"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "document-size-at-the-limit",
+      "requirements": [
+        "DBS-144"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "#",
+            "#",
+            {
+              "fill": {
+                "text": "#é",
+                "count": 11184804
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "#",
+                "#",
+                {
+                  "fill": {
+                    "text": "#é",
+                    "count": 11184804
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-count-at-the-limit",
+      "requirements": [
+        "DBS-144"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            {
+              "repeat": {
+                "var": "i",
+                "from": 0,
+                "count": 4096,
+                "lines": [
+                  "",
+                  "table t{i} {",
+                  "  id i64 identity",
+                  "  primary key (id)",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                {
+                  "repeat": {
+                    "var": "i",
+                    "from": 0,
+                    "count": 4096,
+                    "lines": [
+                      "",
+                      "table t{i} {",
+                      "  id i64 identity",
+                      "  primary key (id)",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-count",
+      "requirements": [
+        "DBS-144",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            {
+              "repeat": {
+                "var": "i",
+                "from": 0,
+                "count": 4097,
+                "lines": [
+                  "table t{i} {",
+                  "  id i64 identity",
+                  "  primary key (id)",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 16386,
+                  "column": 1,
+                  "message": "document has more than 4096 tables"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-column-count",
+      "requirements": [
+        "DBS-144",
+        "DBS-151",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table wide {",
+            {
+              "repeat": {
+                "var": "c",
+                "from": 0,
+                "count": 1001,
+                "lines": [
+                  "  c{c} i32"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 1003,
+                  "column": 3,
+                  "message": "table has more than 1000 columns"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "limit-after-earlier-errors",
+      "requirements": [
+        "DBS-144",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table T {",
+            {
+              "repeat": {
+                "var": "c",
+                "from": 0,
+                "count": 1001,
+                "lines": [
+                  "  c{c} i32"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.format",
+                  "line": 2,
+                  "column": 7,
+                  "message": "name \"T\" does not match [a-z][a-z0-9_]* or is a reserved word"
+                },
+                {
+                  "rule": "limit",
+                  "line": 1003,
+                  "column": 3,
+                  "message": "table has more than 1000 columns"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "total-column-count",
+      "requirements": [
+        "DBS-144",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            {
+              "repeat": {
+                "var": "i",
+                "from": 0,
+                "count": 121,
+                "lines": [
+                  "",
+                  "table t{i} {",
+                  {
+                    "repeat": {
+                      "var": "c",
+                      "from": 0,
+                      "count": 1000,
+                      "lines": [
+                        "  c{c} i32"
+                      ]
+                    }
+                  },
+                  "  primary key (c0)",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 120484,
+                  "column": 3,
+                  "message": "document has more than 120000 columns"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-count",
+      "requirements": [
+        "DBS-144",
+        "DBS-170"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            {
+              "repeat": {
+                "var": "i",
+                "from": 0,
+                "count": 21,
+                "lines": [
+                  "",
+                  "table t{i} {",
+                  "  id i64 identity",
+                  "  primary key (id)",
+                  {
+                    "repeat": {
+                      "var": "k",
+                      "from": 0,
+                      "count": 1000,
+                      "lines": [
+                        "  foreign key fk_{i}_{k} (id) references t{i} (id)"
+                      ]
+                    }
+                  },
+                  "}"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "limit",
+                  "line": 20106,
+                  "column": 3,
+                  "message": "document has more than 20000 foreign keys"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stress-canonical-roundtrip",
+      "requirements": [
+        "DBS-123"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 stress",
+            {
+              "repeat": {
+                "var": "i",
+                "from": 0,
+                "count": 2000,
+                "lines": [
+                  "",
+                  "table t{i} {",
+                  "  id i64 identity",
+                  {
+                    "repeat": {
+                      "var": "k",
+                      "from": 0,
+                      "count": 5,
+                      "lines": [
+                        "  ref{k}_id i64 null"
+                      ]
+                    }
+                  },
+                  {
+                    "repeat": {
+                      "var": "r",
+                      "from": 0,
+                      "count": 2,
+                      "lines": [
+                        "  c0_{r} i32 null",
+                        "  c1_{r} i64 null",
+                        "  c2_{r} bool null",
+                        "  c3_{r} decimal(13,2) null",
+                        "  c4_{r} f64 null",
+                        "  c5_{r} varchar(64) null",
+                        "  c6_{r} text null",
+                        "  c7_{r} bytes null",
+                        "  c8_{r} uuid null",
+                        "  c9_{r} date null",
+                        "  c10_{r} time(0) null",
+                        "  c11_{r} datetime(6) null"
+                      ]
+                    }
+                  },
+                  "  primary key (id)",
+                  {
+                    "repeat": {
+                      "var": "k",
+                      "from": 0,
+                      "count": 5,
+                      "lines": [
+                        "  index ix_t{i}_ref{k}_id (ref{k}_id)"
+                      ]
+                    }
+                  },
+                  {
+                    "repeat": {
+                      "var": "k",
+                      "from": 0,
+                      "count": 5,
+                      "lines": [
+                        "  foreign key fk_t{i}_ref{k} (ref{k}_id) references t{i} (id) on delete set_null on update restrict"
+                      ]
+                    }
+                  },
+                  "}"
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 stress",
+                {
+                  "repeat": {
+                    "var": "i",
+                    "from": 0,
+                    "count": 2000,
+                    "lines": [
+                      "",
+                      "table t{i} {",
+                      "  id i64 identity",
+                      {
+                        "repeat": {
+                          "var": "k",
+                          "from": 0,
+                          "count": 5,
+                          "lines": [
+                            "  ref{k}_id i64 null"
+                          ]
+                        }
+                      },
+                      {
+                        "repeat": {
+                          "var": "r",
+                          "from": 0,
+                          "count": 2,
+                          "lines": [
+                            "  c0_{r} i32 null",
+                            "  c1_{r} i64 null",
+                            "  c2_{r} bool null",
+                            "  c3_{r} decimal(13,2) null",
+                            "  c4_{r} f64 null",
+                            "  c5_{r} varchar(64) null",
+                            "  c6_{r} text null",
+                            "  c7_{r} bytes null",
+                            "  c8_{r} uuid null",
+                            "  c9_{r} date null",
+                            "  c10_{r} time(0) null",
+                            "  c11_{r} datetime(6) null"
+                          ]
+                        }
+                      },
+                      "  primary key (id)",
+                      {
+                        "repeat": {
+                          "var": "k",
+                          "from": 0,
+                          "count": 5,
+                          "lines": [
+                            "  index ix_t{i}_ref{k}_id (ref{k}_id)"
+                          ]
+                        }
+                      },
+                      {
+                        "repeat": {
+                          "var": "k",
+                          "from": 0,
+                          "count": 5,
+                          "lines": [
+                            "  foreign key fk_t{i}_ref{k} (ref{k}_id) references t{i} (id) on delete set_null on update restrict"
+                          ]
+                        }
+                      },
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

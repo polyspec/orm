@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: c0985012da39b514194607fdfa34ce029c569966a73e09ccd4ee04b697cc5aaa -->
+<!-- source-sha256: bf4b0f4a431063d427181e32ef730e726cb78c11996cd8a1d4abf093d23aace3 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -24,7 +24,7 @@
 
 스키마 작업은 각 클라이언트 라이브러리의 함수다. 함수는 parse한 document와 dialect(`mysql`, `postgres`, `sqlite`)를 받아 statement나 위치가 있는 diagnostic을 돌려준다.
 
-| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
+| 작업 | Go `legacy/packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
 |---|---|---|---|---|---|
 | document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `Dbspec::render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
 | 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `Dbspec::introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
@@ -91,7 +91,7 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 - **SCH-14** 모든 runtime은 external document를 쓰는 member set의 audit transaction을 실행한다. recipe `external_audit`은 member의 audit record를 core set이 소유한 `ext_audit`에 넣고 그 key를 `ext_post_history`에 남긴다.
 - **SCH-14a** PHP는 member set의 schema value와 generated class 중 무엇을 먼저 등록해도 그 audit record를 계획한다. registry가 process 전역이고 recipe step은 generated class를 읽지도 process를 시작하지도 않으므로, `AuditExternalSetsTest`가 두 순서를 각자의 process에서 실행한다(FCV-2).
 - **SCH-15** Go는 편집된 manifest 텍스트의 `register`가 SCH-11대로 `CONFIG`로 실패하고, TypeScript의 engine과 Rust의 `Manifest::load`는 선언된 hash와 맞지 않는 텍스트에 `SCHEMA_HASH_MISMATCH`로 실패한다. 두 코드는 연결의 register 연산과 생성 코드의 load라는 다른 층에서 나온다. `CONFIG` 층은 모든 runtime에서 recipe case `register_sends_no_statement`가 다루고, load 층은 FCV-2에 따라 네이티브로 남는다.
-- **SCH-16** Go는 생성된 model만 가진 bench manifest의 설치를 `packages/go/model/coverage_schema_install_test.go`에서 검사한다. 이미 설치된 데이터베이스에 다시 설치하고 author 수를 집계한다. recipe case는 bench 모델을 읽지 않으므로 이 case는 FCV-2에 따라 네이티브이다.
+- **SCH-16** Go는 생성된 model만 가진 bench manifest의 설치를 `legacy/packages/go/model/coverage_schema_install_test.go`에서 검사한다. 이미 설치된 데이터베이스에 다시 설치하고 author 수를 집계한다. recipe case는 bench 모델을 읽지 않으므로 이 case는 FCV-2에 따라 네이티브이다.
 - **SCH-17** Go와 Python의 연결은 요청마다 자기 manifest hash의 engine으로 계획한다. 서로 다른 hash의 두 set을 등록하고 각각 다시 등록해도 hash마다 engine 하나가 유지되며, 실패한 register는 engine을 바꾸지 않는다. recipe 형식은 engine 정체를 관찰할 수 없으므로 이 case는 FCV-2에 따라 네이티브이다.
 
 | 시점 | 호출 | 데이터베이스를 읽거나 쓰는지 |

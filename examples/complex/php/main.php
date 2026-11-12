@@ -5,7 +5,7 @@
 //   php examples/complex/php/main.php
 declare(strict_types=1);
 
-require dirname(__DIR__, 3) . '/packages/php/tests/autoload.php';
+require dirname(__DIR__, 3) . '/legacy/packages/php/tests/autoload.php';
 require __DIR__ . '/complex_functions.php';
 
 use Polyspec\Orm\Tests\Model\Author;

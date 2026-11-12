@@ -10,9 +10,9 @@ import { join } from 'node:path';
 import { readComposer, readComposerPackages, readNpmLock } from '../json/formats.mts';
 import { makeTargets } from '../repo/testcases.mts';
 
-// NPM_ROOTS are the package directories installed with npm ci. The repository root also installs packages/ts together as a workspace.
+// NPM_ROOTS are the package directories installed with npm ci. The repository root also installs legacy/packages/ts together as a workspace.
 export const NPM_ROOTS = ['.'];
-// COMPOSER_ROOTS are the package directories installed with composer install. The repository root's composer.json installs packages/php as a path
+// COMPOSER_ROOTS are the package directories installed with composer install. The repository root's composer.json installs legacy/packages/php as a path
 // repository.
 export const COMPOSER_ROOTS = ['.'];
 

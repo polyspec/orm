@@ -286,15 +286,15 @@ lint-go: ## Lint the Go: golangci-lint and deadcode -test in each Go module; off
 lint-rust: ## Lint the Rust: cargo clippy in each Cargo workspace
 	$(NODE) $(KIT)/lint-rust.$(KIT_EXT) --locked
 
-# The PHP extension of packages/php-ext (S10): its build with phpize, the check of its names, its stub and its arginfo, and the
+# The PHP extension of legacy/packages/php-ext (S10): its build with phpize, the check of its names, its stub and its arginfo, and the
 # comparison of its declarations with the PHP library before its unit tests.
 .PHONY: build-php-ext lint-php-ext test-php-ext
-build-php-ext: ## Build packages/php-ext into var/php-ext/polyspec_orm.so after the arginfo check; ONLINE (gen_stub.php may fetch its PHP-Parser once)
-	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
+build-php-ext: ## Build legacy/packages/php-ext into var/php-ext/polyspec_orm.so after the arginfo check; ONLINE (gen_stub.php may fetch its PHP-Parser once)
+	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 lint-php-ext: ## Check the names, the stub and the stub hash of the arginfo header of the extension; offline
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 test-php-ext: build-php-ext ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; offline
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php -- --roots packages/php packages/php-ext
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
 
 # The tasks of P29: each runs its target for every runtime of packages/ (go, php, php-ext, python, rust, ts) (kit K1106).
 .PHONY: build test lint build-go build-php build-python build-rust build-ts test-go test-php test-python test-rust test-ts
@@ -308,26 +308,26 @@ lint: ## Run lint-<runtime> for every runtime of packages/; offline
 # long-running work under run-long; go and uv are the tools of the checkout (K393-1), and cargo builds into the shared target
 # directory under its lease.
 build-go: ## Build the Go modules with go build; offline
-	$(RUN_LONG) go-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots examples packages/go tests -- $(GO) build ./...
+	$(RUN_LONG) go-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots examples legacy/packages/go tests -- $(GO) build ./...
 build-php: ## A PHP library has no build step; offline
 build-python: ## Build the Python package with uv build; offline
-	$(RUN_LONG) python-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/python -- $(UV) build
+	$(RUN_LONG) python-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots legacy/packages/python -- $(UV) build
 build-rust: lease-tool ## Build the Rust workspace with cargo build; offline
 	$(RUN_LONG) rust-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/rust -- $(CARGO_LEASED) cargo build --locked
 build-ts: ## Build the TypeScript package with tsc; offline
-	$(RUN_LONG) typescript-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/ts -- node_modules/.bin/tsc -p tsconfig.build.json
+	$(RUN_LONG) typescript-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots legacy/packages/ts -- node_modules/.bin/tsc -p tsconfig.build.json
 # The unit tests of a runtime with the name filter CASES=<pattern>, with the runner arguments that kit 0.0.98 passed (kit K1094,
 # K1106): one go test over the Go modules, one test at a time in cargo and node, and the 30 s test timeout of node.
 test-go: ## Run the unit tests of the Go modules with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples packages/go tests -- -count=1 -timeout=0
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0
 test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots packages/php
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
 test-python: ## Run the unit tests of the Python package with CASES=<pattern>; offline
-	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots packages/python --venv .venv
+	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots legacy/packages/python --venv .venv
 test-rust: ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- -- --test-threads=1
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots packages/ts -- --test-concurrency=1
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
 
 # The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the setup and context
 # targets that config/ci.json names, the targets of a job past failures with their report, and the closing check of ci.yml.
@@ -473,7 +473,7 @@ TEST_TZ = Asia/Seoul
 
 # GO_TEST runs Go tests so that each case is reported. tests/go-test.mts first runs the build of the same package and build
 # tag as a long-running task with no deadline, `go-build/<packages>`, and then runs go test. -v shows the RUN, STEP, PASS, and FAIL lines that each
-# case emits in packages/go/testcase during the run, and each case has its own deadline,
+# case emits in legacy/packages/go/testcase during the run, and each case has its own deadline,
 # so -timeout 0 turns off the deadline of the whole test binary (default 10 minutes).
 # GO_TEST_FLAGS adds flags to every Go test of the repo (empty by default), such as -json for the go test -json stream of a make
 # target that runs Go tests.
@@ -523,7 +523,7 @@ CARGO_COPY = $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(RUN_
 # of a bare cargo build, which link-check refuses. It names no checkout: cargo builds the polyspec crates of the checkouts that the
 # link declaration (.links, K869) names, and of their released tags without one.
 CARGO_SIBLINGS = $(NODE) $(abspath $(KIT))/link.$(KIT_EXT) cargo $(abspath packages/rust)
-# HOLD_TYPESCRIPT holds the TypeScript build output of this checkout (the dist of packages/ts and the generated models) as one holder for the
+# HOLD_TYPESCRIPT holds the TypeScript build output of this checkout (the dist of legacy/packages/ts and the generated models) as one holder for the
 # lifetime of the make process. Targets that build and write that output get it on their first line,
 # so they do not change output that another run's build is still writing. If another run holds it, it waits for the directory change notice. If an ancestor
 # process (make feature-check) holds it, it is acquired inside that holding, so the builds of feature steps that run together also run one at a time.
@@ -683,18 +683,18 @@ bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }
 	$(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
-# GO_PACKAGES is every package of the three modules of go.work (packages/go, tests, examples). The root is not a module,
+# GO_PACKAGES is every package of the three modules of go.work (legacy/packages/go, tests, examples). The root is not a module,
 # so ./... at the root points to no package.
-GO_PACKAGES = ./packages/go/... ./tests/... ./examples/...
+GO_PACKAGES = ./legacy/packages/go/... ./tests/... ./examples/...
 
-# go-test-check runs the Go package tests that no other target runs. The client package of packages/go
+# go-test-check runs the Go package tests that no other target runs. The client package of legacy/packages/go
 # is run by client-db-check (scripts/client-db-test.mts), and the engine and generator are run by the verification commands of feature-check
-# (planner-go-* for each engine package, packages/go/engine/dbspec by dbspec-go-check of schema-go,
-# generator by generation-go), and packages/go/testcase is run by testcase-check with the same commands. The examples
+# (planner-go-* for each engine package, legacy/packages/go/engine/dbspec by dbspec-go-check of schema-go,
+# generator by generation-go), and legacy/packages/go/testcase is run by testcase-check with the same commands. The examples
 # package tests, including the DSN refusal and output comparisons, run once in example-check with their PHP, Python and database setup.
-GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/procevent/... ./packages/go/internal/... ./tests/...)
+GO_TEST_CHECK_PACKAGES = $$(go list ./legacy/packages/go/cmd/... ./legacy/packages/go/procevent/... ./legacy/packages/go/internal/... ./tests/...)
 .PHONY: go-test-check
-# go-test-check runs every go test of the check packages. The cross-runtime tests of packages/go/internal/dialects (apply clients,
+# go-test-check runs every go test of the check packages. The cross-runtime tests of legacy/packages/go/internal/dialects (apply clients,
 # introspect compare, dialect facts) need the runner binaries, the PHP extension, the Python runtime, the stress document and the
 # MySQL privilege fixture, which go-test-check builds or declares and exports (T334-3-6-3); without them those tests fail.
 # The entries of mariadb, Test<Name>Mariadb, need the MariaDB servers, which a runner of the MySQL servers cannot hold:
@@ -718,7 +718,7 @@ go-test-check/cross-runtime: typescript-current python-venv-check php-vendor-che
 .PHONY: testcase-check
 testcase-check: testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust
 testcase-check/go:
-	$(GO_TEST) ./packages/go/testcase -count=1
+	$(GO_TEST) ./legacy/packages/go/testcase -count=1
 testcase-check/node:
 	$(NODE) --test scripts/harness/testcase.test.mts scripts/harness/debug-mode.test.mts
 testcase-check/runners:
@@ -795,14 +795,14 @@ dbspec-introspect-check:
 .PHONY: dbspec-introspect-ts-check
 dbspec-introspect-ts-check: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) --conditions=orm-test packages/ts/tests/dbspec_introspect-mysql.test.mjs packages/ts/tests/dbspec_introspect-postgres.test.mjs packages/ts/tests/dbspec_introspect-sqlite.test.mjs packages/ts/tests/dbspec_introspect-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) --conditions=orm-test legacy/packages/ts/tests/dbspec_introspect-mysql.test.mjs legacy/packages/ts/tests/dbspec_introspect-postgres.test.mjs legacy/packages/ts/tests/dbspec_introspect-sqlite.test.mjs legacy/packages/ts/tests/dbspec_introspect-markdown.test.mjs
 
 # dbspec-introspect-php-check runs the recipe and the failing query in PDO's silent error mode with the PHP client's
 # Polyspec\Orm\Dbspec\Dbspec::introspect.
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check: php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php packages/php/tests/DbspecCatalogChecksTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecIntrospectRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecIntrospectTest.php legacy/packages/php/tests/DbspecCatalogChecksTest.php
 
 # dbspec-introspect-php-extension-check runs the recipe and the failing query in PDO's silent error mode with the PHP
 # extension polyspec_orm loaded, whose Polyspec\Orm\Dbspec\Dbspec::introspect takes the place of the client's. The extension is built in
@@ -810,9 +810,9 @@ dbspec-introspect-php-check: php-vendor-check php-models flowmark-check
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check: php-vendor-check flowmark-check
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectExtensionTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectNativeTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecIntrospectExtensionTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecIntrospectNativeTest.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-rust-check runs the recipe with the Rust client's polyspec_orm::dbspec::introspect.
@@ -822,8 +822,8 @@ dbspec-introspect-rust-check: flowmark-check
 
 .PHONY: dbspec-sqlite-literal-rows-helper-check
 dbspec-sqlite-literal-rows-helper-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateIntrospectTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecBehaviourTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecShowCreateIntrospectTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecBehaviourTest.php
 
 # dbspec-introspect-python-check runs the recipe with the Python client's polyspec.orm.dbspec.introspect.introspect_dbspec.
 .PHONY: dbspec-introspect-python-check
@@ -839,48 +839,48 @@ catalog-mutation-helper-python-check: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-read
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/catalog-mutation-helper.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/internal-column-error.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/internal-column-error.test.mjs
 
 typescript-dbspec-plan-fixture-check: typescript-read
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/dbspec-plan-fixture.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/dbspec-plan-fixture.test.mjs
 
 physical-command-case-helper-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 --test scripts/physical-command-case.test.mts
 
 typescript-capture-error-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/capture-error.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/capture-error.test.mjs
 
 typescript-check-state-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/check-state.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/check-state.test.mjs
 
 .PHONY: typescript-test-exact-keys-check
 typescript-test-exact-keys-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/assertions.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/assertions.test.mjs
 
 mysql-test-options-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/mysql-test-options.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/mysql-test-options.test.mjs
 
 database-case-tests-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/database-case-tests.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/database-case-tests.test.mjs
 
 typescript-conditional-entry-helper-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/conditional-entry.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/conditional-entry.test.mjs
 
 typescript-database-case-fixture-helper-check: typescript-read
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/database-case-fixture.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/database-case-fixture.test.mjs
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
-	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestSqlite(LockResult|SessionClassifiesBeginErrorAndRestoresState)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/engine/dbspec -run '^TestSqlite(LockResult|SessionClassifiesBeginErrorAndRestoresState)$$' -count=1
 
 dbspec-lock-php-check: php-vendor-check php-models
-	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecSqliteLockTest packages/php/tests/DbspecSqliteLockTest.php
+	$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter DbspecSqliteLockTest legacy/packages/php/tests/DbspecSqliteLockTest.php
 
 dbspec-lock-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-lock-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSqliteLockTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSqliteLockNativeTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-lock-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecSqliteLockTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DbspecSqliteLockNativeTest.php
 
 dbspec-lock-python-check: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_dbspec_sqlite_lock
@@ -890,7 +890,7 @@ dbspec-lock-rust-check:
 
 dbspec-lock-ts-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/dbspec-begin-exclusive-lock.mjs
+	$(NODE) --test legacy/packages/ts/tests/dbspec-begin-exclusive-lock.mjs
 
 # dbspec-apply-stress-bench runs the case stress_plan_commits_each_step of the dbspec_apply recipe in Go: it applies the 100-table
 # stress plan as the first plan to the databases in APPLY_STRESS_DIALECTS (make bench runs all three). MySQL commits its statements and its 1100 history steps separately.
@@ -902,11 +902,11 @@ APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
 dbspec-apply-stress-bench: go-models
 	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApply($(subst mysql,Mysql,$(subst postgres,Postgres,$(subst sqlite,Sqlite,$(APPLY_STRESS_DIALECTS)))))$$/^stress_plan_commits_each_step$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeDbspecApply($(subst mysql,Mysql,$(subst postgres,Postgres,$(subst sqlite,Sqlite,$(APPLY_STRESS_DIALECTS)))))$$/^stress_plan_commits_each_step$$' -count=1
 
 # dbspec-apply-pairs-check builds the TypeScript client and the Rust apply runner,
 # the Go, PHP, TypeScript, and Rust runners in tests/dbspec/apply, the PHP extension polyspec_orm runner (built in this run's directory), and the Python runner
-# packages/python/tests/dbspec_apply_runner.py: for every ordered pair, on MySQL, PostgreSQL,
+# legacy/packages/python/tests/dbspec_apply_runner.py: for every ordered pair, on MySQL, PostgreSQL,
 # and SQLite, the first plan of the chain is applied by one client and the rest by another, where the first client stops
 # in the middle, the second client finishes the plan with recover, and the second client rolls back the plan that stopped again. The history
 # rows and the introspected schema text must match those of the chain. Python also runs the
@@ -917,8 +917,8 @@ dbspec-apply-pairs-check: go-test-check
 # dbspec-plan-php-check runs the drift refusals of the PHP client's Polyspec\Orm\Dbspec\Dbspec::apply and rollback.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check: php-vendor-check php-models
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanApplyTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanReaderTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecPlanApplyTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecPlanReaderTest.php
 
 # dbspec-introspect-compare-check applies the stress document (DBSPEC_INTROSPECT_TABLES tables) to MySQL,
 # PostgreSQL, and SQLite, and for each database runs the introspection runners of tests/dbspec/introspect in Go, PHP, TypeScript, Rust, and
@@ -957,23 +957,23 @@ dbspec-compare-check/unit:
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
 # take this interpreter as ORM_PYTHON and import the package through that install.
-PYTHON_VENV = $(abspath packages/python/.venv)
+PYTHON_VENV = $(abspath legacy/packages/python/.venv)
 # orm-install-python installs the Python tool and its declared venv backend from mise.toml, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. uv sync installs the client into that venv
-# from packages/python/uv.lock with its group test, editable, as uv sync does by default (T259): the install imports
-# packages/python/src, so a source change needs no reinstall. The fixture models that python-models writes are no part of the client: they live in
-# packages/python/tests/models, the tests' own package, outside the source package whose python symbols kit reads (K855, K977).
-# orm-python-lock writes the lock of the Python client with uv alone (KSTD-5-102): uv lock records packages/python/uv.lock from
+# from legacy/packages/python/uv.lock with its group test, editable, as uv sync does by default (T259): the install imports
+# legacy/packages/python/src, so a source change needs no reinstall. The fixture models that python-models writes are no part of the client: they live in
+# legacy/packages/python/tests/models, the tests' own package, outside the source package whose python symbols kit reads (K855, K977).
+# orm-python-lock writes the lock of the Python client with uv alone (KSTD-5-102): uv lock records legacy/packages/python/uv.lock from
 # pyproject.toml, the lock that uv sync of orm-install-python installs.
 .PHONY: orm-python-lock
 orm-python-lock:
-	cd packages/python && $(ONLINE) $(UV) lock
+	cd legacy/packages/python && $(ONLINE) $(UV) lock
 
 .PHONY: orm-install-python
 orm-install-python: orm-codes-python
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(MAKE) --no-print-directory uv-install DIR=packages/python SYNC='--quiet --group test'
+	$(MAKE) --no-print-directory uv-install DIR=legacy/packages/python SYNC='--quiet --group test'
 	$(MAKE) --no-print-directory install-link
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
@@ -986,10 +986,10 @@ python-venv-check: orm-codes-python
 	want=$$(mise current python) || { echo "python-venv-check: mise does not name the Python of mise.toml; run make install-tools"; exit 1; }; \
 	test "$$got" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but mise.toml declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from the Python of mise.toml"; exit 1; }
 
-# php-vendor-check fails when vendor-php/autoload.php or the PHPUnit of packages/php or packages/php-ext, which orm-install-php
+# php-vendor-check fails when vendor-php/autoload.php or the PHPUnit of legacy/packages/php or legacy/packages/php-ext, which orm-install-php
 # creates with Composer, is missing, and names the make step that creates it; it installs nothing. A target that runs PHP
-# through packages/php/tests/autoload.php or a package's PHPUnit takes it as a prerequisite. Such a target reads Code.php of
-# packages/php/src, so its prerequisite orm-codes-php writes the file first.
+# through legacy/packages/php/tests/autoload.php or a package's PHPUnit takes it as a prerequisite. Such a target reads Code.php of
+# legacy/packages/php/src, so its prerequisite orm-codes-php writes the file first.
 .PHONY: php-vendor-check
 php-vendor-check: orm-codes-php
 	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make orm-install-php, which installs it with Composer"; exit 1; }; done
@@ -1007,7 +1007,7 @@ python-check: python-unit-check python-interface-unit-check python-model-check c
 # tests/bind/messages.json imports the slot models that ORM_PYTHON_BIND_MODELS names, as its other runs do.
 python-unit-check: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 python-unit-check: python-venv-check bind-python-models
-	$(PYTHON_TESTS) -- discover -s packages/python/tests -t . -p 'test_*.py'
+	$(PYTHON_TESTS) -- discover -s legacy/packages/python/tests -t . -p 'test_*.py'
 
 # The DB-free complex query cases cover Python's fluent full-text chains and paginate statement order.
 .PHONY: python-complex-query-check
@@ -1036,7 +1036,7 @@ dbspec-python-check: python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_markdown
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: typescript-current python-venv-check php-vendor-check
 	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
@@ -1067,17 +1067,17 @@ dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
-	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
-	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecStressTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecStressTest.php
 dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecIntrospectStressTest.php
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
-	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
+	$(NODE) --test legacy/packages/ts/tests/dbspec-stress.mjs
+	$(NODE) --test legacy/packages/ts/tests/dbspec-stress.mjs
 dbspec-stress-bench/rust: dbspec-stress-bench/prepare
 	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
@@ -1120,12 +1120,12 @@ dbspec-verify-errors-rust-check: lease-tool
 .PHONY: dbspec-verify-errors-check dbspec-verify-errors-php-extension-check
 dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check typescript-current
 	$(READ_TYPESCRIPT)
-	$(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApplyVerificationErrorsNone$$' -count=1
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeDbspecApplyVerificationErrorsNone$$' -count=1
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php
 	$(PYTHON_TESTS) -- packages.python.tests.test_dbspec_apply_verification_errors_none
-	$(NODE) --test packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs
 dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-verify-errors-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecReleaseHooksTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-verify-errors-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DbspecReleaseHooksTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php
 # dbspec-rust-check/show-create checks that shown_checks (mysql.rs) reads every case of tests/dbspec/show-create.json with the expected body,
 # and that the public MySQL introspection (read_catalog) reports, for each case of that catalog, the expected check, unsupported objects, and error.
 dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
@@ -1156,65 +1156,65 @@ rust-send-savepoint-check/test:
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 .PHONY: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 dbspec-php-check/documents: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecCatalogRowsTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecCatalogRowsTest.php
 # dbspec-php-check/graph checks that a document, document set, plan list or unsupported list whose array holds another type is a TypeError.
 dbspec-php-check/graph: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecGraphTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecGraphTest.php
 # dbspec-php-check/behaviour checks the PHP behaviours that no shared vector fixes against fixtures/dbspec-behaviour.json, which
-# php packages/php/testing/dbspec/behaviour.php records from the PHP library.
+# php legacy/packages/php/testing/dbspec/behaviour.php records from the PHP library.
 dbspec-php-check/behaviour: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecBehaviourTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecBehaviourTest.php
 # dbspec-php-check/show-create-introspect reads the canned MySQL catalog of tests/dbspec/show-create.json through introspect.
 dbspec-php-check/show-create-introspect: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateIntrospectTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecShowCreateIntrospectTest.php
 dbspec-php-check/rules: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRulesTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRulesTest.php
 dbspec-php-check/manifest: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HashesRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetsRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/HashesRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/SetsRecipeTest.php
 dbspec-php-check/render: php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderStatementsRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderPhysicalRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetDecimalRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRenderStatementsRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRenderPhysicalRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecSetDecimalRecipeTest.php
 dbspec-php-check/plan: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecPlanTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecPlanTest.php
 dbspec-php-check/mermaid: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecMermaidRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecMermaidRecipeTest.php
 dbspec-php-check/apply-cleanup: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecApplyCleanupTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecApplyCleanupTest.php
 # dbspec-php-check/unicode checks that the PHP UnicodeWord table matches its ranges at every code point (the table itself is matched to Go by dbspec-go-check/unicode).
 dbspec-php-check/unicode: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecUnicodeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecUnicodeTest.php
 # dbspec-php-check/show-create checks that MysqlCatalog::createChecks reads every case of tests/dbspec/show-create.json with the expected body.
 # dbspec-php-check/analyze checks syntax analysis and format with focused cases and the analyze steps of the recipes (docs/spec/dbspec.md "Syntax analysis", "Formatting").
 dbspec-php-check/analyze: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecAnalyzeTest.php
 dbspec-php-check/show-create: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecShowCreateTest.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of the recipe tests/dbspec/set-files.json, each
 # a temporary file tree with real symbolic and hard links (docs/spec/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecReadSetRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetReaderDiagnosticsTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecReadSetRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecSetTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/SetReaderDiagnosticsTest.php
 # dbspec-php-check/set-parse runs DbspecSetParseRecipeTest: every case of tests/dbspec/set-parse.json through Dbspec::parseSet
 # (docs/spec/dbspec.md "Parsing a set").
 dbspec-php-check/set-parse: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecSetParseRecipeTest.php
 
 .PHONY: dbspec-php-extension-check
-# dbspec-php-extension-check checks the PHP extension polyspec_orm (packages/php-ext), which implements the PHP client's dbspec surface and
+# dbspec-php-extension-check checks the PHP extension polyspec_orm (legacy/packages/php-ext), which implements the PHP client's dbspec surface and
 # error codes in C under the client's own class names (Polyspec\Orm\Dbspec\*, Polyspec\Orm\Code; docs/spec/dbspec.md, DBS-172): it checks
 # the names, the one stub and the stub hash of src/polyspec_orm_arginfo.h (make lint-php-ext), builds the extension with phpize in this
 # run's directory, checks that its Reflection matches src/polyspec_orm.stub.php and the PHP client's public classes (DeclarationsTest), and
-# runs the PHP client's tests (packages/php/tests) with the extension loaded; the test bootstrap fails a run that loaded any file of
-# packages/php/src, so no fallback class stands in for the extension (packages/php/tests/extension_run_guard.php). A run that holds results of a whole document set runs twice. The build uses the phpize and
-# php-config on PATH, which make orm-install-php-extension-tools checks; make packages/php-ext/src/polyspec_orm_arginfo.h rewrites the header from the stub.
+# runs the PHP client's tests (legacy/packages/php/tests) with the extension loaded; the test bootstrap fails a run that loaded any file of
+# legacy/packages/php/src, so no fallback class stands in for the extension (legacy/packages/php/tests/extension_run_guard.php). A run that holds results of a whole document set runs twice. The build uses the phpize and
+# php-config on PATH, which make orm-install-php-extension-tools checks; make legacy/packages/php-ext/src/polyspec_orm_arginfo.h rewrites the header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # Kit's test-php-ext runner starts PHP children outside the invoking make recipe; expose the same built module to those children.
 test-php-ext: export ORM_PHP_MODE = extension
@@ -1224,10 +1224,10 @@ test-php-ext: export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
 # and which mariadb-recipes-check/php-extension runs.
 PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::|\w*Mariadb\w*::))
 test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
-# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests; the test bootstrap
+# PHP_EXTENSION_TESTS runs PHPUnit files of legacy/packages/php with the extension loaded, through kit's run-tests; the test bootstrap
 # fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
-PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
-PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist
+PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration legacy/packages/php/phpunit.xml.dist
+PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
 PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
 PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlEveryLibraryThrowableIsItsRule
@@ -1235,10 +1235,10 @@ PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlEvery
 php-codec-causes-check: php-models build-php-ext
 	@set -eu; \
 	status=0; \
-	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecYamlCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' legacy/packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecYamlCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' legacy/packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' legacy/packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
 	exit "$$status"
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
@@ -1253,7 +1253,7 @@ dbspec-php-extension-check:
 	if $(MAKE) --no-print-directory -k RUN_DIR="$$run_dir" DBSPEC_PHP_EXTENSION_SHARED_RUN=1 $(DBSPEC_PHP_EXTENSION_PARTS); then :; else status=$$?; fi; \
 	exit "$$status"
 dbspec-php-extension-check/arginfo:
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 dbspec-php-extension-check/prepare:
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 # Builds the extension in an isolated run directory and executes only its native Collection unit cases.
@@ -1266,9 +1266,9 @@ collection-php-extension-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CollectionTest.php $(if $(COLLECTION_TEST_FILTER),--filter '$(COLLECTION_TEST_FILTER)',); \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CollectionTest.php $(if $(COLLECTION_TEST_FILTER),--filter '$(COLLECTION_TEST_FILTER)',); \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' legacy/packages/php-ext/tests/DeclarationsTest.php; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CollectionIdentityTest.php
 
 # Runs the native Model helper surface cases against a fresh extension build; the source-library comparison is a separate PHPUnit run.
 model-types-php-extension-check: php-vendor-check php-models
@@ -1277,10 +1277,10 @@ model-types-php-extension-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelTypesSurfaceTest.php packages/php-ext/tests/PlanCacheBoundNativeTest.php packages/php-ext/tests/PlanCacheMemoryNativeTest.php; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testPlanCacheRetainsAtMostTheBoundOfPlaceholders|testPlanCacheRetainsAtMostAFewMibOfPlans|testPlanCachePromotesHitsAndEvictsTheLeastRecentlyUsedPlan|testStatementCacheRetainsAtMostTheBoundOfPlaceholders|testStatementCacheRetainsAtMostAFewMibOfStatements' packages/php/tests/PlanCacheMemoryTest.php; \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTypesSourceTest.php packages/php/tests/FuncSourceAdapterTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelTypesSurfaceTest.php legacy/packages/php-ext/tests/PlanCacheBoundNativeTest.php legacy/packages/php-ext/tests/PlanCacheMemoryNativeTest.php; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testPlanCacheRetainsAtMostTheBoundOfPlaceholders|testPlanCacheRetainsAtMostAFewMibOfPlans|testPlanCachePromotesHitsAndEvictsTheLeastRecentlyUsedPlan|testStatementCacheRetainsAtMostTheBoundOfPlaceholders|testStatementCacheRetainsAtMostAFewMibOfStatements' legacy/packages/php/tests/PlanCacheMemoryTest.php; \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DeclarationsTest.php; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelTypesSourceTest.php legacy/packages/php/tests/FuncSourceAdapterTest.php
 
 # Exercises native model query assembly and write round trips on an owned SQLite in-memory database.
 .PHONY: model-query-write-php-extension-unit-check
@@ -1291,7 +1291,7 @@ model-query-write-php-extension-unit-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesWritesNativeTest.php --filter '$(MODEL_QUERY_WRITE_TEST_FILTER)'
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelQueriesWritesNativeTest.php --filter '$(MODEL_QUERY_WRITE_TEST_FILTER)'
 
 # Runs the changed-database installation fixture through the native extension on each configured database.
 t182-php-extension-schema-check: php-vendor-check php-model-check
@@ -1300,7 +1300,7 @@ t182-php-extension-schema-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSchemaSetEditedManifest' packages/php-ext/tests/CoverageSchemaInstallNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testSchemaSetEditedManifest' legacy/packages/php-ext/tests/CoverageSchemaInstallNativeTest.php
 
 # Runs the complete native Model surface and its native helper classes against a fresh extension; generated PHP models use their normal bootstrap.
 # MODEL_NATIVE_TEST_FILTER=testNativeSqliteRoundTrip selects only the server-free decimal native SQLite owner case.
@@ -1312,9 +1312,9 @@ model-native-php-extension-check: php-vendor-check php-model-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/MarkdownNativeTest.php packages/php-ext/tests/AuditLazyFakePdoTest.php packages/php-ext/tests/ModelDslNativeTest.php packages/php-ext/tests/ModelReadNativeTest.php packages/php-ext/tests/ModelWriteSurfaceTest.php packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/RuntimeModelTest.php packages/php-ext/tests/ChainNativeSurfaceTest.php packages/php-ext/tests/RegistrySchemaNativeTest.php packages/php-ext/tests/PlanCacheMemoryNativeTest.php packages/php-ext/tests/DecimalModelSqliteNativeTest.php $(if $(MODEL_NATIVE_TEST_FILTER),packages/php/tests/PlanCacheMemoryTest.php,) $(if $(MODEL_NATIVE_TEST_FILTER),--filter '$(MODEL_NATIVE_TEST_FILTER)',); \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
-	if [ -z '$(MODEL_NATIVE_TEST_FILTER)' ]; then env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php packages/php/tests/ModelTypesSourceTest.php; fi
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelNativeTest.php legacy/packages/php-ext/tests/MarkdownNativeTest.php legacy/packages/php-ext/tests/AuditLazyFakePdoTest.php legacy/packages/php-ext/tests/ModelDslNativeTest.php legacy/packages/php-ext/tests/ModelReadNativeTest.php legacy/packages/php-ext/tests/ModelWriteSurfaceTest.php legacy/packages/php-ext/tests/ModelAssemblyTest.php legacy/packages/php-ext/tests/ModelStreamReadTest.php legacy/packages/php-ext/tests/RuntimeModelTest.php legacy/packages/php-ext/tests/ChainNativeSurfaceTest.php legacy/packages/php-ext/tests/RegistrySchemaNativeTest.php legacy/packages/php-ext/tests/PlanCacheMemoryNativeTest.php legacy/packages/php-ext/tests/DecimalModelSqliteNativeTest.php $(if $(MODEL_NATIVE_TEST_FILTER),legacy/packages/php/tests/PlanCacheMemoryTest.php,) $(if $(MODEL_NATIVE_TEST_FILTER),--filter '$(MODEL_NATIVE_TEST_FILTER)',); \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' legacy/packages/php-ext/tests/DeclarationsTest.php; \
+	if [ -z '$(MODEL_NATIVE_TEST_FILTER)' ]; then env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelMethodsTest.php legacy/packages/php/tests/ModelTypesSourceTest.php; fi
 
 # Runs the native root-IN chunking and composite-key probes against in-memory SQLite.
 .PHONY: model-chunk-composite-native-php-extension-check
@@ -1324,7 +1324,7 @@ model-chunk-composite-native-php-extension-check: php-vendor-check php-model-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSplitRootInCountPlansNoStatementOverTheBindLimit|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes' packages/php-ext/tests/ParameterChunkingNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testSplitRootInCountPlansNoStatementOverTheBindLimit|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes' legacy/packages/php-ext/tests/ParameterChunkingNativeTest.php
 
 # Runs focused grouped-result decoder and native GroupRow count units through the PHP extension.
 .PHONY: group-count-boolean-php-extension-unit-check
@@ -1334,7 +1334,7 @@ group-count-boolean-php-extension-unit-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'
 
 # Runs the exact i64 grouped result decode and assembly test with the checkout's target lease.
 # Runs the GroupRow count decoder unit with the checkout's target lease.
@@ -1346,124 +1346,124 @@ group-row-count-rust-unit-check:
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-read php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
-	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
-	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
+	run_case go $(GO_TEST) ./legacy/packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
+	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/GroupRowsTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
 	run_case php-extension $(MAKE) --no-print-directory group-count-boolean-php-extension-unit-check; \
-	run_case typescript $(NODE) --test --test-name-pattern='group_rows/driver_cell_forms' packages/ts/tests/group_rows.mjs; \
+	run_case typescript $(NODE) --test --test-name-pattern='group_rows/driver_cell_forms' legacy/packages/ts/tests/group_rows.mjs; \
 	run_case python-count $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms; \
 	run_case rust-count $(MAKE) --no-print-directory group-row-count-rust-unit-check; \
 	exit "$$status"
 
-# dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
+# dbspec-php-extension-check/declarations runs the extension's own checks (legacy/packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 dbspec-php-extension-check/silent-paths: dbspec-php-extension-check/prepare
-	$(CURDIR)/var/tools/bin/php -n -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/silent_paths.php
+	$(CURDIR)/var/tools/bin/php -n -d extension=$(PHP_EXTENSION_LIBRARY) legacy/packages/php-ext/tests/silent_paths.php
 # dbspec-php-extension-check/statement-event runs StatementEventSurfaceTest with the extension loaded: the class is the extension's own (KSTD-7-1).
 dbspec-php-extension-check/statement-event: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php-ext/tests/StatementEventSurfaceTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php-ext/tests/StatementEventSurfaceTest.php
 # PHP_EXTENSION_DYNAMIC_MODULES, passed as ORM_PHP_DYNAMIC_MODULES, lists the modules that php -n loads from extension_dir, comma separated: pdo, which the extension requires,
 # when the PHP that the recipes and test-php-ext run ($(KIT_TOOLS)/bin/php, which toolCommand finds first) has it only as a shared module, as on Ubuntu; empty when
 # it is built in. DeclarationsTest reads it, and adds pdo_pgsql itself (T296).
 PHP_EXTENSION_DYNAMIC_MODULES = $(shell $(KIT_TOOLS)/bin/php -n -r 'echo extension_loaded("pdo") ? "" : "pdo";')
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" $(RUN_TESTS) phpunit --php-extension "$(PHP_EXTENSION_LIBRARY)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" $(RUN_TESTS) phpunit --php-extension "$(PHP_EXTENSION_LIBRARY)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DeclarationsTest.php
 # dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of the recipes (tests/dbspec/canonical.json, normalize.json, invalid.json, files.json, positions.json), introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 # dbspec-php-extension-check/sets runs the hashes and sets recipes with the extension: tests/dbspec/hashes.json and sets.json.
 dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/HashesRecipeTestExtensionTest.php
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SetsRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/HashesRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/SetsRecipeTestExtensionTest.php
 # dbspec-php-extension-check/render runs the rendered statements recipe with the extension: the statements of tests/dbspec/ddl.json.
 dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare flowmark-check
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php
 # dbspec-php-extension-check/graph runs DbspecGraphTest with the extension: the TypeError of a document or plan whose array holds another type.
 dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecGraphTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecGraphTest.php
 # dbspec-php-extension-check/behaviour runs DbspecBehaviourTest with the extension: the PHP behaviours of fixtures/dbspec-behaviour.json, Names among them.
 dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecBehaviourNativeTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecBehaviourTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecBehaviourNativeTest.php
 # dbspec-php-extension-check/schema-definition runs SchemaDefinitionRecipeTestExtensionTest with the extension: the cases of tests/dbspec/schema-definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/limits runs DbspecLimitsRecipeTestExtensionTest with the extension: the cases of tests/dbspec/limits.json.
 dbspec-php-extension-check/limits: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/introspect-messages-recipe runs DbspecIntrospectMessagesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/introspect-messages.json.
 dbspec-php-extension-check/introspect-messages-recipe: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/rules-recipe runs DbspecRulesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/rules.json.
 dbspec-php-extension-check/rules-recipe: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/dialect-refusal runs DbspecDialectRefusalRecipeTestExtensionTest with the extension: the cases of tests/dbspec/dialect-refusal.json.
 dbspec-php-extension-check/dialect-refusal: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/load-set runs DbspecLoadSetRecipeTestExtensionTest with the extension: the cases of tests/dbspec/load-set.json.
 dbspec-php-extension-check/load-set: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/default-select-set runs DefaultSelectSetRecipeTestExtensionTest with the extension: the cases of tests/planner/default-select-set.json.
 dbspec-php-extension-check/default-select-set: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/runtime-model-plans runs RuntimeModelPlansRecipeTestExtensionTest with the extension: the cases of tests/planner/runtime-model.json.
 dbspec-php-extension-check/runtime-model-plans: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/runtime-model-entities runs RuntimeModelEntitiesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/runtime-model.json.
 dbspec-php-extension-check/runtime-model-entities: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases and of the limit errors, the analyze steps of the recipes (hashes.json, sets.json) run in their own recipe tests; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
 	if [ -z '$(DBSPEC_PHP_EXTENSION_SHARED_RUN)' ]; then trap 'rm -rf "$$run_dir"' EXIT; fi; \
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesNativeTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecAnalyzeTest.php; \
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecAnalyzeTest.php; \
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecRulesNativeTest.php
 # dbspec-php-extension-check/plan runs DbspecPlanTest with the extension: the plan vectors of tests/dbspec/plan-cases.json.
 dbspec-php-extension-check/plan: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecPlanTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecPlanTest.php
 # dbspec-php-extension-check/mermaid runs DbspecMermaidRecipeExtensionTest with the extension: the Mermaid recipe.
 dbspec-php-extension-check/mermaid: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php
 # dbspec-php-extension-check/apply-cleanup runs DbspecApplyCleanupTest with the extension: the cleanup errors of apply after a failing PDO.
 dbspec-php-extension-check/apply-cleanup: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecApplyCleanupTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecApplyCleanupTest.php
 # dbspec-php-extension-check/plan-apply runs DbspecPlanApplyTest with the extension: every plan case of tests/dbspec/plan-cases.json applied to MySQL, PostgreSQL and SQLite.
 dbspec-php-extension-check/plan-apply: php-vendor-check dbspec-php-extension-check/prepare
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanApplyTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecPlanApplyTest.php
 # dbspec-php-extension-check/show-create runs DbspecShowCreateIntrospectTest with the extension: introspection of the canned MySQL catalog of tests/dbspec/show-create.json.
 dbspec-php-extension-check/show-create: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecShowCreateIntrospectTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecShowCreateIntrospectTest.php
 # dbspec-php-extension-check/set runs the recipe tests/dbspec/set-files.json and DbspecSetTest with the extension: Dbspec::readSet on every case.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecReadSetRecipeTestExtensionTest.php
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecReadSetRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DbspecSetTest.php
 # dbspec-php-extension-check/codec runs the codec recipe tests/codec/codec.json through the extension's codec (docs/spec/codec.md COD-40).
 dbspec-php-extension-check/codec: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php
 # dbspec-php-extension-check/code-catalog runs CodeCatalogTest with the extension: the codes of docs/spec/errors.yaml against Code.php, and the
 # class that the extension registers as Polyspec\Orm\Code, which must hold the same codes.
 dbspec-php-extension-check/code-catalog: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CodeCatalogTest.php
+	$(PHP_EXTENSION_TESTS) legacy/packages/php/tests/CodeCatalogTest.php
 # dbspec-php-extension-check/aes runs CodecErrorCauseTest with the extension: a codec error keeps the native error as its cause.
 dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php
 # dbspec-php-extension-check/set-parse runs DbspecSetParseRecipeTestExtensionTest with the extension: every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
 # dbspec-php-extension-check/planner runs the planner suite with the extension: PlannerCompileTestExtensionTest
 # (the compile recipe tests/planner/compile.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
@@ -1473,7 +1473,7 @@ dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/compile
 dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
 dbspec-php-extension-check/planner/compile: php-vendor-check dbspec-php-extension-check/planner/internal
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/PlannerCompileTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) legacy/packages/php-ext/tests/PlannerCompileTestExtensionTest.php
 
 # Runs only the native PHP extension TLS handshake and rejection cases on the configured MySQL TLS server.
 mysql-tls-php-extension-check: RUN_DIR = $(abspath .runtime/run)/mysql-tls-php-extension-check-$$PPID
@@ -1483,7 +1483,7 @@ mysql-tls-php-extension-check: php-vendor-check orm-install-php-extension-tools
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php --filter mysql_tls
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php --filter mysql_tls
 
 # Runs the native PHP extension MySQL session test file, whose case is the PostgreSQL session startup parameters (CFG-7).
 mysql-session-php-extension-check: RUN_DIR = $(abspath .runtime/run)/mysql-session-php-extension-check-$$PPID
@@ -1493,11 +1493,11 @@ mysql-session-php-extension-check: php-vendor-check orm-install-php-extension-to
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MysqlSessionNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/MysqlSessionNativeTest.php
 
 # Runs the TypeScript CFG-4/CFG-5 live pool-bound cases on SQLite, MySQL and PostgreSQL.
 connection-pool-resource-bounds-typescript-check: typescript-read
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/pool_bounds.mjs
+	$(WITH_TEST_ENV) $(NODE) --test legacy/packages/ts/tests/pool_bounds.mjs
 
 # Runs CFG-2 through the PHP extension's native Orm::connect with generated model fixtures.
 connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
@@ -1506,16 +1506,16 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults' packages/php-ext/tests/ConnectionUtcNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults' legacy/packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
 # loaded: StatementFaultTest (statement-fault) and DsnTest::testParse, which holds the tuples and refusal texts of the C parser. It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter 'testParse'
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'testTransactions'
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/StatementFaultTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/DsnTest.php --filter 'testParse'
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/ModelTest.php --filter 'testTransactions'
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
 # directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given
@@ -1579,7 +1579,7 @@ RECIPE_RUST_TEST = cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --w
 # mariadb-recipes-check/<runtime> runs every recipe entry of the database mariadb of one runtime on the MariaDB servers of make
 # orm-test-mariadb (FCV-3, DIA-200), each the target of the CI group mariadb_<runtime>; a runner of the MySQL servers cannot hold
 # them (scripts/ci/server-programs.mts), so no target of those servers runs an entry of mariadb. An entry is a test of its own:
-# Test<Name>Mariadb of packages/go/orm and packages/go/internal/testdb, the recipe entries TestRecipe<Name>Mariadb among them,
+# Test<Name>Mariadb of legacy/packages/go/orm and legacy/packages/go/internal/testdb, the recipe entries TestRecipe<Name>Mariadb among them,
 # which the Go lane of client-db (GO_LANE_SKIP) and go-test-check skip; <recipe>-mariadb.test.mjs and the PHP class
 # <Name>Mariadb..., which the suites leave to these targets (scripts/suite-test.mts) and the extension's unit run does not
 # select (PHP_EXTENSION_NATIVE_CASES); the Python module <recipe>_mariadb, which no test_*.py discovery finds; and the module
@@ -1589,11 +1589,11 @@ RECIPE_RUST_TEST = cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --w
 # a recipe that runs on mysql runs on mariadb, a server of the MySQL dialect (DIA-200), so an entry of mysql without its
 # entry of mariadb fails the target rather than leaving the recipe out. node --test takes a path that matches no file as a
 # pattern that matches nothing and passes, so the TypeScript target looks for each entry before it runs them.
-MARIADB_TS_ENTRIES = $(patsubst %-mysql.test.mjs,%-mariadb.test.mjs,$(sort $(wildcard packages/ts/tests/*-mysql.test.mjs)))
-MARIADB_PY_ENTRIES = $(patsubst packages/python/tests/test_%_mysql.py,packages.python.tests.%_mariadb,$(sort $(wildcard packages/python/tests/test_*_mysql.py)))
+MARIADB_TS_ENTRIES = $(patsubst %-mysql.test.mjs,%-mariadb.test.mjs,$(sort $(wildcard legacy/packages/ts/tests/*-mysql.test.mjs)))
+MARIADB_PY_ENTRIES = $(patsubst legacy/packages/python/tests/test_%_mysql.py,packages.python.tests.%_mariadb,$(sort $(wildcard legacy/packages/python/tests/test_*_mysql.py)))
 .PHONY: mariadb-recipes-check/go mariadb-recipes-check/rust mariadb-recipes-check/typescript mariadb-recipes-check/python mariadb-recipes-check/php mariadb-recipes-check/php-extension
 mariadb-recipes-check/go: lease-tool
-	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/orm ./packages/go/internal/testdb -run '^Test[A-Za-z]*Mariadb$$' -count=1
+	$(WITH_MARIADB_ENV) $(GO_TEST) ./legacy/packages/go/orm ./legacy/packages/go/internal/testdb -run '^Test[A-Za-z]*Mariadb$$' -count=1
 mariadb-recipes-check/rust: lease-tool
 	$(WITH_MARIADB_ENV) cd packages/rust && $(CARGO_TEST) mariadb-recipes-check -- $(RECIPE_RUST_TEST) --test mariadb
 mariadb-recipes-check/typescript: typescript-current
@@ -1603,9 +1603,9 @@ mariadb-recipes-check/typescript: typescript-current
 mariadb-recipes-check/python: lease-tool python-venv-check
 	$(WITH_MARIADB_ENV) $(PYTHON_TESTS) -- $(MARIADB_PY_ENTRIES)
 mariadb-recipes-check/php: lease-tool php-vendor-check php-models
-	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '::testMariadb'
+	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter '::testMariadb'
 mariadb-recipes-check/php-extension: lease-tool php-vendor-check build-php-ext
-	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '::testMariadb'
+	$(WITH_MARIADB_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter '::testMariadb'
 
 # The dialect-facts probe needs its own writable MySQL server with binary logging and trust-function-creators disabled.
 .PHONY: orm-test-mysql-privilege-start
@@ -1688,17 +1688,17 @@ recipe-runners-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 scripts/features/recipe-runners.test.mts
 recipe-unknown-key-check: recipe-unknown-key-check/go recipe-unknown-key-check/typescript recipe-unknown-key-check/python recipe-unknown-key-check/php recipe-unknown-key-check/rust recipe-unknown-key-check/php-extension
 recipe-unknown-key-check/go: recipe-keys-check
-	$(GO_TEST) ./packages/go/internal/recipe -run '^(TestCheckKeysAcceptsAndRefusesByName|TestLoadKeyTableNamesTheSchemaTable)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/internal/recipe -run '^(TestCheckKeysAcceptsAndRefusesByName|TestLoadKeyTableNamesTheSchemaTable)$$' -count=1
 recipe-unknown-key-check/typescript: recipe-keys-check
-	$(RUN_TESTS) node -- --test-concurrency=1 packages/ts/tests/recipe_keys.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 legacy/packages/ts/tests/recipe_keys.test.mjs
 recipe-unknown-key-check/python: recipe-keys-check python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_recipe_keys
 recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RecipeKeysTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RecipeKeysTest.php
 recipe-unknown-key-check/rust: recipe-keys-check lease-tool
 	cd packages/rust && $(CARGO_TEST) recipe-unknown-key-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- recipe_keys::
 recipe-unknown-key-check/php-extension: recipe-keys-check php-vendor-check
-	@set -eu; run_dir="$(abspath .runtime/run)/recipe-unknown-key-php-extension-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RecipeKeysExtensionTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/recipe-unknown-key-php-extension-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RecipeKeysExtensionTest.php
 
 # conformance-refusal-check runs the type check of each compiled runtime that accepts each refusal of the case errors of the
 # recipe conformance_verification with its error and refuses a use that drops the error: Go, TypeScript and Rust. The refusals
@@ -1706,9 +1706,9 @@ recipe-unknown-key-check/php-extension: recipe-keys-check php-vendor-check
 .PHONY: conformance-refusal-check conformance-refusal-check/go conformance-refusal-check/typescript conformance-refusal-check/rust-fixtures
 conformance-refusal-check: conformance-refusal-check/go conformance-refusal-check/typescript conformance-refusal-check/rust-fixtures
 conformance-refusal-check/go:
-	$(GO_TEST) ./packages/go/model -run '^TestRefusalIsATypedError$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/model -run '^TestRefusalIsATypedError$$' -count=1
 conformance-refusal-check/typescript: typescript-read
-	$(RUN_TESTS) node -- --test-concurrency=1 packages/ts/tests/refusal-before-request.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 legacy/packages/ts/tests/refusal-before-request.mjs
 conformance-refusal-check/rust-fixtures: lease-tool
 	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- --test-threads=1 compiler_fixtures::refusal-
 
@@ -1817,86 +1817,86 @@ package-check: lease-tool
 # it runs each command with no deadline under RUN_LONG. -fuzztime sets the length of fuzzing.
 fuzz-check: fuzz-check/engine-ir fuzz-check/clients-go-orm
 fuzz-check/engine-ir:
-	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
 fuzz-check/clients-go-orm:
-	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./packages/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
+	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./legacy/packages/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 # PHP is the PHP program that client-unit-check runs. The check uses the PHP of .php-version as the php on PATH,
 # and php-min-check gives the lowest supported release of composer.json.
 PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
 RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
-# PYTHON_TESTS runs Python tests through the harness of packages/python/tests/testcase.py, which keeps the deadline of each
+# PYTHON_TESTS runs Python tests through the harness of legacy/packages/python/tests/testcase.py, which keeps the deadline of each
 # case by its class and ends the process GRACE after it; run-tests holds no time limit of its own (kit 0.0.105).
 PYTHON_TESTS = PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/orm-gen-python client-unit-check/orm-gen-typescript client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRunnerTest.php
 client-unit-check/dsn: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DsnTest.php
 client-unit-check/markdown: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/MarkdownTest.php
 client-unit-check/relation-keys: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RelationKeysTest.php
 # client-unit-check/code-catalog compares the generated Code.php with docs/spec/errors.yaml.
 client-unit-check/code-catalog: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodeCatalogTest.php
 client-unit-check/engine: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/EngineTest.php
 
 # The six SQLite NOWAIT callers restore busy_timeout without hiding the lock error or either failure cause.
 .PHONY: nowait-restore-check
 nowait-restore-check: lease-tool typescript-read php-vendor-check php-models python-venv-check orm-install-php-extension-tools
 	@set +e; status=0; \
-	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
-	$(RUN_TESTS) node --test-concurrency=1 --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
+	$(RUN_TESTS) node --test-concurrency=1 --conditions=orm-test --test legacy/packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_sqlite_row_lock_restore || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_row_lock_restore_tests -- --test-threads=1 || status=1; \
 	run_dir="$(abspath .runtime/run)/nowait-restore-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
-		env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
+		env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
 	else status=1; fi; \
 	exit "$$status"
 client-unit-check/runtime-model: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RuntimeModelTest.php
 client-unit-check/orm-gen-python: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.WriteTextIfChangedTest
 
 client-unit-check/orm-gen-typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test --test-name-pattern='writeTextIfChanged' packages/ts/tests/generate.mjs
+	$(NODE) --test --test-name-pattern='writeTextIfChanged' legacy/packages/ts/tests/generate.mjs
 
 client-unit-check/orm-gen: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmGenTest.php
 
 php-go-text-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GoSerializationTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/GoSerializationTest.php
 
 php-gen-unit-check: typescript-current php-vendor-check php-models
 	$(READ_TYPESCRIPT)
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenPackageTest.php packages/php/tests/OrmGenParsedModelTest.php packages/php/tests/OrmGenLazyModelTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmGenCliTest.php legacy/packages/php/tests/OrmGenScanTest.php legacy/packages/php/tests/OrmGenPackageTest.php legacy/packages/php/tests/OrmGenParsedModelTest.php legacy/packages/php/tests/OrmGenLazyModelTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
 .PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-integration
 generator-consumer-check:
 	+$(MAKE) --no-print-directory -k generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-integration
 generator-consumer-check/go:
-	cd packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType|TestGoGeneratedNonnullStyledSetterRejectsSqlNull|TestScanGeneratesUsedMethods)$$' -count=1
+	cd legacy/packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType|TestGoGeneratedNonnullStyledSetterRejectsSqlNull|TestScanGeneratesUsedMethods)$$' -count=1
 generator-consumer-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php --filter testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php packages/php/tests/ModelMethodsTest.php --filter 'testTheReceiverIsResolvedFromTheSource|testADeclaredMethodBuildsTheQueryOfItsChain'
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmGenTest.php --filter testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmGenScanTest.php legacy/packages/php/tests/ModelMethodsTest.php --filter 'testTheReceiverIsResolvedFromTheSource|testADeclaredMethodBuildsTheQueryOfItsChain'
 generator-consumer-check/php-extension: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/generator-consumer-check-$$$$"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelNativeTest.php legacy/packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
 generator-consumer-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/generate.mjs
-	$(NODE) --test --test-name-pattern='generate-scan/model_calls' packages/ts/tests/generate-scan.mjs
+	$(NODE) --test legacy/packages/ts/tests/generate.mjs
+	$(NODE) --test --test-name-pattern='generate-scan/model_calls' legacy/packages/ts/tests/generate-scan.mjs
 generator-consumer-check/python: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
 	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
@@ -1929,15 +1929,15 @@ rust-compiler-fixtures-check/unit: lease-tool
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
 native-error-cause-check/typescript-driver: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-integer-param.mjs
+	$(NODE) --test legacy/packages/ts/tests/driver-error-lock-wait.mjs legacy/packages/ts/tests/driver-integer-param.mjs
 native-error-cause-check/typescript-markdown: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) packages/ts/tests/markdown.mjs
+	$(NODE) legacy/packages/ts/tests/markdown.mjs
 native-error-cause-check/python-driver: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_errors.py
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_cells.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_driver_errors.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_driver_cells.py
 native-error-cause-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmExceptionLockWaitTest.php packages/php/tests/MarkdownTest.php packages/php/tests/NativeCellReadTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmExceptionLockWaitTest.php legacy/packages/php/tests/MarkdownTest.php legacy/packages/php/tests/NativeCellReadTest.php
 .PHONY: native-error-cause-check/rust
 native-error-cause-check/rust:
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib --features test-faults native -- --nocapture
@@ -1948,22 +1948,22 @@ native-error-cause-check/php-extension: php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir"; \
 	$(call php_ext_build,"$$run_dir/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testColumnValuePreservesOriginalWarningThrowable|testDriverFactoryKeepsItsCodeAndOriginalThrowable|testNativeSqliteConnectionFailurePreservesThePdoCause' packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/OrmExceptionNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testColumnValuePreservesOriginalWarningThrowable|testDriverFactoryKeepsItsCodeAndOriginalThrowable|testNativeSqliteConnectionFailurePreservesThePdoCause' legacy/packages/php-ext/tests/ModelStreamReadTest.php legacy/packages/php-ext/tests/OrmExceptionNativeTest.php
 client-unit-check/model-methods: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelMethodsTest.php
 client-unit-check/client-generics: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ClientGenericsTest.php
 
 .PHONY: dbspec-php-interface-program-helper-check
 dbspec-php-interface-program-helper-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php --filter testCompareRunnerUsesOneSharedOutputSequence
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php --filter testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecRunnerTest.php --filter testCompareRunnerUsesOneSharedOutputSequence
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecPlanTest.php --filter testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics
 
 # Runs the shared PHP source scanner failure case with the PHP extension loaded.
 .PHONY: phpstan-test-runner-helper-check
 phpstan-test-runner-helper-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php --filter testPhpstanTypesTheTransactionResultAndTheRowsOfAModel
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php --filter testPhpstanFindsEveryQueryMethodOfAGeneratedModel
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ClientGenericsTest.php --filter testPhpstanTypesTheTransactionResultAndTheRowsOfAModel
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelMethodsTest.php --filter testPhpstanFindsEveryQueryMethodOfAGeneratedModel
 .PHONY: audit-native-method-assertions-helper-check
 audit-native-method-assertions-helper-check: php-vendor-check php-model-check orm-install-php-extension-tools
 	@set -eu; \
@@ -1971,13 +1971,13 @@ audit-native-method-assertions-helper-check: php-vendor-check php-model-check or
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AuditNativeMethodsTest.php --filter testNativeMethodsAreInternal
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AuditNativeMethodsTest.php --filter testNativeMethodsAreInternal
 
 client-unit-check/perf-extensions: php-vendor-check php-models
-	env ORM_PHP_MODE=library ORM_PERF_REFUSED_LOADED= $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfExtensionsTest.php
+	env ORM_PHP_MODE=library ORM_PERF_REFUSED_LOADED= $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/PerfExtensionsTest.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
-# packages/php/composer.json supports.
+# legacy/packages/php/composer.json supports.
 php-min-check:
 	PHP="$$(node scripts/php/php-min.mts)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
 
@@ -2046,7 +2046,7 @@ php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CATALOG)'
 
 # python-mysql-session-check checks the session startup parameters of a Python PostgreSQL connection
-# (packages/python/tests/mysql_session.py); it needs the database variables of make orm-test-servers (WITH_TEST_ENV).
+# (legacy/packages/python/tests/mysql_session.py); it needs the database variables of make orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-mysql-session-check
 python-mysql-session-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.mysql_session
@@ -2057,28 +2057,28 @@ python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 
-# dialect-facts-check runs the citation tests of the schema dialect probes of packages/go/internal/dialects: each probe has an ID
+# dialect-facts-check runs the citation tests of the schema dialect probes of legacy/packages/go/internal/dialects: each probe has an ID
 # and cites the dialect spec. The probes themselves (TestDialectFacts), which run against the MySQL and PostgreSQL servers of
 # TEST_ENV and a SQLite file per probe, are go tests of go-test-check, which builds what they need (T334-3-6-3).
 dialect-facts-check:
-	$(GO_TEST) ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
 # dialect-facts-mariadb-check runs the MariaDB probes (TestDialectFactsMariadb) on the MariaDB servers of make orm-test-mariadb,
 # the primary and the privilege server (DIA-200); go-test-check, which runs on the MySQL servers, leaves them to it.
 .PHONY: dialect-facts-mariadb-check
 dialect-facts-mariadb-check: lease-tool
-	$(WITH_MARIADB_ENV) $(GO_TEST) ./packages/go/internal/dialects -run '^TestDialectFactsMariadb$$' -count=1
+	$(WITH_MARIADB_ENV) $(GO_TEST) ./legacy/packages/go/internal/dialects -run '^TestDialectFactsMariadb$$' -count=1
 
 # conformance-result-check builds the TypeScript client and runs the PHP, TypeScript, and Go conformance result
 # tests. Each runner reports its cases with their deadlines.
 conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 conformance-result-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceResultTest.php
 conformance-result-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test tests/conformance/check/result_typescript.test.mts
 conformance-result-check/go:
-	$(GO_TEST) ./packages/go/internal/conformance -count=1
+	$(GO_TEST) ./legacy/packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_result
 
@@ -2099,12 +2099,12 @@ case-database-check: typescript-current php-vendor-check
 # document set, the output directory and the source scanned for model calls. python-models writes them, and it is the last step of
 # orm-install-python, so every reader of the venv finds them. python-model-check runs orm-gen gen --check against the same entry (no network).
 PYTHON_MODELS_SET = contracts/fixtures/bench/dbspec-set.json
-PYTHON_MODELS_OUT = packages/python/tests/models
-PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
+PYTHON_MODELS_OUT = legacy/packages/python/tests/models
+PYTHON_MODELS_SCAN = legacy/packages/python/examples/thin_slice/main.py
 .PHONY: python-models
-PYTHON_MODELS_STAMP = $(CURDIR)/packages/python/tests/models/python-models.key
+PYTHON_MODELS_STAMP = $(CURDIR)/legacy/packages/python/tests/models/python-models.key
 python-models: python-venv-check
-	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(dir $(PYTHON_MODELS_SET)) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
+	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" legacy/packages/python/uv.lock legacy/packages/python/src $(dir $(PYTHON_MODELS_SET)) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 .PHONY: python-model-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
@@ -2122,24 +2122,24 @@ bind-models-check: go-model-check php-model-check bind-python-models typescript-
 .PHONY: bind-message-check bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension bind-message-check/raw-text-go bind-message-check/raw-text-php bind-message-check/raw-text-php-extension
 bind-message-check: bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension bind-message-check/raw-text-go bind-message-check/raw-text-php bind-message-check/raw-text-php-extension
 bind-message-check/raw-text-go:
-	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeBindMessagesRawTextNone$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/bindmessages -run '^TestRecipeBindMessagesRawTextNone$$' -count=1
 bind-message-check/raw-text-php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BindMessagesRawTextRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/BindMessagesRawTextRecipeTest.php
 bind-message-check/raw-text-php-extension: php-vendor-check php-models build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php
 bind-message-check/go:
-	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
 bind-message-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-message-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- bind_messages::
 bind-message-check/python: python-venv-check bind-python-models
 	ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_bind_messages_none
 bind-message-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BindMessagesRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/BindMessagesRecipeTest.php
 bind-message-check/php-extension: php-vendor-check php-models build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BindMessagesRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/BindMessagesRecipeTestExtensionTest.php
 bind-message-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --conditions=orm-test packages/ts/tests/bind_messages.mjs
+	$(NODE) --conditions=orm-test legacy/packages/ts/tests/bind_messages.mjs
 
 # markdown-session-check runs the session recipe, tests/markdown/session.json, in each runtime (FCV-3, FCV-4): each part runs the
 # entry of its runtime that calls the recipe helper, without a database. Each markdown.session step runs reads of the bind fixture
@@ -2147,18 +2147,18 @@ bind-message-check/typescript: typescript-current
 .PHONY: markdown-session-check markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
 markdown-session-check: markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
 markdown-session-check/go:
-	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeMarkdownSessionNone$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/bindmessages -run '^TestRecipeMarkdownSessionNone$$' -count=1
 markdown-session-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) markdown-session-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- markdown_session::
 markdown-session-check/python: python-venv-check bind-python-models
 	ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_markdown_session_none
 markdown-session-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownSessionRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/MarkdownSessionRecipeTest.php
 markdown-session-check/php-extension: php-vendor-check php-models build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php
 markdown-session-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --conditions=orm-test packages/ts/tests/markdown_session.mjs
+	$(NODE) --conditions=orm-test legacy/packages/ts/tests/markdown_session.mjs
 
 CHECK_TARGETS += markdown-session-check/go
 CI_TARGETS_markdown_go += markdown-session-check/go
@@ -2178,7 +2178,7 @@ CI_TARGETS_markdown_php_extension += markdown-session-check/php-extension
 BIND_PY_MODELS = $(abspath .runtime/run)/bind-python-models
 # Runs read a model directory together, so one lease holds its publish, and a key of its inputs leaves a current directory in place while they read it.
 PY_MODELS_LEASES = $(abspath .runtime/python-models.leases)
-py_models_publish = $(LEASE) run $(PY_MODELS_LEASES) exclusive --wait -- $(GENERATE_ONCE) $(1).key "" packages/python/uv.lock packages/python/src $(dir $(2)) -- sh -c 'rm -rf $(1).tmp && $(PYTHON_VENV)/bin/orm-gen gen --set $(2) --out $(1).tmp && rm -rf $(1) && mv $(1).tmp $(1)'
+py_models_publish = $(LEASE) run $(PY_MODELS_LEASES) exclusive --wait -- $(GENERATE_ONCE) $(1).key "" legacy/packages/python/uv.lock legacy/packages/python/src $(dir $(2)) -- sh -c 'rm -rf $(1).tmp && $(PYTHON_VENV)/bin/orm-gen gen --set $(2) --out $(1).tmp && rm -rf $(1) && mv $(1).tmp $(1)'
 .PHONY: bind-python-models
 bind-python-models: lease-tool python-venv-check
 	$(call py_models_publish,$(BIND_PY_MODELS),tests/bind/dbspec-set.json)
@@ -2246,11 +2246,11 @@ ci-install-tools:
 endif
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
-	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
+	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./legacy/packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php: php-vendor-check php-models
-	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --stop-on-defect legacy/packages/php/tests/MarkdownConformanceTest.php
 markdown-conformance-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/markdown-conformance-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --stop-on-defect packages/php-ext/tests/MarkdownConformanceNativeTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/markdown-conformance-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --stop-on-defect legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php
 # The Python runner reads the build information with go version -m.
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
@@ -2258,7 +2258,7 @@ markdown-conformance-check/rust: lease-tool
 	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- markdown_conformance:: --nocapture
 markdown-conformance-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
+	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test legacy/packages/ts/tests/markdown_conformance.mjs
 
 decimal-bench-sqlite: typescript-current
 	$(READ_TYPESCRIPT)
@@ -2276,13 +2276,13 @@ decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-instal
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=feature-helper-check, whose helper decimal-physical runs $@' >&2; exit 1; }
 	mkdir -p $(DECIMAL_RUST_RUN)
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) $(NODE) $(abspath tests/cargo-test.mts) --copy $(DECIMAL_RUST_RUN) -- cargo test --no-run --message-format=json-render-diagnostics --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test all
-	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ ./packages/go/decimalmodel
+	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ ./legacy/packages/go/decimalmodel
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	. $(DECIMAL_ENV) && ORM_DECIMAL_RUST_RUN=$(DECIMAL_RUST_RUN) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
 	rm -rf $(DECIMAL_RUST_RUN)
 
 # interface-check runs the tests of the interface checker (tests/interfaces/check) and the checker itself with --self-test. The checker expands the entity
-# unit rules into the dbspec entity order that the TypeScript client build (packages/ts/dist) reads.
+# unit rules into the dbspec entity order that the TypeScript client build (legacy/packages/ts/dist) reads.
 .PHONY: interface-check/tests interface-check/self-test interface-api-binding-unit-check interface-typescript-extractor-check native-api-equivalence-check
 interface-check: interface-check/tests interface-check/self-test
 interface-check/tests: php-vendor-check
@@ -2291,17 +2291,17 @@ interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
 interface-typescript-extractor-check: interface-typescript-check lease-tool
 	$(READ_TYPESCRIPT)
-	$(RUN_LONG) interface-typescript-extractor -- $(NODE) packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project packages/ts/testing/interfaces/tsconfig.json --noEmit
+	$(RUN_LONG) interface-typescript-extractor -- $(NODE) legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project legacy/packages/ts/testing/interfaces/tsconfig.json --noEmit
 	$(NODE) --test tests/interfaces/check/typescript-extractor.test.mts
-# public-interface-typescript-check runs the TypeScript recipe of public_interface (packages/ts/tests/public_interface-none.test.mjs),
+# public-interface-typescript-check runs the TypeScript recipe of public_interface (legacy/packages/ts/tests/public_interface-none.test.mjs),
 # whose interface.symbols step reads the declarations with the TypeScript extractor that interface-typescript-check requires.
 .PHONY: public-interface-typescript-check
 public-interface-typescript-check: interface-typescript-check typescript-read
-	$(NODE) --conditions=orm-test --test packages/ts/tests/public_interface-none.test.mjs
+	$(NODE) --conditions=orm-test --test legacy/packages/ts/tests/public_interface-none.test.mjs
 # interface-typescript-check names the missing TypeScript checker dependency before the self-test runs it, so a fresh
 # checkout fails with the install step instead of a module resolution error.
 interface-typescript-check:
-	test -f packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make orm-install-interfaces-typescript"; exit 1; }
+	test -f legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make orm-install-interfaces-typescript"; exit 1; }
 
 interface-check/self-test: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
@@ -2309,20 +2309,20 @@ interface-check/self-test: php-vendor-check lease-tool typescript-current interf
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:
-	$(RUN_LONG) go-model -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets --check $(CURDIR)/$(GO_MODELS_FILE)'
+	$(RUN_LONG) go-model -- sh -c 'cd legacy/packages/go && $(GO) run ./cmd/orm-gen sets --check $(CURDIR)/$(GO_MODELS_FILE)'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
 # or when a generated model set differs from the output of orm-gen gen --check.
 ts-model-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/models-scan.mjs
+	$(NODE) --test legacy/packages/ts/tests/models-scan.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) $(NODE) scripts/perf-test.mts
 
 # scripts-typecheck checks the repository's TypeScript-based scripts (the .mts files of scripts/ and tests/, tsconfig.json) with tsc.
-# Some scripts import the build output of packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so
+# Some scripts import the build output of legacy/packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so
 # they are checked after that build.
 scripts-typecheck: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
@@ -2342,17 +2342,17 @@ ts-check/test: ts-check/hold
 # ts-aes-auth-check builds the TypeScript client and runs only the AES authentication error cases.
 ts-aes-auth-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-aes-errors.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/codec-aes-errors.test.mjs
 
 # ts-codec-errors-check builds the TypeScript client and runs only codec error propagation cases.
 ts-codec-errors-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-errors.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/codec-errors.test.mjs
 
 # sqlite-version-ts-check runs only the TypeScript SQLite native-version unit cases.
 sqlite-version-ts-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/sqlite-version.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/sqlite-version.test.mjs
 
 # rust-build-environment-check runs the Rust build library path-resolution unit cases.
 .PHONY: rust-build-environment-check
@@ -2389,23 +2389,23 @@ column-function-metadata-check:
 	exit $$status
 column-function-metadata-check/go:
 	@status=0; \
-	(cd packages/go && $(GO) test ./engine/planner -run '^TestColumnFunctionMissing' -count=1) || status=1; \
-	(cd packages/go && $(GO) test ./engine/ir -run '^TestParamUsesColumnFunction' -count=1) || status=1; \
+	(cd legacy/packages/go && $(GO) test ./engine/planner -run '^TestColumnFunctionMissing' -count=1) || status=1; \
+	(cd legacy/packages/go && $(GO) test ./engine/ir -run '^TestParamUsesColumnFunction' -count=1) || status=1; \
 	exit $$status
 column-function-metadata-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata -- --test-threads=1
 column-function-metadata-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(RUN_LONG) column-function-metadata-typescript -- $(NODE) --test packages/ts/tests/column_function_metadata.mjs
+	$(RUN_LONG) column-function-metadata-typescript -- $(NODE) --test legacy/packages/ts/tests/column_function_metadata.mjs
 column-function-metadata-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'
 column-function-metadata-check/python: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_column_function_internal
 column-function-metadata-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ColumnFunctionMetadataTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ColumnFunctionMetadataTest.php
 column-function-metadata-check/php-extension: RUN_DIR = $(abspath .runtime/run)/column-function-metadata-check-php-extension-$$PPID
 
 # Scalar subquery result typing fails internally when post-validation metadata lacks the referenced column.
@@ -2420,20 +2420,20 @@ scalar-subquery-column-check:
 	$(MAKE) --no-print-directory scalar-subquery-column-check/php-extension || status=1; \
 	exit $$status
 scalar-subquery-column-check/go:
-	cd packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
+	cd legacy/packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
 scalar-subquery-column-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_ -- --test-threads=1
 scalar-subquery-column-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(RUN_LONG) scalar-subquery-column-typescript -- $(NODE) packages/ts/tests/scalar_subquery_type.mjs
+	$(RUN_LONG) scalar-subquery-column-typescript -- $(NODE) legacy/packages/ts/tests/scalar_subquery_type.mjs
 scalar-subquery-column-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
 scalar-subquery-column-check/python: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_scalar_subquery_type
 scalar-subquery-column-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
 scalar-subquery-column-check/php-extension: RUN_DIR = $(abspath .runtime/run)/scalar-subquery-column-check-php-extension-$$PPID
 
 # relation-parent-bind-rust-check exercises malformed and valid parent bind slot expansion without a database.
@@ -2449,12 +2449,12 @@ paged-read-rust-check: lease-tool
 .PHONY: page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-read model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^TestPlanCachePagedReadBindsPageValues$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestPlanCachePagedReadBindsPageValues$$' -count=1
 page-cache-unit-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/PlanCacheBoundTest.php
 page-cache-unit-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
+	$(NODE) --test legacy/packages/ts/tests/plan-cache-in.mjs
 page-cache-unit-check/python: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_plan_cache_bound
 page-cache-unit-check/rust:
@@ -2463,7 +2463,7 @@ page-cache-unit-check/rust:
 # The PHP plan cache and statement cache retain at most 65535 placeholders in all (KSTD-7-3-4, limepie P-97).
 .PHONY: php-plan-cache-memory-check
 php-plan-cache-memory-check: lease-tool php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheMemoryTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/PlanCacheMemoryTest.php
 
 # Focused split-merge NULL boundary cases in each native client.
 
@@ -2473,11 +2473,11 @@ php-plan-cache-memory-check: lease-tool php-vendor-check php-models
 split-read-plan-check: split-read-plan-check/go split-read-plan-check/ts split-read-plan-check/python split-read-plan-check/rust
 
 split-read-plan-check/go: lease-tool
-	$(GO_TEST) ./packages/go/orm -run '^TestSplitRootInCountPlansNoStatementOverTheBindLimit$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestSplitRootInCountPlansNoStatementOverTheBindLimit$$' -count=1
 
 split-read-plan-check/ts: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/split-plan.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/split-plan.test.mjs
 
 split-read-plan-check/python: python-venv-check python-models
 	$(PYTHON_TESTS) -- packages.python.tests.test_split_plan
@@ -2492,13 +2492,13 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	status=0; \
-	$(RUN_TESTS) node --test-concurrency=1 --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
-	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	$(RUN_TESTS) node --test-concurrency=1 --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' legacy/packages/ts/tests/collection_identity.mjs || status=1; \
+	$(GO_TEST) ./legacy/packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-tests --test all -- collection_identity::composite --test-threads=1 || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
-	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelAssemblyTest.php legacy/packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	else status=1; fi; \
 	test $$status -eq 0
 
@@ -2521,8 +2521,8 @@ ts-min-check: lease-tool orm-codes-typescript
 .PHONY: dbspec-ts-check
 dbspec-ts-check: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec_read_set-none.test.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec_render_statements-none.test.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_render_physical-markdown.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-markdown.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/browser-entry.mjs legacy/packages/ts/tests/recipe_canonical.mjs legacy/packages/ts/tests/recipe_normalize.mjs legacy/packages/ts/tests/recipe_positions.mjs legacy/packages/ts/tests/recipe_invalid.mjs legacy/packages/ts/tests/recipe_files.mjs legacy/packages/ts/tests/dbspec_read_set-none.test.mjs legacy/packages/ts/tests/dbspec-set-edges.mjs legacy/packages/ts/tests/recipe_set_parse.mjs legacy/packages/ts/tests/recipe_hashes.mjs legacy/packages/ts/tests/recipe_sets.mjs legacy/packages/ts/tests/dbspec_show_create_introspect-none.test.mjs legacy/packages/ts/tests/dbspec-rules.mjs legacy/packages/ts/tests/dbspec_render_statements-none.test.mjs legacy/packages/ts/tests/dbspec_dialect_refusal-none.test.mjs legacy/packages/ts/tests/dbspec-plan-cases.mjs legacy/packages/ts/tests/dbspec-plan-invalid.mjs legacy/packages/ts/tests/dbspec-plan-chains.mjs legacy/packages/ts/tests/dbspec-plan-parse.mjs legacy/packages/ts/tests/dbspec-plan-comparisons.mjs legacy/packages/ts/tests/dbspec-add-tables-steps.mjs legacy/packages/ts/tests/dbspec-mermaid-none.test.mjs legacy/packages/ts/tests/dbspec-unicode.mjs legacy/packages/ts/tests/dbspec-show-create.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/dbspec_render_physical-mysql.test.mjs legacy/packages/ts/tests/dbspec_render_physical-postgres.test.mjs legacy/packages/ts/tests/dbspec_render_physical-sqlite.test.mjs legacy/packages/ts/tests/dbspec_render_physical-markdown.test.mjs legacy/packages/ts/tests/dbspec_set_decimal-mysql.test.mjs legacy/packages/ts/tests/dbspec_set_decimal-postgres.test.mjs legacy/packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs legacy/packages/ts/tests/dbspec_set_decimal-markdown.test.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
 # node modules, Node globals, or drivers, the format and hash of shared vectors, tokens and UTF-16 ranges, and the tests/editor
@@ -2604,18 +2604,18 @@ orm-install-cli-check: lease-tool orm-codes-typescript
 	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(ONLINE) $(NODE) --test tests/cli/install-cli.test.mts
 
-# dbspec-go-check runs all tests of the Go dbspec engine package (packages/go/engine/dbspec): the shared vectors of the recipes of tests/dbspec (hashes.json and sets.json),
+# dbspec-go-check runs all tests of the Go dbspec engine package (legacy/packages/go/engine/dbspec): the shared vectors of the recipes of tests/dbspec (hashes.json and sets.json),
 # its own rule cases, manifest, statements, plans, comparisons, Mermaid vectors, apply cleanup errors,
 # the case harness, and that it rejects, with the position, every missing or wrongly typed field of every vector file. The stress
 # document (TestStressDocument, build tag bench) is run by make bench.
 .PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode dbspec-go-check/render-physical
 dbspec-go-check/engine:
-	$(RUN_TESTS) go --cwd packages/go -- -count=1 -timeout=0 ./engine/dbspec -count=1
+	$(RUN_TESTS) go --cwd legacy/packages/go -- -count=1 -timeout=0 ./engine/dbspec -count=1
 # dbspec-go-check/render-physical runs the rendered statements of tests/dbspec/ddl.json with their behavior steps on MySQL, PostgreSQL and
 # SQLite, through the recipe tests/dbspec/render-physical.json; an unset ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN fails it by name.
 dbspec-go-check/render-physical: flowmark-check
-	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- -count=1 -timeout=0 ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd legacy/packages/go -- -count=1 -timeout=0 ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.
 dbspec-go-check/unicode:
@@ -2725,43 +2725,43 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_map_keys_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_styled_unset_none
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestRecipeCodecMapKeysNone|TestRecipeCodecStyledUnsetNone)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestRecipeCodecMapKeysNone|TestRecipeCodecStyledUnsetNone)$$' -count=1
 codec-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none:: codec_json_depth_none::
 codec-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs packages/ts/tests/codec-lone-surrogate-none.test.mjs packages/ts/tests/codec-undefined-member-none.test.mjs
+	$(NODE) --test legacy/packages/ts/tests/codec-none.test.mjs legacy/packages/ts/tests/codec-integer-beyond-i64-none.test.mjs legacy/packages/ts/tests/codec-bytes-value-none.test.mjs legacy/packages/ts/tests/codec-non-finite-value-none.test.mjs legacy/packages/ts/tests/codec-json-depth-none.test.mjs legacy/packages/ts/tests/codec-lone-surrogate-none.test.mjs legacy/packages/ts/tests/codec-undefined-member-none.test.mjs
 codec-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecNonFiniteValueRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecJsonDepthRecipeTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRawTextRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecBytesValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecNonFiniteValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecJsonDepthRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CodecRawTextRecipeTest.php
 codec-check/php-extension: php-vendor-check build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRecipeTestExtensionTest.php
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php
 
 # ir-validate-check runs the request validation recipe, tests/ir/validate.json, in each runtime (FCV-3): each part runs the entry of its
 # runtime that calls the recipe helper, without a database; the ir.validate steps check every request with the validator (FCV-4).
 .PHONY: ir-validate-check ir-validate-check/go ir-validate-check/rust ir-validate-check/rust/recipe ir-validate-check/typescript ir-validate-check/python ir-validate-check/php ir-validate-check/php-extension
 ir-validate-check: ir-validate-check/go ir-validate-check/rust ir-validate-check/typescript ir-validate-check/python ir-validate-check/php ir-validate-check/php-extension
 ir-validate-check/go:
-	$(GO_TEST) ./packages/go/engine/ir -run 'TestRecipeIRValidateNone' -count=1
+	$(GO_TEST) ./legacy/packages/go/engine/ir -run 'TestRecipeIRValidateNone' -count=1
 ir-validate-check/rust: ir-validate-check/rust/recipe
 ir-validate-check/rust/recipe: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test all -- ir_validate_none::
 ir-validate-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/engine.mjs
+	$(NODE) --test legacy/packages/ts/tests/engine.mjs
 ir-validate-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_ir_validate_none
 ir-validate-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrValidateRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/IrValidateRecipeTest.php
 ir-validate-check/php-extension: php-vendor-check build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php
 
 # catalog-connection-check runs the recipe contracts/fixtures/catalog_connection/catalog_connection.json on the three databases
 # in the six clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV,
@@ -2769,7 +2769,7 @@ ir-validate-check/php-extension: php-vendor-check build-php-ext
 .PHONY: catalog-connection-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
 catalog-connection-check: catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
 catalog-connection-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|Markdown|SqliteOnly|SqliteOnlyMarkdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|Markdown|SqliteOnly|SqliteOnlyMarkdown)$$' -count=1
 catalog-connection-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- $(RECIPE_RUST_TEST) --test all -- catalog_connection_mysql:: catalog_connection_postgres:: catalog_connection_sqlite:: catalog_connection_markdown:: catalog_connection_sqlite_only:: catalog_connection_sqlite_only_markdown::
 # statement-events-check runs the recipe contracts/fixtures/statement_events/statement_events.json on the three databases
@@ -2778,24 +2778,24 @@ catalog-connection-check/rust: lease-tool flowmark-check
 .PHONY: statement-events-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension
 statement-events-check: statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension
 statement-events-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 statement-events-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) statement-events-check -- $(RECIPE_RUST_TEST) --test all -- statement_events_mysql:: statement_events_postgres:: statement_events_sqlite:: statement_events_markdown::
 statement-events-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/statement_events-mysql.test.mjs packages/ts/tests/statement_events-postgres.test.mjs packages/ts/tests/statement_events-sqlite.test.mjs packages/ts/tests/statement_events-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/statement_events-mysql.test.mjs legacy/packages/ts/tests/statement_events-postgres.test.mjs legacy/packages/ts/tests/statement_events-sqlite.test.mjs legacy/packages/ts/tests/statement_events-markdown.test.mjs
 statement-events-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_markdown
 statement-events-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/StatementEventsRecipeTest.php
 statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php
 catalog-connection-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs packages/ts/tests/catalog_connection-markdown.test.mjs packages/ts/tests/catalog_connection-sqlite-only.test.mjs packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/catalog_connection-mysql.test.mjs legacy/packages/ts/tests/catalog_connection-postgres.test.mjs legacy/packages/ts/tests/catalog_connection-sqlite.test.mjs legacy/packages/ts/tests/catalog_connection-markdown.test.mjs legacy/packages/ts/tests/catalog_connection-sqlite-only.test.mjs legacy/packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs
 catalog-connection-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_postgres
@@ -2804,30 +2804,30 @@ catalog-connection-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite_only
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite_only_markdown
 catalog-connection-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CatalogConnectionRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php
 catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php
 
 # schema-install-check runs the recipe contracts/fixtures/schema_install/schema_install.json on the three databases in the six
 # clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV.
 .PHONY: schema-install-check schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
 schema-install-check: schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
 schema-install-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 schema-install-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/schema_install-mysql.test.mjs packages/ts/tests/schema_install-postgres.test.mjs packages/ts/tests/schema_install-sqlite.test.mjs packages/ts/tests/schema_install-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/schema_install-mysql.test.mjs legacy/packages/ts/tests/schema_install-postgres.test.mjs legacy/packages/ts/tests/schema_install-sqlite.test.mjs legacy/packages/ts/tests/schema_install-markdown.test.mjs
 schema-install-check/python: python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_markdown
 schema-install-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaInstallRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/SchemaInstallRecipeTest.php
 schema-install-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php
 schema-install-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) schema-install-check -- $(RECIPE_RUST_TEST) --test all -- schema_install_mysql:: schema_install_postgres:: schema_install_sqlite:: schema_install_markdown::
 
@@ -2849,42 +2849,42 @@ CI_TARGETS_client_db_rust += schema-install-check/rust
 .PHONY: dsn-connection-check dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension
 dsn-connection-check: dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension
 dsn-connection-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 dsn-connection-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dsn-connection-check -- $(RECIPE_RUST_TEST) --test all -- dsn_connection_mysql:: dsn_connection_postgres:: dsn_connection_sqlite:: dsn_connection_markdown::
 dsn-connection-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/dsn_connection-mysql.test.mjs packages/ts/tests/dsn_connection-postgres.test.mjs packages/ts/tests/dsn_connection-sqlite.test.mjs packages/ts/tests/dsn_connection-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/dsn_connection-mysql.test.mjs legacy/packages/ts/tests/dsn_connection-postgres.test.mjs legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs legacy/packages/ts/tests/dsn_connection-markdown.test.mjs
 dsn-connection-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_markdown
 dsn-connection-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnConnectionRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DsnConnectionRecipeTest.php
 dsn-connection-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php
 # raw-text-check runs the recipe contracts/fixtures/raw_text/raw_text.json on the four databases in the three clients whose host
 # string holds a text that is not UTF-8 (PRT-67); a TypeScript, Python or Rust string holds only Unicode text.
 .PHONY: raw-text-check raw-text-check/go raw-text-check/php raw-text-check/php-extension
 raw-text-check: raw-text-check/go raw-text-check/php raw-text-check/php-extension
 raw-text-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRawText(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeRawText(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 raw-text-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RawTextRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RawTextRecipeTest.php
 raw-text-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RawTextRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RawTextRecipeTestExtensionTest.php
 # connection-pool-check runs the recipe contracts/fixtures/connection_pool/connection_pool.json on the four databases in the four
 # clients that keep a pool (CFG-4, CFG-5, DIA-199); PHP and the PHP extension keep none.
 .PHONY: connection-pool-check connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python
 connection-pool-check: connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python
 connection-pool-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConnectionPool(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeConnectionPool(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 connection-pool-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) connection-pool-check -- $(RECIPE_RUST_TEST) --test all -- connection_pool_mysql:: connection_pool_postgres:: connection_pool_sqlite:: connection_pool_markdown::
 connection-pool-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/connection_pool-mysql.test.mjs packages/ts/tests/connection_pool-postgres.test.mjs packages/ts/tests/connection_pool-sqlite.test.mjs packages/ts/tests/connection_pool-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/connection_pool-mysql.test.mjs legacy/packages/ts/tests/connection_pool-postgres.test.mjs legacy/packages/ts/tests/connection_pool-sqlite.test.mjs legacy/packages/ts/tests/connection_pool-markdown.test.mjs
 connection-pool-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_postgres
@@ -2895,12 +2895,12 @@ connection-pool-check/python: lease-tool python-venv-check flowmark-check
 .PHONY: model-queries-check model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
 model-queries-check: model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
 model-queries-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 model-queries-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) model-queries-check -- $(RECIPE_RUST_TEST) --test all -- model_queries_mysql:: model_queries_postgres:: model_queries_sqlite:: model_queries_markdown:: model_queries_chain_mysql:: model_queries_chain_postgres:: model_queries_chain_sqlite:: model_queries_chain_markdown::
 model-queries-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/model_queries-mysql.test.mjs packages/ts/tests/model_queries-postgres.test.mjs packages/ts/tests/model_queries-sqlite.test.mjs packages/ts/tests/model_queries-markdown.test.mjs packages/ts/tests/model_queries_chain-mysql.test.mjs packages/ts/tests/model_queries_chain-postgres.test.mjs packages/ts/tests/model_queries_chain-sqlite.test.mjs packages/ts/tests/model_queries_chain-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/model_queries-mysql.test.mjs legacy/packages/ts/tests/model_queries-postgres.test.mjs legacy/packages/ts/tests/model_queries-sqlite.test.mjs legacy/packages/ts/tests/model_queries-markdown.test.mjs legacy/packages/ts/tests/model_queries_chain-mysql.test.mjs legacy/packages/ts/tests/model_queries_chain-postgres.test.mjs legacy/packages/ts/tests/model_queries_chain-sqlite.test.mjs legacy/packages/ts/tests/model_queries_chain-markdown.test.mjs
 model-queries-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_postgres
@@ -2911,9 +2911,9 @@ model-queries-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_markdown
 model-queries-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelQueriesRecipeTest.php packages/php/tests/ModelQueriesChainRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelQueriesRecipeTest.php legacy/packages/php/tests/ModelQueriesChainRecipeTest.php
 model-queries-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php legacy/packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php
 CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
 
 # constraints-and-relations-check runs the recipe contracts/fixtures/constraints_and_relations/constraints_and_relations.json on the three databases in the six
@@ -2921,12 +2921,12 @@ CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-c
 .PHONY: constraints-and-relations-check constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check: constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 constraints-and-relations-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- $(RECIPE_RUST_TEST) --test all -- constraints_and_relations_mysql:: constraints_and_relations_postgres:: constraints_and_relations_sqlite:: constraints_and_relations_markdown:: immutable_write_mysql:: immutable_write_postgres:: immutable_write_sqlite:: immutable_write_markdown::
 constraints-and-relations-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/constraints_and_relations-markdown.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs packages/ts/tests/immutable_write-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/constraints_and_relations-mysql.test.mjs legacy/packages/ts/tests/constraints_and_relations-postgres.test.mjs legacy/packages/ts/tests/constraints_and_relations-sqlite.test.mjs legacy/packages/ts/tests/constraints_and_relations-markdown.test.mjs legacy/packages/ts/tests/immutable_write-mysql.test.mjs legacy/packages/ts/tests/immutable_write-postgres.test.mjs legacy/packages/ts/tests/immutable_write-sqlite.test.mjs legacy/packages/ts/tests/immutable_write-markdown.test.mjs
 constraints-and-relations-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_postgres
@@ -2937,35 +2937,35 @@ constraints-and-relations-check/python: lease-tool python-venv-check flowmark-ch
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_markdown
 constraints-and-relations-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConstraintsAndRelationsRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ImmutableWriteRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConstraintsAndRelationsRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ImmutableWriteRecipeTest.php
 constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php
 CHECK_TARGETS += constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 
 
 # parameter-chunking-check/go runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
-# databases in Go (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeParameterChunking<Db> of packages/go/orm.
+# databases in Go (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeParameterChunking<Db> of legacy/packages/go/orm.
 .PHONY: parameter-chunking-check/go
 parameter-chunking-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeParameterChunking(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeParameterChunking(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # aes-rotation-check/go runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Go
-# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeAesRotation<Db> of packages/go/orm.
+# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeAesRotation<Db> of legacy/packages/go/orm.
 .PHONY: aes-rotation-check/go
 aes-rotation-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeAesRotation(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeAesRotation(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # aes-rotation-check/typescript runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries aes_rotation-<database>.test.mjs.
 .PHONY: aes-rotation-check/typescript
 aes-rotation-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/aes_rotation-mysql.test.mjs packages/ts/tests/aes_rotation-postgres.test.mjs packages/ts/tests/aes_rotation-sqlite.test.mjs packages/ts/tests/aes_rotation-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/aes_rotation-mysql.test.mjs legacy/packages/ts/tests/aes_rotation-postgres.test.mjs legacy/packages/ts/tests/aes_rotation-sqlite.test.mjs legacy/packages/ts/tests/aes_rotation-markdown.test.mjs
 
 # aes-rotation-check/python runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Python
-# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries test_aes_rotation_<database>.py of packages/python/tests.
+# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries test_aes_rotation_<database>.py of legacy/packages/python/tests.
 .PHONY: aes-rotation-check/python
 aes-rotation-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_aes_rotation_mysql
@@ -2977,12 +2977,12 @@ aes-rotation-check/python: lease-tool python-venv-check flowmark-check
 # clients (docs/spec/feature-coverage.md FCV-3 and FCV-4), as request-hook-check does.
 .PHONY: audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension
 audit-triggers-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 audit-triggers-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) audit-triggers-check -- $(RECIPE_RUST_TEST) --test all -- audit_triggers_mysql:: audit_triggers_postgres:: audit_triggers_sqlite:: audit_triggers_markdown:: external_audit_mysql:: external_audit_postgres:: external_audit_sqlite:: external_audit_markdown::
 audit-triggers-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/audit_triggers-mysql.test.mjs packages/ts/tests/audit_triggers-postgres.test.mjs packages/ts/tests/audit_triggers-sqlite.test.mjs packages/ts/tests/audit_triggers-markdown.test.mjs packages/ts/tests/external_audit-mysql.test.mjs packages/ts/tests/external_audit-postgres.test.mjs packages/ts/tests/external_audit-sqlite.test.mjs packages/ts/tests/external_audit-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/audit_triggers-mysql.test.mjs legacy/packages/ts/tests/audit_triggers-postgres.test.mjs legacy/packages/ts/tests/audit_triggers-sqlite.test.mjs legacy/packages/ts/tests/audit_triggers-markdown.test.mjs legacy/packages/ts/tests/external_audit-mysql.test.mjs legacy/packages/ts/tests/external_audit-postgres.test.mjs legacy/packages/ts/tests/external_audit-sqlite.test.mjs legacy/packages/ts/tests/external_audit-markdown.test.mjs
 audit-triggers-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_postgres
@@ -2993,17 +2993,17 @@ audit-triggers-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_markdown
 audit-triggers-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditTriggersRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ExternalAuditRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AuditTriggersRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ExternalAuditRecipeTest.php
 audit-triggers-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php
 
 # request-hook-check/go runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Go
-# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeRequestHook<Db> of packages/go/orm.
+# (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeRequestHook<Db> of legacy/packages/go/orm.
 .PHONY: request-hook-check/go
 request-hook-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # parameter-chunking-check/rust runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in Rust (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
@@ -3028,14 +3028,14 @@ request-hook-check/rust: lease-tool flowmark-check
 .PHONY: request-hook-check/typescript
 request-hook-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(RECIPE_TS_TEST) packages/ts/tests/request_hook-markdown.test.mjs packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(RECIPE_TS_TEST) legacy/packages/ts/tests/request_hook-markdown.test.mjs legacy/packages/ts/tests/request_hook-mysql.test.mjs legacy/packages/ts/tests/request_hook-postgres.test.mjs legacy/packages/ts/tests/request_hook-sqlite.test.mjs
 
 # parameter-chunking-check/typescript runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: parameter-chunking-check/typescript
 parameter-chunking-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/parameter_chunking-mysql.test.mjs packages/ts/tests/parameter_chunking-postgres.test.mjs packages/ts/tests/parameter_chunking-sqlite.test.mjs packages/ts/tests/parameter_chunking-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/parameter_chunking-mysql.test.mjs legacy/packages/ts/tests/parameter_chunking-postgres.test.mjs legacy/packages/ts/tests/parameter_chunking-sqlite.test.mjs legacy/packages/ts/tests/parameter_chunking-markdown.test.mjs
 
 # request-hook-check/python runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Python
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe in
@@ -3061,62 +3061,62 @@ parameter-chunking-check/python: lease-tool python-venv-check flowmark-check
 # cannot observe in request_hook_cases.php (feature coverage, not this check).
 .PHONY: request-hook-check/php
 request-hook-check/php: lease-tool php-vendor-check php-models flowmark-check
-	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMarkdownRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMysqlRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookPostgresRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookSqliteRecipeTest.php
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookMarkdownRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookMysqlRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookPostgresRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookSqliteRecipeTest.php
 
 # parameter-chunking-check/php runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in PHP (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: parameter-chunking-check/php
 parameter-chunking-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingMysqlTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingPostgresTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingSqliteTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingMarkdownTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingMysqlTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingPostgresTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingSqliteTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingMarkdownTest.php
 
 # parameter-chunking-check/php-extension runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: parameter-chunking-check/php-extension
 parameter-chunking-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php
 
 # aes-rotation-check/php runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in PHP
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: aes-rotation-check/php
 aes-rotation-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationMysqlTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationPostgresTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationSqliteTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationMarkdownTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationMysqlTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationPostgresTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationSqliteTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationMarkdownTest.php
 
 # aes-rotation-check/php-extension runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: aes-rotation-check/php-extension
 aes-rotation-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php
 
 # request-hook-check/php-extension runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a
 # declarative step cannot observe in RequestHookTestExtensionTest.php (not this check).
 .PHONY: request-hook-check/php-extension
 request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php
 
 # conformance-verification-check/go runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: conformance-verification-check/go
 conformance-verification-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConformanceVerification(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeConformanceVerification(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # conformance-verification-check/rust runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
@@ -3129,7 +3129,7 @@ conformance-verification-check/rust: lease-tool flowmark-check
 .PHONY: conformance-verification-check/typescript
 conformance-verification-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs packages/ts/tests/conformance_verification-markdown.test.mjs packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/conformance_verification-mysql.test.mjs legacy/packages/ts/tests/conformance_verification-postgres.test.mjs legacy/packages/ts/tests/conformance_verification-sqlite.test.mjs legacy/packages/ts/tests/conformance_verification-markdown.test.mjs legacy/packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs legacy/packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs legacy/packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs legacy/packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs
 
 # conformance-verification-check/python runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
@@ -3148,27 +3148,27 @@ conformance-verification-check/python: lease-tool python-venv-check flowmark-che
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php
 conformance-verification-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMysqlRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationPostgresRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationSqliteRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationDynamicRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationMysqlRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationPostgresRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationSqliteRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationDynamicRecipeTest.php
 
 # conformance-verification-check/php-extension runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php-extension
 conformance-verification-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php
 
 # complex-query-check/go runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/go
 complex-query-check/go: lease-tool flowmark-check
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeComplexQuery(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeComplexQuery(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # complex-query-check/rust runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
@@ -3181,7 +3181,7 @@ complex-query-check/rust: lease-tool flowmark-check
 .PHONY: complex-query-check/typescript
 complex-query-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) packages/ts/tests/complex_query-mysql.test.mjs packages/ts/tests/complex_query-postgres.test.mjs packages/ts/tests/complex_query-sqlite.test.mjs packages/ts/tests/complex_query-markdown.test.mjs
+	$(WITH_TEST_ENV) $(RECIPE_TS_TEST) legacy/packages/ts/tests/complex_query-mysql.test.mjs legacy/packages/ts/tests/complex_query-postgres.test.mjs legacy/packages/ts/tests/complex_query-sqlite.test.mjs legacy/packages/ts/tests/complex_query-markdown.test.mjs
 
 # complex-query-check/python runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
@@ -3196,19 +3196,19 @@ complex-query-check/python: lease-tool python-venv-check flowmark-check
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/php
 complex-query-check/php: lease-tool php-vendor-check php-models flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryMysqlRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryPostgresRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQuerySqliteRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryMarkdownRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQueryMysqlRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQueryPostgresRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQuerySqliteRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQueryMarkdownRecipeTest.php
 
 # complex-query-check/php-extension runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/php-extension
 complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php
 
 # complex-query-check runs the recipe of the complex product search in all six runtimes (docs/spec/complex-query.md CPX-1 and CPX-2).
 .PHONY: complex-query-check
@@ -3220,16 +3220,16 @@ complex-query-check: complex-query-check/go complex-query-check/rust complex-que
 .PHONY: bind-check bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check: bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^TestBindVectors$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestBindVectors$$' -count=1
 bind-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib bind_
 bind-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) packages/ts/tests/markdown.mjs
+	$(NODE) legacy/packages/ts/tests/markdown.mjs
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter 'testBindVectors' legacy/packages/php/tests/MarkdownTest.php
 
 # collection-recipe-check runs the collection recipe, tests/collection/collection.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
 # its runtime that calls the recipe helper, without a database: its collection.key steps take each key through the public key of a
@@ -3237,18 +3237,18 @@ bind-check/php: php-vendor-check php-models
 .PHONY: collection-recipe-check collection-recipe-check/go collection-recipe-check/rust collection-recipe-check/typescript collection-recipe-check/python collection-recipe-check/php collection-recipe-check/php-extension
 collection-recipe-check: collection-recipe-check/go collection-recipe-check/rust collection-recipe-check/typescript collection-recipe-check/python collection-recipe-check/php collection-recipe-check/php-extension
 collection-recipe-check/go:
-	$(GO_TEST) ./packages/go/markdownmodel -run '^TestRecipeCollectionNone$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/markdownmodel -run '^TestRecipeCollectionNone$$' -count=1
 collection-recipe-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) collection-recipe-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- collection_none::
 collection-recipe-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --conditions=orm-test packages/ts/tests/collection-none.test.mjs
+	$(NODE) --conditions=orm-test legacy/packages/ts/tests/collection-none.test.mjs
 collection-recipe-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_collection_none
 collection-recipe-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CollectionRecipeTest.php
 collection-recipe-check/php-extension: php-vendor-check build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CollectionRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CollectionRecipeTestExtensionTest.php
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (packages/rust/rustfmt.toml).
@@ -3293,62 +3293,62 @@ install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-p
 # runtime has not downloaded them. The same recipe writes the SQLite result code names of each runtime from
 # docs/spec/sqlite-result-codes.yaml with orm-gen sqlite-codes (ORM_SQLITE_CODES_<lang>, INT-154); orm-codes-php-extension
 # writes those of the PHP extension.
-ORM_CODES_typescript = packages/ts/src/codes.ts
-ORM_SQLITE_CODES_typescript = packages/ts/src/sqlite-codes.ts
-ORM_SQLITE_CODES_php = packages/php/src/SqliteCodes.php
-ORM_SQLITE_CODES_python = packages/python/src/polyspec/orm/_sqlite_codes.py
-ORM_SQLITE_CODES_php-extension = packages/php-ext/src/sqlite_codes.h
-PHP_EXT_SQLITE_CANCEL = packages/php-ext/src/native/sqlite_cancel.c
-ORM_CODES_php = packages/php/src/Code.php
-ORM_CODES_python = packages/python/src/polyspec/orm/codes.py
+ORM_CODES_typescript = legacy/packages/ts/src/codes.ts
+ORM_SQLITE_CODES_typescript = legacy/packages/ts/src/sqlite-codes.ts
+ORM_SQLITE_CODES_php = legacy/packages/php/src/SqliteCodes.php
+ORM_SQLITE_CODES_python = legacy/packages/python/src/polyspec/orm/_sqlite_codes.py
+ORM_SQLITE_CODES_php-extension = legacy/packages/php-ext/src/sqlite_codes.h
+PHP_EXT_SQLITE_CANCEL = legacy/packages/php-ext/src/native/sqlite_cancel.c
+ORM_CODES_php = legacy/packages/php/src/Code.php
+ORM_CODES_python = legacy/packages/python/src/polyspec/orm/codes.py
 .PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python orm-codes-php-extension orm-install-go-codes
 orm-install-go-codes:
-	cd packages/go && $(ONLINE) $(GO) mod download
+	cd legacy/packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
-	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml docs/spec/sqlite-result-codes.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@ && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_$*) $(GO) run ./cmd/orm-gen sqlite-codes --lang $* --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
+	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" legacy/packages/go docs/spec/errors.yaml docs/spec/sqlite-result-codes.yaml -- sh -c 'cd legacy/packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@ && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_$*) $(GO) run ./cmd/orm-gen sqlite-codes --lang $* --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
 orm-codes-php-extension: orm-install-go-codes
-	$(GENERATE_ONCE) $(CURDIR)/packages/php-ext/src/orm-codes.key "$(GO_VERSION)" packages/go docs/spec/sqlite-result-codes.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_php-extension) $(GO) run ./cmd/orm-gen sqlite-codes --lang php-extension --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
-# orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
+	$(GENERATE_ONCE) $(CURDIR)/legacy/packages/php-ext/src/orm-codes.key "$(GO_VERSION)" legacy/packages/go docs/spec/sqlite-result-codes.yaml -- sh -c 'cd legacy/packages/go && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_php-extension) $(GO) run ./cmd/orm-gen sqlite-codes --lang php-extension --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
+# orm-install-interfaces-typescript installs the TypeScript 6.0.3 that legacy/packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
 orm-install-interfaces-typescript:
-	$(ONLINE) $(NPM) ci --prefix packages/ts/testing/interfaces/typescript --no-audit --no-fund
-# lint-ts reads packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs, so the
+	$(ONLINE) $(NPM) ci --prefix legacy/packages/ts/testing/interfaces/typescript --no-audit --no-fund
+# lint-ts reads legacy/packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs, so the
 # prerequisite is added here.
 lint-ts: typescript-build
-# lint-php analyses packages/php/src, which holds the generated Code.php, and test-php-ext compares the extension with that library
+# lint-php analyses legacy/packages/php/src, which holds the generated Code.php, and test-php-ext compares the extension with that library
 # and runs its tests.
 lint-php: orm-codes-php
 # The interface_symbols case of test-php-ext runs interfaces/error-catalogs, which reads the error file of every implementation.
 test-php-ext: orm-codes
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
-# orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
-# from its directory with the runtime dependencies of that package, and PHPUnit, which runs the tests of packages/php and
+# orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs legacy/packages/php
+# from its directory with the runtime dependencies of that package, and PHPUnit, which runs the tests of legacy/packages/php and
 # packages/php-ext. The released manifests of the two packages declare only what a consumer installs.
 # PHP_MODELS_FILE declares the entries of the PHP models that orm-gen generates (P34: generated output is never tracked): one orm-gen
-# argument line per directory, read by php-models and php-model-check (packages/php/models.txt). php-models writes them, and it is the
+# argument line per directory, read by php-models and php-model-check (legacy/packages/php/models.txt). php-models writes them, and it is the
 # last step of orm-install-php, after Composer has installed the autoloader that bin/orm-gen runs under. php-model-check runs
 # orm-gen gen --check against the same entries (no network).
-PHP_MODELS_FILE = packages/php/models.txt
+PHP_MODELS_FILE = legacy/packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php: orm-codes-php
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
-PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
+PHP_MODELS_STAMP = $(CURDIR)/legacy/packages/php/gen/php-models.key
 # The inputs of the PHP models are also the directory of the document set of each entry, which holds the set and its documents, so a
 # fixture change regenerates the models that it is read into.
 PHP_MODELS_SETS = $(sort $(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(PHP_MODELS_FILE))))
 # Each entry generates into <dir>.tmp, which replaces <dir> by a rename after the generator succeeds (B1-4), so a stopped run leaves the
 # previous directory whole and never a directory with some files new and some old.
 php-models: php-vendor-check
-	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) $(PHP_MODELS_SETS) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock legacy/packages/php/src legacy/packages/php/bin $(PHP_MODELS_FILE) $(PHP_MODELS_SETS) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
-	$(RUN_LONG) php-cancel-helper-build -- env POLYSPEC_ORM_PACKAGE_ROOT=$(CURDIR)/packages/php $(PHP) packages/php/bin/orm-sqlite-cancel-build.php
+	$(RUN_LONG) php-cancel-helper-build -- env POLYSPEC_ORM_PACKAGE_ROOT=$(CURDIR)/legacy/packages/php $(PHP) legacy/packages/php/bin/orm-sqlite-cancel-build.php
 # php-model-check fails when the PHP models that orm-install-php wrote differ from what the entries of PHP_MODELS_FILE generate (orm-gen gen --check).
 php-model-check: php-vendor-check
 	while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen --check $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)
@@ -3367,17 +3367,17 @@ RUST_CRATE_MANIFESTS = benchmarks/rust/Cargo.toml packages/rust/Cargo.toml packa
 orm-install-rust-crates:
 	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" cargo +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
 # GO_MODELS_FILE declares the entries of the Go models that orm-gen generates (P34: generated output is never tracked): one orm-gen
-# argument line per package, read by go-models and go-model-check (packages/go/models.txt). go-models writes them, and it is the last
+# argument line per package, read by go-models and go-model-check (legacy/packages/go/models.txt). go-models writes them, and it is the last
 # step of orm-install-go, after the modules are downloaded, so every Go check finds them. go-model-check runs orm-gen gen --check
 # against the same entries (no network).
-GO_MODELS_FILE = packages/go/models.txt
+GO_MODELS_FILE = legacy/packages/go/models.txt
 .PHONY: go-models
-GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
-# The inputs of the Go models are packages/go and the directory of the document set of each entry (named from packages/go), which holds
+GO_MODELS_STAMP = $(CURDIR)/legacy/packages/go/go-models.key
+# The inputs of the Go models are legacy/packages/go and the directory of the document set of each entry (named from legacy/packages/go), which holds
 # the set and its documents, so a fixture change regenerates the models that it is read into.
 GO_MODELS_SETS = $(sort $(patsubst ../../%,%,$(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(GO_MODELS_FILE)))))
 go-models:
-	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go $(GO_MODELS_SETS) -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" legacy/packages/go $(GO_MODELS_SETS) -- sh -c 'cd legacy/packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models
@@ -3388,10 +3388,10 @@ build-ts: typescript-build
 orm-install-go:
 	$(ONLINE) $(GO) mod download
 	$(MAKE) --no-print-directory go-models
-# check-run builds tests/lease in every CI group. Its only external Go module is x/sys through packages/go/procevent; keep the
+# check-run builds tests/lease in every CI group. Its only external Go module is x/sys through legacy/packages/go/procevent; keep the
 # shared runner install limited to that pinned module, while Go-owning groups install the full workspace and generated models.
 orm-install-go-lease:
-	cd packages/go && $(ONLINE) $(GO) mod download golang.org/x/sys
+	cd legacy/packages/go && $(ONLINE) $(GO) mod download golang.org/x/sys
 # orm-install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
 # version that tests/markdown/flowmark.version pins.
 orm-install-flowmark:
@@ -3408,22 +3408,22 @@ orm-install-server-programs:
 # generator (kit K930).
 orm-install-php-extension-tools: $(PHP_EXT_SQLITE_CANCEL) orm-codes-php-extension
 	$(NODE) scripts/ci/php-extension-tools.mts
-# The extension compiles native/sqlite_cancel.c (packages/php-ext/src/config.m4), whose one source is the PHP library's
-# packages/php/src/native/sqlite_cancel.c: the copy is build output and never tracked (P34). build-php-ext takes it as a
-# prerequisite, packages/php-ext/scripts/build.sh refuses a copy that differs from its source, and the make entry of packages/php-ext in
+# The extension compiles native/sqlite_cancel.c (legacy/packages/php-ext/src/config.m4), whose one source is the PHP library's
+# legacy/packages/php/src/native/sqlite_cancel.c: the copy is build output and never tracked (P34). build-php-ext takes it as a
+# prerequisite, legacy/packages/php-ext/scripts/build.sh refuses a copy that differs from its source, and the make entry of legacy/packages/php-ext in
 # config/release.json writes it with the arginfo header (php-ext-sources) for the archive.
-$(PHP_EXT_SQLITE_CANCEL): packages/php/src/native/sqlite_cancel.c
+$(PHP_EXT_SQLITE_CANCEL): legacy/packages/php/src/native/sqlite_cancel.c
 	mkdir -p $(@D)
 	cp $< $@.tmp.$$ && mv $@.tmp.$$ $@
 # build-php-ext builds with the php-extension utility of kit and reads the same sources.
 build-php-ext: php-ext-sources
-# packages/php-ext/src/polyspec_orm_arginfo.h is the arginfo header of the one stub, written by scripts/php/php-ext-arginfo.mts for the archive;
+# legacy/packages/php-ext/src/polyspec_orm_arginfo.h is the arginfo header of the one stub, written by scripts/php/php-ext-arginfo.mts for the archive;
 # the build of the extension writes its own in a temporary copy. The gen_stub.php of the PHP fetches the PHP-Parser release
 # that it names itself, as the build of kit does (K941); the offline settings of cargo, Go, npm and Composer do not reach it.
-packages/php-ext/src/polyspec_orm_arginfo.h: packages/php-ext/src/polyspec_orm.stub.php
+legacy/packages/php-ext/src/polyspec_orm_arginfo.h: legacy/packages/php-ext/src/polyspec_orm.stub.php
 	$(NODE) scripts/php/php-ext-arginfo.mts
 .PHONY: php-ext-sources
-php-ext-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL) orm-codes-php-extension
+php-ext-sources: legacy/packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL) orm-codes-php-extension
 # php-ext-build is the one build of the PHP extension: it writes PHP_EXT_OUT in PHP_EXT_MODE (release or native-test) after php-ext-sources,
 # which writes the sources that build.sh reads and refuses when stale or missing. scripts/php/php-ext-build.mts builds each source and mode
 # once into var/php-ext/build/<key>/ under a holder lock, and copies that build to PHP_EXT_OUT, so the sites of one run do not compile it again
@@ -3435,7 +3435,7 @@ php-ext-build: php-ext-sources
 php_ext_build = $(MAKE) --no-print-directory php-ext-build PHP_EXT_OUT=$(1) PHP_EXT_MODE=$(2)
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
-	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
+	cd legacy/packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts
 
@@ -3470,13 +3470,13 @@ timing-check: typescript-current
 	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
-	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./packages/go/engine/dbspec
+	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./legacy/packages/go/engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_SIBLINGS) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
-# typescript-build compiles packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json). A target
+# typescript-build compiles legacy/packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json). A target
 # that compiles it in its own recipe ($(TSC_BUILD), or the holding of the build output) has orm-codes-typescript as well (make repo-check).
 typescript-build: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
@@ -3508,12 +3508,12 @@ editor-build: typescript-build
 # pinned tools of the checkout and the configuration of the repository (KSTD-3). The output is gitignored, so the lint of kit
 # (which reads only the files Git does not ignore) never reads it: the paths here are passed explicitly, and ruff is told not to
 # skip ignored paths. Each step fails on its first finding; the generated Python is linted without vulture, whose exclusion
-# of the models in packages/python/pyproject.toml stays as it is. Generated Go source is formatted here; tracked Go tests are
+# of the models in legacy/packages/python/pyproject.toml stays as it is. Generated Go source is formatted here; tracked Go tests are
 # formatted by go-fmt-check.
-GENERATED_PY_MODELS = packages/python/tests/models/models.py
-GENERATED_PHP = packages/php/gen
+GENERATED_PY_MODELS = legacy/packages/python/tests/models/models.py
+GENERATED_PHP = legacy/packages/php/gen
 GENERATED_GO = ./model ./markdownmodel ./decimalmodel
-GENERATED_TS = packages/ts/src/models/models.ts
+GENERATED_TS = legacy/packages/ts/src/models/models.ts
 .PHONY: generated-lint-check
 generated-lint-check: python-models php-models go-models typescript-read
 	$(RUFF) check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
@@ -3523,10 +3523,10 @@ generated-lint-check: python-models php-models go-models typescript-read
 	phpstan_tmp=$$(mktemp -d "$${TMPDIR:?}/generated-lint-phpstan.XXXXXX"); \
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
 	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(CURDIR)/phpstan.dist.neon" "$$phpstan_tmp"; \
-	cd packages/php; \
+	cd legacy/packages/php; \
 	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php gen
-	test -z "$$(cd packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +)" || { cd packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +; exit 1; }
-	cd packages/go && $(GO) vet $(GENERATED_GO)
+	test -z "$$(cd legacy/packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +)" || { cd legacy/packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +; exit 1; }
+	cd legacy/packages/go && $(GO) vet $(GENERATED_GO)
 	$(NPM) exec --prefix "$(KIT_PACKAGE)" --offline -- oxlint -c .oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)
 
 # clippy-crate runs the lints of lint-rust on the one package CRATE: cargo clippy --all-targets of the Cargo workspace WORKSPACE
@@ -3541,13 +3541,13 @@ clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags
 # caller, so calling its method on each row passes; a mixed row fails it.
 .PHONY: group-rows-phpstan-check
 group-rows-phpstan-check: php-vendor-check
-	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
+	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
 
 # collection-raw-phpstan-check runs PHPStan at level 5 over the fixture of KSTD-5-54: a raw Collection parameter carries no
 # method of the base Model, so calling a column getter on its rows is no false method.notFound.
 .PHONY: collection-raw-phpstan-check
 collection-raw-phpstan-check: php-vendor-check
-	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
+	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
 
 # dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
 DBSPEC_MARKDOWN_TEST_FILTER ?=
@@ -3555,7 +3555,7 @@ dbspec-php-extension-check/markdown: php-models dbspec-php-extension-check/prepa
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist $(if $(DBSPEC_MARKDOWN_TEST_FILTER),--filter '$(DBSPEC_MARKDOWN_TEST_FILTER)',) packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration legacy/packages/php/phpunit.xml.dist $(if $(DBSPEC_MARKDOWN_TEST_FILTER),--filter '$(DBSPEC_MARKDOWN_TEST_FILTER)',) legacy/packages/php/tests/MarkdownTest.php
 
 # print-CARGO_PROFILE_DEV_DEBUG prints the debug setting of the Rust test build of this checkout (KSTD-5-85). It sits at the end so that
 # it never becomes the default goal of the Makefile.
@@ -3570,7 +3570,7 @@ collection-get-phpstan-check: php-vendor-check
 	phpstan_tmp=$$(mktemp -d "$${TMPDIR:?}/collection-get-phpstan.XXXXXX"); \
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
 	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(CURDIR)/phpstan.dist.neon" "$$phpstan_tmp"; \
-	cd packages/php; \
+	cd legacy/packages/php; \
 	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php tests/phpstan/CollectionGet.php
 
 # KSTD-5-62: only the private catalog-document build failure is a Mermaid diagnostic. These owner targets run the
@@ -3578,17 +3578,17 @@ collection-get-phpstan-check: php-vendor-check
 .PHONY: mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check
 mermaid-error-ts-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/dbspec-mermaid-errors.mjs
+	$(NODE) --test legacy/packages/ts/tests/dbspec-mermaid-errors.mjs
 mermaid-error-python-check: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.mermaid_error_boundary
 mermaid-error-php-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidErrorBoundaryTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecMermaidErrorBoundaryTest.php
 mermaid-error-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/mermaid-error-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",native-test); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MermaidErrorBoundaryTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/mermaid-error-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",native-test); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/MermaidErrorBoundaryTest.php
 
 .PHONY: parent-slot-expansion-php-extension-check
 parent-slot-expansion-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/parent-slot-expansion-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",native-test); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParentSlotExpansionNativeTest.php
+	@set -eu; run_dir="$(abspath .runtime/run)/parent-slot-expansion-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",native-test); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParentSlotExpansionNativeTest.php
 
 # Exercise the PHP extension build failure handler with isolated fake tools.
 .PHONY: php-extension-build-logs-check
@@ -3614,7 +3614,7 @@ catalog-tool-errors-rust-check: lease-tool
 
 .PHONY: php-catalog-bounds-check
 php-catalog-bounds-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogQueryBoundsTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CatalogQueryBoundsTest.php
 
 request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 	@set -eu; \
@@ -3622,22 +3622,22 @@ request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeMethodsAreInternal' packages/php-ext/tests/RequestHookTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testNativeMethodsAreInternal' legacy/packages/php-ext/tests/RequestHookTestExtensionTest.php
 
 # request-hook-relation-scope-check runs the relation_scope case of the request hook (relation() and relations() under a
 # service scope, T203) on SQLite in every client: Go, TypeScript, Python, the PHP library, the PHP extension and Rust.
 .PHONY: request-hook-relation-scope-check
 request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hook-relation-scope-check-$$PPID
 request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-read
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
-	$(RECIPE_TS_TEST) --test-name-pattern='relation_scope' packages/ts/tests/request_hook-sqlite.test.mjs
+	$(NODE) tests/go-test.mts -v -timeout 0 ./legacy/packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
+	$(RECIPE_TS_TEST) --test-name-pattern='relation_scope' legacy/packages/ts/tests/request_hook-sqlite.test.mjs
 	$(PYTHON_TESTS) -- packages.python.tests.test_request_hook_sqlite
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookSqliteRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter relation_scope legacy/packages/php/tests/RequestHookSqliteRecipeTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(PHP_EXTENSION_TESTS) --filter relation_scope legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) request-hook-relation-scope-check -- $(RECIPE_RUST_TEST) --manifest-path packages/rust/Cargo.toml --test all -- --exact request_hook_sqlite::relation_scope
 
-# dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
+# dbspec-php-extension-check/declarations runs the extension's own checks (legacy/packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
@@ -3653,12 +3653,12 @@ rust-closed-executor-check: lease-tool
 # Focused split-merge NULL boundary cases in each native client.
 
 go-catalog-session-error-check:
-	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary)$$' -count=1
 
 # catalog-described-temporal-go-check runs the unit tests of the dbspec text that a Go read of a described table returns for
 # its date, time and datetime cells (INT-103) and of the exact comparison of a catalog write (INT-117, INT-123).
 catalog-described-temporal-go-check:
-	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogWriteRefusesTimeValueForTemporalColumn|TestCatalogDescribedTemporalText|TestCatalogSameCellComparesWrittenTemporalTextExactly)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^(TestCatalogWriteRefusesTimeValueForTemporalColumn|TestCatalogDescribedTemporalText|TestCatalogSameCellComparesWrittenTemporalTextExactly)$$' -count=1
 
 CHECK_TARGETS += catalog-described-temporal-go-check
 CI_TARGETS_static += catalog-described-temporal-go-check
@@ -3667,7 +3667,7 @@ CI_TARGETS_static += catalog-described-temporal-go-check
 # which no recipe case reaches: a driver value that is not the host form of its column type fails with INT-171, and a value
 # that the driver could not decode with INT-172, which keeps the failure as its cause.
 catalog-value-go-check:
-	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure)$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^(TestCatalogValueUnsupportedDriverValue|TestCatalogValueDriverDecodeFailure)$$' -count=1
 
 CHECK_TARGETS += catalog-value-go-check
 CI_TARGETS_static += catalog-value-go-check
@@ -3676,15 +3676,15 @@ CHECK_TARGETS += rust-temporal-args-check
 CI_TARGETS_static += rust-temporal-args-check
 
 go-sqlite-version-check:
-	$(GO_TEST) ./packages/go/orm -run '^TestSQLiteMinimumVersionThroughConnect$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestSQLiteMinimumVersionThroughConnect$$' -count=1
 
 catalog-php-extension-surface-check: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogPageValidationTest.php; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSurfaceTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/CatalogPageValidationTest.php; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CatalogConnectionSurfaceTest.php
 # Builds the extension in an isolated run directory and executes only its native Collection unit cases.
 
 php-lifecycle-extension-native-check: php-vendor-check php-models
@@ -3693,16 +3693,16 @@ php-lifecycle-extension-native-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php packages/php-ext/tests/CoverageTransactionsExtensionTest.php packages/php-ext/tests/StatementEventsTestExtensionTest.php packages/php-ext/tests/QueryCancellationNativeTest.php --filter 'testNativeMethodsAreInternal|testNativeSqliteConnectionQueriesAndCloses|testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent|testStatementEventEntryPointsAreNative|testNativeCancellationStateIsPrivatePersistentAndRemovedWhenReleased|testNativeCancellationDispatchesOnlyToActiveConnectionSlots|testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable'
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php legacy/packages/php-ext/tests/CoverageTransactionsExtensionTest.php legacy/packages/php-ext/tests/StatementEventsTestExtensionTest.php legacy/packages/php-ext/tests/QueryCancellationNativeTest.php --filter 'testNativeMethodsAreInternal|testNativeSqliteConnectionQueriesAndCloses|testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent|testStatementEventEntryPointsAreNative|testNativeCancellationStateIsPrivatePersistentAndRemovedWhenReleased|testNativeCancellationDispatchesOnlyToActiveConnectionSlots|testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable'
 
 
-# rollback-php-extension-check runs the first-statement-lost case of packages/php/tests/RollbackTest.php
+# rollback-php-extension-check runs the first-statement-lost case of legacy/packages/php/tests/RollbackTest.php
 # with the extension loaded, on MySQL and PostgreSQL (WITH_TEST_ENV).
 .PHONY: rollback-php-extension-check
 rollback-php-extension-check: RUN_DIR = $(abspath .runtime/run)/rollback-php-extension-check-$$PPID
 rollback-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/RollbackTest.php --filter testFirstStatementLost; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/RollbackTest.php --filter testFirstStatementLost; status=$$?; rm -rf $(RUN_DIR); exit $$status
 
 transaction-failure-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; \
@@ -3710,20 +3710,20 @@ transaction-failure-php-extension-check: php-vendor-check php-models orm-install
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER)',) packages/php-ext/tests/TransactionFailureNativeTest.php
-# dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER)',) legacy/packages/php-ext/tests/TransactionFailureNativeTest.php
+# dbspec-php-extension-check/declarations runs the extension's own checks (legacy/packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
 transaction-failure-go-check:
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestSavepointReportsFailedEnd$$') -count=1
+	$(NODE) tests/go-test.mts -v -timeout 0 ./legacy/packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestSavepointReportsFailedEnd$$') -count=1
 
 # Runs the TypeScript transaction and savepoint cleanup failure cases against a temporary SQLite database.
 
 # php-query-cancellation-check runs the PHP CFG-9 token, SQLite, MySQL and PostgreSQL cancellation cases.
 .PHONY: php-query-cancellation-check
 php-query-cancellation-check: php-vendor-check php-models php-cancel-helper-build
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/QueryCancellationTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/QueryCancellationTest.php
 
 # Runs the native PHP-extension in-flight cancellation cases against the provisioned MySQL and PostgreSQL servers.
 .PHONY: php-query-cancellation-extension-check
@@ -3733,24 +3733,24 @@ php-query-cancellation-extension-check: php-vendor-check php-models orm-install-
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot|testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot|testMysqlCancellationStopsEveryActiveRootAndReopensEachProcessRoot' packages/php-ext/tests/QueryCancellationNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot|testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot|testMysqlCancellationStopsEveryActiveRootAndReopensEachProcessRoot' legacy/packages/php-ext/tests/QueryCancellationNativeTest.php
 
 # The PostgreSQL PDO-compatible adapter has a seven-case library owner and an extension-native owner over the same case bodies.
 .PHONY: pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check
 pgsql-pdo-adapter-php-check: php-vendor-check php-models
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PgsqlPdoAdapterTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/PgsqlPdoAdapterTest.php
 
 pgsql-pdo-adapter-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools build-php-ext
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php
 
 transaction-failure-php-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_TEST_FILTER)',) packages/php/tests/TransactionFailureTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_TEST_FILTER)',) legacy/packages/php/tests/TransactionFailureTest.php
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).
 
 transaction-failure-typescript-check: typescript-read
-	$(NODE) --conditions=orm-test --test $(if $(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER),--test-name-pattern='$(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER)',) packages/ts/tests/transaction-failure.mjs
+	$(NODE) --conditions=orm-test --test $(if $(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER),--test-name-pattern='$(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER)',) legacy/packages/ts/tests/transaction-failure.mjs
 
 # The assignment expansion regression is a pure planner unit, separate from the Go database suite.
 
@@ -3776,17 +3776,17 @@ connection-timeout-php-extension-check: php-vendor-check orm-install-php-extensi
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConnectionTimeoutCleanupTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConnectionTimeoutCleanupTest.php
 
 connection-sqlite-several-processes-python-check: python-models
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p connection_pool.py -k test_sqlite_several_process_writers_commit_every_row
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p connection_pool.py -k test_sqlite_several_process_writers_commit_every_row
 
 go-package-entry-check:
-	$(GO_TEST) ./packages/go/orm -run '^TestExternalModuleCanImportClient$$' -count=1
+	$(GO_TEST) ./legacy/packages/go/orm -run '^TestExternalModuleCanImportClient$$' -count=1
 
 php-package-entry-check: php-vendor-check php-models
-	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PackageEntryPointTest.php
-	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComposerExtensionsTest.php
+	$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/PackageEntryPointTest.php
+	$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComposerExtensionsTest.php
 
 php-extension-package-entry-check: php-vendor-check php-models
 	@set -eu; \
@@ -3794,26 +3794,26 @@ php-extension-package-entry-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir"; \
 	$(call php_ext_build,"$$run_dir/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' legacy/packages/php-ext/tests/DeclarationsTest.php
 
 rust-package-entry-check:
 	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- package_entry::public_package_entry --exact --nocapture
 
 typescript-package-entry-check: typescript-read
-	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs
+	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' legacy/packages/ts/tests/statement_fault_entry.mjs
 
 complex-query-typescript-unit-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) packages/ts/tests/fulltext-chain-types.mjs
-	$(NODE) packages/ts/tests/paginate-order.mjs
+	$(NODE) legacy/packages/ts/tests/fulltext-chain-types.mjs
+	$(NODE) legacy/packages/ts/tests/paginate-order.mjs
 
 complex-query-typescript-request-check: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) packages/ts/tests/complex-query-request-types.mjs
+	$(NODE) legacy/packages/ts/tests/complex-query-request-types.mjs
 
 python-package-entry-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_rollback_fault.py -k test_the_package_entry_point_does_not_export_the_fault
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_package_entry.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_rollback_fault.py -k test_the_package_entry_point_does_not_export_the_fault
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_package_entry.py
 
 # fuzz-check is a long-running task that runs the fuzzing-instrumented build and one second of fuzzing (-fuzztime), so
 # it runs each command with no deadline under RUN_LONG. -fuzztime sets the length of fuzzing.
@@ -3825,7 +3825,7 @@ native-api-equivalence-check: php-vendor-check php-models orm-install-php-extens
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaUtilsNativeTest.php packages/php-ext/tests/UtilsNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php packages/php-ext/tests/OrmExceptionNativeTest.php --filter '$(NATIVE_API_EQUIVALENCE_FILTER)'
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/SchemaUtilsNativeTest.php legacy/packages/php-ext/tests/UtilsNativeTest.php legacy/packages/php-ext/tests/AesUtilsNativeTest.php legacy/packages/php-ext/tests/OrmExceptionNativeTest.php --filter '$(NATIVE_API_EQUIVALENCE_FILTER)'
 
 native-arginfo-php-extension-check: php-vendor-check php-models
 	@set -eu; \
@@ -3835,9 +3835,9 @@ native-arginfo-php-extension-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ArginfoBuildTest.php packages/php-ext/tests/DeclarationsTest.php packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/CollectionTest.php packages/php-ext/tests/OrmExceptionNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php packages/php-ext/tests/PrivilegeUtilsNativeTest.php packages/php-ext/tests/UtilsNativeTest.php packages/php-ext/tests/SchemaUtilsNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ArginfoBuildTest.php legacy/packages/php-ext/tests/DeclarationsTest.php legacy/packages/php-ext/tests/ModelNativeTest.php legacy/packages/php-ext/tests/CollectionTest.php legacy/packages/php-ext/tests/OrmExceptionNativeTest.php legacy/packages/php-ext/tests/AesUtilsNativeTest.php legacy/packages/php-ext/tests/PrivilegeUtilsNativeTest.php legacy/packages/php-ext/tests/UtilsNativeTest.php legacy/packages/php-ext/tests/SchemaUtilsNativeTest.php
 
-# dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
+# dbspec-php-extension-check/declarations runs the extension's own checks (legacy/packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
@@ -3850,13 +3850,13 @@ request-hook-audit-native-binding-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookTestExtensionTest.php packages/php-ext/tests/AuditNativeMethodsTest.php --filter testNativeMethodsAreInternal
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookTestExtensionTest.php legacy/packages/php-ext/tests/AuditNativeMethodsTest.php --filter testNativeMethodsAreInternal
 
 # Runs the database-free tests of shared PHP fixture and assertion helpers.
 .PHONY: php-test-assertions-helper-check
 php-test-assertions-helper-check: php-vendor-check php-models
-	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DatabaseTestAssertionsTest.php
+	$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DatabaseTestAssertionsTest.php
 
 .PHONY: typescript-performance-gate-unit-check
 typescript-performance-gate-unit-check:
-	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/coverage_performance_gate.test.mjs
+	$(RUN_TESTS) node -- --test-concurrency=1 --test legacy/packages/ts/tests/coverage_performance_gate.test.mjs

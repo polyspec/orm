@@ -17,7 +17,7 @@
 - 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 
-검사기는 각 언어의 선언을 그 언어 자신의 추출기(`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
+검사기는 각 언어의 선언을 그 언어 자신의 추출기(`legacy/packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
 Python extractor는 출시 package 경계를 따르기 위해 고정된 Python test 환경의 setuptools package finder를 사용한다. `make install`이 이 환경을 만든다.
 
 데이터베이스 없이 구조 검사를 실행한다.
@@ -25,7 +25,7 @@ Python extractor는 출시 package 경계를 따르기 위해 고정된 Python t
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -40,7 +40,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
 CI는 `--generate`를 사용하지 않으며 생성 파일, 도표, 실행 계약이 다르면 실패한다.

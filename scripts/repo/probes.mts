@@ -19,7 +19,7 @@ export function connectProbeErrors(files: Record<string, string>) {
     text.split('\n').forEach((line: string, index) => {
       if (/^\s*(\/\/|#|\*|\/\*)/.test(line)) return;
       if (/sqlite_version\(\)/i.test(line)) errors.push(`${path}:${index + 1} asks the server for the SQLite version; read the library version from the driver`);
-      else if (path.startsWith('packages/ts/src/') && /['"`]SELECT 1['"`]/.test(line)) errors.push(`${path}:${index + 1} sends SELECT 1 to check the connection; open a connection without a statement`);
+      else if (path.startsWith('legacy/packages/ts/src/') && /['"`]SELECT 1['"`]/.test(line)) errors.push(`${path}:${index + 1} sends SELECT 1 to check the connection; open a connection without a statement`);
     });
   }
   return errors;

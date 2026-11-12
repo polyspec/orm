@@ -1,0 +1,172 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-63",
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "bytes_under_value_stages",
+      "requirements": [
+        "COD-63",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: the value is not a JSON value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "bytes_hex": "00ff"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: the value is not a JSON value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "bytes_hex": "00ff"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "bytes_hex": "00ff"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: an empty stage list takes a string value"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

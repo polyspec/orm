@@ -1,0 +1,11 @@
+{
+  "diagnostics": [
+    { "rule": "header", "message": "the first line is exactly dbspec 1 <document>", "range": [[0, 8], [0, 8]] }
+  ],
+  "tokens": [
+    { "class": "word", "range": [[0, 0], [0, 6]] },
+    { "class": "number", "range": [[0, 7], [0, 8]] }
+  ],
+  "folding": [],
+  "formatted": null
+}

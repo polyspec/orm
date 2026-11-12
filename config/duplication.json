@@ -24,7 +24,7 @@
   ],
   "exclude": [
     {
-      "glob": "packages/php-ext/src/polyspec_*.stub.php",
+      "glob": "legacy/packages/php-ext/src/polyspec_*.stub.php",
       "reason": "ecosystem: the S10 stub declares the library under the same names and signatures, since the PHP stub generator reads it to write the arginfo header"
     }
   ]

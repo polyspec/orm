@@ -1,0 +1,342 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-64",
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "text_with_a_lone_surrogate",
+      "requirements": [
+        "COD-64",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: gz: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: base64: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "text": "a"
+              },
+              {
+                "object": [
+                  [
+                    "k",
+                    {
+                      "text_code_points": [
+                        56320,
+                        98
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "text": "a"
+              },
+              {
+                "object": [
+                  [
+                    "k",
+                    {
+                      "text_code_points": [
+                        56320,
+                        98
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "array": [
+              {
+                "text": "a"
+              },
+              {
+                "object": [
+                  [
+                    "k",
+                    {
+                      "text_code_points": [
+                        56320,
+                        98
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the text is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55357,
+              56832
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "2261f09f988022"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "host_input_with_a_lone_surrogate",
+      "requirements": [
+        "COD-1",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "aes",
+            "hex"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "key": "key-v1",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "unknown"
+          ],
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style unknown"
+            }
+          }
+        },
+        {
+          "op": "codec.blind_index",
+          "value": {
+            "text_code_points": [
+              97,
+              55296
+            ]
+          },
+          "key": "k",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: blind index input is not a sequence of Unicode scalar values"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,178 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-16",
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "map_keys_that_are_not_strings",
+      "requirements": [
+        "COD-16",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "map_entries": [
+              [
+                {
+                  "int": "1"
+                },
+                {
+                  "text": "x"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: member keys must be strings"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "map_entries": [
+              [
+                {
+                  "text": "a"
+                },
+                {
+                  "int": "1"
+                }
+              ],
+              [
+                {
+                  "bool": true
+                },
+                {
+                  "int": "2"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: member keys must be strings"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "map_entries": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "x"
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: member keys must be strings"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "map_entries": [
+              [
+                {
+                  "int": "1"
+                },
+                {
+                  "text": "x"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "map_entries": [
+              [
+                {
+                  "int": "1"
+                },
+                {
+                  "text": "x"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "map_entries": [
+              [
+                {
+                  "text": "a"
+                },
+                {
+                  "int": "1"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "7b2261223a317d"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

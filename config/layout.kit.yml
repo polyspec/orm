@@ -95,12 +95,12 @@ rules:
     level: error
     paths: ["packages/**/integration", "packages/**/conformance"]
     message: "K244: an integration or conformance suite lives in tests/integration/<runtime> or tests/conformance/<runtime> of the root"
-  # S10: the PHP extension has one stub, in packages/php-ext/src/; php-extension.mts checks its name.
+  # S10: the PHP extension has one stub, in legacy/packages/php-ext/src/; php-extension.mts checks its name.
   - id: php-ext-stub-place
     kind: file_absent
     level: error
-    paths: ["**/*.stub.php", "!packages/php-ext/src/*.stub.php"]
-    message: "S10: the stub of the PHP extension is packages/php-ext/src/polyspec_<repository>.stub.php"
+    paths: ["**/*.stub.php", "!legacy/packages/php-ext/src/*.stub.php"]
+    message: "S10: the stub of the PHP extension is legacy/packages/php-ext/src/polyspec_<repository>.stub.php"
   # S5: the root folders of every monorepo, and the dot folders of Git, GitHub, kit and Claude Code. .mise holds .mise/locks/,
   # the uv lock sidecars that make toolchain-lock writes and mise.lock names: lock data that is tracked with mise.lock (K192).
   # .claude holds settings.json, the Claude Code settings that kit vendors with the hook of K240.
@@ -160,7 +160,7 @@ rules:
   - id: layout-packages
     kind: dir_absent
     level: error
-    paths: ["packages/*", "!packages/go", "!packages/php", "!packages/php-ext", "!packages/python", "!packages/rust", "!packages/ts", "!packages/js"]
+    paths: ["packages/*", "!legacy/packages/go", "!legacy/packages/php", "!legacy/packages/php-ext", "!legacy/packages/python", "!packages/rust", "!legacy/packages/ts", "!packages/js"]
     message: "S5: packages/ holds packages/<runtime>/ and the components that config/layout.yml declares"
 
   - id: layout-packages-files

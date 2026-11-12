@@ -37,11 +37,11 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 before(() => { delete process.env.NODE_TEST_CONTEXT; });
 
 const ownerTests: Record<string, string> = {
-  go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils_statements.py',
-  rust: 'packages/rust/orm/tests/cases/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
+  go: 'legacy/packages/go/orm/dsn_test.go', php: 'legacy/packages/php/tests/DsnTest.php',
+  'php-extension': 'legacy/packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'legacy/packages/python/tests/test_utils_statements.py',
+  rust: 'packages/rust/orm/tests/cases/zone.rs', typescript: 'legacy/packages/ts/tests/typecheck.ts',
 };
-const dependentTest = 'packages/go/model/model_test.go';
+const dependentTest = 'legacy/packages/go/model/model_test.go';
 
 // defined is a value the sample holds; a mutation of a value the sample lacks fails the case.
 function defined<T>(value: T | undefined): T {
@@ -53,7 +53,7 @@ function defined<T>(value: T | undefined): T {
 function sampleManifest(owner: string): SampleManifest {
   return { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
     coverage: { kind: 'independent', cases: ['first'],
-      owners: { go: { part: 'packages/go/sample', tests: [owner],
+      owners: { go: { part: 'legacy/packages/go/sample', tests: [owner],
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }] } } },
       dependents: [] } }] };
 }
@@ -83,17 +83,17 @@ caseTest('PHP extension coverage tests reside in the owning package', COMPUTE, (
   const reports = complete();
   const owner = manifest.features[0].coverage.owners['php-extension'];
   assert.ok(owner);
-  assert.equal(testDirectoryOf('php-extension'), 'packages/php-ext');
+  assert.equal(testDirectoryOf('php-extension'), 'legacy/packages/php-ext');
   assert.deepEqual(checkSampleCoverage(manifest, reports), []);
-  owner.tests = ['packages/php/tests/CatalogConnectionRecipeTest.php'];
+  owner.tests = ['legacy/packages/php/tests/CatalogConnectionRecipeTest.php'];
   assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
   const extensionTest = ownerTests['php-extension'];
   assert.ok(extensionTest);
   owner.tests = [extensionTest];
-  owner.part = 'packages/php/tests';
+  owner.part = 'legacy/packages/php/tests';
   const mysqlReports = reports['sample/owner/php-extension/mysql'];
   assert.ok(mysqlReports?.[0]);
-  mysqlReports[0].part = 'packages/php/tests';
+  mysqlReports[0].part = 'legacy/packages/php/tests';
   assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
 });
 
@@ -104,15 +104,15 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
     assert.ok(feature?.coverage?.owners, `${id} has no coverage owners`);
     const owner = feature.coverage.owners['php-extension'];
     assert.ok(owner, `${id} has no PHP extension owner`);
-    assert.equal(owner.part, 'packages/php-ext/tests', `${id} runs outside the extension package`);
+    assert.equal(owner.part, 'legacy/packages/php-ext/tests', `${id} runs outside the extension package`);
     assert.ok(owner.tests.length > 0, `${id} has no PHP extension tests`);
     for (const test of owner.tests)
-      assert.ok(test.startsWith('packages/php-ext/tests/'), `${id} declares non-extension test ${test}`);
+      assert.ok(test.startsWith('legacy/packages/php-ext/tests/'), `${id} declares non-extension test ${test}`);
     for (const [database, commands] of Object.entries(owner.commands)) {
       assert.ok(commands.length > 0, `${id}/${database} has no native command`);
       for (const command of commands) {
         assert.ok(owner.tests.includes(command.test), `${id}/${database} runs undeclared test ${command.test}`);
-        assert.ok(command.test.startsWith('packages/php-ext/tests/'),
+        assert.ok(command.test.startsWith('legacy/packages/php-ext/tests/'),
           `${id}/${database} runs outside the extension package: ${command.test}`);
       }
     }
@@ -121,10 +121,10 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   assert.ok(statementEvents?.coverage?.owners);
   const phpOwner = statementEvents.coverage.owners.php;
   assert.ok(phpOwner);
-  assert.equal(phpOwner.part, 'packages/php/tests');
+  assert.equal(phpOwner.part, 'legacy/packages/php/tests');
   for (const command of Object.values(phpOwner.commands).flat()) {
     assert.ok(phpOwner.tests.includes(command.test), `PHP statement_events runs undeclared test ${command.test}`);
-    assert.ok(command.test.startsWith('packages/php/tests/'),
+    assert.ok(command.test.startsWith('legacy/packages/php/tests/'),
       `PHP statement_events runs outside the PHP package: ${command.test}`);
   }
 });
@@ -137,7 +137,7 @@ function declaredPhpMethods(file: string, seen = new Set<string>()): string {
   const source = readFileSync(file, 'utf8');
   const parents = [...source.matchAll(/^\s+use ([A-Za-z]+);$/gm), ...source.matchAll(/class \w+ extends ([A-Za-z]+)/g)];
   let methods = source;
-  // An extension test class extends the shared class in packages/php/tests.
+  // An extension test class extends the shared class in legacy/packages/php/tests.
   const shared = join(dirname(dirname(dirname(file))), 'php', 'tests');
   for (const [, name] of parents)
     for (const directory of [dirname(file), shared])
@@ -268,8 +268,8 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
   assert.ok(owner);
   const commands = owner.commands;
   assert.deepEqual(Object.keys(commands).toSorted(), [...databases].toSorted());
-  // The extension class extends the shared recipe class in packages/php/tests, which declares the entry methods.
-  const methods = declaredPhpMethods(join(root, 'packages/php/tests/CatalogConnectionRecipeTest.php'));
+  // The extension class extends the shared recipe class in legacy/packages/php/tests, which declares the entry methods.
+  const methods = declaredPhpMethods(join(root, 'legacy/packages/php/tests/CatalogConnectionRecipeTest.php'));
   const entries: Record<string, string | undefined> = { mysql: 'testMysql', postgres: 'testPostgres', sqlite: 'testSqlite' };
   for (const [database, nativeCommands] of Object.entries(commands)) {
     assert.ok(nativeCommands);
@@ -362,10 +362,10 @@ caseTest('a selected case requires only the databases whose entries run it', COM
   assert.deepEqual(checkCoverage(selected, {}).toSorted(), Object.keys(feature.coverage.owners).flatMap(language =>
     ['mysql', 'postgres'].map(database => `catalog_connection/owner/${language}/${database}: no executed report`)).toSorted());
   // A selected case that no entry of an owner names leaves that owner without a slot, which is an error and not a pass.
-  const owner = 'packages/go/orm/sample_test.go';
+  const owner = 'legacy/packages/go/orm/sample_test.go';
   const sample: Manifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
     coverage: { kind: 'database', cases: ['first', 'second'], dependents: [], owners: {
-      go: { part: 'packages/go/orm', tests: [owner], commands: Object.fromEntries(databases.map(database =>
+      go: { part: 'legacy/packages/go/orm', tests: [owner], commands: Object.fromEntries(databases.map(database =>
         [database, [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }]])) } } } }] };
   assert.ok(checkCoverage(selectFeatures(sample, 'sample', ['owner/go'], undefined, ['second']), {})
     .includes('sample/owner/go: no entry runs the selected cases'));
@@ -384,15 +384,15 @@ caseTest('aggregate numeric TypeScript cases are owned by the client', COMPUTE, 
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const feature = manifest.features.find(item => item.id === 'model_queries');
   assert.ok(feature?.tests);
-  assert.ok(feature.tests.includes('packages/ts/tests/aggregate_numeric.mjs'));
+  assert.ok(feature.tests.includes('legacy/packages/ts/tests/aggregate_numeric.mjs'));
   assert.ok(!feature.tests.includes('tests/typescript/aggregate_numeric.mjs'));
-  assert.ok((await stat(new URL('packages/ts/tests/aggregate_numeric.mjs', root))).isFile());
+  assert.ok((await stat(new URL('legacy/packages/ts/tests/aggregate_numeric.mjs', root))).isFile());
 });
 
 caseTest('TypeScript behavior tests stay in their client directory', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url);
   const expected = ['engine', 'generate', 'model'];
-  const entries = await readdir(new URL('packages/ts/tests/', root));
+  const entries = await readdir(new URL('legacy/packages/ts/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });
 });
@@ -407,7 +407,7 @@ function contract(kind = 'database'): SampleManifest {
           ? Object.fromEntries(databases.map(database => [database, [{ runner: 'node', test, cases: ['first', 'second'] }]]))
           : {} }];
       })),
-      dependents: [{ id: 'service', language: 'go', part: 'packages/go/model',
+      dependents: [{ id: 'service', language: 'go', part: 'legacy/packages/go/model',
         tests: [dependentTest], cases: ['first'], commands: {} }] } }] };
 }
 
@@ -442,7 +442,7 @@ function complete(kind = 'database'): Reports {
   };
   for (const language of languages) for (const database of kind === 'database' ? databases : ['none']) {
     reports[`sample/owner/${language}/${database}`] = make('owner', testDirectoryOf(language), [ownerTests[language] ?? ''], language, database, ['first', 'second']);
-    if (language === 'go') reports[`sample/dependent/service/go/${database}`] = make('dependent', 'packages/go/model', [dependentTest], language, database, ['first'], 'service');
+    if (language === 'go') reports[`sample/dependent/service/go/${database}`] = make('dependent', 'legacy/packages/go/model', [dependentTest], language, database, ['first'], 'service');
   }
   return reports;
 }
@@ -514,7 +514,7 @@ caseTest('database owner files are scoped by command and every declared owner fi
   const manifest = contract();
   const feature = defined(manifest.features[0]);
   const owner = defined(feature.coverage.owners.go);
-  const files = ['packages/go/bench/mysql.go', 'packages/go/bench/postgres.go', 'packages/go/bench/sqlite.go'];
+  const files = ['legacy/packages/go/bench/mysql.go', 'legacy/packages/go/bench/postgres.go', 'legacy/packages/go/bench/sqlite.go'];
   owner.tests = files;
   owner.commands = Object.fromEntries(databases.map((database, index) => [database, [{
     runner: 'go', test: defined(files[index]), cases: ['first', 'second'],
@@ -546,7 +546,7 @@ caseTest('selected independent cases retain only the files bound to the selected
   const manifest = contract('independent');
   const feature = defined(manifest.features[0]);
   const owner = defined(feature.coverage.owners.go);
-  const files = ['packages/go/bench/first.go', 'packages/go/bench/second.go'];
+  const files = ['legacy/packages/go/bench/first.go', 'legacy/packages/go/bench/second.go'];
   owner.tests = files;
   owner.commands = { none: files.map((test, index) => ({ runner: 'go', test, cases: [index === 0 ? 'first' : 'second'] })) };
   const selected = selectFeatures(manifest, 'sample', ['owner/go'], undefined, ['first']);
@@ -568,7 +568,7 @@ caseTest('missing owner, dependent, database, case, and a second run are RED', C
   assert.match(mutation((_, r) => { delete r['sample/dependent/service/go/mysql']; }), /sample\/dependent\/service\/go\/mysql: no executed report/);
   // @ts-expect-error: a missing dependents declaration is the invalid contract under test.
   assert.match(mutation((m) => { delete m.features[0].coverage.dependents; }), /missing dependents declaration/);
-  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).part = 'packages/go'; }), /invalid dependent part/);
+  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).part = 'legacy/packages/go'; }), /invalid dependent part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).cases = []; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.owners.rust).tests = ['tests/conformance/check/main.test.mts']; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.owners.typescript).tests = ['tests/typescript/aggregate_numeric.mjs']; }), /tests must reside in owning part/);
@@ -585,7 +585,7 @@ caseTest('missing owner, dependent, database, case, and a second run are RED', C
 // Requirements: FCV-5.
 caseTest('identity, result and unknown report mutations are RED', COMPUTE, () => {
   assert.match(mutation((m) => { m.features[0].tests = testsOf(languages.filter(language => language !== 'rust')); }), /has no test in a client language/);
-  assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).part = 'packages/php'; }), /report identity differs/);
+  assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).part = 'legacy/packages/php'; }), /report identity differs/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/mysql'])[0]).role = 'owner'; }), /report identity differs/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/mysql'])[0]).tests = [defined(ownerTests.go)]; }), /executed test paths differ/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).success = false; }), /execution failed/);
@@ -600,17 +600,17 @@ const reportingEntry = (lines: string[]): string =>
 
 caseTest('owner and dependent entries execute once from their own parts', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
-  const owner = 'packages/ts/tests/owner.mjs';
-  const dependent = 'packages/ts/use/dependent.mjs';
+  const owner = 'legacy/packages/ts/tests/owner.mjs';
+  const dependent = 'legacy/packages/ts/use/dependent.mjs';
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
     coverage: { kind: 'independent', cases: ['first', 'second'],
-      owners: { typescript: { part: 'packages/ts', tests: [owner],
+      owners: { typescript: { part: 'legacy/packages/ts', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first', 'second'] }] } } },
-      dependents: [{ id: 'use', language: 'typescript', part: 'packages/ts/use',
+      dependents: [{ id: 'use', language: 'typescript', part: 'legacy/packages/ts/use',
         tests: [dependent], cases: ['first'], commands: { none: [{ runner: 'node', test: dependent, cases: ['first'] }] } }] } }] };
   try {
-    await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
-    await mkdir(join(root, 'packages/ts/use'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/ts/use'), { recursive: true });
     await writeFile(join(root, owner), reportingEntry(['CASE first PASS', 'CASE second PASS']));
     await writeFile(join(root, dependent), reportingEntry(['CASE first PASS']));
     assert.deepEqual(await runSelected(manifest, root, ['owner/typescript', 'dependent/use']), []);
@@ -660,11 +660,11 @@ caseTest('owner and dependent entries execute once from their own parts', PROCES
 
 caseTest('every Go execution runs the test instead of reading the test cache', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
-  const owner = 'packages/go/sample/sample_test.go';
+  const owner = 'legacy/packages/go/sample/sample_test.go';
   const runs = join(root, 'runs');
   const manifest = sampleManifest(owner);
   try {
-    await mkdir(join(root, 'packages/go/sample'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/go/sample'), { recursive: true });
     await mkdir(runs);
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
     await writeFile(join(root, owner), `package sample
@@ -696,10 +696,10 @@ const GO_REPORTING_TEST = `import ("os"; "testing")\nfunc TestFirst(t *testing.T
 // Requirements: FCV-2.
 caseTest('a Go test of the normal go test build is read by its exact name', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-tags-')));
-  const owner = 'packages/go/sample/sample_test.go';
+  const owner = 'legacy/packages/go/sample/sample_test.go';
   const body = (tag: string) => `${tag}package sample\n\n${GO_REPORTING_TEST}\nfunc TestFirstOther(t *testing.T) { t.Fatal("selected by a prefix") }\n`;
   try {
-    await mkdir(join(root, 'packages/go/sample'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/go/sample'), { recursive: true });
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
     // The tag of the normal go test (GO_TEST_TAGS): a test that the normal run holds is a test that the checker reads.
     await writeFile(join(root, owner), body('//go:build ormtest\n\n'));
@@ -714,7 +714,7 @@ caseTest('a Go test of the normal go test build is read by its exact name', PROC
 // the test binary build takes 3 s or more, and the build and the run pass.
 caseTest('a slow but healthy coverage build runs to its end without a deadline', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
-  const owner = 'packages/go/sample/sample_test.go';
+  const owner = 'legacy/packages/go/sample/sample_test.go';
   const manifest = sampleManifest(owner);
   const path = process.env.PATH;
   try {
@@ -723,7 +723,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
     await mkdir(join(root, 'bin'), { recursive: true });
     await writeFile(join(root, 'bin/go'), `#!/bin/sh\nsleep 3\nexec ${JSON.stringify(realGo)} "$@"\n`);
     await chmod(join(root, 'bin/go'), 0o755);
-    await mkdir(join(root, 'packages/go/sample'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/go/sample'), { recursive: true });
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
     await writeFile(join(root, owner), `package sample\n\n${GO_REPORTING_TEST}`);
     process.env.PATH = `${join(root, 'bin')}:${path}`;
@@ -739,7 +739,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
 // phpunitStub writes, under root, a vendor-php/bin/phpunit that stands for PHPUnit: it requires the arguments with
 // which coverage.mts runs a PHP entry, runs the PHP code `before`, and appends the lines `lines` to the results file.
 async function phpunitStub(root: string, file: string, lines: string[], before = '', method = 'testFirst'): Promise<void> {
-  const want = ['--configuration', join(root, 'packages/php/phpunit.xml.dist'), '--filter', `/::${method}( |$)/`, join(root, file)];
+  const want = ['--configuration', join(root, 'legacy/packages/php/phpunit.xml.dist'), '--filter', `/::${method}( |$)/`, join(root, file)];
   await mkdir(join(root, 'vendor-php/bin'), { recursive: true });
   await writeFile(join(root, 'vendor-php/bin/phpunit'), `<?php\nif (array_slice($argv, 1) !== ${phpArray(want)}) exit(2);\n${before}file_put_contents(getenv('ORM_RECIPE_RESULTS'), ${JSON.stringify(lines.map(line => `${line}\n`).join(''))}, FILE_APPEND);\n`);
 }
@@ -753,11 +753,11 @@ const PASSED = ['CASE first PASS'];
 // Requirements: FCV-2.
 caseTest('PHP coverage cases use their explicitly declared method symbols', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-php-symbols-')));
-  const file = 'packages/php/tests/OwnerTest.php';
+  const file = 'legacy/packages/php/tests/OwnerTest.php';
   const method = 'testSchemaInstallExisting';
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['php']),
     coverage: { kind: 'independent', cases: ['schema_install_existing'], dependents: [], owners: {
-      php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file,
+      php: { part: 'legacy/packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file,
         cases: ['schema_install_existing'], symbol: method }] } },
     } } }] };
   try {
@@ -815,14 +815,14 @@ setup('coverage overlap fixture crate', async () => {
 caseTest('coverage runs without cargo proceed while the Rust test build runs', PROCESS, async () => {
   const root = overlapRoot;
   const rustFile = overlapRustFile;
-  const phpFile = 'packages/php/tests/OwnerTest.php';
+  const phpFile = 'legacy/packages/php/tests/OwnerTest.php';
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
   const cargoArguments = join(root, 'cargo-arguments');
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['rust', 'php']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
       rust: { part: 'packages/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'] }] } },
-      php: { part: 'packages/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'], symbol: 'testFirst' }] } },
+      php: { part: 'legacy/packages/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'], symbol: 'testFirst' }] } },
     } } }] };
   const path = process.env.PATH;
   let restoreLease = (): void => {};
@@ -865,7 +865,7 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
   }
   // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
   defined(defined(manifest.features[0].coverage.dependents[0]).commands).none =
-    `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'packages/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
+    `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'legacy/packages/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
   assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, NATIVE_DEADLINE)).join('\n'),
     /invalid test command/);
 });
@@ -876,16 +876,16 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
 // Requirements: FCV-14.
 caseTest('a run is the exit status of its entry and the lines it wrote', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
-  const fileOf = (database: string) => `packages/ts/tests/${database}.mjs`;
+  const fileOf = (database: string) => `legacy/packages/ts/tests/${database}.mjs`;
   const recipe = 'contracts/fixtures/sample/sample.json';
   const manifest = (): SampleManifest => ({
     features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
       coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
-        typescript: { part: 'packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
+        typescript: { part: 'legacy/packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
           [database, [{ runner: 'node', test: fileOf(database), cases: ['first'], recipe }]])) },
       } } }] });
   try {
-    await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
     await mkdir(join(root, 'contracts/fixtures/sample'), { recursive: true });
     await writeFile(join(root, recipe), '{"cases":[{"id":"first"}]}\n');
     for (const database of databases)
@@ -912,15 +912,15 @@ caseTest('a run is the exit status of its entry and the lines it wrote', PROCESS
 caseTest('Go, PHP, and Rust native cases execute through their owning files', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases: { language: string; part: string; file: string; runner: string; symbol?: string }[] = [
-    { language: 'go', part: 'packages/go/orm', file: 'packages/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
-    { language: 'php', part: 'packages/php/tests', file: 'packages/php/tests/OwnerTest.php', runner: 'php', symbol: 'testFirst' },
+    { language: 'go', part: 'legacy/packages/go/orm', file: 'legacy/packages/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
+    { language: 'php', part: 'legacy/packages/php/tests', file: 'legacy/packages/php/tests/OwnerTest.php', runner: 'php', symbol: 'testFirst' },
     { language: 'rust', part: 'packages/rust/orm', file: 'packages/rust/orm/src/lib.rs', runner: 'cargo' },
   ];
   let restoreLease = (): void => {};
   try {
     restoreLease = await exportLease(root);
     for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
-    await writeFile(join(root, 'packages/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
+    await writeFile(join(root, 'legacy/packages/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
     await writeFile(join(root, defined(cases[0]).file), `package orm\n${GO_REPORTING_TEST}`);
     await writeFile(join(root, defined(cases[1]).file), '<?php\n');
     await phpunitStub(root, defined(cases[1]).file, PASSED);
@@ -976,15 +976,15 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
 // interpreter here is a stand-in that checks those arguments, so the checker's part is tested without a Python.
 caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-python-')));
-  const owner = 'packages/python/tests/owner.py';
+  const owner = 'legacy/packages/python/tests/owner.py';
   const interpreter = join(root, 'bin/python');
   const previous = process.env.ORM_PYTHON;
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['python']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [],
-      owners: { python: { part: 'packages/python/tests', tests: [owner],
+      owners: { python: { part: 'legacy/packages/python/tests', tests: [owner],
         commands: { none: [{ runner: 'python', test: owner, cases: ['first'] }] } } } } }] };
   try {
-    await mkdir(join(root, 'packages/python/tests'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/python/tests'), { recursive: true });
     await mkdir(join(root, 'bin'));
     await writeFile(join(root, owner), '');
     await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = -m ] && [ "$2" = packages.python.tests.owner ] && [ "$PWD" = ${JSON.stringify(root)} ] || exit 2\necho 'CASE first PASS' >> "$ORM_RECIPE_RESULTS"\n`);
@@ -1007,16 +1007,16 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async
 // `not ok - <case>`). A failed run gives its reason on `# <reason>` lines.
 caseTest('every native run reports its command and TAP result', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
-  const owner = 'packages/ts/tests/owner.mjs';
+  const owner = 'legacy/packages/ts/tests/owner.mjs';
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [],
-      owners: { typescript: { part: 'packages/ts', tests: [owner],
+      owners: { typescript: { part: 'legacy/packages/ts', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first'] }] } } } } }] };
   const lines: string[] = [];
   const log = console.log;
   console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
   try {
-    await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
+    await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
     await writeFile(join(root, owner), reportingEntry(['CASE first PASS']));
     assert.deepEqual(await runSelected(manifest, root, ['owner/typescript']), []);
     await writeFile(join(root, owner), 'process.exit(3);\n');

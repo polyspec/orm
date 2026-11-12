@@ -1,0 +1,1004 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-140",
+    "DBS-142",
+    "DBS-143",
+    "ORES-12",
+    "ORES-57",
+    "ORES-58",
+    "ORES-59",
+    "ORES-60",
+    "ORES-61",
+    "ORES-62",
+    "ORES-63",
+    "ORES-66",
+    "ORES-67",
+    "ORES-68",
+    "ORES-69",
+    "ORES-71"
+  ],
+  "cases": [
+    {
+      "id": "positions-every-line-kind",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "use core { users }",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  status varchar(32) default 'pending'",
+            "  total decimal(13,2) default 0.00",
+            "  coupon_code varchar(32) null",
+            "  placed_at datetime(6) default now",
+            "  primary key (id)",
+            "  unique uq_orders_coupon (coupon_code)",
+            "  index ix_orders_status (status, placed_at desc)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "  check ck_orders_total (total >= 0.00)",
+            "  settings {",
+            "    updated placed_at",
+            "    select explicit coupon_code",
+            "  }",
+            "}",
+            "",
+            "diagram main {",
+            "  orders at 120 340",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "positions": [
+                {
+                  "kind": "document",
+                  "path": [
+                    "shop"
+                  ],
+                  "line": 1,
+                  "column": 10
+                },
+                {
+                  "kind": "use",
+                  "path": [
+                    "core"
+                  ],
+                  "line": 3,
+                  "column": 5
+                },
+                {
+                  "kind": "use_table",
+                  "path": [
+                    "core",
+                    "users"
+                  ],
+                  "line": 3,
+                  "column": 12
+                },
+                {
+                  "kind": "table",
+                  "path": [
+                    "orders"
+                  ],
+                  "line": 5,
+                  "column": 7
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "id"
+                  ],
+                  "line": 6,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "user_id"
+                  ],
+                  "line": 7,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "status"
+                  ],
+                  "line": 8,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "total"
+                  ],
+                  "line": 9,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "coupon_code"
+                  ],
+                  "line": 10,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "orders",
+                    "placed_at"
+                  ],
+                  "line": 11,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "primary key"
+                  ],
+                  "line": 12,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "uq_orders_coupon"
+                  ],
+                  "line": 13,
+                  "column": 10
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "ix_orders_status"
+                  ],
+                  "line": 14,
+                  "column": 9
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "ix_orders_user"
+                  ],
+                  "line": 15,
+                  "column": 9
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "fk_orders_user"
+                  ],
+                  "line": 16,
+                  "column": 15
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "orders",
+                    "ck_orders_total"
+                  ],
+                  "line": 17,
+                  "column": 9
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "orders",
+                    "updated"
+                  ],
+                  "line": 19,
+                  "column": 5
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "orders",
+                    "select"
+                  ],
+                  "line": 20,
+                  "column": 5
+                },
+                {
+                  "kind": "diagram",
+                  "path": [
+                    "main"
+                  ],
+                  "line": 24,
+                  "column": 9
+                },
+                {
+                  "kind": "diagram_entry",
+                  "path": [
+                    "main",
+                    "orders"
+                  ],
+                  "line": 25,
+                  "column": 3
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "positions-markdown-storage-settings",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 wiki",
+            "",
+            "table page {",
+            "  id varchar(64)",
+            "  title varchar(191)",
+            "  body text",
+            "  sort_order i32",
+            "  state varchar(1)",
+            "  primary key (id)",
+            "  settings {",
+            "    markdown body",
+            "    store files",
+            "    title title",
+            "    body body",
+            "    order sort_order",
+            "    task_marker state",
+            "  }",
+            "}",
+            "",
+            "table page_history {",
+            "  history_id i64 identity",
+            "  page_id varchar(64)",
+            "  from_state varchar(16)",
+            "  to_state varchar(16)",
+            "  changed_at datetime(6)",
+            "  sort_order i32 null",
+            "  primary key (history_id)",
+            "  index ix_page_history_page (page_id)",
+            "  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table section {",
+            "  id varchar(64)",
+            "  page_id varchar(64)",
+            "  body text",
+            "  primary key (id)",
+            "  index ix_section_page (page_id)",
+            "  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict",
+            "  settings {",
+            "    store block fk_section_page list",
+            "  }",
+            "}",
+            "",
+            "table ledger {",
+            "  id varchar(64)",
+            "  amount i64",
+            "  primary key (id)",
+            "  settings {",
+            "    store document table",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "positions": [
+                {
+                  "column": 10,
+                  "kind": "document",
+                  "line": 1,
+                  "path": [
+                    "wiki"
+                  ]
+                },
+                {
+                  "column": 7,
+                  "kind": "table",
+                  "line": 3,
+                  "path": [
+                    "page"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 4,
+                  "path": [
+                    "page",
+                    "id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 5,
+                  "path": [
+                    "page",
+                    "title"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 6,
+                  "path": [
+                    "page",
+                    "body"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 7,
+                  "path": [
+                    "page",
+                    "sort_order"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 8,
+                  "path": [
+                    "page",
+                    "state"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "constraint",
+                  "line": 9,
+                  "path": [
+                    "page",
+                    "primary key"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 11,
+                  "path": [
+                    "page",
+                    "markdown",
+                    "body"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 12,
+                  "path": [
+                    "page",
+                    "store"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 13,
+                  "path": [
+                    "page",
+                    "title"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 14,
+                  "path": [
+                    "page",
+                    "body"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 15,
+                  "path": [
+                    "page",
+                    "order"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 16,
+                  "path": [
+                    "page",
+                    "task_marker"
+                  ]
+                },
+                {
+                  "column": 7,
+                  "kind": "table",
+                  "line": 20,
+                  "path": [
+                    "page_history"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 21,
+                  "path": [
+                    "page_history",
+                    "history_id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 22,
+                  "path": [
+                    "page_history",
+                    "page_id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 23,
+                  "path": [
+                    "page_history",
+                    "from_state"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 24,
+                  "path": [
+                    "page_history",
+                    "to_state"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 25,
+                  "path": [
+                    "page_history",
+                    "changed_at"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 26,
+                  "path": [
+                    "page_history",
+                    "sort_order"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "constraint",
+                  "line": 27,
+                  "path": [
+                    "page_history",
+                    "primary key"
+                  ]
+                },
+                {
+                  "column": 9,
+                  "kind": "constraint",
+                  "line": 28,
+                  "path": [
+                    "page_history",
+                    "ix_page_history_page"
+                  ]
+                },
+                {
+                  "column": 15,
+                  "kind": "constraint",
+                  "line": 29,
+                  "path": [
+                    "page_history",
+                    "fk_page_history_page"
+                  ]
+                },
+                {
+                  "column": 7,
+                  "kind": "table",
+                  "line": 32,
+                  "path": [
+                    "section"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 33,
+                  "path": [
+                    "section",
+                    "id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 34,
+                  "path": [
+                    "section",
+                    "page_id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 35,
+                  "path": [
+                    "section",
+                    "body"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "constraint",
+                  "line": 36,
+                  "path": [
+                    "section",
+                    "primary key"
+                  ]
+                },
+                {
+                  "column": 9,
+                  "kind": "constraint",
+                  "line": 37,
+                  "path": [
+                    "section",
+                    "ix_section_page"
+                  ]
+                },
+                {
+                  "column": 15,
+                  "kind": "constraint",
+                  "line": 38,
+                  "path": [
+                    "section",
+                    "fk_section_page"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 40,
+                  "path": [
+                    "section",
+                    "store"
+                  ]
+                },
+                {
+                  "column": 7,
+                  "kind": "table",
+                  "line": 44,
+                  "path": [
+                    "ledger"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 45,
+                  "path": [
+                    "ledger",
+                    "id"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "column",
+                  "line": 46,
+                  "path": [
+                    "ledger",
+                    "amount"
+                  ]
+                },
+                {
+                  "column": 3,
+                  "kind": "constraint",
+                  "line": 47,
+                  "path": [
+                    "ledger",
+                    "primary key"
+                  ]
+                },
+                {
+                  "column": 5,
+                  "kind": "setting",
+                  "line": 49,
+                  "path": [
+                    "ledger",
+                    "store"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "positions-setting-identities",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 vault",
+            "",
+            "table owner {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table secret {",
+            "  id i64 identity",
+            "  owner_id i64",
+            "  body varchar(255)",
+            "  note varchar(255)",
+            "  body_index varchar(64)",
+            "  key_version i32",
+            "  primary key (id)",
+            "  index ix_secret_body_index (body_index)",
+            "  index ix_secret_owner (owner_id)",
+            "  foreign key fk_secret_owner (owner_id) references owner (id) on delete restrict on update restrict",
+            "  settings {",
+            "    codec body aes base64",
+            "    codec note gz base64",
+            "    aes_version key_version",
+            "    blind_index body body_index",
+            "    navigation fk_secret_owner secrets owner",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "positions": [
+                {
+                  "kind": "document",
+                  "path": [
+                    "vault"
+                  ],
+                  "line": 1,
+                  "column": 10
+                },
+                {
+                  "kind": "table",
+                  "path": [
+                    "owner"
+                  ],
+                  "line": 3,
+                  "column": 7
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "owner",
+                    "id"
+                  ],
+                  "line": 4,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "owner",
+                    "primary key"
+                  ],
+                  "line": 5,
+                  "column": 3
+                },
+                {
+                  "kind": "table",
+                  "path": [
+                    "secret"
+                  ],
+                  "line": 8,
+                  "column": 7
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "id"
+                  ],
+                  "line": 9,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "owner_id"
+                  ],
+                  "line": 10,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "body"
+                  ],
+                  "line": 11,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "note"
+                  ],
+                  "line": 12,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "body_index"
+                  ],
+                  "line": 13,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "secret",
+                    "key_version"
+                  ],
+                  "line": 14,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "secret",
+                    "primary key"
+                  ],
+                  "line": 15,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "secret",
+                    "ix_secret_body_index"
+                  ],
+                  "line": 16,
+                  "column": 9
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "secret",
+                    "ix_secret_owner"
+                  ],
+                  "line": 17,
+                  "column": 9
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "secret",
+                    "fk_secret_owner"
+                  ],
+                  "line": 18,
+                  "column": 15
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "secret",
+                    "codec",
+                    "body"
+                  ],
+                  "line": 20,
+                  "column": 5
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "secret",
+                    "codec",
+                    "note"
+                  ],
+                  "line": 21,
+                  "column": 5
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "secret",
+                    "aes_version"
+                  ],
+                  "line": 22,
+                  "column": 5
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "secret",
+                    "blind_index",
+                    "body"
+                  ],
+                  "line": 23,
+                  "column": 5
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "secret",
+                    "navigation",
+                    "fk_secret_owner"
+                  ],
+                  "line": 24,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "positions-skip-comments",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 notes",
+            "",
+            "# the notes of a user",
+            "table note {",
+            "  # the key",
+            "  id i64 identity",
+            "  body text",
+            "  # one key per table",
+            "  primary key (id)",
+            "  settings {",
+            "    # the model name",
+            "    entity memo",
+            "  }",
+            "  # end of the table",
+            "}",
+            "",
+            "# end of the document"
+          ],
+          "expect": {
+            "none": {
+              "positions": [
+                {
+                  "kind": "document",
+                  "path": [
+                    "notes"
+                  ],
+                  "line": 1,
+                  "column": 10
+                },
+                {
+                  "kind": "table",
+                  "path": [
+                    "note"
+                  ],
+                  "line": 4,
+                  "column": 7
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "note",
+                    "id"
+                  ],
+                  "line": 6,
+                  "column": 3
+                },
+                {
+                  "kind": "column",
+                  "path": [
+                    "note",
+                    "body"
+                  ],
+                  "line": 7,
+                  "column": 3
+                },
+                {
+                  "kind": "constraint",
+                  "path": [
+                    "note",
+                    "primary key"
+                  ],
+                  "line": 9,
+                  "column": 3
+                },
+                {
+                  "kind": "setting",
+                  "path": [
+                    "note",
+                    "entity"
+                  ],
+                  "line": 12,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "positions-of-a-failed-parse-are-none",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 bad",
+            "",
+            "table orders {"
+          ],
+          "expect": {
+            "none": {
+              "positions": null
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 bad",
+            "",
+            "table orders {",
+            "  id i64",
+            "}",
+            "  x"
+          ],
+          "expect": {
+            "none": {
+              "positions": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

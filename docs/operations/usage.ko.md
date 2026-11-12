@@ -24,7 +24,7 @@
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
-go build ./packages/go/... ./tests/... ./examples/...
+go build ./legacy/packages/go/... ./tests/... ./examples/...
 ```
 
 ---
@@ -564,7 +564,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 ```sh
 make orm-test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
 . .runtime/servers/env                                   # the DSN variables of the tests
-go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
+go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
 make conformance-check                                   # the native conformance bodies

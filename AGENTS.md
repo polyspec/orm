@@ -26,7 +26,7 @@ from kit and holds as its own; this file states only the rules of orm.
   that orm gives it. CI installs the package through `.github/actions/kit-bootstrap` (K992), and
   `make install-tools TOOLS=npm` installs the pinned npm before the packages (K938). The settings of the tools
   are in their own files: `.npmrc`, the `[settings]` and `[env]` of `mise.toml`, the `[workspace.lints]` of each
-  `Cargo.toml`, the `[tool.vulture]` of `packages/python/pyproject.toml` and the lint configurations of the root
+  `Cargo.toml`, the `[tool.vulture]` of `legacy/packages/python/pyproject.toml` and the lint configurations of the root
   (`ruff.toml`, `phpcs.xml.dist`, `phpstan.dist.neon`, `.golangci.yml`, `clippy.toml`, `.oxlintrc.json`,
   `knip.json`). The files that orm took from the examples of kit and keeps in kit's form are listed in
   `scripts/repo/kit-copies.mts`; the rules of this repository do not read them, and orm adopts a change of
@@ -38,13 +38,13 @@ from kit and holds as its own; this file states only the rules of orm.
   `php`, `php-ext` (the PHP-extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
   `polyspec-orm`) keep it. The Go module is `github.com/polyspec/orm/packages/go`
-  (`packages/go/go.mod`): it holds the client (`orm`, `model` and the other generated models), the
+  (`legacy/packages/go/go.mod`): it holds the client (`orm`, `model` and the other generated models), the
   engine (`engine/`), the generator (`generator/`), `cmd/orm-gen`, the case harness `testcase` and
   the process events `procevent`, which the Go programs of `tests/` import and so are public
   packages, and `internal/testdb`. The Go runners, physical tests and tool programs of `tests/`
   are the module `github.com/polyspec/orm/tests` (`tests/go.mod`), the examples are
   `github.com/polyspec/orm/examples` (`examples/go.mod`), and the root `go.work` joins the three,
-  so they resolve `packages/go` from the checkout with no replace directive.
+  so they resolve `legacy/packages/go` from the checkout with no replace directive.
   Enforced by: `make layout-check`
 - Own: The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
   command), `packages/dbspec-lsp` (the language server), `packages/dbspec-codemirror` (the CodeMirror
@@ -138,7 +138,7 @@ from kit and holds as its own; this file states only the rules of orm.
   retry online.
   Enforced by: none, a judgement at review.
 - Refines S4: Every toolchain the checks use is pinned in one declaration and checked: the node of `mise.toml`, the
-  `go` line of `packages/go/go.mod`, the Composer of `mise.toml` and `rust-toolchain.toml` hold exact releases,
+  `go` line of `legacy/packages/go/go.mod`, the Composer of `mise.toml` and `rust-toolchain.toml` hold exact releases,
   `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
   installs what they declare, and `make repo-check` fails when a running tool differs. A new release is adopted by
   changing its declaration with the CI evidence of that release.
@@ -235,7 +235,7 @@ from kit and holds as its own; this file states only the rules of orm.
   Enforced by: `make conformance-check`
 - Own: Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
   Enforced by: `make conformance-check`
-- Own: Define common planner, dialect, schema, and error behavior in `packages/go/engine/*`, `packages/go/cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
+- Own: Define common planner, dialect, schema, and error behavior in `legacy/packages/go/engine/*`, `legacy/packages/go/cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
   Enforced by: `make feature-verify-other`
 - Own: Feature coverage evidence comes from commands executed in the current check: the exit status of the entry and the `CASE <id> [<database>] PASS` lines that it wrote (docs/spec/feature-coverage.md FCV-12). Named test files or saved output are not execution evidence. the verification commands of the features run their recipes, `make feature-coverage-of/<id>` reads the coverage of one feature, and the mutation tests of the reader run in `make feature-unit-check`. `make orm-check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs them with `make feature-performance-check`.
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
@@ -288,7 +288,7 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: A release starts with a version-bump commit `chore(release): Release X.Y.Z (#<checklist ID>)` on
   `main` together with the completed work and CI improvements, before its single release-candidate CI run: it sets VERSION and every
   package file that `config/release.json` names in `manifests` to X.Y.Z,
-  re-locks each such composer.json that has a `composer.lock` (`packages/php-ext`) with
+  re-locks each such composer.json that has a `composer.lock` (`legacy/packages/php-ext`) with
   `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
@@ -296,7 +296,7 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: After a push or manual run of `.github/workflows/ci.yml` on that commit succeeded (`ci-passed`), the maintainer
   dispatches the release with the id of that run: `gh workflow run release.yml -f run=<id>`. Its
   `make release-tag` requires that the run succeeded and that its exact commit is on `origin/main`, and creates
-  and pushes the annotated tags `vX.Y.Z` and `packages/go/vX.Y.Z` at that commit, which releases the Go module
+  and pushes the annotated tags `vX.Y.Z` and `legacy/packages/go/vX.Y.Z` at that commit, which releases the Go module
   `github.com/polyspec/orm/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
   pushes a tag by hand. Before it tags, `scripts/repo/release-run.mts` refuses a run of any other workflow, such as
   `documents.yml` or `docs-pages.yml`, of another event, without success or, for a release that the run started, on
@@ -313,7 +313,7 @@ from kit and holds as its own; this file states only the rules of orm.
   again; `make release-coverage` requires every manifest of the checkout to be classified in
   `config/release.json`.
   Enforced by: `make release-coverage`
-- Own: The Python client (`packages/python/pyproject.toml`) is released as the wheel
+- Own: The Python client (`legacy/packages/python/pyproject.toml`) is released as the wheel
   `polyspec_orm-X.Y.Z-py3-none-any.whl` (`wheel` in `config/release.json`, built by `uv build` from `build-system.requires`).
   The Rust crates `polyspec-orm`, `polyspec-orm-schema` and `polyspec-orm-build` are consumed by their git tag and have no release
   archive (`git-tag` in `config/release.json`); the version-bump commit sets the `version` of all of them

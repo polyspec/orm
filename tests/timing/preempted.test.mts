@@ -94,7 +94,7 @@ async function passesPreempted(step: { (text: string): void; (text: string): voi
 const stressDocument = () => declared('DBSPEC_STRESS_DOCUMENT');
 
 caseTest('go: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
-  await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}packages/go/engine/dbspec`);
+  await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}legacy/packages/go/engine/dbspec`);
 });
 
 caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
@@ -111,10 +111,10 @@ for (const test of ['DbspecRulesTest', 'DbspecRenderStatementsRecipeTest', 'Dbsp
   caseTest(`php: ${test} passes while preempted`, TIMEOUT, async ({ step }) => {
     // The database cases (group database) need the DSNs of the test servers, which this isolated child does not receive; they run in their own
     // database target, so this case excludes them and checks the parse and render code only.
-    await passesPreempted(step, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--exclude-group', 'database', `packages/php/tests/${test}.php`]);
+    await passesPreempted(step, 'php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--exclude-group', 'database', `legacy/packages/php/tests/${test}.php`]);
   });
 }
 
 caseTest('typescript: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
-  await passesPreempted(step, process.execPath, ['--test', 'packages/ts/tests/dbspec-stress.mjs']);
+  await passesPreempted(step, process.execPath, ['--test', 'legacy/packages/ts/tests/dbspec-stress.mjs']);
 });

@@ -39,7 +39,7 @@ const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line =>
 const copies = kitCopies();
 const kitOwned = kitOwnedPaths();
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
-const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
+const tracked = ['scripts/docs/rules.mts', 'legacy/packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
 const repository = new URL('../../', import.meta.url);
 const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
@@ -69,19 +69,19 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   const applied = (stress.steps ?? []).filter(step => step.op === 'dbspec.apply').flatMap(step => Object.values(step.expect ?? {})).map(appliedOf);
   assert.equal(stress.deadline?.steps, Math.max(...applied), 'the stress case states the most steps it applies on any database');
   const holds: [string, RegExp][] = [
-    ['packages/go/testcase/stall.go', /const stepBudget = 250 \* time\.Millisecond/],
-    ['packages/go/testcase/stall.go', /const fixedBudget = time\.Minute/],
-    ['packages/go/internal/recipe/database.go', /return testcase\.StepBudget\(c\.Deadline\.Steps\)/],
-    ['packages/go/internal/recipe/database.go', /testcase\.Start\(t, caseDeadlineOf\(c\)\)/],
-    ['packages/go/internal/recipe/database.go', /testcase\.StepGuard\(ctx, caseDeadlineOf\(c\), testcase\.Database\)/],
+    ['legacy/packages/go/testcase/stall.go', /const stepBudget = 250 \* time\.Millisecond/],
+    ['legacy/packages/go/testcase/stall.go', /const fixedBudget = time\.Minute/],
+    ['legacy/packages/go/internal/recipe/database.go', /return testcase\.StepBudget\(c\.Deadline\.Steps\)/],
+    ['legacy/packages/go/internal/recipe/database.go', /testcase\.Start\(t, caseDeadlineOf\(c\)\)/],
+    ['legacy/packages/go/internal/recipe/database.go', /testcase\.StepGuard\(ctx, caseDeadlineOf\(c\), testcase\.Database\)/],
     ['tests/testcase.mts', /export const STEP_BUDGET = 250;/],
     ['tests/testcase.mts', /export const FIXED_BUDGET = 60_000;/],
-    ['packages/ts/tests/recipe.mjs', /stepBudget\(recipeCase\.deadline\.steps\)/],
-    ['packages/ts/tests/recipe.mjs', /stepGuard\(caseDeadline\(recipeCase\), DATABASE\)/],
-    ['packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
-    ['packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
-    ['packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
-    ['packages/python/tests/recipe.py', /testcase\.StepGuard\(test\.id\(\), test\.deadline, testcase\.DATABASE\)/],
+    ['legacy/packages/ts/tests/recipe.mjs', /stepBudget\(recipeCase\.deadline\.steps\)/],
+    ['legacy/packages/ts/tests/recipe.mjs', /stepGuard\(caseDeadline\(recipeCase\), DATABASE\)/],
+    ['legacy/packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
+    ['legacy/packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
+    ['legacy/packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
+    ['legacy/packages/python/tests/recipe.py', /testcase\.StepGuard\(test\.id\(\), test\.deadline, testcase\.DATABASE\)/],
     ['packages/rust/testcase/src/lib.rs', /pub const STEP_BUDGET: Duration = Duration::from_millis\(250\);/],
     ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
     ['packages/rust/tests/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
@@ -90,7 +90,7 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
   const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
-  const guardTests = ['packages/go/testcase/stall_test.go', 'scripts/harness/testcase.test.mts', 'packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
+  const guardTests = ['legacy/packages/go/testcase/stall_test.go', 'scripts/harness/testcase.test.mts', 'legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
   for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 
@@ -109,11 +109,11 @@ const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: st
 
 caseTest('dbspec-apply-stress-bench runs the stress case on the databases it names', COMPUTE, () => {
   const dryRun = (...variables: string[]) => spawnSync('make', ['-n', ...variables, 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
-  const tests = text('packages/go/orm/recipe_dbspec_apply_test.go');
+  const tests = text('legacy/packages/go/orm/recipe_dbspec_apply_test.go');
   for (const [dialects, names] of [['mysql', 'Mysql'], ['postgres|sqlite', 'Postgres|Sqlite'], ['mysql|postgres|sqlite', 'Mysql|Postgres|Sqlite']] as const) {
     const result = dryRun(`APPLY_STRESS_DIALECTS=${dialects}`);
     assert.equal(result.status, 0, result.stderr);
-    assert.ok(result.stdout.includes(`./packages/go/orm -run '^TestRecipeDbspecApply(${names})$/^stress_plan_commits_each_step$' -count=1`), result.stdout);
+    assert.ok(result.stdout.includes(`./legacy/packages/go/orm -run '^TestRecipeDbspecApply(${names})$/^stress_plan_commits_each_step$' -count=1`), result.stdout);
     for (const name of names.split('|')) assert.ok(tests.includes(`func TestRecipeDbspecApply${name}(`), name);
   }
   for (const dialects of ['', 'oracle']) {
@@ -135,8 +135,8 @@ caseTest('the key of a model generator covers the document set of each of its en
   const root = new URL('../..', import.meta.url).pathname;
   const sets = (file: string, base: string) => [...text(file).matchAll(/^--set (\S+)/gm)].map(match => posix.dirname(posix.normalize(posix.join(base, match[1] ?? ''))));
   const expected: [string, string[]][] = [
-    ['go-models', sets('packages/go/models.txt', 'packages/go')],
-    ['php-models', sets('packages/php/models.txt', '.')],
+    ['go-models', sets('legacy/packages/go/models.txt', 'legacy/packages/go')],
+    ['php-models', sets('legacy/packages/php/models.txt', '.')],
     ['python-models', [posix.dirname(/^PYTHON_MODELS_SET = (\S+)$/m.exec(text('Makefile'))?.[1] ?? '')]],
   ];
   for (const [target, dirs] of expected) {
@@ -184,7 +184,7 @@ caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
     scriptPathErrors(
       {
         'docs:rules-check': 'node scripts/docs/rules.mts',
-        'typescript:build': 'npm --prefix packages/ts run build',
+        'typescript:build': 'npm --prefix legacy/packages/ts run build',
         'typescript:test': 'npm run typescript:build && node scripts/typescript/sqlite-test.mts',
         'docs:dev': 'vitepress dev docs',
       },
@@ -313,8 +313,8 @@ const lockOf = (resolved: string) => JSON.stringify({ lockfileVersion: 3, packag
 
 caseTest('npm dependencies from a release archive and the registry pass', COMPUTE, () => {
   assert.deepEqual(npmGitSourceErrors({
-    'packages/ts/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
-    'packages/ts/package-lock.json': lockOf(archive),
+    'legacy/packages/ts/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
+    'legacy/packages/ts/package-lock.json': lockOf(archive),
   }), []);
 });
 
@@ -327,8 +327,8 @@ caseTest('a package.json dependency from git fails', COMPUTE, () => {
 
 caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
   for (const resolved of ['git+ssh://git@github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570', 'git://github.com/polyspec/ordered-json.git', 'ssh://git@github.com/polyspec/ordered-json.git', 'github:polyspec/ordered-json'])
-    assert.deepEqual(npmGitSourceErrors({ 'packages/ts/package-lock.json': lockOf(resolved) }), [
-      `packages/ts/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
+    assert.deepEqual(npmGitSourceErrors({ 'legacy/packages/ts/package-lock.json': lockOf(resolved) }), [
+      `legacy/packages/ts/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
     ]);
 });
 
@@ -350,8 +350,8 @@ caseTest('a composer.json requirement of a branch fails', COMPUTE, () => {
 
 caseTest('a composer.lock package at a branch fails', COMPUTE, () => {
   for (const version of ['dev-polyspec-origin-2.6.0', '2.6.x-dev'])
-    assert.deepEqual(composerBranchErrors({ 'packages/php-ext/composer.lock': composerLockOf(version) }), [
-      `packages/php-ext/composer.lock locks min-0-max/json-schema at ${version}, a branch; require a release, which the fork names in its FORK.md`,
+    assert.deepEqual(composerBranchErrors({ 'legacy/packages/php-ext/composer.lock': composerLockOf(version) }), [
+      `legacy/packages/php-ext/composer.lock locks min-0-max/json-schema at ${version}, a branch; require a release, which the fork names in its FORK.md`,
     ]);
 });
 
@@ -418,7 +418,7 @@ caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => 
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())?.[1] ?? '';
 
 caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', COMPUTE, () => {
-  const composer = readComposer(join(repository.pathname, 'packages/php/composer.json'));
+  const composer = readComposer(join(repository.pathname, 'legacy/packages/php/composer.json'));
   assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require?.php, workflows), []);
   assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
 });
@@ -432,7 +432,7 @@ const php = [
   '          php-version-file: .php-version',
   '          extensions: pdo_sqlite',
   '          coverage: none',
-  '      - run: composer install --working-dir=packages/php',
+  '      - run: composer install --working-dir=legacy/packages/php',
   '',
 ].join('\n');
 
@@ -458,9 +458,9 @@ caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, ()
 });
 
 caseTest('a .php-version below composer.json or not one release fails', COMPUTE, () => {
-  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}), ['.php-version 8.3 is below packages/php/composer.json require.php >=8.4']);
+  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}), ['.php-version 8.3 is below legacy/packages/php/composer.json require.php >=8.4']);
   assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
-  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}), ['packages/php/composer.json require.php must be ">=x.y", found "^8.4"']);
+  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}), ['legacy/packages/php/composer.json require.php must be ">=x.y", found "^8.4"']);
 });
 
 const toolchain = '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy", "rustfmt"]\nprofile = "minimal"\n';
@@ -539,7 +539,7 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
-// packages/python/tests/testcase.py keeps the deadline of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the
+// legacy/packages/python/tests/testcase.py keeps the deadline of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the
 // process GRACE after it; run-tests holds no time limit (kit 0.0.105), so the class of a case alone decides when it fails.
 caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', COMPUTE, () => {
   const makefile = text('Makefile');
@@ -594,8 +594,8 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
     /env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist packages\/php-ext\/tests\/CodecRecipeTestExtensionTest\.php/,
   );
   for (const [target, source] of [
-    ['mermaid-error-php-extension-check', 'packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
-    ['parent-slot-expansion-php-extension-check', 'packages/php-ext/tests/ParentSlotExpansionNativeTest.php'],
+    ['mermaid-error-php-extension-check', 'legacy/packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
+    ['parent-slot-expansion-php-extension-check', 'legacy/packages/php-ext/tests/ParentSlotExpansionNativeTest.php'],
   ] as const) {
     const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
     assert.ok(checkTargets.includes(target), `${target} must remain in CHECK_TARGETS`);
@@ -620,7 +620,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   const markdownRecipeEnd = makefile.indexOf('\n\n', markdownTarget);
   const markdownRecipe = makefile.slice(markdownTarget, markdownRecipeEnd === -1 ? undefined : markdownRecipeEnd);
   assert.ok(markdownRecipe.includes('FLOWMARK=$(FLOWMARK)'));
-  assert.ok(markdownRecipe.includes('packages/php-ext/tests/MarkdownConformanceNativeTest.php'));
+  assert.ok(markdownRecipe.includes('legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php'));
   assert.doesNotMatch(markdownRecipe, /--filter/, 'the dedicated target runs the complete native markdown test file');
 });
 
@@ -1029,7 +1029,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
-  for (const command of ['make perf-check', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
+  for (const command of ['make perf-check', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=legacy/packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });
@@ -1042,16 +1042,16 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'perf-check:',
     '\t$(WITH_TEST_ENV) export ORM_BENCH_DSN="$$ORM_BENCH_MYSQL_DSN" && node scripts/perf-test.mts',
     'fuzz-check:',
-    "\tgo test ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
+    "\tgo test ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
     '',
   ].join('\n');
   const commands = featureCommands({ features: [{ verification: [
     { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
     { id: 'perf', command: 'node scripts/perf-test.mts' },
-    { id: 'elsewhere', command: 'php packages/php/tests/CodecRecipeTest.php', cwd: 'packages/php' },
+    { id: 'elsewhere', command: 'php legacy/packages/php/tests/CodecRecipeTest.php', cwd: 'legacy/packages/php' },
   ] }] });
   assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', 'node scripts/perf-test.mts']);
-  const twice = steps.replace('make repo-check', 'make orm-check\n          make interface-check fuzz-check\n          node scripts/perf-test.mts\n          php packages/php/tests/CodecRecipeTest.php');
+  const twice = steps.replace('make repo-check', 'make orm-check\n          make interface-check fuzz-check\n          node scripts/perf-test.mts\n          php legacy/packages/php/tests/CodecRecipeTest.php');
   assert.deepEqual(ciDuplicateCommandErrors(twice, make, commands), [
     'ci.yml step "checks" runs make interface-check, whose commands make orm-check runs in feature-check',
     'ci.yml step "checks" runs node scripts/perf-test.mts, which make orm-check runs in feature-check',
@@ -1133,7 +1133,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     '        with:',
     '          php-version-file: .php-version',
     '          coverage: none',
-    '      - run: composer install --working-dir=packages/php',
+    '      - run: composer install --working-dir=legacy/packages/php',
     '',
   ].join('\n');
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }), []);
@@ -1289,8 +1289,8 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), (path: string) => files.has(path) ? text(path) : undefined), []);
   const sources: Record<string, string> = {
-    'scripts/reads.mjs': "const run = ['node', ['packages/ts/tests/db.mjs']];\n",
-    'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'scripts/reads.mjs': "const run = ['node', ['legacy/packages/ts/tests/db.mjs']];\n",
+    'legacy/packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/quoted.mjs': "const fixture = \"import { Db } from '../dist/index.js';\";\n",
   };
   const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld: typescript-current\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
@@ -1301,13 +1301,13 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
 
 // T339-5: a target that reads the build output holds it, and reaches typescript-build through its prerequisites, so the output exists when it runs alone.
 caseTest('a TypeScript reader holds the build output and has typescript-build as a prerequisite', COMPUTE, () => {
-  const sources: Record<string, string> = { 'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n" };
+  const sources: Record<string, string> = { 'legacy/packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n" };
   const read = (path: string) => sources[path];
   const reader = (target: string) => `Makefile ${target} reads the TypeScript build output without the prerequisite typescript-current, which builds it; add typescript-current to its prerequisites`;
   const holds = 'typescript-build:\n\t$(HOLD_TYPESCRIPT)\n\tnpm run typescript:build\ntypescript-current:\n\t$(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- npm run typescript:build\n';
-  assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-current\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nphp-vendor-check: typescript-current\n\ttrue\n`, read), []);
-  assert.deepEqual(typescriptReaderErrors(`${holds}queues: hub2\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub2: typescript-build\n\ttrue\n`, read), ['Makefile queues reads the TypeScript build output under the prerequisite typescript-build, which holds the exclusive lease for the whole make; use typescript-current']);
-  assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
+  assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-current\n\t$(READ_TYPESCRIPT)\n\tnode legacy/packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode legacy/packages/ts/tests/db.mjs\nphp-vendor-check: typescript-current\n\ttrue\n`, read), []);
+  assert.deepEqual(typescriptReaderErrors(`${holds}queues: hub2\n\t$(READ_TYPESCRIPT)\n\tnode legacy/packages/ts/tests/db.mjs\nhub2: typescript-build\n\ttrue\n`, read), ['Makefile queues reads the TypeScript build output under the prerequisite typescript-build, which holds the exclusive lease for the whole make; use typescript-current']);
+  assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode legacy/packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
 });
 
 // Runs share the Python model directories of .runtime/run, so a publish holds their lease: six runs of bind-python-models together failed in mv.
@@ -1334,21 +1334,21 @@ caseTest('a target that only reads the TypeScript build output does not hold it 
   assert.deepEqual(typescriptExclusiveReaderErrors('e: g f\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), []);
 });
 
-// T341-1: a target that runs PHPUnit with the packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.
-caseTest('a PHPUnit reader of packages/php reaches php-models', COMPUTE, () => {
+// T341-1: a target that runs PHPUnit with the legacy/packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.
+caseTest('a PHPUnit reader of legacy/packages/php reaches php-models', COMPUTE, () => {
   const makefile = [
     'php-models: php-vendor-check\n\ttrue',
     'php-vendor-check:\n\ttrue',
-    'direct: php-vendor-check php-models\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
-    'hub: php-models-hub\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
+    'direct: php-vendor-check php-models\n\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/A.php',
+    'hub: php-models-hub\n\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/A.php',
     'php-models-hub: php-models\n\ttrue',
-    'order: php-vendor-check | php-models\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
-    'named-only: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
-    'other-config: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/A.php',
+    'order: php-vendor-check | php-models\n\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/A.php',
+    'named-only: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/A.php',
+    'other-config: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/A.php',
     '',
   ].join('\n');
   assert.deepEqual(phpunitModelErrors(makefile), [
-    'Makefile named-only runs PHPUnit with packages/php/phpunit.xml.dist, which requires packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites',
+    'Makefile named-only runs PHPUnit with legacy/packages/php/phpunit.xml.dist, which requires legacy/packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites',
   ]);
 });
 
@@ -1357,19 +1357,19 @@ caseTest('a PHPUnit reader of packages/php reaches php-models', COMPUTE, () => {
 // and checks that a multi-line import also counts as reading.
 caseTest('a test that only names a TypeScript test path does not read the build output', COMPUTE, () => {
   const sources: Record<string, string> = {
-    'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'legacy/packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/names.test.mjs': [
-      "assert.deepEqual(ran, ['node packages/ts/tests/db.mjs']);",
+      "assert.deepEqual(ran, ['node legacy/packages/ts/tests/db.mjs']);",
       "assert.match(stderr, /node packages\\/ts\\/tests\\/db\\.mjs \\(exit 3\\)/);",
-      "const stub = `#!/bin/sh\\necho \"node $*\" >> log # node packages/ts/tests/db.mjs`;",
+      "const stub = `#!/bin/sh\\necho \"node $*\" >> log # node legacy/packages/ts/tests/db.mjs`;",
       '',
     ].join('\n'),
-    'scripts/array.mjs': "const run = ['node', ['packages/ts/tests/db.mjs']];\n",
-    'scripts/exec-path.mjs': "spawnSync(process.execPath, ['packages/ts/tests/db.mjs', '--x']);\n",
-    'scripts/shell.mjs': "execSync('node --conditions=orm-test packages/ts/tests/db.mjs');\n",
+    'scripts/array.mjs': "const run = ['node', ['legacy/packages/ts/tests/db.mjs']];\n",
+    'scripts/exec-path.mjs': "spawnSync(process.execPath, ['legacy/packages/ts/tests/db.mjs', '--x']);\n",
+    'scripts/shell.mjs': "execSync('node --conditions=orm-test legacy/packages/ts/tests/db.mjs');\n",
     // A multi-line import is a reading. An import example in a comment after a function body is not one.
-    'packages/ts/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
-    'scripts/multi.mjs': "const run = ['node', ['packages/ts/tests/multi.mjs']];\n",
+    'legacy/packages/ts/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
+    'scripts/multi.mjs': "const run = ['node', ['legacy/packages/ts/tests/multi.mjs']];\n",
     'scripts/comment.mjs': "export function f(a) {\n  // an import may span lines: `import {\\n  a,\\n} from '../dist/index.js'`\n}\n",
   };
   const makefile = 'names:\n\tnode --test scripts/names.test.mjs\narray:\n\tnode scripts/array.mjs\nexec-path:\n\tnode scripts/exec-path.mjs\nshell:\n\tnode scripts/shell.mjs\nmulti:\n\tnode scripts/multi.mjs\ncomment:\n\tnode scripts/comment.mjs\n';
@@ -1401,13 +1401,13 @@ caseTest('generated Go model helpers build through the logged go-run wrapper', C
 // The language case checks the repository's tracked files and a minimal list.
 caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', COMPUTE, () => {
   assert.deepEqual(toolingLanguageErrors(trackedFiles('*')), []);
-  assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'packages/php/src/Db.php']), [
+  assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'legacy/packages/php/src/Db.php']), [
     'scripts/stop-process.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'tools/x.rb is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
   ]);
   // the Python exemption is exactly the five places of scripts/repo/scripts.mts; nothing else is exempt
-  assert.deepEqual(toolingLanguageErrors(['packages/python/src/polyspec/orm/core.py', 'packages/python/testing/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
-    'packages/python/testing/conformance/runner_python.py', 'packages/python/testing/dbspec/compare/python.py']), []);
+  assert.deepEqual(toolingLanguageErrors(['legacy/packages/python/src/polyspec/orm/core.py', 'legacy/packages/python/testing/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
+    'legacy/packages/python/testing/conformance/runner_python.py', 'legacy/packages/python/testing/dbspec/compare/python.py']), []);
   assert.deepEqual(toolingLanguageErrors(['tests/interfaces/helper.py', 'tests/conformance/vectors.py', 'tests/dbspec/compare/other.py',
     'scripts/python_tool.py', 'packages/orm-python-old/x.py']), [
     'tests/interfaces/helper.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
@@ -1568,20 +1568,20 @@ caseTest('Rust source reads the package directory when the program runs', COMPUT
 // The connection probe case rejects a statement that the client runtime asks the server for when it connects.
 caseTest('a client connects without a probe statement', COMPUTE, () => {
   assert.deepEqual(connectProbeErrors({
-    'packages/go/orm/db.go': '\tversion := sqliteVersion\n',
-    'packages/ts/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
-    'packages/go/orm/cancel_test.go': '\tc.Raw("", "SELECT sqlite_version()", nil)\n',
-    'packages/php/src/Dbspec/SqliteCatalog.php': "SELECT sqlite_version()\n",
+    'legacy/packages/go/orm/db.go': '\tversion := sqliteVersion\n',
+    'legacy/packages/ts/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
+    'legacy/packages/go/orm/cancel_test.go': '\tc.Raw("", "SELECT sqlite_version()", nil)\n',
+    'legacy/packages/php/src/Dbspec/SqliteCatalog.php': "SELECT sqlite_version()\n",
   }), []);
   assert.deepEqual(connectProbeErrors({
-    'packages/go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
-    'packages/php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
-    'packages/ts/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
+    'legacy/packages/go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
+    'legacy/packages/php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
+    'legacy/packages/ts/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
     'packages/rust/orm/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
   }), [
-    'packages/go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
-    'packages/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
-    'packages/ts/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
+    'legacy/packages/go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
+    'legacy/packages/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
+    'legacy/packages/ts/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
     'packages/rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
   ]);
 });
@@ -1721,22 +1721,22 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
 
 caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared case report fails', COMPUTE, () => {
   const files: Record<string, string> = {
-    'packages/php/tests/BareTest.php': "<?php\nfinal class BareTest extends PHPUnit\\Framework\\TestCase {}\n",
-    'packages/ts/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
-    'packages/ts/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mts';\n",
+    'legacy/packages/php/tests/BareTest.php': "<?php\nfinal class BareTest extends PHPUnit\\Framework\\TestCase {}\n",
+    'legacy/packages/ts/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
+    'legacy/packages/ts/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mts';\n",
     'tests/testcase.mts': '',
   };
   const read = (path: string) => files[path];
-  assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test packages/ts/tests/bare.mjs --dialect mysql'), ['packages/ts/tests/bare.mjs']);
+  assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test legacy/packages/ts/tests/bare.mjs --dialect mysql'), ['legacy/packages/ts/tests/bare.mjs']);
   assert.deepEqual(reportingScriptErrors([
-    { source: 'Makefile', command: 'php packages/php/tests/BareTest.php && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/BareTest.php' },
-    { source: 'contracts/features.json', command: 'node --test packages/ts/tests/bare.mjs packages/ts/tests/cased.mjs' },
-    { source: 'scripts/x.sh', command: 'php packages/php/tests/missing.php' },
+    { source: 'Makefile', command: 'php legacy/packages/php/tests/BareTest.php && php vendor-php/bin/phpunit --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/BareTest.php' },
+    { source: 'contracts/features.json', command: 'node --test legacy/packages/ts/tests/bare.mjs legacy/packages/ts/tests/cased.mjs' },
+    { source: 'scripts/x.sh', command: 'php legacy/packages/php/tests/missing.php' },
     { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
   ], read), [
-    'Makefile runs packages/php/tests/BareTest.php with php, not with PHPUnit (vendor-php/bin/phpunit with the phpunit.xml.dist of its package), so it runs without a deadline or a case report',
-    'contracts/features.json runs packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mts, so it runs without a deadline or RUN line',
-    'scripts/x.sh runs packages/php/tests/missing.php, which is not a tracked file',
+    'Makefile runs legacy/packages/php/tests/BareTest.php with php, not with PHPUnit (vendor-php/bin/phpunit with the phpunit.xml.dist of its package), so it runs without a deadline or a case report',
+    'contracts/features.json runs legacy/packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mts, so it runs without a deadline or RUN line',
+    'scripts/x.sh runs legacy/packages/php/tests/missing.php, which is not a tracked file',
   ]);
 });
 
@@ -1759,26 +1759,26 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   const outside = (name: string, tool: string, segment: string) => `${name} runs ${tool} outside tests/run-long.mts, so it has no RUN line or step log: ${segment}`;
   const timed = (name: string, tool: string, form: string, segment: string) => `${name} runs ${tool} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unwrappedToolErrors([
-    unit('tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
-    unit('generate', 'go test ./packages/go/generator && cd packages/go/model && go generate ./'),
-    unit('vet', 'go vet ./packages/go/internal/conformance'),
+    unit('tsc', 'node legacy/packages/ts/node_modules/typescript/bin/tsc -p legacy/packages/ts/tsconfig.json --noEmit'),
+    unit('generate', 'go test ./legacy/packages/go/generator && cd legacy/packages/go/model && go generate ./'),
+    unit('vet', 'go vet ./legacy/packages/go/internal/conformance'),
     unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
     unit('later', 'node tests/run-long.mts a -- go vet ./a && go vet ./b'),
-    unit('wrapped', 'node tests/run-long.mts go-generate --cwd packages/go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
+    unit('wrapped', 'node tests/run-long.mts go-generate --cwd legacy/packages/go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
     unit('make', '$(RUN_LONG) rust-build/x --cwd packages/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked'),
     unit('tsc-build', '$(TSC_BUILD)'),
-    unit('run-case', 'node tests/run-case.mjs typescript-types 5m -- node packages/ts/node_modules/typescript/bin/tsc --noEmit'),
+    unit('run-case', 'node tests/run-case.mjs typescript-types 5m -- node legacy/packages/ts/node_modules/typescript/bin/tsc --noEmit'),
     unit('make-case', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd packages/rust -- cargo build --locked'),
     unit('timeout', 'node tests/run-long.mts vet -- timeout 300 go vet ./...'),
   ]), [
-    outside('tsc', 'tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
+    outside('tsc', 'tsc', 'node legacy/packages/ts/node_modules/typescript/bin/tsc -p legacy/packages/ts/tsconfig.json --noEmit'),
     outside('generate', 'go generate', 'go generate ./'),
-    outside('vet', 'go vet', 'go vet ./packages/go/internal/conformance'),
+    outside('vet', 'go vet', 'go vet ./legacy/packages/go/internal/conformance'),
     outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration'),
     outside('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     outside('later', 'go vet', 'go vet ./b'),
-    timed('run-case', 'tsc', 'run-case.mjs', 'node tests/run-case.mjs typescript-types 5m -- node packages/ts/node_modules/typescript/bin/tsc --noEmit'),
+    timed('run-case', 'tsc', 'run-case.mjs', 'node tests/run-case.mjs typescript-types 5m -- node legacy/packages/ts/node_modules/typescript/bin/tsc --noEmit'),
     timed('make-case', 'cargo build', '$(RUN_CASE)', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd packages/rust -- cargo build --locked'),
     timed('timeout', 'go vet', 'timeout 300', 'node tests/run-long.mts vet -- timeout 300 go vet ./...'),
   ]);
@@ -1821,12 +1821,12 @@ caseTest('every build tool of the Makefile, package.json and the scripts runs un
 caseTest('a go command is go or a path to go, and a make target name that holds go is none', COMPUTE, () => {
   const goBuild = tools.find(([name]) => name === 'go build')?.[1];
   assert.ok(goBuild);
-  for (const command of ['go build ./...', 'cd packages/go && go build ./...', '/repo/var/tools/mise/shims/go build ./...'])
+  for (const command of ['go build ./...', 'cd legacy/packages/go && go build ./...', '/repo/var/tools/mise/shims/go build ./...'])
     assert.equal(goBuild.test(command), true, command);
   for (const command of ['$(MAKE) --no-print-directory build-go build-php', 'make build-go build-ts', 'cargo build --locked'])
     assert.equal(goBuild.test(command), false, command);
   assert.deepEqual(unwrappedToolErrors([{ name: 'Makefile build', commands: ['$(MAKE) --no-print-directory build-go build-php'], dialect: 'make' }]), []);
-  assert.equal(unwrappedToolErrors([{ name: 'Makefile build-go', commands: ['$(NODE) runtime-targets.mjs build --roots packages/go -- /repo/var/tools/mise/shims/go build ./...'], dialect: 'make' }]).length, 1);
+  assert.equal(unwrappedToolErrors([{ name: 'Makefile build-go', commands: ['$(NODE) runtime-targets.mjs build --roots legacy/packages/go -- /repo/var/tools/mise/shims/go build ./...'], dialect: 'make' }]).length, 1);
 });
 
 // The rerun case checks the repository's workflow and the minimal workflow by the runner's identity.
@@ -1836,20 +1836,20 @@ caseTest('the CI workflow runs no test runner outside make orm-check', COMPUTE, 
 
 caseTest('a workflow that runs a test runner after make orm-check fails by identity', COMPUTE, () => {
   assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p polyspec-orm codec'), 'cargo test');
-  assert.equal(runnerIdentity("go test -v -timeout 0 ./packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
+  assert.equal(runnerIdentity("go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
-  assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'), 'go test');
+  assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./legacy/packages/go/engine -count=1'), 'go test');
   assert.equal(runnerIdentity('node --test tests/conformance/check/main.test.mts'), 'node test');
-  assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
-  assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
+  assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
+  assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./legacy/packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mts rust-build/x -- cargo test --no-run --locked'), 'cargo test');
   const make = [
     'CHECK_TARGETS = repo-check',
     'GO_TEST = go test -v -timeout 0',
     'fuzz-check:',
-    "\t$(GO_TEST) ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
+    "\t$(GO_TEST) ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
     'vet-again:',
-    '\t$(GO_TEST) ./packages/go/orm -run TestCodec',
+    '\t$(GO_TEST) ./legacy/packages/go/orm -run TestCodec',
     '',
   ].join('\n');
   const again = steps.replace('make repo-check', [
@@ -1857,7 +1857,7 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
     '          make fuzz-check vet-again',
     '          go vet ./... && go test -v -timeout 0 ./...',
     '          (cd packages/rust && cargo test --locked -p polyspec-orm codec)',
-    '          php packages/php/tests/CodecRecipeTest.php',
+    '          php legacy/packages/php/tests/CodecRecipeTest.php',
     '          node --test scripts/x.test.mjs',
     '          go run ./tests/interfaces/check --results tests/conformance/out',
   ].join('\n'));
@@ -1867,7 +1867,7 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
     message('go vet'),
     message('go test'),
     message('cargo test'),
-    message('php packages/php/tests/CodecRecipeTest.php'),
+    message('php legacy/packages/php/tests/CodecRecipeTest.php'),
     message('node test'),
     message('go test'),
   ]);
@@ -1882,14 +1882,14 @@ caseTest('make orm-check runs each go generate once', COMPUTE, () => {
 });
 
 caseTest('a go generate that make orm-check runs twice fails', COMPUTE, () => {
-  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`, 'make'), ['packages/go/model']);
-  assert.deepEqual(generateRuns(`go test ./packages/go/generator && node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`, 'sh'), ['packages/go/model']);
-  assert.deepEqual(generateRuns('cd packages/go/other && go generate ./', 'sh'), ['packages/go/other']);
+  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd legacy/packages/go/model && go generate ./ && git diff --exit-code -- .'`, 'make'), ['legacy/packages/go/model']);
+  assert.deepEqual(generateRuns(`go test ./legacy/packages/go/generator && node tests/run-long.mts g --cwd legacy/packages/go/model -- sh -c 'go generate ./ && git diff'`, 'sh'), ['legacy/packages/go/model']);
+  assert.deepEqual(generateRuns('cd legacy/packages/go/other && go generate ./', 'sh'), ['legacy/packages/go/other']);
   assert.deepEqual(repeatedGenerateErrors([
-    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`], dialect: 'make' },
-    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`], dialect: 'sh' },
-    { name: 'other', commands: ['cd packages/go/other && go generate ./'], dialect: 'sh' },
-  ]), ['go generate of packages/go/model runs 2 times in make orm-check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
+    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd legacy/packages/go/model && go generate ./ && git diff --exit-code -- .'`], dialect: 'make' },
+    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mts g --cwd legacy/packages/go/model -- sh -c 'go generate ./ && git diff'`], dialect: 'sh' },
+    { name: 'other', commands: ['cd legacy/packages/go/other && go generate ./'], dialect: 'sh' },
+  ]), ['go generate of legacy/packages/go/model runs 2 times in make orm-check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
 });
 
 // The go test case checks the repository's Makefile (with variables resolved), verification commands, scripts and a minimal unit.
@@ -1903,15 +1903,15 @@ caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
 
 caseTest('a go test without its build step, or under a deadline, fails', COMPUTE, () => {
   const message = (name: string, segment: string) => `${name} runs go test outside tests/go-test.mts, so its compile has no RUN line or step log: ${segment}`;
-  const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
+  const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
   assert.deepEqual(rawGoTestErrors([
-    { name: 'raw', commands: ['go test -v -timeout 0 ./packages/go/orm -run X -count=1'], dialect: 'sh' },
-    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'], dialect: 'sh' },
-    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'], dialect: 'sh' },
-    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"], dialect: 'make' },
-    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./packages/go/engine/dbspec'], dialect: 'sh' },
+    { name: 'raw', commands: ['go test -v -timeout 0 ./legacy/packages/go/orm -run X -count=1'], dialect: 'sh' },
+    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./legacy/packages/go/bench'], dialect: 'sh' },
+    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./legacy/packages/go/engine -count=1'], dialect: 'sh' },
+    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"], dialect: 'make' },
+    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./legacy/packages/go/engine/dbspec'], dialect: 'sh' },
     { name: 'timed', commands: [fuzz], dialect: 'sh' },
-  ]), [message('raw', 'go test -v -timeout 0 ./packages/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'),
+  ]), [message('raw', 'go test -v -timeout 0 ./legacy/packages/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./legacy/packages/go/bench'),
     `timed runs go test under a deadline ($(RUN_CASE)); a long operation gets step logs and no deadline: ${fuzz}`]);
 });
 
@@ -1936,10 +1936,10 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
     variable: 'node tests/run-long.mts x -- sh -c "sleep $(BUILD_DEADLINE)"',
     timeout: 'timeout 600 cargo build --locked',
     'go-default': 'go test ./...',
-    'go-timeout': 'node tests/go-test.mts -v -timeout 10m ./packages/go/engine',
+    'go-timeout': 'node tests/go-test.mts -v -timeout 10m ./legacy/packages/go/engine',
     'go-none': 'go test -timeout 0 ./...',
-    'go-build': 'go test -c -o x ./packages/go/engine/dbspec',
-    'go-runner': 'node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1',
+    'go-build': 'go test -c -o x ./legacy/packages/go/engine/dbspec',
+    'go-runner': 'node tests/go-test.mts -v -timeout 0 ./legacy/packages/go/engine -count=1',
     long: 'node tests/run-long.mts rust-build/x -- cargo test --no-run --locked',
   };
   assert.deepEqual(longDeadlineErrors(Object.entries(units).map(([name, command]) => ({ name, commands: [command], dialect: 'make' as const }))), [
@@ -2033,14 +2033,14 @@ caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () =
 caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
   const makefile = [
     'GO_TEST = node tests/go-test.mts -v -timeout 0',
-    'two:', "\t$(GO_TEST) ./a -count=1", '\tphp packages/php/tests/b_test.php',
-    'again:', '\tphp packages/php/tests/b_test.php', '\tphp packages/php/tests/b_test.php',
-    'built:', '\tnode tests/dbspec/stress.mts > out.dbs', '\tgo test -c -o x ./packages/go/engine', '\tnode packages/ts/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
+    'two:', "\t$(GO_TEST) ./a -count=1", '\tphp legacy/packages/php/tests/b_test.php',
+    'again:', '\tphp legacy/packages/php/tests/b_test.php', '\tphp legacy/packages/php/tests/b_test.php',
+    'built:', '\tnode tests/dbspec/stress.mts > out.dbs', '\tgo test -c -o x ./legacy/packages/go/engine', '\tnode legacy/packages/ts/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
     'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p polyspec-orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mts) y -- cargo test -p polyspec-orm',
-    'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp packages/php/tests/b_test.php',
+    'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp legacy/packages/php/tests/b_test.php',
   ].join('\n');
   assert.deepEqual(independentTestErrors(makefile).map(error => error.split(' runs ')[0]), ['Makefile two', 'Makefile linted']);
-  assert.deepEqual(chainedCommandErrors({ features: [{ id: 'f', verification: [{ id: 'chained', command: 'node packages/ts/tests/a.mjs && node packages/ts/tests/b.mjs' }, { id: 'built', command: 'npm run typescript:build && node packages/ts/tests/a.mjs' }] }], helpers: [] }).map(error => error.split(' chains ')[0]),
+  assert.deepEqual(chainedCommandErrors({ features: [{ id: 'f', verification: [{ id: 'chained', command: 'node legacy/packages/ts/tests/a.mjs && node legacy/packages/ts/tests/b.mjs' }, { id: 'built', command: 'npm run typescript:build && node legacy/packages/ts/tests/a.mjs' }] }], helpers: [] }).map(error => error.split(' chains ')[0]),
     ['contracts/features.json f/chained']);
   const root = new URL('../..', import.meta.url).pathname;
   assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
@@ -2100,7 +2100,7 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
 
 // The selection cases of ci.yml by the changed paths of a push (T418): its push trigger starts no run when every changed path
 // is a document of DOCUMENT_PATHS, and every job otherwise; the version commit, an undeclared path and a change under
-// packages/go run every group, the Go groups among them.
+// legacy/packages/go run every group, the Go groups among them.
 const repositoryRoot = new URL('../..', import.meta.url).pathname;
 const ciPush = (): unknown => {
   const on = readWorkflow(readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'), 'ci.yml').value['on'];
@@ -2109,14 +2109,14 @@ const ciPush = (): unknown => {
 const SELECTION: { name: string; paths: string[]; starts: boolean }[] = [
   { name: 'a document-only push, the checklist cells of a row', paths: ['docs/plans/execution/checklist.md', 'docs/plans/execution/checklist.ko.md'], starts: false },
   { name: 'a push of the root documents and the plans', paths: ['README.md', 'README.ko.md', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'PRINCIPLES.md', 'SECURITY.md', 'CONTRIBUTING.ko.md', 'CODE_OF_CONDUCT.md', 'docs/plans/cross-verification/plan.md', 'docs/plans/kit-standard/checklist.ko.md'], starts: false },
-  { name: 'a change under packages/go', paths: ['packages/go/orm/db.go'], starts: true },
-  { name: 'a change under packages/go pushed with documents', paths: ['docs/plans/execution/checklist.md', 'packages/go/orm/db.go'], starts: true },
+  { name: 'a change under legacy/packages/go', paths: ['legacy/packages/go/orm/db.go'], starts: true },
+  { name: 'a change under legacy/packages/go pushed with documents', paths: ['docs/plans/execution/checklist.md', 'legacy/packages/go/orm/db.go'], starts: true },
   { name: 'AGENTS.md, which repo-check reads', paths: ['AGENTS.md'], starts: true },
   { name: 'the checklist of kit-standard, which the feature checks read', paths: ['docs/plans/kit-standard/checklist.md'], starts: true },
   { name: 'a spec, which the docs-implementation and recipe checks read', paths: ['docs/spec/dbspec.md'], starts: true },
   { name: 'an undeclared path', paths: ['notes.txt'], starts: true },
   { name: 'an undeclared plan', paths: ['docs/plans/new-plan/plan.md'], starts: true },
-  { name: 'a version commit', paths: ['VERSION', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'package.json', 'packages/ts/package.json', 'packages/php/composer.json'], starts: true },
+  { name: 'a version commit', paths: ['VERSION', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'package.json', 'legacy/packages/ts/package.json', 'legacy/packages/php/composer.json'], starts: true },
 ];
 for (const change of SELECTION) {
   caseTest(`ci.yml on push: ${change.name} ${change.starts ? 'starts every group' : 'starts no run'}`, COMPUTE, () => {
@@ -2134,7 +2134,7 @@ caseTest('ci.yml ignores no package file of config/release.json and no VERSION, 
 caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', COMPUTE, () => {
   assert.equal(workflowStarts({ branches: ['main'] }, ['README.md']), true);
   assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['README.md']), false);
-  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['packages/go/README.md']), true);
+  assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['legacy/packages/go/README.md']), true);
   assert.equal(workflowStarts({ 'paths-ignore': ['docs/plans/**'] }, ['docs/plans/a/b/c.md']), false);
   assert.throws(() => workflowStarts({ 'paths-ignore': 'docs/**' }, ['a']), /paths-ignore is no list of patterns/);
 });
@@ -2288,12 +2288,12 @@ caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
 // path.
 caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path) && notVendored(path));
-  assert.ok(paths.includes('packages/go/go.mod') && paths.includes('tests/go.mod') && paths.includes('examples/go.mod'), paths.join(' '));
+  assert.ok(paths.includes('legacy/packages/go/go.mod') && paths.includes('tests/go.mod') && paths.includes('examples/go.mod'), paths.join(' '));
   assert.deepEqual(goModulePathErrors(Object.fromEntries(paths.map(path => [path, text(path)]))), []);
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm\n', 'tools/gen/go.mod': 'module github.com/polyspec/orm/tools/gen\n', 'README.md': '' }), []);
-  assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm/v2\n', 'packages/go/go.mod': 'module github.com/polyspec/orm\n', 'x/go.mod': 'go 1.27\n' }), [
+  assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm/v2\n', 'legacy/packages/go/go.mod': 'module github.com/polyspec/orm\n', 'x/go.mod': 'go 1.27\n' }), [
     'go.mod declares the module github.com/polyspec/orm/v2; declare github.com/polyspec/orm, the path of its directory, so go get resolves it and its tags',
-    'packages/go/go.mod declares the module github.com/polyspec/orm; declare github.com/polyspec/orm/packages/go, the path of its directory, so go get resolves it and its tags',
+    'legacy/packages/go/go.mod declares the module github.com/polyspec/orm; declare github.com/polyspec/orm/packages/go, the path of its directory, so go get resolves it and its tags',
     'x/go.mod declares the module (none); declare github.com/polyspec/orm/x, the path of its directory, so go get resolves it and its tags',
   ]);
 });
@@ -2332,10 +2332,10 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     '\ttest -f x || { echo "x is missing" >&2; exit 1; }',
     '\t@test -n "$(W)" || { echo "usage: make x W=<path>" >&2; exit 2; }',
     '\tsh -c "node x.mts > out.txt"',
-    '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.build.json',
-    '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit',
+    '\tnode legacy/packages/ts/node_modules/typescript/bin/tsc -p legacy/packages/ts/tsconfig.build.json',
+    '\tnode legacy/packages/ts/node_modules/typescript/bin/tsc -p legacy/packages/ts/tsconfig.json --noEmit',
     '# go build -o $(LEASE) in a comment',
-    '\tvendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen',
+    '\tvendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen',
     'test-x: ## Run the tests with CASES=<pattern>; offline',
     '\t@for name in $(NAMES); do echo "$$name=$$(printenv $$name)"; done >> "$$GITHUB_ENV"',
   ].join('\n');
@@ -2395,12 +2395,12 @@ caseTest('the checks read commands with the shell parser', COMPUTE, () => {
   assert.deepEqual(segments('make check-run GROUP=${{ matrix.group }} && echo "${{ github.ref }}"', 'workflow'),
     ['make check-run GROUP=${{ matrix.group }}', 'echo "${{ github.ref }}"']);
   assert.deepEqual(andLists('a && b || c && d; e', 'sh'), [['a', 'b'], ['c', 'd']]);
-  for (const command of ['time -p ! go test ./packages/go/orm', '! time go test ./packages/go/orm', '! go test ./packages/go/orm']) {
-    assert.deepEqual(segments(command, 'sh'), ['go test ./packages/go/orm'], command);
-    assert.deepEqual(shellSegments(command, 'sh'), ['go test ./packages/go/orm'], command);
+  for (const command of ['time -p ! go test ./legacy/packages/go/orm', '! time go test ./legacy/packages/go/orm', '! go test ./legacy/packages/go/orm']) {
+    assert.deepEqual(segments(command, 'sh'), ['go test ./legacy/packages/go/orm'], command);
+    assert.deepEqual(shellSegments(command, 'sh'), ['go test ./legacy/packages/go/orm'], command);
   }
   // A command the parser rejects is an error, never a guess.
-  assert.throws(() => segments("sh -c 'cd packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd packages\/ts/);
+  assert.throws(() => segments("sh -c 'cd legacy/packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd packages\/ts/);
   assert.throws(() => segments('echo $(RUN_LONG', 'make'), /the make reference at 5 never closes/);
 });
 
@@ -2480,7 +2480,7 @@ caseTest('a target that reads an error code file has the target that writes it a
   const makefile = [
     'orm-codes: orm-codes-typescript orm-codes-php orm-codes-python',
     'orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:',
-    '\tcd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --out @OUT@',
+    '\tcd legacy/packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --out @OUT@',
     'typescript-build: lease-tool orm-codes-typescript',
     '\t$(HOLD_TYPESCRIPT)',
     'php-vendor-check: orm-codes-php',
@@ -2497,9 +2497,9 @@ caseTest('a target that reads an error code file has the target that writes it a
     'ts-later: ts-hub',
     '\tnpm run typescript:check',
     'php-unit: php-vendor-check',
-    '\tenv ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- packages/php/tests/CodeCatalogTest.php',
+    '\tenv ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- legacy/packages/php/tests/CodeCatalogTest.php',
     'php-bare:',
-    '\t$(PHP) packages/php/bin/tool.php',
+    '\t$(PHP) legacy/packages/php/bin/tool.php',
     'php-extension-run: lease-tool',
     '\tPOLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) go test ./x',
     'python-unit: python-venv-check',
@@ -2513,7 +2513,7 @@ caseTest('a target that reads an error code file has the target that writes it a
     'checker-bare: lease-tool',
     '\t$(NODE) scripts/features/coverage.mts --runtime go --database mysql',
     'extension-build:',
-    '\tsh packages/php-ext/scripts/build.sh x.so',
+    '\tsh legacy/packages/php-ext/scripts/build.sh x.so',
     '',
   ].join('\n');
   const missing = (target: string, language: string) => `Makefile ${target} reads the ${language} error code file without the prerequisite orm-codes-${language}, which writes it; add orm-codes-${language}, or php-vendor-check or python-venv-check, which have it, to its prerequisites`;
@@ -2544,19 +2544,19 @@ caseTest('only php-ext-build runs the build of the PHP extension', COMPUTE, () =
   assert.deepEqual(phpExtensionBuildErrors(text('Makefile')), []);
   const makefile = [
     'php-ext-build: php-ext-sources',
-    '\t$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$(PHP_EXT_OUT)" $(PHP_EXT_MODE)',
+    '\t$(RUN_LONG) php-extension-build -- sh legacy/packages/php-ext/scripts/build.sh "$(PHP_EXT_OUT)" $(PHP_EXT_MODE)',
     'through-call: php-vendor-check',
     '\t$(call php_ext_build,"$$run_dir/polyspec_orm.so",native-test)',
     'direct: php-vendor-check php-ext-sources',
-    '\t$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"',
+    '\t$(RUN_LONG) php-extension-build -- sh legacy/packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"',
     'in-a-chain:',
     '\t@set -eu; \\',
-    '\tif sh packages/php-ext/scripts/build.sh x.so; then :; fi',
+    '\tif sh legacy/packages/php-ext/scripts/build.sh x.so; then :; fi',
     'unrelated:',
-    '\tsh packages/php-ext/scripts/other.sh',
+    '\tsh legacy/packages/php-ext/scripts/other.sh',
     '',
   ].join('\n');
-  const direct = (target: string) => `Makefile ${target} runs packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`;
+  const direct = (target: string) => `Makefile ${target} runs legacy/packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`;
   assert.deepEqual(phpExtensionBuildErrors(makefile), [direct('direct'), direct('in-a-chain')]);
 });
 
@@ -2628,24 +2628,24 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
 // features of contracts/features.json and of the spec. The check of `make repo-check` runs the same rule on the tree itself
 // (scripts/repo/check.mts), which names the native tests that wait for their recipe, so this case holds the rule and not the tree.
 const nativeFiles: Record<string, string> = {
-  'packages/go/orm/a_test.go': 'package orm\n\nfunc TestShared(t *testing.T) {}\n\nfunc TestStated(t *testing.T) {}\n',
-  'packages/php/tests/ATest.php': '<?php\nfinal class ATest extends TestCase\n{\n    use ACases;\n\n    public function testOwn(): void {}\n}\n',
-  'packages/php/tests/ACases.php': '<?php\ntrait ACases\n{\n    public function testFromTrait(): void {}\n}\n',
-  'packages/go/orm/recipe_a_test.go': 'package orm\n\nfunc TestRecipeANone(t *testing.T) { recipe.Run(t) }\n',
-  'packages/go/orm/only_test.go': 'package orm\n\nfunc TestGoOnly(t *testing.T) {}\n',
+  'legacy/packages/go/orm/a_test.go': 'package orm\n\nfunc TestShared(t *testing.T) {}\n\nfunc TestStated(t *testing.T) {}\n',
+  'legacy/packages/php/tests/ATest.php': '<?php\nfinal class ATest extends TestCase\n{\n    use ACases;\n\n    public function testOwn(): void {}\n}\n',
+  'legacy/packages/php/tests/ACases.php': '<?php\ntrait ACases\n{\n    public function testFromTrait(): void {}\n}\n',
+  'legacy/packages/go/orm/recipe_a_test.go': 'package orm\n\nfunc TestRecipeANone(t *testing.T) { recipe.Run(t) }\n',
+  'legacy/packages/go/orm/only_test.go': 'package orm\n\nfunc TestGoOnly(t *testing.T) {}\n',
   'packages/rust/orm/tests/cases/a.rs': '#[tokio::main]\n// Requirements: X.\nasync fn a_trial() {}\n\npub fn trials() -> Vec<Trial> {\n    native_trials!("a": a_trial)\n}\n#[test]\n// a comment\nfn an_attributed_test() {}\n',
 };
 const nativeInputs = (lines: string[], files: Record<string, string> = nativeFiles) => ({
   // The internal test of Go is not in the inventory: contracts/implementations.json declares it in `internal`, which the inventory leaves out.
-  tests: { go: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/go/orm/only_test.go'], php: ['packages/php/tests/ATest.php'], rust: ['packages/rust/orm/tests/cases/a.rs'] },
+  tests: { go: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/go/orm/only_test.go'], php: ['legacy/packages/php/tests/ATest.php'], rust: ['packages/rust/orm/tests/cases/a.rs'] },
   features: [
-    { id: 'shared', files: ['packages/go/orm/a_test.go', 'packages/go/orm/recipe_a_test.go', 'packages/php/tests/ATest.php', 'packages/rust/orm/tests/cases/a.rs', 'packages/go/orm/internal_test.go'] },
-    { id: 'go-alone', files: ['packages/go/orm/only_test.go'] },
+    { id: 'shared', files: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/php/tests/ATest.php', 'packages/rust/orm/tests/cases/a.rs', 'legacy/packages/go/orm/internal_test.go'] },
+    { id: 'go-alone', files: ['legacy/packages/go/orm/only_test.go'] },
   ],
-  recipeTests: new Set(['packages/go/orm/recipe_a_test.go']),
+  recipeTests: new Set(['legacy/packages/go/orm/recipe_a_test.go']),
   caseRunnerTests: new Set<string>(),
   spec: ['- **FCV-1** Each feature declares its coverage.', '- **FCV-2** One spec holds every orm test.', ...lines,
-    '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
+    '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
   files: Object.keys(files),
   read: (file: string) => {
     const content = files[file];
@@ -2655,13 +2655,13 @@ const nativeInputs = (lines: string[], files: Record<string, string> = nativeFil
 });
 const unstated = (file: string, name: string) => `${file}: the native test ${name} of the shared feature shared runs no recipe, and no line of FCV-2 names it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md as in \`${file}\`, \`${name}\``;
 const statedAll = [
-  '  - In `packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
-  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/orm/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
+  '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
+  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `legacy/packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/orm/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
 ];
 caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', COMPUTE, () => {
-  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('packages/go/orm/a_test.go', 'TestShared'), unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('legacy/packages/go/orm/a_test.go', 'TestShared'), unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
   // A test that a PHP class takes from a trait of a support file, a Rust trial and a Rust test under a comment are native tests too.
-  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('packages/php/tests/ATest.php', 'testOwn'), unstated('packages/php/tests/ATest.php', 'testFromTrait'),
+  assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('legacy/packages/php/tests/ATest.php', 'testOwn'), unstated('legacy/packages/php/tests/ATest.php', 'testFromTrait'),
     unstated('packages/rust/orm/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/orm/tests/cases/a.rs', 'a_trial')]);
 });
 
@@ -2682,32 +2682,32 @@ caseTest('a native test that a line of FCV-2 names with its reason passes, and s
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
   assert.deepEqual(nativeLines(nativeInputs(statedAll).spec).map(line => line.tests.length), [2, 4]);
   // A list of paths after `in` names files and no test.
-  assert.deepEqual(nativeLines(nativeInputs(['  - `a-unit` stays native: its measurement stays in `packages/go/orm/a_test.go`, `packages/php/tests/ATest.php` and `b.mjs`. In `packages/go/orm/a_test.go`, `TestShared` is one.']).spec)
-    .map(line => line.tests), [[{ file: 'packages/go/orm/a_test.go', name: 'TestShared' }]]);
+  assert.deepEqual(nativeLines(nativeInputs(['  - `a-unit` stays native: its measurement stays in `legacy/packages/go/orm/a_test.go`, `legacy/packages/php/tests/ATest.php` and `b.mjs`. In `legacy/packages/go/orm/a_test.go`, `TestShared` is one.']).spec)
+    .map(line => line.tests), [[{ file: 'legacy/packages/go/orm/a_test.go', name: 'TestShared' }]]);
   // A line may name the test of one runtime, which needs no line, as long as the test is there.
-  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `legacy/packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
 });
 // A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
 // file still are (T400-1).
 // Requirements: FCV-2, FCV-15.
 caseTest('a case runner test is no native test, and the other tests of its file are', COMPUTE, () => {
   const inputs = nativeInputs(statedAll.slice(1));
-  assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }), [unstated('packages/go/orm/a_test.go', 'TestStated')]);
+  assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['legacy/packages/go/orm/a_test.go\0TestShared']) }), [unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
   // A line that names the case runner test names no native test of that file.
-  assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['packages/go/orm/a_test.go\0TestShared']) }),
-    ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
+  assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['legacy/packages/go/orm/a_test.go\0TestShared']) }),
+    ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of legacy/packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
 });
 caseTest('a line of FCV-2 that names no native test is a finding', COMPUTE, () => {
   const spec = 'docs/spec/feature-coverage.md FCV-2';
-  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `packages/go/orm/a_test.go`, `TestGone` stays as a native test: a reason.'])),
-    [`${spec} keeps the native test TestGone of packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line`]);
-  for (const file of ['packages/go/orm/recipe_a_test.go', 'packages/go/orm/internal_test.go', 'packages/php/tests/ACases.php']) {
+  assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `legacy/packages/go/orm/a_test.go`, `TestGone` stays as a native test: a reason.'])),
+    [`${spec} keeps the native test TestGone of legacy/packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line`]);
+  for (const file of ['legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/go/orm/internal_test.go', 'legacy/packages/php/tests/ACases.php']) {
     assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, `  - In \`${file}\`, \`TestX\` stays as a native test: a reason.`])),
       [`${spec} keeps native tests of ${file}, which is no native test file (a recipe test, a support file, an internal test, a file that no feature lists or no test file); remove the name from the line`]);
   }
   const unnamed = '  - `gone-unit` (X-1) stays native in every runtime: a reason that names no test.';
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, unnamed])),
     [`${spec} line "${unnamed.trim()}" names no native test; name each test it keeps as in \`file\`, \`test\`, or remove the line`]);
-  const reasonless = '  - In `packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test.';
+  const reasonless = '  - In `legacy/packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test.';
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, reasonless])), [`${spec} line "${reasonless.trim()}" states no reason after a colon; state why its tests stay native`]);
 });

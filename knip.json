@@ -69,18 +69,18 @@
   "ignoreDependencies": [
     // the Vue of VitePress, which the site theme (docs/.vitepress/theme/index.ts) imports; vitepress pins it
     "vue",
-    // the MySQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace
+    // the MySQL driver of the TypeScript client (legacy/packages/ts), which the root's database checks import through the workspace
     "mysql2",
-    // the PostgreSQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace
+    // the PostgreSQL driver of the TypeScript client (legacy/packages/ts), which the root's database checks import through the workspace
     "pg"
   ],
   "workspaces": {
     // the TypeScript client @polyspec/orm, a workspace of the root package.json
-    "packages/ts": {
+    "legacy/packages/ts": {
       "entry": [
         // the TypeScript client tests, each run by node from a make target (ts-check/test, client-unit-check, client-db-check and the feature checks of contracts/features.json)
         "tests/*.mjs",
-        // the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models
+        // the type tests of the TypeScript client, which tsc checks through legacy/packages/ts/tsconfig.json and orm-gen scans for the models
         "tests/*.ts",
         // the TypeScript conformance runner, which tests/conformance/check/recipe_vectors.mts spawns
         "testing/conformance/runner_typescript.mts",
@@ -92,7 +92,7 @@
         "testing/dbspec/compare/typescript.mts",
         // the TypeScript introspect runner, which the Go physical introspect tests spawn
         "testing/dbspec/introspect/typescript.mts",
-        // the dbspec tool command that the dbspec checks run from packages/ts/dist
+        // the dbspec tool command that the dbspec checks run from legacy/packages/ts/dist
         "src/tools/cli.ts",
         // the generated models of the Markdown fixture, which the markdown tests load from dist
         "src/models/markdown_fixture/models.ts",

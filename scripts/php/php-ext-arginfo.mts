@@ -1,5 +1,5 @@
-// Writes packages/php-ext/src/polyspec_orm_arginfo.h, the arginfo header of the one stub of the PHP extension, for the make entry of
-// packages/php-ext in config/release.json (K930). The header comes from the gen_stub.php that phpize copies from the build directory
+// Writes legacy/packages/php-ext/src/polyspec_orm_arginfo.h, the arginfo header of the one stub of the PHP extension, for the make entry of
+// legacy/packages/php-ext in config/release.json (K930). The header comes from the gen_stub.php that phpize copies from the build directory
 // of the PHP of the checkout (var/tools/bin). phpize runs in a copy of src/ under var/, which the script removes, so the checkout
 // gains only the header. gen_stub.php fetches its pinned PHP-Parser into that copy, so the script needs the network.
 //
@@ -10,7 +10,7 @@ import { pipeline } from 'node:stream/promises';
 import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
-const extension = join(root, 'packages/php-ext/src');
+const extension = join(root, 'legacy/packages/php-ext/src');
 const work = join(root, 'var/php-ext-arginfo', String(process.pid));
 const source = join(work, 'src');
 const tool = (name: string): string => join(root, 'var/tools/bin', name);
@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     run(tool('phpize'), []);
     run(tool('php'), [join(source, 'build/gen_stub.php'), join(source, 'polyspec_orm.stub.php')]);
     await publishHeader(join(source, 'polyspec_orm_arginfo.h'), join(extension, 'polyspec_orm_arginfo.h'));
-    console.log('[php-ext-arginfo] wrote packages/php-ext/src/polyspec_orm_arginfo.h');
+    console.log('[php-ext-arginfo] wrote legacy/packages/php-ext/src/polyspec_orm_arginfo.h');
   } catch (error) {
     console.error(`php-ext-arginfo: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;

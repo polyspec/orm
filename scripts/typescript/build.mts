@@ -1,11 +1,11 @@
-// Builds the TypeScript client and atomically publishes its output directory packages/ts/dist. tsc writes to a temporary directory in the same
+// Builds the TypeScript client and atomically publishes its output directory legacy/packages/ts/dist. tsc writes to a temporary directory in the same
 // directory, dist.next-<pid>, and on success replaces dist by rename: the existing dist is
 // moved to dist.old-<pid>, the new directory is moved to dist, and then the old one is deleted. So dist contains the files of only one finished build,
 // and no half-written output is left by an interrupted build. A failed build's temporary directory is deleted and dist is left as it is. The make targets that write to and read
 // dist hold the TypeScript build lease (HOLD_TYPESCRIPT, READ_TYPESCRIPT), so
 // other runs do not see the state between the two renames.
 //
-// The models of the client are build output (P34): orm-gen writes them into packages/ts/src/models before the client is compiled, and they
+// The models of the client are build output (P34): orm-gen writes them into legacy/packages/ts/src/models before the client is compiled, and they
 // are not tracked. src/index.ts re-exports the models, so the generator cannot be compiled from the whole source yet: a first compile
 // of the generator's sources (tsconfig.bootstrap.json) writes it to dist.boot-<pid>, the generator writes the models from there, and the
 // temporary directory is deleted before the full compile.
@@ -48,7 +48,7 @@ try {
   console.error(`typescript build: typescript does not resolve from ${client} (${errorCode(error) ?? errorMessage(error)}); run make install, which installs the TypeScript compiler`);
   process.exit(1);
 }
-// tsconfig.build.json is composite (packages/ts/tsconfig.json references it, so knip maps dist to src), and a composite
+// tsconfig.build.json is composite (legacy/packages/ts/tsconfig.json references it, so knip maps dist to src), and a composite
 // build keeps an incremental record. Each build writes its record beside its own output and removes it: a record kept
 // between builds would let tsc skip the files it finds up to date and leave the new output without them.
 function compile(config: string, outDir: string): number | null {
@@ -63,12 +63,12 @@ const modelSets = [...new Set(generatedModels.map(model => relative(root, dirnam
 
 /**
  * The key of the client's build: the SHA-256 of every tracked file that the build reads, each with its name, the generated entry of
- * the client's codes (packages/ts/src/codes.ts, which orm-codes writes), and the manifests of node and typescript. The tracked files are
+ * the client's codes (legacy/packages/ts/src/codes.ts, which orm-codes writes), and the manifests of node and typescript. The tracked files are
  * the client and its tests, the build and model scripts, the directory of the document set of each generated entry (which holds the set
  * and its documents, so a fixture change rebuilds the models that it is read into), and the thin-slice main that orm-gen scans.
  */
 function buildKey(): string {
-  const listed = spawnSync('git', ['ls-files', '-z', '--', 'packages/ts', 'scripts/typescript', 'scripts/json', 'tests/errors.mts', ...modelSets, 'examples/thin-slice/ts'], { cwd: root, encoding: 'utf8' });
+  const listed = spawnSync('git', ['ls-files', '-z', '--', 'legacy/packages/ts', 'scripts/typescript', 'scripts/json', 'tests/errors.mts', ...modelSets, 'examples/thin-slice/ts'], { cwd: root, encoding: 'utf8' });
   if (listed.status !== 0) throw new Error(`typescript build: git ls-files exited with ${listed.status ?? listed.signal}; run make install`);
   const digest = createHash('sha256');
   for (const file of listed.stdout.split('\0').filter(Boolean).sort()) {

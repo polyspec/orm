@@ -1,5 +1,5 @@
 <!-- doc-id: parity-spec -->
-<!-- source-sha256: a244d04c71111c10b0e310ad2d9d999ff34742156df9ddb56d03eb1e2745fec4 -->
+<!-- source-sha256: 16ab028c2fd2ef483548ebfb7bbfe1e13f2cf887aa415bc5be42fd8b6d7e5fa9 -->
 # 언어 parity
 
 ## 구현 내부 test
@@ -12,6 +12,6 @@ PHP의 SQLite case는 sqlite 경로가 MySQL dialect class를 load하지 않는�
 
 비교 directory는 공용 비교와 생성 runner가 호출하는 program을 담으므로, 그 안의 test는 어떤 구현에도 속하지 않는다. 각 directory는 실행하는 호출자와 함께 적는다:
 
-- **PAR-1** `packages/php/testing/conformance`: `runner.php`와 `result_php_helpers.php`는 PHP conformance runner와 그 결과 helper이며, `tests/conformance/check/recipe_vectors.mts`가 호출한다.
-- **PAR-2** `tests/dbspec`: dbspec 비교의 PHP driver와 그곳의 TypeScript binding이다. `apply/php.php`, `apply/php-extension.php`는 `packages/go/internal/dialects/apply_clients_physical_test.go`가 호출하고; `compare/php.php`, `compare/php-extension.php`, `compare/php-interface.php`는 `tests/dbspec/compare/runners.mts`가 호출하며; `introspect/php.php`, `introspect/php-extension.php`는 `packages/go/internal/dialects/introspect_compare_physical_test.go`가 호출한다. `cases.php`, `input.php`, `vectors.php`는 그 driver가 쓰는 dbspec vector file을 읽는 reader다. TypeScript 파일은 자기 declaration을 유지한다.
+- **PAR-1** `legacy/packages/php/testing/conformance`: `runner.php`와 `result_php_helpers.php`는 PHP conformance runner와 그 결과 helper이며, `tests/conformance/check/recipe_vectors.mts`가 호출한다.
+- **PAR-2** `tests/dbspec`: dbspec 비교의 PHP driver와 그곳의 TypeScript binding이다. `apply/php.php`, `apply/php-extension.php`는 `legacy/packages/go/internal/dialects/apply_clients_physical_test.go`가 호출하고; `compare/php.php`, `compare/php-extension.php`, `compare/php-interface.php`는 `tests/dbspec/compare/runners.mts`가 호출하며; `introspect/php.php`, `introspect/php-extension.php`는 `legacy/packages/go/internal/dialects/introspect_compare_physical_test.go`가 호출한다. `cases.php`, `input.php`, `vectors.php`는 그 driver가 쓰는 dbspec vector file을 읽는 reader다. TypeScript 파일은 자기 declaration을 유지한다.
 - **PAR-3** `tests/interfaces`: `php.php`는 `tests/interfaces/check/extract.mts`가 호출하는 PHP reflection extractor다.

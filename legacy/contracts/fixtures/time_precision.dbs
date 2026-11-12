@@ -1,0 +1,9 @@
+dbspec 1 time_precision
+
+table time_probe {
+  seq i64 identity
+  at datetime(0)
+  micro datetime(6)
+  clock time(3)
+  primary key (seq)
+}

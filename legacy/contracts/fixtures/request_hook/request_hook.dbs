@@ -1,0 +1,37 @@
+dbspec 1 request_hook
+
+table hook_item {
+  id i64 identity
+  part varchar(16)
+  label varchar(32)
+  primary key (id)
+  settings {
+    store document table
+  }
+}
+
+table hook_entry {
+  id i64 identity
+  part varchar(16)
+  label varchar(32)
+  note varchar(32) null
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_hook_entry_label (part, label)
+  settings {
+    store document table
+    soft_delete deleted_at
+  }
+}
+
+table hook_upsert {
+  id i64 identity
+  scope_col varchar(16)
+  name varchar(32)
+  hits i64 null
+  primary key (id)
+  unique uq_hook_upsert_key (scope_col, name)
+  settings {
+    store document table
+  }
+}

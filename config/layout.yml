@@ -20,12 +20,12 @@ rules:
   - id: layout-packages
     paths:
       - "packages/*"
-      - "!packages/go"
-      - "!packages/php"
-      - "!packages/php-ext"
-      - "!packages/python"
+      - "!legacy/packages/go"
+      - "!legacy/packages/php"
+      - "!legacy/packages/php-ext"
+      - "!legacy/packages/python"
       - "!packages/rust"
-      - "!packages/ts"
+      - "!legacy/packages/ts"
       - "!packages/js"
       - "!packages/dbspec-language"
       - "!packages/dbspec-lsp"
@@ -84,26 +84,26 @@ rules:
     paths:
       - "packages/**/integration"
       - "packages/**/conformance"
-      # The Go runner imports the internal packages of packages/go, which Go's internal rule reserves to that module.
-      - "!packages/go/internal/conformance"
+      # The Go runner imports the internal packages of legacy/packages/go, which Go's internal rule reserves to that module.
+      - "!legacy/packages/go/internal/conformance"
       # The PHP runner and its result helpers load through the PSR-4 autoload-dev of packages/php.
-      - "!packages/php/testing/conformance"
-      # The Python runner is a unittest module of packages/python and imports its installed package.
-      - "!packages/python/testing/conformance"
+      - "!legacy/packages/php/testing/conformance"
+      # The Python runner is a unittest module of legacy/packages/python and imports its installed package.
+      - "!legacy/packages/python/testing/conformance"
       # The TypeScript runner and its result reader compile against the sources of packages/ts.
-      - "!packages/ts/testing/conformance"
+      - "!legacy/packages/ts/testing/conformance"
       # The VS Code integration test starts the extension host of packages/dbspec-vscode for that extension alone.
       - "!packages/dbspec-vscode/tests/integration"
     message: "K244: an integration or conformance suite lives in tests/integration/<runtime> or tests/conformance/<runtime> of the root"
 
-  # S10: the extension has one stub, packages/php-ext/src/polyspec_<repository>.stub.php.
+  # S10: the extension has one stub, legacy/packages/php-ext/src/polyspec_<repository>.stub.php.
   - id: php-ext-stub-place
     kind: file_absent
     level: error
     paths:
       - "**/*.stub.php"
-      - "!packages/php-ext/src/*.stub.php"
-    message: "S10: the stub of the PHP extension is packages/php-ext/src/polyspec_<repository>.stub.php"
+      - "!legacy/packages/php-ext/src/*.stub.php"
+    message: "S10: the stub of the PHP extension is legacy/packages/php-ext/src/polyspec_<repository>.stub.php"
 
   # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure.
   - id: layout-infrastructure-typescript
@@ -123,7 +123,7 @@ rules:
       # The Go tests of the engine's dialect rules: the probes of docs/spec/dialects.md and the physical tests of the engine's
       # DDL, plans, apply and introspection against the databases, which run the Go engine.
       # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
-      # the reference of packages/go/engine/dbspec.
+      # the reference of legacy/packages/go/engine/dbspec.
       - "!tests/dbspec/unicode/**"
       # Programs that need operating-system calls Node does not offer: setsid for the lease releaser, and
       # the exit notification of another process (kqueue, pidfd) for stop-process.

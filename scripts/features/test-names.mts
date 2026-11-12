@@ -245,7 +245,7 @@ const checkPhp = (tree: Tree, words: string[], cwd: string, report: Report) => {
 
 const pythonClasses = (tree: Tree) => {
   const classes = new Map<string, { bases: string[]; methods: Set<string> }>();
-  for (const path of tree.files.filter(file => file.startsWith('packages/python/tests/') && file.endsWith('.py'))) {
+  for (const path of tree.files.filter(file => file.startsWith('legacy/packages/python/tests/') && file.endsWith('.py'))) {
     const lines = tree.read(path).split('\n');
     lines.forEach((line, index) => {
       const match = /^class (\w+)(?:\(([^)]*)\))?:/.exec(line);

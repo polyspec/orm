@@ -1,4 +1,4 @@
-// Package testcase stands for packages/go/testcase in the tests of the analyzers.
+// Package testcase stands for legacy/packages/go/testcase in the tests of the analyzers.
 package testcase
 
 import (

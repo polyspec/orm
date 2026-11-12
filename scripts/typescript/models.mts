@@ -1,5 +1,5 @@
-// The models that the TypeScript build generates into packages/ts/src/models (P34: generated output is never tracked). build.mts runs orm-gen
-// with each entry, and the tests of the client read the arguments of the first entry. Paths are relative to packages/ts, where orm-gen runs.
+// The models that the TypeScript build generates into legacy/packages/ts/src/models (P34: generated output is never tracked). build.mts runs orm-gen
+// with each entry, and the tests of the client read the arguments of the first entry. Paths are relative to legacy/packages/ts, where orm-gen runs.
 
 export interface GeneratedModels {
   /** The directory that orm-gen writes its models.ts into. */

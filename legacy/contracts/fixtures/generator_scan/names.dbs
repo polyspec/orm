@@ -1,0 +1,17 @@
+dbspec 1 names
+
+table product {
+  seq i64 identity
+  brand_seq i64
+  name varchar(50)
+  body text null
+  price i32 default 0
+  sale_start_dt datetime(6) null
+  primary key (seq)
+}
+
+table brand {
+  seq i64 identity
+  min_price i32 default 0
+  primary key (seq)
+}

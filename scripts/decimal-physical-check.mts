@@ -15,18 +15,18 @@ export function command(language: string, database: string, environment: NodeJS.
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
-    return ['go', ['test', ...withTestTags(['-json', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0'])]];
+    return ['go', ['test', ...withTestTags(['-json', './legacy/packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0'])]];
   }
   if (language === 'php') {
-    return ['php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',
-      '--filter', `with data set "${database}"$`, 'packages/php/tests/DecimalModelDbTest.php']];
+    return ['php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--teamcity',
+      '--filter', `with data set "${database}"$`, 'legacy/packages/php/tests/DecimalModelDbTest.php']];
   }
   if (language === 'php-extension') {
     const extension = environment['POLYSPEC_ORM_EXTENSION'];
     if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is required; run this check through make decimal-physical-check, which builds the PHP extension');
     return [process.execPath, [kitRunTests, 'phpunit', '--php-extension', extension,
-      '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter',
-      `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
+      '--', '--configuration', 'legacy/packages/php-ext/phpunit.xml.dist', '--filter',
+      `with data set "${database}"$`, 'legacy/packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }
   if (language === 'rust') {
     return [rustTest(environment).copy, [`decimal_physical::${id}`, '--exact']];
@@ -37,7 +37,7 @@ export function command(language: string, database: string, environment: NodeJS.
     if (!python) throw new Error('ORM_PYTHON is required; run the check through make decimal-physical-check');
     return [python, ['-m', 'packages.python.tests.decimal_model_db', '--dialect', database]];
   }
-  if (language === 'typescript') return ['node', ['packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
+  if (language === 'typescript') return ['node', ['legacy/packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
   throw new Error(`unknown decimal physical runtime: ${language}`);
 }
 
@@ -106,8 +106,8 @@ export function observed(language: string, database: string, output: string): bo
 }
 
 async function main(): Promise<void> {
-  await step('decimal/models', TIMEOUT_MS, () => run('node', ['packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
-    '--out', 'packages/ts/src/models/decimal_fixture', '--scan', 'packages/ts/tests/decimal_model_db.mjs', '--check']));
+  await step('decimal/models', TIMEOUT_MS, () => run('node', ['legacy/packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
+    '--out', 'legacy/packages/ts/src/models/decimal_fixture', '--scan', 'legacy/packages/ts/tests/decimal_model_db.mjs', '--check']));
   for (const database of databases) {
     const key = `DECIMAL_${database.toUpperCase()}_DSN`;
     const dsn = process.env[key];

@@ -18,8 +18,8 @@ caseTest('the suite of a runtime is its test files less the files another check 
     assert.ok(suite.length > 0, `${lane} has a suite`);
     assert.deepEqual([...suite, ...owned].sort(), [...(tests[lane] ?? [])].sort(), `${lane} leaves no test file out but the owned ones`);
   }
-  const sample = { typescript: ['packages/ts/tests/b.test.mjs', 'packages/ts/tests/decimal_model_db.mjs', 'packages/ts/tests/a.test.mjs'] };
-  assert.deepEqual(suiteTests('typescript', sample), ['packages/ts/tests/a.test.mjs', 'packages/ts/tests/b.test.mjs']);
+  const sample = { typescript: ['legacy/packages/ts/tests/b.test.mjs', 'legacy/packages/ts/tests/decimal_model_db.mjs', 'legacy/packages/ts/tests/a.test.mjs'] };
+  assert.deepEqual(suiteTests('typescript', sample), ['legacy/packages/ts/tests/a.test.mjs', 'legacy/packages/ts/tests/b.test.mjs']);
   assert.throws(() => suiteTests('php', sample), /declares no implementation php/);
 });
 
@@ -43,15 +43,15 @@ caseTest('the suites leave the recipe entries of mariadb to make mariadb-recipes
     assert.ok(suiteTests(lane, tests).every(file => !MARIADB_ENTRY.test(file)), `${lane} runs no entry of mariadb`);
     assert.match(makefile, new RegExp(`^mariadb-recipes-check/${lane}:`, 'm'), `make mariadb-recipes-check/${lane} runs them`);
   }
-  for (const file of ['packages/ts/tests/aes_rotation-mysql.test.mjs', 'packages/python/tests/test_aes_rotation_mysql.py', 'packages/php/tests/AesRotationMysqlTest.php'])
+  for (const file of ['legacy/packages/ts/tests/aes_rotation-mysql.test.mjs', 'legacy/packages/python/tests/test_aes_rotation_mysql.py', 'legacy/packages/php/tests/AesRotationMysqlTest.php'])
     assert.ok(!MARIADB_ENTRY.test(file), `${file} is no entry of mariadb`);
 });
 
 // The recipe runs of every database run one case at a time (docs/spec/dialects.md DIA-212).
 caseTest('a suite runs its recipe entries one at a time, after the other files', COMPUTE, () => {
   const { bindings } = readTree();
-  const entries = { php: 'packages/php/tests/AuditTriggersRecipeTest.php', typescript: 'packages/ts/tests/aes_rotation-mysql.test.mjs', python: 'packages/python/tests/test_aes_rotation_sqlite.py' };
-  const others = { php: 'packages/php/tests/RuntimeDbTest.php', typescript: 'packages/ts/tests/aggregate_numeric.mjs', python: 'packages/python/tests/mysql_session.py' };
+  const entries = { php: 'legacy/packages/php/tests/AuditTriggersRecipeTest.php', typescript: 'legacy/packages/ts/tests/aes_rotation-mysql.test.mjs', python: 'legacy/packages/python/tests/test_aes_rotation_sqlite.py' };
+  const others = { php: 'legacy/packages/php/tests/RuntimeDbTest.php', typescript: 'legacy/packages/ts/tests/aggregate_numeric.mjs', python: 'legacy/packages/python/tests/mysql_session.py' };
   for (const lane of SUITE_LANES) {
     const suite = suiteTests(lane, tests);
     const { together, inTurn } = suiteBatches(suite, recipeEntries(lane, bindings));
@@ -60,17 +60,17 @@ caseTest('a suite runs its recipe entries one at a time, after the other files',
     assert.ok(!together.includes(entries[lane]), `${lane} runs ${entries[lane]} alone`);
     assert.ok(together.includes(others[lane]), `${lane} runs ${others[lane]} with the other files`);
   }
-  const sample = ['packages/ts/tests/a.test.mjs', 'packages/ts/tests/b-mysql.test.mjs', 'packages/ts/tests/c.test.mjs'];
-  assert.deepEqual(suiteBatches(sample, new Set(['packages/ts/tests/b-mysql.test.mjs'])), {
-    together: ['packages/ts/tests/a.test.mjs', 'packages/ts/tests/c.test.mjs'],
-    inTurn: ['packages/ts/tests/b-mysql.test.mjs'],
+  const sample = ['legacy/packages/ts/tests/a.test.mjs', 'legacy/packages/ts/tests/b-mysql.test.mjs', 'legacy/packages/ts/tests/c.test.mjs'];
+  assert.deepEqual(suiteBatches(sample, new Set(['legacy/packages/ts/tests/b-mysql.test.mjs'])), {
+    together: ['legacy/packages/ts/tests/a.test.mjs', 'legacy/packages/ts/tests/c.test.mjs'],
+    inTurn: ['legacy/packages/ts/tests/b-mysql.test.mjs'],
   });
 });
 
 caseTest('a file of the suite runs as the runner of its runtime runs one file', COMPUTE, () => {
-  assert.deepEqual(suiteCommand('typescript', 'packages/ts/tests/a.test.mjs').args, ['--conditions=orm-test', '--test', 'packages/ts/tests/a.test.mjs']);
-  assert.deepEqual(suiteCommand('python', 'packages/python/tests/test_a.py').args, ['-m', 'unittest', '-v', 'packages.python.tests.test_a']);
-  const php = suiteCommand('php', 'packages/php/tests/ATest.php');
-  assert.deepEqual([php.program, ...php.args], ['php', 'vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ATest.php']);
+  assert.deepEqual(suiteCommand('typescript', 'legacy/packages/ts/tests/a.test.mjs').args, ['--conditions=orm-test', '--test', 'legacy/packages/ts/tests/a.test.mjs']);
+  assert.deepEqual(suiteCommand('python', 'legacy/packages/python/tests/test_a.py').args, ['-m', 'unittest', '-v', 'packages.python.tests.test_a']);
+  const php = suiteCommand('php', 'legacy/packages/php/tests/ATest.php');
+  assert.deepEqual([php.program, ...php.args], ['php', 'vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', 'legacy/packages/php/tests/ATest.php']);
   assert.deepEqual(php.env, { ORM_PHP_MODE: 'library' });
 });

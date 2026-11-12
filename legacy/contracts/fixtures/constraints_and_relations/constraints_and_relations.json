@@ -1,0 +1,848 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-33",
+    "INT-87",
+    "FCV-8",
+    "FCV-9",
+    "FCV-10",
+    "FCV-11",
+    "FCV-12",
+    "FCV-13",
+    "FCV-14",
+    "DIA-154"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "user": [
+        {
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "name": {
+            "text": "user-2"
+          }
+        }
+      ],
+      "service": [
+        {
+          "name": {
+            "text": "service-1"
+          }
+        },
+        {
+          "name": {
+            "text": "service-2"
+          }
+        }
+      ],
+      "service_region": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "name": {
+            "text": "region-1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "name": {
+            "text": "region-2"
+          }
+        }
+      ],
+      "service_member": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        }
+      ],
+      "author": [
+        {
+          "name": {
+            "text": "author-1"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "10"
+          },
+          "uuid": {
+            "text": "uuid-author-1"
+          },
+          "like_count": {
+            "int": "5"
+          }
+        },
+        {
+          "name": {
+            "text": "author-2"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "20"
+          },
+          "uuid": {
+            "text": "uuid-author-2"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-3"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "30"
+          },
+          "uuid": {
+            "text": "uuid-author-3"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-4"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "3"
+          },
+          "read_count": {
+            "int": "40"
+          },
+          "uuid": {
+            "text": "uuid-author-4"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-5"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "50"
+          },
+          "uuid": {
+            "text": "uuid-author-5"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        }
+      ],
+      "shared_note": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "title": {
+            "text": "note-1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "title": {
+            "text": "note-2"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "title": {
+            "text": "note-3"
+          }
+        }
+      ],
+      "note_reader": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "shared_note_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "shared_note_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "shared_note_seq": {
+            "int": "3"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "constraint_errors",
+      "requirements": [
+        "CFG-33"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "User",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY",
+              "message_holds": [
+                "Cannot delete or update a parent row: a foreign key constraint fails (`",
+                "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`)"
+              ],
+              "driver_cause": true
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "update or delete on table \"user\" violates foreign key constraint \"fk_author_user\" on table \"author\"",
+              "driver_cause": true
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "FOREIGN KEY constraint failed",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            },
+            "markdown": {
+              "error": "FOREIGN_KEY",
+              "message": "FOREIGN_KEY: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "user",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "like_count": {
+              "int": "-1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONSTRAINT",
+              "message_holds": "ck_author_counts",
+              "driver_cause": true
+            },
+            "postgres": {
+              "error": "CONSTRAINT",
+              "message_holds": "new row for relation \"author\" violates check constraint \"ck_author_counts\"",
+              "driver_cause": true
+            },
+            "sqlite": {
+              "error": "CONSTRAINT",
+              "message_holds": "CHECK constraint failed: ck_author_counts",
+              "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
+              "driver_cause": true
+            },
+            "markdown": {
+              "error": "CONSTRAINT",
+              "message": "CONSTRAINT: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "uuid": {
+              "text": "uuid-author-2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY",
+              "message_holds": [
+                "Duplicate entry 'uuid-author-2' for key '",
+                "uq_author_uuid'"
+              ],
+              "driver_cause": true
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY",
+              "message_holds": "duplicate key value violates unique constraint \"uq_author_uuid\"",
+              "driver_cause": true
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY",
+              "message_holds": "UNIQUE constraint failed: author.uuid",
+              "message_suffix": " (SQLITE_CONSTRAINT_UNIQUE)",
+              "driver_cause": true
+            },
+            "markdown": {
+              "error": "DUPLICATE_KEY",
+              "message": "DUPLICATE_KEY: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": [
+            "like_count",
+            "uuid"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external_relation",
+      "requirements": [
+        "INT-87"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "NoteReader",
+          "where": {},
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq"
+          ],
+          "relation": {
+            "model": "SharedNote",
+            "match": [
+              [
+                "shared_note_seq",
+                "seq"
+              ]
+            ],
+            "columns": [
+              "title"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_driver_error_ends_with_its_result_code",
+      "requirements": [
+        "CFG-33",
+        "INT-154",
+        "PRT-79"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TRIGGER user_refuse BEFORE UPDATE ON user WHEN NEW.name = 'refused' BEGIN SELECT RAISE(ABORT, 'user refused'); END",
+          "reason": "A .dbs declares no trigger, and this one refuses a write on the server side of SQLite."
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "update",
+              "tables": [
+                "author",
+                "user"
+              ],
+              "sql": "UPDATE author SET user_seq = 999999 WHERE seq = 1"
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "FOREIGN KEY constraint failed",
+              "message_suffix": " (SQLITE_CONSTRAINT_FOREIGNKEY)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "User",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "FOREIGN KEY constraint failed",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "like_count": {
+              "int": "-1"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONSTRAINT",
+              "message_holds": "CHECK constraint failed: ck_author_counts",
+              "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "update",
+              "tables": [
+                "author",
+                "user"
+              ],
+              "sql": "UPDATE user SET name = 'refused' WHERE seq = 1"
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "user refused",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "read_only": true,
+          "retry": 0,
+          "steps": [
+            {
+              "op": "utils.run",
+              "connection": "db",
+              "statements": [
+                {
+                  "kind": "update",
+                  "tables": [
+                    "author",
+                    "user"
+                  ],
+                  "sql": "UPDATE user SET name = 'read only' WHERE seq = 1"
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "READ_ONLY",
+                  "message_holds": "attempt to write a readonly database",
+                  "message_suffix": " (SQLITE_READONLY)",
+                  "driver_cause": true
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

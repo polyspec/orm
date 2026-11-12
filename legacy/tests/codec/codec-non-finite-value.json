@@ -1,0 +1,348 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-16",
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "non_finite_under_value_stages",
+      "requirements": [
+        "COD-16",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "f64": "NaN"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "f64": "Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "f64": "NaN"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "array": [
+                    {
+                      "f64": "Infinity"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json",
+            "gz",
+            "base64"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: non-finite number"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "f64": "NaN"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "f64": "Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "f64": "NaN"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "array": [
+                    {
+                      "f64": "Infinity"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize",
+            "gz",
+            "base64"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "f64": "NaN"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "f64": "Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "f64": "NaN"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "array": [
+                    {
+                      "f64": "Infinity"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml",
+            "gz",
+            "base64"
+          ],
+          "value": {
+            "f64": "-Infinity"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: number is not finite"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

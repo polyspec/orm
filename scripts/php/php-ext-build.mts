@@ -1,8 +1,8 @@
 // The one build of the PHP extension per source and mode (B1-7). php-ext-build calls it with the output path and the mode: it builds
-// packages/php-ext once for each key into var/php-ext/build/<key>/, and copies that build to the output, so the sites of one run each
+// legacy/packages/php-ext once for each key into var/php-ext/build/<key>/, and copies that build to the output, so the sites of one run each
 // receive the build without compiling it again.
 //
-// The key is the SHA-256 of every input that changes the library: the tracked sources of packages/php-ext (src/, config.m4,
+// The key is the SHA-256 of every input that changes the library: the tracked sources of legacy/packages/php-ext (src/, config.m4,
 // composer.json, testing/native/module.c), the arginfo header and the copy of the SQLite cancel callback (both written by
 // php-ext-sources), build.sh (its configure arguments by mode), the output of php-config --version, the mode, the CC and CFLAGS of the
 // environment, and the version of the kit builder. A key that is present is never built again.
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { waitForHolderLock } from '@polyspec/kit/holder-lock';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const extension = 'packages/php-ext';
+const extension = 'legacy/packages/php-ext';
 const library = 'polyspec_orm.so';
 const buildRoot = path.join(root, 'var/php-ext/build');
 

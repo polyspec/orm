@@ -13,7 +13,7 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
   });
   for (let attempt = 1; attempt <= 2; attempt++) {
     await step(`unselected-column/${database}/php/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
-      await runPhysicalCommandCase(run, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
+      await runPhysicalCommandCase(run, 'php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--teamcity', 'legacy/packages/php/tests/UnselectedColumnDbTest.php'], {
         ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
       }, dsn, { kind: 'teamcity', testName: 'testUnselectedColumn' }, `${database}/${attempt}: missing exact pass event`);
       await reportUnchangedState(() => state(database, dsn), before, `${database}/${attempt}: database state changed`, progress);

@@ -80,9 +80,9 @@ caseTest('a measurement runs the test of PERF-1 of every runtime on every databa
     assert.ok(existsSync(new URL(`../../${performanceTest(runtime, database).test}`, import.meta.url)), `${runtime}/${database}`);
   }
   const on = (runtime: string, database: string) => commands.find(command => command.runtime === runtime && command.database === database);
-  assert.deepEqual(on('go', 'sqlite')?.args, ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementSQLite$', '-count=1']);
+  assert.deepEqual(on('go', 'sqlite')?.args, ['tests/go-test.mts', '-v', '-timeout', '0', './legacy/packages/go/bench', '-run', '^TestPerformanceMeasurementSQLite$', '-count=1']);
   assert.deepEqual(on('rust', 'mysql')?.args.at(-1), 'FEATURE_TEST=coverage_performance_gate::coverage_hot_path_gate_mysql --nocapture');
-  assert.deepEqual(on('typescript', 'postgres')?.args, ['packages/ts/tests/coverage_performance_gate_postgres.mjs', 'hot_path_gate']);
+  assert.deepEqual(on('typescript', 'postgres')?.args, ['legacy/packages/ts/tests/coverage_performance_gate_postgres.mjs', 'hot_path_gate']);
   assert.deepEqual(on('python', 'mysql')?.args, ['-m', 'packages.python.tests.coverage_performance_gate_mysql', 'hot_path_gate']);
   assert.ok(on('php', 'postgres')?.args.includes('/::testHotPathGate$/'));
   assert.deepEqual(on('php-extension', 'mysql')?.env, { ORM_PHP_MODE: 'extension' });

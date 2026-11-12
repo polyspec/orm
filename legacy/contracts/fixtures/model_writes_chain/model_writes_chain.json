@@ -1,0 +1,4701 @@
+{
+ "$schema": "../../../scripts/features/schema/recipe.schema.json",
+ "requirements": [
+  "COD-11",
+  "COD-12",
+  "COD-15",
+  "COD-16",
+  "COD-26",
+  "COD-38",
+  "COD-68",
+  "DIA-154",
+  "DIA-26",
+  "DSL-104",
+  "DSL-107",
+  "INT-35",
+  "PRT-41",
+  "PRT-85",
+  "PRT-86",
+  "PRT-87",
+  "PRT-88",
+  "DSL-162"
+ ],
+ "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
+ "seed": {
+  "rows": {
+   "user": [
+    {
+     "name": {
+      "text": "user-1"
+     }
+    }
+   ],
+   "service_member": [
+    {
+     "service_seq": {
+      "int": "7"
+     },
+     "user_seq": {
+      "int": "1"
+     }
+    }
+   ],
+   "author": [
+    {
+     "name": {
+      "text": "author-1"
+     },
+     "user_seq": {
+      "int": "1"
+     },
+     "service_member_seq": {
+      "int": "1"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "10"
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     }
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "id": "ordered_json_keeps_its_member_order_and_number_text",
+   "requirements": [
+    "COD-15",
+    "DIA-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "b",
+         {
+          "int": "1"
+         }
+        ],
+        [
+         "a",
+         {
+          "array": []
+         }
+        ],
+        [
+         "c",
+         {
+          "object": []
+         }
+        ],
+        [
+         "n",
+         {
+          "float": "1.50"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+      },
+      "postgres": {
+       "json": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+      },
+      "sqlite": {
+       "json": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"b\":1,\"a\":[],\"c\":{},\"n\":1.50}"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "ordered_json_keeps_a_repeated_member_name",
+   "requirements": [
+    "COD-15",
+    "DIA-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "a",
+         {
+          "int": "1"
+         }
+        ],
+        [
+         "b",
+         {
+          "int": "2"
+         }
+        ],
+        [
+         "a",
+         {
+          "int": "3"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"a\":1,\"b\":2,\"a\":3}"
+      },
+      "postgres": {
+       "json": "{\"a\":1,\"b\":2,\"a\":3}"
+      },
+      "sqlite": {
+       "json": "{\"a\":1,\"b\":2,\"a\":3}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"a\":1,\"b\":2,\"a\":3}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"a\":1,\"b\":2,\"a\":3}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"a\":1,\"b\":2,\"a\":3}"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "ordered_json_keeps_nested_member_order",
+   "requirements": [
+    "COD-15",
+    "DIA-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "z",
+         {
+          "object": []
+         }
+        ],
+        [
+         "a",
+         {
+          "array": []
+         }
+        ],
+        [
+         "nested",
+         {
+          "object": [
+           [
+            "second",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "first",
+            {
+             "int": "1"
+            }
+           ]
+          ]
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      },
+      "postgres": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      },
+      "sqlite": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "codec_columns_round_trip",
+   "requirements": [
+    "COD-11",
+    "COD-12",
+    "COD-38"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "gz_extend"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "ip": {
+       "text": "10.0.0.1"
+      },
+      "gz_extend": {
+       "styled": {
+        "text": "compressed text"
+       }
+      },
+      "base64_extra": {
+       "styled": {
+        "text": "plain"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "pick": [
+      "ip",
+      "gz_extend",
+      "base64_extra"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "ip": "10.0.0.1",
+        "gz_extend": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "base64_extra": {
+         "kind": "value",
+         "value": "plain"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "ip": "10.0.0.1",
+        "gz_extend": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "base64_extra": {
+         "kind": "value",
+         "value": "plain"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "ip": "10.0.0.1",
+        "gz_extend": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "base64_extra": {
+         "kind": "value",
+         "value": "plain"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "text": "10.0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `base64_extra` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"base64_extra\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"base64_extra\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "cGxhaW4="
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "cGxhaW4="
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "cGxhaW4="
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "ip_with_embedded_whitespace_is_refused",
+   "requirements": [
+    "COD-38"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "ip": {
+       "text": "10. 0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "text": "10. 0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "text": "10.0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "ip": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "ip"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "ip": null
+       }
+      },
+      "postgres": {
+       "json": {
+        "ip": null
+       }
+      },
+      "sqlite": {
+       "json": {
+        "ip": null
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "null": "text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "stale_row_fails_the_optimistic_update_and_rollback_restores",
+   "requirements": [
+    "DSL-107",
+    "INT-35"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "stale",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "fail": true,
+     "steps": [
+      {
+       "op": "model.get_by",
+       "connection": "db",
+       "model": "Author",
+       "key": {
+        "seq": {
+         "int": "1"
+        }
+       },
+       "columns": "all",
+       "pick": [
+        "name"
+       ],
+       "as": "fresh",
+       "expect": {
+        "mysql": {
+         "json": {
+          "name": "author-1"
+         }
+        },
+        "postgres": {
+         "json": {
+          "name": "author-1"
+         }
+        },
+        "sqlite": {
+         "json": {
+          "name": "author-1"
+         }
+        }
+       }
+      },
+      {
+       "op": "model.update",
+       "connection": "db",
+       "row": "fresh",
+       "set": {
+        "name": {
+         "text": "fresh"
+        }
+       },
+       "optimistic": true
+      },
+      {
+       "op": "model.update",
+       "connection": "db",
+       "row": "stale",
+       "set": {
+        "name": {
+         "text": "stale"
+        }
+       },
+       "optimistic": true,
+       "expect": {
+        "mysql": {
+         "error": "OPTIMISTIC_LOCK"
+        },
+        "postgres": {
+         "error": "OPTIMISTIC_LOCK"
+        },
+        "sqlite": {
+         "error": "OPTIMISTIC_LOCK"
+        }
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CALLBACK"
+      },
+      "postgres": {
+       "error": "CALLBACK"
+      },
+      "sqlite": {
+       "error": "CALLBACK"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "name"
+     ],
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "creates_refuses_a_bad_batch_before_any_statement",
+   "requirements": [
+    "DSL-104",
+    "INT-35",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "refused"
+       }
+      }
+     ],
+     "batch": 0,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows_sequence": {
+      "column": "account_id",
+      "from": 1,
+      "count": 21846,
+      "values": {
+       "tenant_id": {
+        "int": "5"
+       },
+       "name": {
+        "text": "oversized"
+       }
+      }
+     },
+     "batch": 21846,
+     "expect": {
+      "mysql": {
+       "error": "BATCH_TOO_LARGE"
+      },
+      "postgres": {
+       "error": "BATCH_TOO_LARGE"
+      },
+      "sqlite": {
+       "error": "BATCH_TOO_LARGE"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "creates_over_the_sqlite_bind_limit_is_refused",
+   "requirements": [
+    "DSL-104",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows_sequence": {
+      "column": "account_id",
+      "from": 1,
+      "count": 334,
+      "values": {
+       "tenant_id": {
+        "int": "5"
+       },
+       "name": {
+        "text": "oversized"
+       }
+      }
+     },
+     "batch": 334,
+     "expect": {
+      "sqlite": {
+       "error": "BATCH_TOO_LARGE"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    }
+   ],
+   "only": [
+    "sqlite"
+   ]
+  },
+  {
+   "id": "creates_keeps_the_rows_in_order_across_batches",
+   "requirements": [
+    "DSL-104",
+    "INT-35",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "steps": [],
+     "expect": {
+      "mysql": {
+       "value": {
+        "bool": true
+       }
+      },
+      "postgres": {
+       "value": {
+        "bool": true
+       }
+      },
+      "sqlite": {
+       "value": {
+        "bool": true
+       }
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "ordered-5"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "ordered-4"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "name": {
+        "text": "ordered-3"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "4"
+       },
+       "name": {
+        "text": "ordered-2"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "5"
+       },
+       "name": {
+        "text": "ordered-1"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "5"
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "tables",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "text": "ordered-5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "text": "ordered-4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "ordered-3"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "4"
+              },
+              {
+               "text": "ordered-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "text": "ordered-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3), ($4, $5, $6)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "text": "ordered-5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "text": "ordered-4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3), ($4, $5, $6)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "ordered-3"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "4"
+              },
+              {
+               "text": "ordered-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "text": "ordered-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "text": "ordered-5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "text": "ordered-4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "ordered-3"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "4"
+              },
+              {
+               "text": "ordered-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "text": "ordered-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "5"
+      }
+     },
+     "order": [
+      "account_id"
+     ],
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "name": "ordered-5"
+        },
+        {
+         "name": "ordered-4"
+        },
+        {
+         "name": "ordered-3"
+        },
+        {
+         "name": "ordered-2"
+        },
+        {
+         "name": "ordered-1"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "name": "ordered-5"
+        },
+        {
+         "name": "ordered-4"
+        },
+        {
+         "name": "ordered-3"
+        },
+        {
+         "name": "ordered-2"
+        },
+        {
+         "name": "ordered-1"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "name": "ordered-5"
+        },
+        {
+         "name": "ordered-4"
+        },
+        {
+         "name": "ordered-3"
+        },
+        {
+         "name": "ordered-2"
+        },
+        {
+         "name": "ordered-1"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "creates_rolls_back_every_batch_when_a_later_one_fails",
+   "requirements": [
+    "DSL-104",
+    "INT-35",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "5"
+      },
+      "account_id": {
+       "int": "99"
+      },
+      "name": {
+       "text": "existing"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "account_id": 99,
+        "name": "existing",
+        "tenant_id": 5
+       }
+      },
+      "postgres": {
+       "json": {
+        "account_id": 99,
+        "name": "existing",
+        "tenant_id": 5
+       }
+      },
+      "sqlite": {
+       "json": {
+        "account_id": 99,
+        "name": "existing",
+        "tenant_id": 5
+       }
+      }
+     }
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "steps": [],
+     "expect": {
+      "mysql": {
+       "value": {
+        "bool": true
+       }
+      },
+      "postgres": {
+       "value": {
+        "bool": true
+       }
+      },
+      "sqlite": {
+       "value": {
+        "bool": true
+       }
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "10"
+       },
+       "name": {
+        "text": "rollback-10"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "11"
+       },
+       "name": {
+        "text": "rollback-11"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "12"
+       },
+       "name": {
+        "text": "rollback-12"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "13"
+       },
+       "name": {
+        "text": "rollback-13"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "5"
+       },
+       "account_id": {
+        "int": "99"
+       },
+       "name": {
+        "text": "rollback-99"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "error": "DUPLICATE_KEY"
+      },
+      "postgres": {
+       "error": "DUPLICATE_KEY"
+      },
+      "sqlite": {
+       "error": "DUPLICATE_KEY"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "tables",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "10"
+              },
+              {
+               "text": "rollback-10"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "11"
+              },
+              {
+               "text": "rollback-11"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "12"
+              },
+              {
+               "text": "rollback-12"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "13"
+              },
+              {
+               "text": "rollback-13"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "99"
+              },
+              {
+               "text": "rollback-99"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "text": "DUPLICATE_KEY"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3), ($4, $5, $6)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "10"
+              },
+              {
+               "text": "rollback-10"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "11"
+              },
+              {
+               "text": "rollback-11"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3), ($4, $5, $6)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "12"
+              },
+              {
+               "text": "rollback-12"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "13"
+              },
+              {
+               "text": "rollback-13"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "99"
+              },
+              {
+               "text": "rollback-99"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "text": "DUPLICATE_KEY"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "10"
+              },
+              {
+               "text": "rollback-10"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "11"
+              },
+              {
+               "text": "rollback-11"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "12"
+              },
+              {
+               "text": "rollback-12"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "13"
+              },
+              {
+               "text": "rollback-13"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "5"
+              },
+              {
+               "int": "99"
+              },
+              {
+               "text": "rollback-99"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "text": "DUPLICATE_KEY"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "5"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "5"
+      }
+     },
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "name": "existing"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "name": "existing"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "name": "existing"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "ordered_json_keeps_its_text_in_the_model_json_output",
+   "requirements": [
+    "COD-16",
+    "COD-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "z",
+         {
+          "int": "9007199254740993"
+         }
+        ],
+        [
+         "b",
+         {
+          "float": "1.50"
+         }
+        ],
+        [
+         "a",
+         {
+          "float": "1e2"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "n",
+         {
+          "float": "1e400"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "UPDATE `author` SET `json_setting` = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\\\u00e9\"}' WHERE `seq` = 1",
+        "postgres": "UPDATE \"author\" SET \"json_setting\" = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}' WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}' WHERE \"seq\" = 1"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "model_json_output_writes_collections_and_related_rows",
+   "requirements": [
+    "COD-26",
+    "COD-68"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "name"
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      },
+      "postgres": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      },
+      "sqlite": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "9"
+      }
+     },
+     "columns": [
+      "name"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "[]"
+      },
+      "postgres": {
+       "json": "[]"
+      },
+      "sqlite": {
+       "json": "[]"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "User",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "user_seq"
+        ]
+       ],
+       "columns": [
+        "name"
+       ]
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "creates_gives_generated_keys_in_row_order",
+   "requirements": [
+    "DSL-104",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "User",
+     "rows": [
+      {
+       "name": {
+        "text": "order-e"
+       }
+      },
+      {
+       "name": {
+        "text": "order-d"
+       }
+      },
+      {
+       "name": {
+        "text": "order-c"
+       }
+      },
+      {
+       "name": {
+        "text": "order-b"
+       }
+      },
+      {
+       "name": {
+        "text": "order-a"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "5"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "name": {
+       "array": [
+        {
+         "text": "order-a"
+        },
+        {
+         "text": "order-b"
+        },
+        {
+         "text": "order-c"
+        },
+        {
+         "text": "order-d"
+        },
+        {
+         "text": "order-e"
+        }
+       ]
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_writes_only_when_it_holds",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990436"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990436"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990436"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_is_a_group_of_groups",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "role": {
+       "text": "guest"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "and": [
+         {
+          "account_id": {
+           "in": {
+            "sub": {
+             "model": "CompositeAccount",
+             "columns": [
+              "account_id"
+             ],
+             "where": {
+              "and": [
+               {
+                "tenant_id": {
+                 "int": "990437"
+                }
+               },
+               {
+                "name": {
+                 "text": "ok"
+                }
+               }
+              ]
+             }
+            }
+           }
+          }
+         },
+         {
+          "role": {
+           "text": "member"
+          }
+         }
+        ]
+       },
+       {
+        "and": [
+         {
+          "role": {
+           "text": "guest"
+          }
+         },
+         {
+          "tenant_id": {
+           "int": "990437"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "and": [
+         {
+          "account_id": {
+           "in": {
+            "sub": {
+             "model": "CompositeAccount",
+             "columns": [
+              "account_id"
+             ],
+             "where": {
+              "and": [
+               {
+                "tenant_id": {
+                 "int": "990437"
+                }
+               },
+               {
+                "name": {
+                 "text": "ok"
+                }
+               }
+              ]
+             }
+            }
+           }
+          }
+         },
+         {
+          "role": {
+           "text": "member"
+          }
+         }
+        ]
+       },
+       {
+        "and": [
+         {
+          "role": {
+           "text": "guest"
+          }
+         },
+         {
+          "tenant_id": {
+           "int": "990437"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990437"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_reads_its_own_table_as_before_the_statement",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990438"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "same"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990438"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "same"
+       }
+      }
+     ],
+     "where": {
+      "name": {
+       "not_in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "tenant_id": {
+           "eq": {
+            "outer": "tenant_id"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990438"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "same"
+      }
+     },
+     "where": {
+      "name": {
+       "not_in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "tenant_id": {
+           "eq": {
+            "outer": "tenant_id"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "990438"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_writes_every_row_or_none",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 1,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_reads_null_as_sql_does",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436a"
+      },
+      "body": {
+       "null": "text"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "body": {
+         "is_null": true
+        }
+       },
+       {
+        "body": {
+         "not_in": {
+          "sub": {
+           "model": "ConditionCell",
+           "columns": [
+            "body"
+           ],
+           "where": {
+            "code": {
+             "text": "c436z"
+            }
+           }
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436b"
+      },
+      "body": {
+       "text": "b"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "code": {
+           "text": "c436a"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436b"
+      },
+      "body": {
+       "text": "b"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "and": [
+           {
+            "code": {
+             "text": "c436a"
+            }
+           },
+           {
+            "body": {
+             "not_null": true
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436c"
+      },
+      "body": {
+       "null": "text"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "code": {
+           "text": "c436b"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "or": [
+       {
+        "code": {
+         "text": "c436a"
+        }
+       },
+       {
+        "code": {
+         "text": "c436b"
+        }
+       },
+       {
+        "code": {
+         "text": "c436c"
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_bounds_an_insert_with_on_duplicate",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "one"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "none"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c437"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "none"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "one"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "and": [
+       {
+        "code": {
+         "text": "c436"
+        }
+       },
+       {
+        "body": {
+         "text": "two"
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

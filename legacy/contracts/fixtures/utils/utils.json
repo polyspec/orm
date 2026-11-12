@@ -1,0 +1,1709 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-30",
+    "INT-134",
+    "INT-50",
+    "INT-51",
+    "INT-52",
+    "INT-53",
+    "INT-61",
+    "INT-72",
+    "INT-73",
+    "INT-79",
+    "INT-59",
+    "CFG-22",
+    "DIA-154",
+    "DIA-188",
+    "INT-187"
+  ],
+  "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
+  "cases": [
+    {
+      "id": "local_value_is_readable_in_its_transaction",
+      "requirements": [
+        "INT-51"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.set_local",
+              "connection": "conn",
+              "name": "ormtest.actor",
+              "value": {
+                "text": "tester"
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.actor",
+              "expect": {
+                "mysql": {
+                  "json": "tester"
+                },
+                "postgres": {
+                  "json": "tester"
+                },
+                "sqlite": {
+                  "json": "tester"
+                }
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.missing",
+              "expect": {
+                "mysql": {
+                  "error": "NO_ROWS"
+                },
+                "postgres": {
+                  "error": "NO_ROWS"
+                },
+                "sqlite": {
+                  "error": "NO_ROWS"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.local",
+          "connection": "conn",
+          "name": "ormtest.actor",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "utils.set_local",
+          "connection": "conn",
+          "name": "ormtest.actor",
+          "value": {
+            "text": "tester"
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "was_inserted_follows_the_savepoints",
+      "requirements": [
+        "INT-52"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "conn",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "outer"
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": 1,
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": 1001,
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "conn",
+              "fail": true,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "conn",
+                  "model": "EventProbe",
+                  "values": {
+                    "label": {
+                      "text": "nested"
+                    }
+                  }
+                },
+                {
+                  "op": "utils.was_inserted",
+                  "connection": "conn",
+                  "table": "event_probe",
+                  "sequence": 2,
+                  "expect": {
+                    "mysql": {
+                      "value": {
+                        "bool": true
+                      }
+                    },
+                    "postgres": {
+                      "value": {
+                        "bool": true
+                      }
+                    },
+                    "sqlite": {
+                      "value": {
+                        "bool": true
+                      }
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "CALLBACK"
+                },
+                "postgres": {
+                  "error": "CALLBACK"
+                },
+                "sqlite": {
+                  "error": "CALLBACK"
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": 2,
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": 1,
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "was_inserted_needs_a_transaction_and_valid_arguments",
+      "requirements": [
+        "INT-52"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "utils.was_inserted",
+          "connection": "conn",
+          "table": "event_probe",
+          "sequence": 1,
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "",
+              "sequence": 1,
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": 0,
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            },
+            {
+              "op": "utils.was_inserted",
+              "connection": "conn",
+              "table": "event_probe",
+              "sequence": -1,
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "no_backend_waits_without_a_waiter",
+      "requirements": [
+        "INT-53"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "utils.backend_waiting_for_lock",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "utils_hold_their_groups",
+      "requirements": [
+        "INT-61",
+        "INT-73",
+        "INT-134"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "utils.groups",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "aes"
+                  },
+                  {
+                    "text": "privileges"
+                  },
+                  {
+                    "text": "schema"
+                  },
+                  {
+                    "text": "stats"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "aes"
+                  },
+                  {
+                    "text": "privileges"
+                  },
+                  {
+                    "text": "schema"
+                  },
+                  {
+                    "text": "stats"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "aes"
+                  },
+                  {
+                    "text": "privileges"
+                  },
+                  {
+                    "text": "schema"
+                  },
+                  {
+                    "text": "stats"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "session_state_ends_with_the_transaction",
+      "requirements": [
+        "CFG-30",
+        "INT-50",
+        "INT-51"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.connect",
+          "as": "other",
+          "pool_size": 2
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm_test.session_state"
+            },
+            {
+              "op": "utils.set_local",
+              "connection": "conn",
+              "name": "ormtest.session",
+              "value": {
+                "text": "kept"
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.session",
+              "expect": {
+                "mysql": {
+                  "json": "kept"
+                },
+                "postgres": {
+                  "json": "kept"
+                },
+                "sqlite": {
+                  "json": "kept"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT COALESCE(@`orm.ormtest.session`, '')",
+                "postgres": "SELECT COALESCE(current_setting('ormtest.session', true), '')",
+                "sqlite": "SELECT ''"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "other",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "other",
+              "name": "orm_test.session_state"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_lock_released_early_is_reported_at_the_end_of_its_transaction",
+      "requirements": [
+        "INT-72"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm_test.not_held"
+            },
+            {
+              "op": "utils.run",
+              "connection": "conn",
+              "statements": [
+                {
+                  "kind": "utility",
+                  "tables": [],
+                  "sql": "DO RELEASE_LOCK('orm_test.not_held')"
+                }
+              ]
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "lock orm_test.not_held was not held at transaction end"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_lock_needs_a_transaction",
+      "requirements": [
+        "INT-50"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.lock",
+          "connection": "conn",
+          "name": "orm_test.outside",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_key_outside_its_grammar_is_refused_with_its_quoted_text",
+      "requirements": [
+        "INT-50",
+        "INT-51",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm test\n",
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                }
+              }
+            },
+            {
+              "op": "utils.set_local",
+              "connection": "conn",
+              "name": "orm\tkey",
+              "value": {
+                "text": "kept"
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                }
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.é\u0007\"",
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats_report_the_pool_of_the_connection",
+      "requirements": [
+        "INT-79"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.stats",
+              "connection": "conn",
+              "expect": {
+                "mysql": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                },
+                "postgres": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                },
+                "sqlite": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table_privileges_on_postgres_only",
+      "requirements": [
+        "INT-59",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE privilege_probe (id INTEGER)",
+          "reason": "a table the fixture does not declare, so that its grants belong to this case"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "inspect",
+          "table": "public.privilege_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "json": {
+                "insert": true,
+                "select": true,
+                "update": true,
+                "delete": true,
+                "truncate": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "inspect",
+          "table": "privilege_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "sql": "DO $$ BEGIN CREATE ROLE orm_priv_probe; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$",
+          "reason": "a role is a cluster object that no model call creates; every case database shares this one, so it is created once and stays"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "privilege_probe",
+          "role": "orm_priv_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.privilege_probe",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "only": [
+            "postgres"
+          ],
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [],
+              "sql": "SELECT CAST(has_schema_privilege('orm_priv_probe', 'public', 'USAGE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'SELECT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'INSERT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'UPDATE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'DELETE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'TRUNCATE') AS integer)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": " drop\u0007",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" drop\\a\""
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": " select ",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \" select \""
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "\u017felect",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: unsupported table privilege \"\u017felect\""
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "select",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "only": [
+            "postgres"
+          ],
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [],
+              "sql": "SELECT CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'SELECT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'INSERT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'UPDATE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'DELETE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'TRUNCATE') AS integer)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table_privilege_targets_are_refused_before_any_statement",
+      "requirements": [
+        "INT-59"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "conn",
+          "as": "recorder"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "sample",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "sample",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.sample",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.sample",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_session_setting_stays_on_its_connection",
+      "requirements": [
+        "CFG-22"
+      ],
+      "not_through_pooler": "A pooler shares its server sessions between clients, so what one session holds does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 1
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 1
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @cfg22_mark = 1",
+                "postgres": "SELECT set_config('orm.cfg22_mark', '1', false)",
+                "sqlite": "PRAGMA cache_size = 1234"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "second",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_prepared_statement_stays_on_its_connection",
+      "requirements": [
+        "CFG-22"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler shares its server sessions between clients, so what one session holds does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 1
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 1
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "MySQL refuses a PREPARE statement over the prepared protocol that Rust uses, and runs one inside a procedure on either protocol",
+          "sql": "CREATE PROCEDURE cfg22_prepare() BEGIN PREPARE cfg22_statement FROM 'SELECT 1'; END"
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "CALL cfg22_prepare()",
+                "postgres": "PREPARE cfg22_statement AS SELECT 1",
+                "sqlite": "SELECT 0"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
+                "sqlite": "SELECT 0"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "second",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = (SELECT THREAD_ID FROM performance_schema.threads WHERE PROCESSLIST_ID = CONNECTION_ID())",
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
+                "sqlite": "SELECT 0"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

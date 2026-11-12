@@ -1,0 +1,464 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-44",
+    "DSL-151",
+    "DSL-152"
+  ],
+  "cases": [
+    {
+      "id": "imported-set",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "before": {
+              "schema": "other_names.dbs",
+              "output": "othermodel",
+              "scan": "other"
+            },
+            "sources": {
+              "go": {
+                "other/other.go": "package other\n\nimport \"example.com/ormexample/othermodel\"\n\nfunc Load() *othermodel.ProductModel {\n\treturn othermodel.Product().Relation(othermodel.Brand().MatchBrandSeqWithSeq().AliasStore())\n}\n\nfunc Cheap() *othermodel.BrandModel { return othermodel.Brand().GtMinPrice(1) }\n\nfunc Store(p *othermodel.ProductModel) (any, error) { return p.GetStore() }\n",
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Cheap() *model.ProductModel { return model.Product().LtPrice(1) }\n"
+              },
+              "typescript": {
+                "other/other.ts": "import { Brand, Product } from '../othermodel/models.js';\nimport * as other from '../othermodel/models';\n\nconst row = new Product().relation(new Brand().matchBrandSeqWithSeq().aliasStore());\nrow.getStore();\nnew other.Brand().gtMinPrice(1);\n",
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().ltPrice(1);\n"
+              },
+              "python": {
+                "other/other.py": "from othermodel.models import Brand, Product\nfrom ..othermodel.models import Product as Other\n\nrow = Product().relation(Brand().match_brand_seq_with_seq().alias_store())\nrow.get_store()\nBrand().gt_min_price(1)\nOther().get_store()\n",
+                "example/example.py": "from model.models import Product\n\nProduct().lt_price(1)\n"
+              },
+              "php": {
+                "other/other.php": "<?php\n\nuse Example\\Othermodel\\Brand;\nuse Example\\Othermodel\\Product;\n\n$row = (new Product())->relation((new Brand())->matchBrandSeqWithSeq()->aliasStore());\n$row->getStore();\n(new \\Example\\Othermodel\\Brand())->gtMinPrice(1);\n",
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->ltPrice(1);\n"
+              },
+              "rust": {
+                "other/other.rs": "mod other_set { include!(\"../othermodel/orm_model.rs\"); }\nuse crate::other_set::{Brand as OtherBrand};\nuse other_set::{Brand, Product};\n\nfn load() {\n    let row = Product::new().relation(Brand::new().match_brand_seq_with_seq().alias_store());\n    let _ = row.get_store();\n    let _ = other_set::Brand::new().gt_min_price(1);\n}\n\nfn read(row: &other_set::Product, brand: OtherBrand) {\n    let _ = row.get_store();\n    let _ = brand.lt_min_price(1);\n}\n",
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Product};\n\nfn cheap() {\n    let _ = Product::new().lt_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.lt_price"
+                ],
+                "excludes": [
+                  "product.store",
+                  "product.match_brand_seq_with_seq",
+                  "brand.gt_min_price",
+                  "brand.lt_min_price"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "imported-local-type",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "calls/calls.go": "package calls\n\ntype Product struct{}\n\nfunc (Product) Submit()      {}\nfunc (Product) Name() string { return \"\" }\n",
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/calls\"\n\t\"example.com/ormexample/model\"\n)\n\nfunc Run(p calls.Product) string {\n\tp.Submit()\n\treturn p.Name()\n}\n\nfunc Cheap() *model.ProductModel { return model.Product().LtPrice(1) }\n"
+              },
+              "typescript": {
+                "example/calls.ts": "export interface Product {\n  submit(): void;\n  name(): string;\n}\n",
+                "example/submit.ts": "import type { Product } from './calls.ts';\n\nexport function run(p: Product): string {\n  p.submit();\n  return p.name();\n}\n",
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().ltPrice(1);\n",
+                "example/aliased.ts": "import { type Product as Local } from './calls.js';\n\nexport function local(p: Local): void {\n  p.submit();\n}\n"
+              },
+              "python": {
+                "example/calls.py": "class Product:\n    def submit(self) -> None:\n        pass\n\n    def name(self) -> str:\n        return \"\"\n",
+                "example/submit.py": "from .calls import Product\n\n\ndef run(p: Product) -> str:\n    p.submit()\n    return p.name()\n",
+                "example/example.py": "from ..model.models import Product\n\nProduct().lt_price(1)\n"
+              },
+              "php": {
+                "example/calls.php": "<?php\n\nnamespace Example\\Calls;\n\nfinal class Product\n{\n    public function submit(): void {}\n\n    public function name(): string { return ''; }\n}\n",
+                "example/submit.php": "<?php\n\nuse Example\\Calls\\Product;\n\nfunction run(Product $p): string\n{\n    $p->submit();\n    return $p->name();\n}\n",
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->ltPrice(1);\n"
+              },
+              "rust": {
+                "example/calls.rs": "pub struct Product;\n\nimpl Product {\n    pub fn submit(&self) {}\n    pub fn name(&self) -> String { String::new() }\n}\n",
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nmod calls;\nuse crate::calls::Product as Local;\nuse own::{Product as Model};\n\nfn run(p: &calls::Product) -> String {\n    p.submit();\n    p.name()\n}\n\nfn imported(p: &crate::calls::Product, q: &Local) {\n    p.submit();\n    q.submit();\n}\n\nfn cheap() {\n    let _ = Model::new().lt_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.lt_price"
+                ],
+                "excludes": [
+                  "product.submit"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reexported-model",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "exports/exports.go": "package exports\n\nimport \"example.com/ormexample/model\"\n\nvar Product = model.Product\n\ntype Brand = model.BrandModel\n",
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/exports\"\n\nfunc Cheap() any { return exports.Product().GtPrice(1) }\n\nfunc Brand(b *exports.Brand) any { return b.GtMinPrice(1) }\n"
+              },
+              "typescript": {
+                "example/exports.ts": "export { Product } from '../model/models.js';\n",
+                "example/barrel.ts": "export * from '../model/models.js';\n",
+                "example/example.ts": "import { Product } from './exports.js';\nimport { Brand } from './barrel.js';\n\nnew Product().gtPrice(1);\nnew Brand().gtMinPrice(1);\n"
+              },
+              "python": {
+                "example/exports.py": "from ..model.models import Brand, Product\n\n__all__ = [\"Brand\", \"Product\"]\n",
+                "example/example.py": "from .exports import Brand, Product\n\nProduct().gt_price(1)\nBrand().gt_min_price(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\n// PHP has no re-export: a class is named by its fully qualified name, which use gives it.\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n(new Product())->gtPrice(1);\n(new Brand())->gtMinPrice(1);\n"
+              },
+              "rust": {
+                "example/exports.rs": "pub use crate::own::Product;\n",
+                "example/barrel.rs": "pub use crate::own::*;\n",
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nmod barrel;\nmod exports;\nuse exports::Product;\n\nfn cheap() {\n    let _ = Product::new().gt_price(1);\n    let _ = barrel::Brand::new().gt_min_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.gt_price",
+                  "brand.gt_min_price"
+                ],
+                "excludes": [
+                  "brand.lt_min_price"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reassigned-variable",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Page(limit *int) *model.ProductModel {\n\tpage := model.Product().AddAllColumns()\n\tconditions := 0\n\tif limit != nil {\n\t\tif conditions == 0 {\n\t\t\tpage = page.GtPrice(*limit)\n\t\t} else {\n\t\t\tpage = page.AndGtPrice(*limit)\n\t\t}\n\t\tconditions++\n\t}\n\tif limit != nil {\n\t\tif conditions == 0 {\n\t\t\tpage = page.LtPrice(*limit)\n\t\t} else {\n\t\t\tpage = page.AndLtPrice(*limit)\n\t\t}\n\t}\n\treturn page\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nexport function page(limit?: number) {\n  let page = new Product().addAllColumns();\n  let conditions = 0;\n  if (limit !== undefined) {\n    page = conditions === 0 ? page.gtPrice(limit) : page.andGtPrice(limit);\n    conditions++;\n  }\n  if (limit !== undefined) {\n    page = conditions === 0 ? page.ltPrice(limit) : page.andLtPrice(limit);\n  }\n  return page;\n}\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\n\ndef page(limit):\n    page = Product().add_all_columns()\n    conditions = 0\n    if limit is not None:\n        page = page.gt_price(limit) if conditions == 0 else page.and_gt_price(limit)\n        conditions += 1\n    if limit is not None:\n        page = page.lt_price(limit) if conditions == 0 else page.and_lt_price(limit)\n    return page\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\nfunction page(?int $limit): Product\n{\n    $page = (new Product())->addAllColumns();\n    $conditions = 0;\n    if ($limit !== null) {\n        $page = $conditions === 0 ? $page->gtPrice($limit) : $page->andGtPrice($limit);\n        $conditions++;\n    }\n    if ($limit !== null) {\n        $page = $conditions === 0 ? $page->ltPrice($limit) : $page->andLtPrice($limit);\n    }\n    return $page;\n}\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Product};\n\nfn page(limit: Option<i32>) {\n    let mut page = Product::new().add_all_columns();\n    let mut conditions = 0;\n    if let Some(limit) = limit {\n        page = if conditions == 0 { page.gt_price(limit) } else { page.and_gt_price(limit) };\n        conditions += 1;\n    }\n    if let Some(limit) = limit {\n        page = if conditions == 0 { page.lt_price(limit) } else { page.and_lt_price(limit) };\n    }\n    let _ = page;\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.gt_price",
+                  "product.and_gt_price",
+                  "product.lt_price",
+                  "product.and_lt_price"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unparsable-file",
+      "requirements": [
+        "DSL-152"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nconst X = 1\n",
+                "example/broken.go": "package example\n\nfunc (\n"
+              },
+              "typescript": {
+                "example/example.ts": "export const X = 1;\n",
+                "example/broken.ts": "export const Y = 1;\n\nfunction (\n"
+              },
+              "python": {
+                "example/example.py": "X = 1\n",
+                "example/broken.py": "Y = 1\n\ndef (\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nconst X = 1;\n",
+                "example/broken.php": "<?php\n\nfunction ("
+              },
+              "rust": {
+                "example/example.rs": "const X: i32 = 1;\n",
+                "example/broken.rs": "const Y: i32 = 1;\n\nfn (\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "GENERATOR_SCAN_PARSE",
+              "position": {
+                "line": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "alias-match-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasJoin())\n}\n\nfunc Match(p *model.ProductModel) (*model.BrandModel, error) { return p.GetMatch() }\n\nfunc Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\ndeclare const db: unknown;\nconst row = await new Product().connect(db)\n  .relation(new Brand().matchBrandSeqWithSeq().aliasMatch())\n  .relation(new Brand().matchBrandSeqWithSeq().aliasJoin())\n  .get();\nrow.getMatch();\nconst child = new Brand().matchBrandSeqWithSeq().aliasMatchup();\nconst rows = await new Product().connect(db).relations(child).gets();\nfor (const each of rows) each.getMatchup();\nrows.map(each => each.getJoin());\nclass Repo {\n  list(): Promise<Product | null> {\n    return new Product().connect(db).relation(new Brand().matchBrandSeqWithSeq().aliasStore()).get();\n  }\n}\nconst read = await new Repo().list();\nread?.getStore();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Brand, Product\n\nrow = (\n    Product()\n    .relation(Brand().match_brand_seq_with_seq().alias_match())\n    .relation(Brand().match_brand_seq_with_seq().alias_join())\n    .get()\n)\nrow.get_match()\nrow.get_join()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$row = (new Product())\n    ->relation((new Brand())->matchBrandSeqWithSeq()->aliasMatch())\n    ->relation((new Brand())->matchBrandSeqWithSeq()->aliasJoin())\n    ->get();\n$row->getMatch();\n$row->getJoin();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn load() {\n    let row = Product::new()\n        .relation(Brand::new().match_brand_seq_with_seq().alias_match())\n        .relation(Brand::new().match_brand_seq_with_seq().alias_join());\n    let _ = row.get_match();\n    let _ = row.get_join();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.match",
+                  "product.join"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nested-alias-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasStore().\n\t\t\tRelation(model.Product().MatchSeqWithBrandSeq().AliasMatch()))\n}\n\nfunc Match(p *model.ProductModel) (*model.ProductModel, error) {\n\tstore, err := p.GetStore()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn store.GetMatch()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\ndeclare const db: unknown;\nawait new Product().connect(db).relation(\n  new Brand().matchBrandSeqWithSeq().aliasStore().relation(new Product().matchSeqWithBrandSeq().aliasMatch()),\n).gets();\nexport function read(rows: Iterable<Product>): void {\n  for (const row of rows) {\n    const store = row.getStore<Brand | null>();\n    store?.getMatch<Product | null>();\n  }\n}\n"
+              },
+              "python": {
+                "example/example.py": "from typing import Iterable\n\nfrom model.models import Brand, Product\n\nProduct().relation(\n    Brand().match_brand_seq_with_seq().alias_store().relation(Product().match_seq_with_brand_seq().alias_match())\n).gets()\n\n\ndef read(rows: Iterable[Product]):\n    for row in rows:\n        store: Brand | None = row.get_store()\n        store.get_match()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$rows = (new Product())->relation(\n    (new Brand())->matchBrandSeqWithSeq()->aliasStore()\n        ->relation((new Product())->matchSeqWithBrandSeq()->aliasMatch())\n)->gets();\nforeach ($rows as $row) {\n    /** @var Brand|null $store */\n    $store = $row->getStore();\n    $store?->getMatch();\n}\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn load() {\n    let _ = Product::new().relation(Brand::new().match_brand_seq_with_seq().alias_store().relation(Product::new().match_seq_with_brand_seq().alias_match()));\n}\n\nfn read(row: &Product) {\n    let store: Option<Brand> = row.get_store().unwrap();\n    let _ = store.unwrap().get_match();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.store",
+                  "brand.match"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unattached-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())\n}\n\nfunc Ghost(p *model.ProductModel) (*model.BrandModel, error) { return p.GetGhost() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\ndeclare const db: unknown;\nconst rows = await new Product().connect(db).relation(new Brand().matchBrandSeqWithSeq().aliasStore()).gets();\nfor (const row of rows) row.getStore<Brand | null>()?.getGhost();\n"
+              },
+              "python": {
+                "example/example.py": "from typing import Iterable\n\nfrom ..model.models import Brand, Product\n\nProduct().relation(Brand().match_brand_seq_with_seq().alias_store()).gets()\n\n\ndef read(rows: Iterable[Product]):\n    for row in rows:\n        store: Brand | None = row.get_store()\n        store.get_ghost()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$rows = (new Product())->relation((new Brand())->matchBrandSeqWithSeq()->aliasStore())->gets();\nforeach ($rows as $row) {\n    /** @var Brand|null $store */\n    $store = $row->getStore();\n    $store?->getGhost();\n}\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn load() {\n    let _ = Product::new().relation(Brand::new().match_brand_seq_with_seq().alias_store());\n}\n\nfn read(row: &Product) {\n    let store: Option<Brand> = row.get_store().unwrap();\n    let _ = store.unwrap().get_ghost();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "GENERATOR_SCAN_UNATTACHED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "member.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ExtPostModel {\n\treturn model.ExtPost().Relation(model.ExtAudit().MatchAccountSeqWithSeq())\n}\n\nfunc Audit(row *model.ExtPostModel) (*model.ExtAuditModel, error) { return row.GetExtAuditModel() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { ExtAudit, ExtPost } from '../model/models.js';\n\ndeclare const db: unknown;\nconst rows = await new ExtPost().relation(new ExtAudit().connect(db).matchAccountSeqWithSeq()).gets();\nfor (const row of rows) row.getExtAuditModel();\n"
+              },
+              "python": {
+                "example/example.py": "from typing import Iterable\n\nfrom model.models import ExtAudit, ExtPost\n\nExtPost().relation(ExtAudit().match_account_seq_with_seq()).gets()\n\n\ndef read(rows: Iterable[ExtPost]):\n    for row in rows:\n        row.get_ext_audit_model()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\ExtAudit;\nuse Example\\Model\\ExtPost;\n\n$rows = (new ExtPost())->relation((new ExtAudit())->matchAccountSeqWithSeq())->gets();\nforeach ($rows as $row) {\n    $row->getExtAuditModel();\n}\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{ExtAudit, ExtPost};\n\nfn load() {\n    let _ = ExtPost::new().relation(ExtAudit::new().match_account_seq_with_seq());\n}\n\nfn read(row: &ExtPost) {\n    let _ = row.get_ext_audit_model();\n}\n"
+              }
+            },
+            "used": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "ext_post.ext_audit_model"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scope-binding",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Scoped() (int, error) {\n\trow := model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())\n\tif _, err := row.GetStore(); err != nil {\n\t\treturn 0, err\n\t}\n\tcount := func() (int, error) {\n\t\trow := model.Brand().Relations(model.Product().MatchSeqWithBrandSeq())\n\t\tproducts, err := row.GetProductModels()\n\t\tif err != nil {\n\t\t\treturn 0, err\n\t\t}\n\t\treturn products.Len(), nil\n\t}\n\treturn count()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\nconst row = new Product().relation(new Brand().matchBrandSeqWithSeq().aliasStore());\nrow.getStore();\nexport function count() {\n  const row = new Brand().relations(new Product().matchSeqWithBrandSeq());\n  return row.getProductModels();\n}\n\ndeclare function loadRow(): unknown;\nexport function read(): void {\n  let row = new Brand();\n  const write = (): void => { row = loadRow(); };\n  write();\n  row.getName();\n}\nexport function own(): void {\n  const row = new Product();\n  row.getName();\n}\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Brand, Product\n\nrow = Product().relation(Brand().match_brand_seq_with_seq().alias_store())\nrow.get_store()\n\n\ndef count():\n    row = Brand().relations(Product().match_seq_with_brand_seq())\n    return row.get_product_models()\n\n\ndef read(db):\n    row = Brand().get()\n\n    def write(db):\n        row = db.load(2)\n        row.get_name()\n\n    def write_own():\n        row = Product().get()\n        row.get_name()\n\n    write(db)\n    write_own()\n    row.get_min_price()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$row = (new Product())->relation((new Brand())->matchBrandSeqWithSeq()->aliasStore());\n$row->getStore();\n\nfunction productCount()\n{\n    $row = (new Brand())->relations((new Product())->matchSeqWithBrandSeq());\n    return $row->getProductModels();\n}\n\nfunction read(array $blocks, bool $flag): void\n{\n    $row = new Brand();\n    [$row] = $blocks;\n    $row->getName();\n    if ($flag) {\n        $row = new Product();\n    } else {\n        $row = $blocks[0];\n    }\n    $row->getName();\n}\n\nfunction own(): void\n{\n    $row = new Product();\n    $row->getName();\n}\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn scoped() {\n    let row = Product::new().relation(Brand::new().match_brand_seq_with_seq().alias_store());\n    let _ = row.get_store();\n    let count = || {\n        let row = Brand::new().relations(Product::new().match_seq_with_brand_seq());\n        let _ = row.get_product_models();\n    };\n    count();\n}\n\nfn read(blocks: Vec<Product>) {\n    let row = Brand::new();\n    for row in blocks {\n        let _ = row.get_name();\n    }\n    match blocks.first() {\n        Some(row) => {\n            let _ = row.get_name();\n        }\n        None => {}\n    }\n    let own = Product::new();\n    let _ = own.get_name();\n    let _ = row;\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.store",
+                  "brand.product_models"
+                ],
+                "excludes": [
+                  "brand.name"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

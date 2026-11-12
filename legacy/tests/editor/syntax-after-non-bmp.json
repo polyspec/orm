@@ -1,0 +1,33 @@
+{
+  "diagnostics": [
+    { "rule": "syntax", "message": "character '😀' is not allowed here", "range": [[4, 35], [4, 37]] }
+  ],
+  "tokens": [
+    { "class": "keyword", "range": [[0, 0], [0, 6]] },
+    { "class": "number", "range": [[0, 7], [0, 8]] },
+    { "class": "name", "range": [[0, 9], [0, 13]] },
+    { "class": "keyword", "range": [[2, 0], [2, 5]] },
+    { "class": "name", "range": [[2, 6], [2, 11]] },
+    { "class": "punctuation", "range": [[2, 12], [2, 13]] },
+    { "class": "name", "range": [[3, 2], [3, 4]] },
+    { "class": "type", "range": [[3, 5], [3, 8]] },
+    { "class": "keyword", "range": [[3, 9], [3, 17]] },
+    { "class": "word", "range": [[4, 2], [4, 6]] },
+    { "class": "word", "range": [[4, 7], [4, 14]] },
+    { "class": "punctuation", "range": [[4, 14], [4, 15]] },
+    { "class": "number", "range": [[4, 15], [4, 17]] },
+    { "class": "punctuation", "range": [[4, 17], [4, 18]] },
+    { "class": "word", "range": [[4, 19], [4, 26]] },
+    { "class": "string", "range": [[4, 27], [4, 34]] },
+    { "class": "keyword", "range": [[5, 2], [5, 9]] },
+    { "class": "keyword", "range": [[5, 10], [5, 13]] },
+    { "class": "punctuation", "range": [[5, 14], [5, 15]] },
+    { "class": "name", "range": [[5, 15], [5, 17]] },
+    { "class": "punctuation", "range": [[5, 17], [5, 18]] },
+    { "class": "punctuation", "range": [[6, 0], [6, 1]] }
+  ],
+  "folding": [
+    { "startLine": 2, "endLine": 6 }
+  ],
+  "formatted": null
+}

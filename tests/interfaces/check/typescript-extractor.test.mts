@@ -9,7 +9,7 @@ import { caseTest } from '../../testcase.mts';
 const root = resolve(import.meta.dirname, '../../..');
 const fixture = resolve(root, 'tests/interfaces/check/fixtures/typescript-constructor.ts');
 const fixtureRoot = dirname(fixture);
-const extractor = resolve(root, 'packages/ts/testing/interfaces/typescript.mts');
+const extractor = resolve(root, 'legacy/packages/ts/testing/interfaces/typescript.mts');
 
 type SymbolEntry = { signature: string; exported: boolean };
 function isSymbolTable(value: unknown): value is Record<string, SymbolEntry> {

@@ -1,0 +1,3777 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-8",
+    "DBS-117",
+    "DBS-67",
+    "DBS-85",
+    "DBS-87",
+    "DBS-88",
+    "DBS-89",
+    "DBS-93",
+    "DBS-94",
+    "DBS-96",
+    "DIA-154",
+    "DIA-161",
+    "DSL-118",
+    "DSL-119",
+    "DSL-126",
+    "INT-38",
+    "INT-44",
+    "DIA-183",
+    "PRT-88"
+  ],
+  "fixture": "contracts/fixtures/audit_triggers/dbspec-set.json",
+  "cases": [
+    {
+      "id": "audit_history",
+      "requirements": [
+        "CFG-8",
+        "DBS-87",
+        "DBS-88",
+        "DBS-89",
+        "DBS-93",
+        "DBS-117",
+        "DSL-118",
+        "DSL-126",
+        "INT-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "no_source"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "bad_source",
+          "audit_source": {
+            "values": {
+              "reason": {
+                "text": "x"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "failing",
+          "audit_source": {
+            "fail": true
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Item",
+          "values": {
+            "title": {
+              "text": "outside"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "no_source",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "no_source",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "x"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bad_source",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "bad_source",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "x"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "failing",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "failing",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "db",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "reason": {
+              "text": "x"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "first"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "db",
+              "steps": [
+                {
+                  "op": "model.update",
+                  "connection": "db",
+                  "model": "Item",
+                  "key": {
+                    "seq": {
+                      "int": "-1"
+                    }
+                  },
+                  "set": {
+                    "title": {
+                      "text": "none"
+                    }
+                  }
+                }
+              ],
+              "audit": {
+                "actor": {
+                  "text": "nested"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "db",
+              "steps": [
+                {
+                  "op": "model.update",
+                  "connection": "db",
+                  "model": "Item",
+                  "key": {
+                    "seq": {
+                      "int": "1"
+                    }
+                  },
+                  "set": {
+                    "title": {
+                      "text": "second"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "create"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Item",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "title": {
+              "text": "third"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "assigned"
+                },
+                "audit_seq": {
+                  "int": "1"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "IR_INVALID"
+                },
+                "postgres": {
+                  "error": "IR_INVALID"
+                },
+                "sqlite": {
+                  "error": "IR_INVALID"
+                }
+              }
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.delete",
+              "connection": "db",
+              "model": "Item",
+              "where": {
+                "seq": {
+                  "int": "1"
+                }
+              }
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "db",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "rolled back"
+            }
+          },
+          "fail": true,
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO item (title, audit_seq) VALUES ('raw', 999)",
+          "reason": "a raw insert that names no audit record: the foreign key refuses a child without a parent",
+          "refused": true
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "Audit",
+          "where": {
+            "seq": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "default"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "default"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "default"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT `change`, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id",
+            "postgres": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id",
+            "sqlite": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_record_of_the_first_write",
+      "requirements": [
+        "DBS-87",
+        "DBS-88",
+        "DSL-119",
+        "INT-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "first"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "create"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.count",
+              "connection": "db",
+              "model": "Item",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "int": "1"
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "int": "1"
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "int": "1"
+                  }
+                }
+              }
+            },
+            {
+              "op": "model.update",
+              "connection": "db",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "nothing"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "transaction",
+              "connection": "db",
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "db",
+                  "model": "Item",
+                  "values": {
+                    "title": {
+                      "text": "undone"
+                    }
+                  }
+                }
+              ],
+              "fail": true,
+              "expect": {
+                "mysql": {
+                  "error": "CALLBACK"
+                },
+                "postgres": {
+                  "error": "CALLBACK"
+                },
+                "sqlite": {
+                  "error": "CALLBACK"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "kept"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "kept"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "create"
+                  }
+                ],
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT title FROM item WHERE title IN ('undone', 'kept') ORDER BY title",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_record_of_an_insert_whose_condition_fails",
+      "requirements": [
+        "DBS-87",
+        "PRT-88"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "refused"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "other"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "postgres": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "sqlite": {
+                  "error": "CONDITION_NOT_MET"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "refused"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "refused"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "other"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "postgres": {
+                  "error": "CONDITION_NOT_MET"
+                },
+                "sqlite": {
+                  "error": "CONDITION_NOT_MET"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "written"
+                }
+              },
+              "where": {
+                "title": {
+                  "text": "written"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT title FROM item ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "written"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_transaction_entry_points",
+      "requirements": [
+        "CFG-8",
+        "DBS-87",
+        "DBS-88",
+        "DBS-93",
+        "DSL-126",
+        "INT-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "handle",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "hook.install",
+          "connection": "handle",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": [
+                "all"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Item",
+              "values": {
+                "title": {
+                  "text": "first"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "transaction"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "handle",
+          "steps": [
+            {
+              "op": "model.update",
+              "connection": "handle",
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "second"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "handle"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "transaction",
+              "connection": "db",
+              "steps": [
+                {
+                  "op": "model.update",
+                  "connection": "db",
+                  "model": "Item",
+                  "key": {
+                    "seq": {
+                      "int": "-1"
+                    }
+                  },
+                  "set": {
+                    "title": {
+                      "text": "none"
+                    }
+                  }
+                }
+              ],
+              "audit": {
+                "actor": {
+                  "text": "nested"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT `change`, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id",
+            "postgres": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id",
+            "sqlite": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, actor FROM audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "transaction"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "handle"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "transaction"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "handle"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "transaction"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "handle"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_selected_columns",
+      "requirements": [
+        "DBS-85",
+        "DBS-88",
+        "DBS-93",
+        "DBS-94",
+        "DBS-96"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Card",
+              "values": {
+                "title": {
+                  "text": "first"
+                },
+                "secret": {
+                  "text": "s1"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Tag",
+              "values": {
+                "label": {
+                  "text": "x"
+                },
+                "color": {
+                  "text": "red"
+                }
+              }
+            },
+            {
+              "op": "model.update",
+              "connection": "db",
+              "model": "Card",
+              "key": {
+                "seq": {
+                  "int": "1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "second"
+                },
+                "secret": {
+                  "text": "s2"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "first"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.delete",
+              "connection": "db",
+              "model": "Card",
+              "where": {
+                "seq": {
+                  "int": "1"
+                }
+              }
+            },
+            {
+              "op": "model.update",
+              "connection": "db",
+              "model": "Tag",
+              "key": {
+                "id": {
+                  "int": "1"
+                }
+              },
+              "set": {
+                "color": {
+                  "text": "blue"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "second"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "card_history",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "seq",
+                "title",
+                "audit_seq",
+                "deleted_at"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "seq",
+                "title",
+                "audit_seq",
+                "deleted_at"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "seq",
+                "title",
+                "audit_seq",
+                "deleted_at"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT `change`, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id",
+            "postgres": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id",
+            "sqlite": "SELECT \"change\", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "second"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "tag_history",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "label",
+                "audit_seq"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "label",
+                "audit_seq"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "history_id",
+                "change",
+                "previous_audit_seq",
+                "label",
+                "audit_seq"
+              ],
+              "primary_key": [
+                "history_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT `change`, previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id",
+            "postgres": "SELECT \"change\", previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id",
+            "sqlite": "SELECT \"change\", previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "soft_delete_restore",
+      "requirements": [
+        "DBS-67",
+        "DBS-87",
+        "DBS-88",
+        "DBS-93",
+        "DBS-96",
+        "DBS-117",
+        "DIA-161",
+        "INT-38"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Membership",
+              "values": {
+                "team_id": {
+                  "int": "1"
+                },
+                "member_id": {
+                  "int": "2"
+                },
+                "note": {
+                  "text": "n1"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Label",
+              "values": {
+                "name": {
+                  "text": "red"
+                },
+                "color": {
+                  "text": "x"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "create"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.delete",
+              "connection": "db",
+              "model": "Membership",
+              "where": {
+                "seq": {
+                  "int": "1"
+                }
+              }
+            },
+            {
+              "op": "model.delete",
+              "connection": "db",
+              "model": "Label",
+              "where": {
+                "id": {
+                  "int": "1"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "delete"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "db",
+              "model": "Membership",
+              "values": {
+                "team_id": {
+                  "int": "1"
+                },
+                "member_id": {
+                  "int": "2"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "DUPLICATE_KEY"
+                },
+                "postgres": {
+                  "error": "DUPLICATE_KEY"
+                },
+                "sqlite": {
+                  "error": "DUPLICATE_KEY"
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "duplicate"
+            }
+          },
+          "fail": true,
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "name": {
+              "text": "red"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "model.restore",
+          "connection": "db",
+          "model": "Membership",
+          "values": {
+            "team_id": {
+              "int": "1"
+            },
+            "member_id": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.restore",
+              "connection": "db",
+              "model": "Membership",
+              "values": {
+                "team_id": {
+                  "int": "1"
+                },
+                "member_id": {
+                  "int": "2"
+                },
+                "note": {
+                  "text": "n2"
+                }
+              },
+              "columns": [
+                "seq",
+                "team_id",
+                "member_id",
+                "note",
+                "deleted_at"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "restore"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.actor FROM membership m JOIN audit a ON a.seq = m.audit_seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "model.restore",
+              "connection": "db",
+              "model": "Membership",
+              "values": {
+                "seq": {
+                  "int": "1"
+                },
+                "note": {
+                  "text": "n3"
+                }
+              },
+              "columns": [
+                "seq",
+                "team_id",
+                "member_id",
+                "note",
+                "deleted_at"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "n2"
+                      },
+                      {
+                        "null": "datetime"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "audit": {
+            "actor": {
+              "text": "again"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.actor FROM membership m JOIN audit a ON a.seq = m.audit_seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.restore",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "red"
+            },
+            "color": {
+              "text": "y"
+            }
+          },
+          "columns": [
+            "id",
+            "name",
+            "color",
+            "deleted_at"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "red"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "red"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "red"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.restore",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "blue"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "NO_ROWS"
+            },
+            "postgres": {
+              "error": "NO_ROWS"
+            },
+            "sqlite": {
+              "error": "NO_ROWS"
+            }
+          }
+        },
+        {
+          "op": "model.restore",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "color": {
+              "text": "x"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          }
+        },
+        {
+          "op": "model.restore",
+          "connection": "db",
+          "model": "Label",
+          "values": {},
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT `change`, (SELECT p.actor FROM audit p WHERE p.seq = previous_audit_seq), seq, team_id, member_id, (SELECT a.actor FROM audit a WHERE a.seq = audit_seq), CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id",
+            "postgres": "SELECT \"change\", (SELECT p.actor FROM audit p WHERE p.seq = previous_audit_seq), seq, team_id, member_id, (SELECT a.actor FROM audit a WHERE a.seq = audit_seq), CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id",
+            "sqlite": "SELECT \"change\", (SELECT p.actor FROM audit p WHERE p.seq = previous_audit_seq), seq, team_id, member_id, (SELECT a.actor FROM audit a WHERE a.seq = audit_seq), CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "text"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "restore"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "text"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "restore"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "insert"
+                  },
+                  {
+                    "null": "text"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "create"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "text": "deleted"
+                  }
+                ],
+                [
+                  {
+                    "text": "update"
+                  },
+                  {
+                    "text": "delete"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "restore"
+                  },
+                  {
+                    "text": "live"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM audit WHERE actor = 'duplicate'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "soft_delete_statements",
+      "requirements": [
+        "DBS-67"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "keep"
+            },
+            "color": {
+              "text": "x"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "gone"
+            },
+            "color": {
+              "text": "x"
+            }
+          }
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "id": {
+              "int": "2"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "name": {
+              "text": "keep"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "name": "keep"
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "name": "keep"
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "name": "keep"
+                }
+              ]
+            }
+          },
+          "pick": [
+            "name"
+          ]
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "name": {
+              "text": "gone"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "json": []
+            },
+            "postgres": {
+              "json": []
+            },
+            "sqlite": {
+              "json": []
+            }
+          },
+          "pick": [
+            "name"
+          ]
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "compare": "statements",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`id` = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE `label` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE `label`.`id` = ? AND `label`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ? ORDER BY `a`.`id` ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ? ORDER BY `a`.`id` ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"id\" = $1"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE \"label\" SET \"deleted_at\" = $1 WHERE \"label\".\"id\" = $2 AND \"label\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1 ORDER BY \"a\".\"id\" ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1 ORDER BY \"a\".\"id\" ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"id\" = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE \"label\" SET \"deleted_at\" = ? WHERE \"label\".\"id\" = ? AND \"label\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ? ORDER BY \"a\".\"id\" ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ? ORDER BY \"a\".\"id\" ASC"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit_values_need_an_audit_source",
+      "requirements": [
+        "CFG-8",
+        "INT-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "audit": {
+            "actor": {
+              "text": "job"
+            }
+          },
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

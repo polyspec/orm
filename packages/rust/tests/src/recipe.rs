@@ -1657,7 +1657,7 @@ fn positions_json(positions: &[Position]) -> Vec<Value> {
 
 /// One dbspec op of a recipe step, through the public dbspec calls of polyspec_orm, checked against the expect of `database`.
 /// The ops and their expects are those of docs/spec/feature-coverage.md FCV-4, and each one mirrors the reference
-/// implementation (packages/go/internal/recipe/dbspec.go).
+/// implementation (legacy/packages/go/internal/recipe/dbspec.go).
 fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
     let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
     let Some(want) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else { return Err(format!("{op} has no expect for {database}")) };
@@ -1927,7 +1927,7 @@ fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), St
     Ok(())
 }
 
-/// The dbspec.set op (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+/// The dbspec.set op (the port of checkSet of legacy/packages/go/internal/recipe/dbspec.go). The owned texts, then the external
 /// texts, are parsed each against the other texts and the parsing texts, and dbspec::manifest builds the set's manifest.
 /// A refused set (expect diagnostics not empty) expects those diagnostics from the manifest and from each dialect of render,
 /// and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its

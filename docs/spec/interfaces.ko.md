@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 5791deb9ae45977b48d6baf97a94318d6d9726e5eab326dbaa1a4291b080eb79 -->
+<!-- source-sha256: 1d593269d614c9ef0401682419e4983c48599434005edcb01490714065c4266f -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -262,8 +262,8 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-92** pool이 idle로 들고 있는 connection을 server가 끝내면, pool은 그 connection을 버리고 process는 계속 실행된다: 그 connection의 error는 pool이 처리하며, 다음 statement는 새 connection에서 실행된다.
 - **INT-93** `@polyspec/orm` package의 공개 TypeScript 선언은 driver 타입(`pg`, `@types/pg`, `mysql2`)이 설치되지 않은 project에서 type-check된다. 선언은 driver module을 import하지 않으므로, 애플리케이션은 쓰는 driver의 타입만 필요하다.
 - **INT-94** `polyspec/orm-php-ext` package의 PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
-- **INT-95** `polyspec/orm-php-ext` package의 `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
-- **INT-156** `packages/php/composer.json`은 `packages/php/src`가 그 class나 function을 부르는 모든 PHP extension을 선언한다. 모든 PHP build에 있는 extension(Core, standard, date, pcre, Reflection, SPL, random, hash)은 빼고, client가 그것 없이 돌 수 없으면 `require`에, 한 database나 기능만 쓰면 그 기능과 함께 `suggest`에 둔다.
+- **INT-95** `polyspec/orm-php-ext` package의 `legacy/packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
+- **INT-156** `legacy/packages/php/composer.json`은 `legacy/packages/php/src`가 그 class나 function을 부르는 모든 PHP extension을 선언한다. 모든 PHP build에 있는 extension(Core, standard, date, pcre, Reflection, SPL, random, hash)은 빼고, client가 그것 없이 돌 수 없으면 `require`에, 한 database나 기능만 쓰면 그 기능과 함께 `suggest`에 둔다.
 - **INT-156a** `polyspec/orm-php-ext` 패키지의 PHP 확장은 `SchemaUtils`를 native로 구현한다. 이 class와 `register`, `install`, `addTablesAndColumns`, `exists`, `installed`, `empty` method는 internal이고, subscriber 실패는 설치를 `SUBSCRIBER`로 멈추고 table을 남기지 않으며, `Schema`가 아닌 object와 잘못된 식별자는 statement를 보내기 전에 거부한다.
 - **INT-156b** `polyspec/orm-php-ext` package의 PHP extension은 `AesUtils`를 native로 구현한다. 이 class는 internal이고, `status`와 `rotate`는 model의 metadata보다 keyring을 먼저 확인하므로, `AesKeyring`이 아닌 object는 method 이름을 담은 `TypeError`이며 어떤 문도 보내지 않는다.
 - **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.

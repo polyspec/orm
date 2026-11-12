@@ -1,0 +1,829 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-45",
+    "PLN-46",
+    "PLN-47",
+    "PLN-48",
+    "PLN-49",
+    "PLN-50",
+    "PLN-51",
+    "PLN-52",
+    "PLN-53",
+    "PLN-54",
+    "PLN-55",
+    "PLN-56",
+    "PLN-57",
+    "PLN-58",
+    "PLN-59",
+    "PLN-60",
+    "PLN-61",
+    "PLN-62",
+    "PLN-63",
+    "PLN-64",
+    "PLN-65",
+    "PLN-66",
+    "PLN-67",
+    "PLN-68",
+    "PLN-69",
+    "PLN-70",
+    "PLN-71",
+    "PLN-72",
+    "PLN-84",
+    "PLN-85",
+    "PLN-86",
+    "PLN-87",
+    "PLN-88"
+  ],
+  "cases": [
+    {
+      "id": "drop-without-permission",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table legacy {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 drop_without_permission",
+            "from sha256:5ba4270f8fecf6299289d34063a7f21fafa02f9fb1997e2e9d93d4d2de551697",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "table legacy is dropped without allow drop table legacy"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "permission-drops-nothing",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 permission_drops_nothing",
+            "from sha256:756be81b79b2333ade022c5712b6f21ac3d43e49069d3fb8bb3a6e06f4071611",
+            "allow drop table ghost",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  nick varchar(32) null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "allow drop table ghost drops nothing"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add-non-null-without-default",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 add_non_null_without_default",
+            "from sha256:756be81b79b2333ade022c5712b6f21ac3d43e49069d3fb8bb3a6e06f4071611",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  nick varchar(32)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "column users.nick is added non-null without a default; add it null, fill it, and make it non-null in a later plan"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "narrowing-type",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  v i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 narrowing_type",
+            "from sha256:98a7912acb2b1f6e287fda342e92ed97587ed3c360ec612b34d753c8db6d9490",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  v i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "column t.v changes type from i64 to i32, which does not keep every value; it needs a new column"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reorder-columns",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  a i32",
+            "  b i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 reorder_columns",
+            "from sha256:9567ed35f5d2f2ebcf3a175401ce7da3d59ca0bf8ef488e8c2da78417607b55d",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  b i32",
+            "  a i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "table t reorders its columns; columns keep their order"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add-before-kept",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  a i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 add_before_kept",
+            "from sha256:e429bc9b12c739350a1f8837b1fddb83a483288957f0fa5fbd001f50f06c3d26",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  n i32 null",
+            "  a i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "column t.n is added before a kept column; added columns come last"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rename-missing-table",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 rename_missing_table",
+            "from sha256:756be81b79b2333ade022c5712b6f21ac3d43e49069d3fb8bb3a6e06f4071611",
+            "rename table ghost users2",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  nick varchar(32) null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "rename table ghost: the source has no table ghost"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "primary-key-change",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64",
+            "  k i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 primary_key_change",
+            "from sha256:1507c51daf83e2aafb2df086fdf105690dc8f3b8344e4079a5dc4777563a0e16",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64",
+            "  k i64",
+            "  primary key (k)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.diff",
+          "source": {
+            "ref": "source"
+          },
+          "plan": {
+            "ref": "plan"
+          },
+          "expect": {
+            "none": {
+              "messages": [
+                "table t changes its primary key; it needs a new table"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

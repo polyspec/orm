@@ -34,14 +34,14 @@ const DATABASES = ['mysql', 'postgres', 'sqlite'] as const;
 export const OWNED_ELSEWHERE: Record<string, string> = {
   ...Object.fromEntries((['php', 'typescript', 'python'] as const).flatMap(runtime =>
     DATABASES.map(database => [performanceTest(runtime, database).test, 'scripts/features/performance-reference.mts']))),
-  'packages/php/tests/DecimalModelDbTest.php': 'scripts/decimal-physical-check.mts',
-  'packages/ts/tests/decimal_model_db.mjs': 'scripts/decimal-physical-check.mts',
-  'packages/python/tests/decimal_model_db.py': 'scripts/decimal-physical-check.mts',
-  'packages/php/tests/MarkdownConformanceTest.php': 'Makefile',
-  'packages/ts/tests/markdown_conformance.mjs': 'Makefile',
-  'packages/python/tests/markdown_conformance.py': 'Makefile',
-  'packages/php/tests/QueryCancellationTest.php': 'Makefile',
-  'packages/ts/tests/public_interface-none.test.mjs': 'Makefile',
+  'legacy/packages/php/tests/DecimalModelDbTest.php': 'scripts/decimal-physical-check.mts',
+  'legacy/packages/ts/tests/decimal_model_db.mjs': 'scripts/decimal-physical-check.mts',
+  'legacy/packages/python/tests/decimal_model_db.py': 'scripts/decimal-physical-check.mts',
+  'legacy/packages/php/tests/MarkdownConformanceTest.php': 'Makefile',
+  'legacy/packages/ts/tests/markdown_conformance.mjs': 'Makefile',
+  'legacy/packages/python/tests/markdown_conformance.py': 'Makefile',
+  'legacy/packages/php/tests/QueryCancellationTest.php': 'Makefile',
+  'legacy/packages/ts/tests/public_interface-none.test.mjs': 'Makefile',
 };
 
 /**
@@ -79,7 +79,7 @@ export function suiteBatches(files: readonly string[], entries: ReadonlySet<stri
 export function suiteCommand(lane: SuiteLane, test: string): Command {
   switch (lane) {
     case 'php':
-      return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
+      return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
     case 'typescript':
       return { program: 'node', args: ['--conditions=orm-test', '--test', test], cwd: root };
     case 'python':

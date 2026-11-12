@@ -1,0 +1,2732 @@
+{
+ "$schema": "../../../scripts/features/schema/recipe.schema.json",
+ "requirements": [
+  "CPX-1",
+  "CPX-2",
+  "CPX-5",
+  "DIA-154",
+  "DSL-128",
+  "FCV-2",
+  "FCV-3",
+  "FCV-4"
+ ],
+ "fixture": "contracts/fixtures/complex_query/dbspec-set.json",
+ "seed": {
+  "rows": {
+   "user": [
+    {
+     "seq": {
+      "int": "41"
+     },
+     "name": {
+      "text": "user-41"
+     },
+     "profile_url": {
+      "text": "/users/41"
+     }
+    },
+    {
+     "seq": {
+      "int": "42"
+     },
+     "name": {
+      "text": "user-42"
+     },
+     "profile_url": {
+      "text": "/users/42"
+     }
+    },
+    {
+     "seq": {
+      "int": "43"
+     },
+     "name": {
+      "text": "user-43"
+     },
+     "profile_url": {
+      "text": "/users/43"
+     }
+    },
+    {
+     "seq": {
+      "int": "44"
+     },
+     "name": {
+      "text": "user-44"
+     },
+     "profile_url": {
+      "text": "/users/44"
+     }
+    }
+   ],
+   "product_brand": [
+    {
+     "seq": {
+      "int": "501"
+     },
+     "name": {
+      "text": "brand-501"
+     }
+    },
+    {
+     "seq": {
+      "int": "502"
+     },
+     "name": {
+      "text": "brand-502"
+     }
+    }
+   ],
+   "product_brand_lang": [
+    {
+     "seq": {
+      "int": "601"
+     },
+     "product_brand_seq": {
+      "int": "501"
+     },
+     "lang_id": {
+      "int": "1"
+     },
+     "name": {
+      "text": "brand-501-en"
+     },
+     "description": {
+      "text": "ordinary maker"
+     }
+    },
+    {
+     "seq": {
+      "int": "602"
+     },
+     "product_brand_seq": {
+      "int": "502"
+     },
+     "lang_id": {
+      "int": "1"
+     },
+     "name": {
+      "text": "brand-502-en"
+     },
+     "description": {
+      "text": "alpha beta maker"
+     }
+    },
+    {
+     "seq": {
+      "int": "603"
+     },
+     "product_brand_seq": {
+      "int": "501"
+     },
+     "lang_id": {
+      "int": "2"
+     },
+     "name": {
+      "text": "brand-501-ko"
+     },
+     "description": {
+      "text": "alpha beta maker translated"
+     }
+    }
+   ],
+   "product": [
+    {
+     "seq": {
+      "int": "1001"
+     },
+     "name": {
+      "text": "alpha beta widget"
+     },
+     "short_description": {
+      "text": "direct match"
+     },
+     "content": {
+      "text": "root text"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": true
+     },
+     "is_allday": {
+      "bool": true
+     },
+     "display_start_dt": {
+      "null": "datetime"
+     },
+     "display_end_dt": {
+      "null": "datetime"
+     },
+     "product_brand_seq": {
+      "int": "501"
+     },
+     "like_count": {
+      "int": "90"
+     }
+    },
+    {
+     "seq": {
+      "int": "1002"
+     },
+     "name": {
+      "text": "vendor widget"
+     },
+     "short_description": {
+      "text": "ordinary"
+     },
+     "content": {
+      "text": "root text"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": true
+     },
+     "is_allday": {
+      "bool": false
+     },
+     "display_start_dt": {
+      "datetime": "2000-01-01 00:00:00.000000"
+     },
+     "display_end_dt": {
+      "datetime": "2100-01-01 00:00:00.000000"
+     },
+     "product_brand_seq": {
+      "int": "502"
+     },
+     "like_count": {
+      "int": "80"
+     }
+    },
+    {
+     "seq": {
+      "int": "1003"
+     },
+     "name": {
+      "text": "translated widget"
+     },
+     "short_description": {
+      "text": "ordinary"
+     },
+     "content": {
+      "text": "root text"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": true
+     },
+     "is_allday": {
+      "bool": false
+     },
+     "display_start_dt": {
+      "datetime": "2000-01-01 00:00:00.000000"
+     },
+     "display_end_dt": {
+      "datetime": "2100-01-01 00:00:00.000000"
+     },
+     "product_brand_seq": {
+      "null": "int"
+     },
+     "like_count": {
+      "int": "70"
+     }
+    },
+    {
+     "seq": {
+      "int": "1004"
+     },
+     "name": {
+      "text": "other widget"
+     },
+     "short_description": {
+      "text": "ordinary"
+     },
+     "content": {
+      "text": "root text"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": true
+     },
+     "is_allday": {
+      "bool": true
+     },
+     "display_start_dt": {
+      "null": "datetime"
+     },
+     "display_end_dt": {
+      "null": "datetime"
+     },
+     "product_brand_seq": {
+      "null": "int"
+     },
+     "like_count": {
+      "int": "60"
+     }
+    }
+   ],
+   "product_match_category": [
+    {
+     "product_seq": {
+      "int": "1001"
+     },
+     "service_region_category_item_seq": {
+      "int": "11"
+     }
+    },
+    {
+     "product_seq": {
+      "int": "1001"
+     },
+     "service_region_category_item_seq": {
+      "int": "12"
+     }
+    },
+    {
+     "product_seq": {
+      "int": "1002"
+     },
+     "service_region_category_item_seq": {
+      "int": "11"
+     }
+    },
+    {
+     "product_seq": {
+      "int": "1003"
+     },
+     "service_region_category_item_seq": {
+      "int": "12"
+     }
+    },
+    {
+     "product_seq": {
+      "int": "1004"
+     },
+     "service_region_category_item_seq": {
+      "int": "14"
+     }
+    }
+   ],
+   "product_lang": [
+    {
+     "seq": {
+      "int": "2001"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "lang_id": {
+      "int": "1"
+     },
+     "name": {
+      "text": "widget-1001-en"
+     },
+     "short_description": {
+      "text": "localized ordinary"
+     },
+     "content": {
+      "text": "localized text"
+     }
+    },
+    {
+     "seq": {
+      "int": "2002"
+     },
+     "product_seq": {
+      "int": "1002"
+     },
+     "lang_id": {
+      "int": "1"
+     },
+     "name": {
+      "text": "widget-1002-en"
+     },
+     "short_description": {
+      "text": "localized ordinary"
+     },
+     "content": {
+      "text": "localized text"
+     }
+    },
+    {
+     "seq": {
+      "int": "2003"
+     },
+     "product_seq": {
+      "int": "1003"
+     },
+     "lang_id": {
+      "int": "1"
+     },
+     "name": {
+      "text": "widget-1003-en"
+     },
+     "short_description": {
+      "text": "localized ordinary"
+     },
+     "content": {
+      "text": "alpha beta localized content"
+     }
+    },
+    {
+     "seq": {
+      "int": "2004"
+     },
+     "product_seq": {
+      "int": "1002"
+     },
+     "lang_id": {
+      "int": "2"
+     },
+     "name": {
+      "text": "widget-1002-ko"
+     },
+     "short_description": {
+      "text": "alpha beta translated"
+     },
+     "content": {
+      "text": "translated content"
+     }
+    }
+   ],
+   "product_review": [
+    {
+     "seq": {
+      "int": "3001"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "user_seq": {
+      "int": "41"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "content": {
+      "text": "oldest"
+     }
+    },
+    {
+     "seq": {
+      "int": "3002"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "user_seq": {
+      "int": "42"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "content": {
+      "text": "review-3002"
+     }
+    },
+    {
+     "seq": {
+      "int": "3003"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "user_seq": {
+      "int": "43"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "content": {
+      "text": "review-3003"
+     }
+    },
+    {
+     "seq": {
+      "int": "3004"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "user_seq": {
+      "int": "44"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "content": {
+      "text": "review-3004"
+     }
+    },
+    {
+     "seq": {
+      "int": "3005"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "user_seq": {
+      "int": "41"
+     },
+     "is_close": {
+      "bool": true
+     },
+     "content": {
+      "text": "closed"
+     }
+    },
+    {
+     "seq": {
+      "int": "3101"
+     },
+     "product_seq": {
+      "int": "1002"
+     },
+     "user_seq": {
+      "int": "42"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "content": {
+      "text": "review-3101"
+     }
+    }
+   ],
+   "order_product_item": [
+    {
+     "seq": {
+      "int": "5001"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "service_member_seq": {
+      "int": "77"
+     },
+     "is_close": {
+      "bool": false
+     }
+    },
+    {
+     "seq": {
+      "int": "5002"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "service_member_seq": {
+      "int": "77"
+     },
+     "is_close": {
+      "bool": false
+     }
+    },
+    {
+     "seq": {
+      "int": "5003"
+     },
+     "product_seq": {
+      "int": "1001"
+     },
+     "service_member_seq": {
+      "int": "77"
+     },
+     "is_close": {
+      "bool": true
+     }
+    },
+    {
+     "seq": {
+      "int": "5010"
+     },
+     "product_seq": {
+      "int": "1003"
+     },
+     "service_member_seq": {
+      "int": "77"
+     },
+     "is_close": {
+      "bool": false
+     }
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "id": "product_search_page",
+   "requirements": [
+    "CPX-1",
+    "CPX-2",
+    "DSL-159"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 4,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "sql": "CREATE FULLTEXT INDEX ft_product_search ON product (name, short_description, content)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
+    },
+    {
+     "op": "sql.exec",
+     "sql": "CREATE FULLTEXT INDEX ft_product_lang_search ON product_lang (name, short_description, content)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
+    },
+    {
+     "op": "sql.exec",
+     "sql": "CREATE FULLTEXT INDEX ft_product_brand_lang_search ON product_brand_lang (name, description)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "relations": [
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "where": {
+        "lang_id": {
+         "int": "1"
+        }
+       },
+       "parent_node": true
+      },
+      {
+       "model": "ProductBrand",
+       "match": [
+        [
+         "product_brand_seq",
+         "seq"
+        ]
+       ],
+       "alias": "Brand",
+       "relations": [
+        {
+         "model": "ProductBrandLang",
+         "match": [
+          [
+           "seq",
+           "product_brand_seq"
+          ]
+         ],
+         "where": {
+          "lang_id": {
+           "int": "1"
+          }
+         },
+         "parent_node": true
+        }
+       ]
+      },
+      {
+       "model": "ProductReview",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "Reviews",
+       "where": {
+        "is_close": {
+         "bool": false
+        }
+       },
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "group_limit": 3,
+       "key_by": "seq",
+       "relations": [
+        {
+         "model": "User",
+         "match": [
+          [
+           "user_seq",
+           "seq"
+          ]
+         ],
+         "alias": "User",
+         "columns": [
+          "name",
+          "profile_url"
+         ]
+        }
+       ]
+      },
+      {
+       "model": "OrderProductItem",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "MyOrderItem",
+       "where": {
+        "chain": [
+         [
+          "",
+          {
+           "service_member_seq": {
+            "int": "77"
+           }
+          }
+         ],
+         [
+          "and",
+          {
+           "is_close": {
+            "bool": false
+           }
+          }
+         ]
+        ]
+       },
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "group_limit": 1
+      }
+     ],
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "sub": {
+            "model": "ProductMatchCategory",
+            "columns": [
+             "product_seq"
+            ],
+            "where": {
+             "service_region_category_item_seq": {
+              "array": [
+               {
+                "int": "11"
+               },
+               {
+                "int": "12"
+               },
+               {
+                "int": "13"
+               }
+              ]
+             }
+            }
+           }
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_close": {
+          "bool": false
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_display": {
+          "bool": true
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "or": [
+          {
+           "is_allday": {
+            "bool": true
+           }
+          },
+          {
+           "and": [
+            {
+             "is_allday": {
+              "bool": false
+             }
+            },
+            {
+             "display_start_dt": {
+              "le": {
+               "fn": "now",
+              "args": []
+              }
+             }
+            },
+            {
+             "display_end_dt": {
+              "ge": {
+               "fn": "now",
+              "args": []
+              }
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       [
+        "and",
+        {
+         "or": [
+          {
+           "fulltext_boolean": {
+            "columns": [
+             "name",
+             "short_description",
+             "content"
+            ],
+            "text": "alpha beta"
+           }
+          },
+          {
+           "product_brand_seq": {
+            "in": {
+             "sub": {
+              "model": "ProductBrandLang",
+              "columns": [
+               "product_brand_seq"
+              ],
+              "where": {
+               "fulltext_boolean": {
+                "columns": [
+                 "name",
+                 "description"
+                ],
+                "text": "alpha beta"
+               }
+              }
+             }
+            }
+           }
+          },
+          {
+           "seq": {
+            "in": {
+             "sub": {
+              "model": "ProductLang",
+              "columns": [
+               "product_seq"
+              ],
+              "where": {
+               "fulltext_boolean": {
+                "columns": [
+                 "name",
+                 "short_description",
+                 "content"
+                ],
+                "text": "alpha beta"
+               }
+              }
+             }
+            }
+           }
+          }
+         ]
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "column": "like_count",
+       "dir": "desc"
+      },
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 0,
+      "count": 20
+     },
+     "plan": true,
+     "plan_count": [
+      " IN (SELECT ",
+      " JOIN ",
+      "GROUP BY",
+      "MATCH (",
+      "TO_TSVECTOR("
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "role": "main",
+         "tables": [
+          "product",
+          "product_brand_lang",
+          "product_lang",
+          "product_match_category"
+         ],
+         "count": {
+          " IN (SELECT ": 3,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 3,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "count",
+         "tables": [
+          "product",
+          "product_brand_lang",
+          "product_lang",
+          "product_match_category"
+         ],
+         "count": {
+          " IN (SELECT ": 3,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 3,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_lang"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_brand"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_brand_lang"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_review"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "user"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "order_product_item"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "role": "main",
+         "tables": [
+          "product",
+          "product_brand_lang",
+          "product_lang",
+          "product_match_category"
+         ],
+         "count": {
+          " IN (SELECT ": 3,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 3
+         }
+        },
+        {
+         "role": "count",
+         "tables": [
+          "product",
+          "product_brand_lang",
+          "product_lang",
+          "product_match_category"
+         ],
+         "count": {
+          " IN (SELECT ": 3,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 3
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_lang"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_brand"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_brand_lang"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "product_review"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "user"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        },
+        {
+         "role": "relation",
+         "tables": [
+          "order_product_item"
+         ],
+         "count": {
+          " IN (SELECT ": 0,
+          " JOIN ": 0,
+          "GROUP BY": 0,
+          "MATCH (": 0,
+          "TO_TSVECTOR(": 0
+         }
+        }
+       ]
+      },
+      "sqlite": {
+       "error": "OPERATOR_NOT_ALLOWED"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "relations": [
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "where": {
+        "lang_id": {
+         "int": "1"
+        }
+       },
+       "parent_node": true
+      },
+      {
+       "model": "ProductBrand",
+       "match": [
+        [
+         "product_brand_seq",
+         "seq"
+        ]
+       ],
+       "alias": "Brand",
+       "relations": [
+        {
+         "model": "ProductBrandLang",
+         "match": [
+          [
+           "seq",
+           "product_brand_seq"
+          ]
+         ],
+         "where": {
+          "lang_id": {
+           "int": "1"
+          }
+         },
+         "parent_node": true
+        }
+       ]
+      },
+      {
+       "model": "ProductReview",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "Reviews",
+       "where": {
+        "is_close": {
+         "bool": false
+        }
+       },
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "group_limit": 3,
+       "key_by": "seq",
+       "relations": [
+        {
+         "model": "User",
+         "match": [
+          [
+           "user_seq",
+           "seq"
+          ]
+         ],
+         "alias": "User",
+         "columns": [
+          "name",
+          "profile_url"
+         ]
+        }
+       ]
+      },
+      {
+       "model": "OrderProductItem",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "MyOrderItem",
+       "where": {
+        "chain": [
+         [
+          "",
+          {
+           "service_member_seq": {
+            "int": "77"
+           }
+          }
+         ],
+         [
+          "and",
+          {
+           "is_close": {
+            "bool": false
+           }
+          }
+         ]
+        ]
+       },
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "group_limit": 1
+      }
+     ],
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "sub": {
+            "model": "ProductMatchCategory",
+            "columns": [
+             "product_seq"
+            ],
+            "where": {
+             "service_region_category_item_seq": {
+              "array": [
+               {
+                "int": "11"
+               },
+               {
+                "int": "12"
+               },
+               {
+                "int": "13"
+               }
+              ]
+             }
+            }
+           }
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_close": {
+          "bool": false
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_display": {
+          "bool": true
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "or": [
+          {
+           "is_allday": {
+            "bool": true
+           }
+          },
+          {
+           "and": [
+            {
+             "is_allday": {
+              "bool": false
+             }
+            },
+            {
+             "display_start_dt": {
+              "le": {
+               "fn": "now",
+              "args": []
+              }
+             }
+            },
+            {
+             "display_end_dt": {
+              "ge": {
+               "fn": "now",
+              "args": []
+              }
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       [
+        "and",
+        {
+         "or": [
+          {
+           "fulltext_boolean": {
+            "columns": [
+             "name",
+             "short_description",
+             "content"
+            ],
+            "text": "alpha beta"
+           }
+          },
+          {
+           "product_brand_seq": {
+            "in": {
+             "sub": {
+              "model": "ProductBrandLang",
+              "columns": [
+               "product_brand_seq"
+              ],
+              "where": {
+               "fulltext_boolean": {
+                "columns": [
+                 "name",
+                 "description"
+                ],
+                "text": "alpha beta"
+               }
+              }
+             }
+            }
+           }
+          },
+          {
+           "seq": {
+            "in": {
+             "sub": {
+              "model": "ProductLang",
+              "columns": [
+               "product_seq"
+              ],
+              "where": {
+               "fulltext_boolean": {
+                "columns": [
+                 "name",
+                 "short_description",
+                 "content"
+                ],
+                "text": "alpha beta"
+               }
+              }
+             }
+            }
+           }
+          }
+         ]
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "column": "like_count",
+       "dir": "desc"
+      },
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 0,
+      "count": 20
+     },
+     "items": true,
+     "pick": [
+      "seq",
+      "product_lang_model",
+      "brand",
+      "reviews",
+      "my_order_item"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "page": 1,
+        "per_page": 20,
+        "total": 3,
+        "pages": 1,
+        "keys": [
+         1001,
+         1002,
+         1003
+        ],
+        "items": [
+         {
+          "seq": 1001,
+          "product_lang_model": {
+           "seq": 2001,
+           "product_seq": 1001,
+           "lang_id": 1,
+           "name": "widget-1001-en",
+           "short_description": "localized ordinary",
+           "content": "localized text"
+          },
+          "brand": {
+           "seq": 501,
+           "name": "brand-501",
+           "product_brand_seq": 501,
+           "lang_id": 1,
+           "description": "ordinary maker",
+           "product_brand_lang_model": {
+            "seq": 601,
+            "product_brand_seq": 501,
+            "lang_id": 1,
+            "name": "brand-501-en",
+            "description": "ordinary maker"
+           }
+          },
+          "reviews": [
+           {
+            "seq": 3004,
+            "product_seq": 1001,
+            "user_seq": 44,
+            "is_close": false,
+            "content": "review-3004",
+            "user": {
+             "seq": 44,
+             "name": "user-44",
+             "profile_url": "/users/44"
+            }
+           },
+           {
+            "seq": 3003,
+            "product_seq": 1001,
+            "user_seq": 43,
+            "is_close": false,
+            "content": "review-3003",
+            "user": {
+             "seq": 43,
+             "name": "user-43",
+             "profile_url": "/users/43"
+            }
+           },
+           {
+            "seq": 3002,
+            "product_seq": 1001,
+            "user_seq": 42,
+            "is_close": false,
+            "content": "review-3002",
+            "user": {
+             "seq": 42,
+             "name": "user-42",
+             "profile_url": "/users/42"
+            }
+           }
+          ],
+          "my_order_item": {
+           "seq": 5002,
+           "product_seq": 1001,
+           "service_member_seq": 77,
+           "is_close": false
+          }
+         },
+         {
+          "seq": 1002,
+          "product_lang_model": {
+           "seq": 2002,
+           "product_seq": 1002,
+           "lang_id": 1,
+           "name": "widget-1002-en",
+           "short_description": "localized ordinary",
+           "content": "localized text"
+          },
+          "brand": {
+           "seq": 502,
+           "name": "brand-502",
+           "product_brand_seq": 502,
+           "lang_id": 1,
+           "description": "alpha beta maker",
+           "product_brand_lang_model": {
+            "seq": 602,
+            "product_brand_seq": 502,
+            "lang_id": 1,
+            "name": "brand-502-en",
+            "description": "alpha beta maker"
+           }
+          },
+          "reviews": [
+           {
+            "seq": 3101,
+            "product_seq": 1002,
+            "user_seq": 42,
+            "is_close": false,
+            "content": "review-3101",
+            "user": {
+             "seq": 42,
+             "name": "user-42",
+             "profile_url": "/users/42"
+            }
+           }
+          ],
+          "my_order_item": null
+         },
+         {
+          "seq": 1003,
+          "product_lang_model": {
+           "seq": 2003,
+           "product_seq": 1003,
+           "lang_id": 1,
+           "name": "widget-1003-en",
+           "short_description": "localized ordinary",
+           "content": "alpha beta localized content"
+          },
+          "brand": null,
+          "reviews": [],
+          "my_order_item": {
+           "seq": 5010,
+           "product_seq": 1003,
+           "service_member_seq": 77,
+           "is_close": false
+          }
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "json": {
+        "page": 1,
+        "per_page": 20,
+        "total": 3,
+        "pages": 1,
+        "keys": [
+         1001,
+         1002,
+         1003
+        ],
+        "items": [
+         {
+          "seq": 1001,
+          "product_lang_model": {
+           "seq": 2001,
+           "product_seq": 1001,
+           "lang_id": 1,
+           "name": "widget-1001-en",
+           "short_description": "localized ordinary",
+           "content": "localized text"
+          },
+          "brand": {
+           "seq": 501,
+           "name": "brand-501",
+           "product_brand_seq": 501,
+           "lang_id": 1,
+           "description": "ordinary maker",
+           "product_brand_lang_model": {
+            "seq": 601,
+            "product_brand_seq": 501,
+            "lang_id": 1,
+            "name": "brand-501-en",
+            "description": "ordinary maker"
+           }
+          },
+          "reviews": [
+           {
+            "seq": 3004,
+            "product_seq": 1001,
+            "user_seq": 44,
+            "is_close": false,
+            "content": "review-3004",
+            "user": {
+             "seq": 44,
+             "name": "user-44",
+             "profile_url": "/users/44"
+            }
+           },
+           {
+            "seq": 3003,
+            "product_seq": 1001,
+            "user_seq": 43,
+            "is_close": false,
+            "content": "review-3003",
+            "user": {
+             "seq": 43,
+             "name": "user-43",
+             "profile_url": "/users/43"
+            }
+           },
+           {
+            "seq": 3002,
+            "product_seq": 1001,
+            "user_seq": 42,
+            "is_close": false,
+            "content": "review-3002",
+            "user": {
+             "seq": 42,
+             "name": "user-42",
+             "profile_url": "/users/42"
+            }
+           }
+          ],
+          "my_order_item": {
+           "seq": 5002,
+           "product_seq": 1001,
+           "service_member_seq": 77,
+           "is_close": false
+          }
+         },
+         {
+          "seq": 1002,
+          "product_lang_model": {
+           "seq": 2002,
+           "product_seq": 1002,
+           "lang_id": 1,
+           "name": "widget-1002-en",
+           "short_description": "localized ordinary",
+           "content": "localized text"
+          },
+          "brand": {
+           "seq": 502,
+           "name": "brand-502",
+           "product_brand_seq": 502,
+           "lang_id": 1,
+           "description": "alpha beta maker",
+           "product_brand_lang_model": {
+            "seq": 602,
+            "product_brand_seq": 502,
+            "lang_id": 1,
+            "name": "brand-502-en",
+            "description": "alpha beta maker"
+           }
+          },
+          "reviews": [
+           {
+            "seq": 3101,
+            "product_seq": 1002,
+            "user_seq": 42,
+            "is_close": false,
+            "content": "review-3101",
+            "user": {
+             "seq": 42,
+             "name": "user-42",
+             "profile_url": "/users/42"
+            }
+           }
+          ],
+          "my_order_item": null
+         },
+         {
+          "seq": 1003,
+          "product_lang_model": {
+           "seq": 2003,
+           "product_seq": 1003,
+           "lang_id": 1,
+           "name": "widget-1003-en",
+           "short_description": "localized ordinary",
+           "content": "alpha beta localized content"
+          },
+          "brand": null,
+          "reviews": [],
+          "my_order_item": {
+           "seq": 5010,
+           "product_seq": 1003,
+           "service_member_seq": 77,
+           "is_close": false
+          }
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "error": "OPERATOR_NOT_ALLOWED"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product"
+              },
+              {
+               "text": "product_brand_lang"
+              },
+              {
+               "text": "product_lang"
+              },
+              {
+               "text": "product_match_category"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product"
+              },
+              {
+               "text": "product_brand_lang"
+              },
+              {
+               "text": "product_lang"
+              },
+              {
+               "text": "product_match_category"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_lang"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_brand"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_brand_lang"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_review"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "order_product_item"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product"
+              },
+              {
+               "text": "product_brand_lang"
+              },
+              {
+               "text": "product_lang"
+              },
+              {
+               "text": "product_match_category"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product"
+              },
+              {
+               "text": "product_brand_lang"
+              },
+              {
+               "text": "product_lang"
+              },
+              {
+               "text": "product_match_category"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_lang"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_brand"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_brand_lang"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "product_review"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "order_product_item"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "duplicate_relation_name",
+   "requirements": [
+    "CPX-5",
+    "DSL-128"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "relations": [
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ]
+      },
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ]
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "page_plan_steps",
+   "requirements": [
+    "DSL-159"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 20,
+      "count": 20
+     },
+     "plan": true,
+     "plan_count": [],
+     "plan_sql": true,
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`product_seq` AS `a__product_seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`is_close` AS `a__is_close`, `a`.`content` AS `a__content` FROM `product_review` AS `a` WHERE `a`.`product_seq` IN (?)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" DESC LIMIT $2 OFFSET $3",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN ($1)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN (?)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 20,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "statements",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" DESC LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 0,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 0
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "unconnected": true,
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "fulltext_boolean": {
+       "columns": [
+        "name",
+        "short_description",
+        "content"
+       ],
+       "text": "alpha"
+      }
+     },
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "tables": [
+          "product"
+         ]
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "tables": [
+          "product"
+         ]
+        }
+       ]
+      },
+      "sqlite": {
+       "error": "OPERATOR_NOT_ALLOWED"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

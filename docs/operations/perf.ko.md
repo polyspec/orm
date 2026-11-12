@@ -35,8 +35,8 @@
 
 | 클라이언트 | PK 한도 | 100행 한도 | 검사 |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `packages/go/bench` `TestHotPathGate` |
-| PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
+| Go | 1.35 | 1.25 | `legacy/packages/go/bench` `TestHotPathGate` |
+| PHP | 1.35 | 1.25 | `legacy/packages/php/tests/PerfGateTest.php` |
 
 **PERF-1 —** `make feature-performance-check`는 같은 두 workload(PK와 내림차순 100행 목록)를 여섯 native client—Go, PHP library, PHP extension, TypeScript, Python, Rust—에서 MySQL, PostgreSQL, SQLite 각각으로 측정한다. 각 database의 timing은 run의 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`에서 시드된 bench database를 읽으며, 한 번에 측정 하나씩 두 번 실행한다. PHP extension entrypoint는 workload 전에 `Model::gets`가 internal인지 확인한다. 각 case는 native/client p50, 비율, 프로세스 CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘는 측정은 진단 정보이며 correctness를 실패시키지 않는다. 이 feature workload의 고정 기준값은 모든 client, database, workload에 대해 `contracts/performance-references.json`(8절)에 기록되어 있다. commit 97b4566f4의 check run `orm_check_33189_3c995a77`에서 기록했다. 위의 Go와 PHP MySQL 한도는 별도 `make perf-check` workload에만 적용하며 그대로 유지한다.
 

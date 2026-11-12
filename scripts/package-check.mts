@@ -17,8 +17,8 @@ const work = join(tmpdir(), `orm-package-check-${process.pid}`);
 const rust = join(work, 'rust');
 const go = join(work, 'go');
 
-const PACK: Command = { program: 'npm', args: ['pack', '--dry-run', '--json'], cwd: join(root, 'packages/ts') };
-const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-dir=${join(root, 'packages/php')}`, '--no-check-publish', '--no-check-lock'], cwd: root };
+const PACK: Command = { program: 'npm', args: ['pack', '--dry-run', '--json'], cwd: join(root, 'legacy/packages/ts') };
+const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-dir=${join(root, 'legacy/packages/php')}`, '--no-check-publish', '--no-check-lock'], cwd: root };
 // The Rust client depends on git crates that are not on a registry, so it is checked as a path dependency of an external
 // crate instead of with cargo package; it builds into the shared Rust target directory and so under its lease. The crate
 // takes the lock of the client, as a consumer pins it: the checks run offline (CARGO_NET_OFFLINE), and without a lock cargo
@@ -26,7 +26,7 @@ const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-d
 const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
 const GO: Command[] = [
   { program: 'go', args: ['mod', 'init', 'example.com/orm-external-check'], cwd: go },
-  { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm/packages/go=${join(root, 'packages/go')}`], cwd: go },
+  { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm/packages/go=${join(root, 'legacy/packages/go')}`], cwd: go },
   { program: 'go', args: ['get', `github.com/polyspec/orm/packages/go@v${version}`], cwd: go },
   { program: 'go', args: ['mod', 'tidy'], cwd: go },
   { program: 'go', args: ['test', '-timeout', '0', './...'], cwd: go },

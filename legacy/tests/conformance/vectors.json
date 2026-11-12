@@ -1,0 +1,187 @@
+{
+  "vectors": [
+    {
+      "name": "conditions_connectors"
+    },
+    {
+      "name": "conditions_group"
+    },
+    {
+      "name": "conditions_leading_group"
+    },
+    {
+      "name": "conditions_leading_prefix"
+    },
+    {
+      "name": "conditions_values"
+    },
+    {
+      "name": "terminal_by"
+    },
+    {
+      "name": "terminal_reuse"
+    },
+    {
+      "name": "expression_forms"
+    },
+    {
+      "name": "columns"
+    },
+    {
+      "name": "joins"
+    },
+    {
+      "name": "relations"
+    },
+    {
+      "name": "relation_empty"
+    },
+    {
+      "name": "external_read"
+    },
+    {
+      "name": "subqueries"
+    },
+    {
+      "name": "aggregates"
+    },
+    {
+      "name": "functions"
+    },
+    {
+      "name": "errors"
+    },
+    {
+      "name": "get_query"
+    },
+    {
+      "name": "aes_values"
+    },
+    {
+      "name": "write_cycle"
+    },
+    {
+      "name": "now_defaults"
+    },
+    {
+      "name": "required_columns"
+    },
+    {
+      "name": "creates_and_save"
+    },
+    {
+      "name": "creates_batch"
+    },
+    {
+      "name": "creates_batch_too_large"
+    },
+    {
+      "name": "contains_ascii_fold"
+    },
+    {
+      "name": "contains_binary_code_point"
+    },
+    {
+      "name": "delete_recursive"
+    },
+    {
+      "name": "relation_row_lock"
+    },
+    {
+      "name": "transactions"
+    },
+    {
+      "name": "restore"
+    },
+    {
+      "name": "restore_or_create"
+    },
+    {
+      "name": "expect_revision"
+    },
+    {
+      "name": "joins_soft_deleted"
+    },
+    {
+      "name": "column_pairs"
+    },
+    {
+      "name": "relative_time_out_of_range"
+    },
+    {
+      "name": "aes_status"
+    },
+    {
+      "name": "hex_malformed"
+    },
+    {
+      "name": "datetime_p0_roundtrip"
+    },
+    {
+      "name": "time_p3_roundtrip"
+    },
+    {
+      "name": "date_roundtrip"
+    },
+    {
+      "name": "date_null"
+    },
+    {
+      "name": "upsert_one_key"
+    },
+    {
+      "name": "uuid_roundtrip"
+    },
+    {
+      "name": "ip_hex_roundtrip"
+    },
+    {
+      "name": "affected_counts"
+    },
+    {
+      "name": "datetime_precision_rejected"
+    },
+    {
+      "name": "varchar_length_rejected"
+    },
+    {
+      "name": "text_nul_rejected"
+    },
+    {
+      "name": "uuid_form_rejected"
+    },
+    {
+      "name": "contains_null"
+    },
+    {
+      "name": "null_into_not_null"
+    },
+    {
+      "name": "clock_truncate_write"
+    },
+    {
+      "name": "clock_compare_six_digits"
+    },
+    {
+      "name": "order_nulls"
+    },
+    {
+      "name": "scalar_column_subquery"
+    },
+    {
+      "name": "relations_flatten"
+    },
+    {
+      "name": "relation_null_key"
+    },
+    {
+      "name": "empty_reads"
+    },
+    {
+      "name": "audit_lazy"
+    },
+    {
+      "name": "delete_lock"
+    }
+  ]
+}

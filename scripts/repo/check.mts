@@ -169,7 +169,7 @@ failures.push(...generatedCodesErrors(makefile));
 failures.push(...phpExtensionBuildErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
 failures.push(...typescriptExclusiveReaderErrors(makefile));
-// Every target that runs PHPUnit with the packages/php configuration has php-models, which writes the bootstrap it requires (T341-1).
+// Every target that runs PHPUnit with the legacy/packages/php configuration has php-models, which writes the bootstrap it requires (T341-1).
 failures.push(...phpunitModelErrors(makefile));
 // make orm-check runs the generation (go generate and git diff) of the same directory only once.
 const checkTargetSet = new Set(checkTargets(makefile));
@@ -198,11 +198,11 @@ failures.push(...composerBranchErrors(Object.fromEntries(tracked.filter(path => 
 // Rust that runs the checks is the one version declared by rust-toolchain.toml, which rustc in PATH reports from the root.
 const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
-const composer = readComposer(join(root, 'packages/php/composer.json'));
+const composer = readComposer(join(root, 'legacy/packages/php/composer.json'));
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
-// Every workflow sets up the Go of the go line of packages/go/go.mod, the one Go release of mise.toml (kit K127).
+// Every workflow sets up the Go of the go line of legacy/packages/go/go.mod, the one Go release of mise.toml (kit K127).
 failures.push(...goVersionErrors(workflows));
 // Composer is the one exact release declared by the mise.toml tool http:composer. The running one need only match its major and minor (patch does not matter).
 // Every tracked go.mod declares the module path of its own directory.

@@ -1,0 +1,19 @@
+dbspec 1 ip_hex
+
+table ip {
+  seq i64 identity
+  address varchar(32)
+  primary key (seq)
+  settings {
+    codec address ip hex
+  }
+}
+
+table hex_cell {
+  seq i64 identity
+  token varchar(64)
+  primary key (seq)
+  settings {
+    codec token hex
+  }
+}

@@ -1,0 +1,30 @@
+dbspec 1 ext_board
+
+use ext_core { ext_account, ext_audit }
+
+table ext_board {
+  seq i64 identity
+  account_seq i64
+  name varchar(64)
+  audit_seq i64
+  primary key (seq)
+  index ix_ext_board_account (account_seq)
+  index ix_ext_board_audit (audit_seq)
+  foreign key fk_ext_board_account (account_seq) references ext_account (seq) on delete restrict on update restrict
+  foreign key fk_ext_board_audit (audit_seq) references ext_audit (seq) on delete restrict on update restrict
+  settings {
+    audit into ext_board_history column audit_seq references ext_audit action change previous previous_audit_seq
+  }
+}
+
+table ext_board_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  account_seq i64
+  name varchar(64)
+  audit_seq i64
+  primary key (history_id)
+  index ix_ext_board_history_row (seq)
+}

@@ -1,0 +1,34 @@
+{
+  "zone": "+00:00",
+  "bind": [
+    {"name": "native-date", "slot": {"type": "date"}, "value": {"native": "date"}, "code": "CODEC_ENCODE"},
+    {"name": "native-time-p0", "slot": {"type": "time", "precision": 0}, "value": {"native": "time"}, "code": "CODEC_ENCODE", "rust": "no-host-value"},
+    {"name": "native-time-p3", "slot": {"type": "time", "precision": 3}, "value": {"native": "time"}, "code": "CODEC_ENCODE", "rust": "no-host-value"},
+    {"name": "native-datetime-p0", "slot": {"type": "datetime", "precision": 0}, "value": {"native": "datetime"}, "code": "CODEC_ENCODE"},
+    {"name": "native-datetime-p6", "slot": {"type": "datetime", "precision": 6}, "value": {"native": "datetime"}, "code": "CODEC_ENCODE"}
+  ],
+  "compile_refused": [
+    {"name": "i16-above", "slot": {"type": "i16"}, "value": 32768, "code": "CODEC_ENCODE"},
+    {"name": "i16-below", "slot": {"type": "i16"}, "value": -32769, "code": "CODEC_ENCODE"},
+    {"name": "i16-fraction", "slot": {"type": "i16"}, "value": 1.5, "code": "CODEC_ENCODE"},
+    {"name": "i32-above", "slot": {"type": "i32"}, "value": 2147483648, "code": "CODEC_ENCODE"},
+    {"name": "i64-fraction", "slot": {"type": "i64"}, "value": 1.5, "code": "CODEC_ENCODE"},
+    {"name": "i64-text", "slot": {"type": "i64"}, "value": "5", "code": "CODEC_ENCODE"},
+    {"name": "i64-bool", "slot": {"type": "i64"}, "value": true, "code": "CODEC_ENCODE"},
+    {"name": "f64-text", "slot": {"type": "f64"}, "value": "1.5", "code": "CODEC_ENCODE"},
+    {"name": "f64-bool", "slot": {"type": "f64"}, "value": false, "code": "CODEC_ENCODE"},
+    {"name": "bool-integer", "slot": {"type": "bool"}, "value": 1, "code": "CODEC_ENCODE"},
+    {"name": "decimal-number", "slot": {"type": "decimal", "precision": 5, "scale": 2}, "value": 1.5, "code": "CODEC_ENCODE"},
+    {"name": "varchar-number", "slot": {"type": "varchar", "length": 3}, "value": 5, "code": "CODEC_ENCODE"},
+    {"name": "text-bool", "slot": {"type": "text"}, "value": true, "code": "CODEC_ENCODE"},
+    {"name": "bytes-text", "slot": {"type": "bytes"}, "value": "ab", "bound": "ab"},
+    {"name": "bytes-number", "slot": {"type": "bytes"}, "value": 5, "code": "CODEC_ENCODE"},
+    {"name": "uuid-number", "slot": {"type": "uuid"}, "value": 5, "code": "CODEC_ENCODE"},
+    {"name": "date-number", "slot": {"type": "date"}, "value": 20240102, "code": "CODEC_ENCODE"},
+    {"name": "time-number", "slot": {"type": "time", "precision": 0}, "value": 36000, "code": "CODEC_ENCODE"},
+    {"name": "datetime-bool", "slot": {"type": "datetime", "precision": 0}, "value": true, "code": "CODEC_ENCODE"},
+    {"name": "contains-null", "slot": {"type": "text", "transform": "like_contains"}, "value": null, "bound": null},
+    {"name": "contains-number", "slot": {"type": "text", "transform": "like_contains"}, "value": 5, "code": "CODEC_ENCODE"},
+    {"name": "contains-bool", "slot": {"type": "text", "transform": "like_contains"}, "value": true, "code": "CODEC_ENCODE"}
+  ]
+}

@@ -1,0 +1,395 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "SCH-14",
+    "DBS-110",
+    "DIA-154",
+    "DIA-183"
+  ],
+  "fixture": "contracts/fixtures/external_audit/dbspec-set.json",
+  "cases": [
+    {
+      "id": "member_audit_record_goes_to_the_core_table",
+      "requirements": [
+        "SCH-14",
+        "DBS-110"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "writer"
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.register",
+          "connection": "db",
+          "schema": {
+            "documents": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/board.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO ext_account (name) VALUES ('kim')",
+          "reason": "ext_account belongs to the core set, whose models are read-only to the member set"
+        },
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "ExtPost",
+              "values": {
+                "account_seq": {
+                  "int": "1"
+                },
+                "title": {
+                  "text": "hello"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, actor FROM ext_audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT audit_seq FROM ext_post_history",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_write_through_an_external_model_is_refused",
+      "requirements": [
+        "DBS-110"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "schema.register",
+          "connection": "db",
+          "schema": {
+            "documents": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/board.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO ext_account (name) VALUES ('kim')",
+          "reason": "ext_account belongs to the core set, whose models are read-only to the member set"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ExtAccount",
+          "values": {
+            "name": {
+              "text": "lee"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "ExtAccount",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "name": {
+              "text": "park"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "ExtAccount",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, name FROM ext_account ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

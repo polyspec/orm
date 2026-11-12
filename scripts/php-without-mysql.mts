@@ -1,4 +1,4 @@
-// Runs packages/php/tests/SqliteWithoutMysqlTest.php on PHPUnit with a PHP that loads no MySQL driver (mysqlnd, pdo_mysql,
+// Runs legacy/packages/php/tests/SqliteWithoutMysqlTest.php on PHPUnit with a PHP that loads no MySQL driver (mysqlnd, pdo_mysql,
 // mysqli; N17). `php -n` leaves out every shared module that an ini loads, and this script loads with `-d extension=` only
 // the extensions that the client uses on SQLite and that PHPUnit requires (dom, libxml, xml, xmlwriter, tokenizer;
 // EXTENSIONS) which are not compiled in. It passes this list to the nested SQLite child as well. A MySQL driver compiled
@@ -33,8 +33,8 @@ const loadedExtensions = EXTENSIONS.filter(name => !compiled.has(name));
 const loads = loadedExtensions.flatMap(name => ['-d', `extension=${name}`]);
 const version = spawnSync('php', ['-n', '-r', 'echo PHP_VERSION;'], { encoding: 'utf8' }).stdout;
 console.log(`php ${version} -n ${loads.join(' ')}`);
-const result = spawnSync('php', ['-n', ...loads, join(root, 'vendor-php/bin/phpunit'), '--configuration', join(root, 'packages/php/phpunit.xml.dist'),
-  join(root, 'packages/php/tests/SqliteWithoutMysqlTest.php')], {
+const result = spawnSync('php', ['-n', ...loads, join(root, 'vendor-php/bin/phpunit'), '--configuration', join(root, 'legacy/packages/php/phpunit.xml.dist'),
+  join(root, 'legacy/packages/php/tests/SqliteWithoutMysqlTest.php')], {
   stdio: 'inherit',
   env: { ...process.env, ORM_PHP_WITHOUT_MYSQL_EXTENSIONS: loadedExtensions.join(',') },
 });

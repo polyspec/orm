@@ -528,7 +528,7 @@ export function typescriptHolderErrors(makefile: string): string[] {
 }
 
 // CODES_READERS are, for each error code file that make orm-codes-<lang> writes (config/generated.json), the recipe text of a target
-// that reads it: TypeScript compiles packages/ts/src (a build, or the holding of the build output), PHP runs packages/php/src through
+// that reads it: TypeScript compiles legacy/packages/ts/src (a build, or the holding of the build output), PHP runs legacy/packages/php/src through
 // PHPUnit, the PHP of the checkout, the Composer autoloader or a program given the extension, and Python runs the editable venv,
 // whose polyspec.orm imports codes.
 const CODES_READERS: Record<string, RegExp> = {
@@ -578,13 +578,13 @@ export function generatedCodesErrors(makefile: string): string[] {
 }
 
 // phpExtensionBuildErrors returns one error for each target other than php-ext-build whose recipe runs
-// packages/php-ext/scripts/build.sh: php-ext-build is the one build of the PHP extension, after php-ext-sources, which writes the
+// legacy/packages/php-ext/scripts/build.sh: php-ext-build is the one build of the PHP extension, after php-ext-sources, which writes the
 // sources that build.sh reads, so a recipe builds it with $(call php_ext_build,<output>,<mode>).
 export function phpExtensionBuildErrors(makefile: string): string[] {
   return [...new Set(makeTargets(makefile)
     .filter(rule => rule.target !== 'php-ext-build' && rule.commands.some(command => /packages\/php-ext\/scripts\/build\.sh\b/.test(command)))
     .map(rule => rule.target))]
-    .map(target => `Makefile ${target} runs packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`);
+    .map(target => `Makefile ${target} runs legacy/packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`);
 }
 
 // unleasedCargoErrors returns one error for each segment in which a command outside the Makefile (verification command, script, package.json script) builds in the shared Rust target
@@ -607,8 +607,8 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// usesTypescriptOutput is whether a JavaScript file at the path uses the TypeScript client's build output (packages/ts/dist):
-// a file that imports `dist/` directly, or runs through a relative import or a `packages/ts/...mjs` path, uses it.
+// usesTypescriptOutput is whether a JavaScript file at the path uses the TypeScript client's build output (legacy/packages/ts/dist):
+// a file that imports `dist/` directly, or runs through a relative import or a `legacy/packages/ts/...mjs` path, uses it.
 export function usesTypescriptOutput(path: string, read: Read, seen = new Set<string>()): boolean {
   if (seen.has(path)) return false;
   seen.add(path);
@@ -621,7 +621,7 @@ export function usesTypescriptOutput(path: string, read: Read, seen = new Set<st
   return [...dependencies(path, text), ...nodeRuns(text)].some((next: string) => usesTypescriptOutput(next, read, seen));
 }
 
-// nodeRuns is the file in packages/ts that JavaScript text runs with node. Runs take two forms: a program and an argument array
+// nodeRuns is the file in legacy/packages/ts that JavaScript text runs with node. Runs take two forms: a program and an argument array
 // (`'node', ['<file>', ...]` or `process.execPath, ['<file>', ...]`), and the shell string of an exec or spawn call
 // (`execSync('node [option...] <file>')`). A place where a path is only written as a string (expected output, stub, regular expression, comment) is not a run.
 export function nodeRuns(text: string): string[] {
@@ -717,9 +717,9 @@ export function typescriptExclusiveReaderErrors(makefile: string): string[] {
   return errors;
 }
 
-// phpunitModelErrors returns one error for each make target that runs PHPUnit with packages/php/phpunit.xml.dist, whose bootstrap requires
-// packages/php/gen/bootstrap.php, without make php-models among its prerequisites, directly or through a prerequisite (T341-1). php-vendor-check
-// does not write packages/php/gen, so a target that names only it passes only after another target wrote the generated models.
+// phpunitModelErrors returns one error for each make target that runs PHPUnit with legacy/packages/php/phpunit.xml.dist, whose bootstrap requires
+// legacy/packages/php/gen/bootstrap.php, without make php-models among its prerequisites, directly or through a prerequisite (T341-1). php-vendor-check
+// does not write legacy/packages/php/gen, so a target that names only it passes only after another target wrote the generated models.
 export function phpunitModelErrors(makefile: string): string[] {
   const prerequisites = new Map<string, string[]>();
   for (const rule of makeTargets(makefile)) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
@@ -733,7 +733,7 @@ export function phpunitModelErrors(makefile: string): string[] {
     .map(rule => rule.target));
   return [...readers]
     .filter(target => !reaches(target))
-    .map(target => `Makefile ${target} runs PHPUnit with packages/php/phpunit.xml.dist, which requires packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites`);
+    .map(target => `Makefile ${target} runs PHPUnit with legacy/packages/php/phpunit.xml.dist, which requires legacy/packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites`);
 }
 
 // goRunErrors returns one error for each segment in units that runs `go run`. go run compiles without

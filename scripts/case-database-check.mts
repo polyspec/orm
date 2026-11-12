@@ -37,9 +37,9 @@ const leftover = `orm_leftover_${process.pid}`;
 // fail. Each command reports its own cases (Go and TypeScript print RUN/STEP/PASS/FAIL, PHP prints PHPUnit), so run them as a group.
 const commands: [string, string, string[]][] = [
   // The Go runs take the build tags of every go test of the repository (GO_TEST_TAGS of tests/go-test.mts).
-  ['go/model', 'go', ['test', ...withTestTags(['-v', '-timeout', '0', '-count=1', './packages/go/model'])]],
-  ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
-  ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
+  ['go/model', 'go', ['test', ...withTestTags(['-v', '-timeout', '0', '-count=1', './legacy/packages/go/model'])]],
+  ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', 'legacy/packages/php/tests/ModelTest.php']],
+  ['typescript/model', 'node', ['legacy/packages/ts/tests/model.mjs']],
   // The sections of the Rust integration program (packages/rust/tests/tests/all/integration_program) check an empty database and install
   // the bench set, so the check runs that target; tests/cargo-test.mts builds it under the lease of the target directory.
   ['rust/integration', 'node', ['tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests',

@@ -3,8 +3,8 @@
 
 The crate `polyspec-orm` of `packages/rust` is the one implementation of the rules of orm, and the PHP, Python, Node and
 Go bindings are generated from its interface contract `packages/rust/interface.json`. This document states the rules of
-the core that differ from the rules that the language implementations of `packages/go`, `packages/php`,
-`packages/php-ext`, `packages/python` and `packages/ts` follow.
+the core that differ from the rules that the language implementations of `legacy/packages/go`, `legacy/packages/php`,
+`legacy/packages/php-ext`, `legacy/packages/python` and `legacy/packages/ts` follow.
 
 ## Coexistence
 
@@ -12,15 +12,17 @@ the core that differ from the rules that the language implementations of `packag
   with the API of its release and the core with the API of the contract. The rules of this document hold for the core and
   the bindings; each rule that it replaces is named in the rule, and the replaced rule keeps holding for the language
   implementations until their removal. The tests of a language implementation are not changed for the core, and a test of
-  the core is not run against a language implementation.
+  the core is not run against a language implementation. The language implementations are under `legacy/packages/`, out
+  of every release, and their tests read the cases, fixtures and vectors of `legacy/contracts/fixtures/` and
+  `legacy/tests/`, fixed copies of the shared ones as they were before the rules of this document changed them.
 - **CORE-2** A shared recipe case whose expectation a rule of this document changes is superseded for the core by a case
   of `contracts/fixtures/core/` that names it in `supersedes`. The Rust recipe runner runs the superseding case in place of
   the case it supersedes, and checks that their steps, apart from the expectations, are the same.
 - **CORE-3** A shared recipe case and a shared vector that expect an error write its kind as the core writes it, in lower
   case (`no_rows`), and an expected message as `<kind>: <text>`; the Rust runners compare both as they are. A failure of
   the language code of a case that the runner itself reports has a code of the runner that is no kind (`callback`,
-  `step`, `subscriber`). The language implementations still write the codes of the catalog in capitals (CORE-1); their
-  runners compare an expected kind with their code in lower case.
+  `step`, `subscriber`). The language implementations keep the codes of the catalog in capitals and read the fixed copies
+  of CORE-1.
 
 ## Errors
 

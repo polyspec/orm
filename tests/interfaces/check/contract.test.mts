@@ -219,15 +219,15 @@ caseTest('PHP extension extraction does not load the client autoloader', PROCESS
   requirePhp();
   const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
   try {
-    const stubPath = join(dir, 'packages/php-ext/src/polyspec_orm.stub.php');
-    const autoloadPath = join(dir, 'packages/php/tests/autoload.php');
+    const stubPath = join(dir, 'legacy/packages/php-ext/src/polyspec_orm.stub.php');
+    const autoloadPath = join(dir, 'legacy/packages/php/tests/autoload.php');
     mkdirSync(dirname(stubPath), { recursive: true });
     mkdirSync(dirname(autoloadPath), { recursive: true });
     writeFileSync(stubPath, '<?php namespace Polyspec\\Orm; final class Registry {}\n');
     writeFileSync(autoloadPath, '<?php namespace Polyspec\\Orm; final class Registry {}\n');
 
-    const got = await extract(signal, dir, 'php', ['packages/php-ext/src'], {}, root, { loadPhpAutoloader: false });
-    assert.deepEqual(Object.keys(got), ['packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry']);
+    const got = await extract(signal, dir, 'php', ['legacy/packages/php-ext/src'], {}, root, { loadPhpAutoloader: false });
+    assert.deepEqual(Object.keys(got), ['legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -249,8 +249,8 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
     try {
       for (const [path, content] of [
         [stubPath, stubSource],
-        ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')],
-        ['packages/php/tests/autoload.php', '<?php namespace Polyspec\\Orm; class Registry {}'],
+        ['legacy/packages/php/testing/interfaces/php.php', readFileSync(join(root, 'legacy/packages/php/testing/interfaces/php.php'), 'utf8')],
+        ['legacy/packages/php/tests/autoload.php', '<?php namespace Polyspec\\Orm; class Registry {}'],
       ] as const) {
         mkdirSync(dirname(join(dir, path)), { recursive: true });
         writeFileSync(join(dir, path), content);

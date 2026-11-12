@@ -34,8 +34,8 @@ The check measures the generated client and an equivalent native result in one p
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `packages/go/bench` `TestHotPathGate` |
-| PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
+| Go | 1.35 | 1.25 | `legacy/packages/go/bench` `TestHotPathGate` |
+| PHP | 1.35 | 1.25 | `legacy/packages/php/tests/PerfGateTest.php` |
 
 **PERF-1 —** `make feature-performance-check` runs the same two workloads (PK and a descending 100-row list) through each of the six native clients—Go, PHP library, PHP extension, TypeScript, Python and Rust—on MySQL, PostgreSQL and SQLite. The timing of each database reads the seeded bench database from `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` or `BENCH_SQLITE_DSN` of the run, twice, one measurement at a time. The PHP extension entrypoint verifies that `Model::gets` is internal before running the workload. Each case reports native and client p50, their ratio, process CPU, wall time, sample count and machine; an above-reference measurement is diagnostic and never fails correctness. The fixed references of these feature workloads are recorded for every client, database and workload in `contracts/performance-references.json` (section 8), from check run `orm_check_33189_3c995a77` of commit 97b4566f4. The recorded Go and PHP MySQL bounds above apply only to the separate `make perf-check` workloads and are unchanged.
 

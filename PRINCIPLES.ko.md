@@ -220,8 +220,8 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   code를 읽는 kit의 program은 그 생태계의 tool을 돌립니다.
   Enforced by: `make layout-check`
 - S10 PHP extension: PHP extension은 자기 저장소의 모든 PHP library를 구현하고, 그 class와 function을 같은 이름과 signature로
-  등록한다. library는 `polyspec/<repository>`라는 이름의 `packages/php`이거나, component마다 `polyspec/<repository>-<component>`라는
-  이름의 `packages/<component>/php`이며, 저장소에는 extension이 하나다. `packages/php-ext/`에 두며 source는 `src/`에, stub은 하나,
+  등록한다. library는 `polyspec/<repository>`라는 이름의 `legacy/packages/php`이거나, component마다 `polyspec/<repository>-<component>`라는
+  이름의 `packages/<component>/php`이며, 저장소에는 extension이 하나다. `legacy/packages/php-ext/`에 두며 source는 `src/`에, stub은 하나,
   `src/polyspec_<repository>.stub.php`이다. 이름은 `polyspec/<repository>-php-ext`와 `polyspec_<repository>`이고, 저장소
   이름의 hyphen은 underscore가 된다. `make build-php-ext`는 PHP의 gen_stub.php가 쓰는 arginfo
   header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build하며, `composer.json`을 `src/` 옆에 둔 사본에서 build하므로

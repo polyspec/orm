@@ -263,11 +263,11 @@ export function compareOutput(name: string, got: Output, want: Output): void {
 export function runnerCommand(language: string, dsn: string, names: string[], env: NodeJS.ProcessEnv = process.env): [string, string[]] {
   const flags = ['--dsn', dsn, ...names.flatMap(name => ['--vector', name])];
   const commands: Record<string, () => [string, string[]]> = {
-    go: () => ['go', ['run', '-tags', 'ormtest', './packages/go/internal/conformance', '-dsn', dsn, ...names.flatMap(name => ['-vector', name])]],
-    php: () => ['php', ['packages/php/testing/conformance/runner.php', ...flags]],
-    'php-extension': () => ['php', ['-d', `extension=${env.POLYSPEC_ORM_EXTENSION ?? ''}`, 'packages/php/testing/conformance/runner.php', ...flags]],
-    typescript: () => ['node', ['packages/ts/testing/conformance/runner_typescript.mts', ...flags]],
-    python: () => [env.ORM_PYTHON ?? '', ['packages/python/testing/conformance/runner_python.py', '--models', env.ORM_PYTHON_MODELS ?? '', ...flags]],
+    go: () => ['go', ['run', '-tags', 'ormtest', './legacy/packages/go/internal/conformance', '-dsn', dsn, ...names.flatMap(name => ['-vector', name])]],
+    php: () => ['php', ['legacy/packages/php/testing/conformance/runner.php', ...flags]],
+    'php-extension': () => ['php', ['-d', `extension=${env.POLYSPEC_ORM_EXTENSION ?? ''}`, 'legacy/packages/php/testing/conformance/runner.php', ...flags]],
+    typescript: () => ['node', ['legacy/packages/ts/testing/conformance/runner_typescript.mts', ...flags]],
+    python: () => [env.ORM_PYTHON ?? '', ['legacy/packages/python/testing/conformance/runner_python.py', '--models', env.ORM_PYTHON_MODELS ?? '', ...flags]],
     rust: () => [env.LEASE ?? '', ['run', env.CARGO_LEASES ?? '', 'exclusive', '--wait', '--', 'cargo', 'run', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'conformance', '--', ...flags]],
   };
   const command = commands[language];
@@ -277,10 +277,10 @@ export function runnerCommand(language: string, dsn: string, names: string[], en
 
 /** The sources of the runner of each language; php-extension runs the PHP runner. */
 export const RUNNER_SOURCES: Record<string, string[]> = {
-  go: ['packages/go/internal/conformance/main.go', 'packages/go/internal/conformance/affected_ormtest.go', 'packages/go/internal/conformance/clock_ormtest.go'],
-  php: ['packages/php/testing/conformance/runner.php'],
-  typescript: ['packages/ts/testing/conformance/runner_typescript.mts'],
-  python: ['packages/python/testing/conformance/runner_python.py'],
+  go: ['legacy/packages/go/internal/conformance/main.go', 'legacy/packages/go/internal/conformance/affected_ormtest.go', 'legacy/packages/go/internal/conformance/clock_ormtest.go'],
+  php: ['legacy/packages/php/testing/conformance/runner.php'],
+  typescript: ['legacy/packages/ts/testing/conformance/runner_typescript.mts'],
+  python: ['legacy/packages/python/testing/conformance/runner_python.py'],
   rust: ['packages/rust/tests/src/conformance.rs'],
 };
 
@@ -349,7 +349,7 @@ async function main(args: string[]): Promise<void> {
   const language = flag('--language');
   const database = flag('--database');
   const want = expectations(mode ?? '', database);
-  const tests = pathToFileURL(join(root, 'packages/ts/tests')).href;
+  const tests = pathToFileURL(join(root, 'legacy/packages/ts/tests')).href;
   const caseDatabase: unknown = await import(`${tests}/case-database.mjs`);
   const recipeRunner: unknown = await import(`${tests}/recipe.mjs`);
   const postgresClient = exported<(dsn: string) => { connect: () => Promise<void>; query: (sql: string) => Promise<unknown>; end: () => Promise<void> }>(caseDatabase, 'postgresClient');

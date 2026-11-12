@@ -8,17 +8,17 @@ import { runCommand, typescriptLease, typescriptLeaseProgram } from './typescrip
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 
-// The lease of each command: a build of the TypeScript output is exclusive, a command that reads packages/ts is shared, and any
+// The lease of each command: a build of the TypeScript output is exclusive, a command that reads legacy/packages/ts is shared, and any
 // other command holds no TypeScript lease.
-caseTest('a TypeScript build is exclusive and a reader of packages/ts is shared', COMPUTE, () => {
+caseTest('a TypeScript build is exclusive and a reader of legacy/packages/ts is shared', COMPUTE, () => {
   assert.equal(typescriptLease({ command: 'npm run typescript:build' }), 'exclusive');
   assert.equal(typescriptLease({ command: 'make dbspec-ts-check' }), 'exclusive');
-  assert.equal(typescriptLease({ command: 'node packages/ts/tests/dsn_connection-sqlite.test.mjs' }), 'shared');
-  assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['packages/ts/src/index.ts'] }), 'shared');
-  assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['packages/go/go.mod'] }), undefined);
+  assert.equal(typescriptLease({ command: 'node legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs' }), 'shared');
+  assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['legacy/packages/ts/src/index.ts'] }), 'shared');
+  assert.equal(typescriptLease({ command: 'node scripts/x.mts', inputs: ['legacy/packages/go/go.mod'] }), undefined);
 });
 
-// The manifest case reads every verify command of contracts/features.json and checks that the one that reads packages/ts holds the shared lease.
+// The manifest case reads every verify command of contracts/features.json and checks that the one that reads legacy/packages/ts holds the shared lease.
 caseTest('the markdown session TypeScript command of the manifest holds the shared lease', COMPUTE, () => {
   const manifest = readFeatures(root);
   const check = (manifest.features ?? []).flatMap(feature => feature.verification ?? []).find(item => item.id === 'markdown-session-typescript');
@@ -39,7 +39,7 @@ async function readerSeesBuild(): Promise<number> {
     const directory = join(dir, 'leases');
     mkdirSync(directory);
     const buildCheck = { command: 'npm run typescript:build' };
-    const readCheck = { command: 'node packages/ts/tests/dsn_connection-sqlite.test.mjs' };
+    const readCheck = { command: 'node legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs' };
     const under = (check: { command: string }) => {
       const mode = typescriptLease(check);
       return old || mode === undefined ? undefined : { program, directory, mode };

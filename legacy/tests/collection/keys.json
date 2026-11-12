@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "comment": "The collection key identity that every implementation shares. Each entry of keys is one value of one type; two entries have the same key only when their type and value are equal, except an entry that names the entry it equals in same_as (the same instant in another zone). A composite component is encoded as its type tag, the byte length of its canonical payload, a colon, then the payload; tags are i integer, t boolean, s text, b bytes and d datetime. Composite bytes use lowercase hex, datetime payloads are UTC RFC3339 with trailing fractional zeroes trimmed, and text length is UTF-8 bytes. The composites here are the forms that no key column can hold (bytes, a text with U+0000, a time in another zone); the others are the composite_key cases of contracts/fixtures/model_queries_chain/model_queries_chain.json. A NULL key component is an error in every implementation. Other value types retain their existing client behavior and are outside this typed-composite contract. Read by the unit tests of each client, not by the conformance runners.",
+  "null": {
+    "code": "CODEC_DECODE",
+    "message": "collection row identity contains SQL NULL"
+  },
+  "keys": [
+    {"name": "empty text", "type": "text", "value": ""},
+    {"name": "false", "type": "bool", "value": false},
+    {"name": "integer zero", "type": "int", "value": 0},
+    {"name": "text zero", "type": "text", "value": "0"},
+    {"name": "true", "type": "bool", "value": true},
+    {"name": "integer one", "type": "int", "value": 1},
+    {"name": "text one", "type": "text", "value": "1"},
+    {"name": "bytes abc", "type": "bytes", "hex": "616263"},
+    {"name": "text abc", "type": "text", "value": "abc"},
+    {"name": "datetime", "type": "datetime", "value": "2026-10-18T09:30:00.123456Z"},
+    {"name": "text of the datetime", "type": "text", "value": "2026-10-18 09:30:00.123456"},
+    {"name": "datetime in another zone", "type": "datetime", "value": "2026-10-18T18:30:00.123456+09:00", "same_as": "datetime"}
+  ],
+  "composites": [
+    {"name": "bytes abc then text abc", "values": [{"type": "bytes", "hex": "616263"}, {"type": "text", "value": "abc"}], "encoded": "b6:616263s3:abc"},
+    {"name": "text abc then bytes abc", "values": [{"type": "text", "value": "abc"}, {"type": "bytes", "hex": "616263"}], "encoded": "s3:abcb6:616263"},
+    {"name": "datetime then its text", "values": [{"type": "datetime", "value": "2026-10-18T09:30:00.123Z"}, {"type": "text", "value": "2026-10-18T09:30:00.123Z"}], "encoded": "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"},
+    {"name": "datetime same instant in another zone", "values": [{"type": "datetime", "value": "2026-10-18T18:30:00.123+09:00"}, {"type": "text", "value": "2026-10-18T09:30:00.123Z"}], "encoded": "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z", "same_as": "datetime then its text"},
+    {"name": "embedded NUL text and empty text", "values": [{"type": "text", "value": "a\u0000b"}, {"type": "text", "value": ""}], "encoded": "s3:a\u0000bs0:"},
+    {"name": "high byte bytes then empty text", "values": [{"type": "bytes", "hex": "00ff"}, {"type": "text", "value": ""}], "encoded": "b4:00ffs0:"}
+  ],
+  "nullable_composite": [{"type": "null"}, {"type": "text", "value": ""}]
+}

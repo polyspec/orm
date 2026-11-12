@@ -1,0 +1,13 @@
+dbspec 1 identity_load
+
+table load_probe {
+  seq i64 identity
+  label varchar(32)
+  primary key (seq)
+}
+
+table load_note {
+  code varchar(16)
+  body varchar(64) null
+  primary key (code)
+}

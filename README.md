@@ -69,12 +69,12 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ```sh
 make orm-test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
-(cd packages/go/model && go generate)                                # Go models
-vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
-(cd packages/ts && npm run build)                            # TypeScript models and library
+(cd legacy/packages/go/model && go generate)                                # Go models
+vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+(cd legacy/packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
-go test ./packages/go/... ./tests/... ./examples/...
+go test ./legacy/packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
 make conformance-check                                                # the native bodies and the state contracts of the conformance recipe

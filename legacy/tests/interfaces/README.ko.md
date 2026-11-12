@@ -1,0 +1,51 @@
+<!-- doc-id: tests-interfaces-readme -->
+<!-- source-sha256: 2511262c061b52b2bb3bc2ff38dd5c02fb07fd19920ff07170b6837f20fed395 -->
+# 공통 인터페이스 검사
+
+[contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
+
+검사기는 다음 요구사항을 확인한다.
+
+- 논리 입력과 출력이 각 구현의 모델 메서드, 연결, 트랜잭션, 유틸리티 시그니처와 일치한다.
+- 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `polyspec-orm-build` 템플릿을 읽는다.
+- 소유자 규칙은 `Page`와 `AESRotationStatus`의 선언되지 않은 필드를 거부한다.
+- 레코드 규칙은 request 레코드 20개의 모든 필드와 중첩 타입을 각 선언된 표현에서 대조한다. PHP 레코드 선언은 `Validator::RECORDS`에서 읽는다.
+- 실행마다 소스에서 네이티브 선언을 읽는다. 기록해 둔 선언 사본과 비교하지 않는다.
+- `contracts/implementations.json`은 여섯 구현을 선언한다. PHP extension은 문서화된 Dbspec 일부를 구현하며 전체 ORM client는 아니다. `php-extension` contract는 `Dbspec` 규칙과 `DbspecDiagnostic`, `DbspecManifest` owner를 구현한다. 선언은 stub에서 읽는다. extension이 목록에 넣지 않은 규칙이나 owner에는 adapter가 없어야 한다. load한 extension이 stub과 같은 선언을 갖는지는 `make dbspec-php-extension-check`가 확인한다.
+- 실행 순서 규칙은 conformance 벡터의 결과와 statement 수를 비교한다.
+- 메서드 규칙의 오류 표기와 기록된 `errors` 순서는 `docs/spec/errors.yaml`의 코드와 일치해야 한다. 네이티브 드라이버 오류 범주는 명시적으로 남긴다.
+- 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
+- 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
+
+검사기는 각 언어의 선언을 그 언어 자신의 추출기(`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
+Python extractor는 출시 package 경계를 따르기 위해 고정된 Python test 환경의 setuptools package finder를 사용한다. `make install`이 이 환경을 만든다.
+
+데이터베이스 없이 구조 검사를 실행한다.
+
+```sh
+go test ./tests/interfaces/contracts
+node --test tests/interfaces/check/*.test.mts
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
+node tests/interfaces/check/main.mts --language php --self-test
+node tests/interfaces/check/main.mts --language php-extension
+```
+
+공통 state contract(`contracts/interfaces.json`의 `sequences`)는 데이터베이스마다 같은 이름의 recipe case에서 성립한다. `tests/conformance/check/recipe_vectors.test.mts`가 각 contract를 그 case의 statement 종류, expect와 비교하고, 각 runtime이 그 case를 실행한다.
+
+sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utility statement는 적지 않는다. 그 수와 위치는 dialect마다 다르다(적합성 vector가 정확히 적는다). 차이는 더해지거나 빠진 statement를 위치, kind, SQL과 함께, 다른 결과는 두 값으로, 없는 출력은 그 경로로 적는다.
+
+인터페이스 변경 후 계약 출력을 다시 생성한다.
+
+```sh
+make go-models
+make php-models
+npm run typescript:build
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
+```
+
+CI는 `--generate`를 사용하지 않으며 생성 파일, 도표, 실행 계약이 다르면 실패한다.
+
+`--language`는 선언과 레코드 검사를 그것이 지정한 클라이언트로 제한한다. 모든 클라이언트의 검사나 conformance 실행을 대체하지 않는다. PHP 배열은 선언한 request 모양과 대조한다. 함수 본문과 각 오류 또는 상태 전이의 동작에는 실행 사례가 필요하다.
+
+정적 검사는 모든 입력에 대한 함수 본문 동등성을 증명하지 않는다. 적합성 statement trace와 상태 검사가 실행 동작을 확인한다. 드라이버 내부 구현, 물리 메모리 배치, 형식 검증은 이 검사의 범위가 아니다.
+오류 표기 검사는 선언한 이름을 확인한다. 각 메서드가 나열한 모든 오류를 실제로 반환하는지는 증명하지 않으며, 그 동작에는 실행 사례가 필요하다.

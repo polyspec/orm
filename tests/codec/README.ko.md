@@ -9,11 +9,11 @@
 
 | 클라이언트 | entry |
 |---|---|
-| Go | `packages/go/orm/recipe_codec_test.go`의 `TestRecipeCodecNone` |
-| PHP | `packages/php/tests/CodecRecipeTest.php`의 `CodecRecipeTest::testNone` |
-| PHP 확장 | `packages/php-ext/tests/CodecRecipeTestExtensionTest.php`의 `CodecRecipeTestExtensionTest::testNone` |
-| TypeScript | `packages/ts/tests/codec-none.test.mjs` |
-| Python | `packages/python/tests/test_codec_none.py` |
+| Go | `legacy/packages/go/orm/recipe_codec_test.go`의 `TestRecipeCodecNone` |
+| PHP | `legacy/packages/php/tests/CodecRecipeTest.php`의 `CodecRecipeTest::testNone` |
+| PHP 확장 | `legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php`의 `CodecRecipeTestExtensionTest::testNone` |
+| TypeScript | `legacy/packages/ts/tests/codec-none.test.mjs` |
+| Python | `legacy/packages/python/tests/test_codec_none.py` |
 | Rust | `packages/rust/tests`의 test `codec_none` |
 
 그 곁에서, 한 runtime의 값이 담지 못하는 case는 그 입력을 값으로 담는 runtime의 recipe가 담는다(`docs/spec/codec.md`
@@ -26,13 +26,13 @@ TypeScript), `codec-json-depth.json`(값 단계마다 encode와 decode에서 256
 
 `ordered_json`에서 Unicode scalar 값의 열이 아닌 text의 case는 `codec-raw-text.json`과 `codec-lone-surrogate.json`이
 담으므로 그것을 담는 native test는 없다: 그 case를 담던 native test는 그 recipe가 각 runtime에서 green이 되었을 때
-제거했다. Go `TestOrderedJSONRefusesATextThatIsNotUnicode`(`packages/go/orm/codec_test.go`), PHP
-`CodecOrderedJsonTextTest`(`packages/php/tests/CodecOrderedJsonTextTest.php`)와 그 PHP 확장 짝
-`CodecOrderedJsonTextExtensionTest`(`packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php`), TypeScript
-`codec/ordered-json-text-is-unicode`(`packages/ts/tests/codec-errors.test.mjs`), Python
-`test_ordered_json_refuses_a_text_that_is_not_unicode`(`packages/python/tests/test_codec_ordered_json_text.py`)다.
+제거했다. Go `TestOrderedJSONRefusesATextThatIsNotUnicode`(`legacy/packages/go/orm/codec_test.go`), PHP
+`CodecOrderedJsonTextTest`(`legacy/packages/php/tests/CodecOrderedJsonTextTest.php`)와 그 PHP 확장 짝
+`CodecOrderedJsonTextExtensionTest`(`legacy/packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php`), TypeScript
+`codec/ordered-json-text-is-unicode`(`legacy/packages/ts/tests/codec-errors.test.mjs`), Python
+`test_ordered_json_refuses_a_text_that_is_not_unicode`(`legacy/packages/python/tests/test_codec_ordered_json_text.py`)다.
 `StyledValue.payload()`가 하던 자기만의 검사의 Python native test `test_rejects_unsupported_payloads`,
-`test_rejects_a_cycle`, `test_deep_nesting_is_bounded`(`packages/python/tests/test_values.py`)는 그 검사와 함께
+`test_rejects_a_cycle`, `test_deep_nesting_is_bounded`(`legacy/packages/python/tests/test_values.py`)는 그 검사와 함께
 없어졌다(`docs/spec/codec.md` COD-73): `codec-non-finite-value.json`, `codec-bytes-value.json`, `codec-json-depth.json`이
 단계에서 그 case를 담고, `test_a_cycle_is_no_codec_value`는 어떤 recipe 값도 담지 못하는 순환을 지킨다.
 

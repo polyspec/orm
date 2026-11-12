@@ -1,8 +1,8 @@
 /bin/
 /dist/
-/packages/ts/dist/
-# The models that orm-gen writes into packages/ts/src/models at each TypeScript build (P34: generated output is never tracked).
-/packages/ts/src/models/
+/legacy/packages/ts/dist/
+# The models that orm-gen writes into legacy/packages/ts/src/models at each TypeScript build (P34: generated output is never tracked).
+/legacy/packages/ts/src/models/
 /packages/dbspec-language/dist/
 /packages/dbspec-codemirror/dist/
 /packages/dbspec-lsp/dist/
@@ -19,30 +19,30 @@
 
 /node_modules/
 /packages/*/node_modules/
-/packages/ts/testing/interfaces/typescript/node_modules/
+/legacy/packages/ts/testing/interfaces/typescript/node_modules/
 /tests/interfaces/typescript/node_modules/
 /vendor-php/
-/packages/php/vendor/
-/packages/php-ext/vendor/
+/legacy/packages/php/vendor/
+/legacy/packages/php-ext/vendor/
 # The environment that mise installs beside the lock of a pypi tool.
 /.mise/locks/*/*/.venv/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /docs/.vitepress/.temp/
 /.runtime/
-/packages/python/.venv/
+/legacy/packages/python/.venv/
 # The build tree and the metadata that the setuptools build of uv sync writes beside the source (make orm-install-python).
-/packages/python/build/
-/packages/python/src/*.egg-info/
+/legacy/packages/python/build/
+/legacy/packages/python/src/*.egg-info/
 # The models that orm-gen writes at each orm-install-python (make python-models; P34: generated output is never tracked).
-/packages/python/tests/models/models.py
+/legacy/packages/python/tests/models/models.py
 # The stamps of the generators (scripts/generate/once.mts): the key of the inputs that each generated output was built from (make go-models, orm-codes-<lang>, python-models).
-/packages/go/go-models.key
-/packages/ts/src/orm-codes.key
-/packages/php/src/orm-codes.key
-/packages/python/src/polyspec/orm/orm-codes.key
-/packages/php-ext/src/orm-codes.key
-/packages/python/tests/models/python-models.key
+/legacy/packages/go/go-models.key
+/legacy/packages/ts/src/orm-codes.key
+/legacy/packages/php/src/orm-codes.key
+/legacy/packages/python/src/polyspec/orm/orm-codes.key
+/legacy/packages/php-ext/src/orm-codes.key
+/legacy/packages/python/tests/models/python-models.key
 __pycache__/
 *.pyc
 /var/
@@ -54,45 +54,45 @@ venv/
 go.work
 go.work.sum
 
-# The binary that go build writes beside a command of packages/go/cmd (P34: build output is never tracked).
-/packages/go/cmd/*/*
-!/packages/go/cmd/*/*.go
+# The binary that go build writes beside a command of legacy/packages/go/cmd (P34: build output is never tracked).
+/legacy/packages/go/cmd/*/*
+!/legacy/packages/go/cmd/*/*.go
 
 # The Go models that orm-gen writes at each orm-install-go (make go-models; P34: generated output is never tracked). The tests of
 # these packages are hand-written and stay tracked.
-/packages/go/model/*.go
-!/packages/go/model/*_test.go
-/packages/go/markdownmodel/*.go
-!/packages/go/markdownmodel/*_test.go
-/packages/go/decimalmodel/*.go
-!/packages/go/decimalmodel/*_test.go
+/legacy/packages/go/model/*.go
+!/legacy/packages/go/model/*_test.go
+/legacy/packages/go/markdownmodel/*.go
+!/legacy/packages/go/markdownmodel/*_test.go
+/legacy/packages/go/decimalmodel/*.go
+!/legacy/packages/go/decimalmodel/*_test.go
 # The Go models of the slot fixture tests/bind (make go-models; P34).
-/packages/go/bindmodel/*.go
-!/packages/go/bindmodel/*_test.go
+/legacy/packages/go/bindmodel/*.go
+!/legacy/packages/go/bindmodel/*_test.go
 # The PHP models that orm-gen writes at each orm-install-php (make php-models; P34: generated output is never tracked). Every file of
 # these directories is generated.
-/packages/php/gen/
-/packages/php/markdownmodel/
+/legacy/packages/php/gen/
+/legacy/packages/php/markdownmodel/
 # The temporary directories of php-models, which replace each of them by a rename (B1-4); a stopped run may leave one.
-/packages/php/gen.tmp/
-/packages/php/markdownmodel.tmp/
-/packages/php/complexmodel/
+/legacy/packages/php/gen.tmp/
+/legacy/packages/php/markdownmodel.tmp/
+/legacy/packages/php/complexmodel/
 # The PHP models of the slot fixture tests/bind (make php-models; P34).
-/packages/php/bindmodel/
-/packages/php/bindmodel.tmp/
-/packages/php/src/native/bin/
+/legacy/packages/php/bindmodel/
+/legacy/packages/php/bindmodel.tmp/
+/legacy/packages/php/src/native/bin/
 # The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-sources).
-/packages/php-ext/src/polyspec_orm_arginfo.h
-/packages/php-ext/src/native/sqlite_cancel.c
+/legacy/packages/php-ext/src/polyspec_orm_arginfo.h
+/legacy/packages/php-ext/src/native/sqlite_cancel.c
 # The error code constants of TypeScript, PHP and Python, and the SQLite result code names of these and of the PHP extension, are
 # build output (make orm-codes, orm-codes-php-extension).
-/packages/ts/src/codes.ts
-/packages/php/src/Code.php
-/packages/python/src/polyspec/orm/codes.py
-/packages/ts/src/sqlite-codes.ts
-/packages/php/src/SqliteCodes.php
-/packages/python/src/polyspec/orm/_sqlite_codes.py
-/packages/php-ext/src/sqlite_codes.h
+/legacy/packages/ts/src/codes.ts
+/legacy/packages/php/src/Code.php
+/legacy/packages/python/src/polyspec/orm/codes.py
+/legacy/packages/ts/src/sqlite-codes.ts
+/legacy/packages/php/src/SqliteCodes.php
+/legacy/packages/python/src/polyspec/orm/_sqlite_codes.py
+/legacy/packages/php-ext/src/sqlite_codes.h
 # The link declaration of the development links (kit K869); make link reads it.
 /.links
 # The cache of ruff, which make lint-python writes at the root of the checkout

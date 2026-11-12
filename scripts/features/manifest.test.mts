@@ -106,7 +106,7 @@ caseTest('the features whose PHP extension owner runs the shared cases are imple
     'request_hook', 'constraints_and_relations', 'complex_query']) {
     const feature = manifest.features.find(item => item.id === id);
     assert.ok(feature, `contracts/features.json omits ${id}`);
-    assert.equal(feature.coverage?.owners?.['php-extension']?.part, 'packages/php-ext/tests', `${id} has no PHP extension owner`);
+    assert.equal(feature.coverage?.owners?.['php-extension']?.part, 'legacy/packages/php-ext/tests', `${id} has no PHP extension owner`);
     assert.equal(feature.status, 'implemented', `${id} is ${feature.status}`);
   }
 });
@@ -170,13 +170,13 @@ caseTest('the composite-key recipe holds distinct bounded tuples with equal conc
 
 
 const markdownServerContracts = [
-  { path: 'packages/php/tests/markdown_test_server.php', required: ['$receivedMessages = [];'], forbidden: ['$received = [];', 'markdown_fake_server.php'] },
-  { path: 'packages/php/tests/MarkdownTest.php', required: ['function start_markdown_test_server(', 'function markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
-  { path: 'packages/php/tests/Recipe.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
-  { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
-  { path: 'packages/ts/tests/recipe.mjs', required: ['listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
-  { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
-  { path: 'packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
+  { path: 'legacy/packages/php/tests/markdown_test_server.php', required: ['$receivedMessages = [];'], forbidden: ['$received = [];', 'markdown_fake_server.php'] },
+  { path: 'legacy/packages/php/tests/MarkdownTest.php', required: ['function start_markdown_test_server(', 'function markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'legacy/packages/php/tests/Recipe.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'legacy/packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'legacy/packages/ts/tests/recipe.mjs', required: ['listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
+  { path: 'legacy/packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
+  { path: 'legacy/packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
 ] as const;
 
 function markdownNamingErrors(sources: Record<string, string>, registrations: Record<string, string[]>): string[] {
@@ -193,15 +193,15 @@ function markdownNamingErrors(sources: Record<string, string>, registrations: Re
       if (source.includes(symbol)) errors.push(`${contract.path}: stale ${symbol}`);
   }
   for (const owner of ['dsn_connection fixtures', 'markdown-session-php inputs', 'client-unit-check inputs'])
-    if (!registrations[owner]?.includes('packages/php/tests/markdown_test_server.php')) errors.push(`${owner}: PHP Markdown test server is not registered`);
-  if (!registrations['typescript-listener']?.includes('packages/ts/tests/markdown_test_listener.mjs'))
+    if (!registrations[owner]?.includes('legacy/packages/php/tests/markdown_test_server.php')) errors.push(`${owner}: PHP Markdown test server is not registered`);
+  if (!registrations['typescript-listener']?.includes('legacy/packages/ts/tests/markdown_test_listener.mjs'))
     errors.push('typescript-listener: renamed listener path is not registered');
   return errors;
 }
 
 caseTest('Markdown test server names and owner registrations stay aligned across clients', COMPUTE, () => {
   const implementations = readFileSync(`${root}/contracts/implementations.json`, 'utf8');
-  assert.ok(implementations.includes('packages/php/tests/markdown_test_server.php'), 'contracts/implementations.json omits the PHP Markdown test server');
+  assert.ok(implementations.includes('legacy/packages/php/tests/markdown_test_server.php'), 'contracts/implementations.json omits the PHP Markdown test server');
   assert.ok(!implementations.includes('markdown_fake_server.php'), 'contracts/implementations.json retains the previous PHP Markdown test server path');
   const connection = manifest.features.find(feature => feature.id === 'dsn_connection');
   assert.ok(connection, 'contracts/features.json omits dsn_connection');
@@ -233,10 +233,10 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   };
   assert.deepEqual(markdownNamingErrors(sources, registrations), []);
 
-  const phpMarkdownTest = sources['packages/php/tests/MarkdownTest.php'];
+  const phpMarkdownTest = sources['legacy/packages/php/tests/MarkdownTest.php'];
   assert.ok(phpMarkdownTest, 'PHP Markdown test source is unavailable');
-  const stalePhp = { ...sources, 'packages/php/tests/MarkdownTest.php': phpMarkdownTest.replace('start_markdown_test_server(', 'markdown_fake_server(') };
+  const stalePhp = { ...sources, 'legacy/packages/php/tests/MarkdownTest.php': phpMarkdownTest.replace('start_markdown_test_server(', 'markdown_fake_server(') };
   assert.match(markdownNamingErrors(stalePhp, registrations).join('\n'), /MarkdownTest\.php: missing function start_markdown_test_server/);
-  assert.match(markdownNamingErrors(sources, { ...registrations, 'markdown-session-php inputs': registrations['markdown-session-php inputs'].filter(path => path !== 'packages/php/tests/markdown_test_server.php') }).join('\n'), /markdown-session-php inputs: PHP Markdown test server is not registered/);
-  assert.ok(paths.includes('packages/php/tests/markdown_test_server.php'));
+  assert.match(markdownNamingErrors(sources, { ...registrations, 'markdown-session-php inputs': registrations['markdown-session-php inputs'].filter(path => path !== 'legacy/packages/php/tests/markdown_test_server.php') }).join('\n'), /markdown-session-php inputs: PHP Markdown test server is not registered/);
+  assert.ok(paths.includes('legacy/packages/php/tests/markdown_test_server.php'));
 });

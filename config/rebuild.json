@@ -22,15 +22,15 @@
       "kind": "policy",
       "reason": "the command entry of the dbspec language server that this repository defines, over vscode-languageserver; no ecosystem server knows dbspec"
     },
-    "packages/php-ext/scripts/build.sh": {
+    "legacy/packages/php-ext/scripts/build.sh": {
       "kind": "ecosystem",
       "tool": "phpize, configure and make of php-src"
     },
-    "packages/ts/src/bin/orm-gen.ts": {
+    "legacy/packages/ts/src/bin/orm-gen.ts": {
       "kind": "policy",
       "reason": "the command entry of orm-gen, the model generator of this repository; no ecosystem generator reads dbspec"
     },
-    "packages/ts/src/tools/cli.ts": {
+    "legacy/packages/ts/src/tools/cli.ts": {
       "kind": "policy",
       "reason": "orm-gen, the TypeScript model generator from a dbspec set, the product of this repository; no ecosystem generator reads dbspec"
     },
@@ -324,7 +324,7 @@
     },
     "scripts/typescript/models.mts": {
       "kind": "policy",
-      "reason": "the generator of the TypeScript models of packages/ts/src/models that build.mts runs with each entry of orm-gen (P34); no ecosystem generator reads the dbspec sets of this repository"
+      "reason": "the generator of the TypeScript models of legacy/packages/ts/src/models that build.mts runs with each entry of orm-gen (P34); no ecosystem generator reads the dbspec sets of this repository"
     },
     "scripts/typescript/node-min.mts": {
       "kind": "policy",
@@ -382,7 +382,7 @@
       "kind": "policy",
       "reason": "the isolated server root and the restored process.kill that the tests of the test server script of this repository share"
     },
-    "packages/php/bin/orm-sqlite-cancel-build.php": {
+    "legacy/packages/php/bin/orm-sqlite-cancel-build.php": {
       "kind": "policy",
       "reason": "the command of the PHP client that compiles its packaged SQLite cancellation helper (src/native/sqlite_cancel.c) into a loadable extension with the C compiler and the sqlite3 headers that pkg-config names; no ecosystem installer builds a SQLite loadable extension of a Composer package"
     },
@@ -392,7 +392,7 @@
     },
     "scripts/php/php-ext-build.mts": {
       "kind": "policy",
-      "reason": "builds the PHP extension of this repository once per source and mode and copies that build to each site (B1-7); it calls packages/php-ext/scripts/build.sh, the phpize, configure and make of php-src, and adds only the per-key cache"
+      "reason": "builds the PHP extension of this repository once per source and mode and copies that build to each site (B1-7); it calls legacy/packages/php-ext/scripts/build.sh, the phpize, configure and make of php-src, and adds only the per-key cache"
     },
     "scripts/clone-file.mts": {
       "kind": "policy",

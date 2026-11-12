@@ -1,0 +1,4586 @@
+{
+ "$schema": "../../../scripts/features/schema/recipe.schema.json",
+ "requirements": [
+  "DSL-62",
+  "DSL-73",
+  "DSL-74",
+  "DSL-76",
+  "DSL-80",
+  "DSL-90",
+  "DSL-99",
+  "INT-31",
+  "INT-33",
+  "INT-36",
+  "INT-87",
+  "PRT-35",
+  "INT-11",
+  "PRT-40",
+  "DIA-154"
+ ],
+ "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
+ "seed": {
+  "rows": {
+   "user": [
+    {
+     "name": {
+      "text": "user-1"
+     }
+    },
+    {
+     "name": {
+      "text": "user-2"
+     }
+    }
+   ],
+   "service_member": [
+    {
+     "service_seq": {
+      "int": "7"
+     },
+     "user_seq": {
+      "int": "1"
+     }
+    },
+    {
+     "service_seq": {
+      "int": "7"
+     },
+     "user_seq": {
+      "int": "2"
+     }
+    },
+    {
+     "service_seq": {
+      "int": "8"
+     },
+     "user_seq": {
+      "int": "2"
+     }
+    }
+   ],
+   "author": [
+    {
+     "name": {
+      "text": "author-1"
+     },
+     "user_seq": {
+      "int": "1"
+     },
+     "service_member_seq": {
+      "int": "1"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "10"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     }
+    },
+    {
+     "name": {
+      "text": "author-2"
+     },
+     "user_seq": {
+      "int": "1"
+     },
+     "service_member_seq": {
+      "int": "1"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "20"
+     },
+     "is_close": {
+      "bool": true
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     },
+     "price": {
+      "mysql": {
+       "decimal": "1.500"
+      },
+      "postgres": {
+       "decimal": "1.500"
+      },
+      "sqlite": {
+       "int": "1500"
+      }
+     }
+    },
+    {
+     "name": {
+      "text": "author-3"
+     },
+     "user_seq": {
+      "int": "2"
+     },
+     "service_member_seq": {
+      "int": "2"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "30"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     },
+     "price": {
+      "mysql": {
+       "decimal": "1.500"
+      },
+      "postgres": {
+       "decimal": "1.500"
+      },
+      "sqlite": {
+       "int": "1500"
+      }
+     }
+    },
+    {
+     "name": {
+      "text": "author-4"
+     },
+     "user_seq": {
+      "int": "2"
+     },
+     "service_member_seq": {
+      "int": "3"
+     },
+     "service_seq": {
+      "int": "8"
+     },
+     "read_count": {
+      "int": "40"
+     },
+     "is_close": {
+      "bool": true
+     },
+     "is_display": {
+      "bool": true
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     }
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "id": "page_holds_the_first_rows_and_the_total",
+   "requirements": [
+    "INT-36",
+    "DSL-99"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "sum_of_a_column",
+   "requirements": [
+    "DSL-62"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "read_count"
+     },
+     "expect": {
+      "mysql": {
+       "json": 60
+      },
+      "postgres": {
+       "json": 60
+      },
+      "sqlite": {
+       "json": 60
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "function_column_is_keyed_by_its_alias",
+   "requirements": [
+    "DSL-73"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      {
+       "expr": {
+        "fn": "year",
+        "args": [
+         {
+          "column": "start_dt"
+         }
+        ]
+       },
+       "as": "start_year"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "remove_all_columns_keeps_the_keys_and_the_added_column",
+   "requirements": [
+    "DSL-76"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "removing_an_added_column_keeps_the_function_column",
+   "requirements": [
+    "DSL-76",
+    "DSL-73"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "name",
+      {
+       "expr": {
+        "fn": "year",
+        "args": [
+         {
+          "column": "start_dt"
+         }
+        ]
+       },
+       "as": "start_year"
+      }
+     ],
+     "remove_columns": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "joined_child_keeps_its_scalar_subquery_order_and_index",
+   "requirements": [
+    "DSL-74",
+    "DSL-90",
+    "INT-33"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "joins": [
+      {
+       "model": "ServiceMember",
+       "match": [
+        "service_member_seq",
+        "seq"
+       ],
+       "force_index": "ix_service_member_service",
+       "as": "service_member"
+      },
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "add_columns": [
+        {
+         "expr": {
+          "sub": {
+           "model": "Author",
+           "aggregate": {
+            "agg": "sum",
+            "column": "read_count"
+           },
+           "where": {
+            "user_seq": {
+             "eq": {
+              "outer": "seq"
+             }
+            }
+           }
+          }
+         },
+         "as": "read_total"
+        }
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "as": "user"
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`read_count` AS `a__read_count`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`price` AS `a__price`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq`, `user_model`.`seq` AS `user_model__seq`, `user_model`.`name` AS `user_model__name`, (SELECT COALESCE(SUM(`s1`.`read_count`), 0) FROM `author` AS `s1` WHERE `s1`.`user_seq` = `user_model`.`seq`) AS `user_model__read_total` FROM `author` AS `a` INNER JOIN `service_member` AS `service_member_model` FORCE INDEX (`ix_service_member_service`) ON `a`.`service_member_seq` = `service_member_model`.`seq` INNER JOIN `user` AS `user_model` ON `a`.`user_seq` = `user_model`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `user_model`.`seq` DESC",
+        "binds": [
+         7
+        ]
+       }
+      },
+      "postgres": {
+       "json": {
+        "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"price\" AS \"a__price\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\", \"user_model\".\"seq\" AS \"user_model__seq\", \"user_model\".\"name\" AS \"user_model__name\", (SELECT COALESCE(SUM(\"s1\".\"read_count\"), 0) FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total\" FROM \"author\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"service_member_seq\" = \"service_member_model\".\"seq\" INNER JOIN \"user\" AS \"user_model\" ON \"a\".\"user_seq\" = \"user_model\".\"seq\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"user_model\".\"seq\" DESC",
+        "binds": [
+         7
+        ]
+       }
+      },
+      "sqlite": {
+       "json": {
+        "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"price\" AS \"a__price\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\", \"user_model\".\"seq\" AS \"user_model__seq\", \"user_model\".\"name\" AS \"user_model__name\", (SELECT COALESCE(SUM(\"s1\".\"read_count\" >> 48), 0) FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total\", (SELECT COALESCE(SUM((\"s2\".\"read_count\" >> 32) & 65535), 0) FROM \"author\" AS \"s2\" WHERE \"s2\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total__1\", (SELECT COALESCE(SUM((\"s3\".\"read_count\" >> 16) & 65535), 0) FROM \"author\" AS \"s3\" WHERE \"s3\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total__2\", (SELECT COALESCE(SUM(\"s4\".\"read_count\" & 65535), 0) FROM \"author\" AS \"s4\" WHERE \"s4\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total__3\", (SELECT MAX(typeof(\"s5\".\"read_count\") NOT IN ('integer', 'null')) FROM \"author\" AS \"s5\" WHERE \"s5\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total__4\" FROM \"author\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" INDEXED BY \"ix_service_member_service\" ON \"a\".\"service_member_seq\" = \"service_member_model\".\"seq\" INNER JOIN \"user\" AS \"user_model\" ON \"a\".\"user_seq\" = \"user_model\".\"seq\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"user_model\".\"seq\" DESC",
+        "binds": [
+         7
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "joins": [
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "add_columns": [
+        {
+         "expr": {
+          "sub": {
+           "model": "Author",
+           "aggregate": {
+            "agg": "sum",
+            "column": "read_count"
+           },
+           "where": {
+            "user_seq": {
+             "eq": {
+              "outer": "seq"
+             }
+            }
+           }
+          }
+         },
+         "as": "read_total"
+        }
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ],
+       "as": "user"
+      }
+     ],
+     "pick": [
+      "user_model"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "read_total": 70,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "read_total": 70,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "read_total": 70,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "read_total": 30,
+          "seq": 1
+         }
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "scalar_subquery_column_sums_the_correlated_rows",
+   "requirements": [
+    "DSL-74"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "aggregate": {
+          "agg": "sum",
+          "column": "read_count"
+         },
+         "where": {
+          "chain": [
+           [
+            "",
+            {
+             "user_seq": {
+              "eq": {
+               "outer": "seq"
+              }
+             }
+            }
+           ],
+           [
+            "and",
+            {
+             "service_seq": {
+              "int": "7"
+             }
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "as": "read_total"
+      }
+     ],
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "order": [
+      "seq"
+     ],
+     "pick": [
+      "seq",
+      "read_total"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "null_collection_key_is_refused_after_one_select",
+   "requirements": [
+    "PRT-35"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "price"
+     ],
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "key_by": "price",
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "statements",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price` FROM `author` AS `a` WHERE `a`.`seq` = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"price\" AS \"a__price\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"price\" AS \"a__price\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "group_rows_keep_their_types_and_their_null",
+   "requirements": [
+    "INT-31"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq"
+      ]
+     },
+     "order": [
+      "service_seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "price"
+      ]
+     },
+     "order": [
+      "price"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "group_value": "name",
+     "expect": {
+      "mysql": {
+       "error": "COLUMN_UNSELECTED"
+      },
+      "postgres": {
+       "error": "COLUMN_UNSELECTED"
+      },
+      "sqlite": {
+       "error": "COLUMN_UNSELECTED"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "group_rows_send_only_reads_and_sum_to_the_row_count",
+   "requirements": [
+    "INT-31"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq"
+      ]
+     },
+     "order": [
+      "service_seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "price"
+      ]
+     },
+     "order": [
+      "price"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a`"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`is_close` ORDER BY `a`.`is_close` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`service_seq` AS `a__service_seq`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`price` AS `a__price`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`price` ORDER BY `a`.`price` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a`"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"is_close\" ORDER BY \"a\".\"is_close\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"price\" AS \"a__price\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"price\" ORDER BY \"a\".\"price\" ASC NULLS FIRST"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"is_close\" ORDER BY \"a\".\"is_close\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"price\" AS \"a__price\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"price\" ORDER BY \"a\".\"price\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_loads_the_child_of_a_row",
+   "requirements": [
+    "DSL-80",
+    "INT-87"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "pick": [
+      "user_model"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_boolean_and_a_text",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_flag_label": [
+      {
+       "flag": {
+        "bool": false
+       },
+       "label": {
+        "text": ""
+       }
+      },
+      {
+       "flag": {
+        "bool": true
+       },
+       "label": {
+        "text": "2"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFlagLabel",
+     "order": [
+      "flag",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFlagLabel",
+     "order": [
+      "flag",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "t1:0s0:",
+         "t1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_an_integer_and_a_text",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_number_label": [
+      {
+       "number": {
+        "int": "0"
+       },
+       "label": {
+        "text": ""
+       }
+      },
+      {
+       "number": {
+        "int": "1"
+       },
+       "label": {
+        "text": "2"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyNumberLabel",
+     "order": [
+      "number",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyNumberLabel",
+     "order": [
+      "number",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i1:0s0:",
+         "i1:1s1:2"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_two_texts_holds_their_lengths",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_label_label": [
+      {
+       "first_label": {
+        "text": "1"
+       },
+       "second_label": {
+        "text": "23"
+       }
+      },
+      {
+       "first_label": {
+        "text": "1"
+       },
+       "second_label": {
+        "text": "2"
+       }
+      },
+      {
+       "first_label": {
+        "text": "12"
+       },
+       "second_label": {
+        "text": "3"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyLabelLabel",
+     "order": [
+      "first_label",
+      "second_label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyLabelLabel",
+     "order": [
+      "first_label",
+      "second_label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "s1:1s1:2",
+         "s1:1s2:23",
+         "s2:12s1:3"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_two_integers_holds_their_lengths",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "composite_account": [
+      {
+       "tenant_id": {
+        "int": "9900041"
+       },
+       "account_id": {
+        "int": "23"
+       },
+       "name": {
+        "text": "a"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "99000412"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "name": {
+        "text": "b"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "order": [
+      "tenant_id",
+      "account_id"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "order": [
+      "tenant_id",
+      "account_id"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i7:9900041i2:23",
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_page_past_the_first_holds_the_next_key",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "composite_account": [
+      {
+       "tenant_id": {
+        "int": "9900041"
+       },
+       "account_id": {
+        "int": "23"
+       },
+       "name": {
+        "text": "a"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "99000412"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "name": {
+        "text": "b"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "order": [
+      "tenant_id",
+      "account_id"
+     ],
+     "limit": {
+      "offset": 1,
+      "count": 1
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 2,
+        "page": 2,
+        "per_page": 1
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 2,
+        "page": 2,
+        "per_page": 1
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i8:99000412i1:3"
+        ],
+        "total": 2,
+        "pages": 2,
+        "page": 2,
+        "per_page": 1
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_boolean_then_an_integer",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_flag_number": [
+      {
+       "flag": {
+        "bool": true
+       },
+       "number": {
+        "int": "1"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFlagNumber",
+     "order": [
+      "flag",
+      "number"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFlagNumber",
+     "order": [
+      "flag",
+      "number"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "t1:1i1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_an_integer_then_a_boolean",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_number_flag": [
+      {
+       "number": {
+        "int": "1"
+       },
+       "flag": {
+        "bool": true
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyNumberFlag",
+     "order": [
+      "number",
+      "flag"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyNumberFlag",
+     "order": [
+      "number",
+      "flag"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "i1:1t1:1"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_multibyte_text_counts_its_bytes",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_label_flag": [
+      {
+       "label": {
+        "text": "é"
+       },
+       "flag": {
+        "bool": false
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyLabelFlag",
+     "order": [
+      "label",
+      "flag"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyLabelFlag",
+     "order": [
+      "label",
+      "flag"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "s2:ét1:0"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_datetime_and_its_text",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_instant_label": [
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.123"
+       },
+       "label": {
+        "text": "2026-10-18T09:30:00.123Z"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"
+        ],
+        "total": 1,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_datetime_trims_its_fraction",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_instant_label": [
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.000"
+       },
+       "label": {
+        "text": ""
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.010"
+       },
+       "label": {
+        "text": ""
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.120"
+       },
+       "label": {
+        "text": ""
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d20:2026-10-18T09:30:00Zs0:",
+         "d23:2026-10-18T09:30:00.01Zs0:",
+         "d23:2026-10-18T09:30:00.12Zs0:"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "composite_key_of_a_microsecond_datetime_trims_its_fraction",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_fine_instant_label": [
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.000010"
+       },
+       "label": {
+        "text": ""
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.123400"
+       },
+       "label": {
+        "text": ""
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFineInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFineInstantLabel",
+     "order": [
+      "instant",
+      "label"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "d26:2026-10-18T09:30:00.00001Zs0:",
+         "d25:2026-10-18T09:30:00.1234Zs0:"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "single_key_of_a_boolean_keeps_its_type",
+   "requirements": [
+    "PRT-35"
+   ],
+   "seed": {
+    "rows": {
+     "key_flag": [
+      {
+       "flag": {
+        "bool": false
+       }
+      },
+      {
+       "flag": {
+        "bool": true
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFlag",
+     "order": [
+      "flag"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         false,
+         true
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         false,
+         true
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         false,
+         true
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "single_key_of_a_datetime_keeps_its_type",
+   "requirements": [
+    "PRT-35",
+    "INT-11"
+   ],
+   "seed": {
+    "rows": {
+     "key_instant": [
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.000"
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.120"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyInstant",
+     "order": [
+      "instant"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00Z",
+         "2026-10-18T09:30:00.12Z"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00Z",
+         "2026-10-18T09:30:00.12Z"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00Z",
+         "2026-10-18T09:30:00.12Z"
+        ],
+        "total": 2,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "single_key_of_a_microsecond_datetime_keeps_its_instant",
+   "requirements": [
+    "PRT-35",
+    "INT-11"
+   ],
+   "seed": {
+    "rows": {
+     "key_fine_instant": [
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.000010"
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.000011"
+       }
+      },
+      {
+       "instant": {
+        "datetime": "2026-10-18 09:30:00.123400"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "KeyFineInstant",
+     "order": [
+      "instant"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 10
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00.00001Z",
+         "2026-10-18T09:30:00.000011Z",
+         "2026-10-18T09:30:00.1234Z"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00.00001Z",
+         "2026-10-18T09:30:00.000011Z",
+         "2026-10-18T09:30:00.1234Z"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         "2026-10-18T09:30:00.00001Z",
+         "2026-10-18T09:30:00.000011Z",
+         "2026-10-18T09:30:00.1234Z"
+        ],
+        "total": 3,
+        "pages": 1,
+        "page": 1,
+        "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_condition_follows_the_padded_composite_parent_keys",
+   "requirements": [
+    "PRT-40",
+    "DSL-82"
+   ],
+   "seed": {
+    "rows": {
+     "composite_account": [
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "n"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "n"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "name": {
+        "text": "n"
+       }
+      }
+     ],
+     "composite_member": [
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "guest"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "guest"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "guest"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": { "tenant_id": { "int": "7" } },
+     "order": [
+      "account_id"
+     ],
+     "columns": [
+      "tenant_id",
+      "account_id"
+     ],
+     "relation": {
+      "model": "CompositeMember",
+      "match": [
+       [
+        "tenant_id",
+        "tenant_id"
+       ],
+       [
+        "account_id",
+        "account_id"
+       ]
+      ],
+      "many": true,
+      "where": {
+       "role": {
+        "text": "owner"
+       }
+      },
+      "columns": [
+       "tenant_id",
+       "account_id",
+       "role"
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? ORDER BY `a`.`account_id` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [{ "int": "7" }]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`role` AS `a__role` FROM `composite_member` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND (`a`.`role` = ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 ORDER BY \"a\".\"account_id\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [{ "int": "7" }]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_member\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (($1, $2), ($3, $4), ($5, $6), ($7, $8)) AND (\"a\".\"role\" = $9)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = ? ORDER BY \"a\".\"account_id\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [{ "int": "7" }]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_member\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND (\"a\".\"role\" = ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "one_relation_on_a_key_of_many_rows_attaches_the_first_child",
+   "requirements": [
+    "DSL-80",
+    "PRT-42"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "Author",
+     "values": {
+      "name": {
+       "text": "author-2"
+      },
+      "user_seq": {
+       "int": "1"
+      },
+      "service_member_seq": {
+       "int": "1"
+      },
+      "service_seq": {
+       "int": "7"
+      },
+      "read_count": {
+       "int": "7"
+      },
+      "start_dt": {
+       "datetime": "2026-06-01 00:00:00.000000"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "alias": "Writer",
+       "match": [
+        [
+         "user_seq",
+         "user_seq"
+        ]
+       ],
+       "columns": [
+        "read_count"
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ]
+      }
+     ],
+     "pick": [
+      "writer"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -148,7 +148,7 @@ caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unre
   const tsSurface = surfaces.find(surface => surface.owner === 'typescript');
   assert.ok(tsSurface);
   assert.deepEqual(checkNativeSurfaces('typescript', { [tsSurface.symbol ?? '']: { signature: tsSurface.signature ?? '', exported: true } }, surfaces), []);
-  const actual = { 'packages/python/src/polyspec/orm/database.py::Db.with_future': { signature: 'def with_future(self, future: asyncio.Future) -> Db', exported: true } };
+  const actual = { 'legacy/packages/python/src/polyspec/orm/database.py::Db.with_future': { signature: 'def with_future(self, future: asyncio.Future) -> Db', exported: true } };
   assert.deepEqual(checkNativeSurfaces('python', actual, surfaces), [], 'real Python host primitive did not match');
   assert.notDeepEqual(checkNativeSurfaces('python', {}, surfaces), [], 'a fake host primitive passed');
 
@@ -171,12 +171,12 @@ caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unre
 caseTest('behavior adapter cases must name a case of a test file of their runtime', COMPUTE, () => {
   const contract: BehaviorContract = {
     id: 'CFG-9', adapters: {
-      go: { status: 'implemented', primitive: 'context.Context', cases: [{ test: 'packages/go/orm/cancel_test.go', id: 'TestCancel [sqlite]' }] },
+      go: { status: 'implemented', primitive: 'context.Context', cases: [{ test: 'legacy/packages/go/orm/cancel_test.go', id: 'TestCancel [sqlite]' }] },
       php: { status: 'unresolved', item: 'KSTD-2-11-16-1', required_case: 'cancel_active_query' },
     },
   };
-  const owner = (file: string) => file.startsWith('packages/go/') ? 'go' : undefined;
-  const files = (text: string) => (file: string) => file === 'packages/go/orm/cancel_test.go' ? text : undefined;
+  const owner = (file: string) => file.startsWith('legacy/packages/go/') ? 'go' : undefined;
+  const files = (text: string) => (file: string) => file === 'legacy/packages/go/orm/cancel_test.go' ? text : undefined;
   assert.deepEqual(checkBehaviorAdapterCases([contract], owner, files('func TestCancel(t *testing.T) {}')), []);
   assert.match(checkBehaviorAdapterCases([contract], owner, files('func TestCancelLater(t *testing.T) {}')).join('\n'), /holds no case TestCancel \[sqlite\]/);
   assert.match(checkBehaviorAdapterCases([contract], owner, () => undefined).join('\n'), /cancel_test\.go does not exist/);

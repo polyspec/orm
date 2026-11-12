@@ -1,0 +1,11 @@
+dbspec 1 bench_reader
+
+use bench_shared { shared_note }
+
+table note_reader {
+  seq i64
+  shared_note_seq i64
+  primary key (seq)
+  index ix_note_reader_shared_note (shared_note_seq)
+  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict
+}

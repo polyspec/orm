@@ -106,7 +106,7 @@
             "version": "0.0.31",
             "dist": {
                 "type": "path",
-                "url": "packages/php",
+                "url": "legacy/packages/php",
                 "reference": "4ccefc1c9f7415e1cbd4fd267f107a17deba2591"
             },
             "require": {
@@ -129,7 +129,7 @@
                 "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs",
                 "ext-pgsql": "postgres:// query, notification, and in-flight cancellation support",
-                "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
+                "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (legacy/packages/php-ext)"
             },
             "bin": [
                 "bin/orm-gen",

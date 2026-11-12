@@ -12,10 +12,10 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { execFailure } from '../../tests/errors.mts';
 
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
-  assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './packages/go/internal/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
-    ['-tags', 'physical', './packages/go/internal/dialects', '-run', '^$', '-count=1']);
-  assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './packages/go/...', '-run=X']), ['-race', './packages/go/...', '-run', '^$', '-count=1']);
-  assert.equal(packages(['-v', './packages/go/orm', './packages/go/orm/pg', '-run', 'X']), 'packages/go/orm,packages/go/orm/pg');
+  assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './legacy/packages/go/internal/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
+    ['-tags', 'physical', './legacy/packages/go/internal/dialects', '-run', '^$', '-count=1']);
+  assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './legacy/packages/go/...', '-run=X']), ['-race', './legacy/packages/go/...', '-run', '^$', '-count=1']);
+  assert.equal(packages(['-v', './legacy/packages/go/orm', './legacy/packages/go/orm/pg', '-run', 'X']), 'legacy/packages/go/orm,legacy/packages/go/orm/pg');
   assert.equal(packages(['-v']), '.');
 });
 
@@ -24,9 +24,9 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
 // with GO_TEST_TAGS, in either flag form, and a run with no tags gets them alone.
 caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
   assert.deepEqual(GO_TEST_TAGS, ['ormtest']);
-  assert.deepEqual(withTestTags(['-v', './packages/go/...']), ['-tags', 'ormtest', '-v', './packages/go/...']);
-  assert.deepEqual(withTestTags(['-tags', 'physical', './packages/go/orm']), ['-tags', 'physical,ormtest', './packages/go/orm']);
-  assert.deepEqual(withTestTags(['-tags=physical,ormtest', './packages/go/internal/dialects']), ['-tags=physical,ormtest', './packages/go/internal/dialects']);
+  assert.deepEqual(withTestTags(['-v', './legacy/packages/go/...']), ['-tags', 'ormtest', '-v', './legacy/packages/go/...']);
+  assert.deepEqual(withTestTags(['-tags', 'physical', './legacy/packages/go/orm']), ['-tags', 'physical,ormtest', './legacy/packages/go/orm']);
+  assert.deepEqual(withTestTags(['-tags=physical,ormtest', './legacy/packages/go/internal/dialects']), ['-tags=physical,ormtest', './legacy/packages/go/internal/dialects']);
   assert.throws(() => withTestTags(['-tags', 'a', '-tags', 'b', './x']), /more than one -tags/);
 });
 

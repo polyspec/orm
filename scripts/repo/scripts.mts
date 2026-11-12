@@ -26,8 +26,8 @@ const otherLanguages = /\.(?:py|rb|pl|pm|lua|java|kt|cs|swift|scala|r)$/i;
 
 // pythonRunners is the exact list of Python files that test the Python implementation. The spec (polyspec Python implementation and tool-language unification spec)
 // sets that the runner testing the Python implementation is written in Python. The list is only these five places:
-//   packages/python (the Python client and its tools)
-//   packages/python/testing/interfaces/python.py and tests/interfaces/test_*.py
+//   legacy/packages/python (the Python client and its tools)
+//   legacy/packages/python/testing/interfaces/python.py and tests/interfaces/test_*.py
 //   the python runner in tests/conformance (file names containing python)
 //   the python runner in tests/dbspec/compare (file names containing python)
 // Other Python programs are not exempt.

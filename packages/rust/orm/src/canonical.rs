@@ -1,4 +1,4 @@
-//! The canonical parameter walk of a request, in the order of packages/go/orm/canonical.go.
+//! The canonical parameter walk of a request, in the order of legacy/packages/go/orm/canonical.go.
 //!
 //! The walk pads each IN list to its power-of-two bucket, gives every parameter reference a slot of its own
 //! in walk order, and renumbers the IR from that walk alone, so the plan cache key of a request does not depend

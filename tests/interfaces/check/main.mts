@@ -7,7 +7,7 @@
 // also accept `-self-test=false`.
 //
 // Expands rules per entity in the entity order of the dbspec document the contract points to. That order is read from the runtime model of the TypeScript client (make
-// typescript-build's packages/ts/dist).
+// typescript-build's legacy/packages/ts/dist).
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -69,7 +69,7 @@ export function goFlags(argv: string[]): string[] {
 
 /** loadOrder is the entity name order of the dbspec document (the TypeScript client's runtime model). */
 async function loadOrder(root: string, path: string): Promise<string[]> {
-  const dist = join(root, 'packages/ts/dist');
+  const dist = join(root, 'legacy/packages/ts/dist');
   if (!existsSync(join(dist, 'engine/model.js'))) throw new Error(`${dist} has no build of the TypeScript client; run make typescript-build`);
   const file: unknown = await import(join(dist, 'dbspec/file.js'));
   const model: unknown = await import(join(dist, 'engine/model.js'));

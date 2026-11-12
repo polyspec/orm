@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 9f3f7bbd848013fb6cfe4764ee607079281c6927514004781cbd5d56c835db72 -->
+<!-- source-sha256: 60741fc79ba805fb36b58cad7109f23295d589d24b958f2324ab4205fb47b743 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -237,7 +237,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 - **DIA-19** Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
-- **DIA-20** `github.com/polyspec/orm/packages/go`: `packages/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
+- **DIA-20** `github.com/polyspec/orm/packages/go`: `legacy/packages/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
 
 ```go
 import (
@@ -273,7 +273,7 @@ import (
 
 이 절은 MySQL, PostgreSQL, SQLite가 스키마 객체를 정의하고 적용하고 catalog에 기록하는 방식을 정리하고, 중립 스키마 언어 dbspec이 각 기능을 지원하는지 결정한다. 기능은 (1) dbspec에 공통 정의가 하나 있고, (2) 그 정의가 MySQL, PostgreSQL, SQLite에서 같은 의미로 생성되며, (3) introspection이 숨은 표식 없이 catalog에서 같은 정의를 복원할 때만 지원한다. Renderer가 setting에서 생성하는 CHECK나 trigger 같은 동작은 catalog 텍스트가 선언한 renderer version의 출력과 같을 때만 복원한다.
 
-모든 사실은 `packages/go/internal/dialects`의 공통 probe ID(`make dialect-facts-check`)를 인용한다. Probe는 자기 전용 일회용 database, schema, file에서 DDL, DML, catalog 질의를 실행하며 데이터베이스가 다르게 동작하면 실패한다. `render.*` probe는 제안한 rendering을 검사한다. Probe ID가 없는 사실은 공식 manual을 인용한다. 각 행은 **Decision:**으로 끝난다. **T8.1 review**는 이 기록이 결정하지 않는 정의다.
+모든 사실은 `legacy/packages/go/internal/dialects`의 공통 probe ID(`make dialect-facts-check`)를 인용한다. Probe는 자기 전용 일회용 database, schema, file에서 DDL, DML, catalog 질의를 실행하며 데이터베이스가 다르게 동작하면 실패한다. `render.*` probe는 제안한 rendering을 검사한다. Probe ID가 없는 사실은 공식 manual을 인용한다. 각 행은 **Decision:**으로 끝난다. **T8.1 review**는 이 기록이 결정하지 않는 정의다.
 
 표기: "renderer CHECK"는 renderer가 타입이나 setting을 위해 생성하는 CHECK 제약이다. 정확한 텍스트와 이름은 T8.1에서 정하며, introspection은 catalog 텍스트가 해당 서버의 renderer 출력과 같을 때만 받아들인다.
 
@@ -284,7 +284,7 @@ import (
 | MySQL | 8.4.11, 서버 `sql_mode`에 `STRICT_TRANS_TABLES` 포함, 모든 클라이언트가 [config](config.ko.md)의 세션 `sql_mode`를 정함(`mysql.session.sql_mode_set`), `lower_case_table_names=1`, `log_bin=1`, `log_bin_trust_function_creators=0`, `explicit_defaults_for_timestamp=1`, 서버 시간대 `SYSTEM`(KST) (`mysql.env.server`) |
 | PostgreSQL | 17.11, `TimeZone=Asia/Seoul`, database collation `C`, `max_identifier_length=63` (`postgres.env.server`) |
 | SQLite (probe) | `modernc.org/sqlite` v1.58.0의 3.53.4 (`sqlite.env.library`) |
-| SQLite, Go client | `modernc.org/sqlite` v1.58.0(`packages/go/go.mod`), `select sqlite_version()` 결과 3.53.4 |
+| SQLite, Go client | `modernc.org/sqlite` v1.58.0(`legacy/packages/go/go.mod`), `select sqlite_version()` 결과 3.53.4 |
 | SQLite, PHP client | PHP 8.4.26의 `pdo_sqlite`, `select sqlite_version()` 결과 3.53.4 |
 | SQLite, TypeScript client | Node 26.11.1의 `node:sqlite`, `select sqlite_version()` 결과 3.53.4. `package.json`은 Node 26.12.0 이상을 허용하며 그 뒤 release의 bundled version은 측정하지 않았다 |
 | SQLite 파일 이름 | DSN query가 남아 있는 파일 이름은 PHP PDO, `node:sqlite`, `sqlite3` shell이 그대로 열어 `bench.sqlite?_pragma=…`를 만든다. `modernc.org/sqlite`는 query를 해석한다(`TestSQLiteFileNameWithQuery`의 `sqlite.filename.*` case). 클라이언트는 파일 이름을 정하기 전에 query를 제거한다 |
@@ -514,7 +514,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ## Introspection
 
-- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. recipe `contracts/fixtures/dbspec_introspect/dbspec_introspect.json`은 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `mysql` dialect의 case는 MariaDB server의 답이 다른 곳에서 그 server의 결과로 자기 `document`와 `unsupported`를 가진 `mariadb` member를 둘 수 있으며(DIA-200, 규칙 4), 그런 차이마다 그 DIA 규칙이 그 vector를 적는다(DIA-50, DIA-75). 실패한 catalog query는 호출의 error다. recipe case `catalog_query_failure`는 빈 SQLite database를 MySQL의 catalog query로 introspect한다. `make dbspec-introspect-<client>-check`는 recipe를 클라이언트 하나로 실행하고, Go 시험 suite가 그 entry를 실행한다. `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
+- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. recipe `contracts/fixtures/dbspec_introspect/dbspec_introspect.json`은 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `mysql` dialect의 case는 MariaDB server의 답이 다른 곳에서 그 server의 결과로 자기 `document`와 `unsupported`를 가진 `mariadb` member를 둘 수 있으며(DIA-200, 규칙 4), 그런 차이마다 그 DIA 규칙이 그 vector를 적는다(DIA-50, DIA-75). 실패한 catalog query는 호출의 error다. recipe case `catalog_query_failure`는 빈 SQLite database를 MySQL의 catalog query로 introspect한다. `make dbspec-introspect-<client>-check`는 recipe를 클라이언트 하나로 실행하고, Go 시험 suite가 그 entry를 실행한다. `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `legacy/packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
 
 ### 문서
 
@@ -583,7 +583,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.<topic>.<fact>`가 있고, `TestDialectFactsMariadb`가
 이것을 `make orm-test-mariadb`의 MariaDB 11.8.6에서 실행한다(`make dialect-facts-mariadb-check`, DIA-200). MySQL의 fact가 성립하는
 곳에서 probe는 그 쌍이며 MariaDB 11.8에서 그 fact를 증명한다. MariaDB가 다르게 답하는 곳에서 그 ID의 probe는 MariaDB의 fact를
-적고(`packages/go/internal/dialects/probes_mariadb.go`), 표가 그 fact를 옮긴다. 모든 MariaDB probe는 MariaDB 11.8.6에서 통과한다.
+적고(`legacy/packages/go/internal/dialects/probes_mariadb.go`), 표가 그 fact를 옮긴다. 모든 MariaDB probe는 MariaDB 11.8.6에서 통과한다.
 이 문서의 규칙은 MariaDB probe가 그 형식을 증명하는 곳에서만 MariaDB 11.8을 적고 그 probe를 적는다. MySQL만 적은 규칙은
 아직 MariaDB에서 증명되지 않았다.
 

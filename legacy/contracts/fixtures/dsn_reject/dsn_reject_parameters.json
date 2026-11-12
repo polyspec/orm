@@ -1,0 +1,1167 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-12",
+    "CFG-19",
+    "CFG-20",
+    "CFG-37",
+    "INT-187",
+    "CFG-45",
+    "CFG-46"
+  ],
+  "cases": [
+    {
+      "id": "mysql_charset",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?charset=latin1",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_sslmode",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?sslmode=disable",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_application_name",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?application_name=orm",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN has the unknown parameter \"application_name\"; it accepts timezone, host, sslmode, sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_ssl_mode",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN has the unknown parameter \"ssl-mode\"; it accepts timezone, host, sslmode, sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_cache",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-tls.sqlite?cache=shared",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN has the unknown parameter \"cache\"; it accepts timezone, _pragma, _txlock"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_bracket_parameter",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode%5B%5D=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"ssl-mode[]\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unknown_parameter_is_refused_before_its_value_is_decoded",
+      "requirements": [
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://db.example/app?extra=%ZZ",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"extra\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_name_in_another_case_is_unknown",
+      "requirements": [
+        "CFG-19",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?SSL-MODE=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"SSL-MODE\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_driver_alias_of_the_tls_mode_is_unknown",
+      "requirements": [
+        "CFG-19",
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?sslmode=VERIFY_IDENTITY&sslca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_driver_tls_option_is_unknown",
+      "requirements": [
+        "CFG-19",
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?tls=skip-verify",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"tls\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_driver_parameter_is_unknown",
+      "requirements": [
+        "CFG-19",
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslcert=/tmp/client.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN has the unknown parameter \"sslcert\"; it accepts timezone, host, sslmode, sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_sqlite_driver_parameter_is_unknown",
+      "requirements": [
+        "CFG-19",
+        "CFG-37",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?vfs=memdb",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN has the unknown parameter \"vfs\"; it accepts timezone, _pragma, _txlock"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_name_that_is_not_utf8_is_unknown_by_its_written_text",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode%ZZ=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"ssl-mode%ZZ\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unknown_name_is_refused_before_a_repeated_one",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?charset=a&charset=b",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_repeated_timezone_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=UTC&timezone=UTC",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN repeats the parameter \"timezone\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_repeated_timezone_is_refused_whatever_its_values",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=Asia%2FSeoul&timezone=UTC",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN repeats the parameter \"timezone\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_repeated_tls_mode_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem&ssl-mode=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN repeats the parameter \"ssl-mode\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_repeated_socket_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?socket=/tmp/a.sock&socket=/tmp/b.sock",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN repeats the parameter \"socket\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_repeated_postgres_host_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?host=/tmp&host=/var/run",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN repeats the parameter \"host\""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_value_with_a_broken_escape_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=%ZZ",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"timezone\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_value_that_decodes_to_no_utf8_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?socket=/tmp/%FF.sock",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"socket\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_empty_timezone_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"timezone\" is empty"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_parameter_without_a_value_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"timezone\" is empty"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_empty_socket_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?socket=",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"socket\" is empty"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_socket_with_a_semicolon_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?socket=/tmp/a%3Bdbname%3Dx",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN parameter \"socket\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_host_with_a_semicolon_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?host=/tmp%3Bsslmode%3Ddisable",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN parameter \"host\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_sslrootcert_with_a_semicolon_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=/tmp/ca.pem%3Bsslmode%3Ddisable",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN parameter \"sslrootcert\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_tls_mode_other_than_disable_or_verify_full_is_refused",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=require",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_verify_full_needs_sslrootcert",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_sslrootcert_needs_verify_full",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_sslrootcert_with_sslmode_disable_is_refused",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=disable&sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_relative_postgres_sslrootcert_is_refused",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert \"ca.pem\" is not an absolute path"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_verify_full_refuses_a_socket_directory_host",
+      "requirements": [
+        "CFG-45"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres:///orm_example?host=/tmp&sslmode=verify-full&sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_postgres_tls_mode_is_checked_before_its_ca_file",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem&sslmode=require",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_ca_file_without_the_mode_is_refused_before_its_path",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_pragma_with_a_statement_after_it_is_refused",
+      "requirements": [
+        "CFG-12",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_pragma=foreign_keys(1)%3BATTACH",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"foreign_keys(1);ATTACH\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_empty_pair_is_an_unknown_parameter",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=UTC&",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_leading_empty_pair_is_an_unknown_parameter",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?&timezone=UTC",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_mysql_database_with_a_semicolon_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm%3Bx",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_database_with_a_semicolon_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm%3Bsslmode%3Drequire",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN database \"orm;sslmode=require\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_database_with_a_broken_escape_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm%ZZ",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN database \"orm%ZZ\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_database_that_decodes_to_no_utf8_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm%FF",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN database \"orm%FF\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_host_with_a_percent_escape_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db%2Elocal/orm_example",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_mysql_fragment_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?timezone=UTC#x",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has a fragment, which no connection reads"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_sqlite_fragment_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite#x",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN has a fragment, which no connection reads"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_markdown_fragment_is_refused",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:4100/tracker?token=a#x",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: markdown DSN has a fragment, which no connection reads"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_fragment_is_refused_before_the_query",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db%2Elocal/orm%3Bx?charset=a#x",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has a fragment, which no connection reads"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_query_is_refused_before_the_host",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db%2Elocal/orm%3Bx?charset=a",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_host_is_refused_before_the_database",
+      "requirements": [
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db%2Elocal/orm%3Bx",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_database_is_refused_before_a_parameter_value",
+      "requirements": [
+        "CFG-2",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm%3Bx?timezone=Asia%2FSeoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_mysql_socket_without_a_host_is_refused",
+      "requirements": [
+        "CFG-10",
+        "CFG-19",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql:///orm?socket=/tmp/orm.sock",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN must include host and database"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_mysql_socket_with_another_host_is_refused",
+      "requirements": [
+        "CFG-10",
+        "CFG-19",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm?socket=/tmp/orm.sock",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN socket needs the host localhost, which names the local server"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_dsn_with_two_hosts_is_refused",
+      "requirements": [
+        "CFG-10",
+        "CFG-19",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm?host=/tmp",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN names two hosts, \"db.local\" in the URL and \"/tmp\" in the host parameter"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_dsn_without_a_host_is_refused",
+      "requirements": [
+        "CFG-10",
+        "CFG-19",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres:///orm",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN must include host and database"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_host_is_refused_before_a_missing_database",
+      "requirements": [
+        "CFG-10",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db%2Elocal/",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_socket_host_is_refused_before_a_missing_database",
+      "requirements": [
+        "CFG-10",
+        "CFG-20"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/?socket=/tmp/orm.sock",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN socket needs the host localhost, which names the local server"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_timezone_is_refused_before_the_pragma",
+      "requirements": [
+        "CFG-2",
+        "CFG-12",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_pragma=x(1)%3By&timezone=Asia%2FSeoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_pragma_is_refused_before_the_txlock",
+      "requirements": [
+        "CFG-2",
+        "CFG-12",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_txlock=immediate&_pragma=x(1)%3By",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: sqlite DSN _pragma \"x(1);y\" is invalid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_database_keeps_every_slash_after_the_first",
+      "requirements": [
+        "CFG-10",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local//orm;x",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: mysql DSN database \"/orm;x\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_database_is_named_as_written_with_dot_segments",
+      "requirements": [
+        "CFG-10",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/x/../%zz",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN database \"x/../%zz\" is not percent-encoded UTF-8"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

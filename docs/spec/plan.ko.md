@@ -1,5 +1,5 @@
 <!-- doc-id: plan -->
-<!-- source-sha256: be64343357fee9c020997ee747359b82e20da20fc78ad12e327779a8663a357f -->
+<!-- source-sha256: 74a32bc40c90f41e489006594fcd9e68958c96c6f0fbe18af3ab5d3d4184cbd8 -->
 # ORM 설계 계획
 
 이 문서는 ORM의 단일 설계 계획이다. 이전의 초기 설계, 수정 설계, DSL v3 기록을 대체한다. 결과 문법과 구조는 [DSL](dsl.md)과 [공통 인터페이스](interfaces.md)에서 정의하고, 이 문서는 목표·규칙·작업 순서를 기록한다.

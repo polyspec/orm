@@ -42,10 +42,10 @@ Structure checks compare the common methods and stored fields first, then report
 
 | Client | Planner and generated model owner | Executable owner tests | Dependent-part and shared checks |
 |---|---|---|---|
-| Go | `packages/go/engine/*` is called directly by `packages/go/orm`; generated models are under `packages/go/model` | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
-| PHP | `packages/php/src` plans and executes through PDO; generated models are under `packages/php/gen` | `packages/php/tests/*.php` | `packages/php/testing/conformance/runner.php`, `packages/php/testing/interfaces/php.php` |
+| Go | `legacy/packages/go/engine/*` is called directly by `legacy/packages/go/orm`; generated models are under `legacy/packages/go/model` | `legacy/packages/go/orm/*_test.go`, `legacy/packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
+| PHP | `legacy/packages/php/src` plans and executes through PDO; generated models are under `legacy/packages/php/gen` | `legacy/packages/php/tests/*.php` | `legacy/packages/php/testing/conformance/runner.php`, `legacy/packages/php/testing/interfaces/php.php` |
 | Rust | `packages/rust/orm` plans and executes through sqlx; `polyspec-orm-build` generates models | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `packages/rust/testing/interfaces` |
-| TypeScript | `packages/ts/src` plans and executes through native drivers; generated models are under `packages/ts/src/models` | `packages/ts/tests` | `packages/ts/testing/conformance/runner_typescript.mts`, `packages/ts/testing/interfaces/typescript.mts` |
+| TypeScript | `legacy/packages/ts/src` plans and executes through native drivers; generated models are under `legacy/packages/ts/src/models` | `legacy/packages/ts/tests` | `legacy/packages/ts/testing/conformance/runner_typescript.mts`, `legacy/packages/ts/testing/interfaces/typescript.mts` |
 
 Each owner test is kept in its client directory. An implementation-internal test checks that implementation's own structure; the shared interface has no counterpart. Conformance compares outputs from the six declared implementations—Go, PHP, PHP extension, Rust, TypeScript, and Python—and does not replace owner tests; `tests/interfaces/check` verifies the shared declarations and generated artifacts.
 

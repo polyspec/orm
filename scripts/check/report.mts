@@ -76,7 +76,7 @@ export function failureLine(text: string): boolean {
   return FAILURE.some(pattern => pattern.test(message));
 }
 
-// failures takes the target's output lines and collects the failures. The case runners (tests/testcase.mts, packages/go/testcase, and the PHP and Rust
+// failures takes the target's output lines and collects the failures. The case runners (tests/testcase.mts, legacy/packages/go/testcase, and the PHP and Rust
 // testcase) write `RUN <case>`, `STEP <case> ...`, and `PASS <case>` or `FAIL <case> ...: <reason>` for each case. A case that does not finish
 // (a process stopped for exceeding its deadline, or a dead process) has no result after RUN, so its case and last step are recorded.
 // A line with a lane prefix is also read as the same case line.

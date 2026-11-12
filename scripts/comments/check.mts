@@ -96,7 +96,7 @@ async function runTokenizer(command: string, args: string[], env: NodeJS.Process
 // interface project: each child token is visited, and its leading and trailing trivia hold every comment.
 function typescriptComments(path: string, text: string): Entry[] {
   const require = createRequire(join(root, 'package.json'));
-  const loaded: unknown = require(join(root, 'packages/ts/testing/interfaces/typescript/node_modules/typescript'));
+  const loaded: unknown = require(join(root, 'legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript'));
   if (!isTypeScript(loaded)) throw new Error('the pinned typescript module exports no createSourceFile');
   const ts = loaded;
   const ext = extname(path);

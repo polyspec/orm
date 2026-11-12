@@ -1,0 +1,210 @@
+{
+  "requirements": [
+    "DIA-154",
+    "DIA-155",
+    "DIA-156",
+    "DIA-157",
+    "DIA-158",
+    "DIA-159",
+    "DIA-160",
+    "DIA-161",
+    "DIA-162",
+    "DIA-163",
+    "DIA-164",
+    "DIA-165",
+    "DIA-166",
+    "DIA-167",
+    "DIA-168",
+    "DIA-169",
+    "DIA-170",
+    "DIA-171",
+    "DIA-172",
+    "DIA-173",
+    "DIA-174",
+    "DIA-175",
+    "DIA-176",
+    "DIA-177",
+    "DIA-178",
+    "DIA-179",
+    "DIA-180",
+    "DIA-181",
+    "DIA-182",
+    "DIA-184",
+    "DIA-185",
+    "PRT-2",
+    "PRT-5",
+    "PRT-7",
+    "PRT-42",
+    "PRT-63",
+    "PRT-64",
+    "PRT-66",
+    "PRT-67",
+    "PRT-70",
+    "DIA-186",
+    "DIA-190",
+    "INT-1",
+    "INT-62",
+    "INT-68",
+    "INT-69",
+    "INT-70",
+    "INT-71",
+    "INT-80",
+    "INT-81",
+    "INT-82",
+    "INT-83",
+    "INT-84",
+    "INT-86",
+    "PRT-36",
+    "PRT-69",
+    "PRT-71",
+    "PRT-72"
+  ],
+  "comment": "The markdown corpus conformance (README.md): each client runs every case, in this order, on one corpus installed from corpus/ and served by the flowmark build that flowmark.version pins; a case's result is the JSON value the README defines for it, compared with expect.",
+  "cases": [
+    { "id": "insert_one", "expect": { "id": "P1" } },
+    { "id": "insert_rows", "expect": 2 },
+    { "id": "insert_rows_tasks", "expect": 3 },
+    { "id": "insert_identity", "expect": { "id": 1 } },
+    { "id": "one", "expect": { "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" } },
+    { "id": "one_no_rows", "expect": null },
+    {
+      "id": "all",
+      "expect": [
+        { "id": "P3", "name": "Cara", "age": null },
+        { "id": "P2", "name": "Bob", "age": 25 },
+        { "id": "P1", "name": "Ann", "age": 30 }
+      ]
+    },
+    { "id": "count", "expect": 2 },
+    {
+      "id": "group_count",
+      "expect": [
+        { "owner": "P1", "row_count": 2 },
+        { "owner": "P2", "row_count": 1 }
+      ]
+    },
+    { "id": "group_count_no_rows", "expect": [] },
+    {
+      "id": "group_count_views",
+      "expect": {
+        "length": 3,
+        "counts": [1, 1, 1],
+        "rows": [
+          { "active": true, "age": 30, "row_count": 1 },
+          { "active": true, "age": 25, "row_count": 1 },
+          { "active": true, "age": null, "row_count": 1 }
+        ],
+        "first": { "count": 1, "active": true, "age": 30, "unselected": "COLUMN_UNSELECTED" }
+      }
+    },
+    { "id": "group_count_i64", "expect": [{ "id": 1, "row_count": 1 }] },
+    {
+      "id": "collection_typed_key",
+      "expect": {
+        "length": 1,
+        "keys": [1],
+        "values": [1],
+        "entries": [[1, 1]],
+        "first": 1,
+        "get": 1,
+        "get_text": null,
+        "get_missing": null,
+        "has": true,
+        "has_text": false,
+        "fetched": "started",
+        "fetched_text": null,
+        "fetched_missing": null,
+        "array": [{ "id": 1, "task": "T1", "note": "started" }]
+      }
+    },
+    { "id": "collection_key_name", "expect": { "error": "CODEC_DECODE" } },
+    { "id": "sum", "expect": 16 },
+    { "id": "avg", "expect": 27.5 },
+    { "id": "paginate", "expect": { "items": [{ "id": "P3", "name": "Cara" }], "total_count": 3, "total_pages": 2 } },
+    {
+      "id": "join",
+      "expect": [
+        { "id": "T2", "owner": "P1", "title": "review", "people_model": { "id": "P1", "name": "Ann" } },
+        { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } },
+        { "id": "T1", "owner": "P1", "title": "write spec", "people_model": { "id": "P1", "name": "Ann" } }
+      ]
+    },
+    {
+      "id": "relation_many",
+      "expect": {
+        "id": "P1",
+        "name": "Ann",
+        "tasks_models": [
+          { "id": "T2", "owner": "P1", "due": null },
+          { "id": "T1", "owner": "P1", "due": "2026-10-01" }
+        ]
+      }
+    },
+    { "id": "relation_one", "expect": { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } } },
+    { "id": "update", "expect": { "id": "P2", "age": 26 } },
+    { "id": "update_optimistic_conflict", "expect": { "error": "OPTIMISTIC_LOCK" } },
+    { "id": "insert_on_duplicate", "expect": { "created": "P1", "name": "Ann B" } },
+    { "id": "insert_on_duplicate_unique", "expect": { "created": 1, "met": 1, "uses": 2, "count": 1 } },
+    { "id": "delete", "expect": 2 },
+    { "id": "delete_referenced", "expect": { "error": "FOREIGN_KEY" } },
+    { "id": "soft_delete", "expect": 2 },
+    { "id": "restore", "expect": { "id": "P3", "name": "Cara", "count": 3 } },
+    { "id": "transaction_commit", "expect": 2 },
+    { "id": "transaction_rollback", "expect": 2 },
+    { "id": "savepoint_rollback", "expect": ["started", "committed", "outer"] },
+    { "id": "read_only_write", "expect": { "error": "READ_ONLY" } },
+    { "id": "lock_update", "expect": { "id": "P1" } },
+    { "id": "lock_nowait", "expect": null },
+    {
+      "id": "get_query",
+      "expect": {
+        "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"email\" AS \"a__email\", \"a\".\"age\" AS \"a__age\", \"a\".\"active\" AS \"a__active\", \"a\".\"score\" AS \"a__score\", \"a\".\"joined\" AS \"a__joined\", \"a\".\"deleted_at\" AS \"a__deleted_at\", \"a\".\"updated_at\" AS \"a__updated_at\" FROM \"people\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL",
+        "binds": []
+      }
+    },
+    { "id": "isolation", "expect": null },
+    { "id": "write_conflict", "expect": { "error": "WRITE_CONFLICT", "name": "Ann B" } },
+    { "id": "connect_corpus_mismatch", "expect": { "error": "CONFIG" } },
+    { "id": "connect_token_mismatch", "expect": { "error": "CONFIG" } },
+    { "id": "transaction_retry_commit", "expect": { "error": null, "runs": 1 } },
+    {
+      "id": "order_nulls",
+      "expect": {
+        "asc": [{ "id": "P3", "age": null }, { "id": "P2", "age": 26 }, { "id": "P1", "age": 30 }],
+        "desc": [{ "id": "P1", "age": 30 }, { "id": "P2", "age": 26 }, { "id": "P3", "age": null }]
+      }
+    },
+    { "id": "order_random", "expect": ["P1", "P2", "P3"] },
+    {
+      "id": "primary_key_case",
+      "expect": { "duplicate": "DUPLICATE_KEY", "upsert": "DUPLICATE_KEY", "met": { "id": "T3", "owner": "P2", "title": "ship" }, "count": 2 }
+    },
+    { "id": "tuple_in", "expect": { "in": [{ "id": "T1", "owner": "P1" }], "not_in": [{ "id": "T3", "owner": "P2" }] } },
+    {
+      "id": "subquery_aggregate",
+      "expect": { "sums": [["P1", 3], ["P2", 8], ["P3", 0]], "owners": [{ "id": "P1" }, { "id": "P2" }] }
+    },
+    {
+      "id": "scalar_column_subquery",
+      "expect": { "first": [["P1", "write spec"], ["P2", "ship"], ["P3", null]], "unlimited": "IR_INVALID" }
+    },
+    { "id": "column_pairs", "expect": { "meet": 2, "refused": "OPERATOR_NOT_ALLOWED" } },
+    { "id": "contains", "expect": { "fold": [{ "id": "P1" }], "literal": [] } },
+    { "id": "contains_binary", "expect": { "exact": [{ "id": "P1" }], "folded": [] } },
+    { "id": "now_truncated", "expect": { "fraction": 0, "out_of_range": [0, 0] } },
+    { "id": "index_read", "expect": [{ "id": "T3", "owner": "P2" }] },
+    {
+      "id": "force_index",
+      "expect": [{ "id": "T1", "owner": "P1", "title": "write spec", "points": 3, "due": "2026-10-01", "done": false }]
+    },
+    { "id": "unavailable_table", "expect": { "broken": "CONSTRAINT", "names_file": true, "restored": 2 } },
+    { "id": "codec_insert", "expect": { "id": "C1" } },
+    { "id": "codec_default_select", "expect": { "error": "COLUMN_UNSELECTED" } },
+    { "id": "codec_explicit_select", "expect": "first encoded value" },
+    { "id": "codec_update", "expect": "updated encoded value" },
+    { "id": "select_explicit_insert_omitted", "expect": { "id": "C2" } },
+    { "id": "select_explicit_read_null", "expect": "sql-null" },
+    { "id": "install_aes", "expect": { "error": null } },
+    { "id": "install_audit", "expect": { "error": null } }
+  ]
+}

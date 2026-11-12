@@ -225,7 +225,7 @@ function sampleOwner(entry: string, recipe: string, cases: string[]): Manifest {
     const first = implementations.find(entry => entry.name === language)?.roots[0] ?? part;
     return [language, { part, tests: [`${first}/other`], commands: {} }];
   }));
-  owners.typescript = { part: 'packages/ts', tests: [entry],
+  owners.typescript = { part: 'legacy/packages/ts', tests: [entry],
     commands: { none: [{ runner: 'node', test: entry, cases, recipe }] } };
   return selectFeatures({ features: [{ id: 'sample', status: 'partial', tests: Object.values(owners).flatMap(owner => owner.tests),
     coverage: { kind: 'independent', cases: ['whole'], owners, dependents: [] } }] }, 'sample', ['owner/typescript']);
@@ -251,7 +251,7 @@ async function outcome(manifest: Manifest, root: string): Promise<{ errors: stri
 // Requirements: FCV-12.
 caseTest('a recipe owner runs once and is read from the results its runner writes', 20000, async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-owner-')));
-  const entry = 'packages/ts/tests/entry.mjs';
+  const entry = 'legacy/packages/ts/tests/entry.mjs';
   const recipe = 'contracts/fixtures/sample/sample.json';
   const script = (lines: string[], after = '') => [
     "import { appendFileSync } from 'node:fs';",
@@ -259,7 +259,7 @@ caseTest('a recipe owner runs once and is read from the results its runner write
     ...lines.map(line => `appendFileSync(process.env.ORM_RECIPE_RESULTS, ${JSON.stringify(`${line}\n`)});`),
     after, ''].join('\n');
   try {
-    await mkdir(join(directory, 'packages/ts/tests'), { recursive: true });
+    await mkdir(join(directory, 'legacy/packages/ts/tests'), { recursive: true });
     await mkdir(join(directory, 'contracts/fixtures/sample'), { recursive: true });
     await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }, { id: 'second', steps: [] }] }));
     const both = sampleOwner(entry, recipe, ['first', 'second']);
@@ -285,9 +285,9 @@ caseTest('a recipe owner runs once and is read from the results its runner write
 // Requirements: FCV-12.
 caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe elsewhere is refused', 20000, async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-place-')));
-  const entry = 'packages/ts/tests/entry.mjs';
+  const entry = 'legacy/packages/ts/tests/entry.mjs';
   try {
-    await mkdir(join(directory, 'packages/ts/tests'), { recursive: true });
+    await mkdir(join(directory, 'legacy/packages/ts/tests'), { recursive: true });
     await writeFile(join(directory, entry), `import { appendFileSync } from 'node:fs';\nappendFileSync(process.env.ORM_RECIPE_RESULTS, 'CASE first PASS\\n');\n`);
     for (const recipe of ['tests/sample/sample.json', 'contracts/fixtures/sample/sample.json', 'docs/sample/sample.json']) {
       await mkdir(join(directory, dirname(recipe)), { recursive: true });

@@ -1,23 +1,25 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 7c3f1db7610a64b8d4479014b7cc024a998accf52c0e3871f7d0cbac0e911bce -->
+<!-- source-sha256: 1666672b634d3cf57b2ff50e11a8284fbc5c8649c15ff9cc8dc00242362796c5 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
-`packages/rust/interface.json`에서 생성한다. 이 문서는 `packages/go`, `packages/php`, `packages/php-ext`,
-`packages/python`, `packages/ts`의 언어 구현이 따르는 규칙과 다른 코어의 규칙을 적는다.
+`packages/rust/interface.json`에서 생성한다. 이 문서는 `legacy/packages/go`, `legacy/packages/php`, `legacy/packages/php-ext`,
+`legacy/packages/python`, `legacy/packages/ts`의 언어 구현이 따르는 규칙과 다른 코어의 규칙을 적는다.
 
 ## 공존
 
 - **CORE-1** 언어 구현이 자기 변경으로 없어질 때까지 레포는 그 구현을 릴리스의 API로, 코어를 계약의 API로 함께 둔다.
   이 문서의 규칙은 코어와 바인딩에 적용된다. 규칙마다 대체하는 규칙을 적으며, 대체된 규칙은 언어 구현이 없어질 때까지
-  그 구현에 계속 적용된다. 언어 구현의 시험은 코어를 위해 바꾸지 않고, 코어의 시험은 언어 구현에 실행하지 않는다.
+  그 구현에 계속 적용된다. 언어 구현의 시험은 코어를 위해 바꾸지 않고, 코어의 시험은 언어 구현에 실행하지 않는다. 언어
+  구현은 `legacy/packages/`에 있고 어느 릴리스에도 들어가지 않으며, 그 시험은 이 문서의 규칙이 공유 case·fixture·vector를
+  바꾸기 전의 고정 사본인 `legacy/contracts/fixtures/`와 `legacy/tests/`를 읽는다.
 - **CORE-2** 이 문서의 규칙이 기대값을 바꾸는 공유 recipe case는 코어에서 `contracts/fixtures/core/`의 case가
   `supersedes`로 그 case를 가리켜 대체한다. Rust recipe 실행기는 대체된 case 대신 대체하는 case를 실행하고, 기대값 밖의
   step이 서로 같은지 확인한다.
 - **CORE-3** 오류를 기대하는 공유 recipe case와 공유 vector는 그 kind를 코어가 쓰는 대로 소문자로(`no_rows`), 기대
   메시지는 `<kind>: <text>`로 적고, Rust 실행기는 둘을 그대로 비교한다. 실행기 자신이 알리는 case의 언어 코드 실패는 kind가
-  아닌 실행기의 코드(`callback`, `step`, `subscriber`)를 가진다. 언어 구현은 여전히 카탈로그 코드를 대문자로
-  쓰므로(CORE-1), 그 실행기는 기대 kind를 자기 코드의 소문자와 비교한다.
+  아닌 실행기의 코드(`callback`, `step`, `subscriber`)를 가진다. 언어 구현은 카탈로그 코드를 대문자로 유지하고 CORE-1의
+  고정 사본을 읽는다.
 
 ## 오류
 

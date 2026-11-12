@@ -22,7 +22,7 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
     ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
     ['rust', '/run/0-all', ['decimal_physical::decimal_postgres', '--exact']],
     ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
-    ['typescript', 'node', ['packages/ts/tests/decimal_model_db.mjs']],
+    ['typescript', 'node', ['legacy/packages/ts/tests/decimal_model_db.mjs']],
   ] as const;
   for (const [language, expectedProgram, expectedArgs] of cases) {
     const [program, args] = command(language, 'postgres', { POLYSPEC_ORM_EXTENSION: extension, ORM_PYTHON: '/venv/bin/python', ORM_DECIMAL_RUST_RUN: rustRun });
@@ -37,11 +37,11 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
   assert.equal(extensionProgram, process.execPath);
   assert.ok(extensionArgs.includes(extension));
   assert.ok(!extensionArgs.includes('--without-library'), 'kit K790 deleted run-tests --without-library');
-  assert.ok(extensionArgs.includes('packages/php-ext/phpunit.xml.dist'));
-  assert.ok(extensionArgs.includes('packages/php-ext/tests/DecimalModelDbNativeTest.php'));
+  assert.ok(extensionArgs.includes('legacy/packages/php-ext/phpunit.xml.dist'));
+  assert.ok(extensionArgs.includes('legacy/packages/php-ext/tests/DecimalModelDbNativeTest.php'));
   assert.ok(extensionArgs.includes('--filter'));
   assert.ok(extensionArgs.includes('with data set "postgres"$'));
-  assert.equal(extensionArgs.includes('packages/ts/tests/decimal_model_db.mjs'), false);
+  assert.equal(extensionArgs.includes('legacy/packages/ts/tests/decimal_model_db.mjs'), false);
   assert.equal(commandEnvironment('php-extension', { PATH: '/bin' }).ORM_PHP_MODE, 'extension');
   assert.equal(commandEnvironment('php', { PATH: '/bin' }).ORM_PHP_MODE, undefined);
   assert.throws(() => command('unknown-runtime', 'postgres', {}), /unknown decimal physical runtime/);
@@ -107,7 +107,7 @@ caseTest('matches the exact PHP extension decimal native test event', COMPUTE, (
     `[    0.5s] ▶ ${name}`,
     `[    0.5s] ✔ ${name} (0.1s)`,
     '[    0.5s] OK (1 test, 5 assertions)',
-    '[    0.5s] ✔ phpunit . --configuration packages/php-ext/phpunit.xml.dist --filter with data set "mysql"$ packages/php-ext/tests/DecimalModelDbNativeTest.php: 1 passed, 0 failed, 0 skipped (0.5s)',
+    '[    0.5s] ✔ phpunit . --configuration legacy/packages/php-ext/phpunit.xml.dist --filter with data set "mysql"$ legacy/packages/php-ext/tests/DecimalModelDbNativeTest.php: 1 passed, 0 failed, 0 skipped (0.5s)',
   ].join('\n');
   assert.equal(observed('php-extension', 'mysql', output), true);
   assert.equal(observed('php-extension', 'mysql', output.replaceAll('testNativeRoundTrip', 'testOther')), false);

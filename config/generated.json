@@ -9,18 +9,18 @@
     ".vitepress/cache/**",
     "**/*.test",
     "**/*.tsbuildinfo",
-    "packages/php-ext/src/polyspec_orm_arginfo.h",
-    "packages/ts/src/models/complex_query/**",
-    "packages/php/complexmodel/**",
-    "packages/php/src/native/bin/**",
-    "packages/php-ext/src/native/sqlite_cancel.c",
-    "packages/ts/src/codes.ts",
-    "packages/php/src/Code.php",
-    "packages/python/src/polyspec/orm/codes.py",
-    "packages/ts/src/sqlite-codes.ts",
-    "packages/php/src/SqliteCodes.php",
-    "packages/python/src/polyspec/orm/_sqlite_codes.py",
-    "packages/php-ext/src/sqlite_codes.h",
+    "legacy/packages/php-ext/src/polyspec_orm_arginfo.h",
+    "legacy/packages/ts/src/models/complex_query/**",
+    "legacy/packages/php/complexmodel/**",
+    "legacy/packages/php/src/native/bin/**",
+    "legacy/packages/php-ext/src/native/sqlite_cancel.c",
+    "legacy/packages/ts/src/codes.ts",
+    "legacy/packages/php/src/Code.php",
+    "legacy/packages/python/src/polyspec/orm/codes.py",
+    "legacy/packages/ts/src/sqlite-codes.ts",
+    "legacy/packages/php/src/SqliteCodes.php",
+    "legacy/packages/python/src/polyspec/orm/_sqlite_codes.py",
+    "legacy/packages/php-ext/src/sqlite_codes.h",
     "**/node_modules/**",
     "**/vendor/**",
     "**/.venv/**",
@@ -32,7 +32,7 @@
   ],
   "tracked": [
     {
-      "path": "packages/go/orm/codes.go",
+      "path": "legacy/packages/go/orm/codes.go",
       "reason": "the error code constants of the Go module, which orm-gen errors writes from docs/spec/errors.yaml: a go.mod consumer installs the tagged tree, which must hold them (P34)"
     },
     {
@@ -40,7 +40,7 @@
       "reason": "the error code constants of the Rust crate, which orm-gen errors writes from docs/spec/errors.yaml: a Cargo.toml consumer installs the tagged tree, which must hold them (P34)"
     },
     {
-      "path": "packages/go/orm/sqlite/result_codes.go",
+      "path": "legacy/packages/go/orm/sqlite/result_codes.go",
       "reason": "the SQLite result code names of the Go module, which orm-gen sqlite-codes writes from docs/spec/sqlite-result-codes.yaml: a go.mod consumer installs the tagged tree, which must hold them (P34)"
     },
     {

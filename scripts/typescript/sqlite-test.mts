@@ -11,14 +11,14 @@ const root = resolve(import.meta.dirname, '../..');
 const BUILD: Command = { program: 'node', args: ['tests/run-long.mts', 'typescript-build', '--', 'npm', 'run', 'typescript:build'], cwd: root };
 const node = (...args: string[]): Command => ({ program: 'node', args, cwd: root });
 const TESTS: Command[] = [
-  node('packages/ts/tests/model.mjs'),
-  node('--test', 'packages/ts/tests/dbspec_runtime_db.mjs'),
-  node('packages/ts/tests/schema-set.mjs'),
-  node('packages/ts/tests/statement-runner.mjs'),
-  node('packages/ts/tests/clock.mjs'),
-  node('packages/ts/tests/driver-error.mjs'),
-  node('--conditions=orm-test', 'packages/ts/tests/statement_fault.mjs'),
-  node('--conditions=orm-test', 'packages/ts/tests/statement_fault_entry.mjs'),
+  node('legacy/packages/ts/tests/model.mjs'),
+  node('--test', 'legacy/packages/ts/tests/dbspec_runtime_db.mjs'),
+  node('legacy/packages/ts/tests/schema-set.mjs'),
+  node('legacy/packages/ts/tests/statement-runner.mjs'),
+  node('legacy/packages/ts/tests/clock.mjs'),
+  node('legacy/packages/ts/tests/driver-error.mjs'),
+  node('--conditions=orm-test', 'legacy/packages/ts/tests/statement_fault.mjs'),
+  node('--conditions=orm-test', 'legacy/packages/ts/tests/statement_fault_entry.mjs'),
 ];
 /** The commands this script runs, for make repo-check. */
 export const COMMANDS = [BUILD, ...TESTS].map(step => render(step, root));

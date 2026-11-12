@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: a7d0fc0aee87be316b46db7d28a69f24d1720f92cb528d674e575bd3766ae0e8 -->
+<!-- source-sha256: 6475001105b04622db46e28657293c99733b51b8527af2037b9664fb2d2e712d -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -23,7 +23,7 @@
   각 target은 orm이 준 인자로 설치된 package의 utility 하나를 실행한다. CI는 `.github/actions/kit-bootstrap`으로 package를
   설치하고(K992), `make install-tools TOOLS=npm`이 packages 전에 고정한 npm을 설치한다(K938). 도구의 설정은 그 도구의
   파일에 있다: `.npmrc`, `mise.toml`의 `[settings]`와 `[env]`, 각 `Cargo.toml`의 `[workspace.lints]`,
-  `packages/python/pyproject.toml`의 `[tool.vulture]`, root의 lint 설정(`ruff.toml`, `phpcs.xml.dist`, `phpstan.dist.neon`,
+  `legacy/packages/python/pyproject.toml`의 `[tool.vulture]`, root의 lint 설정(`ruff.toml`, `phpcs.xml.dist`, `phpstan.dist.neon`,
   `.golangci.yml`, `clippy.toml`, `.oxlintrc.json`, `knip.json`). orm이 kit의 예시에서 가져와 kit의 형태로 두는 파일은
   `scripts/repo/kit-copies.mts`에 적으며, 이 저장소의 규칙은 그것을 읽지 않고, orm은 kit 예시의 변경을 자기 commit으로
   받아들인다. kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하지 않는다.
@@ -33,11 +33,11 @@
 - Refines S5: client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
   `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
-  (`packages/go/go.mod`)다: client(`orm`, `model`과 다른 생성 model), engine(`engine/`), generator(`generator/`),
+  (`legacy/packages/go/go.mod`)다: client(`orm`, `model`과 다른 생성 model), engine(`engine/`), generator(`generator/`),
   `cmd/orm-gen`, `tests/`의 Go program이 import하므로 공개 package인 case harness `testcase`와 process event
   `procevent`, 그리고 `internal/testdb`를 가진다. `tests/`의 Go runner, physical test, 도구 program은 module
   `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
-  root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `packages/go`를 쓴다.
+  root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `legacy/packages/go`를 쓴다.
   Enforced by: `make layout-check`
 - Own: dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
   `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
@@ -114,7 +114,7 @@
   ONLINE을 밝힌 target(release, worktree setup, PHP extension build)만 `$(ONLINE)`으로 network에 닿는다. 빠진
   download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께 실패한다.
   Enforced by: none, a judgement at review.
-- Refines S4: 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
+- Refines S4: 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `legacy/packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
   `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
@@ -201,7 +201,7 @@
   Enforced by: `make conformance-check`
 - Own: 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
   Enforced by: `make conformance-check`
-- Own: 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
+- Own: 공통 계획·방언·스키마·오류 동작은 `legacy/packages/go/engine/*`, `legacy/packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
   Enforced by: `make feature-verify-other`
 - Own: 기능 coverage 증거는 현재 검사에서 실행한 명령의 종료 상태와 그 entry가 쓴 `CASE <id> [<database>] PASS` 줄에서 얻는다(docs/spec/feature-coverage.md FCV-12). 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. 기능의 검증 명령이 그 recipe를 실행하고, `make feature-coverage-of/<id>`가 기능 하나의 coverage를 읽으며, reader의 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make orm-check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 둘을 `make feature-performance-check`와 함께 실행한다.
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
@@ -253,13 +253,13 @@
 
 - Own: release는 version을 올리는 commit `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다. 그 commit은 작업을 담은
   변경과 CI 개선을 함께 담아 한 번의 release candidate CI 전에 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
-  X.Y.Z로 바꾸고, 그중 `composer.lock`이 있는 composer.json(`packages/php-ext`)은 그 directory에서
+  X.Y.Z로 바꾸고, 그중 `composer.lock`이 있는 composer.json(`legacy/packages/php-ext`)은 그 directory에서
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
   Enforced by: none, review의 판단이다. kit K812 이후 version을 읽는 검사가 없다
 - Own: 그 commit에서 `.github/workflows/ci.yml`의 push 또는 manual run이 성공한 뒤(`ci-passed`) maintainer가 그 run의 id로 release를
   dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
-  검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
+  검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `legacy/packages/go/vX.Y.Z`를 만들어 push한다. 그
   tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
   tag를 만들고 옮기고 push하는 사람은 없다. tag하기 전에 `scripts/repo/release-run.mts`가 `documents.yml`이나 `docs-pages.yml` 같은
   다른 workflow의 run, 다른 event의 run, 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 거부한다.
@@ -271,7 +271,7 @@
   된다), 그리고 그것을 공개하는 `make release-undraft`다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.
   Enforced by: `make release-coverage`
-- Own: Python client(`packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
+- Own: Python client(`legacy/packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
   `wheel`, `uv build`가 `build-system.requires`로 만든다). Rust crate `polyspec-orm`, `polyspec-orm-schema`, `polyspec-orm-build`는 git tag로 소비되고
   release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
   모든 `version`을 설정한다.

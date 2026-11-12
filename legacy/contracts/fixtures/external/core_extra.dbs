@@ -1,0 +1,23 @@
+dbspec 1 ext_core
+
+table ext_account {
+  seq i64 identity
+  name varchar(64)
+  nick varchar(32) null
+  primary key (seq)
+  unique uq_ext_account_name (name)
+}
+
+table ext_audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
+}
+
+table ext_session {
+  seq i64 identity
+  account_seq i64
+  primary key (seq)
+  index ix_ext_session_account (account_seq)
+  foreign key fk_ext_session_account (account_seq) references ext_account (seq) on delete restrict on update restrict
+}

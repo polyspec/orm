@@ -1,0 +1,53 @@
+dbspec 1 slots
+
+table slots {
+  seq i64
+  i16_value i16
+  i32_value i32
+  i64_value i64
+  f64_value f64
+  bool_value bool
+  decimal_value decimal(5,2)
+  varchar_value varchar(3)
+  varchar_null_value varchar(3) null
+  varchar_long_value varchar(16383)
+  text_value text
+  bytes_value bytes
+  uuid_value uuid
+  date_value date
+  time0_value time(0)
+  time1_value time(1)
+  time2_value time(2)
+  time3_value time(3)
+  time4_value time(4)
+  time5_value time(5)
+  time6_value time(6)
+  datetime0_value datetime(0)
+  datetime1_value datetime(1)
+  datetime2_value datetime(2)
+  datetime3_value datetime(3)
+  datetime4_value datetime(4)
+  datetime5_value datetime(5)
+  datetime6_value datetime(6)
+  primary key (seq)
+  index ix_i16_value (i16_value)
+  index ix_i32_value (i32_value)
+  index ix_i64_value (i64_value)
+  index ix_f64_value (f64_value)
+  index ix_bool_value (bool_value)
+  index ix_decimal_value (decimal_value)
+  index ix_varchar_value (varchar_value)
+  index ix_varchar_null_value (varchar_null_value)
+  index ix_uuid_value (uuid_value)
+  index ix_date_value (date_value)
+  index ix_time0_value (time0_value)
+  index ix_time1_value (time1_value)
+  index ix_time2_value (time2_value)
+  index ix_time3_value (time3_value)
+  index ix_time6_value (time6_value)
+  index ix_datetime0_value (datetime0_value)
+  index ix_datetime1_value (datetime1_value)
+  index ix_datetime2_value (datetime2_value)
+  index ix_datetime3_value (datetime3_value)
+  index ix_datetime6_value (datetime6_value)
+}

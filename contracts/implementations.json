@@ -4,47 +4,47 @@
     {
       "name": "go",
       "roots": [
-        "packages/go/bindmessages",
-        "packages/go/cmd",
-        "packages/go/decimalmodel",
-        "packages/go/engine",
-        "packages/go/generator",
-        "packages/go/internal",
-        "packages/go/markdownmodel",
-        "packages/go/model",
-        "packages/go/orm",
-        "packages/go/procevent",
-        "packages/go/testcase",
+        "legacy/packages/go/bindmessages",
+        "legacy/packages/go/cmd",
+        "legacy/packages/go/decimalmodel",
+        "legacy/packages/go/engine",
+        "legacy/packages/go/generator",
+        "legacy/packages/go/internal",
+        "legacy/packages/go/markdownmodel",
+        "legacy/packages/go/model",
+        "legacy/packages/go/orm",
+        "legacy/packages/go/procevent",
+        "legacy/packages/go/testcase",
         "examples",
-        "packages/go/bench"
+        "legacy/packages/go/bench"
       ],
       "tests": [
         "**/*_test.go",
         "packages/**/*_test.go",
         "tests/**/*_test.go",
         "examples/**/*_test.go",
-        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
+        "legacy/packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
       ],
       "support": [
-        "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/go/orm/failing_driver_test.go",
-        "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/test_helpers_test.go",
-        "packages/go/bench/process_cpu_unix_test.go",
-        "packages/go/bench/process_cpu_windows_test.go",
-        "packages/go/bench/gate_helpers_test.go",
-        "packages/go/internal/dialects/runner_environment_physical_test.go",
-        "packages/go/engine/dbspec/vectors_test.go",
-        "packages/go/internal/dialects/servers_test.go",
-        "packages/go/engine/dbspec/plan_test.go"
+        "legacy/packages/go/engine/dbspec/vector_reader_test.go",
+        "legacy/packages/go/orm/failing_driver_test.go",
+        "legacy/packages/go/orm/schema_helpers_test.go",
+        "legacy/packages/go/orm/test_helpers_test.go",
+        "legacy/packages/go/bench/process_cpu_unix_test.go",
+        "legacy/packages/go/bench/process_cpu_windows_test.go",
+        "legacy/packages/go/bench/gate_helpers_test.go",
+        "legacy/packages/go/internal/dialects/runner_environment_physical_test.go",
+        "legacy/packages/go/engine/dbspec/vectors_test.go",
+        "legacy/packages/go/internal/dialects/servers_test.go",
+        "legacy/packages/go/engine/dbspec/plan_test.go"
       ],
       "internal": [
         {
-          "glob": "packages/go/internal/testdb/testdb_test.go",
+          "glob": "legacy/packages/go/internal/testdb/testdb_test.go",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/go/orm/driver_error_test.go",
+          "glob": "legacy/packages/go/orm/driver_error_test.go",
           "reason": "test: maps stand-in errors at the private MySQL and driver mappers; a server condition reaches these codes through the recipes"
         },
         {
@@ -56,235 +56,235 @@
           "reason": "harness: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
         },
         {
-          "glob": "packages/go/bench/client_test.go",
+          "glob": "legacy/packages/go/bench/client_test.go",
           "reason": "harness: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
         },
         {
-          "glob": "packages/go/bench/dsn_test.go",
+          "glob": "legacy/packages/go/bench/dsn_test.go",
           "reason": "harness: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
         },
         {
-          "glob": "packages/go/bench/hot_path_gate_test.go",
+          "glob": "legacy/packages/go/bench/hot_path_gate_test.go",
           "reason": "harness: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
         },
         {
-          "glob": "packages/go/bench/native_test.go",
+          "glob": "legacy/packages/go/bench/native_test.go",
           "reason": "harness: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
         },
         {
-          "glob": "packages/go/bench/statements_test.go",
+          "glob": "legacy/packages/go/bench/statements_test.go",
           "reason": "harness: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/testdata/fixture/fixture_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/testdata/fixture/fixture_test.go",
           "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
         },
         {
-          "glob": "packages/go/internal/buildconstraints/buildconstraints_test.go",
+          "glob": "legacy/packages/go/internal/buildconstraints/buildconstraints_test.go",
           "reason": "harness: reads the build constraints of every Go file of the repository, a rule of the Go test run itself rather than client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/harness_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/harness_test.go",
           "reason": "harness: tests the Go dbspec case runner's failure-only output protocol through a deliberately failing child fixture; it does not exercise dbspec client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/names_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/names_test.go",
           "reason": "harness: checks flat Go subtest names so the test runner can select exact case IDs; it does not exercise dbspec client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/vector_loaders_test.go",
           "reason": "harness: tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
         },
         {
-          "glob": "packages/go/engine/dialect/sqlite_test.go",
+          "glob": "legacy/packages/go/engine/dialect/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/interface_test.go",
+          "glob": "legacy/packages/go/engine/interface_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/ir/fuzz_test.go",
+          "glob": "legacy/packages/go/engine/ir/fuzz_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/ir/operators_test.go",
+          "glob": "legacy/packages/go/engine/ir/operators_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/ir/params_test.go",
+          "glob": "legacy/packages/go/engine/ir/params_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/plan/plan_test.go",
+          "glob": "legacy/packages/go/engine/plan/plan_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/planner/restore_test.go",
+          "glob": "legacy/packages/go/engine/planner/restore_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/engine/planner/soft_delete_test.go",
+          "glob": "legacy/packages/go/engine/planner/soft_delete_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/internal/conformance/main_test.go",
+          "glob": "legacy/packages/go/internal/conformance/main_test.go",
           "reason": "harness: tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
         },
         {
-          "glob": "packages/go/internal/dialects/ddl_physical_test.go",
+          "glob": "legacy/packages/go/internal/dialects/ddl_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/internal/dialects/introspect_compare_physical_test.go",
+          "glob": "legacy/packages/go/internal/dialects/introspect_compare_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/internal/dialects/probe_test.go",
+          "glob": "legacy/packages/go/internal/dialects/probe_test.go",
           "reason": "harness: tests the Go-only dialect probe registry, documentation citations and the implementations of contracts/implementations.json; it does not exercise an ORM client contract"
         },
         {
-          "glob": "packages/go/internal/dialects/schema_documents_physical_test.go",
+          "glob": "legacy/packages/go/internal/dialects/schema_documents_physical_test.go",
           "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
+          "glob": "legacy/packages/go/internal/dialects/sqlite_filename_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/internal/testassert/read_test.go",
+          "glob": "legacy/packages/go/internal/testassert/read_test.go",
           "reason": "test: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
         },
         {
-          "glob": "packages/go/model/assignment_test.go",
+          "glob": "legacy/packages/go/model/assignment_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/assignment_propagation_test.go",
+          "glob": "legacy/packages/go/orm/assignment_propagation_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/context_reset_test.go",
+          "glob": "legacy/packages/go/orm/context_reset_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/fuzz_test.go",
+          "glob": "legacy/packages/go/orm/fuzz_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/goexit_test.go",
+          "glob": "legacy/packages/go/orm/goexit_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/keyword_test.go",
+          "glob": "legacy/packages/go/orm/keyword_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/pg/pg_test.go",
+          "glob": "legacy/packages/go/orm/pg/pg_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/refusal_test.go",
+          "glob": "legacy/packages/go/orm/refusal_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/related_test.go",
+          "glob": "legacy/packages/go/orm/related_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/split_plan_test.go",
+          "glob": "legacy/packages/go/orm/split_plan_test.go",
           "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/sqlite/sqlite_test.go",
+          "glob": "legacy/packages/go/orm/sqlite/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/statement_fault_entry_test.go",
+          "glob": "legacy/packages/go/orm/statement_fault_entry_test.go",
           "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/procevent/procevent_test.go",
+          "glob": "legacy/packages/go/procevent/procevent_test.go",
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/go/testcase/stall_test.go",
+          "glob": "legacy/packages/go/testcase/stall_test.go",
           "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
         },
         {
-          "glob": "packages/go/testcase/testdata/fixture/fixture_test.go",
+          "glob": "legacy/packages/go/testcase/testdata/fixture/fixture_test.go",
           "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
         },
         {
-          "glob": "packages/go/testcase/testcase_test.go",
+          "glob": "legacy/packages/go/testcase/testcase_test.go",
           "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/literal_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/literal_test.go",
           "reason": "test: directly checks the Go engine's CanonicalLiteral helper; public default literal parsing and diagnostics are exercised by the six-client dbspec-canonical and dbspec-invalid vectors"
         },
         {
-          "glob": "packages/go/orm/model_update_state_test.go",
+          "glob": "legacy/packages/go/orm/model_update_state_test.go",
           "reason": "test: a unit test of the private update state of Core (the selected columns and the key values that retainUpdateState keeps after an update of an unloaded row), reached inside package orm, not a behaviour of the contract; its owner is unloaded-update-state-go, while the public update behaviour remains covered by the model_writes cases (K313)"
         },
         {
-          "glob": "packages/go/engine/compile_bench_test.go",
+          "glob": "legacy/packages/go/engine/compile_bench_test.go",
           "reason": "harness: benchmark, not a behaviour case; BenchmarkCompileList times the compile path over the bench model"
         },
         {
-          "glob": "packages/go/generator/gen_go_output_internal_test.go",
+          "glob": "legacy/packages/go/generator/gen_go_output_internal_test.go",
           "reason": "test: the staging directory, output replacement and go/packages load and convergence failures of the Go generator, mechanics of the Go generator that the contract does not state"
         },
         {
-          "glob": "packages/go/generator/gen_go_scan_internal_test.go",
+          "glob": "legacy/packages/go/generator/gen_go_scan_internal_test.go",
           "reason": "test: the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text"
         },
         {
-          "glob": "packages/go/orm/cancel_waiter_internal_test.go",
+          "glob": "legacy/packages/go/orm/cancel_waiter_internal_test.go",
           "reason": "harness: tests newWaiter, the lock-wait helper that the cancellation tests use to time a cancel"
         },
         {
-          "glob": "packages/go/orm/collection_key_internal_test.go",
+          "glob": "legacy/packages/go/orm/collection_key_internal_test.go",
           "reason": "test: the private fetchKey and keyName of a model, which reject a key callback of the wrong type; the key column behaviour of a collection is the interfaces.md collection key unit (T326-7)"
         },
         {
-          "glob": "packages/go/orm/driver_error_internal_test.go",
+          "glob": "legacy/packages/go/orm/driver_error_internal_test.go",
           "reason": "test: the private mapDriverErrContext keeps the context cause beside the error it maps, through errors.Join, so errors.Is finds both; the CANCELED code is a case of the CFG-9 unit (T326-14)"
         },
         {
-          "glob": "packages/go/orm/shape_internal_test.go",
+          "glob": "legacy/packages/go/orm/shape_internal_test.go",
           "reason": "test: reflects over the Go request struct to check that the private plan cache key shapeKey reads every field"
         },
         {
-          "glob": "packages/go/engine/dbspec/stress_test.go",
+          "glob": "legacy/packages/go/engine/dbspec/stress_test.go",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         },
         {
-          "glob": "packages/go/engine/engine_test.go",
+          "glob": "legacy/packages/go/engine/engine_test.go",
           "reason": "test: the Go engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
         },
         {
-          "glob": "packages/go/engine/query_forms_test.go",
+          "glob": "legacy/packages/go/engine/query_forms_test.go",
           "reason": "test: the Go engine's own query form assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
         },
         {
-          "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
+          "glob": "legacy/packages/go/engine/planner/scalar_subquery_type_test.go",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
         {
-          "glob": "packages/go/orm/values_test.go",
+          "glob": "legacy/packages/go/orm/values_test.go",
           "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
         },
         {
-          "glob": "packages/go/orm/catalog_auto_identity_test.go",
+          "glob": "legacy/packages/go/orm/catalog_auto_identity_test.go",
           "reason": "harness: the helpers that open a SQLite catalog fixture and compare its rows, used by the internal catalog tests of this directory; the file holds no test"
         },
         {
-          "glob": "packages/go/orm/catalog_mutation_test.go",
+          "glob": "legacy/packages/go/orm/catalog_mutation_test.go",
           "reason": "test: calls the private catalogSameCell and catalogBytesValue with values no server stores, such as a TIME(7) native type; the cases row_baseline_exact_values and described_temporal_matrix hold what a server can return"
         },
         {
-          "glob": "packages/go/orm/catalog_temporal_test.go",
+          "glob": "legacy/packages/go/orm/catalog_temporal_test.go",
           "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
         }
       ]
@@ -292,280 +292,280 @@
     {
       "name": "php",
       "roots": [
-        "packages/php"
+        "legacy/packages/php"
       ],
       "tests": [
         "**/*Test.php",
-        "packages/php/tests/**/*.php",
-        "packages/php-ext/tests/**/*.php",
+        "legacy/packages/php/tests/**/*.php",
+        "legacy/packages/php-ext/tests/**/*.php",
         "tests/**/*.php",
-        "packages/php/tests/Coverage*Test.php"
+        "legacy/packages/php/tests/Coverage*Test.php"
       ],
       "support": [
-        "packages/php/tests/CallbackFailed.php",
-        "packages/php/tests/CannedCatalogPdo.php",
-        "packages/php/tests/CatalogAnswerPdo.php",
-        "packages/php/tests/CaseCorpus.php",
-        "packages/php/tests/CatalogAnswerStatement.php",
-        "packages/php/tests/CodecYamlProbe.php",
-        "packages/php/tests/CollectionIdentityCases.php",
-        "packages/php/tests/CollectionWeakTypedKeyCases.php",
-        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
-        "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/DatabaseTestAssertions.php",
-        "packages/php/tests/DbspecSqliteLockCases.php",
-        "packages/php/tests/DbspecStressTestSupport.php",
-        "packages/php/tests/DbspecTimedCases.php",
-        "packages/php/tests/FailingPdo.php",
-        "packages/php/tests/FailingSqliteLockPdo.php",
-        "packages/php/tests/FailingStatement.php",
-        "packages/php/tests/FakeSqliteLockStatement.php",
-        "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/ModelTestFailingPdo.php",
-        "packages/php/tests/ModelTypesWeakCallerCases.php",
-        "packages/php/tests/NativeByteCellFixture.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/php/tests/OrmGenProcessCase.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/tests/PageCacheBoundCases.php",
-        "packages/php/tests/Served.php",
-        "packages/php/tests/SqliteConcurrencyWriter.php",
-        "packages/php/tests/SqliteLiteralRowsPdo.php",
-        "packages/php/tests/SqliteRowLockPdo.php",
-        "packages/php/tests/SqliteRowLockStatement.php",
-        "packages/php/tests/StatementCountingPdo.php",
-        "packages/php/tests/StatementEventLog.php",
-        "packages/php/tests/Stop.php",
-        "packages/php/tests/TransactionCloseDuringFailure.php",
-        "packages/php/tests/TransactionFailureCases.php",
-        "packages/php/tests/TransactionTrackingPdo.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/WarningStreamProtocol.php",
-        "packages/php/tests/WasInsertedCases.php",
-        "packages/php/tests/autoload.php",
-        "packages/php/tests/bench.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/case_clock.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/tests/codec-yaml-probe.php",
-        "packages/php/tests/collection-weak-caller.php",
-        "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/dbspec-php-interface-program.php",
-        "packages/php/tests/dbspec_analysis_cases.php",
-        "packages/php/tests/dbspec_behaviour.php",
-        "packages/php/tests/dbspec_limit_cases.php",
-        "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/dbspec_verify_errors_case.php",
-        "packages/php/tests/extension_run_guard.php",
-        "packages/php/tests/fixtures/CodecProbeDumper.php",
-        "packages/php/tests/generated_classes.php",
-        "packages/php/tests/generated_fixture.php",
-        "packages/php/tests/limit_columns_peak.php",
-        "packages/php/tests/markdown_test_server.php",
-        "packages/php/tests/memory_budget.php",
-        "packages/php/tests/model-types-weak-caller.php",
-        "packages/php/tests/perf_extensions.php",
-        "packages/php/tests/phpstan-runner.php",
-        "packages/php/tests/phpstan/CollectionGet.php",
-        "packages/php/tests/phpstan/GroupRowsIteration.php",
-        "packages/php/tests/phpstan/RawCollection.php",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php/tests/request_termination_child.php",
-        "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/php/tests/three_drivers.php",
-        "packages/php/tests/transaction_deadlock_child.php",
-        "packages/php/tests/was_inserted_child.php",
-        "packages/php/tests/PgsqlPdoAdapterCases.php",
-        "packages/php/tests/FiberTransaction.php",
-        "packages/php/tests/PostgresSessionSettings.php",
-        "packages/php/tests/QueryCancellationDbCases.php",
-        "packages/php/tests/QueryCancellationServerCases.php",
-        "packages/php/tests/StatementRunnerCases.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/SqliteRecipeTestCase.php",
-        "packages/php/tests/DatabaseRecipeTestCase.php",
-        "packages/php/tests/RecipeRecording.php",
-        "packages/php/tests/RecipeSubscription.php",
-        "packages/php/tests/RecipeModel.php",
-        "packages/php/tests/RecipeApply.php",
-        "packages/php/tests/RecipeStep.php",
-        "packages/php/tests/RecipeIntrospect.php",
-        "packages/php/tests/CatalogPostgresTemporalPdo.php",
-        "packages/php/tests/ConnectRelay.php",
-        "packages/php/tests/connect-relay.php",
-        "packages/php/tests/CatalogPostgresTemporalCases.php",
-        "packages/php/tests/CatalogUnreadableStream.php",
-        "packages/php/tests/CatalogMariadbDefaultPdo.php",
-        "packages/php/tests/CatalogCommitFaultPdo.php",
-        "packages/php/tests/CatalogPdoCases.php",
-        "packages/php/tests/RecipeKeys.php",
-        "packages/php/tests/dbspec_cases.php",
-        "packages/php/tests/RecipeGenerator.php"
+        "legacy/packages/php/tests/CallbackFailed.php",
+        "legacy/packages/php/tests/CannedCatalogPdo.php",
+        "legacy/packages/php/tests/CatalogAnswerPdo.php",
+        "legacy/packages/php/tests/CaseCorpus.php",
+        "legacy/packages/php/tests/CatalogAnswerStatement.php",
+        "legacy/packages/php/tests/CodecYamlProbe.php",
+        "legacy/packages/php/tests/CollectionIdentityCases.php",
+        "legacy/packages/php/tests/CollectionWeakTypedKeyCases.php",
+        "legacy/packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "legacy/packages/php/tests/CountingPdo.php",
+        "legacy/packages/php/tests/DatabaseTestAssertions.php",
+        "legacy/packages/php/tests/DbspecSqliteLockCases.php",
+        "legacy/packages/php/tests/DbspecStressTestSupport.php",
+        "legacy/packages/php/tests/DbspecTimedCases.php",
+        "legacy/packages/php/tests/FailingPdo.php",
+        "legacy/packages/php/tests/FailingSqliteLockPdo.php",
+        "legacy/packages/php/tests/FailingStatement.php",
+        "legacy/packages/php/tests/FakeSqliteLockStatement.php",
+        "legacy/packages/php/tests/GroupRowsCases.php",
+        "legacy/packages/php/tests/ModelTestFailingPdo.php",
+        "legacy/packages/php/tests/ModelTypesWeakCallerCases.php",
+        "legacy/packages/php/tests/NativeByteCellFixture.php",
+        "legacy/packages/php/tests/NativeFixtureVectors.php",
+        "legacy/packages/php/tests/OrmGenProcessCase.php",
+        "legacy/packages/php/tests/OrmGenTestSupport.php",
+        "legacy/packages/php/tests/PageCacheBoundCases.php",
+        "legacy/packages/php/tests/Served.php",
+        "legacy/packages/php/tests/SqliteConcurrencyWriter.php",
+        "legacy/packages/php/tests/SqliteLiteralRowsPdo.php",
+        "legacy/packages/php/tests/SqliteRowLockPdo.php",
+        "legacy/packages/php/tests/SqliteRowLockStatement.php",
+        "legacy/packages/php/tests/StatementCountingPdo.php",
+        "legacy/packages/php/tests/StatementEventLog.php",
+        "legacy/packages/php/tests/Stop.php",
+        "legacy/packages/php/tests/TransactionCloseDuringFailure.php",
+        "legacy/packages/php/tests/TransactionFailureCases.php",
+        "legacy/packages/php/tests/TransactionTrackingPdo.php",
+        "legacy/packages/php/tests/UninitializedRecordingPdo.php",
+        "legacy/packages/php/tests/WarningStreamProtocol.php",
+        "legacy/packages/php/tests/WasInsertedCases.php",
+        "legacy/packages/php/tests/autoload.php",
+        "legacy/packages/php/tests/bench.php",
+        "legacy/packages/php/tests/bootstrap.php",
+        "legacy/packages/php/tests/case_clock.php",
+        "legacy/packages/php/tests/case_database.php",
+        "legacy/packages/php/tests/codec-yaml-probe.php",
+        "legacy/packages/php/tests/collection-weak-caller.php",
+        "legacy/packages/php/tests/coverage_cases.php",
+        "legacy/packages/php/tests/dbspec-php-interface-program.php",
+        "legacy/packages/php/tests/dbspec_analysis_cases.php",
+        "legacy/packages/php/tests/dbspec_behaviour.php",
+        "legacy/packages/php/tests/dbspec_limit_cases.php",
+        "legacy/packages/php/tests/dbspec_plan_cases.php",
+        "legacy/packages/php/tests/dbspec_verify_errors_case.php",
+        "legacy/packages/php/tests/extension_run_guard.php",
+        "legacy/packages/php/tests/fixtures/CodecProbeDumper.php",
+        "legacy/packages/php/tests/generated_classes.php",
+        "legacy/packages/php/tests/generated_fixture.php",
+        "legacy/packages/php/tests/limit_columns_peak.php",
+        "legacy/packages/php/tests/markdown_test_server.php",
+        "legacy/packages/php/tests/memory_budget.php",
+        "legacy/packages/php/tests/model-types-weak-caller.php",
+        "legacy/packages/php/tests/perf_extensions.php",
+        "legacy/packages/php/tests/phpstan-runner.php",
+        "legacy/packages/php/tests/phpstan/CollectionGet.php",
+        "legacy/packages/php/tests/phpstan/GroupRowsIteration.php",
+        "legacy/packages/php/tests/phpstan/RawCollection.php",
+        "legacy/packages/php/tests/request_hook_cases.php",
+        "legacy/packages/php/tests/request_termination_child.php",
+        "legacy/packages/php/tests/sqlite_concurrency_writer.php",
+        "legacy/packages/php/tests/three_drivers.php",
+        "legacy/packages/php/tests/transaction_deadlock_child.php",
+        "legacy/packages/php/tests/was_inserted_child.php",
+        "legacy/packages/php/tests/PgsqlPdoAdapterCases.php",
+        "legacy/packages/php/tests/FiberTransaction.php",
+        "legacy/packages/php/tests/PostgresSessionSettings.php",
+        "legacy/packages/php/tests/QueryCancellationDbCases.php",
+        "legacy/packages/php/tests/QueryCancellationServerCases.php",
+        "legacy/packages/php/tests/StatementRunnerCases.php",
+        "legacy/packages/php/tests/Recipe.php",
+        "legacy/packages/php/tests/RecipeCases.php",
+        "legacy/packages/php/tests/SqliteRecipeTestCase.php",
+        "legacy/packages/php/tests/DatabaseRecipeTestCase.php",
+        "legacy/packages/php/tests/RecipeRecording.php",
+        "legacy/packages/php/tests/RecipeSubscription.php",
+        "legacy/packages/php/tests/RecipeModel.php",
+        "legacy/packages/php/tests/RecipeApply.php",
+        "legacy/packages/php/tests/RecipeStep.php",
+        "legacy/packages/php/tests/RecipeIntrospect.php",
+        "legacy/packages/php/tests/CatalogPostgresTemporalPdo.php",
+        "legacy/packages/php/tests/ConnectRelay.php",
+        "legacy/packages/php/tests/connect-relay.php",
+        "legacy/packages/php/tests/CatalogPostgresTemporalCases.php",
+        "legacy/packages/php/tests/CatalogUnreadableStream.php",
+        "legacy/packages/php/tests/CatalogMariadbDefaultPdo.php",
+        "legacy/packages/php/tests/CatalogCommitFaultPdo.php",
+        "legacy/packages/php/tests/CatalogPdoCases.php",
+        "legacy/packages/php/tests/RecipeKeys.php",
+        "legacy/packages/php/tests/dbspec_cases.php",
+        "legacy/packages/php/tests/RecipeGenerator.php"
       ],
       "internal": [
         {
-          "glob": "packages/php/tests/CaseDatabaseMysqlTest.php",
+          "glob": "legacy/packages/php/tests/CaseDatabaseMysqlTest.php",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/php/tests/CaseDatabaseMariadbTest.php",
+          "glob": "legacy/packages/php/tests/CaseDatabaseMariadbTest.php",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/php/tests/NativeCellReadTest.php",
+          "glob": "legacy/packages/php/tests/NativeCellReadTest.php",
           "reason": "test: the private row assembly refuses a non-finite float cell of a stand-in driver row, a cell that MySQL and SQLite do not store"
         },
         {
-          "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "glob": "legacy/packages/php/tests/DbspecApplyCleanupTest.php",
           "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
         {
-          "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
+          "glob": "legacy/packages/php/tests/DbspecCatalogChecksTest.php",
           "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
         },
         {
-          "glob": "packages/php/tests/CodecYamlCauseTest.php",
+          "glob": "legacy/packages/php/tests/CodecYamlCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
         {
-          "glob": "packages/php/tests/DbspecGraphTest.php",
+          "glob": "legacy/packages/php/tests/DbspecGraphTest.php",
           "reason": "test: probes PHP-specific array element type guards in the @internal dbspec Graph validator; public parse/emit is covered by every-line-kind, plan emission by rename-table-and-column, and manifest output by the shared hashes and sets vectors"
         },
         {
-          "glob": "packages/php/tests/DbspecIntrospectStressTest.php",
+          "glob": "legacy/packages/php/tests/DbspecIntrospectStressTest.php",
           "reason": "test: the PHP-specific 2000-table SQLite workload records memory and elapsed-time measurements for dbspec-stress-bench; canonical stress-document behavior is covered by dbspec-stress-canonical-roundtrip"
         },
         {
-          "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+          "glob": "legacy/packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
         },
         {
-          "glob": "packages/php/tests/FuncSourceAdapterTest.php",
+          "glob": "legacy/packages/php/tests/FuncSourceAdapterTest.php",
           "reason": "test: checks the PHP-specific callable-to-parameter lowering adapter; public value-function behavior is exercised across clients by planner_value_function_today"
         },
         {
-          "glob": "packages/php/tests/ModelTypesSourceTest.php",
+          "glob": "legacy/packages/php/tests/ModelTypesSourceTest.php",
           "reason": "test: checks PHP-internal Request canonicalization, PendingTime lazy wrapping, and PHP weak scalar caller rules"
         },
         {
-          "glob": "packages/php/tests/OrmGenPackageTest.php",
+          "glob": "legacy/packages/php/tests/OrmGenPackageTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks that its Composer autoload and bin carry the generator, an install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/AutoloadTest.php",
+          "glob": "legacy/packages/php/tests/AutoloadTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/ClientGenericsTest.php",
+          "glob": "legacy/packages/php/tests/ClientGenericsTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/ConformanceResultTest.php",
+          "glob": "legacy/packages/php/tests/ConformanceResultTest.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CoverageCasesTest.php",
+          "glob": "legacy/packages/php/tests/CoverageCasesTest.php",
           "reason": "harness: tests the PHP coverage-case fixture and environment helpers used by owner tests; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/php/tests/DatabaseTestAssertionsTest.php",
+          "glob": "legacy/packages/php/tests/DatabaseTestAssertionsTest.php",
           "reason": "harness: tests shared PHPUnit fixture/assertion helpers used by owner tests; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/php/tests/DriverErrorTest.php",
+          "glob": "legacy/packages/php/tests/DriverErrorTest.php",
           "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/php/tests/OrmGenTestSupportTest.php",
+          "glob": "legacy/packages/php/tests/OrmGenTestSupportTest.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
+          "glob": "legacy/packages/php/tests/PerformanceGateCoverageCase.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/PlanCacheMemoryTest.php",
+          "glob": "legacy/packages/php/tests/PlanCacheMemoryTest.php",
           "reason": "test: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
         },
         {
-          "glob": "packages/php/tests/RelationKeysTest.php",
+          "glob": "legacy/packages/php/tests/RelationKeysTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/SqliteWithoutMysqlTest.php",
+          "glob": "legacy/packages/php/tests/SqliteWithoutMysqlTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/UnselectedColumnDbTest.php",
+          "glob": "legacy/packages/php/tests/UnselectedColumnDbTest.php",
           "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/php/tests/UnselectedColumnTest.php",
+          "glob": "legacy/packages/php/tests/UnselectedColumnTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/DbspecCatalogRowsTest.php",
+          "glob": "legacy/packages/php/tests/DbspecCatalogRowsTest.php",
           "reason": "test: tests the internal catalog row reader of the PHP library (Dbspec\\CatalogRows), which the extension implements in C; the shared dbspec vectors stay in DbspecTest"
         },
         {
-          "glob": "packages/php/tests/DbspecPlanReaderTest.php",
+          "glob": "legacy/packages/php/tests/DbspecPlanReaderTest.php",
           "reason": "harness: verifies ownership of the PHP dbspec plan-vector reader; it does not parse or plan a client request"
         },
         {
-          "glob": "packages/php/tests/DbspecRunnerTest.php",
+          "glob": "legacy/packages/php/tests/DbspecRunnerTest.php",
           "reason": "harness: verifies PHP-only vector selection, chaining, and subprocess output of the dbspec comparison runners; the shared suites test the accepted and rejected dbspec behavior"
         },
         {
-          "glob": "packages/php/tests/DbspecUnicodeTest.php",
+          "glob": "legacy/packages/php/tests/DbspecUnicodeTest.php",
           "reason": "test: exhaustively compares the generated private PHP UnicodeWord range table with its own membership search; public syntax behavior is covered by dbspec-syntax"
         },
         {
-          "glob": "packages/php/tests/PerfExtensionsTest.php",
+          "glob": "legacy/packages/php/tests/PerfExtensionsTest.php",
           "reason": "harness: checks the PHP benchmark runner extension refusal list and loaded-process state, not ORM client behavior"
         },
         {
-          "glob": "packages/php/tests/PerfGateTest.php",
+          "glob": "legacy/packages/php/tests/PerfGateTest.php",
           "reason": "harness: validates the PHP benchmark/baseline wrapper; the shared hot-path performance units own client results and warning-only measurement behavior"
         },
         {
-          "glob": "packages/php/tests/PgsqlPdoAdapterTest.php",
+          "glob": "legacy/packages/php/tests/PgsqlPdoAdapterTest.php",
           "reason": "test: directly tests the @internal PDO compatibility adapter and Db::pdo bridge, not the public ORM connection API"
         },
         {
-          "glob": "packages/php/tests/SetReaderDiagnosticsTest.php",
+          "glob": "legacy/packages/php/tests/SetReaderDiagnosticsTest.php",
           "reason": "test: injects synthetic stream-wrapper failures into the @internal SetReader diagnostics and cache; public readSet behavior is covered by dbspec-set-files"
         },
         {
-          "glob": "packages/php/tests/RecipeRecording.php",
+          "glob": "legacy/packages/php/tests/RecipeRecording.php",
           "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
         },
         {
-          "glob": "packages/php/tests/RecipeSubscription.php",
+          "glob": "legacy/packages/php/tests/RecipeSubscription.php",
           "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
         },
         {
-          "glob": "packages/php/tests/DbspecStressTest.php",
+          "glob": "legacy/packages/php/tests/DbspecStressTest.php",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         },
         {
-          "glob": "packages/php/tests/DbspecPlanTest.php",
+          "glob": "legacy/packages/php/tests/DbspecPlanTest.php",
           "reason": "harness: tests the PHP compare harness and the connection, value and cleanup helpers of the dbspec database tests; it holds no shared client behaviour"
         },
         {
-          "glob": "packages/php/tests/EngineTest.php",
+          "glob": "legacy/packages/php/tests/EngineTest.php",
           "reason": "test: the PHP engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
         },
         {
-          "glob": "packages/php/tests/CodecErrorCauseTest.php",
+          "glob": "legacy/packages/php/tests/CodecErrorCauseTest.php",
           "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
         },
         {
-          "glob": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "glob": "legacy/packages/php/tests/CatalogQueryBoundsTest.php",
           "reason": "test: invokes the private verifyInsertedRow and sameRow by reflection; a server cannot make the returned row differ, and PHP false against 0 reaches no public read"
         },
         {
-          "glob": "packages/php/tests/CoveragePlannerTest.php",
+          "glob": "legacy/packages/php/tests/CoveragePlannerTest.php",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ]
@@ -573,307 +573,307 @@
     {
       "name": "php-extension",
       "roots": [
-        "packages/php-ext"
+        "legacy/packages/php-ext"
       ],
       "tests": [
         "**/*Test.php",
-        "packages/php/tests/**/*.php",
-        "packages/php-ext/tests/**/*.php",
+        "legacy/packages/php/tests/**/*.php",
+        "legacy/packages/php-ext/tests/**/*.php",
         "tests/**/*.php"
       ],
       "support": [
-        "packages/php-ext/tests/AuditLazyFakePdo.php",
-        "packages/php-ext/tests/AuditLazyFakeStatement.php",
-        "packages/php-ext/tests/CatalogMetadataFailurePdo.php",
-        "packages/php-ext/tests/CatalogMetadataFailureStatement.php",
-        "packages/php-ext/tests/ChainNativeRegistryFixture.php",
-        "packages/php-ext/tests/CollectionFakePdo.php",
-        "packages/php-ext/tests/CollectionFixtureModel.php",
-        "packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
-        "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
-        "packages/php-ext/tests/DslFixture.php",
-        "packages/php-ext/tests/ModelAssemblyFixture.php",
-        "packages/php-ext/tests/ModelAssemblyTestSupport.php",
-        "packages/php-ext/tests/ModelReadShapeFixture.php",
-        "packages/php-ext/tests/ModelReadWarningStream.php",
-        "packages/php-ext/tests/ModelStreamFixture.php",
-        "packages/php-ext/tests/ModelStreamWarningWrapper.php",
-        "packages/php-ext/tests/ModelTypesPendingFixture.php",
-        "packages/php-ext/tests/NativeMethodAssertions.php",
-        "packages/php-ext/tests/NativeModelFixture.php",
-        "packages/php-ext/tests/NativeQueryProbePdo.php",
-        "packages/php-ext/tests/NativeQueryProbeStatement.php",
-        "packages/php-ext/tests/NativeTestEventLog.php",
-        "packages/php-ext/tests/PhpExtensionBootstrapAssertions.php",
-        "packages/php-ext/tests/RuntimeModelBadGeneratedFixture.php",
-        "packages/php-ext/tests/RuntimeModelGeneratedFixture.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/declarations.php",
-        "packages/php-ext/tests/declarations_functions.php",
-        "packages/php-ext/tests/model-weak-caller.php",
-        "packages/php-ext/tests/silent_paths.php",
-        "packages/php-ext/tests/CatalogPageMutationPdo.php",
-        "packages/php-ext/tests/CatalogPageMutationStatement.php"
+        "legacy/packages/php-ext/tests/AuditLazyFakePdo.php",
+        "legacy/packages/php-ext/tests/AuditLazyFakeStatement.php",
+        "legacy/packages/php-ext/tests/CatalogMetadataFailurePdo.php",
+        "legacy/packages/php-ext/tests/CatalogMetadataFailureStatement.php",
+        "legacy/packages/php-ext/tests/ChainNativeRegistryFixture.php",
+        "legacy/packages/php-ext/tests/CollectionFakePdo.php",
+        "legacy/packages/php-ext/tests/CollectionFixtureModel.php",
+        "legacy/packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
+        "legacy/packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
+        "legacy/packages/php-ext/tests/DslFixture.php",
+        "legacy/packages/php-ext/tests/ModelAssemblyFixture.php",
+        "legacy/packages/php-ext/tests/ModelAssemblyTestSupport.php",
+        "legacy/packages/php-ext/tests/ModelReadShapeFixture.php",
+        "legacy/packages/php-ext/tests/ModelReadWarningStream.php",
+        "legacy/packages/php-ext/tests/ModelStreamFixture.php",
+        "legacy/packages/php-ext/tests/ModelStreamWarningWrapper.php",
+        "legacy/packages/php-ext/tests/ModelTypesPendingFixture.php",
+        "legacy/packages/php-ext/tests/NativeMethodAssertions.php",
+        "legacy/packages/php-ext/tests/NativeModelFixture.php",
+        "legacy/packages/php-ext/tests/NativeQueryProbePdo.php",
+        "legacy/packages/php-ext/tests/NativeQueryProbeStatement.php",
+        "legacy/packages/php-ext/tests/NativeTestEventLog.php",
+        "legacy/packages/php-ext/tests/PhpExtensionBootstrapAssertions.php",
+        "legacy/packages/php-ext/tests/RuntimeModelBadGeneratedFixture.php",
+        "legacy/packages/php-ext/tests/RuntimeModelGeneratedFixture.php",
+        "legacy/packages/php-ext/tests/bootstrap.php",
+        "legacy/packages/php-ext/tests/declarations.php",
+        "legacy/packages/php-ext/tests/declarations_functions.php",
+        "legacy/packages/php-ext/tests/model-weak-caller.php",
+        "legacy/packages/php-ext/tests/silent_paths.php",
+        "legacy/packages/php-ext/tests/CatalogPageMutationPdo.php",
+        "legacy/packages/php-ext/tests/CatalogPageMutationStatement.php"
       ],
       "internal": [
         {
-          "glob": "packages/php-ext/tests/CaseDatabaseMysqlExtensionTest.php",
+          "glob": "legacy/packages/php-ext/tests/CaseDatabaseMysqlExtensionTest.php",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/php-ext/tests/CaseDatabaseMariadbExtensionTest.php",
+          "glob": "legacy/packages/php-ext/tests/CaseDatabaseMariadbExtensionTest.php",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/php-ext/tests/ModelStreamReadTest.php",
+          "glob": "legacy/packages/php-ext/tests/ModelStreamReadTest.php",
           "reason": "test: the native row assembly reads stream cells and their warnings from a stand-in, the form that no recipe database returns"
         },
         {
-          "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "glob": "legacy/packages/php-ext/tests/RegistrySchemaNativeTest.php",
           "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
         },
         {
-          "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+          "glob": "legacy/packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
           "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query"
         },
         {
-          "glob": "packages/php-ext/tests/CodecCauseTest.php",
+          "glob": "legacy/packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
         {
-          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "glob": "legacy/packages/php-ext/tests/DbspecReleaseHooksTest.php",
           "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
         },
         {
-          "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+          "glob": "legacy/packages/php-ext/tests/MermaidErrorBoundaryTest.php",
           "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid"
         },
         {
-          "glob": "packages/php-ext/tests/ArginfoBuildTest.php",
+          "glob": "legacy/packages/php-ext/tests/ArginfoBuildTest.php",
           "reason": "harness: checks extension build bootstrap ordering and tool availability before invoking the generator; it does not exercise ORM behavior"
         },
         {
-          "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
+          "glob": "legacy/packages/php-ext/tests/MarkdownNativeTest.php",
           "reason": "ecosystem: checks that the markdown session, its PDO adapter and its statement adapter are native classes of the extension, not the results of a markdown connection"
         },
         {
-          "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+          "glob": "legacy/packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
           "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
         },
         {
-          "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
+          "glob": "legacy/packages/php-ext/tests/StatementEventSurfaceTest.php",
           "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the statement_events recipe cases"
         },
         {
-          "glob": "packages/php-ext/tests/ChainNativeSurfaceTest.php",
+          "glob": "legacy/packages/php-ext/tests/ChainNativeSurfaceTest.php",
           "reason": "test: `model-native-php-extension-check` verifies internal Polyspec\\Orm\\Internal\\Chain registration and direct words/parseMeta/orderMeta/pairMeta/columnName helper behavior in testNativeClassOwnsTheCompletePublicChainSurface, testWordsAndNameConversionsKeepTheChainGrammar, testNativeParserAcceptsConnectorsComparisonsAndTuples, testNativeParserRejectsUnknownAndDisallowedOperatorsAsConfig, and testNativeOrderPairAndColumnLookupReturnExactNames; public fluent query output and IR validation remain exercised by coverage-model-query-rows and ir-validate"
         },
         {
-          "glob": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "glob": "legacy/packages/php-ext/tests/ValidatorNativeTest.php",
           "reason": "test: the extension releases what its validator looks up; this is the memory of the native code."
         },
         {
-          "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
-          "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
+          "glob": "legacy/packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
+          "reason": "test: the PHP cause test run in the extension; see legacy/packages/php/tests/CodecErrorCauseTest.php."
         }
       ]
     },
     {
       "name": "typescript",
       "roots": [
-        "packages/ts"
+        "legacy/packages/ts"
       ],
       "tests": [
         "**/*.test.{ts,mts,cts,mjs,cjs,js}",
-        "packages/ts/tests/**/*.mjs",
+        "legacy/packages/ts/tests/**/*.mjs",
         "tests/*/**/*.mjs",
-        "packages/ts/tests/coverage_*.mjs",
-        "packages/ts/tests/model.mjs",
-        "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/engine_features.mjs"
+        "legacy/packages/ts/tests/coverage_*.mjs",
+        "legacy/packages/ts/tests/model.mjs",
+        "legacy/packages/ts/tests/decimal_model_db.mjs",
+        "legacy/packages/ts/tests/engine_features.mjs"
       ],
       "support": [
-        "packages/ts/tests/case-database.mjs",
-        "packages/ts/tests/assertions.mjs",
-        "packages/ts/tests/capture-error.mjs",
-        "packages/ts/tests/check-state.mjs",
-        "packages/ts/tests/conditional-entry.mjs",
-        "packages/ts/tests/database-case-fixture.mjs",
-        "packages/ts/tests/database-case-tests.mjs",
-        "packages/ts/tests/dbspec-plan-fixture.mjs",
-        "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/mysql-test-options.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/codec_case.mjs",
-        "packages/ts/tests/coverage_case.mjs",
-        "packages/ts/tests/markdown_cases.mjs",
-        "packages/ts/tests/markdown_sqlite.mjs",
-        "packages/ts/tests/plan_case.mjs",
-        "packages/ts/tests/request_hook_run.mjs",
-        "packages/ts/tests/statement-runner-run.mjs",
-        "packages/ts/tests/coverage_performance_report.mjs",
-        "packages/ts/tests/was-inserted-child.mjs",
-        "packages/ts/tests/coverage_performance_gate.mjs",
-        "packages/ts/tests/parse_documents.mjs",
-        "packages/ts/tests/error_code.mjs",
-        "packages/ts/tests/markdown_test_listener.mjs",
-        "packages/ts/tests/registered_models.mjs",
-        "packages/ts/tests/generated_model_output.mjs",
-        "packages/ts/tests/schema_of.mjs",
-        "packages/ts/tests/generator_scan.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/recipe_model.mjs",
-        "packages/ts/tests/sqlite_writer_child.mjs",
-        "packages/ts/tests/recipe_reads.mjs",
-        "packages/ts/tests/recipe_apply.mjs",
-        "packages/ts/tests/recipe_introspect.mjs",
-        "packages/ts/tests/recipe_keys.mjs",
-        "packages/ts/tests/tsc-diagnostics.mjs",
-        "packages/ts/tests/recipe_generator.mjs"
+        "legacy/packages/ts/tests/case-database.mjs",
+        "legacy/packages/ts/tests/assertions.mjs",
+        "legacy/packages/ts/tests/capture-error.mjs",
+        "legacy/packages/ts/tests/check-state.mjs",
+        "legacy/packages/ts/tests/conditional-entry.mjs",
+        "legacy/packages/ts/tests/database-case-fixture.mjs",
+        "legacy/packages/ts/tests/database-case-tests.mjs",
+        "legacy/packages/ts/tests/dbspec-plan-fixture.mjs",
+        "legacy/packages/ts/tests/internal-column-error.mjs",
+        "legacy/packages/ts/tests/mysql-test-options.mjs",
+        "legacy/packages/ts/tests/bench-set.mjs",
+        "legacy/packages/ts/tests/codec_case.mjs",
+        "legacy/packages/ts/tests/coverage_case.mjs",
+        "legacy/packages/ts/tests/markdown_cases.mjs",
+        "legacy/packages/ts/tests/markdown_sqlite.mjs",
+        "legacy/packages/ts/tests/plan_case.mjs",
+        "legacy/packages/ts/tests/request_hook_run.mjs",
+        "legacy/packages/ts/tests/statement-runner-run.mjs",
+        "legacy/packages/ts/tests/coverage_performance_report.mjs",
+        "legacy/packages/ts/tests/was-inserted-child.mjs",
+        "legacy/packages/ts/tests/coverage_performance_gate.mjs",
+        "legacy/packages/ts/tests/parse_documents.mjs",
+        "legacy/packages/ts/tests/error_code.mjs",
+        "legacy/packages/ts/tests/markdown_test_listener.mjs",
+        "legacy/packages/ts/tests/registered_models.mjs",
+        "legacy/packages/ts/tests/generated_model_output.mjs",
+        "legacy/packages/ts/tests/schema_of.mjs",
+        "legacy/packages/ts/tests/generator_scan.mjs",
+        "legacy/packages/ts/tests/recipe.mjs",
+        "legacy/packages/ts/tests/recipe_model.mjs",
+        "legacy/packages/ts/tests/sqlite_writer_child.mjs",
+        "legacy/packages/ts/tests/recipe_reads.mjs",
+        "legacy/packages/ts/tests/recipe_apply.mjs",
+        "legacy/packages/ts/tests/recipe_introspect.mjs",
+        "legacy/packages/ts/tests/recipe_keys.mjs",
+        "legacy/packages/ts/tests/tsc-diagnostics.mjs",
+        "legacy/packages/ts/tests/recipe_generator.mjs"
       ],
       "internal": [
         {
-          "glob": "packages/ts/tests/case-database-mysql.test.mjs",
+          "glob": "legacy/packages/ts/tests/case-database-mysql.test.mjs",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/ts/tests/case-database-mariadb.test.mjs",
+          "glob": "legacy/packages/ts/tests/case-database-mariadb.test.mjs",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/ts/tests/driver-integer-param.mjs",
+          "glob": "legacy/packages/ts/tests/driver-integer-param.mjs",
           "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
         },
         {
-          "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "glob": "legacy/packages/ts/tests/codec-aes-errors.test.mjs",
           "reason": "test: injects a failure into each phase of the native cipher and decipher of Node, checks that each is the error of its rule (aes: the encryption failed, aes: authentication failed) with the native failure as its cause and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
-          "glob": "packages/ts/tests/paginate-order.mjs",
+          "glob": "legacy/packages/ts/tests/paginate-order.mjs",
           "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination is held by the page steps of the recipes conformance_verification and complex_query"
         },
         {
-          "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
+          "glob": "legacy/packages/ts/tests/dbspec-mermaid-errors.mjs",
           "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is the case catalog_build_failure_is_diagnostic of the unit dbspec-mermaid"
         },
         {
-          "glob": "packages/ts/tests/mysql-test-options.test.mjs",
+          "glob": "legacy/packages/ts/tests/mysql-test-options.test.mjs",
           "reason": "harness: tests parsing MySQL DSNs for TypeScript physical-test setup, not the public ORM DSN contract"
         },
         {
-          "glob": "packages/ts/tests/internal-column-error.test.mjs",
+          "glob": "legacy/packages/ts/tests/internal-column-error.test.mjs",
           "reason": "harness: tests a TypeScript test-only matcher for internal-column error messages, not ORM result or error behavior"
         },
         {
-          "glob": "packages/ts/tests/database-case-tests.test.mjs",
+          "glob": "legacy/packages/ts/tests/database-case-tests.test.mjs",
           "reason": "harness: tests registration and execution of TypeScript database-case harness callbacks; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/dbspec-plan-fixture.test.mjs",
+          "glob": "legacy/packages/ts/tests/dbspec-plan-fixture.test.mjs",
           "reason": "harness: tests the TypeScript apply-test fixture selector for one already-shared dbspec plan vector; it does not add client plan behavior"
         },
         {
-          "glob": "packages/ts/tests/database-case-fixture.test.mjs",
+          "glob": "legacy/packages/ts/tests/database-case-fixture.test.mjs",
           "reason": "harness: tests fixture loading and per-case state setup for TypeScript database test programs; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/conditional-entry.test.mjs",
+          "glob": "legacy/packages/ts/tests/conditional-entry.test.mjs",
           "reason": "ecosystem: tests the Node package conditional-export loader in isolated child processes, not runtime ORM behavior"
         },
         {
-          "glob": "packages/ts/tests/check-state.test.mjs",
+          "glob": "legacy/packages/ts/tests/check-state.test.mjs",
           "reason": "harness: tests the TypeScript test-only case assertion and failure-reporting helper; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/capture-error.test.mjs",
+          "glob": "legacy/packages/ts/tests/capture-error.test.mjs",
           "reason": "harness: tests the TypeScript test-only error capture helper used by checker and fixture tests; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/assertions.test.mjs",
+          "glob": "legacy/packages/ts/tests/assertions.test.mjs",
           "reason": "harness: tests exactKeys, the TypeScript test-only assertion helper used to validate test fixtures; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/coverage_performance_gate.test.mjs",
+          "glob": "legacy/packages/ts/tests/coverage_performance_gate.test.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the performance report formatter, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/ts/tests/bin-mode.mjs",
+          "glob": "legacy/packages/ts/tests/bin-mode.mjs",
           "reason": "ecosystem: an internal test of the TypeScript package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/ts/tests/driver-error.mjs",
+          "glob": "legacy/packages/ts/tests/driver-error.mjs",
           "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/ts/tests/coverage_performance_gate.mjs",
+          "glob": "legacy/packages/ts/tests/coverage_performance_gate.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/ts/tests/split-plan.test.mjs",
+          "glob": "legacy/packages/ts/tests/split-plan.test.mjs",
           "reason": "test: an internal test of the TypeScript package that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
+          "glob": "legacy/packages/ts/testing/interfaces/typescript-api.test.ts",
           "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
         },
         {
-          "glob": "packages/ts/tests/parse_documents.test.mjs",
+          "glob": "legacy/packages/ts/tests/parse_documents.test.mjs",
           "reason": "harness: tests the TypeScript DDL-vector adapter that parses each document with its sibling documents and preserves fixture order; the cross-client DDL behavior is exercised by the shared dbspec-ddl vector suite"
         },
         {
-          "glob": "packages/ts/tests/column_function_metadata.mjs",
+          "glob": "legacy/packages/ts/tests/column_function_metadata.mjs",
           "reason": "test: mutates requests after successful validation to manufacture impossible missing-column states, then checks private planner/parameter/output-assembly invariant failures; public valid and rejected requests are covered by shared planner units"
         },
         {
-          "glob": "packages/ts/tests/coverage-case-unit.mjs",
+          "glob": "legacy/packages/ts/tests/coverage-case-unit.mjs",
           "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, deadlines, database selection, and cleanup; it does not run ORM client behavior"
         },
         {
-          "glob": "packages/ts/tests/error_code.test.mjs",
+          "glob": "legacy/packages/ts/tests/error_code.test.mjs",
           "reason": "harness: tests the TypeScript test-only codeOf assertion helper with synthetic promise outcomes; it does not exercise ORM errors or client behavior"
         },
         {
-          "glob": "packages/ts/tests/markdown_test_listener.test.mjs",
+          "glob": "legacy/packages/ts/tests/markdown_test_listener.test.mjs",
           "reason": "harness: tests the TypeScript Markdown test-server fixture lifecycle, ephemeral loopback binding and socket cleanup; it does not exercise Markdown ORM requests"
         },
         {
-          "glob": "packages/ts/tests/registered_models.test.mjs",
+          "glob": "legacy/packages/ts/tests/registered_models.test.mjs",
           "reason": "harness: tests the TypeScript model fixture factory used by isolated client tests; it checks test-created class maps and fixture manifest assembly, not generated client behavior"
         },
         {
-          "glob": "packages/ts/tests/generated_model_output.test.mjs",
+          "glob": "legacy/packages/ts/tests/generated_model_output.test.mjs",
           "reason": "harness: tests a TypeScript test-only reader for generated source text and declared field extraction using a temporary fixture; generated output behavior is verified by generator owner checks"
         },
         {
-          "glob": "packages/ts/tests/generator_scan.test.mjs",
+          "glob": "legacy/packages/ts/tests/generator_scan.test.mjs",
           "reason": "harness: tests the TypeScript generator-scan runner's isolated child environment, captured process result and generated-model reader; public scanned-chain semantics are exercised by the shared generator-scan feature units"
         },
         {
-          "glob": "packages/ts/tests/schema_of.test.mjs",
+          "glob": "legacy/packages/ts/tests/schema_of.test.mjs",
           "reason": "harness: tests a TypeScript test-only schema fixture adapter that assembles the public manifest result into the shape generated test models consume; shared manifest/hash behavior is covered by dbspec vectors"
         },
         {
-          "glob": "packages/ts/tests/complex-query-request-types.mjs",
+          "glob": "legacy/packages/ts/tests/complex-query-request-types.mjs",
           "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative request type fixtures; the shared complex-query runtime behavior is covered by the recipe complex_query"
         },
         {
-          "glob": "packages/ts/tests/fulltext-chain-types.mjs",
+          "glob": "legacy/packages/ts/tests/fulltext-chain-types.mjs",
           "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative full-text chain type fixtures; runtime full-text behavior is covered by fulltext-search"
         },
         {
-          "glob": "packages/ts/tests/dbspec-unicode.mjs",
+          "glob": "legacy/packages/ts/tests/dbspec-unicode.mjs",
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
         },
         {
-          "glob": "packages/ts/tests/dbspec-stress.mjs",
+          "glob": "legacy/packages/ts/tests/dbspec-stress.mjs",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         },
         {
-          "glob": "packages/ts/tests/scalar_subquery_type.mjs",
+          "glob": "legacy/packages/ts/tests/scalar_subquery_type.mjs",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
         {
-          "glob": "packages/ts/tests/clock.mjs",
+          "glob": "legacy/packages/ts/tests/clock.mjs",
           "reason": "test: calls the module-private wallMicros of dist/clock.js with a wall clock and a monotonic clock that the case sets, which no public call or recipe step can set; what a stored value holds is the case clock_microseconds of the recipe conformance_verification (K313)"
         }
       ]
@@ -881,126 +881,126 @@
     {
       "name": "python",
       "roots": [
-        "packages/python"
+        "legacy/packages/python"
       ],
       "tests": [
         "**/test_*.py",
-        "packages/python/tests/**/*.py",
+        "legacy/packages/python/tests/**/*.py",
         "tests/**/*.py",
-        "packages/python/tests/coverage_*.py"
+        "legacy/packages/python/tests/coverage_*.py"
       ],
       "support": [
-        "packages/python/tests/__init__.py",
-        "packages/python/tests/models/__init__.py",
-        "packages/python/tests/bench_set.py",
-        "packages/python/tests/case_database.py",
-        "packages/python/tests/coverage_case.py",
-        "packages/python/tests/dbspec_apply_runner.py",
-        "packages/python/tests/dbspec_introspect.py",
-        "packages/python/tests/dbspec_introspect_runner.py",
-        "packages/python/tests/dbspec_plans.py",
-        "packages/python/tests/dbspec_vectors_reader.py",
-        "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py",
-        "packages/python/tests/runner_connect.py",
-        "packages/python/tests/server_database.py",
-        "packages/python/tests/was_inserted_child.py",
-        "packages/python/tests/coverage_performance_gate.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/tests/recipe_model.py",
-        "packages/python/tests/recipe_reads.py",
-        "packages/python/tests/recipe_apply.py",
-        "packages/python/tests/recipe_introspect.py",
-        "packages/python/tests/recipe_keys.py",
-        "packages/python/tests/recipe_generator.py"
+        "legacy/packages/python/tests/__init__.py",
+        "legacy/packages/python/tests/models/__init__.py",
+        "legacy/packages/python/tests/bench_set.py",
+        "legacy/packages/python/tests/case_database.py",
+        "legacy/packages/python/tests/coverage_case.py",
+        "legacy/packages/python/tests/dbspec_apply_runner.py",
+        "legacy/packages/python/tests/dbspec_introspect.py",
+        "legacy/packages/python/tests/dbspec_introspect_runner.py",
+        "legacy/packages/python/tests/dbspec_plans.py",
+        "legacy/packages/python/tests/dbspec_vectors_reader.py",
+        "legacy/packages/python/tests/testcase.py",
+        "legacy/packages/python/tests/vector_case.py",
+        "legacy/packages/python/tests/runner_connect.py",
+        "legacy/packages/python/tests/server_database.py",
+        "legacy/packages/python/tests/was_inserted_child.py",
+        "legacy/packages/python/tests/coverage_performance_gate.py",
+        "legacy/packages/python/tests/recipe.py",
+        "legacy/packages/python/tests/recipe_model.py",
+        "legacy/packages/python/tests/recipe_reads.py",
+        "legacy/packages/python/tests/recipe_apply.py",
+        "legacy/packages/python/tests/recipe_introspect.py",
+        "legacy/packages/python/tests/recipe_keys.py",
+        "legacy/packages/python/tests/recipe_generator.py"
       ],
       "internal": [
         {
-          "glob": "packages/python/tests/test_case_database_mysql.py",
+          "glob": "legacy/packages/python/tests/test_case_database_mysql.py",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/python/tests/case_database_mariadb.py",
+          "glob": "legacy/packages/python/tests/case_database_mariadb.py",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/python/tests/test_catalog_mutation_helper.py",
+          "glob": "legacy/packages/python/tests/test_catalog_mutation_helper.py",
           "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
         },
         {
-          "glob": "packages/python/tests/mermaid_error_boundary.py",
+          "glob": "legacy/packages/python/tests/mermaid_error_boundary.py",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
         },
         {
-          "glob": "packages/python/tests/test_no_path_change.py",
+          "glob": "legacy/packages/python/tests/test_no_path_change.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/test_packaging.py",
+          "glob": "legacy/packages/python/tests/test_packaging.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/test_requires_python.py",
+          "glob": "legacy/packages/python/tests/test_requires_python.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/conformance_result.py",
+          "glob": "legacy/packages/python/tests/conformance_result.py",
           "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/coverage_performance_gate.py",
+          "glob": "legacy/packages/python/tests/coverage_performance_gate.py",
           "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/test_split_plan.py",
+          "glob": "legacy/packages/python/tests/test_split_plan.py",
           "reason": "test: an internal test of the Python package that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/entry_point_check.py",
+          "glob": "legacy/packages/python/tests/entry_point_check.py",
           "reason": "ecosystem: an implementation test that checks the installed Python entry point and package import boundary, not shared ORM behaviour (K313)"
         },
         {
-          "glob": "packages/python/tests/test_mysql_found_rows.py",
+          "glob": "legacy/packages/python/tests/test_mysql_found_rows.py",
           "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
         },
         {
-          "glob": "packages/python/tests/test_aggregate_numeric_driver_values.py",
+          "glob": "legacy/packages/python/tests/test_aggregate_numeric_driver_values.py",
           "reason": "test: exercises the private _aggregate_number conversion helper with Python Decimal and bool inputs; public aggregate value behavior is covered by the six-client aggregate-numeric suite"
         },
         {
-          "glob": "packages/python/tests/coverage_case_test.py",
+          "glob": "legacy/packages/python/tests/coverage_case_test.py",
           "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
         },
         {
-          "glob": "packages/python/tests/test_python_extractor.py",
+          "glob": "legacy/packages/python/tests/test_python_extractor.py",
           "reason": "harness: tests the Python interface symbol extractor on temporary source and against its snapshot; public API declarations are checked by the interface contract tools"
         },
         {
-          "glob": "packages/python/tests/test_testcase.py",
+          "glob": "legacy/packages/python/tests/test_testcase.py",
           "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
         },
         {
-          "glob": "packages/python/tests/test_python_natives.py",
+          "glob": "legacy/packages/python/tests/test_python_natives.py",
           "reason": "harness: compares Python interface declarations with snapshots and shared native tables; it is a declaration extractor check, not runtime client behavior"
         },
         {
-          "glob": "packages/python/tests/test_column_function_internal.py",
+          "glob": "legacy/packages/python/tests/test_column_function_internal.py",
           "reason": "test: mutates a validated request to manufacture impossible missing-column states, then checks private parameter-use, planner and Markdown invariant failures; the public COLUMN_UNKNOWN case is covered by the shared planner_rejects_unknown_column vector"
         },
         {
-          "glob": "packages/python/tests/test_utils_statements.py",
+          "glob": "legacy/packages/python/tests/test_utils_statements.py",
           "reason": "test: verifies the private Python driver adapter that translates PostgreSQL statement markers for psycopg; public utility behavior is exercised through the transaction-local-value owner case"
         },
         {
-          "glob": "packages/python/tests/test_installed_differences.py",
+          "glob": "legacy/packages/python/tests/test_installed_differences.py",
           "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
         },
         {
-          "glob": "packages/python/tests/test_scalar_subquery_type.py",
+          "glob": "legacy/packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
         {
-          "glob": "packages/python/tests/test_catalog_described_temporal.py",
+          "glob": "legacy/packages/python/tests/test_catalog_described_temporal.py",
           "reason": "test: calls the private temporal conversions and passes a datetime value, which a recipe cannot express; temporal_text_row_cycle_sqlite, described_temporal_matrix and described_temporal_text hold the public reads"
         }
       ]

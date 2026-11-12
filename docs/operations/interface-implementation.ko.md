@@ -42,10 +42,10 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 
 | 클라이언트 | Planner와 생성 모델 소유 위치 | 실행 소유 테스트 | 사용 부분·공유 검사 |
 |---|---|---|---|
-| Go | `packages/go/engine/*`을 `packages/go/orm`이 직접 호출하며 생성 모델은 `packages/go/model`에 있다 | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
-| PHP | `packages/php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `packages/php/gen`에 있다 | `packages/php/tests/*.php` | `packages/php/testing/conformance/runner.php`, `packages/php/testing/interfaces/php.php` |
+| Go | `legacy/packages/go/engine/*`을 `legacy/packages/go/orm`이 직접 호출하며 생성 모델은 `legacy/packages/go/model`에 있다 | `legacy/packages/go/orm/*_test.go`, `legacy/packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
+| PHP | `legacy/packages/php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `legacy/packages/php/gen`에 있다 | `legacy/packages/php/tests/*.php` | `legacy/packages/php/testing/conformance/runner.php`, `legacy/packages/php/testing/interfaces/php.php` |
 | Rust | `packages/rust/orm`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `packages/rust/testing/interfaces` |
-| TypeScript | `packages/ts/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `packages/ts/src/models`에 있다 | `packages/ts/tests` | `packages/ts/testing/conformance/runner_typescript.mts`, `packages/ts/testing/interfaces/typescript.mts` |
+| TypeScript | `legacy/packages/ts/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `legacy/packages/ts/src/models`에 있다 | `legacy/packages/ts/tests` | `legacy/packages/ts/testing/conformance/runner_typescript.mts`, `legacy/packages/ts/testing/interfaces/typescript.mts` |
 
 각 owner 테스트는 해당 client 디렉터리에 둔다. 구현 내부 테스트는 그 구현 고유의 구조를 검사하며, 공통 인터페이스에는 대응하는 항목이 없다. Conformance는 다섯 결과를 비교하며 owner 테스트를 대체하지 않고, `tests/interfaces/check`가 공통 선언과 생성물을 검사한다.
 

@@ -1,0 +1,135 @@
+dbspec 1 model_chain
+
+table author {
+  seq i64 identity
+  name varchar(191)
+  updated_ts datetime(6) default now
+  is_close bool default false
+  is_display bool default false
+  read_count i32 default 0
+  user_seq i64
+  service_member_seq i64
+  service_seq i64
+  start_dt datetime(6)
+  price decimal(13,3) null
+  ip bytes null
+  gz_extend bytes null
+  json_setting text null
+  base64_extra text null
+  primary key (seq)
+  index ix_author_service_member (service_member_seq)
+  index ix_user (user_seq, is_close)
+  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict
+  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict
+  settings {
+    updated updated_ts
+    select explicit ip gz_extend json_setting base64_extra
+    codec base64_extra base64
+    codec gz_extend gz
+    codec ip ip
+    codec json_setting ordered_json
+  }
+}
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table service_member {
+  seq i64 identity
+  service_seq i64
+  user_seq i64
+  primary key (seq)
+  index ix_service_member_service (service_seq)
+  index ix_service_member_user (user_seq)
+  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict
+}
+
+table composite_account {
+  tenant_id i64
+  account_id i64
+  name varchar(191)
+  primary key (tenant_id, account_id)
+}
+
+table key_flag_label {
+  flag bool
+  label varchar(32)
+  primary key (flag, label)
+}
+
+table key_number_label {
+  number i64
+  label varchar(32)
+  primary key (number, label)
+}
+
+table key_label_label {
+  first_label varchar(32)
+  second_label varchar(32)
+  primary key (first_label, second_label)
+}
+
+table key_flag_number {
+  flag bool
+  number i64
+  primary key (flag, number)
+}
+
+table key_number_flag {
+  number i64
+  flag bool
+  primary key (number, flag)
+}
+
+table key_label_flag {
+  label varchar(32)
+  flag bool
+  primary key (label, flag)
+}
+
+table key_instant_label {
+  instant datetime(3)
+  label varchar(32)
+  primary key (instant, label)
+}
+
+table key_fine_instant_label {
+  instant datetime(6)
+  label varchar(32)
+  primary key (instant, label)
+}
+
+table key_flag {
+  flag bool
+  primary key (flag)
+}
+
+table key_instant {
+  instant datetime(3)
+  primary key (instant)
+}
+
+table key_fine_instant {
+  instant datetime(6)
+  primary key (instant)
+}
+
+table composite_member {
+  tenant_id i64
+  account_id i64
+  role varchar(32)
+  primary key (tenant_id, account_id, role)
+}
+
+# An insert with a condition (docs/spec/protocol.md PRT-85 to PRT-88): a nullable body that a condition reads, and a unique
+# code that an insert with on_duplicate meets.
+table condition_cell {
+  seq i64 identity
+  code varchar(16)
+  body varchar(16) null
+  primary key (seq)
+  unique uq_condition_cell_code (code)
+}

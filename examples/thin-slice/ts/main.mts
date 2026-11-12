@@ -4,7 +4,7 @@
 //
 //   node examples/thin-slice/ts/main.mts
 import { createConnection } from 'mysql2/promise';
-// The built client of this checkout, as the TypeScript tests import it (packages/ts/tests/*.mjs).
+// The built client of this checkout, as the TypeScript tests import it (legacy/packages/ts/tests/*.mjs).
 import { Author, connect } from '../../../packages/ts/dist/index.js';
 
 const ITERATIONS = 500;

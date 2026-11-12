@@ -1,7 +1,7 @@
 <!-- doc-id: protocol -->
 # IR and Plan protocol
 
-A client renders the model built with the [DSL](dsl.md) into the request below, plans it in the calling process, and caches the plan by the request shape. The type definitions in `packages/go/engine/ir/ir.go` and `packages/go/engine/plan/plan.go` are authoritative; every client implements the same fields.
+A client renders the model built with the [DSL](dsl.md) into the request below, plans it in the calling process, and caches the plan by the request shape. The type definitions in `legacy/packages/go/engine/ir/ir.go` and `legacy/packages/go/engine/plan/plan.go` are authoritative; every client implements the same fields.
 
 ## 1. Request
 
@@ -231,7 +231,7 @@ The fault exists only in the test entry point of each client. No DSN, configurat
 - **PRT-51** PHP — Entry point: `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`; How a production build excludes it: The same class as `failNextRollback`, in `testing/Faults.php`, which the package autoloader does not map
 - **PRT-52** The `polyspec-orm` wheel — Python entry point: `polyspec.orm.testing.fail_next_statement(db, code, message)`; How a production build excludes it: The same package as `fail_next_rollback`, which no module of `polyspec.orm` imports
 
-The statement fault is armed on a `Db` and counts the statements that the `Db` runs. The dbspec apply, recover, rollback, finalize and introspection of every implementation run on the driver connection that the caller passes, outside the `Db`, so they do not consume it: Go `packages/go/engine/dbspec/apply.go:138,159,200,282` (`Execer`) and `packages/go/engine/dbspec/introspect.go:37` (`Querier`); Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347` (`ApplyConnection`) and `packages/rust/orm/src/dbspec.rs:52` (`CatalogQuerier`); TypeScript `packages/ts/src/dbspec/apply.ts:720,737,768,820` (`Connection`) and `packages/ts/src/dbspec/introspect.ts:33`; Python `packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802` and `packages/python/src/polyspec/orm/dbspec/introspect.py:16` (`Connection`); PHP `packages/php/src/Dbspec/PlanApply.php:104,120,151,214` and `packages/php/src/Dbspec/Dbspec.php:266,731` (`\PDO`); the PHP extension `polyspec_orm` `packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712` (`\PDO`), implemented in `packages/php-ext/src/apply.c` and `introspect.c`.
+The statement fault is armed on a `Db` and counts the statements that the `Db` runs. The dbspec apply, recover, rollback, finalize and introspection of every implementation run on the driver connection that the caller passes, outside the `Db`, so they do not consume it: Go `legacy/packages/go/engine/dbspec/apply.go:138,159,200,282` (`Execer`) and `legacy/packages/go/engine/dbspec/introspect.go:37` (`Querier`); Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347` (`ApplyConnection`) and `packages/rust/orm/src/dbspec.rs:52` (`CatalogQuerier`); TypeScript `legacy/packages/ts/src/dbspec/apply.ts:720,737,768,820` (`Connection`) and `legacy/packages/ts/src/dbspec/introspect.ts:33`; Python `legacy/packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802` and `legacy/packages/python/src/polyspec/orm/dbspec/introspect.py:16` (`Connection`); PHP `legacy/packages/php/src/Dbspec/PlanApply.php:104,120,151,214` and `legacy/packages/php/src/Dbspec/Dbspec.php:266,731` (`\PDO`); the PHP extension `polyspec_orm` `legacy/packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712` (`\PDO`), implemented in `legacy/packages/php-ext/src/apply.c` and `introspect.c`.
 
 ### 3.3 Test clock
 
@@ -261,12 +261,12 @@ The shared requirement requires each configured implementation to validate and p
 
 | Client | Validation, planning, dialects, and DDL |
 |---|---|
-| Go | `packages/go/engine/ir`, `packages/go/engine/planner`, `packages/go/engine/dialect`, `packages/go/engine/dbspec` DDL |
-| PHP | `packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| Go | `legacy/packages/go/engine/ir`, `legacy/packages/go/engine/planner`, `legacy/packages/go/engine/dialect`, `legacy/packages/go/engine/dbspec` DDL |
+| PHP | `legacy/packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
 | PHP extension | Shared requirement applies; native ORM validation/planning is incomplete and remains tracked under T182 and KSTD-2-3 |
 | Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
-| TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
-| Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
+| TypeScript | `legacy/packages/ts/src/engine/`, `legacy/packages/ts/src/dbspec/` DDL |
+| Python | `legacy/packages/python/src/polyspec/orm/engine/`, `legacy/packages/python/src/polyspec/orm/dbspec/` DDL |
 
 Generated code carries the manifest text of its document set and its `manifestHash`. The client builds the runtime model from that text once and rejects text whose hash differs from the declared one (`SCHEMA_HASH_MISMATCH`). The plan cache key is the manifest hash and the request shape. Parameter values are not part of the key. The PHP client and the PHP extension bound their plan cache and their statement cache by 8192 retained placeholders each, as well as by the number of entries: an entry of a multi-row INSERT holds about 390 bytes of plan and about 190 bytes of bound values per placeholder, so entries are evicted least recently used first while the cached placeholders exceed the bound, and a request with more placeholders than the bound is planned and run without being cached. The bound applies to PHP only, because only the PHP caches were measured to grow with the placeholders of their entries.
 

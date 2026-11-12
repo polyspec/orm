@@ -7,7 +7,7 @@
 //   php examples/thin-slice/php/main.php
 declare(strict_types=1);
 
-require dirname(__DIR__, 3) . '/packages/php/tests/autoload.php';
+require dirname(__DIR__, 3) . '/legacy/packages/php/tests/autoload.php';
 require_once dirname(__DIR__, 2) . '/php/bench_dsn.php';
 require __DIR__ . '/thin_slice_functions.php';
 

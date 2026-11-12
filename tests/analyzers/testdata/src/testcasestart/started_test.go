@@ -16,11 +16,11 @@ func TestGrouped(t *testing.T) {
 	t.Run("a", func(t *testing.T) { testcase.Of(t) })
 }
 
-func TestBare(t *testing.T) { // want `TestBare does not start its case with packages/go/testcase, so it runs without a deadline or RUN line`
+func TestBare(t *testing.T) { // want `TestBare does not start its case with legacy/packages/go/testcase, so it runs without a deadline or RUN line`
 	t.Log("no case")
 }
 
-func FuzzBare(f *testing.F) { // want `FuzzBare does not start its case with packages/go/testcase`
+func FuzzBare(f *testing.F) { // want `FuzzBare does not start its case with legacy/packages/go/testcase`
 	f.Fuzz(func(t *testing.T, b []byte) {})
 }
 

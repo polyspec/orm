@@ -1,6 +1,6 @@
 {
     "name": "polyspec/orm-workspace",
-    "description": "Development root of the repository, not published: it installs packages/php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
+    "description": "Development root of the repository, not published: it installs legacy/packages/php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
     "type": "project",
     "license": "MIT",
     "require": {
@@ -9,16 +9,16 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Polyspec\\Orm\\Tests\\Model\\": "packages/php/gen/",
-            "Polyspec\\Orm\\Tests\\MarkdownModel\\": "packages/php/markdownmodel/",
-            "Polyspec\\Orm\\Tests\\BindModel\\": "packages/php/bindmodel/",
-            "Polyspec\\Orm\\Tests\\ComplexModel\\": "packages/php/complexmodel/"
+            "Polyspec\\Orm\\Tests\\Model\\": "legacy/packages/php/gen/",
+            "Polyspec\\Orm\\Tests\\MarkdownModel\\": "legacy/packages/php/markdownmodel/",
+            "Polyspec\\Orm\\Tests\\BindModel\\": "legacy/packages/php/bindmodel/",
+            "Polyspec\\Orm\\Tests\\ComplexModel\\": "legacy/packages/php/complexmodel/"
         }
     },
     "repositories": [
         {
             "type": "path",
-            "url": "packages/php",
+            "url": "legacy/packages/php",
             "options": {
                 "symlink": true
             }

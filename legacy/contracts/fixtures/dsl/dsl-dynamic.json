@@ -1,0 +1,89 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-49",
+    "DSL-50",
+    "DSL-160",
+    "PLN-4"
+  ],
+  "cases": [
+    {
+      "id": "chain_list_with_gt",
+      "requirements": ["DSL-50", "PLN-4"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "gt_method",
+          "params": [{"array": [{"int": "5"}, {"int": "20"}]}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "chain_null_with_gt",
+      "requirements": ["DSL-50", "PLN-4"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "gt_method",
+          "params": [{"nil": true}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "chain_null_on_a_non_null_column",
+      "requirements": ["DSL-49"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [{"nil": true}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "chain_null_on_a_non_null_column_with_eq",
+      "requirements": ["DSL-49"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq_method",
+          "params": [{"nil": true}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "chain_null_on_a_non_null_column_with_ne",
+      "requirements": ["DSL-49"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "ne_method",
+          "params": [{"nil": true}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "new_of_a_stored_column_is_refused_at_call_time",
+      "requirements": ["DSL-160"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "new_method",
+          "params": [{"int": "1"}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    }
+  ]
+}

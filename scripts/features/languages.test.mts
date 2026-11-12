@@ -46,9 +46,9 @@ for (const file of readers) {
 // A feature's languages are the implementations whose roots hold one of its tests, php-extension among them; a root outside
 // packages (examples, benchmarks/rust) belongs to its implementation too.
 caseTest('featureLanguages derives the implementations whose roots hold the tests', COMPUTE, () => {
-  assert.deepEqual(featureLanguages(['packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php', 'packages/go/orm/codec_test.go']), ['go', 'php-extension']);
-  assert.equal(implementationOf('packages/php-ext/tests/x.php'), 'php-extension');
-  assert.equal(implementationOf('packages/php/tests/x.php'), 'php');
+  assert.deepEqual(featureLanguages(['legacy/packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php', 'legacy/packages/go/orm/codec_test.go']), ['go', 'php-extension']);
+  assert.equal(implementationOf('legacy/packages/php-ext/tests/x.php'), 'php-extension');
+  assert.equal(implementationOf('legacy/packages/php/tests/x.php'), 'php');
   assert.equal(implementationOf('examples/dsn_test.go'), 'go');
   assert.equal(implementationOf('benchmarks/rust/src/native.rs'), 'rust');
   assert.equal(implementationOf('docs/test_outside.py'), undefined);
@@ -56,36 +56,36 @@ caseTest('featureLanguages derives the implementations whose roots hold the test
 });
 
 const probe: Implementation = {
-  name: 'go', roots: ['packages/go'], tests: ['**/*_test.go'],
-  support: ['packages/go/orm/test_helpers_test.go'], internal: [{ glob: 'packages/go/orm/split_plan_test.go', reason: 'internal' }],
+  name: 'go', roots: ['legacy/packages/go'], tests: ['**/*_test.go'],
+  support: ['legacy/packages/go/orm/test_helpers_test.go'], internal: [{ glob: 'legacy/packages/go/orm/split_plan_test.go', reason: 'internal' }],
 };
 
 caseTest('the test inventory is the files its globs select, less its support files and internal tests', COMPUTE, () => {
-  const files = ['packages/go/orm/codec_test.go', 'packages/go/orm/test_helpers_test.go', 'packages/go/orm/split_plan_test.go', 'packages/go/orm/codec.go', 'docs/x_test.go'];
-  assert.deepEqual(implementationTestInventory(files, [probe]), { tests: { go: ['packages/go/orm/codec_test.go'] }, stale: [] });
+  const files = ['legacy/packages/go/orm/codec_test.go', 'legacy/packages/go/orm/test_helpers_test.go', 'legacy/packages/go/orm/split_plan_test.go', 'legacy/packages/go/orm/codec.go', 'docs/x_test.go'];
+  assert.deepEqual(implementationTestInventory(files, [probe]), { tests: { go: ['legacy/packages/go/orm/codec_test.go'] }, stale: [] });
 });
 
 caseTest('a support or internal glob that selects no test file is stale', COMPUTE, () => {
-  const { stale } = implementationTestInventory(['packages/go/orm/codec_test.go', 'packages/go/orm/split_plan_test.go'], [probe]);
-  assert.deepEqual(stale, ['go: packages/go/orm/test_helpers_test.go selects no test file of packages/go']);
+  const { stale } = implementationTestInventory(['legacy/packages/go/orm/codec_test.go', 'legacy/packages/go/orm/split_plan_test.go'], [probe]);
+  assert.deepEqual(stale, ['go: legacy/packages/go/orm/test_helpers_test.go selects no test file of legacy/packages/go']);
 });
 
 caseTest('the declared inventory of this checkout has no stale declaration, and names its support and internal files', COMPUTE, () => {
   const inventory = implementationTestInventory(implementationFiles(root));
   assert.deepEqual(inventory.stale, []);
-  assert.equal(inventory.tests['go']?.includes('packages/go/orm/test_helpers_test.go'), false, 'a declared Go support file is no feature test');
-  assert.equal(inventory.tests['php-extension']?.includes('packages/php-ext/tests/ValidatorNativeTest.php'), false, 'a declared internal test is no feature test');
-  assert.equal(inventory.tests['go']?.includes('packages/go/model/coverage_schema_install_test.go'), true);
-  assert.equal(inventory.tests['typescript']?.includes('packages/ts/tests/coverage_transactions.mjs'), true);
+  assert.equal(inventory.tests['go']?.includes('legacy/packages/go/orm/test_helpers_test.go'), false, 'a declared Go support file is no feature test');
+  assert.equal(inventory.tests['php-extension']?.includes('legacy/packages/php-ext/tests/ValidatorNativeTest.php'), false, 'a declared internal test is no feature test');
+  assert.equal(inventory.tests['go']?.includes('legacy/packages/go/model/coverage_schema_install_test.go'), true);
+  assert.equal(inventory.tests['typescript']?.includes('legacy/packages/ts/tests/coverage_transactions.mjs'), true);
 });
 
 caseTest('an unlisted test selected by the globs of each implementation fails feature ownership', COMPUTE, () => {
   const cases = [
-    ['go', 'packages/go/orm/new_contract_probe_test.go'],
-    ['php', 'packages/php/tests/NewContractProbeTest.php'],
-    ['php-extension', 'packages/php-ext/tests/NewContractProbeTest.php'],
-    ['typescript', 'packages/ts/tests/new-contract-probe.test.mjs'],
-    ['python', 'packages/python/tests/test_new_contract_probe.py'],
+    ['go', 'legacy/packages/go/orm/new_contract_probe_test.go'],
+    ['php', 'legacy/packages/php/tests/NewContractProbeTest.php'],
+    ['php-extension', 'legacy/packages/php-ext/tests/NewContractProbeTest.php'],
+    ['typescript', 'legacy/packages/ts/tests/new-contract-probe.test.mjs'],
+    ['python', 'legacy/packages/python/tests/test_new_contract_probe.py'],
     ['rust', 'packages/rust/orm/tests/unit/new_contract_probe.rs'],
   ] as const;
   const { tests } = implementationTestInventory(cases.map(([, file]) => file));
@@ -99,26 +99,26 @@ caseTest('the feature checker pairs English documents with their Korean twin exa
 });
 
 // A generated file that the repository ignores is no test file: the fixture models that make python-models writes into
-// packages/python/tests/models matched the Python test glob on disk, and the feature check named them a test of no feature,
+// legacy/packages/python/tests/models matched the Python test glob on disk, and the feature check named them a test of no feature,
 // while only the files Git tracks or would track are files of the tree (T339-17).
 caseTest('the implementation files are the checked files of the roots, without the files Git ignores', COMPUTE, () => {
   const base = mkdtempSync(join(tmpdir(), 'orm-feature-files-'));
   try {
-    mkdirSync(join(base, 'packages/python/tests/models'), { recursive: true });
+    mkdirSync(join(base, 'legacy/packages/python/tests/models'), { recursive: true });
     mkdirSync(join(base, 'docs'), { recursive: true });
-    writeFileSync(join(base, '.gitignore'), '/packages/python/tests/models/models.py\n');
-    writeFileSync(join(base, 'packages/python/tests/test_tracked.py'), '');
-    writeFileSync(join(base, 'packages/python/tests/test_untracked.py'), '');
-    writeFileSync(join(base, 'packages/python/tests/models/__init__.py'), '');
-    writeFileSync(join(base, 'packages/python/tests/models/models.py'), '');
+    writeFileSync(join(base, '.gitignore'), '/legacy/packages/python/tests/models/models.py\n');
+    writeFileSync(join(base, 'legacy/packages/python/tests/test_tracked.py'), '');
+    writeFileSync(join(base, 'legacy/packages/python/tests/test_untracked.py'), '');
+    writeFileSync(join(base, 'legacy/packages/python/tests/models/__init__.py'), '');
+    writeFileSync(join(base, 'legacy/packages/python/tests/models/models.py'), '');
     writeFileSync(join(base, 'docs/test_outside.py'), '');
     execFileSync('git', ['init', '-q'], { cwd: base });
-    execFileSync('git', ['add', '.gitignore', 'packages/python/tests/test_tracked.py'], { cwd: base });
-    const python = implementations.filter(entry => entry.name === 'python').map(entry => ({ ...entry, roots: ['packages/python'] }));
+    execFileSync('git', ['add', '.gitignore', 'legacy/packages/python/tests/test_tracked.py'], { cwd: base });
+    const python = implementations.filter(entry => entry.name === 'python').map(entry => ({ ...entry, roots: ['legacy/packages/python'] }));
     assert.deepEqual(implementationFiles(base, python), [
-      'packages/python/tests/models/__init__.py',
-      'packages/python/tests/test_tracked.py',
-      'packages/python/tests/test_untracked.py',
+      'legacy/packages/python/tests/models/__init__.py',
+      'legacy/packages/python/tests/test_tracked.py',
+      'legacy/packages/python/tests/test_untracked.py',
     ]);
   } finally {
     rmSync(base, { recursive: true, force: true });

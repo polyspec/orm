@@ -1,0 +1,5859 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-44",
+    "COD-47",
+    "COD-49",
+    "COD-50",
+    "COD-51",
+    "COD-52",
+    "COD-53",
+    "COD-54",
+    "COD-57",
+    "COD-58",
+    "COD-59",
+    "COD-60",
+    "CFG-28",
+    "COD-8",
+    "PLN-44",
+    "INT-60",
+    "INT-75",
+    "INT-131",
+    "COD-7",
+    "DIA-154",
+    "DIA-188"
+  ],
+  "fixture": "contracts/fixtures/aes_rotation/dbspec-set.json",
+  "cases": [
+    {
+      "id": "read_path_codes",
+      "requirements": [
+        "COD-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-44"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page1"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page1"
+          },
+          "index": 0,
+          "as": "snap1"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap1"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "9"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page1.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page1.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page1.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page1.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page1.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page1.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page2"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page2"
+          },
+          "index": 0,
+          "as": "snap2"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap2"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "1"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page2.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page2.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page2.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page2.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page2.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page2.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-44b"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page3"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page3"
+          },
+          "index": 0,
+          "as": "snap3"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap3"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "text": "abc"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page3.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page3.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page3.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page3.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page3.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page3.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": ""
+            },
+            "current": 1
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_path_codes",
+      "requirements": [
+        "COD-47"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-47"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page4"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page4"
+          },
+          "index": 0,
+          "as": "snap4"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap4"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "9"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page4.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page4.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page4.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page4.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page4.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page4.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page5"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page5"
+          },
+          "index": 0,
+          "as": "snap5"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap5"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "1"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page5.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page5.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page5.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page5.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page5.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page5.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-47b"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page6"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page6"
+          },
+          "index": 0,
+          "as": "snap6"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap6"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "text": "abc"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page6.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page6.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page6.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page6.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page6.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page6.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_text",
+      "requirements": [
+        "COD-49"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-49"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page7"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page7"
+          },
+          "index": 0,
+          "as": "snap7"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap7"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "text": "abc"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page7.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page7.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page7.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page7.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page7.rows.0.0"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "ref": "page7.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_zero_read",
+      "requirements": [
+        "COD-50"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-50"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page8"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page8"
+          },
+          "index": 0,
+          "as": "snap8"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap8"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "0"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page8.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page8.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page8.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page8.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page8.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page8.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_above_i32",
+      "requirements": [
+        "COD-51"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-51"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version BIGINT NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE BIGINT USING aes_key_version::bigint",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to a 64-bit integer, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page9"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page9"
+          },
+          "index": 0,
+          "as": "snap9"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap9"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "2147483648"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page9.rows.0.0"
+                  },
+                  {
+                    "int": "2147483648"
+                  },
+                  {
+                    "ref": "page9.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page9.rows.0.0"
+                  },
+                  {
+                    "int": "2147483648"
+                  },
+                  {
+                    "ref": "page9.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page9.rows.0.0"
+                  },
+                  {
+                    "int": "2147483648"
+                  },
+                  {
+                    "ref": "page9.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "undeclared_key_version",
+      "requirements": [
+        "COD-52"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-52"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page10"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page10"
+          },
+          "index": 0,
+          "as": "snap10"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap10"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "9"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page10.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page10.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page10.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page10.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page10.rows.0.0"
+                  },
+                  {
+                    "int": "9"
+                  },
+                  {
+                    "ref": "page10.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_text_decodes",
+      "requirements": [
+        "COD-53"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-53"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page11"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page11"
+          },
+          "index": 0,
+          "as": "snap11"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap11"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "text": "1"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page11.rows.0.0"
+                  },
+                  {
+                    "text": "1"
+                  },
+                  {
+                    "ref": "page11.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page11.rows.0.0"
+                  },
+                  {
+                    "text": "1"
+                  },
+                  {
+                    "ref": "page11.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_stored_version_zero",
+      "requirements": [
+        "COD-54"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-54"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page12"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page12"
+          },
+          "index": 0,
+          "as": "snap12"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap12"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "0"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page12.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page12.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page12.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page12.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page12.rows.0.0"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "ref": "page12.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "keyring_lacks_stored_version",
+      "requirements": [
+        "COD-57"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-57"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page13"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page13"
+          },
+          "index": 0,
+          "as": "snap13"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap13"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "int": "1"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page13.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page13.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page13.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page13.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page13.rows.0.0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "ref": "page13.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "null_version_with_aes_value",
+      "requirements": [
+        "COD-58"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-58"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version INT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version DROP NOT NULL",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NULL, token TEXT NULL)"
+          },
+          "reason": "makes the stored version column nullable, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page14"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page14"
+          },
+          "index": 0,
+          "as": "snap14"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap14"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "null": "int"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page14.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page14.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page14.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page14.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page14.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page14.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "null_aes_null_version",
+      "requirements": [
+        "COD-59"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "null": "text"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version INT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version DROP NOT NULL",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NULL, token TEXT NULL)"
+          },
+          "reason": "makes the stored version column nullable, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "rot_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "aes_key_version",
+            "token"
+          ],
+          "as": "page15"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page15"
+          },
+          "index": 0,
+          "as": "snap15"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "snap15"
+          },
+          "set": [
+            [
+              "aes_key_version",
+              {
+                "null": "int"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "ref": "page15.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page15.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "ref": "page15.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page15.rows.0.2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "ref": "page15.rows.0.0"
+                  },
+                  {
+                    "null": "int"
+                  },
+                  {
+                    "ref": "page15.rows.0.2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_null_aes_unchanged",
+      "requirements": [
+        "COD-60"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "null": "text"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_statement_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-stale"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the result type of the statement the model read prepared",
+          "sql": "ALTER TABLE rot_row ALTER COLUMN token TYPE TEXT"
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the result type again, for the read inside a transaction",
+          "sql": "ALTER TABLE rot_row ALTER COLUMN token TYPE VARCHAR(255)"
+        },
+        {
+          "op": "transaction",
+          "connection": "aes",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "aes",
+              "model": "RotRow",
+              "where": {},
+              "columns": [
+                "token"
+              ],
+              "order": [
+                "seq"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "error": "DRIVER"
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "expect_unnamed": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-stale"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "utility_statement_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-utility"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the result type of the statement the status read prepared",
+          "sql": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE BIGINT"
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "aes",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_rewrites_every_aes_column",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "old",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "old",
+          "model": "RotPair",
+          "values": {
+            "token": {
+              "text": "secret-a"
+            },
+            "memo": {
+              "text": "note-a"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "old",
+          "model": "RotPair",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "new",
+          "aes_keyring": {
+            "versions": {
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "new",
+          "model": "RotPair",
+          "where": {},
+          "columns": [
+            "aes_key_version",
+            "token",
+            "memo"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "text": "note-a"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "text": "note-a"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "text": "note-a"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_takes_rows_not_at_the_current_version",
+      "requirements": [
+        "COD-8",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "old",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "old",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-a"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "cur",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "cur",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-b"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "cur",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "1"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "cur",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "cur",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "cur",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "new",
+          "aes_keyring": {
+            "versions": {
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "new",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "aes_key_version",
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-b"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-b"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-b"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "write_uses_the_key_of_the_current_version",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "cur",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "cur",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-a"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "new",
+          "aes_keyring": {
+            "versions": {
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "new",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "aes_key_version",
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "one",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "one",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes version is not declared"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ordered_json_column_round_trip_and_rotation",
+      "requirements": [
+        "COD-7"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "SecretConfig",
+          "values": {
+            "config": {
+              "object": [
+                [
+                  "z",
+                  {
+                    "object": []
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "array": []
+                  }
+                ],
+                [
+                  "token",
+                  {
+                    "text": "s3cret-token"
+                  }
+                ],
+                [
+                  "nested",
+                  {
+                    "object": [
+                      [
+                        "second",
+                        {
+                          "int": "2"
+                        }
+                      ],
+                      [
+                        "first",
+                        {
+                          "float": "1.50"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "first",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "both",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "both",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "both",
+          "model": "SecretConfig",
+          "keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "both",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "2": "config-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "second",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "back",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "back",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "config": {
+              "object": [
+                [
+                  "token",
+                  {
+                    "text": "next-token"
+                  }
+                ],
+                [
+                  "list",
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "two"
+                      },
+                      {
+                        "nil": true
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "back",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "first",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
+            },
+            "postgres": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
+            },
+            "sqlite": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "status_counts_the_rows_of_each_key_version",
+      "requirements": [
+        "INT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "one"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "two"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "second",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "three"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_aes_key_that_differs_from_the_current_version_is_refused",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_key": "different-key",
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "current-key"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key differs from the key list at the current version"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key differs from the key list at the current version"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key differs from the key list at the current version"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_aes_configuration_without_a_usable_current_key_is_refused",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": -1
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 0,
+            "aes_keys": {
+              "2": "aes-rotation-key-two"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 2,
+            "aes_keys": {
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": ""
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "0": "aes-rotation-key-zero",
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "aes-rotation-key-one",
+              "2": ""
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_refused_aes_configuration_opens_no_database_file",
+      "requirements": [
+        "COD-8"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_key": "different-key",
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "current-key"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key differs from the key list at the current version"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": -1
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 0,
+            "aes_keys": {
+              "2": "aes-rotation-key-two"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 2,
+            "aes_keys": {
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes current version is not declared"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": ""
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "0": "aes-rotation-key-zero",
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "aes-rotation-key-one",
+              "2": ""
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version",
+      "requirements": [
+        "INT-60",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "first"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "second"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "the function of the trigger that drops the update of the second row",
+          "sql": "CREATE FUNCTION rot_row_second() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.seq = 2 THEN RETURN NULL; END IF; RETURN NEW; END $$"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the second row takes no update: PostgreSQL and SQLite drop it, so it changes no row, and MySQL, where a trigger cannot drop an update, refuses it",
+          "sql": {
+            "mysql": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row FOR EACH ROW IF OLD.seq = 2 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'rot_row_second'; END IF",
+            "postgres": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row FOR EACH ROW EXECUTE FUNCTION rot_row_second()",
+            "sqlite": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row WHEN OLD.seq = 2 BEGIN SELECT RAISE(IGNORE); END"
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DEADLOCK"
+            },
+            "sqlite": {
+              "error": "DEADLOCK"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "second",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "removes the trigger, so the same rotation has nothing in its way",
+          "sql": {
+            "mysql": "DROP TRIGGER rot_row_second",
+            "postgres": "DROP TRIGGER rot_row_second ON rot_row",
+            "sqlite": "DROP TRIGGER rot_row_second"
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "second",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_text_with_a_leading_zero_decodes",
+      "requirements": [
+        "COD-53"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-53"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE rot_row SET aes_key_version = '01'",
+          "reason": "the stored version as a text with a leading zero, a positive integer (COD-53)"
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-53"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_stored_version_that_names_another_key_fails_the_read",
+      "requirements": [
+        "COD-5",
+        "COD-6"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-of-one"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-of-one"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-of-one"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "secret-of-one"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE rot_row SET aes_key_version = 2",
+          "reason": "a stored version that names the key that did not write the value"
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_rotation_of_an_unreadable_column_keeps_the_row",
+      "requirements": [
+        "INT-60",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "old",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "old",
+          "model": "RotPair",
+          "values": {
+            "token": {
+              "text": "secret-a"
+            },
+            "memo": {
+              "text": "note-a"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE rot_pair SET memo = 'not-hex'",
+          "reason": "the second AES column of the row no longer holds a value of its key"
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "old",
+          "model": "RotPair",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT aes_key_version, memo FROM rot_pair",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "not-hex"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "not-hex"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "not-hex"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rotation_keeps_a_null_aes_column_beside_a_rewritten_one",
+      "requirements": [
+        "COD-8",
+        "COD-60"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "old",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "old",
+          "model": "RotPair",
+          "values": {
+            "token": {
+              "text": "secret-a"
+            },
+            "memo": {
+              "null": "text"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "old",
+          "model": "RotPair",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "new",
+          "aes_keyring": {
+            "versions": {
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "new",
+          "model": "RotPair",
+          "where": {},
+          "columns": [
+            "aes_key_version",
+            "token",
+            "memo"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "secret-a"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored_version_text_above_i32_fails_the_read",
+      "requirements": [
+        "COD-51",
+        "COD-53"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "aes",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "aes",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "secret-53"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          },
+          "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+          },
+          "reason": "copies the rows of the SQLite table into the replacement table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "DROP TABLE rot_row"
+          },
+          "reason": "drops the old SQLite table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
+          },
+          "reason": "renames the replacement table to the case table"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE rot_row SET aes_key_version = '2147483648'",
+          "reason": "the stored version as a text above the positive 32-bit range (COD-51)"
+        },
+        {
+          "op": "model.query",
+          "connection": "aes",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_joined_row_decrypts_with_the_key_version_of_its_own_row",
+      "requirements": [
+        "COD-6",
+        "COD-41"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "one",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "two",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "two",
+          "model": "RotParent",
+          "values": {
+            "token": {
+              "text": "parent-of-two"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "one",
+          "model": "RotChild",
+          "values": {
+            "rot_parent_seq": {
+              "int": "1"
+            },
+            "token": {
+              "text": "child-of-one"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "two",
+          "model": "RotParent",
+          "joins": [
+            {
+              "model": "RotChild",
+              "match": [
+                "seq",
+                "rot_parent_seq"
+              ],
+              "as": "c"
+            }
+          ],
+          "order": [
+            {
+              "column": "seq",
+              "dir": "asc"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

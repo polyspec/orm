@@ -219,7 +219,7 @@ jobs:
         run: make orm-install-python
       - name: lowest PHP release of the PHP client
         # make php-min-check runs the PHP client unit tests on the lowest release
-        # of require.php in packages/php/composer.json; setup-php installs it
+        # of require.php in legacy/packages/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
         if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}

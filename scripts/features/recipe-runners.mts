@@ -51,11 +51,11 @@ export type CaseRunner = { file: string; tests: string[] };
  */
 export const CASE_RUNNERS: Record<string, Record<string, CaseRunner>> = {
   'tests/markdown/cases.json': {
-    go: { file: 'packages/go/markdownmodel/conformance_test.go', tests: ['TestMarkdownConformance'] },
-    php: { file: 'packages/php/tests/MarkdownConformanceTest.php', tests: ['testMarkdownConformance'] },
-    'php-extension': { file: 'packages/php-ext/tests/MarkdownConformanceNativeTest.php', tests: ['testMarkdownConformance'] },
-    typescript: { file: 'packages/ts/tests/markdown_conformance.mjs', tests: [] },
-    python: { file: 'packages/python/tests/markdown_conformance.py', tests: [] },
+    go: { file: 'legacy/packages/go/markdownmodel/conformance_test.go', tests: ['TestMarkdownConformance'] },
+    php: { file: 'legacy/packages/php/tests/MarkdownConformanceTest.php', tests: ['testMarkdownConformance'] },
+    'php-extension': { file: 'legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php', tests: ['testMarkdownConformance'] },
+    typescript: { file: 'legacy/packages/ts/tests/markdown_conformance.mjs', tests: [] },
+    python: { file: 'legacy/packages/python/tests/markdown_conformance.py', tests: [] },
     rust: { file: 'packages/rust/tests/tests/all/markdown_conformance.rs', tests: ['trials'] },
   },
 };
@@ -69,12 +69,12 @@ export const caseRunnerTests = (): Set<string> =>
  * whose code names a recipe run it, through the runner of their runtime. A reader that names no recipe is a finding.
  */
 export const READERS: Record<string, string> = {
-  'packages/ts/tests/recipe_keys.test.mjs': 'the unit test of the key check of the TypeScript runner; its recipes are inputs of that check',
-  'packages/python/tests/test_recipe_keys.py': 'the unit test of the key check of the Python runner; its recipes are inputs of that check',
+  'legacy/packages/ts/tests/recipe_keys.test.mjs': 'the unit test of the key check of the TypeScript runner; its recipes are inputs of that check',
+  'legacy/packages/python/tests/test_recipe_keys.py': 'the unit test of the key check of the Python runner; its recipes are inputs of that check',
   'packages/rust/tests/tests/all/recipe_keys.rs': 'the unit test of the key check of the Rust runner; its recipes are inputs of that check',
-  'packages/php/tests/RecipeKeysTest.php': 'the unit test of the key check of the PHP runner; its recipes are inputs of that check',
-  'packages/ts/tests/dbspec-set-edges.mjs': 'reads the cases of tests/dbspec/set-files.json through parseSet, a call that only TypeScript has (DBS-176)',
-  'packages/ts/tests/dbspec-begin-exclusive-lock.mjs': 'reads one plan of tests/dbspec/plan-cases.json to hold a lock that only the TypeScript apply test observes',
+  'legacy/packages/php/tests/RecipeKeysTest.php': 'the unit test of the key check of the PHP runner; its recipes are inputs of that check',
+  'legacy/packages/ts/tests/dbspec-set-edges.mjs': 'reads the cases of tests/dbspec/set-files.json through parseSet, a call that only TypeScript has (DBS-176)',
+  'legacy/packages/ts/tests/dbspec-begin-exclusive-lock.mjs': 'reads one plan of tests/dbspec/plan-cases.json to hold a lock that only the TypeScript apply test observes',
 };
 
 /** A test file of an implementation that runs a recipe, with the recipes it names. */
@@ -198,7 +198,7 @@ export function recipeBindings(tests: Record<string, string[]>, recipes: readonl
     for (const test of files) {
       if (Object.hasOwn(READERS, test)) continue;
       const parent = implementation === 'php-extension' ? /\bextends\s+\\?(?:[\w\\]+\\)?(\w+Test)\b/.exec(sources.get(test) ?? '')?.[1] : undefined;
-      const named = [...namedRecipes(test, recipes, sources), ...(parent === undefined ? [] : namedRecipes(`packages/php/tests/${parent}.php`, recipes, sources))];
+      const named = [...namedRecipes(test, recipes, sources), ...(parent === undefined ? [] : namedRecipes(`legacy/packages/php/tests/${parent}.php`, recipes, sources))];
       if (named.length > 0) bindings.push({ implementation, test, recipes: [...new Set(named)] });
     }
   }

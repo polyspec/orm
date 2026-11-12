@@ -45,9 +45,9 @@ function mermaidWithPath(path: string): string {
 }
 
 const applyRunners: Runner[] = [
-  { name: 'apply go', command: 'go', args: ['run', './packages/go/internal/dbspec/apply'] },
-  { name: 'apply php', command: 'php', args: ['packages/php/testing/dbspec/apply/php.php'] },
-  { name: 'apply typescript', command: process.execPath, args: ['packages/ts/testing/dbspec/apply/typescript.mts'] },
+  { name: 'apply go', command: 'go', args: ['run', './legacy/packages/go/internal/dbspec/apply'] },
+  { name: 'apply php', command: 'php', args: ['legacy/packages/php/testing/dbspec/apply/php.php'] },
+  { name: 'apply typescript', command: process.execPath, args: ['legacy/packages/ts/testing/dbspec/apply/typescript.mts'] },
   { name: 'apply rust', command: join(cargoTarget(), 'debug/examples/dbspec_apply'), args: [] },
 ];
 const stressHarness: Runner = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };

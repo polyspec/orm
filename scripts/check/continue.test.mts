@@ -62,7 +62,7 @@ caseTest('the PHP lane of client-db-test runs every test after a failed one and 
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const expected = await declared('scripts/client-db-test.mts', 'php');
-    assert.equal(expected[0], 'php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php');
+    assert.equal(expected[0], 'php vendor-php/bin/phpunit --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelTest.php');
     assert.deepEqual(f.ran(), expected);
     assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php vendor-php\/bin\/phpunit --configuration packages\/php\/phpunit\.xml\.dist packages\/php\/tests\/ModelTest\.php \(exit 3\)/);
   } finally {
@@ -77,7 +77,7 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     // The first node command is the build, and the tests run after it.
     const expected = await declared('scripts/typescript/sqlite-test.mts', 'node');
-    assert.equal(expected[1], 'node packages/ts/tests/model.mjs');
+    assert.equal(expected[1], 'node legacy/packages/ts/tests/model.mjs');
     assert.deepEqual(f.ran(), expected);
     assert.match(result.stderr, /sqlite-test: failed:\n {2}node packages\/ts\/tests\/model\.mjs \(exit 3\)/);
   } finally {
@@ -93,7 +93,7 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php,typescript', ORM_CLIENT_DB_LANES: '' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran();
-    assert.ok(ran.includes('node packages/ts/tests/model.mjs'), ran.join('\n'));
+    assert.ok(ran.includes('node legacy/packages/ts/tests/model.mjs'), ran.join('\n'));
     assert.match(result.stderr, /client-db-test: failed lanes: php\n/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
@@ -115,7 +115,7 @@ caseTest('client-db-test runs the php-extension lane with the extension it build
     const php = readFileSync(join(repo, 'scripts/client-db-test.mts'), 'utf8').match(/const PHP_TESTS = \[([^\]]*)\]/)?.[1]?.match(/'(\w+)'/g)?.map(name => name.slice(1, -1)) ?? [];
     assert.ok(php.length > 0, 'scripts/client-db-test.mts names no PHP_TESTS');
     // Each PHP test file is one run with no --filter or --exclude-filter.
-    const expected = php.map(test => `node ${kitRunTests} phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`);
+    const expected = php.map(test => `node ${kitRunTests} phpunit --php-extension ${library} -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/${test}.php`);
     assert.deepEqual(ran.slice(1), expected);
     assert.ok(!existsSync(library), `the lane left its build ${library}`);
     assert.match(result.stdout, /client-db-test: every lane passed: php-extension\n/);

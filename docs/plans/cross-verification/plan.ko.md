@@ -13,8 +13,8 @@ Rust)에서 네 database(MySQL, PostgreSQL, SQLite, flowmark)로 검증한다. �
 - F1. 연결의 두 동작을 runtime 하나씩만, database 없이 시험하며, 그 시험은 requirement를 인용하지 않는다:
   - `packages/rust/orm/tests/unit/markdown_rows.rs`: 행을 거부한 읽기는 남은 행을 close로 끝내고 자기 오류를 유지하며,
     거부된 close 뒤에도 연결을 쓸 수 있다(PRT-66);
-  - `packages/go/orm/markdown_wire_internal_test.go`: 바인딩 값과 cell의 wire 형식(PRT-67, PRT-69).
-  - PHP는 `packages/php/tests/MarkdownTest.php`에 자기 조각을 가진다: 버려진 문은 자기 행을 닫고, 거부는 code를 한 번만
+  - `legacy/packages/go/orm/markdown_wire_internal_test.go`: 바인딩 값과 cell의 wire 형식(PRT-67, PRT-69).
+  - PHP는 `legacy/packages/php/tests/MarkdownTest.php`에 자기 조각을 가진다: 버려진 문은 자기 행을 닫고, 거부는 code를 한 번만
     적는다.
 - F2. parity unit `connection_pool-markdown`은 DIA-154를 인용하지 않는다. parity의 owner 규칙은 pool을 가진 네
   runtime(CFG-5a)을 이름 붙이는 requirement를 요구하는데, docs/spec/dialects.md의 markdown 절에는 pool 규칙이 없다.
@@ -25,7 +25,7 @@ Rust)에서 네 database(MySQL, PostgreSQL, SQLite, flowmark)로 검증한다. �
 - F5. PRT-66은 close의 답이 `{"ok": true}`라고만 하고 거부된 close를 말하지 않으므로, 클라이언트에 공통 규칙이 없다.
 
 ## 사실
-- flowmark 문은 한 batch에 최대 1000행 또는 1 MiB를 돌려준다(polyspec/flowmark `packages/go/statement/statement.go`,
+- flowmark 문은 한 batch에 최대 1000행 또는 1 MiB를 돌려준다(polyspec/flowmark `legacy/packages/go/statement/statement.go`,
   `batchRows`와 `batchBytes`).
 - 클라이언트는 모든 database에서 codec 단계를 적용한다(PRT-68). codec이 거부하는 저장 값은 네 database 모두에서
   CODEC_DECODE이다.

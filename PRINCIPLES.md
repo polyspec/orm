@@ -239,9 +239,9 @@ tool lands, a standard binds the work as written here.
   language-specific static check is a plugin of that ecosystem's analyzer; a program of kit that reads one language's code runs that ecosystem's tool.
   Enforced by: `make layout-check`
 - S10 PHP extension: a PHP extension implements every PHP library of its repository and registers their classes and functions
-  under the same names and signatures. A library is `packages/php` named `polyspec/<repository>`, or `packages/<component>/php`
+  under the same names and signatures. A library is `legacy/packages/php` named `polyspec/<repository>`, or `packages/<component>/php`
   named `polyspec/<repository>-<component>` for each component; the repository has one extension. It lies in
-  `packages/php-ext/` with its sources in `src/` and one stub, `src/polyspec_<repository>.stub.php`; it is named
+  `legacy/packages/php-ext/` with its sources in `src/` and one stub, `src/polyspec_<repository>.stub.php`; it is named
   `polyspec/<repository>-php-ext` and `polyspec_<repository>`, a hyphen of the repository name an underscore. `make
   build-php-ext` builds it with phpize after checking that the stub hash of its arginfo header, which the gen_stub.php of the PHP
   writes, is that of the stub, in a copy that keeps `composer.json` beside

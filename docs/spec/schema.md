@@ -23,7 +23,7 @@ The ORM client packages generate models from the document set with their own too
 
 The schema operations are functions of each client library. They take parsed documents and a dialect (`mysql`, `postgres` or `sqlite`) and return statements or located diagnostics.
 
-| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
+| Operation | Go `legacy/packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
 |---|---|---|---|---|---|
 | Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `Dbspec::render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
 | Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `Dbspec::introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
@@ -90,7 +90,7 @@ The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/intro
 - **SCH-14** Every runtime runs the audit transaction of a member set that uses external documents: the recipe `external_audit` inserts the member's audit record into `ext_audit`, which the core set owns, and keeps its key in `ext_post_history`.
 - **SCH-14a** PHP plans that audit record whichever of the schema value and the generated classes of the member set it registers first: `AuditExternalSetsTest` runs both orders, each in a process of its own, since the registry is process-global and a recipe step neither loads a generated class nor starts a process (FCV-2).
 - **SCH-15** Go's `register` of an edited manifest text fails with `CONFIG`, as SCH-11 says, and TypeScript's engine and Rust's `Manifest::load` fail with `SCHEMA_HASH_MISMATCH` for a text that does not hash to its declared hash. The two codes come from different layers, a connection's register operation and the load of generated code; the `CONFIG` layer is the recipe case `register_sends_no_statement` for every runtime, and the load layer is native under FCV-2.
-- **SCH-16** Go checks the bench manifest of the generated model, which only the Go model holds, by installing it into a database where it is already installed and counting its authors, in `packages/go/model/coverage_schema_install_test.go`. No recipe case reads the bench model, so this case is native under FCV-2.
+- **SCH-16** Go checks the bench manifest of the generated model, which only the Go model holds, by installing it into a database where it is already installed and counting its authors, in `legacy/packages/go/model/coverage_schema_install_test.go`. No recipe case reads the bench model, so this case is native under FCV-2.
 - **SCH-17** Go and Python connections plan each request with the engine of its own manifest hash: registering two sets with different hashes, each again, keeps one engine per hash, and a failed register leaves the engines unchanged. The recipe format cannot observe engine identity, so this case is native under FCV-2.
 
 | When | Call | Reads or writes the database |

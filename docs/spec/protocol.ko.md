@@ -1,8 +1,8 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: b637e6c92144ed172266e49b39face9e96bc6609d356c2e54889832d62e8d1e5 -->
+<!-- source-sha256: 413feb6f3f6b845014831d4fd025176e70a0bd129756ece5c422379d7a43b4ce -->
 # IR과 Plan 프로토콜
 
-클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
+클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
 
 ## 1. 요청 {#_1-request}
 
@@ -232,7 +232,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 - **PRT-51** PHP — Entry point: `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`; production build가 제외하는 방법: `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다
 - **PRT-52** `polyspec-orm` wheel — Python entry point: `polyspec.orm.testing.fail_next_statement(db, code, message)`; production build가 제외하는 방법: `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다
 
-statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `packages/ts/src/dbspec/introspect.ts:33`, Python `packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `packages/php/src/Dbspec/PlanApply.php:104,120,151,214`와 `packages/php/src/Dbspec/Dbspec.php:266,731`(`\PDO`), PHP 확장 `polyspec_orm`은 `packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
+statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `legacy/packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `legacy/packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `legacy/packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `legacy/packages/ts/src/dbspec/introspect.ts:33`, Python `legacy/packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `legacy/packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `legacy/packages/php/src/Dbspec/PlanApply.php:104,120,151,214`와 `legacy/packages/php/src/Dbspec/Dbspec.php:266,731`(`\PDO`), PHP 확장 `polyspec_orm`은 `legacy/packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `legacy/packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
 
 ### 3.3 Test clock
 
@@ -262,12 +262,12 @@ test는 자기 클라이언트의 test entry point로 연결의 write 결과를 
 
 | 클라이언트 | 검증, 계획, 방언, DDL |
 |---|---|
-| Go | `packages/go/engine/ir`, `packages/go/engine/planner`, `packages/go/engine/dialect`, `packages/go/engine/dbspec` DDL |
-| PHP | `packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| Go | `legacy/packages/go/engine/ir`, `legacy/packages/go/engine/planner`, `legacy/packages/go/engine/dialect`, `legacy/packages/go/engine/dbspec` DDL |
+| PHP | `legacy/packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
 | PHP extension | 공통 contract 대상이다. native ORM validation/planning은 미완료이며 T182와 KSTD-2-3에서 추적한다. |
 | Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
-| TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
-| Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
+| TypeScript | `legacy/packages/ts/src/engine/`, `legacy/packages/ts/src/dbspec/` DDL |
+| Python | `legacy/packages/python/src/polyspec/orm/engine/`, `legacy/packages/python/src/polyspec/orm/dbspec/` DDL |
 
 generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다. PHP 클라이언트와 PHP extension은 plan 캐시와 statement 캐시를 항목 수와 함께 각각 보유 placeholder 8192개로 한정한다. 다행 INSERT 항목은 placeholder당 약 390 byte의 plan과 약 190 byte의 bound 값을 보유하므로, 캐시한 placeholder가 한도를 넘는 동안 가장 오래 쓰지 않은 항목부터 내보내고, placeholder가 한도보다 많은 요청은 캐시하지 않고 계획하고 실행한다. 이 한도는 PHP에만 적용한다. 항목의 placeholder에 따라 캐시가 늘어나는 것이 측정된 것은 PHP 캐시뿐이기 때문이다.
 

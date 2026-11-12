@@ -219,11 +219,11 @@ const DATABASE_SUFFIX: Record<PerformanceDatabase, { go: string; php: string }> 
 export function performanceTest(runtime: PerformanceRuntime, database: PerformanceDatabase): { test: string; symbol: string } {
   const suffix = DATABASE_SUFFIX[database];
   switch (runtime) {
-    case 'go': return { test: 'packages/go/bench/performance_measurement_test.go', symbol: `TestPerformanceMeasurement${suffix.go}` };
-    case 'php': return { test: `packages/php/tests/CoveragePerformanceGate${suffix.php}Test.php`, symbol: 'testHotPathGate' };
-    case 'php-extension': return { test: `packages/php-ext/tests/CoveragePerformanceGateExtension${suffix.php}Test.php`, symbol: 'testHotPathGate' };
-    case 'typescript': return { test: `packages/ts/tests/coverage_performance_gate_${database}.mjs`, symbol: 'hot_path_gate' };
-    case 'python': return { test: `packages/python/tests/coverage_performance_gate_${database}.py`, symbol: 'test_hot_path_gate' };
+    case 'go': return { test: 'legacy/packages/go/bench/performance_measurement_test.go', symbol: `TestPerformanceMeasurement${suffix.go}` };
+    case 'php': return { test: `legacy/packages/php/tests/CoveragePerformanceGate${suffix.php}Test.php`, symbol: 'testHotPathGate' };
+    case 'php-extension': return { test: `legacy/packages/php-ext/tests/CoveragePerformanceGateExtension${suffix.php}Test.php`, symbol: 'testHotPathGate' };
+    case 'typescript': return { test: `legacy/packages/ts/tests/coverage_performance_gate_${database}.mjs`, symbol: 'hot_path_gate' };
+    case 'python': return { test: `legacy/packages/python/tests/coverage_performance_gate_${database}.py`, symbol: 'test_hot_path_gate' };
     case 'rust': return { test: 'packages/rust/tests/tests/all/coverage_performance_gate.rs', symbol: `coverage_performance_gate::coverage_hot_path_gate_${database}` };
   }
 }
@@ -240,15 +240,15 @@ export function performanceCommands(env: NodeJS.ProcessEnv): PerformanceCommand[
       const entry = { runtime, database, symbol };
       switch (runtime) {
         case 'go':
-          commands.push({ ...entry, program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', `^${symbol}$`, '-count=1'] });
+          commands.push({ ...entry, program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './legacy/packages/go/bench', '-run', `^${symbol}$`, '-count=1'] });
           break;
         case 'php':
-          commands.push({ ...entry, program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test] });
+          commands.push({ ...entry, program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test] });
           break;
         case 'php-extension': {
           const extension = env.POLYSPEC_ORM_EXTENSION;
           if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
-          commands.push({ ...entry, program: 'php', args: ['-d', `extension=${extension}`, 'vendor-php/bin/phpunit', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test], env: { ORM_PHP_MODE: 'extension' } });
+          commands.push({ ...entry, program: 'php', args: ['-d', `extension=${extension}`, 'vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php-ext/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test], env: { ORM_PHP_MODE: 'extension' } });
           break;
         }
         case 'typescript':

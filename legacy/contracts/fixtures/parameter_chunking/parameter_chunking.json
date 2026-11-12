@@ -1,0 +1,1375 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-44",
+    "PRT-35",
+    "PRT-76",
+    "CFG-28",
+    "DIA-154",
+    "DIA-219"
+  ],
+  "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
+  "cases": [
+    {
+      "id": "root_in_chunking",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "INSERT INTO chunk_author (seq, name) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT s.v, CONCAT('author-', s.v) FROM (SELECT a.n + 10 * b.n + 100 * c.n + 1000 * e.n + 10000 * f.n + 1 AS v FROM d a, d b, d c, d e, d f) s WHERE s.v <= 70000",
+            "postgres": "INSERT INTO chunk_author (seq, name) SELECT g, 'author-' || g FROM generate_series(1, 70000) AS g",
+            "sqlite": "WITH RECURSIVE g(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM g WHERE i < 70000) INSERT INTO chunk_author (seq, name) SELECT i, 'author-' || i FROM g"
+          },
+          "reason": "seeds the author rows 1 to 70000 with set-based SQL in each database, so the IN list can count them"
+        },
+        {
+          "op": "model.count",
+          "model": "ChunkAuthor",
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "70000"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "70000"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "70000"
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "model.query",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "limit": 10,
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "split_root_null_identity",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE chunk_author",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE chunk_author (seq BIGINT NULL, name VARCHAR(32) NOT NULL, batch_no BIGINT NULL)",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name, batch_no) VALUES (NULL, 'a', 1)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "split_root_composite_null_identity",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE chunk_pair",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE chunk_pair (tenant_id BIGINT NOT NULL, enabled BOOLEAN NULL, label VARCHAR(32) NOT NULL, batch_no BIGINT NOT NULL)",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_pair (tenant_id, enabled, label, batch_no) VALUES (0, NULL, '', 1)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkPair",
+          "columns": [
+            "tenant_id"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "split_root_retains_falsey_identities",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name, batch_no) VALUES (0, '', 1), (1, 'a', 2)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_pair (tenant_id, enabled, label, batch_no) VALUES (0, FALSE, '', 1), (0, TRUE, '', 2)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkPair",
+          "columns": [
+            "tenant_id",
+            "enabled",
+            "label",
+            "batch_no"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a row whose text the new column type reads",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (7, '7')"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the type of the column the statement the model read prepared compares with its parameter",
+          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_write_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "7"
+            },
+            "name": {
+              "text": "7"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the type of the column the write the model prepared assigns its parameter to",
+          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "8"
+            },
+            "name": {
+              "text": "8"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row that the write stored, read with no model",
+          "sql": "UPDATE chunk_author SET batch_no = 1 WHERE seq = 8 AND name = 8"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_text_parameter_refused_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an integer column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name INT NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::text::INTEGER",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of INTEGER affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "1"
+            },
+            "name": {
+              "text": "seven"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 1,
+                "name": "seven"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "2"
+            },
+            "name": {
+              "text": " 42 "
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "empties the table for the next change of its column",
+          "sql": "DELETE FROM chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to a date column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DATE NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE DATE USING name::text::DATE",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of DATE affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name DATE NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "3"
+            },
+            "name": {
+              "text": "2026-02-30"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 3,
+                "name": "2026-02-30"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "4"
+            },
+            "name": {
+              "text": "20260203"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_decimal_text_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28",
+        "DIA-219"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an exact numeric column, which PostgreSQL also types the parameter of the statement that runs again as",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DECIMAL(65,30) NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE NUMERIC USING name::text::NUMERIC",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "8"
+            },
+            "name": {
+              "text": "12345678901234567890123456789.5"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "9"
+            },
+            "name": {
+              "text": "0.00000000000000000000000000001"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "10"
+            },
+            "name": {
+              "text": "-1.5E+30"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "12345678901234567890123456789.5"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the rows that the writes stored, each compared with its text as the column reads that text, with no model",
+          "sql": "UPDATE chunk_author SET batch_no = 1 WHERE (seq = 8 AND name = '12345678901234567890123456789.5') OR (seq = 9 AND name = '0.00000000000000000000000000001') OR (seq = 10 AND name = '-1.5E+30')"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ],
+                [
+                  {
+                    "int": "9"
+                  }
+                ],
+                [
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_numeric_text_parameter_refused_after_schema_change",
+      "requirements": [
+        "CFG-28",
+        "DIA-219"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "changes the varchar column that the model binds as text to an exact numeric column",
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name DECIMAL(65,30) NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE NUMERIC USING name::text::NUMERIC",
+            "sqlite": "DROP TABLE chunk_author"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "SELECT 1",
+            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "11"
+            },
+            "name": {
+              "text": "1.5 points"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 11,
+                "name": "1.5 points"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "12"
+            },
+            "name": {
+              "text": "1e131072"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "json": {
+                "seq": 12,
+                "name": "1e131072"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "root_in_split_reads_each_row_once",
+      "requirements": [
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (1, 'first'), (70000, 'last')",
+          "reason": "one row in the first chunk and one in the last, whatever the bind limit of the database"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "root_in_split_statements",
+      "requirements": [
+        "PLN-44",
+        "PRT-76",
+        "CPX-4"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (1, 'first'), (513, 'second'), (600, 'last')",
+          "reason": "a row in each chunk of the SQLite bind limit: the 601 distinct values pad to 1024 binds, over the 999 of SQLite, so SQLite splits them into 512 and 89 padded to 128, and MySQL and PostgreSQL bind 1024 in one statement"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 600
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 5
+                  }
+                },
+                {
+                  "int": "2001"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 513
+                },
+                {
+                  "seq": 600
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 513
+                },
+                {
+                  "seq": 600
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 513
+                },
+                {
+                  "seq": 600
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "compare": "statements",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`seq` AS `a__seq` FROM `chunk_author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"seq\" AS \"a__seq\" FROM \"chunk_author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116, $117, $118, $119, $120, $121, $122, $123, $124, $125, $126, $127, $128, $129, $130, $131, $132, $133, $134, $135, $136, $137, $138, $139, $140, $141, $142, $143, $144, $145, $146, $147, $148, $149, $150, $151, $152, $153, $154, $155, $156, $157, $158, $159, $160, $161, $162, $163, $164, $165, $166, $167, $168, $169, $170, $171, $172, $173, $174, $175, $176, $177, $178, $179, $180, $181, $182, $183, $184, $185, $186, $187, $188, $189, $190, $191, $192, $193, $194, $195, $196, $197, $198, $199, $200, $201, $202, $203, $204, $205, $206, $207, $208, $209, $210, $211, $212, $213, $214, $215, $216, $217, $218, $219, $220, $221, $222, $223, $224, $225, $226, $227, $228, $229, $230, $231, $232, $233, $234, $235, $236, $237, $238, $239, $240, $241, $242, $243, $244, $245, $246, $247, $248, $249, $250, $251, $252, $253, $254, $255, $256, $257, $258, $259, $260, $261, $262, $263, $264, $265, $266, $267, $268, $269, $270, $271, $272, $273, $274, $275, $276, $277, $278, $279, $280, $281, $282, $283, $284, $285, $286, $287, $288, $289, $290, $291, $292, $293, $294, $295, $296, $297, $298, $299, $300, $301, $302, $303, $304, $305, $306, $307, $308, $309, $310, $311, $312, $313, $314, $315, $316, $317, $318, $319, $320, $321, $322, $323, $324, $325, $326, $327, $328, $329, $330, $331, $332, $333, $334, $335, $336, $337, $338, $339, $340, $341, $342, $343, $344, $345, $346, $347, $348, $349, $350, $351, $352, $353, $354, $355, $356, $357, $358, $359, $360, $361, $362, $363, $364, $365, $366, $367, $368, $369, $370, $371, $372, $373, $374, $375, $376, $377, $378, $379, $380, $381, $382, $383, $384, $385, $386, $387, $388, $389, $390, $391, $392, $393, $394, $395, $396, $397, $398, $399, $400, $401, $402, $403, $404, $405, $406, $407, $408, $409, $410, $411, $412, $413, $414, $415, $416, $417, $418, $419, $420, $421, $422, $423, $424, $425, $426, $427, $428, $429, $430, $431, $432, $433, $434, $435, $436, $437, $438, $439, $440, $441, $442, $443, $444, $445, $446, $447, $448, $449, $450, $451, $452, $453, $454, $455, $456, $457, $458, $459, $460, $461, $462, $463, $464, $465, $466, $467, $468, $469, $470, $471, $472, $473, $474, $475, $476, $477, $478, $479, $480, $481, $482, $483, $484, $485, $486, $487, $488, $489, $490, $491, $492, $493, $494, $495, $496, $497, $498, $499, $500, $501, $502, $503, $504, $505, $506, $507, $508, $509, $510, $511, $512, $513, $514, $515, $516, $517, $518, $519, $520, $521, $522, $523, $524, $525, $526, $527, $528, $529, $530, $531, $532, $533, $534, $535, $536, $537, $538, $539, $540, $541, $542, $543, $544, $545, $546, $547, $548, $549, $550, $551, $552, $553, $554, $555, $556, $557, $558, $559, $560, $561, $562, $563, $564, $565, $566, $567, $568, $569, $570, $571, $572, $573, $574, $575, $576, $577, $578, $579, $580, $581, $582, $583, $584, $585, $586, $587, $588, $589, $590, $591, $592, $593, $594, $595, $596, $597, $598, $599, $600, $601, $602, $603, $604, $605, $606, $607, $608, $609, $610, $611, $612, $613, $614, $615, $616, $617, $618, $619, $620, $621, $622, $623, $624, $625, $626, $627, $628, $629, $630, $631, $632, $633, $634, $635, $636, $637, $638, $639, $640, $641, $642, $643, $644, $645, $646, $647, $648, $649, $650, $651, $652, $653, $654, $655, $656, $657, $658, $659, $660, $661, $662, $663, $664, $665, $666, $667, $668, $669, $670, $671, $672, $673, $674, $675, $676, $677, $678, $679, $680, $681, $682, $683, $684, $685, $686, $687, $688, $689, $690, $691, $692, $693, $694, $695, $696, $697, $698, $699, $700, $701, $702, $703, $704, $705, $706, $707, $708, $709, $710, $711, $712, $713, $714, $715, $716, $717, $718, $719, $720, $721, $722, $723, $724, $725, $726, $727, $728, $729, $730, $731, $732, $733, $734, $735, $736, $737, $738, $739, $740, $741, $742, $743, $744, $745, $746, $747, $748, $749, $750, $751, $752, $753, $754, $755, $756, $757, $758, $759, $760, $761, $762, $763, $764, $765, $766, $767, $768, $769, $770, $771, $772, $773, $774, $775, $776, $777, $778, $779, $780, $781, $782, $783, $784, $785, $786, $787, $788, $789, $790, $791, $792, $793, $794, $795, $796, $797, $798, $799, $800, $801, $802, $803, $804, $805, $806, $807, $808, $809, $810, $811, $812, $813, $814, $815, $816, $817, $818, $819, $820, $821, $822, $823, $824, $825, $826, $827, $828, $829, $830, $831, $832, $833, $834, $835, $836, $837, $838, $839, $840, $841, $842, $843, $844, $845, $846, $847, $848, $849, $850, $851, $852, $853, $854, $855, $856, $857, $858, $859, $860, $861, $862, $863, $864, $865, $866, $867, $868, $869, $870, $871, $872, $873, $874, $875, $876, $877, $878, $879, $880, $881, $882, $883, $884, $885, $886, $887, $888, $889, $890, $891, $892, $893, $894, $895, $896, $897, $898, $899, $900, $901, $902, $903, $904, $905, $906, $907, $908, $909, $910, $911, $912, $913, $914, $915, $916, $917, $918, $919, $920, $921, $922, $923, $924, $925, $926, $927, $928, $929, $930, $931, $932, $933, $934, $935, $936, $937, $938, $939, $940, $941, $942, $943, $944, $945, $946, $947, $948, $949, $950, $951, $952, $953, $954, $955, $956, $957, $958, $959, $960, $961, $962, $963, $964, $965, $966, $967, $968, $969, $970, $971, $972, $973, $974, $975, $976, $977, $978, $979, $980, $981, $982, $983, $984, $985, $986, $987, $988, $989, $990, $991, $992, $993, $994, $995, $996, $997, $998, $999, $1000, $1001, $1002, $1003, $1004, $1005, $1006, $1007, $1008, $1009, $1010, $1011, $1012, $1013, $1014, $1015, $1016, $1017, $1018, $1019, $1020, $1021, $1022, $1023, $1024)"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"seq\" AS \"a__seq\" FROM \"chunk_author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"seq\" AS \"a__seq\" FROM \"chunk_author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

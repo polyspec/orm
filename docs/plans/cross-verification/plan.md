@@ -13,9 +13,9 @@ why it has no database.
 - F1. Two behaviours of a connection are held by one runtime each, on no database, and their tests name no requirement:
   - `packages/rust/orm/tests/unit/markdown_rows.rs`: a read that refuses a row closes the rest of its rows and keeps its own
     error, and a refused close leaves the connection usable (PRT-66);
-  - `packages/go/orm/markdown_wire_internal_test.go`: the wire forms of the bound values and of the cells (PRT-67,
+  - `legacy/packages/go/orm/markdown_wire_internal_test.go`: the wire forms of the bound values and of the cells (PRT-67,
     PRT-69).
-  - PHP holds its own fragments in `packages/php/tests/MarkdownTest.php`: a dropped statement closes its rows, and a
+  - PHP holds its own fragments in `legacy/packages/php/tests/MarkdownTest.php`: a dropped statement closes its rows, and a
     refusal states its code once.
 - F2. The parity unit `connection_pool-markdown` does not cite DIA-154: the owner rule of parity needs a requirement that
   names the four runtimes that keep a pool (CFG-5a), and the markdown section of docs/spec/dialects.md has none for pools.
@@ -28,7 +28,7 @@ why it has no database.
 
 ## Facts
 - A flowmark statement answers at most 1000 rows or 1 MiB in one batch (polyspec/flowmark
-  `packages/go/statement/statement.go`, `batchRows` and `batchBytes`).
+  `legacy/packages/go/statement/statement.go`, `batchRows` and `batchBytes`).
 - The client applies the codec stages on every database (PRT-68): a stored value that its codec refuses is CODEC_DECODE
   on all four databases.
 - The op `markdown.session` (FCV-4) runs in all six runtime helpers on a listener that answers from `replies` and checks

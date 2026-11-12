@@ -1,0 +1,548 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-45",
+    "PLN-46",
+    "PLN-47",
+    "PLN-48",
+    "PLN-49",
+    "PLN-50",
+    "PLN-51",
+    "PLN-52",
+    "PLN-53",
+    "PLN-54",
+    "PLN-55",
+    "PLN-56",
+    "PLN-57",
+    "PLN-58",
+    "PLN-59",
+    "PLN-60",
+    "PLN-61",
+    "PLN-62",
+    "PLN-63",
+    "PLN-64",
+    "PLN-65",
+    "PLN-66",
+    "PLN-67",
+    "PLN-68",
+    "PLN-69",
+    "PLN-70",
+    "PLN-71",
+    "PLN-72",
+    "PLN-84",
+    "PLN-85",
+    "PLN-86",
+    "PLN-87",
+    "PLN-88"
+  ],
+  "cases": [
+    {
+      "id": "ordered",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "p0",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "p1",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.chain",
+          "plans": [
+            {
+              "ref": "p0"
+            },
+            {
+              "ref": "p1"
+            }
+          ],
+          "expect": {
+            "none": {
+              "order": [
+                "create_from_empty",
+                "rename_table_and_column"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.chain",
+          "plans": [],
+          "expect": {
+            "none": {
+              "order": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-plan-from-empty",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "p0",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.chain",
+          "plans": [
+            {
+              "ref": "p0"
+            }
+          ],
+          "expect": {
+            "none": {
+              "messages": [
+                "no plan starts from empty"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "same-from",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "p0",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_again",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "p1",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.chain",
+          "plans": [
+            {
+              "ref": "p0"
+            },
+            {
+              "ref": "p1"
+            }
+          ],
+          "expect": {
+            "none": {
+              "messages": [
+                "plans create_again, create_from_empty start from the same schema"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unreached-plan",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "p0",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 widen_columns",
+            "from sha256:1fdce82a8c4793a93724a7516051950aa2652570c05307b670e3840b0bbe633d",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table w {",
+            "  id i64 identity",
+            "  small i64",
+            "  name varchar(20)",
+            "  note text",
+            "  price decimal(8,2) default 1.50",
+            "  at time(3)",
+            "  stamp datetime(6)",
+            "  flag bool",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "p1",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.chain",
+          "plans": [
+            {
+              "ref": "p0"
+            },
+            {
+              "ref": "p1"
+            }
+          ],
+          "expect": {
+            "none": {
+              "messages": [
+                "no chain reaches plans widen_columns"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

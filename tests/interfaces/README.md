@@ -16,7 +16,7 @@ The checker verifies these requirements:
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 
-The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
+The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`legacy/packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
 The Python extractor uses setuptools' package finder from the pinned Python test environment to honor the release package boundary; `make install` creates that environment.
 
 Run the structure checks without a database:
@@ -24,7 +24,7 @@ Run the structure checks without a database:
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -39,7 +39,7 @@ Regenerate the contract outputs after an interface change:
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
 CI does not use `--generate`; it fails when generated files, diagrams, or execution contracts differ.

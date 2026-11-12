@@ -34,29 +34,29 @@ const env = (name: string): string => process.env[name] ?? '';
 
 const go = (...args: string[]): Command => ({ program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', '-count=1', ...args], cwd: root });
 // tests/go-test.mts gives the run the tag ormtest, so the rollback and statement fault tests run in it.
-// The packages of the lane are those of packages/go without the ones of go-test-check (cmd, procevent, internal), whose cross-runtime
+// The packages of the lane are those of legacy/packages/go without the ones of go-test-check (cmd, procevent, internal), whose cross-runtime
 // tests need the runner binaries and fixtures that target builds and exports.
 export const GO_LANE_PACKAGES = [
-  './packages/go/bench',
-  './packages/go/bindmessages',
-  './packages/go/bindmodel',
-  './packages/go/decimalmodel',
-  './packages/go/engine',
-  './packages/go/engine/dbspec',
-  './packages/go/engine/dialect',
-  './packages/go/engine/internal/meet',
-  './packages/go/engine/ir',
-  './packages/go/engine/plan',
-  './packages/go/engine/planner',
-  './packages/go/engine/runtimemodel',
-  './packages/go/generator',
-  './packages/go/markdownmodel',
-  './packages/go/model',
-  './packages/go/orm',
-  './packages/go/orm/mysqlonly',
-  './packages/go/orm/pg',
-  './packages/go/orm/sqlite',
-  './packages/go/testcase',
+  './legacy/packages/go/bench',
+  './legacy/packages/go/bindmessages',
+  './legacy/packages/go/bindmodel',
+  './legacy/packages/go/decimalmodel',
+  './legacy/packages/go/engine',
+  './legacy/packages/go/engine/dbspec',
+  './legacy/packages/go/engine/dialect',
+  './legacy/packages/go/engine/internal/meet',
+  './legacy/packages/go/engine/ir',
+  './legacy/packages/go/engine/plan',
+  './legacy/packages/go/engine/planner',
+  './legacy/packages/go/engine/runtimemodel',
+  './legacy/packages/go/generator',
+  './legacy/packages/go/markdownmodel',
+  './legacy/packages/go/model',
+  './legacy/packages/go/orm',
+  './legacy/packages/go/orm/mysqlonly',
+  './legacy/packages/go/orm/pg',
+  './legacy/packages/go/orm/sqlite',
+  './legacy/packages/go/testcase',
 ];
 // TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
 // perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result. The
@@ -66,7 +66,7 @@ export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasuremen
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
   'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
-const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
+const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', `legacy/packages/php/tests/${test}.php`], cwd: root }));
 // The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs
 // the PHP database test files of the php lane with that build loaded, through kit's run-tests in extension mode (S10 of
 // PRINCIPLES.md): the library's own autoload is not loaded, so each test exercises the extension.
@@ -78,7 +78,7 @@ const PHP_EXTENSION_BUILD: Command = { program: process.env.MAKE ?? 'make', args
 // Each file is one run.
 const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   program: 'node',
-  args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
+  args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'legacy/packages/php/phpunit.xml.dist', `legacy/packages/php/tests/${test}.php`],
   cwd: root,
   env: { ORM_PHP_MODE: 'extension' },
 }));
@@ -109,9 +109,9 @@ export function poolerRecipeCommands(lane: PoolerLane, tests: readonly string[],
   return tests.map(test => {
     switch (lane) {
       case 'php':
-        return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
+        return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
       case 'php-extension':
-        return { program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', extensionLibrary, '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'extension' } };
+        return { program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', extensionLibrary, '--', '--configuration', 'legacy/packages/php-ext/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'extension' } };
       case 'typescript':
         return { program: 'node', args: ['--test', test], cwd: root };
       case 'python':

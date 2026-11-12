@@ -1,0 +1,94 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-32",
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "bind_text_not_utf8_into_a_text_slot",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text_hex": "ff"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_not_utf8_into_a_contains_slot",
+      "requirements": [
+        "PRT-32",
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "text_hex": "ff"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_not_utf8_around_utf8",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text_hex": "61ff62"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_hex_that_is_utf8",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text_hex": "c3a9"
+            }
+          ],
+          "expect": {
+            "message": "é"
+          }
+        }
+      ]
+    }
+  ]
+}

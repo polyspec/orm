@@ -6,7 +6,7 @@ import { isolatedEnvironment } from '../environment.mts';
 import { PROCESS, caseTest, withTemporaryDirectory } from '../testcase.mts';
 
 const root = resolve(import.meta.dirname, '../..');
-const buildScript = join(root, 'packages/php-ext/scripts/build.sh');
+const buildScript = join(root, 'legacy/packages/php-ext/scripts/build.sh');
 
 function installFakeKit(checkout: string, source: string): string {
   const kitRoot = join(checkout, 'node_modules/@polyspec/kit');
@@ -31,11 +31,11 @@ function readCliProof(file: string): { file: string; args: string[] } {
 }
 
 // The SQLite cancel callback that the extension compiles: its one source in the PHP library and the copy that make writes.
-const cancelSource = 'packages/php/src/native/sqlite_cancel.c';
-const cancelCopy = 'packages/php-ext/src/native/sqlite_cancel.c';
+const cancelSource = 'legacy/packages/php/src/native/sqlite_cancel.c';
+const cancelCopy = 'legacy/packages/php-ext/src/native/sqlite_cancel.c';
 
 function initCheckout(checkout: string): string {
-  const packageRoot = join(checkout, 'packages/php-ext');
+  const packageRoot = join(checkout, 'legacy/packages/php-ext');
   mkdirSync(join(packageRoot, 'scripts'), { recursive: true });
   writeFileSync(join(packageRoot, 'scripts/build.sh'), readFileSync(buildScript));
   for (const file of [cancelSource, cancelCopy]) {
@@ -69,7 +69,7 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
       assert.equal(result.status, 0, result.stderr);
       const proof = readCliProof(proofPath);
       assert.equal(proof.file, realpathSync(kitScript));
-      const layout = ['build', '--extension', 'packages/php-ext', '--build-dir', 'var/php-ext', '--skip', 'vendor', '--skip', 'node_modules', '--library', 'packages/php', '--output', expectedOutput, '--configure-arg'];
+      const layout = ['build', '--extension', 'legacy/packages/php-ext', '--build-dir', 'var/php-ext', '--skip', 'vendor', '--skip', 'node_modules', '--library', 'legacy/packages/php', '--output', expectedOutput, '--configure-arg'];
       assert.deepEqual(proof.args.slice(0, layout.length), layout);
       if (mode === 'release') {
         assert.deepEqual(proof.args.slice(layout.length), ['--disable-polyspec-orm-native-test']);
@@ -77,7 +77,7 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
         assert.deepEqual(proof.args.slice(layout.length), [
           '--enable-polyspec-orm-native-test',
           '--source-copy',
-          'packages/php-ext/testing/native/module.c',
+          'legacy/packages/php-ext/testing/native/module.c',
           'src/native_test.c',
         ]);
       }

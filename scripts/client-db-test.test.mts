@@ -33,26 +33,26 @@ caseTest('every lane without a whole run runs every recipe test with a server th
       assert.ok(commands[index]?.args.includes(named), `${lane} runs ${named}`);
     });
   }
-  assert.ok(poolerRecipeTests('typescript', bindings, phpText).includes('packages/ts/tests/catalog_connection-mysql.test.mjs'));
-  assert.ok(!poolerRecipeTests('typescript', bindings, phpText).includes('packages/ts/tests/catalog_connection-sqlite.test.mjs'), 'a SQLite test is not a test with a server');
+  assert.ok(poolerRecipeTests('typescript', bindings, phpText).includes('legacy/packages/ts/tests/catalog_connection-mysql.test.mjs'));
+  assert.ok(!poolerRecipeTests('typescript', bindings, phpText).includes('legacy/packages/ts/tests/catalog_connection-sqlite.test.mjs'), 'a SQLite test is not a test with a server');
   // PHP holds no pool (CFG-4), so connection_pool has no PHP test with a server.
   assert.ok(!poolerRecipeTests('php', bindings, phpText).some(test => /ConnectionPool/.test(test)));
-  const [php] = poolerRecipeCommands('php', ['packages/php/tests/CatalogConnectionRecipeTest.php'], '/extension.so');
+  const [php] = poolerRecipeCommands('php', ['legacy/packages/php/tests/CatalogConnectionRecipeTest.php'], '/extension.so');
   assert.deepEqual(php?.args.slice(3, 5), ['--filter', '/::test(?:Mysql|Postgres)(?: |$)/']);
 });
 
 caseTest('a recipe test runs through the poolers only when it runs a recipe of contracts/fixtures on a server', COMPUTE, () => {
   const binding = (implementation: string, test: string, recipe = 'contracts/fixtures/a/a.json') => ({ implementation, test, recipes: [recipe] });
   const bindings = [
-    binding('typescript', 'packages/ts/tests/a-mysql.test.mjs'), binding('typescript', 'packages/ts/tests/a-sqlite.test.mjs'),
-    binding('typescript', 'packages/ts/tests/b-postgres.test.mjs', 'tests/b/b.json'),
-    binding('python', 'packages/python/tests/test_a_postgres.py'), binding('python', 'packages/python/tests/test_a_sqlite.py'),
-    binding('php', 'packages/php/tests/ARecipeTest.php'), binding('php', 'packages/php/tests/BRecipeTest.php'),
+    binding('typescript', 'legacy/packages/ts/tests/a-mysql.test.mjs'), binding('typescript', 'legacy/packages/ts/tests/a-sqlite.test.mjs'),
+    binding('typescript', 'legacy/packages/ts/tests/b-postgres.test.mjs', 'tests/b/b.json'),
+    binding('python', 'legacy/packages/python/tests/test_a_postgres.py'), binding('python', 'legacy/packages/python/tests/test_a_sqlite.py'),
+    binding('php', 'legacy/packages/php/tests/ARecipeTest.php'), binding('php', 'legacy/packages/php/tests/BRecipeTest.php'),
   ];
   const text = (file: string) => file.endsWith('ARecipeTest.php') ? 'public function testPostgres(): void {}' : 'public function testSqlite(): void {}';
-  assert.deepEqual(poolerRecipeTests('typescript', bindings, text), ['packages/ts/tests/a-mysql.test.mjs']);
-  assert.deepEqual(poolerRecipeTests('python', bindings, text), ['packages/python/tests/test_a_postgres.py']);
-  assert.deepEqual(poolerRecipeTests('php', bindings, text), ['packages/php/tests/ARecipeTest.php']);
+  assert.deepEqual(poolerRecipeTests('typescript', bindings, text), ['legacy/packages/ts/tests/a-mysql.test.mjs']);
+  assert.deepEqual(poolerRecipeTests('python', bindings, text), ['legacy/packages/python/tests/test_a_postgres.py']);
+  assert.deepEqual(poolerRecipeTests('php', bindings, text), ['legacy/packages/php/tests/ARecipeTest.php']);
 });
 
 caseTest('the Rust pool size of the integration program is read from its declaration', COMPUTE, () => {
@@ -99,10 +99,10 @@ caseTest('the Rust lane skips the cases that markdown-conformance-check owns', C
 });
 
 // The packages of go-test-check, which builds and exports what their cross-runtime tests need (T334-3-27).
-const goTestCheckRoots = ['packages/go/cmd', 'packages/go/procevent', 'packages/go/internal'];
+const goTestCheckRoots = ['legacy/packages/go/cmd', 'legacy/packages/go/procevent', 'legacy/packages/go/internal'];
 
-caseTest('the Go lane runs every package of packages/go that go-test-check does not run (T334-3-27)', COMPUTE, () => {
-  const packages = new Set(readdirSync(resolve(root, 'packages/go'), { recursive: true, withFileTypes: true })
+caseTest('the Go lane runs every package of legacy/packages/go that go-test-check does not run (T334-3-27)', COMPUTE, () => {
+  const packages = new Set(readdirSync(resolve(root, 'legacy/packages/go'), { recursive: true, withFileTypes: true })
     .filter(entry => entry.isFile() && entry.name.endsWith('.go'))
     .map(entry => relative(root, dirname(resolve(entry.parentPath, entry.name))))
     .filter(path => !path.split('/').includes('testdata')));
