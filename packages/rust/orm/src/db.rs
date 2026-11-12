@@ -205,7 +205,7 @@ fn dsn_path(dsn: &str) -> &str {
 fn accepted_parameters(scheme: &str) -> Option<&'static [&'static str]> {
     match scheme {
         "mysql" => Some(&["timezone", "socket", "ssl-mode", "ssl-ca"]),
-        "postgres" => Some(&["timezone", "host", "sslmode"]),
+        "postgres" => Some(&["timezone", "host", "sslmode", "sslrootcert"]),
         "sqlite" => Some(&["timezone", "_pragma", "_txlock"]),
         "markdown" => Some(&["token", "timezone", "_pragma"]),
         _ => None,
@@ -276,7 +276,7 @@ fn query_parameters(scheme: &str, query: Option<&str>, accepted: &[&str]) -> Res
             return Err(Error::Config(format!("{scheme} DSN parameter {quoted} is empty")));
         }
         // The PDO DSN of PHP cannot hold these characters, so no client takes them (CFG-20).
-        if matches!(name.as_str(), "socket" | "host") && value.contains([';', '\0']) {
+        if matches!(name.as_str(), "socket" | "host" | "sslrootcert") && value.contains([';', '\0']) {
             return Err(Error::Config(format!("{scheme} DSN parameter {quoted} holds a character that a connection string cannot hold")));
         }
         parameters.push((name, value));
@@ -334,6 +334,33 @@ fn mysql_tls_ca(url: &url::Url, mode: Option<&str>, ca: Option<&str>, socket: bo
         return Err(bad(format!("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address {}", polyspec_orm_schema::message::Quoted(host))));
     }
     std::fs::read(ca).map(Some).map_err(|error| bad(format!("mysql DSN ssl-ca {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
+}
+
+/// The CA certificate of a PostgreSQL DSN that connects with TLS, in the order of CFG-46: `sslmode=verify-full` with the absolute
+/// path of a readable CA file in `sslrootcert`, over TCP (CFG-45); None for a DSN without either or with `sslmode=disable`
+/// (CFG-47).
+fn postgres_tls_ca(mode: Option<&str>, ca: Option<&str>, host: Option<&str>) -> Result<Option<Vec<u8>>> {
+    let bad = |msg: String| Error::Config(msg);
+    if let Some(mode) = mode.filter(|mode| *mode != "disable" && *mode != "verify-full") {
+        return Err(bad(format!(
+            "postgres DSN sslmode {} is not supported; it accepts disable, or verify-full with sslrootcert",
+            polyspec_orm_schema::message::Quoted(mode)
+        )));
+    }
+    if ca.is_some() && mode != Some("verify-full") {
+        return Err(bad("postgres DSN sslrootcert needs sslmode=verify-full".into()));
+    }
+    if mode != Some("verify-full") {
+        return Ok(None);
+    }
+    let Some(ca) = ca else { return Err(bad("postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file".into())) };
+    if !ca.starts_with('/') {
+        return Err(bad(format!("postgres DSN sslrootcert {} is not an absolute path", polyspec_orm_schema::message::Quoted(ca))));
+    }
+    if host.is_some_and(|host| host.starts_with('/')) {
+        return Err(bad("postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host".into()));
+    }
+    std::fs::read(ca).map(Some).map_err(|error| bad(format!("postgres DSN sslrootcert {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
 }
 
 /// Refuses a MySQL or PostgreSQL database name, its path percent-decoded, that holds `;` or NUL, which the PDO DSN of PHP
@@ -453,9 +480,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             })
         }
         "postgres" => {
-            if let Some(mode) = parameter("sslmode").filter(|mode| *mode != "disable") {
-                return Err(bad(format!("postgres DSN sslmode {} is not supported; it accepts disable", polyspec_orm_schema::message::Quoted(mode))));
-            }
+            let ca = postgres_tls_ca(parameter("sslmode"), parameter("sslrootcert"), parameter("host"))?;
             // The host parameter, a socket directory or a host name, is the one value of the query that reaches sqlx.
             if let Some(host) = parameter("host") {
                 base.query_pairs_mut().append_pair("host", host);
@@ -463,14 +488,17 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            // A PostgreSQL DSN connects without TLS, with or without sslmode=disable (CFG-19).
             let o = PgConnectOptions::from_str(base.as_str())
                 .map_err(sqlx_err)?
                 .database(&database)
-                .ssl_mode(sqlx::postgres::PgSslMode::Disable)
                 .extra_float_digits(None)
                 .options([("timezone", "UTC")]);
-            ConnectOptions::Postgres(o)
+            // A DSN without sslmode, or with sslmode=disable, connects without TLS, also to a server that offers it (CFG-47);
+            // sslmode=verify-full checks the certificate against the CA of sslrootcert alone and the host (CFG-45).
+            ConnectOptions::Postgres(match ca {
+                Some(pem) => o.ssl_mode(sqlx::postgres::PgSslMode::VerifyFull).ssl_root_cert_from_pem(pem),
+                None => o.ssl_mode(sqlx::postgres::PgSslMode::Disable),
+            })
         }
         "sqlite" => {
             let Some(path) = sqlite_path else { return Err(Error::internal("a sqlite DSN without its checked path")) };

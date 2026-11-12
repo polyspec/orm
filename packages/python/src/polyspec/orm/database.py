@@ -83,7 +83,7 @@ __all__ = [
 # Parameters a DSN accepts for each scheme (docs/spec/config.md). Any other parameter is CONFIG.
 DSN_PARAMETERS = {
     "mysql": ("timezone", "socket", "ssl-mode", "ssl-ca"),
-    "postgres": ("timezone", "host", "sslmode"),
+    "postgres": ("timezone", "host", "sslmode", "sslrootcert"),
     "sqlite": ("timezone", "_pragma", "_txlock"),
     "markdown": ("token", "timezone", "_pragma"),
 }
@@ -201,7 +201,9 @@ def _read_query(scheme: str, query: str) -> tuple:
             raise OrmError(
                 codes.CONFIG, f"{scheme} DSN parameter {quote_message(name)} is empty"
             )
-        if name in ("socket", "host") and (";" in value or "\0" in value):
+        if name in ("socket", "host", "sslrootcert") and (
+            ";" in value or "\0" in value
+        ):
             raise OrmError(
                 codes.CONFIG,
                 f"{scheme} DSN parameter {quote_message(name)} holds a character that a connection string "
@@ -209,6 +211,40 @@ def _read_query(scheme: str, query: str) -> tuple:
             )
         pairs.append((name, value))
     return tuple(pairs)
+
+
+def _postgres_tls(parameters: dict) -> str | None:
+    """Checks the PostgreSQL TLS parameters in the order of CFG-46: `sslmode=verify-full` with the absolute path of the CA
+    file in `sslrootcert` over TCP (CFG-45), or no TLS without either or with `sslmode=disable` (CFG-47). Returns the CA path or None."""
+    mode = parameters.get("sslmode")
+    ca = parameters.get("sslrootcert")
+    if mode is not None and mode not in ("disable", "verify-full"):
+        raise OrmError(
+            codes.CONFIG,
+            f"postgres DSN sslmode {quote_message(mode)} is not supported; it accepts disable, or verify-full with sslrootcert",
+        )
+    if ca is not None and mode != "verify-full":
+        raise OrmError(
+            codes.CONFIG, "postgres DSN sslrootcert needs sslmode=verify-full"
+        )
+    if mode != "verify-full":
+        return None
+    if ca is None:
+        raise OrmError(
+            codes.CONFIG,
+            "postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file",
+        )
+    if not ca.startswith("/"):
+        raise OrmError(
+            codes.CONFIG,
+            f"postgres DSN sslrootcert {quote_message(ca)} is not an absolute path",
+        )
+    if parameters.get("host", "").startswith("/"):
+        raise OrmError(
+            codes.CONFIG,
+            "postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host",
+        )
+    return ca
 
 
 def _mysql_tls(parameters: dict, host: str) -> str | None:
@@ -398,12 +434,7 @@ def parse_dsn(dsn: str) -> ParsedDsn:
             )
         _check_database(scheme, url)
         _check_timezone(parameters)
-        mode = parameters.get("sslmode")
-        if mode is not None and mode != "disable":
-            raise OrmError(
-                codes.CONFIG,
-                f"postgres DSN sslmode {quote_message(mode)} is not supported; it accepts disable",
-            )
+        ssl_ca = _postgres_tls(parameters)
     else:
         _check_host(scheme, url)
         _sqlite_path(url)
@@ -1118,6 +1149,17 @@ def _verify_identity_context(ca: str):
     return context
 
 
+def _postgres_tls_failure(error: BaseException) -> bool:
+    """Whether a psycopg connection error is a TLS failure of sslmode=verify-full: libpq reports a certificate of another
+    authority and one of another host as text alone, so the text is read (CFG-45)."""
+    import psycopg
+
+    if not isinstance(error, psycopg.OperationalError):
+        return False
+    text = str(error)
+    return "certificate verify failed" in text or "does not match host name" in text
+
+
 def _tls_failure(error: BaseException) -> bool:
     """Whether a connection error, or an error it was raised from, is a TLS failure: a certificate of another
     authority or of another host."""
@@ -1280,6 +1322,21 @@ class _PostgresConnection:
             ) from None
         url = parsed.url
         name = _unquote(url.path.lstrip("/"))
+        # A DSN without sslmode, or with sslmode=disable, connects without TLS (CFG-47): psycopg would otherwise prefer TLS
+        # with any server that offers it. sslmode=verify-full checks the certificate against the CA of sslrootcert alone,
+        # which libpq reads in place of any default, and the host against the certificate (CFG-45).
+        tls: dict = {"sslmode": "disable"}
+        if parsed.ssl_ca is not None:
+            # Opening the file for reading is the check, so the error of the platform is the one it gives (CFG-46).
+            try:
+                with open(parsed.ssl_ca, "rb"):
+                    pass
+            except OSError as error:
+                raise OrmError(
+                    codes.CONFIG,
+                    f"postgres DSN sslrootcert {quote_message(parsed.ssl_ca)} is not a readable file: {error}",
+                ) from None
+            tls = {"sslmode": "verify-full", "sslrootcert": parsed.ssl_ca}
         try:
             self.connection = psycopg.connect(
                 # The host parameter is a socket directory or a host, as the URL host is, and replaces it (CFG-19).
@@ -1288,9 +1345,7 @@ class _PostgresConnection:
                 user=_unquote(url.username or ""),
                 password=_unquote(url.password or ""),
                 dbname=name,
-                # A DSN without sslmode connects without TLS, and sslmode accepts only disable (CFG-19): psycopg would
-                # otherwise prefer TLS with any server that offers it.
-                sslmode="disable",
+                **tls,
                 # A connection outlives a request, so it prepares a statement text on its first execution and
                 # reuses the server plan from then on (docs/operations/perf.md F1); psycopg's default threshold
                 # of 5 sends a text unprepared four times and then prepares it in a round trip of its own.
@@ -1307,6 +1362,10 @@ class _PostgresConnection:
                 ),
             )
         except Exception as error:
+            if parsed.ssl_ca is not None and _postgres_tls_failure(error):
+                raise OrmError(
+                    codes.CONFIG, f"postgres TLS connection failed: {error}"
+                ) from error
             if not _is_driver_error("postgres", error):
                 raise
             _raise_driver_error("postgres", error)

@@ -347,7 +347,7 @@ static bool orm_query_read(zval *parts, const orm_query_rule *rule, zval *query,
             db_throw_orm("CONFIG", "%s DSN parameter %s is empty", rule->scheme, ZSTR_VAL(quoted));
             goto fail_name;
         }
-        if ((zend_string_equals_literal(name, "socket") || zend_string_equals_literal(name, "host"))
+        if ((zend_string_equals_literal(name, "socket") || zend_string_equals_literal(name, "host") || zend_string_equals_literal(name, "sslrootcert"))
             && (memchr(ZSTR_VAL(value), ';', ZSTR_LEN(value)) != NULL || memchr(ZSTR_VAL(value), '\0', ZSTR_LEN(value)) != NULL)) {
             zend_string_release(value);
             db_throw_orm("CONFIG", "%s DSN parameter %s holds a character that a connection string cannot hold",
@@ -506,7 +506,7 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
     ZVAL_UNDEF(&query);
     ZVAL_UNDEF(&pragma_values);
     static const char *const mysql_keys[] = {"timezone", "socket", "ssl-mode", "ssl-ca"};
-    static const char *const pg_keys[] = {"timezone", "host", "sslmode"};
+    static const char *const pg_keys[] = {"timezone", "host", "sslmode", "sslrootcert"};
     static const char *const sqlite_keys[] = {"timezone", "_pragma", "_txlock"};
     orm_query_rule rule = {driver, sqlite_keys, sizeof(sqlite_keys) / sizeof(sqlite_keys[0])};
     if (zend_string_equals_literal(scheme, "mysql")) {
@@ -518,7 +518,7 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
     }
     if (!orm_parse_url(dsn, &parts) || !orm_no_fragment(dsn, driver) || !orm_query_read(&parts, &rule, &query, &pragma_values)) goto fail;
     /* The order of CFG-20: the URI, the fragment, the query, the host, the database name, then the values of the
-     * parameters (timezone, _pragma, ssl-mode and ssl-ca, sslmode). */
+     * parameters (timezone, _pragma, ssl-mode and ssl-ca, sslmode and sslrootcert). */
     zval *path = orm_part(&parts, "path"), *host = orm_part(&parts, "host"), *port = orm_part(&parts, "port");
     if (host != NULL && Z_TYPE_P(host) == IS_STRING && memchr(Z_STRVAL_P(host), '%', Z_STRLEN_P(host)) != NULL) {
         /* parse_url leaves the host as written; a percent escape names no host (CFG-20). */
@@ -644,15 +644,43 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
         if (port != NULL && Z_TYPE_P(port) == IS_LONG) smart_str_append_long(&pdo, Z_LVAL_P(port));
         else smart_str_appends(&pdo, "5432");
         if (!orm_dsn_database(&pdo, "postgres", path_s, path_n) || !orm_dsn_timezone(&query)) goto fail_values;
-        /* sslmode takes only disable, and a DSN without it connects without TLS too (CFG-19). */
+        /* The TLS parameters in the order of CFG-46. A DSN without sslmode, or with sslmode=disable, connects without TLS
+         * (CFG-47); sslmode=verify-full names the CA file of sslrootcert, which libpq reads in place of any default, and
+         * connects over TCP (CFG-45). */
         zval *sslmode = orm_query_value(&query, "sslmode");
-        if (sslmode != NULL && !zend_string_equals_literal(Z_STR_P(sslmode), "disable")) {
+        zval *rootcert = orm_query_value(&query, "sslrootcert");
+        bool verify_full = sslmode != NULL && zend_string_equals_literal(Z_STR_P(sslmode), "verify-full");
+        if (sslmode != NULL && !verify_full && !zend_string_equals_literal(Z_STR_P(sslmode), "disable")) {
             zend_string *quoted = orm_message_quote(Z_STRVAL_P(sslmode), Z_STRLEN_P(sslmode), '"');
-            db_throw_orm("CONFIG", "postgres DSN sslmode %s is not supported; it accepts disable", ZSTR_VAL(quoted));
+            db_throw_orm("CONFIG", "postgres DSN sslmode %s is not supported; it accepts disable, or verify-full with sslrootcert", ZSTR_VAL(quoted));
             zend_string_release(quoted);
             goto fail_values;
         }
-        smart_str_appends(&pdo, ";sslmode=disable");
+        if (rootcert != NULL && !verify_full) {
+            db_throw_orm("CONFIG", "postgres DSN sslrootcert needs sslmode=verify-full");
+            goto fail_values;
+        }
+        if (!verify_full) {
+            smart_str_appends(&pdo, ";sslmode=disable");
+        } else {
+            if (rootcert == NULL) {
+                db_throw_orm("CONFIG", "postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file");
+                goto fail_values;
+            }
+            if (Z_STRVAL_P(rootcert)[0] != '/') {
+                zend_string *quoted = orm_message_quote(Z_STRVAL_P(rootcert), Z_STRLEN_P(rootcert), '"');
+                db_throw_orm("CONFIG", "postgres DSN sslrootcert %s is not an absolute path", ZSTR_VAL(quoted));
+                zend_string_release(quoted);
+                goto fail_values;
+            }
+            if (Z_STRVAL_P(dbhost)[0] == '/') {
+                db_throw_orm("CONFIG", "postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host");
+                goto fail_values;
+            }
+            smart_str_appends(&pdo, ";sslmode=verify-full;sslrootcert=");
+            smart_str_append(&pdo, Z_STR_P(rootcert));
+            ZVAL_COPY(&ssl_ca, rootcert);
+        }
     } else {
         /* The scheme in any case, then :/// and an absolute path. */
         if (ZSTR_LEN(dsn) <= ZSTR_LEN(scheme) + 3 || ZSTR_VAL(dsn)[ZSTR_LEN(scheme) + 3] != '/' || path_n <= 1) {
@@ -816,18 +844,13 @@ fail:
     zval_ptr_dtor(&parts);
 }
 
-ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
+/* Refuses a CA file that the client cannot read: the file is opened and read, so that a refusal appends the error that the
+ * platform returned (CFG-18, CFG-46, INT-187); a file that reads is readable. Without blocking, so that a FIFO does not wait
+ * for a writer. label names the parameter, such as "mysql DSN ssl-ca". */
+static bool orm_ca_readable(const char *label, zend_string *path)
 {
-    zend_string *ssl_ca = NULL;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_STR_OR_NULL(ssl_ca)
-    ZEND_PARSE_PARAMETERS_END();
-    array_init(return_value);
-    if (ssl_ca == NULL) return;
-    /* The CA file is opened and read, so that a refusal appends the error that the platform returned (CFG-18, INT-187); a
-     * file that reads is readable. Without blocking, so that a FIFO does not wait for a writer. */
     int failed = 0;
-    int fd = open(ZSTR_VAL(ssl_ca), O_RDONLY
+    int fd = open(ZSTR_VAL(path), O_RDONLY
 #ifdef O_NONBLOCK
         | O_NONBLOCK
 #endif
@@ -839,11 +862,23 @@ ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
         if (read(fd, &byte, 1) < 0) failed = errno;
         close(fd);
     }
-    if (failed != 0) {
-        zend_string *quoted = orm_message_quote(ZSTR_VAL(ssl_ca), ZSTR_LEN(ssl_ca), '"');
+    if (failed == 0) return true;
+    zend_string *quoted = orm_message_quote(ZSTR_VAL(path), ZSTR_LEN(path), '"');
+    db_throw_orm("CONFIG", "%s %s is not a readable file: %s", label, ZSTR_VAL(quoted), strerror(failed));
+    zend_string_release(quoted);
+    return false;
+}
+
+ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
+{
+    zend_string *ssl_ca = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR_OR_NULL(ssl_ca)
+    ZEND_PARSE_PARAMETERS_END();
+    array_init(return_value);
+    if (ssl_ca == NULL) return;
+    if (!orm_ca_readable("mysql DSN ssl-ca", ssl_ca)) {
         zval_ptr_dtor(return_value);
-        db_throw_orm("CONFIG", "mysql DSN ssl-ca %s is not a readable file: %s", ZSTR_VAL(quoted), strerror(failed));
-        zend_string_release(quoted);
         ZVAL_UNDEF(return_value);
         return;
     }
@@ -859,7 +894,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
     zval_ptr_dtor(&ca_name); zval_ptr_dtor(&verify_name); zval_ptr_dtor(&ca); zval_ptr_dtor(&verify);
 }
 
-static void orm_connect_failure(zend_object *cause, zend_string *driver)
+static void orm_connect_failure(zend_object *cause, zend_string *driver, bool tls_dsn)
 {
     zend_string *name = zend_string_init("PDOException", sizeof("PDOException") - 1, 0);
     zend_class_entry *pdo_exception = zend_lookup_class(name);
@@ -877,7 +912,11 @@ static void orm_connect_failure(zend_object *cause, zend_string *driver)
             cause, ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
         detail = zval_get_string(property);
     }
-    bool tls = strstr(ZSTR_VAL(detail), "SSL") != NULL;
+    /* libpq reports a certificate of another authority or of another host as text alone (CFG-45). */
+    bool postgres = zend_string_equals_literal(driver, "postgres");
+    bool tls = tls_dsn && (postgres
+        ? strstr(ZSTR_VAL(detail), "certificate verify failed") != NULL || strstr(ZSTR_VAL(detail), "does not match host name") != NULL
+        : strstr(ZSTR_VAL(detail), "SSL") != NULL);
     zend_long number = 0;
     if (cause != NULL) {
         zval rv;
@@ -885,7 +924,8 @@ static void orm_connect_failure(zend_object *cause, zend_string *driver)
             cause, ZSTR_KNOWN(ZEND_STR_CODE), true, &rv);
         number = zval_get_long(property);
     }
-    zend_string *message = strpprintf(0, tls ? "mysql TLS connection failed: %s" : "cannot connect: %s", ZSTR_VAL(detail));
+    zend_string *message = tls ? strpprintf(0, "%s TLS connection failed: %s", ZSTR_VAL(driver), ZSTR_VAL(detail))
+        : strpprintf(0, "cannot connect: %s", ZSTR_VAL(detail));
     zend_string_release(detail);
     zval args[3], exception;
     /* A connection that the server refuses is DRIVER, as any other error of the driver (CFG-1). A certificate, a file and a
@@ -1338,6 +1378,10 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     ZVAL_UNDEF(&pdo);
     bool connected;
     if (zend_string_equals_literal(Z_STR_P(driver), "postgres")) {
+        if (ssl_ca != NULL && Z_TYPE_P(ssl_ca) == IS_STRING && !orm_ca_readable("postgres DSN sslrootcert", Z_STR_P(ssl_ca))) {
+            for (int i = 0; i < 4; i++) zval_ptr_dtor(&connect_args[i]);
+            goto fail;
+        }
         zval_ptr_dtor(&connect_args[0]);
         ZVAL_STR_COPY(&connect_args[0], Z_STR_P(pdo_dsn));
         zval_ptr_dtor(&connect_args[3]);
@@ -1349,7 +1393,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&connect_args[i]);
     if (!connected) {
         zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
-        orm_connect_failure(cause, Z_STR_P(driver));
+        orm_connect_failure(cause, Z_STR_P(driver), ssl_ca != NULL && Z_TYPE_P(ssl_ca) == IS_STRING);
         goto fail;
     }
     if (!orm_set_attribute(&pdo, "PDO::ATTR_ERRMODE", "PDO::ERRMODE_EXCEPTION")) goto pdo_fail;
@@ -1463,7 +1507,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
 pdo_fail:
     if (EG(exception) != NULL) {
         zend_object *cause = take_exception();
-        orm_connect_failure(cause, Z_STR_P(driver));
+        orm_connect_failure(cause, Z_STR_P(driver), ssl_ca != NULL && Z_TYPE_P(ssl_ca) == IS_STRING);
     }
     if (Z_TYPE(pdo) == IS_OBJECT) zval_ptr_dtor(&pdo);
 fail:

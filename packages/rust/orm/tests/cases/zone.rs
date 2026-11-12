@@ -60,8 +60,8 @@ fn event(db: &Db) -> ZoneEvent {
 
 /// Only the values that CFG-19 names reach sqlx: `socket` and the PostgreSQL `host` as the socket, with the engine's own
 /// character set, time zone and TLS mode; what sqlx holds of them is a driver option that no public call returns. A
-/// PostgreSQL DSN, with or without `sslmode=disable`, connects without TLS (CFG-19).
-// Requirements: CFG-19, CFG-20, CFG-37, DIA-202.
+/// PostgreSQL DSN, with or without `sslmode=disable`, connects without TLS (CFG-47).
+// Requirements: CFG-19, CFG-20, CFG-37, CFG-47, DIA-202.
 fn only_the_named_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("mysql://orm@localhost/orm_example?socket=/run/mysqld/mysqld.sock&timezone=UTC").expect("mysql DSN");

@@ -108,7 +108,10 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
                 continue;
             }
             [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
-            $fields[$key] = trim($value, "'\"");
+            // A value that the DSN wraps in a pair of quotes, as options is, is the text inside them; any other value,
+            // such as a path, is kept as written.
+            $quoted = strlen($value) >= 2 && ($value[0] === "'" || $value[0] === '"') && $value[-1] === $value[0];
+            $fields[$key] = $quoted ? substr($value, 1, -1) : $value;
         }
         if ($username !== null) {
             $fields['user'] = $username;

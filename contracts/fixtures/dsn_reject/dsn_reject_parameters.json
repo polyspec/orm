@@ -5,7 +5,9 @@
     "CFG-19",
     "CFG-20",
     "CFG-37",
-    "INT-187"
+    "INT-187",
+    "CFG-45",
+    "CFG-46"
   ],
   "cases": [
     {
@@ -59,7 +61,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"application_name\"; it accepts timezone, host, sslmode"
+              "message": "CONFIG: postgres DSN has the unknown parameter \"application_name\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -78,7 +80,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"ssl-mode\"; it accepts timezone, host, sslmode"
+              "message": "CONFIG: postgres DSN has the unknown parameter \"ssl-mode\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -211,11 +213,11 @@
       "steps": [
         {
           "op": "dsn.connect",
-          "dsn": "postgres://root@db.local/orm_example?sslrootcert=/tmp/ca.pem",
+          "dsn": "postgres://root@db.local/orm_example?sslcert=/tmp/client.pem",
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"sslrootcert\"; it accepts timezone, host, sslmode"
+              "message": "CONFIG: postgres DSN has the unknown parameter \"sslcert\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -508,9 +510,28 @@
       ]
     },
     {
-      "id": "a_postgres_tls_mode_other_than_disable_is_refused",
+      "id": "a_postgres_sslrootcert_with_a_semicolon_is_refused",
       "requirements": [
-        "CFG-19",
+        "CFG-20",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=/tmp/ca.pem%3Bsslmode%3Ddisable",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN parameter \"sslrootcert\" holds a character that a connection string cannot hold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_tls_mode_other_than_disable_or_verify_full_is_refused",
+      "requirements": [
+        "CFG-46",
         "INT-187"
       ],
       "steps": [
@@ -520,17 +541,16 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable"
+              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
             }
           }
         }
       ]
     },
     {
-      "id": "a_postgres_verify_full_is_refused",
+      "id": "a_postgres_verify_full_needs_sslrootcert",
       "requirements": [
-        "CFG-19",
-        "INT-187"
+        "CFG-46"
       ],
       "steps": [
         {
@@ -539,7 +559,117 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode \"verify-full\" is not supported; it accepts disable"
+              "message": "CONFIG: postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_sslrootcert_needs_verify_full",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_sslrootcert_with_sslmode_disable_is_refused",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=disable&sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_relative_postgres_sslrootcert_is_refused",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert \"ca.pem\" is not an absolute path"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_verify_full_refuses_a_socket_directory_host",
+      "requirements": [
+        "CFG-45"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres:///orm_example?host=/tmp&sslmode=verify-full&sslrootcert=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_postgres_tls_mode_is_checked_before_its_ca_file",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem&sslmode=require",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_postgres_ca_file_without_the_mode_is_refused_before_its_path",
+      "requirements": [
+        "CFG-46"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
             }
           }
         }

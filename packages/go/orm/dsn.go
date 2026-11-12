@@ -45,8 +45,9 @@ type parsedDSN struct {
 	driver   string
 	native   string
 	location *time.Location
-	// sslCA is the ssl-ca path for ssl-mode=VERIFY_IDENTITY, and sslHost is the host name
-	// that the server certificate must carry as its name. Both are empty if there is no TLS.
+	// sslCA is the ssl-ca path for ssl-mode=VERIFY_IDENTITY of MySQL or the sslrootcert path for sslmode=verify-full
+	// of PostgreSQL, and sslHost is the host name that a MySQL server certificate must carry as its name. Both are empty
+	// if there is no TLS.
 	sslCA   string
 	sslHost string
 	// markdown is the server address, corpus, and token of a markdown:// DSN. It is empty for other schemes.
@@ -83,7 +84,7 @@ const mysqlSQLMode = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_
 // its message names them (docs/spec/config.md, CFG-19; PRT-63 for markdown).
 var dsnParameters = map[string][]string{
 	"mysql":    {"timezone", "socket", "ssl-mode", "ssl-ca"},
-	"postgres": {"timezone", "host", "sslmode"},
+	"postgres": {"timezone", "host", "sslmode", "sslrootcert"},
 	"sqlite":   {"timezone", "_pragma", "_txlock"},
 	"markdown": {"token", "timezone", "_pragma"},
 }
@@ -119,7 +120,7 @@ func readDSNQuery(scheme, rawQuery string) (map[string][]string, error) {
 		if !hasValue || value == "" {
 			return nil, configErr("%s DSN parameter %q is empty", scheme, name)
 		}
-		if (name == "socket" || name == "host") && strings.ContainsAny(value, ";\x00") {
+		if (name == "socket" || name == "host" || name == "sslrootcert") && strings.ContainsAny(value, ";\x00") {
 			return nil, configErr("%s DSN parameter %q holds a character that a connection string cannot hold", scheme, name)
 		}
 		values[name] = append(values[name], value)
@@ -324,15 +325,13 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if u.Host == "" && host == "" || strings.Trim(u.Path, "/") == "" {
 			return parsedDSN{}, configErr("postgres DSN must include host and database")
 		}
-		if mode := one(q, "sslmode"); mode != "" && mode != "disable" {
-			return parsedDSN{}, configErr("postgres DSN sslmode %q is not supported; it accepts disable", mode)
-		}
 		native := url.Values{}
 		if host != "" {
 			native.Set("host", host)
 		}
-		// A DSN without sslmode connects without TLS, as one with sslmode=disable (CFG-19).
-		native.Set("sslmode", "disable")
+		if err := postgresTLS(q, host, native, &out); err != nil {
+			return parsedDSN{}, err
+		}
 		if statementTimeoutMs > 0 {
 			native.Set("options", "-c statement_timeout="+strconv.Itoa(statementTimeoutMs))
 		}
@@ -406,6 +405,38 @@ func mysqlTLS(u *url.URL, q map[string][]string, out *parsedDSN) error {
 		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address %s", u.Hostname())
 	}
 	out.sslCA, out.sslHost = ca[0], u.Hostname()
+	return nil
+}
+
+// postgresTLS reads sslmode and sslrootcert of a PostgreSQL DSN in the order of CFG-46: with sslmode=verify-full and the
+// absolute path of the CA file in sslrootcert, TCP connects with TLS that checks the certificate against that file alone
+// and the host against the certificate (CFG-45); without either, or with sslmode=disable, it connects without TLS (CFG-47).
+func postgresTLS(q map[string][]string, host string, native url.Values, out *parsedDSN) error {
+	mode := one(q, "sslmode")
+	ca, hasCA := q["sslrootcert"]
+	if mode != "" && mode != "disable" && mode != "verify-full" {
+		return configErr("postgres DSN sslmode %q is not supported; it accepts disable, or verify-full with sslrootcert", mode)
+	}
+	if hasCA && mode != "verify-full" {
+		return configErr("postgres DSN sslrootcert needs sslmode=verify-full")
+	}
+	if mode != "verify-full" {
+		native.Set("sslmode", "disable")
+		return nil
+	}
+	if !hasCA {
+		return configErr("postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file")
+	}
+	if !strings.HasPrefix(ca[0], "/") {
+		return configErr("postgres DSN sslrootcert %q is not an absolute path", ca[0])
+	}
+	if strings.HasPrefix(host, "/") {
+		return configErr("postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host")
+	}
+	// pgx reads the CA file of sslrootcert alone for verify-full, and checks the host against the certificate.
+	native.Set("sslmode", "verify-full")
+	native.Set("sslrootcert", ca[0])
+	out.sslCA = ca[0]
 	return nil
 }
 
