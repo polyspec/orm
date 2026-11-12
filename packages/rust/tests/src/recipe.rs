@@ -3173,8 +3173,10 @@ mod database {
         }
     }
 
-    /// The dispatcher of a recipe without model ops: each model op fails its step.
-    struct NoModels;
+    /// The dispatcher of a recipe without model ops: each model op fails its step. It holds the transaction handles that the
+    /// transaction steps bind, by connection, for the ops of the case that run in them (CORE-20).
+    #[derive(Default)]
+    struct NoModels(HashMap<String, Vec<polyspec_orm::Tx>>);
 
     impl ModelDispatcher for NoModels {
         fn connect<'a>(&'a mut self, _name: &'a str, _dsn: &'a str, _pool_size: u32) -> ModelFuture<'a> {
@@ -3188,10 +3190,24 @@ mod database {
         fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
             Box::pin(async {})
         }
+
+        fn transaction(&self, name: &str) -> Option<polyspec_orm::Tx> {
+            self.0.get(name).and_then(|stack| stack.last()).cloned()
+        }
+
+        fn enter_transaction(&mut self, name: &str, tx: polyspec_orm::Tx) {
+            self.0.entry(name.to_owned()).or_default().push(tx);
+        }
+
+        fn leave_transaction(&mut self, name: &str) {
+            if let Some(stack) = self.0.get_mut(name) {
+                stack.pop();
+            }
+        }
     }
 
     fn no_models() -> Box<dyn ModelDispatcher> {
-        Box::new(NoModels)
+        Box::new(NoModels::default())
     }
 
     struct Context<'a> {
@@ -4155,6 +4171,15 @@ mod database {
         }
     }
 
+    /// The case connection as a step reaches it: the innermost transaction handle that a transaction step of the case
+    /// connection bound, or the case connection itself (CORE-20).
+    fn case_connection(context: &Context<'_>) -> polyspec_orm::Connection {
+        match context.models.transaction(CASE_CONNECTION) {
+            Some(tx) => polyspec_orm::Connection::Tx(tx),
+            None => polyspec_orm::Connection::Db(context.db.clone()),
+        }
+    }
+
     /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
     async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
@@ -4176,7 +4201,7 @@ mod database {
                     }
                     None => {
                         let schema = schema_argument(step, context).map_err(fault)?;
-                        context.db.utils().schema().install(&schema).await.map_err(orm)?;
+                        case_connection(context).utils().schema().install(&schema).await.map_err(orm)?;
                     }
                 }
                 Output::fields(ok_value())
@@ -4194,15 +4219,15 @@ mod database {
                 }
                 Output::fields(ok_value())
             }
-            "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),
+            "schema.empty" => Output::fields(json!({ "value": { "bool": case_connection(context).utils().schema().empty().await.map_err(orm)? } })),
             "schema.exists" => {
                 let name = inspected_schema(&crate::recipe_reads::read(step, "schema")["schema"], context).map_err(fault)?;
-                Output::fields(json!({ "value": { "bool": context.db.utils().schema().exists(&name).await.map_err(orm)? } }))
+                Output::fields(json!({ "value": { "bool": case_connection(context).utils().schema().exists(&name).await.map_err(orm)? } }))
             }
             "schema.installed" => {
                 let name = inspected_schema(&crate::recipe_reads::read(step, "schema")["schema"], context).map_err(fault)?;
                 let table = crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default();
-                Output::fields(json!({ "value": { "bool": context.db.utils().schema().installed(&name, table).await.map_err(orm)? } }))
+                Output::fields(json!({ "value": { "bool": case_connection(context).utils().schema().installed(&name, table).await.map_err(orm)? } }))
             }
             "schema.connect" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
@@ -4212,12 +4237,13 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
-                    match crate::recipe_reads::read(step, "message_contains")["message_contains"].as_str() {
-                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
-                        _ => orm(error),
-                    }
-                })?;
+                let added =
+                    case_connection(context).utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                        match crate::recipe_reads::read(step, "message_contains")["message_contains"].as_str() {
+                            Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                            _ => orm(error),
+                        }
+                    })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }
