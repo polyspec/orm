@@ -19,16 +19,6 @@ export const MARIADB_VERSION = '11.8.6';
 /** MARIADB_SOURCE is the source release of MARIADB_VERSION and MARIADB_SOURCE_SHA256 its digest, from its sha256sums.txt. */
 export const MARIADB_SOURCE = `https://archive.mariadb.org/mariadb-${MARIADB_VERSION}/source/mariadb-${MARIADB_VERSION}.tar.gz`;
 export const MARIADB_SOURCE_SHA256 = 'b126581a8ca89376d2a3ce63fee97c114c3e15315345e769b9d00c51e1b7d619';
-/** MARIADB_VERSION_LINE is what `mariadbd --version` prints for MARIADB_VERSION, the build of its pinned source. */
-export const MARIADB_VERSION_LINE = new RegExp(` Ver ${MARIADB_VERSION.replaceAll('.', '\\.')}-MariaDB`);
-/**
- * MARIADB_SERIES is the release series of MARIADB_VERSION, and MARIADB_SERIES_LINE what `mariadbd --version` prints for any
- * release of it. The Ubuntu archive keeps only its newest patch release, so a server that is not the build of the pinned source
- * is held to the series: no check requires a patch release that its source cannot pin.
- */
-export const MARIADB_SERIES = MARIADB_VERSION.split('.').slice(0, 2).join('.');
-export const MARIADB_SERIES_LINE = new RegExp(` Ver ${MARIADB_SERIES.replaceAll('.', '\\.')}\\.\\d+-MariaDB`);
-
 const ROOT = resolve(import.meta.dirname, '..');
 /** mariadbPrefix is the folder that the build of MARIADB_VERSION installs into; its bin folder holds mariadbd. */
 export const mariadbPrefix = (root = ROOT): string => join(root, 'var/mariadb', MARIADB_VERSION);
@@ -56,13 +46,10 @@ export const BUILD_OPTIONS_FILE = 'build-options.txt';
 /** buildOptionsText is the text of BUILD_OPTIONS_FILE for the options of a build. */
 export const buildOptionsText = (options: readonly string[] = CMAKE_OPTIONS): string => `${options.join('\n')}\n`;
 
-// installed reports whether prefix holds a mariadbd of MARIADB_VERSION built with CMAKE_OPTIONS: a build of other options, or of
-// none recorded, is built again.
+// installed reports whether prefix, the folder of MARIADB_VERSION, holds a mariadbd built with CMAKE_OPTIONS: a build of other
+// options, or of none recorded, is built again. The pinned source decides the version, so the build is not asked for it.
 function installed(prefix: string): boolean {
-  const server = join(prefix, 'bin/mariadbd');
-  if (!existsSync(server)) return false;
-  const line = spawnSync(server, ['--version'], { encoding: 'utf8' }).stdout ?? '';
-  if (!MARIADB_VERSION_LINE.test(line)) fail(`${server} prints ${JSON.stringify(line.trim())}, not MariaDB ${MARIADB_VERSION}; remove ${prefix} and run make orm-install-mariadb again`);
+  if (!existsSync(join(prefix, 'bin/mariadbd'))) return false;
   const recorded = join(prefix, BUILD_OPTIONS_FILE);
   if (existsSync(recorded) && readFileSync(recorded, 'utf8') === buildOptionsText()) return true;
   console.log(`mariadb-build: ${prefix} was built with other options than CMAKE_OPTIONS; building it again`);
