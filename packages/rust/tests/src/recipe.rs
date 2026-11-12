@@ -7524,10 +7524,10 @@ mod tables {
                     let keyring = keyring_of(&crate::recipe_reads::read(step, "keyring")["keyring"])?;
                     let row = self.row(model, &conn, &Value::Null)?;
                     if op == "utils.aes_rotate" {
-                        let n = db.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
+                        let n = conn.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
                         return Ok(json!({ "value": { "int": n.to_string() } }));
                     }
-                    let status = db.utils().aes().status(&row, &keyring).await.map_err(orm)?;
+                    let status = conn.utils().aes().status(&row, &keyring).await.map_err(orm)?;
                     let versions: Vec<Value> = status.versions.iter().map(|(version, n)| json!([version.to_string(), { "int": n.to_string() }])).collect();
                     Ok(json!({ "value": { "object": [
                         ["current", { "int": status.current.to_string() }],
@@ -7542,7 +7542,11 @@ mod tables {
                     let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64();
                     let channel = crate::recipe::repeated(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), channel_repeat)?;
                     let payload = crate::recipe::repeated(crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default(), payload_repeat)?;
-                    db.notify(&channel, &payload).await.map_err(orm)?;
+                    // In a transaction step the notification is sent in its transaction (CORE-20).
+                    match &conn {
+                        Connection::Tx(tx) => tx.notify(&channel, &payload).await.map_err(orm)?,
+                        Connection::Db(db) => db.notify(&channel, &payload).await.map_err(orm)?,
+                    }
                     Ok(json!({}))
                 }
                 "utils.lock" => {
@@ -7563,18 +7567,18 @@ mod tables {
                 "row.connect" => {
                     // connect of a bound row (CFG-21): a later write of the row runs on that connection.
                     let name = row_name(step)?;
-                    self.rows.get_mut(name).ok_or_else(|| format!("row.connect: {name} is not a bound row"))?.core.connect(&db);
+                    self.rows.get_mut(name).ok_or_else(|| format!("row.connect: {name} is not a bound row"))?.core.connect(&conn);
                     Ok(json!({}))
                 }
                 "collection.connect" => {
                     let name = row_name(step)?.to_owned();
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;
-                    self.collections.insert(name, rows.connect(&db));
+                    self.collections.insert(name, rows.connect(&conn));
                     Ok(json!({ "value": { "bool": true } }))
                 }
                 // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
                 "utils.privilege" => {
-                    let utils = db.utils();
+                    let utils = conn.utils();
                     let privileges = utils.privileges();
                     let table = crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default();
                     let role = crate::recipe_reads::read(step, "role")["role"].as_str().unwrap_or_default();
