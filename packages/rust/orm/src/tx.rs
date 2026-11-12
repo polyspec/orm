@@ -1,9 +1,8 @@
-//! Callback transactions. Each task keeps a stack of active transactions; a
-//! model without a connection runs in the innermost one. A transaction of the
-//! same connection inside an active one creates a savepoint.
+//! Callback transactions (docs/spec/core.md CORE-20 to CORE-26). A transaction callback receives the handle `Tx`, the only
+//! way into the transaction; a savepoint is `Tx::savepoint`. No execution flow keeps an active transaction.
 
 use std::collections::{HashMap, HashSet};
-use std::future::{Future, IntoFuture};
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
@@ -14,8 +13,9 @@ use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
 use crate::schema::Schema;
+use crate::utils::Utils;
 use crate::value::{Param, Val};
-use crate::{Error, Result};
+use crate::{Error, Kind, Result};
 
 /// One active transaction.
 pub(crate) struct TxShared {
@@ -24,7 +24,9 @@ pub(crate) struct TxShared {
     pub(crate) number: u64,
     pub(crate) inner: tokio::sync::Mutex<Option<TxInner>>,
     pub(crate) finished: AtomicBool,
-    savepoints: AtomicU32,
+    /// The depth of the handle whose statements may run: 0 for the transaction, n while the callback of the n-th nested
+    /// savepoint runs (CORE-22).
+    running: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
     /// The audit record the transaction inserted right before its first write of an audited table. Inserts and updates of
@@ -47,11 +49,6 @@ pub(crate) struct AuditKey {
 
 /// The transaction's audit values: column names and values of the audit record table.
 type AuditValues = Vec<(String, Param)>;
-
-/// Collects the audit values as column names and `Param`s.
-fn audit_values<K: Into<String>, V: Into<Param>>(values: impl IntoIterator<Item = (K, V)>) -> AuditValues {
-    values.into_iter().map(|(k, v)| (k.into(), v.into())).collect()
-}
 
 /// The audit record the transaction inserts: the schema of the registered set that has the record table as an entity, that entity, and the column
 /// name-ordered values.
@@ -140,7 +137,7 @@ impl TxShared {
             number: db.next_transaction(),
             inner: tokio::sync::Mutex::new(Some(inner)),
             finished: AtomicBool::new(false),
-            savepoints: AtomicU32::new(0),
+            running: AtomicU32::new(0),
             locals: Mutex::new(HashMap::new()),
             locks: Mutex::new(Vec::new()),
             audit: Mutex::new(None),
@@ -205,12 +202,13 @@ impl TxShared {
         self.inserted.lock().unwrap().entry(entity.to_owned()).or_default().insert(key);
     }
 
-    /// Marks the start of a statement; the transaction rejects concurrent use.
+    /// Marks the start of a statement: a finished transaction is `transaction_ended` (CORE-23), and a statement while
+    /// another statement of the transaction runs is `busy` (CORE-22).
     pub(crate) fn enter(&self) -> Result<tokio::sync::MutexGuard<'_, Option<TxInner>>> {
         if self.finished.load(Ordering::Acquire) {
-            return Err(Error::config("transaction already finished"));
+            return Err(Error::new(Kind::TransactionEnded, "the transaction has ended"));
         }
-        self.inner.try_lock().map_err(|error| Error::config(format!("the transaction connection is already in use: {error}")))
+        self.inner.try_lock().map_err(|_locked| Error::new(Kind::Busy, "another statement of the transaction is running"))
     }
 
     /// Runs a statement text of `kind` on the transaction connection and
@@ -253,47 +251,210 @@ pub(crate) async fn raw_on(db: &Db, inner: &mut TxInner, s: Sent<'_>) -> Result<
     }
 }
 
-tokio::task_local! {
-    static FLOW: Vec<Arc<TxShared>>;
+/// A connection that a model or a utility runs on: the pool of a `Db`, or a transaction handle `Tx` (CORE-20, OM-2.8).
+#[derive(Clone)]
+pub enum Connection {
+    /// Every statement borrows a connection of the pool.
+    Db(Db),
+    /// Every statement runs in the transaction of the handle.
+    Tx(Tx),
 }
 
-fn frames() -> Vec<Arc<TxShared>> {
-    // The task-local is torn down when its thread ends, and then no transaction frame is open, so the answer is empty.
-    let Ok(frames) = FLOW.try_with(|f| f.clone()) else {
-        return Vec::new();
-    };
-    frames
-}
-
-/// The innermost active transaction of a connection in this task.
-pub(crate) fn active_for(db: &Db) -> Option<Arc<TxShared>> {
-    frames().into_iter().rev().find(|t| t.db.id() == db.id())
-}
-
-fn nested_transaction(db: &Db, options_set: bool) -> Result<Option<Arc<TxShared>>> {
-    let Some(outer) = active_for(db) else { return Ok(None) };
-    if options_set {
-        return Err(Error::config("a nested transaction of the same connection accepts only the retry option"));
+impl Connection {
+    /// The database of the connection.
+    #[must_use]
+    pub fn db(&self) -> &Db {
+        match self {
+            Connection::Db(db) => db,
+            Connection::Tx(tx) => &tx.shared.db,
+        }
     }
-    Ok(Some(outer))
+
+    /// The utilities of the connection: those of the `Db`, or those of the transaction of the `Tx`.
+    #[must_use]
+    pub fn utils(&self) -> Utils<'_> {
+        match self {
+            Connection::Db(db) => db.utils(),
+            Connection::Tx(tx) => tx.utils(),
+        }
+    }
+
+    /// Where a statement of this connection runs. A transaction handle checks its state first (CORE-22, CORE-23).
+    pub(crate) fn executor(&self) -> Result<Executor> {
+        match self {
+            Connection::Db(db) => Ok(Executor::Db(db.clone())),
+            Connection::Tx(tx) => tx.executor(),
+        }
+    }
 }
 
-/// Selects where a model runs: the active transaction of its connection, the
-/// connection, or the innermost active transaction when it has none.
-pub(crate) fn resolve(conn: &Option<Db>) -> Result<Executor> {
+impl From<&Db> for Connection {
+    fn from(db: &Db) -> Self {
+        Connection::Db(db.clone())
+    }
+}
+
+impl From<&Connection> for Connection {
+    fn from(connection: &Connection) -> Self {
+        connection.clone()
+    }
+}
+
+impl From<&Tx> for Connection {
+    fn from(tx: &Tx) -> Self {
+        Connection::Tx(tx.clone())
+    }
+}
+
+/// Where a model runs: its connection, or `config` for a model with none (CORE-20).
+pub(crate) fn resolve(conn: &Option<Connection>) -> Result<Executor> {
     match conn {
-        Some(db) => Ok(match active_for(db) {
-            Some(t) => Executor::Tx(t),
-            None => Executor::Db(db.clone()),
-        }),
-        None => frames().pop().map(Executor::Tx).ok_or_else(|| Error::config("the model has no connection; use connect or run it inside a transaction")),
+        Some(connection) => connection.executor(),
+        None => Err(Error::config("the model has no connection; connect it to a Db or to the Tx of a transaction")),
     }
 }
 
-/// The transaction frame that `Utils::run` passes to its callback (INT-150). It holds the transaction of the connection and
-/// never opens one.
-pub struct TxFrame {
-    tx: Arc<TxShared>,
+/// The handle of one transaction or one of its savepoints (CORE-20, CORE-21). A clone is the same handle. A statement
+/// through the handle runs in the transaction; a statement while another statement of the transaction runs is `busy`, a
+/// statement while a savepoint callback of the handle runs is `busy`, and a statement after the callback of the handle
+/// returned is `transaction_ended` (CORE-22, CORE-23).
+#[derive(Clone)]
+pub struct Tx {
+    shared: Arc<TxShared>,
+    /// 0 for the transaction, n for the n-th nested savepoint.
+    depth: u32,
+    /// Whether the callback that received the handle is still running.
+    open: Arc<AtomicBool>,
+}
+
+impl std::fmt::Debug for Tx {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tx").field("transaction", &self.shared.number).field("depth", &self.depth).finish()
+    }
+}
+
+impl Tx {
+    fn new(shared: Arc<TxShared>, depth: u32) -> Self {
+        Tx { shared, depth, open: Arc::new(AtomicBool::new(true)) }
+    }
+
+    /// The executor of a statement through the handle, after the checks of CORE-22 and CORE-23. The statement itself takes
+    /// the connection of the transaction with a try lock, so an overlapping statement is `busy` too.
+    pub(crate) fn executor(&self) -> Result<Executor> {
+        self.check()?;
+        Ok(Executor::Tx(Arc::clone(&self.shared)))
+    }
+
+    fn check(&self) -> Result<()> {
+        if !self.open.load(Ordering::Acquire) || self.shared.finished.load(Ordering::Acquire) {
+            return Err(Error::new(Kind::TransactionEnded, "the callback of the transaction handle has returned"));
+        }
+        if self.shared.running.load(Ordering::Acquire) != self.depth {
+            return Err(Error::new(Kind::Busy, "a savepoint callback of the transaction handle is running"));
+        }
+        Ok(())
+    }
+
+    /// The database of the transaction.
+    #[must_use]
+    pub fn db(&self) -> &Db {
+        &self.shared.db
+    }
+
+    /// The utilities of the transaction: locks, local values, the statement runner and the inserted keys (INT-50 to
+    /// INT-52, INT-150).
+    #[must_use]
+    pub fn utils(&self) -> Utils<'_> {
+        Utils::of_transaction(self)
+    }
+
+    /// Runs one statement of kind `kind` that touches `tables` (empty when none), with `params` bound in order, in the
+    /// transaction, records one statement event (INT-77) and returns its rows (INT-150).
+    pub async fn run(&self, kind: &str, tables: &[&str], sql: &str, params: &[Param]) -> Result<Vec<Vec<Val>>> {
+        let ex = self.executor()?;
+        let tables: Vec<String> = tables.iter().map(|t| (*t).to_owned()).collect();
+        let types: Vec<&str> = params.iter().map(bind_type).collect();
+        let mut st = crate::utils::step(sql.to_owned(), &types);
+        for (slot, p) in st.bind_slots.iter_mut().zip(params) {
+            if matches!(p, Param::DateTime(_)) {
+                slot.precision = 6;
+            }
+        }
+        let rows = ex.query_as(Some(kind), Some(&tables), &st, params, Vec::new()).await?;
+        let zone = self.shared.db.inner.zone;
+        rows.iter().map(|r| crate::row::read_frame_row(r, zone)).collect()
+    }
+
+    /// Runs one compiled statement `step` with `params` in the transaction, as `Db::execute` does on the pool.
+    pub async fn execute(&self, step: &crate::plan::Step, params: &[Param]) -> Result<()> {
+        crate::db::execute_step(self.executor()?, step, params).await
+    }
+
+    /// Runs `callback` in a savepoint of the transaction and passes it the handle of the savepoint (CORE-21). A callback
+    /// that succeeds releases the savepoint. A callback that fails or panics reverts the work after the savepoint and
+    /// releases it, and its failure is returned unchanged; when the savepoint cannot be ended too, the result is
+    /// `rollback_failed` (CORE-25). A panic is the error `internal` (CORE-26). While the callback runs, every statement
+    /// through this handle is `busy` (CORE-22).
+    pub async fn savepoint<T, F, Fut>(&self, callback: F) -> Result<T>
+    where
+        F: FnOnce(Tx) -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        self.check()?;
+        let depth = self.depth + 1;
+        if self.shared.running.compare_exchange(self.depth, depth, Ordering::AcqRel, Ordering::Acquire).is_err() {
+            return Err(Error::new(Kind::Busy, "a savepoint callback of the transaction handle is running"));
+        }
+        let ended = self.savepoint_at(depth, callback).await;
+        self.shared.running.store(self.depth, Ordering::Release);
+        ended
+    }
+
+    async fn savepoint_at<T, F, Fut>(&self, depth: u32, callback: F) -> Result<T>
+    where
+        F: FnOnce(Tx) -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        let tx = &self.shared;
+        let name = format!("orm_sp_{depth}");
+        // A savepoint that does not release undoes an audit record inserted inside it.
+        let audit_before = tx.audit();
+        let inserted_before = lock(&tx.inserted)?.clone();
+        tx.savepoint_step(KIND_SAVEPOINT, &name).await?;
+        let child = Tx::new(Arc::clone(tx), depth);
+        let open = Arc::clone(&child.open);
+        let outcome = std::panic::AssertUnwindSafe(callback(child)).catch_unwind().await;
+        open.store(false, Ordering::Release);
+        let failure = match outcome {
+            Ok(Ok(value)) => match tx.savepoint_step(KIND_RELEASE, &name).await {
+                Ok(()) => return Ok(value),
+                Err(error) => error,
+            },
+            Ok(Err(error)) => error,
+            Err(payload) => panicked(payload),
+        };
+        *lock(&tx.audit)? = audit_before;
+        *lock(&tx.inserted)? = inserted_before;
+        match rollback_savepoint(tx, &name).await {
+            Ok(()) => Err(failure),
+            Err(rollback) => Err(Error::rollback_failed_of(failure, rollback)),
+        }
+    }
+}
+
+/// The error `internal` of a callback that panicked (CORE-26).
+fn panicked(payload: Box<dyn std::any::Any + Send>) -> Error {
+    let text = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
+        (Some(text), _) => (*text).to_owned(),
+        (None, Some(text)) => text.clone(),
+        (None, None) => "a panic without a text payload".to_owned(),
+    };
+    Error::internal(format!("the callback panicked: {text}"))
+}
+
+/// Locks a mutex of the transaction state; a poisoned mutex is `internal` (B-7 of the plan).
+fn lock<T>(mutex: &Mutex<T>) -> Result<std::sync::MutexGuard<'_, T>> {
+    mutex.lock().map_err(|_poisoned| Error::internal("a lock of the transaction state was poisoned by a panic"))
 }
 
 /// The bind type of a parameter: the type its bind slot checks (bind_check).
@@ -306,28 +467,6 @@ fn bind_type(p: &Param) -> &'static str {
         Param::Bytes(_) => "bytes",
         Param::DateTime(_) => "datetime",
         Param::Date(_) => "date",
-    }
-}
-
-impl TxFrame {
-    pub(crate) fn new(tx: Arc<TxShared>) -> Self {
-        Self { tx }
-    }
-
-    /// Runs one statement of kind `kind` that touches `tables` (empty when none), with `params` bound in order, and records one
-    /// statement event (INT-77). It runs in this frame's transaction and returns the statement result with its rows.
-    pub async fn run(&self, kind: &str, tables: &[&str], sql: &str, params: &[Param]) -> Result<Vec<Vec<Val>>> {
-        let tables: Vec<String> = tables.iter().map(|t| (*t).to_owned()).collect();
-        let types: Vec<&str> = params.iter().map(bind_type).collect();
-        let mut st = crate::utils::step(sql.to_owned(), &types);
-        for (slot, p) in st.bind_slots.iter_mut().zip(params) {
-            if matches!(p, Param::DateTime(_)) {
-                slot.precision = 6;
-            }
-        }
-        let rows = Executor::Tx(Arc::clone(&self.tx)).query_as(Some(kind), Some(&tables), &st, params, Vec::new()).await?;
-        let zone = self.tx.db.inner.zone;
-        rows.iter().map(|r| crate::row::read_frame_row(r, zone)).collect()
     }
 }
 
@@ -351,534 +490,86 @@ impl Isolation {
     }
 }
 
-/// A transaction run: configure it with the option methods and await it.
-pub struct Transaction<'a, F> {
-    db: &'a Db,
-    f: F,
-    isolation: Option<Isolation>,
-    read_only: bool,
-    timeout_ms: u64,
-    retry: u32,
-    audit: Option<AuditValues>,
-    set: bool,
+/// The options of a transaction (CORE-20, INT-40 to INT-44). An absent option has the value that the core states.
+#[derive(Clone, Debug, Default)]
+pub struct TransactionOptions {
+    /// The isolation level; absent keeps the level of the server.
+    pub isolation: Option<Isolation>,
+    /// Whether the transaction is read-only (INT-41); absent is false.
+    pub read_only: Option<bool>,
+    /// The bound of every statement of the transaction in milliseconds (INT-42): PostgreSQL sends
+    /// `SET LOCAL statement_timeout = <ms>` after its `BEGIN`, MySQL and SQLite fail with `capability_unsupported`;
+    /// absent or zero sets no bound.
+    pub timeout_ms: Option<u64>,
+    /// How many times a callback that failed with `deadlock` runs again (INT-43, CORE-24); absent is 3.
+    pub retry: Option<u32>,
+    /// The audit values of the unit of work (INT-44).
+    pub audit: Option<Vec<(String, Param)>>,
 }
 
-type SendOperation<'a, T> = dyn Fn() -> Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>> + Send + Sync + 'a;
+/// The number of retries of a transaction whose options state none (INT-43).
+pub const DEFAULT_RETRY: u32 = 3;
 
-/// A transaction whose callback and returned future are explicitly `Send`.
-/// This is the transaction boundary used by generated model writes that may
-/// run inside a service callback.
-pub struct SendTransaction<'a, T> {
-    db: &'a Db,
-    f: Box<SendOperation<'a, T>>,
-    isolation: Option<Isolation>,
-    read_only: bool,
-    timeout_ms: u64,
-    retry: u32,
-    audit: Option<AuditValues>,
-    set: bool,
-}
-
-macro_rules! run_transaction {
-    ($db:expr, $callback:expr, $isolation:expr, $read_only:expr, $timeout_ms:expr, $retry:expr, $audit:expr) => {{
-        async {
-            let db = $db;
-            let isolation = $isolation;
-            let read_only = $read_only;
-            let timeout_ms = $timeout_ms;
-            let retry = $retry;
-            let audit = $audit;
-            let record = audit.as_ref().map(|values| audit_record(db, values)).transpose()?.map(Arc::new);
-            let mut attempt = 0u32;
-            loop {
-                let tx = Arc::new(begin(db, isolation, read_only, timeout_ms).await?);
-                let mut stack = frames();
-                stack.push(tx.clone());
-                // Each attempt starts with the pending record and no inserted audit.
-                *tx.pending_audit.lock().unwrap() = record.clone();
-                let body = $callback;
-                let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
-                let result = match callback.await {
-                    Ok(result) => result,
-                    Err(payload) => match rollback_and_resume(&tx, payload).await {},
-                };
-                match result {
-                    // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
-                    // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
-                    Ok(value) => match commit(&tx).await {
-                        Ok(()) => return Ok(value),
-                        Err(error) if error.is_deadlock() && attempt < retry => {
-                            let jitter = rand::random::<u64>() % 20;
-                            tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                            attempt += 1;
-                        }
-                        Err(error) => return Err(error),
-                    },
-                    Err(error) => {
-                        if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(db)) {
-                            return Err(Error::rollback_failed_of(error, rollback_error));
-                        }
-                        if !error.is_deadlock() || attempt >= retry {
-                            return Err(error);
-                        }
-                        let jitter = rand::random::<u64>() % 20;
-                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                        attempt += 1;
-                    }
-                }
-            }
-        }
-    }};
-}
-
-/// Failure of a callback transaction that runs exactly once.
-#[derive(Debug)]
-pub enum TransactionOnceError<E> {
-    /// The database could not start, commit, or complete the transaction.
-    Orm(Error),
-    /// The callback failed and its transaction rolled back.
-    Callback(E),
-    /// Both the callback and rollback failed.
-    Rollback { callback: E, rollback: Error },
-}
-
-impl<E: std::fmt::Display> std::fmt::Display for TransactionOnceError<E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Orm(error) => write!(f, "transaction failed: {error}"),
-            Self::Callback(error) => write!(f, "transaction callback failed: {error}"),
-            Self::Rollback { callback, rollback } => {
-                write!(f, "{}: the rollback failed after the callback failed ({callback}): {rollback}", crate::Kind::RollbackFailed)
-            }
-        }
-    }
-}
-
-impl<E: std::error::Error + Send + Sync + 'static> std::error::Error for TransactionOnceError<E> {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Orm(error) => Some(error),
-            Self::Callback(error) | Self::Rollback { callback: error, .. } => Some(error),
-        }
-    }
+/// The wait before attempt `attempt` (from 1) of a retried transaction: `50 << (attempt - 1)` milliseconds and `jitter`
+/// (CORE-24).
+fn retry_wait(attempt: u32, jitter: u64) -> std::time::Duration {
+    std::time::Duration::from_millis((50u64 << attempt.saturating_sub(1).min(10)) + jitter)
 }
 
 impl Db {
-    /// Runs `f` in one transaction when awaited. An error rolls back; otherwise
-    /// the transaction commits. Models without a connection inside `f` use this
-    /// transaction. Deadlocks run `f` again, three times by default.
-    pub fn transaction<F>(&self, f: F) -> Transaction<'_, F> {
-        Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, audit: None, set: false }
-    }
-
-    /// Runs a transaction with a callback whose future is required to be
-    /// `Send`. The bound is checked at this API boundary, rather than inferred
-    /// from an async closure after the transaction has been constructed.
-    pub fn transaction_send<'a, F, Fut, T>(&'a self, f: F) -> SendTransaction<'a, T>
+    /// Runs `callback` in a new transaction on a connection of the pool and passes it the transaction handle (CORE-20). A
+    /// callback that succeeds commits. A callback that fails or panics rolls back, and its failure is returned unchanged
+    /// (CORE-25), a panic as `internal` (CORE-26); when the rollback fails too, the result is `rollback_failed`. A failure
+    /// of the kind `deadlock`, of the callback or of the commit, runs the whole callback again after the wait of CORE-24,
+    /// `retry` times at most.
+    pub async fn transaction<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T>
     where
-        F: Fn() -> Fut + Send + Sync + 'a,
-        Fut: Future<Output = Result<T>> + Send + 'a,
-        T: Send + 'a,
+        F: Fn(Tx) -> Fut,
+        Fut: Future<Output = Result<T>>,
     {
-        SendTransaction { db: self, f: Box::new(move || Box::pin(f())), isolation: None, read_only: false, timeout_ms: 0, retry: 3, audit: None, set: false }
-    }
-
-    /// Runs a callback once in a transaction and preserves its own error when
-    /// awaited. A nested call uses a savepoint. This call does not retry the
-    /// callback. `audit(values)` records the audit of the transaction.
-    pub fn transaction_once<F>(&self, f: F) -> TransactionOnce<'_, F> {
-        TransactionOnce { db: self, f, audit: None }
-    }
-}
-
-/// A transaction that runs its callback once: record its audit with `audit`
-/// and await it.
-pub struct TransactionOnce<'a, F> {
-    db: &'a Db,
-    f: F,
-    audit: Option<AuditValues>,
-}
-
-type OnceCallbackResult<T, E> = std::result::Result<T, E>;
-type OnceTransactionResult<T, E> = std::result::Result<T, TransactionOnceError<E>>;
-
-impl<F> TransactionOnce<'_, F> {
-    /// Records the audit of the transaction: right before its first write of an
-    /// audited table the transaction inserts one audit record with the defaults of the handle (`Db::audit`)
-    /// and `values`, and every audited write of the transaction writes its
-    /// primary key. A nested call takes no audit.
-    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
-        self.audit = Some(audit_values(values));
-        self
-    }
-}
-
-impl<'a, F, Fut, T, E> IntoFuture for TransactionOnce<'a, F>
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = OnceCallbackResult<T, E>>,
-{
-    type Output = OnceTransactionResult<T, E>;
-    type IntoFuture = TransactionOnceFuture<'a, F, Fut, T, E>;
-
-    fn into_future(self) -> Self::IntoFuture {
-        TransactionOnceFuture { state: OnceState::Start { db: self.db, f: self.f, audit: self.audit } }
-    }
-}
-
-/// The future of the steps the ORM awaits internally (begin, savepoint, commit, rollback). These steps are Send, so
-/// `TransactionOnceFuture` is Send when the callback, its future, and the result and error types are Send.
-type OnceStep<'a, R> = Pin<Box<dyn Future<Output = R> + Send + 'a>>;
-
-/// The callback future, which runs inside the transaction's task-local frame and catches panics.
-type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnwindSafe<tokio::task::futures::TaskLocalFuture<Vec<Arc<TxShared>>, Fut>>>;
-
-/// Where the callback runs: a new transaction, or a savepoint of the outer transaction.
-enum OnceScope<'a> {
-    Transaction {
-        db: &'a Db,
-        tx: Arc<TxShared>,
-    },
-    /// `audit` and `inserted` are the transaction's audit and inserted keys before the savepoint, restored when the
-    /// savepoint does not release.
-    Savepoint {
-        tx: Arc<TxShared>,
-        name: String,
-        audit: Option<AuditKey>,
-        inserted: HashMap<String, HashSet<i64>>,
-    },
-}
-
-impl<'a> OnceScope<'a> {
-    fn tx(&self) -> &Arc<TxShared> {
-        match self {
-            OnceScope::Transaction { tx, .. } | OnceScope::Savepoint { tx, .. } => tx,
-        }
-    }
-
-    /// After the callback succeeds, commits the transaction or releases the savepoint.
-    fn close(self) -> OnceStep<'a, Result<()>> {
-        match self {
-            OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
-            OnceScope::Savepoint { tx, name, audit, inserted } => Box::pin(async move {
-                let released = tx.savepoint_step(KIND_RELEASE, &name).await;
-                if released.is_err() {
-                    *tx.audit.lock().unwrap() = audit;
-                    *tx.inserted.lock().unwrap() = inserted;
-                }
-                tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-                released
-            }),
-        }
-    }
-
-    /// After the callback fails or panics, reverts the work after the transaction or savepoint. The transaction's
-    /// rollback consumes the configured test fault.
-    fn undo(self, fault: bool) -> OnceStep<'a, Result<()>> {
-        match self {
-            OnceScope::Transaction { db, tx } => Box::pin(async move {
-                let rolled_back = rollback(&tx).await;
-                if fault {
-                    rolled_back.and_then(|()| rollback_fault(db))
-                } else {
-                    rolled_back
-                }
-            }),
-            OnceScope::Savepoint { tx, name, audit, inserted } => Box::pin(async move {
-                *tx.audit.lock().unwrap() = audit;
-                *tx.inserted.lock().unwrap() = inserted;
-                let undone = rollback_savepoint(&tx, &name).await;
-                tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-                undone
-            }),
-        }
-    }
-}
-
-/// The callback's result, returned after the scope ends.
-enum OnceOutcome<T, E> {
-    Returned(T),
-    Failed(E),
-    Panicked(Box<dyn std::any::Any + Send>),
-}
-
-enum OnceState<'a, F, Fut, T, E> {
-    Start { db: &'a Db, f: F, audit: Option<AuditValues> },
-    Opening { f: F, open: OnceStep<'a, Result<OnceScope<'a>>> },
-    Running { scope: OnceScope<'a>, callback: Pin<Box<OnceCallback<Fut>>> },
-    Ending { outcome: OnceOutcome<T, E>, end: OnceStep<'a, Result<()>> },
-    Done,
-}
-
-/// The future of a `TransactionOnce`.
-pub struct TransactionOnceFuture<'a, F, Fut, T, E> {
-    state: OnceState<'a, F, Fut, T, E>,
-}
-
-// The callback future is pinned only inside a Box; the other fields (callback, result, error) are moved without ever being pinned.
-impl<F, Fut, T, E> Unpin for TransactionOnceFuture<'_, F, Fut, T, E> {}
-
-impl<'a, F, Fut, T, E> Future for TransactionOnceFuture<'a, F, Fut, T, E>
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = OnceCallbackResult<T, E>>,
-{
-    type Output = OnceTransactionResult<T, E>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        use std::task::Poll;
-        let this = self.get_mut();
+        let TransactionOptions { isolation, read_only, timeout_ms, retry, audit } = options;
+        let read_only = read_only == Some(true);
+        // An absent or zero bound sets none (INT-42).
+        let timeout_ms = timeout_ms.filter(|ms| *ms > 0);
+        let retry = match retry {
+            Some(n) => n,
+            None => DEFAULT_RETRY,
+        };
+        let record = audit.as_ref().map(|values| audit_record(self, values)).transpose()?.map(Arc::new);
+        let mut attempt = 0u32;
         loop {
-            match std::mem::replace(&mut this.state, OnceState::Done) {
-                OnceState::Start { db, f, audit } => {
-                    let open: OnceStep<'a, Result<OnceScope<'a>>> = match active_for(db) {
-                        Some(_) if audit.is_some() => {
-                            return Poll::Ready(Err(TransactionOnceError::Orm(Error::config(
-                                "a nested transaction of the same connection takes no audit; it uses the audit of the outer transaction",
-                            ))));
-                        }
-                        Some(tx) => Box::pin(async move {
-                            let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
-                            let name = format!("orm_sp_{n}");
-                            match tx.savepoint_step(KIND_SAVEPOINT, &name).await {
-                                Ok(()) => {
-                                    let audit = tx.audit();
-                                    let inserted = tx.inserted.lock().unwrap().clone();
-                                    Ok(OnceScope::Savepoint { tx, name, audit, inserted })
-                                }
-                                Err(error) => {
-                                    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-                                    Err(error)
-                                }
-                            }
-                        }),
-                        None => {
-                            let record = match audit.as_ref().map(|values| audit_record(db, values)).transpose() {
-                                Ok(record) => record,
-                                Err(error) => return Poll::Ready(Err(TransactionOnceError::Orm(error))),
-                            };
-                            Box::pin(async move {
-                                let tx = Arc::new(begin(db, None, false, 0).await?);
-                                // The audit record is inserted right before the first write of an audited table.
-                                *tx.pending_audit.lock().unwrap() = record.map(Arc::new);
-                                Ok(OnceScope::Transaction { db, tx })
-                            })
-                        }
-                    };
-                    this.state = OnceState::Opening { f, open };
-                }
-                OnceState::Opening { f, mut open } => match open.as_mut().poll(cx) {
-                    Poll::Pending => {
-                        this.state = OnceState::Opening { f, open };
-                        return Poll::Pending;
-                    }
-                    Poll::Ready(Err(error)) => return Poll::Ready(Err(TransactionOnceError::Orm(error))),
-                    Poll::Ready(Ok(scope)) => {
-                        let mut stack = frames();
-                        stack.push(scope.tx().clone());
-                        let callback = Box::pin(std::panic::AssertUnwindSafe(FLOW.scope(stack, f())).catch_unwind());
-                        this.state = OnceState::Running { scope, callback };
-                    }
+            let shared = Arc::new(begin(self, isolation, read_only, timeout_ms).await?);
+            // Each attempt starts with the pending record and no inserted audit.
+            *lock(&shared.pending_audit)? = record.clone();
+            let tx = Tx::new(Arc::clone(&shared), 0);
+            let open = Arc::clone(&tx.open);
+            let outcome = std::panic::AssertUnwindSafe(callback(tx)).catch_unwind().await;
+            open.store(false, Ordering::Release);
+            let failure = match outcome {
+                // A deadlocked commit is retried as a deadlocked callback is; any other commit error, such as
+                // write_conflict, is returned at once.
+                Ok(Ok(value)) => match commit(&shared).await {
+                    Ok(()) => return Ok(value),
+                    Err(error) => error,
                 },
-                OnceState::Running { scope, mut callback } => match callback.as_mut().poll(cx) {
-                    Poll::Pending => {
-                        this.state = OnceState::Running { scope, callback };
-                        return Poll::Pending;
-                    }
-                    Poll::Ready(Ok(Ok(value))) => this.state = OnceState::Ending { outcome: OnceOutcome::Returned(value), end: scope.close() },
-                    Poll::Ready(Ok(Err(error))) => this.state = OnceState::Ending { outcome: OnceOutcome::Failed(error), end: scope.undo(true) },
-                    Poll::Ready(Err(payload)) => this.state = OnceState::Ending { outcome: OnceOutcome::Panicked(payload), end: scope.undo(false) },
+                Ok(Err(error)) => match rollback(&shared).await.and_then(|()| rollback_fault(self)) {
+                    Ok(()) => error,
+                    Err(rollback) => return Err(Error::rollback_failed_of(error, rollback)),
                 },
-                OnceState::Ending { outcome, mut end } => {
-                    let ended = match end.as_mut().poll(cx) {
-                        Poll::Pending => {
-                            this.state = OnceState::Ending { outcome, end };
-                            return Poll::Pending;
-                        }
-                        Poll::Ready(ended) => ended,
-                    };
-                    return Poll::Ready(match (outcome, ended) {
-                        (OnceOutcome::Returned(value), Ok(())) => Ok(value),
-                        (OnceOutcome::Returned(_), Err(error)) => Err(TransactionOnceError::Orm(error)),
-                        (OnceOutcome::Failed(callback), Ok(())) => Err(TransactionOnceError::Callback(callback)),
-                        (OnceOutcome::Failed(callback), Err(rollback)) => Err(TransactionOnceError::Rollback { callback, rollback }),
-                        (OnceOutcome::Panicked(payload), ended) => resume_panic(payload, ended.err()),
+                Err(payload) => {
+                    let error = panicked(payload);
+                    return Err(match rollback(&shared).await {
+                        Ok(()) => error,
+                        Err(rollback) => Error::rollback_failed_of(error, rollback),
                     });
                 }
-                OnceState::Done => panic!("TransactionOnceFuture polled after completion"),
+            };
+            if !failure.is_deadlock() || attempt >= retry {
+                return Err(failure);
             }
+            attempt += 1;
+            tokio::time::sleep(retry_wait(attempt, rand::random::<u64>() % 20)).await;
         }
-    }
-}
-
-macro_rules! transaction_options {
-    ($type:ident<$($generic:tt),+>) => {
-        impl<$($generic),+> $type<$($generic),+> {
-            /// Sets the transaction isolation level.
-            pub fn isolation(mut self, level: Isolation) -> Self {
-                self.isolation = Some(level);
-                self.set = true;
-                self
-            }
-
-            /// Makes the transaction read-only.
-            pub fn read_only(mut self) -> Self {
-                self.read_only = true;
-                self.set = true;
-                self
-            }
-
-            /// Bounds every statement of the transaction in milliseconds. PostgreSQL sends
-            /// `SET LOCAL statement_timeout = <ms>` after its `BEGIN`; the server cancels a statement
-            /// that runs longer with `CANCELED`. MySQL and SQLite fail with `CAPABILITY_UNSUPPORTED`
-            /// before the transaction begins. Zero sets no bound.
-            pub fn timeout_ms(mut self, ms: u64) -> Self {
-                self.timeout_ms = ms;
-                self.set = true;
-                self
-            }
-
-            /// Sets how many times a deadlocked callback runs again; 0 disables retry.
-            pub fn retry(mut self, n: u32) -> Self {
-                self.retry = n;
-                self
-            }
-
-            /// Makes the transaction one unit of work with an audit record. Right before the first
-            /// write of an audited table, in every attempt, the transaction inserts one row into the
-            /// audit record table: the defaults of the handle (`Db::audit`) with `values`, of which a
-            /// value wins over the default of the same column. Every insert, update, soft delete and
-            /// restore of an audited table writes the record's primary key into the table's audit
-            /// column. The handle must have defaults, and every key must be a column of the audit
-            /// record table; otherwise the transaction fails with CONFIG before it begins. A
-            /// transaction that writes no audited row inserts no record: a first update, delete or
-            /// restore that matches no row undoes the record with a savepoint, and a rolled back
-            /// savepoint undoes the record with the write that inserted it. A nested transaction uses
-            /// the audit of the outer one and takes none.
-            pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
-                self.audit = Some(audit_values(values));
-                self.set = true;
-                self
-            }
-        }
-    };
-}
-
-transaction_options!(SendTransaction<'a, T>);
-
-macro_rules! transaction_into_future {
-    ([$($generic:tt),+], $transaction:ty, [$($bound:tt)*], $future:ty) => {
-        impl<$($generic),+> IntoFuture for $transaction
-        where
-            $($bound)*
-        {
-            type Output = Result<T>;
-            type IntoFuture = $future;
-
-            fn into_future(self) -> Self::IntoFuture {
-                Box::pin(async move { self.run().await })
-            }
-        }
-    };
-}
-
-transaction_into_future!(['a, T], SendTransaction<'a, T>, [T: Send + 'a], Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>);
-
-impl<'a, T> SendTransaction<'a, T>
-where
-    T: Send + 'a,
-{
-    async fn run(self) -> Result<T> {
-        let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
-        if let Some(outer) = nested_transaction(db, set)? {
-            return savepoint_send(outer, f.as_ref()).await;
-        }
-        run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
-    }
-}
-
-transaction_options!(Transaction<'a, F>);
-
-transaction_into_future!(['a, F, T], Transaction<'a, F>, [F: AsyncFn() -> Result<T> + 'a, T: 'a], Pin<Box<dyn Future<Output = Result<T>> + 'a>>);
-
-impl<'a, F> Transaction<'a, F> {
-    async fn run<T>(self) -> Result<T>
-    where
-        F: AsyncFn() -> Result<T>,
-    {
-        let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
-        if let Some(outer) = nested_transaction(db, set)? {
-            return savepoint(outer, &f).await;
-        }
-        run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
-    }
-}
-
-async fn savepoint<T, F>(tx: Arc<TxShared>, f: &F) -> Result<T>
-where
-    F: AsyncFn() -> Result<T>,
-{
-    savepoint_result(run_savepoint(tx, f()).await?)
-}
-
-async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b SendOperation<'a, T>) -> Result<T>
-where
-    'a: 'b,
-    T: Send + 'a,
-{
-    savepoint_result(run_savepoint(tx, (f)()).await?)
-}
-
-fn savepoint_result<T>(result: std::result::Result<T, (Error, Option<Error>)>) -> Result<T> {
-    match result {
-        Ok(value) => Ok(value),
-        Err((callback, None)) => Err(callback),
-        Err((callback, Some(rollback))) => Err(Error::rollback_failed_of(callback, rollback)),
-    }
-}
-
-/// The result of the callback that finished the savepoint.
-enum SavepointEnd<T, E> {
-    Returned(std::result::Result<T, (E, Option<Error>)>),
-    Panicked(Box<dyn std::any::Any + Send>, Option<Error>),
-}
-
-/// Runs the callback inside a savepoint. A callback that succeeds releases the savepoint; one that fails or panics
-/// reverts the work after the savepoint and releases it. A callback error is returned together with an error from a savepoint that could not be finished,
-/// and a panic is carried on as an error of the same form as a transaction's when such an error exists.
-async fn run_savepoint<T, E, Fut>(tx: Arc<TxShared>, callback: Fut) -> Result<std::result::Result<T, (E, Option<Error>)>>
-where
-    Fut: Future<Output = std::result::Result<T, E>>,
-{
-    let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
-    let name = format!("orm_sp_{n}");
-    // A savepoint that does not release undoes an audit record inserted inside it.
-    let audit_before = tx.audit();
-    let inserted_before = tx.inserted.lock().unwrap().clone();
-    let mut kept = false;
-    let ended = async {
-        tx.savepoint_step(KIND_SAVEPOINT, &name).await?;
-        let mut stack = frames();
-        stack.push(tx.clone());
-        Ok::<_, Error>(match std::panic::AssertUnwindSafe(FLOW.scope(stack, callback)).catch_unwind().await {
-            Ok(Ok(value)) => {
-                tx.savepoint_step(KIND_RELEASE, &name).await?;
-                kept = true;
-                SavepointEnd::Returned(Ok(value))
-            }
-            Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
-            Err(payload) => SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err()),
-        })
-    }
-    .await;
-    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-    if !kept {
-        *tx.audit.lock().unwrap() = audit_before;
-        *tx.inserted.lock().unwrap() = inserted_before;
-    }
-    match ended? {
-        SavepointEnd::Returned(result) => Ok(result),
-        SavepointEnd::Panicked(payload, rollback) => resume_panic(payload, rollback),
     }
 }
 
@@ -898,9 +589,9 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
     }
 }
 
-async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: u64) -> Result<TxShared> {
+async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: Option<u64>) -> Result<TxShared> {
     db.ensure_open()?;
-    if timeout_ms > 0 && !matches!(db.pool(), Pool::Postgres(_)) {
+    if timeout_ms.is_some() && !matches!(db.pool(), Pool::Postgres(_)) {
         return Err(Error::new(crate::Kind::CapabilityUnsupported, "transaction timeoutMs is supported only by postgres"));
     }
     let level = isolation.map(Isolation::sql);
@@ -925,8 +616,8 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
                 statement.push_str(" READ ONLY");
             }
             opening.push((KIND_BEGIN, statement));
-            if timeout_ms > 0 {
-                opening.push((KIND_UTILITY, format!("SET LOCAL statement_timeout = {timeout_ms}")));
+            if let Some(ms) = timeout_ms {
+                opening.push((KIND_UTILITY, format!("SET LOCAL statement_timeout = {ms}")));
             }
             TxInner::Postgres(CancellableConnection::new(p.acquire().await?))
         }
@@ -991,26 +682,6 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     }
     db.inner.sqlite_lock_ready.store(true, Ordering::Release);
     Ok(())
-}
-
-/// Rolls back the transaction of a callback that panicked and continues the panic. If the rollback fails,
-/// the panic message carries both the cause and the failed rollback (docs/spec/interfaces.md).
-async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Send>) -> std::convert::Infallible {
-    resume_panic(payload, rollback(tx).await.err())
-}
-
-/// the panic continues. If the transaction or savepoint could not be ended, the panic value carries the cause and
-/// the text of the ROLLBACK error.
-fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>) -> ! {
-    if let Some(rollback) = rollback {
-        let cause = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
-            (Some(text), _) => (*text).to_owned(),
-            (None, Some(text)) => text.clone(),
-            (None, None) => "a panic without a text payload".to_owned(),
-        };
-        std::panic::resume_unwind(Box::new(format!("{}: the rollback failed after the callback panicked ({cause}): {rollback}", crate::Kind::RollbackFailed)));
-    }
-    std::panic::resume_unwind(payload)
 }
 
 /// Releases named locks, resets session values, and leaves SQLite modes before
@@ -1145,10 +816,6 @@ pub fn transaction_conflict(message: impl Into<String>) -> Error {
 }
 
 #[cfg(test)]
-#[path = "tx_send_tests.rs"]
-mod send_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_support::Scratch;
@@ -1191,162 +858,125 @@ mod tests {
         assert!(!path.exists(), "{} is left after the panic", path.display());
     }
 
-    #[expect(dead_code, reason = "a compile-time check: its body proves the future of transaction_send is Send, and nothing calls it")]
-    fn assert_transaction_send_future<'a, F, Fut, T>(db: &'a Db, f: F)
-    where
-        F: Fn() -> Fut + Send + Sync + 'a,
-        Fut: Future<Output = Result<T>> + Send + 'a,
-        T: Send + 'a,
-    {
-        fn require_send<U: Send>(_: U) {}
-        require_send(db.transaction_send(f).into_future());
+    async fn panics() -> Result<()> {
+        panic!("callback panicked")
     }
 
-    #[test]
-    fn transaction_send_future_contract_is_checked() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    fn once() -> TransactionOptions {
+        TransactionOptions { retry: Some(0), ..Default::default() }
     }
 
+    async fn sqlite_db(tmp: &Scratch, name: &str) -> Db {
+        Db::connect(&format!("sqlite://{}", tmp.join(name).display()), 1, crate::Config::default()).await.expect("connect")
+    }
+
+    // A callback that fails with deadlock, its own transaction_conflict included, runs again up to retry times; any other
+    // failure is returned unchanged after one run (CORE-24, CORE-25).
     #[tokio::test]
-    async fn transaction_variants_share_the_retryable_execution_path() {
+    // Requirements: CORE-24, INT-43, INT-48.
+    async fn a_deadlock_runs_the_callback_again() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let scratch = Scratch::new("orm-transaction-shared-runner");
-        let db =
-            Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
-
-        let standard_attempts = std::sync::atomic::AtomicUsize::new(0);
-        let standard = db
-            .transaction(async || {
-                if standard_attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
-                    Err(transaction_conflict("retry standard callback"))
-                } else {
-                    Ok(17)
-                }
-            })
-            .retry(1)
-            .await
-            .expect("standard transaction retries a deadlock");
-        assert_eq!(standard, 17);
-        assert_eq!(standard_attempts.load(std::sync::atomic::Ordering::SeqCst), 2);
-
-        let send_attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let callback_attempts = send_attempts.clone();
-        let send = db
-            .transaction_send(move || {
-                let attempts = callback_attempts.clone();
-                async move {
-                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
-                        Err(transaction_conflict("retry Send callback"))
-                    } else {
-                        Ok(23)
+        let tmp = Scratch::new("orm-transaction-retry");
+        let db = sqlite_db(&tmp, "retry.sqlite").await;
+        let runs = &AtomicU32::new(0);
+        let ended = db
+            .transaction(
+                |_tx: Tx| async move {
+                    if runs.fetch_add(1, Ordering::SeqCst) < 2 {
+                        return Err(transaction_conflict("conflict"));
                     }
-                }
-            })
-            .retry(1)
-            .await
-            .expect("Send transaction retries a deadlock");
-        assert_eq!(send, 23);
-        assert_eq!(send_attempts.load(std::sync::atomic::Ordering::SeqCst), 2);
+                    Ok(7)
+                },
+                TransactionOptions::default(),
+            )
+            .await;
+        assert!(matches!(ended, Ok(7)) && runs.load(Ordering::SeqCst) == 3, "two conflicts, then a commit: {ended:?}");
+        runs.store(0, Ordering::SeqCst);
+        let ended = db
+            .transaction(
+                |_tx: Tx| async move {
+                    runs.fetch_add(1, Ordering::SeqCst);
+                    Err::<(), _>(transaction_conflict("always"))
+                },
+                once(),
+            )
+            .await;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "always"), "{ended:?}");
+        assert_eq!(runs.load(Ordering::SeqCst), 1, "retry 0 runs once");
+        let ended = db.transaction(|_tx: Tx| async move { Err::<(), _>(Error::config("not retried")) }, TransactionOptions::default()).await;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Config && error.text() == "not retried"), "{ended:?}");
         db.close().await;
     }
 
-    #[tokio::test]
-    async fn nested_standard_and_send_transactions_share_option_validation() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let scratch = Scratch::new("orm-nested-option-validation");
-        let db = Db::connect(&format!("sqlite://{}", scratch.join("nested.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
-        let expected = "config: a nested transaction of the same connection accepts only the retry option";
-
-        let standard = db
-            .transaction(async || db.transaction(async || Ok::<_, Error>(())).read_only().await)
-            .retry(0)
-            .await
-            .expect_err("nested standard transaction rejects read_only");
-        assert_eq!(standard.to_string(), expected);
-
-        let nested_db = db.clone();
-        let send = db
-            .transaction(async move || nested_db.transaction_send(|| async { Ok::<_, Error>(()) }).read_only().await)
-            .retry(0)
-            .await
-            .expect_err("nested Send transaction rejects read_only");
-        assert_eq!(send.to_string(), expected);
-        db.close().await;
-    }
-
-    #[derive(Debug, PartialEq, Eq)]
-    enum DomainFailure {
-        Rejected,
-    }
-
-    impl std::fmt::Display for DomainFailure {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("request rejected")
-        }
-    }
-
-    impl std::error::Error for DomainFailure {}
-
+    // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
     #[test]
-    fn one_shot_transaction_reports_callback_and_rollback_errors() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let error = TransactionOnceError::Rollback { callback: DomainFailure::Rejected, rollback: Error::config("rollback rejected") };
-        assert!(error.to_string().contains("request rejected"));
-        assert!(error.to_string().contains("rollback rejected"));
-        assert_eq!(std::error::Error::source(&error).unwrap().to_string(), "request rejected");
+    fn the_retry_wait_doubles() {
+        assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
+        assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
+        assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));
     }
 
+    // A panic of the callback rolls the transaction back and is internal; it is not resumed (CORE-26).
     #[tokio::test]
-    // Requirements: DSL-118, PLN-20, INT-72.
-    async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
+    // Requirements: CORE-26.
+    async fn a_panicking_callback_is_internal() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let tmp = Scratch::new("orm-once");
-        // The probe table is kept in the case's own database, not a shared test database, so that
-        // another run dropping a table of the same name, or a table left by a panicked run, cannot disturb this case.
-        let mysql = polyspec_orm_case_database::CaseDatabase::create("mysql").await;
-        let postgres = polyspec_orm_case_database::CaseDatabase::create("postgres").await;
-        let targets =
-            [("sqlite", format!("sqlite://{}", tmp.join("once.sqlite").display())), ("mysql", mysql.dsn().to_owned()), ("postgres", postgres.dsn().to_owned())];
-        for (driver, dsn) in targets {
-            let db = Db::connect(&dsn, 2, crate::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
-            execute(&db, "DROP TABLE IF EXISTS orm_once_probe").await;
-            execute(&db, "CREATE TABLE orm_once_probe (id INTEGER PRIMARY KEY)").await;
-            let result = db
-                .transaction_once(async || {
-                    active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (1)").await.unwrap();
-                    Err::<(), _>(DomainFailure::Rejected)
-                })
-                .await;
-            assert!(matches!(result, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {result:?}");
-            let count = probe_row_count(&db).await;
-            assert_eq!(count, 0, "{driver}: rollback");
-            db.transaction_once(async || {
-                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (2)").await.unwrap();
-                Ok::<_, DomainFailure>(())
-            })
-            .await
-            .or_panic(|e| format!("{driver}: commit: {e:?}"));
-            db.transaction(async || {
-                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (3)").await?;
-                let nested = db
-                    .transaction_once(async || {
-                        active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (4)").await.unwrap();
-                        Err::<(), _>(DomainFailure::Rejected)
+        let tmp = Scratch::new("orm-transaction-panic");
+        let db = sqlite_db(&tmp, "panic.sqlite").await;
+        execute(&db, "CREATE TABLE orm_panic_probe (id INTEGER PRIMARY KEY)").await;
+        let ended = db
+            .transaction(
+                |tx: Tx| async move {
+                    tx.run(KIND_UTILITY, &[], "INSERT INTO orm_panic_probe (id) VALUES (1)", &[]).await?;
+                    panic!("callback panicked")
+                },
+                once(),
+            )
+            .await;
+        let ended: Result<()> = ended;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal && error.text() == "the callback panicked: callback panicked"), "{ended:?}");
+        let ended = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async move { panic!("savepoint panicked") }).await }, once()).await;
+        let ended: Result<()> = ended;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal), "{ended:?}");
+        assert_eq!(probe_row_count_of(&db, "orm_panic_probe").await, 0, "the panicked transaction rolled back");
+        db.close().await;
+    }
+
+    async fn probe_row_count_of(db: &Db, table: &str) -> i64 {
+        let Pool::Sqlite(pool) = db.pool() else { panic!("SQLite pool") };
+        sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}"))).fetch_one(pool).await.expect("count")
+    }
+
+    // A savepoint whose callback fails reverts its work and returns the failure unchanged; the outer transaction keeps its own
+    // work (CORE-21).
+    #[tokio::test]
+    // Requirements: CORE-21, INT-46.
+    async fn a_failed_savepoint_reverts_only_its_work() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let tmp = Scratch::new("orm-savepoint");
+        let db = sqlite_db(&tmp, "savepoint.sqlite").await;
+        execute(&db, "CREATE TABLE orm_savepoint_probe (id INTEGER PRIMARY KEY)").await;
+        db.transaction(
+            |tx: Tx| async move {
+                tx.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (1)", &[]).await?;
+                let inner = tx
+                    .savepoint(|savepoint: Tx| async move {
+                        savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (2)", &[]).await?;
+                        Err::<(), _>(Error::config("inner failed"))
                     })
                     .await;
-                assert!(matches!(nested, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {nested:?}");
-                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (5)").await
-            })
-            .retry(0)
-            .await
-            .or_panic(|e| format!("{driver}: nested transaction: {e}"));
-            let count = probe_row_count(&db).await;
-            assert_eq!(count, 3, "{driver}: committed rows");
-            execute(&db, "DROP TABLE orm_once_probe").await;
-            db.close().await;
-        }
-        mysql.drop().await;
-        postgres.drop().await;
+                assert!(matches!(&inner, Err(error) if error.kind() == Kind::Config && error.text() == "inner failed"), "{inner:?}");
+                tx.savepoint(
+                    |savepoint: Tx| async move { savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (3)", &[]).await.map(drop) },
+                )
+                .await
+            },
+            once(),
+        )
+        .await
+        .expect("the outer transaction commits");
+        assert_eq!(probe_row_count_of(&db, "orm_savepoint_probe").await, 2, "rows 1 and 3");
+        db.close().await;
     }
 
     fn required_dsn(name: &str) -> String {
@@ -1379,22 +1009,27 @@ mod tests {
             id
         };
         let clean = session().await;
-        db.transaction(async || db.utils().lock(&format!("orm_test.clean.{}", std::process::id())).await).retry(0).await.expect("a clean transaction");
+        db.transaction(|tx: Tx| async move { tx.utils().lock(&format!("orm_test.clean.{}", std::process::id())).await }, once())
+            .await
+            .expect("a clean transaction");
         assert_eq!(session().await, clean, "a transaction that ended cleanly keeps its session");
         for fail in [true, false] {
             let before = session().await;
             let key = format!("orm_test.discard.{fail}.{}", std::process::id());
+            let key = &key;
             let result = db
-                .transaction(async || {
-                    db.utils().lock(&key).await?;
-                    // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0, and the cleanup fails.
-                    active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await?;
-                    if fail {
-                        return Err(Error::config("callback failed"));
-                    }
-                    Ok(())
-                })
-                .retry(0)
+                .transaction(
+                    |tx: Tx| async move {
+                        tx.utils().lock(key).await?;
+                        // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0, and the cleanup fails.
+                        tx.run(KIND_UTILITY, &[], &format!("DO RELEASE_LOCK('{key}')"), &[]).await?;
+                        if fail {
+                            return Err(Error::config("callback failed"));
+                        }
+                        Ok(())
+                    },
+                    once(),
+                )
                 .await;
             assert!(result.is_err(), "the failed cleanup is reported");
             let path = if fail { "rollback" } else { "commit" };
@@ -1409,7 +1044,7 @@ mod tests {
     /// because ProxySQL takes KILL as a command for its own client session.
     async fn transaction_with_failing_reset(db: &Db) -> TxShared {
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
-        let tx = begin(db, None, false, 0).await.expect("begin");
+        let tx = begin(db, None, false, None).await.expect("begin");
         let id: u64 = {
             let mut guard = tx.inner.lock().await;
             let Some(TxInner::MySql(t)) = guard.as_mut() else { panic!("MySQL transaction") };
@@ -1443,20 +1078,19 @@ mod tests {
     // Requirements: INT-72.
     async fn panicking_callback_ends_its_transaction() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        use futures_util::FutureExt as _;
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
         let key = format!("orm_test.panicked.{}", std::process::id());
-        let panicked = std::panic::AssertUnwindSafe(
-            db.transaction(async || -> Result<()> {
-                db.utils().lock(&key).await?;
-                panic!("callback panicked")
-            })
-            .retry(0)
-            .into_future(),
-        )
-        .catch_unwind()
-        .await;
-        assert!(panicked.is_err(), "the callback panics");
+        let key_ref = &key;
+        let panicked: Result<()> = db
+            .transaction(
+                |tx: Tx| async move {
+                    tx.utils().lock(key_ref).await?;
+                    panic!("callback panicked")
+                },
+                once(),
+            )
+            .await;
+        assert!(matches!(&panicked, Err(error) if error.kind() == Kind::Internal), "the callback panics: {panicked:?}");
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
         let mut other = pool.acquire().await.expect("another connection");
         // The server waits until the closed session's lock is released.
@@ -1497,18 +1131,19 @@ mod tests {
             }
             let key = format!("orm_test.dropped.{}", std::process::id());
             let held = Arc::new(tokio::sync::Notify::new());
-            let transaction = db
-                .transaction(async || -> Result<()> {
-                    db.utils().lock(&key).await?;
+            let (key_ref, held_ref) = (&key, &held);
+            let transaction = db.transaction(
+                |tx: Tx| async move {
+                    tx.utils().lock(key_ref).await?;
                     if driver == "sqlite" {
-                        active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_dropped_probe (id) VALUES (1)").await?;
+                        tx.run(KIND_UTILITY, &[], "INSERT INTO orm_dropped_probe (id) VALUES (1)", &[]).await?;
                     }
-                    held.notify_one();
+                    held_ref.notify_one();
                     std::future::pending::<()>().await;
-                    Ok(())
-                })
-                .retry(0)
-                .into_future();
+                    Ok::<(), Error>(())
+                },
+                once(),
+            );
             tokio::select! {
                 result = transaction => panic!("{driver}: the transaction ended before the drop: {result:?}"),
                 _ = held.notified() => {}
@@ -1626,35 +1261,30 @@ mod tests {
             }
         };
         deny_on_sqlite(&db, DENY_ROLLBACK).await;
-        let error = db.transaction(async || Err::<(), _>(Error::config("callback failed"))).retry(0).await.expect_err("rollback");
+        let read_only = || TransactionOptions { read_only: Some(true), ..once() };
+        let error = db.transaction(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, once()).await.expect_err("rollback");
         both(&error, "config: callback failed");
         deny_on_sqlite(&db, DENY_ROLLBACK).await;
-        let panicked =
-            std::panic::AssertUnwindSafe(db.transaction(async || -> Result<()> { panic!("callback panicked") }).retry(0).into_future()).catch_unwind().await;
-        let payload = panicked.expect_err("the callback panics");
-        let text = payload.downcast_ref::<String>().expect("the panic carries the transaction failure");
-        assert!(
-            text.starts_with("rollback_failed: the rollback failed after the callback panicked (callback panicked): ") && text.contains("not authorized"),
-            "{text}"
-        );
+        let error = db.transaction(|_tx: Tx| panics(), once()).await.expect_err("the callback panics");
+        both(&error, "internal: the callback panicked: callback panicked");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_ON).await;
-        let error = db.transaction(async || Ok(())).read_only().retry(0).await.expect_err("begin");
+        let error = db.transaction(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("begin");
         assert!(error.to_string().contains("not authorized"), "begin: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
-        db.transaction(async || Ok(())).retry(0).await.expect("a transaction after the failed begin");
+        db.transaction(|_tx: Tx| async { Ok(()) }, once()).await.expect("a transaction after the failed begin");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
-        let error = db.transaction(async || Ok(())).read_only().retry(0).await.expect_err("commit");
+        let error = db.transaction(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("commit");
         assert!(error.to_string().contains("not authorized"), "commit: {error}");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
-        let error = db.transaction(async || Err::<(), _>(Error::config("callback failed"))).read_only().retry(0).await.expect_err("mode reset");
+        let error = db.transaction(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, read_only()).await.expect_err("mode reset");
         both(&error, "config: callback failed");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close().await;
     }
 
-    // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which end a nested transaction's savepoint, fails, the callback
-    // error, panic, and nested calls of transaction_send and transaction_once report that error together, and a successful
-    // callback returns the failed RELEASE SAVEPOINT.
+    // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which end a savepoint, fails, the failure of the callback, a panic
+    // included, and that error are reported together as rollback_failed, and a successful callback returns the failed RELEASE
+    // SAVEPOINT (CORE-21, CORE-25).
     #[tokio::test]
     // Requirements: DIA-181, PLN-17.
     async fn savepoint_end_failures_are_reported() {
@@ -1665,39 +1295,25 @@ mod tests {
         let both = |what: &str, text: &str| {
             assert!(text.starts_with("rollback_failed: the rollback failed after the callback failed") && text.contains("not authorized"), "{what}: {text}");
         };
-        let failed = || async { Err::<(), _>(Error::config("callback failed")) };
         for denied in [DENY_SAVEPOINT_ROLLBACK, DENY_SAVEPOINT_RELEASE, DENY_SAVEPOINT_END] {
             deny_on_sqlite(&db, denied).await;
-            let error = db.transaction(async || db.transaction(failed).await).retry(0).await.expect_err("callback error");
+            let error = db
+                .transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async { Err::<(), _>(Error::config("callback failed")) }).await }, once())
+                .await
+                .expect_err("callback error");
             both(&format!("callback error {denied}"), &error.to_string());
             if denied == DENY_SAVEPOINT_END {
                 assert_eq!(error.to_string().matches("not authorized").count(), 2, "both savepoint statements are reported: {error}");
             }
-            let error = db.transaction(async || db.transaction_send(failed).await).retry(0).await.expect_err("send callback error");
-            both(&format!("send callback error {denied}"), &error.to_string());
-            let error = db
-                .transaction(async || match db.transaction_once(async || Err::<(), _>(DomainFailure::Rejected)).await {
-                    Err(TransactionOnceError::Rollback { callback: DomainFailure::Rejected, rollback }) => Err::<(), Error>(rollback),
-                    other => panic!("once {denied}: {other:?}"),
-                })
-                .retry(0)
-                .await
-                .expect_err("once callback error");
-            assert!(error.to_string().contains("not authorized"), "once {denied}: {error}");
-            let panicked = std::panic::AssertUnwindSafe(
-                db.transaction(async || db.transaction(async || -> Result<()> { panic!("callback panicked") }).await).retry(0).into_future(),
-            )
-            .catch_unwind()
-            .await;
-            let payload = panicked.expect_err("the callback panics");
-            let text = payload.downcast_ref::<String>().expect("the panic carries the savepoint failure");
+            let error = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| panics()).await }, once()).await.expect_err("the callback panics");
             assert!(
-                text.starts_with("rollback_failed: the rollback failed after the callback panicked (callback panicked): ") && text.contains("not authorized"),
-                "panic {denied}: {text}"
+                error.kind() == Kind::RollbackFailed
+                    && matches!(error.callback_error(), Some(crate::CallbackFailure::Kind(callback)) if callback.kind() == Kind::Internal),
+                "panic {denied}: {error}"
             );
         }
         deny_on_sqlite(&db, DENY_SAVEPOINT_RELEASE).await;
-        let error = db.transaction(async || db.transaction(async || Ok(())).await).retry(0).await.expect_err("release");
+        let error = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async { Ok(()) }).await }, once()).await.expect_err("release");
         assert!(error.to_string().contains("not authorized"), "release: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close().await;

@@ -22,14 +22,18 @@ async fn decimal_physical(env: &str) {
     assert!(!dsn.is_empty(), "{env} is empty");
     let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let result: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            let row = DecimalCase::new().set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
-            assert_eq!(row.get_amount()?, "48.0450");
-            let loaded = DecimalCase::new().get_by_seq(1).await?.ok_or(polyspec_orm::Error::no_rows())?;
-            assert_eq!(loaded.get_amount()?, "48.0450");
-            assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
-            Err(polyspec_orm::Error::config("decimal fixture rollback"))
-        })
+        .transaction(
+            |tx: polyspec_orm::Tx| async move {
+                let row =
+                    DecimalCase::new().connect(&tx).set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
+                assert_eq!(row.get_amount()?, "48.0450");
+                let loaded = DecimalCase::new().connect(&tx).get_by_seq(1).await?.ok_or(polyspec_orm::Error::no_rows())?;
+                assert_eq!(loaded.get_amount()?, "48.0450");
+                assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
+                Err(polyspec_orm::Error::config("decimal fixture rollback"))
+            },
+            polyspec_orm::TransactionOptions::default(),
+        )
         .await;
     assert!(
         matches!(&result, Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text() == "decimal fixture rollback"),

@@ -2890,12 +2890,12 @@
             "mysql": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             },
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             }
           }
         }
@@ -3045,12 +3045,12 @@
             "mysql": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             },
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             },
             "sqlite": {
               "value": {
@@ -3180,12 +3180,12 @@
             "mysql": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             },
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
-              "rollback": "CONNECTION_LOST"
+              "rollback": "connection_lost"
             }
           }
         }
@@ -3426,19 +3426,19 @@
             "mysql": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             },
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             },
             "sqlite": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             }
           }
@@ -3674,19 +3674,19 @@
             "mysql": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             },
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             },
             "sqlite": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             }
           }
@@ -3852,13 +3852,13 @@
             "postgres": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             },
             "sqlite": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             }
           }
@@ -4045,7 +4045,7 @@
             "sqlite": {
               "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT",
+              "rollback": "fault",
               "keeps_callback": true
             }
           }
@@ -4209,7 +4209,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]
@@ -4269,7 +4269,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]
@@ -4329,7 +4329,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]
@@ -4623,7 +4623,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]
@@ -4763,7 +4763,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]
@@ -4947,7 +4947,7 @@
                       [
                         "error",
                         {
-                          "text": "DRIVER"
+                          "text": "driver"
                         }
                       ]
                     ]

@@ -8,7 +8,6 @@ use sqlx::postgres::{PgListener, PgPool, PgPoolOptions};
 
 use crate::db::{Db, Executor};
 use crate::events::KIND_UTILITY;
-use crate::tx::active_for;
 use crate::utils::step;
 use crate::value::Param;
 use crate::{Error, Result};
@@ -29,18 +28,33 @@ pub struct Subscription {
 }
 
 impl Db {
-    /// Sends `payload` to `channel` with pg_notify (DIA-193). Inside a transaction of this handle it runs on that transaction's
-    /// connection; outside one it runs on its own statement. MySQL, SQLite and a markdown connection refuse it (DIA-196).
+    /// Sends `payload` to `channel` with pg_notify (DIA-193) on its own statement; `Tx::notify` sends it in a transaction. MySQL, SQLite and a markdown connection refuse it (DIA-196).
     pub async fn notify(&self, channel: &str, payload: &str) -> Result<()> {
         self.listenable("notify")?;
         check_channel(channel)?;
         if payload.len() >= 8000 || payload.contains('\0') {
             return Err(Error::new(crate::Kind::Driver, "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000"));
         }
-        let ex = match active_for(self) {
-            Some(t) => Executor::Tx(t),
-            None => Executor::Db(self.clone()),
-        };
+        notify_on(Executor::Db(self.clone()), channel, payload).await
+    }
+}
+
+impl crate::Tx {
+    /// Sends `payload` to `channel` with pg_notify in the transaction (DIA-193); the notification is delivered when the
+    /// transaction commits. MySQL, SQLite and a markdown connection refuse it (DIA-196).
+    pub async fn notify(&self, channel: &str, payload: &str) -> Result<()> {
+        self.db().listenable("notify")?;
+        check_channel(channel)?;
+        if payload.len() >= 8000 || payload.contains('\0') {
+            return Err(Error::new(crate::Kind::Driver, "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000"));
+        }
+        notify_on(self.executor()?, channel, payload).await
+    }
+}
+
+/// Runs pg_notify on `ex` (DIA-193).
+async fn notify_on(ex: Executor, channel: &str, payload: &str) -> Result<()> {
+    {
         ex.execute_as(
             Some(KIND_UTILITY),
             Some(&[] as &[String]),
@@ -50,7 +64,9 @@ impl Db {
         .await?;
         Ok(())
     }
+}
 
+impl Db {
     /// Opens a LISTEN subscription on `channel` (DIA-194) on a connection of its own. MySQL, SQLite and a markdown connection refuse it
     /// with CAPABILITY_UNSUPPORTED (DIA-196).
     pub async fn listen(&self, channel: &str) -> Result<Subscription> {

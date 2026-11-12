@@ -6,7 +6,6 @@ use crate::or_panic::OrPanic;
 use polyspec_orm_test_support::model_row;
 
 use crate::map_rows;
-use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
@@ -103,42 +102,52 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     map_rows::for_sql_pools!(db.pool(), read)
 }
 
-/// Every transaction entry point takes audit values: transaction, transaction_send, and transaction_once take the connection's audit
-/// source and their own values, and the key of the audit record they make is written by audit-target writes; a nested transaction_once does not take audit
-/// values (CONFIG). The db has audit.dbs installed and its tables are empty.
+/// A transaction takes audit values: the connection's audit source and its own values, and the key of the audit record it
+/// makes is written by audit-target writes through its handle (INT-44, CORE-20). A transaction with no audit values that
+/// writes an audited table fails with config. The db has audit.dbs installed and its tables are empty.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn entry_points_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;
     let db = &adb;
+    let options = |actor: Option<&str>| polyspec_orm::TransactionOptions {
+        retry: Some(0),
+        audit: actor.map(|actor| vec![("actor".to_owned(), polyspec_orm::Param::from(actor))]),
+        ..Default::default()
+    };
     let seq = adb
-        .transaction(async || polyspec_orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64())
-        .audit([("actor", "transaction")])
-        .retry(0)
+        .transaction(
+            |tx: polyspec_orm::Tx| async move {
+                let mut item = new_item("first");
+                item.core_mut().connect(&tx);
+                polyspec_orm::model::create(&mut item).await?.value("seq").expect("generated seq").as_i64()
+            },
+            options(Some("transaction")),
+        )
         .await
         .or_panic(|e| format!("{driver}: transaction: {e}"));
-    adb.transaction_send(|| async { polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await })
-        .audit([("actor", "send")])
-        .retry(0)
+    for (title, actor) in [("second", "send"), ("third", "once")] {
+        adb.transaction(
+            |tx: polyspec_orm::Tx| async move {
+                let mut item = changed_item(seq, title);
+                item.core_mut().connect(&tx);
+                polyspec_orm::model::update(&mut item, false).await
+            },
+            options(Some(actor)),
+        )
         .await
-        .or_panic(|e| format!("{driver}: transaction_send: {e}"));
-    adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "third"), false).await)
-        .audit([("actor", "once")])
-        .await
-        .or_panic(|e| format!("{driver}: transaction_once: {e:?}"));
-    let without = adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "fourth"), false).await).await;
-    assert!(
-        matches!(&without, Err(polyspec_orm::TransactionOnceError::Callback(e)) if e.kind() == polyspec_orm::Kind::Config),
-        "{driver}: transaction_once without an audit: {without:?}"
-    );
-    let nested = adb
-        .transaction(async || match adb.transaction_once(async || Ok::<(), polyspec_orm::Error>(())).audit([("actor", "nested")]).await {
-            Err(polyspec_orm::TransactionOnceError::Orm(e)) => Err::<(), polyspec_orm::Error>(e),
-            other => panic!("{driver}: nested transaction_once with an audit: {other:?}"),
-        })
-        .audit(NO_VALUES)
-        .retry(0)
+        .or_panic(|e| format!("{driver}: transaction {actor}: {e}"));
+    }
+    let without = adb
+        .transaction(
+            |tx: polyspec_orm::Tx| async move {
+                let mut item = changed_item(seq, "fourth");
+                item.core_mut().connect(&tx);
+                polyspec_orm::model::update(&mut item, false).await
+            },
+            options(None),
+        )
         .await;
-    assert_eq!(code(nested), "config", "{driver}: a nested transaction_once audit");
+    assert!(matches!(&without, Err(e) if e.kind() == polyspec_orm::Kind::Config), "{driver}: a transaction without an audit: {without:?}");
     let records = audit_records(db).await;
     let want = [("1", "transaction"), ("2", "send"), ("3", "once")].map(|(s, a)| (s.to_owned(), a.to_owned()));
     assert_eq!(records, want, "{driver}: audit records");

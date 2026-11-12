@@ -235,10 +235,11 @@ impl<M: Model> Collection<M> {
         self.fetched.get(&key.into())
     }
 
-    /// Sets the connection of every model.
-    pub fn connect(mut self, db: &crate::Db) -> Self {
+    /// Sets the connection of every model: a `Db` or the `Tx` of a transaction (CORE-20).
+    pub fn connect(mut self, connection: impl Into<crate::Connection>) -> Self {
+        let connection = connection.into();
         for m in self.items.values_mut() {
-            m.core_mut().connect(db);
+            m.core_mut().connect(connection.clone());
         }
         self
     }
@@ -248,9 +249,9 @@ impl<M: Model> Collection<M> {
     pub async fn delete(&self, recursive: bool) -> Result<()> {
         let Some(first) = self.first() else { return Ok(()) };
         let conn = first.core().conn.clone();
-        crate::model::in_transaction(&conn, async || {
+        crate::model::in_transaction(&conn, |unit: crate::Connection| async move {
             for m in self.models() {
-                crate::model::delete_row(m, recursive).await?;
+                crate::model::delete_row(m, recursive, Some(&unit)).await?;
             }
             Ok(())
         })

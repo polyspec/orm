@@ -20,7 +20,7 @@ pub fn models() -> Box<dyn ModelDispatcher> {
 pub struct ModelWrites;
 
 impl BenchModels for ModelWrites {
-    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+    async fn run(&self, db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
         run(db, op, step).await
     }
 
@@ -46,7 +46,7 @@ fn account_key(key: &Value) -> Result<(i64, i64), String> {
 }
 
 /// Writes `name` to the name column of the row of `key` on `db`, a read and then an update.
-async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_orm::Result<()> {
+async fn write_account_name(db: &polyspec_orm::Connection, key: (i64, i64), name: &str) -> polyspec_orm::Result<()> {
     let row = account(db).get_by_tenant_id_and_account_id(key.0, key.1).await?;
     let row = row.ok_or_else(|| polyspec_orm::Error::config(format!("composite_account {key:?} is missing")))?;
     row.set_name(name).update(false).await?;
@@ -55,7 +55,7 @@ async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_or
 
 /// Two flows write two rows in opposite order (PLN-24), each on its own thread and connection: each holds its first row until
 /// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
-async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, ModelError> {
+async fn transaction_deadlock(db: &polyspec_orm::Connection, step: &Value) -> Result<Value, ModelError> {
     if polyspec_orm_tests::recipe_reads::read(step, "column")["column"] != "name" {
         return Err(format!("CompositeAccount column {} has no recipe deadlock", polyspec_orm_tests::recipe_reads::read(step, "column")["column"]).into());
     }
@@ -77,22 +77,27 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, ModelError
                     let attempts = std::cell::Cell::new(0_u64);
                     let deadlocks = std::cell::Cell::new(0_u64);
                     let result: polyspec_orm::Result<()> = conn
-                        .transaction(async || {
-                            attempts.set(attempts.get() + 1);
-                            let first_attempt = attempts.get() == 1;
-                            let first = write_account_name(&conn, keys[index], &name).await;
-                            if first_attempt {
-                                held.wait();
-                            }
-                            first?;
-                            let second = write_account_name(&conn, keys[1 - index], &name).await;
-                            if first_attempt && second.as_ref().is_err_and(|error| error.code() == "deadlock") {
-                                deadlocks.set(1);
-                            }
-                            second
-                        })
-                        .isolation(polyspec_orm::Isolation::ReadCommitted)
-                        .retry(3)
+                        .transaction(
+                            |tx: polyspec_orm::Tx| {
+                                let (attempts, deadlocks, name, held) = (&attempts, &deadlocks, &name, &held);
+                                async move {
+                                    let tx = polyspec_orm::Connection::Tx(tx);
+                                    attempts.set(attempts.get() + 1);
+                                    let first_attempt = attempts.get() == 1;
+                                    let first = write_account_name(&tx, keys[index], name).await;
+                                    if first_attempt {
+                                        held.wait();
+                                    }
+                                    first?;
+                                    let second = write_account_name(&tx, keys[1 - index], name).await;
+                                    if first_attempt && second.as_ref().is_err_and(|error| error.code() == "deadlock") {
+                                        deadlocks.set(1);
+                                    }
+                                    second
+                                }
+                            },
+                            polyspec_orm::TransactionOptions { isolation: Some(polyspec_orm::Isolation::ReadCommitted), retry: Some(3), ..Default::default() },
+                        )
                         .await;
                     conn.close().await;
                     result.map_err(fail)?;
@@ -118,7 +123,7 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, ModelError
 }
 
 /// model.create and model.count of RankedTask, whose order column the application writes (DBS-79).
-async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn ranked_task(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     if op == "model.count" {
         let filter = &polyspec_orm_tests::recipe_reads::read(step, "where")["where"];
         if !filter.is_null() && filter.as_object().is_none_or(|filter| !filter.is_empty()) {
@@ -139,7 +144,7 @@ async fn ranked_task(db: &Db, op: &str, step: &Value) -> Result<Value, ModelErro
 }
 
 /// The op of `step` on `db`: its fields, which the expect of the step compares.
-async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn run(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "transaction.deadlock" => transaction_deadlock(db, step).await,
         "model.create" | "model.count" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "RankedTask" => ranked_task(db, op, step).await,
@@ -312,16 +317,16 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
 }
 
 /// The affected count of the last write on db, the value that the expect of a model write names (F15, PRT-59).
-fn affected(db: &Db) -> Value {
-    json!({ "value": { "int": polyspec_orm::testing::last_affected(db).unwrap_or_default().to_string() } })
+fn affected(db: &polyspec_orm::Connection) -> Value {
+    json!({ "value": { "int": polyspec_orm::testing::last_affected(db.db()).unwrap_or_default().to_string() } })
 }
 
-fn account(db: &Db) -> CompositeAccount {
+fn account(db: &polyspec_orm::Connection) -> CompositeAccount {
     CompositeAccount::new().connect(db)
 }
 
 /// A CompositeAccount with the columns of `values`, which are the setters of the recipe.
-fn set_account(db: &Db, values: &Value) -> Result<CompositeAccount, String> {
+fn set_account(db: &polyspec_orm::Connection, values: &Value) -> Result<CompositeAccount, String> {
     assign_account(account(db), values)
 }
 
@@ -340,7 +345,7 @@ fn assign_account(mut row: CompositeAccount, values: &Value) -> Result<Composite
 
 /// The CompositeAccount filter of the equalities of `where`: tenant_id first, then account_id as the AND of the builder
 /// (the generated name of the account_id filter is and_account_id, since the model has a field of that name).
-fn filter_account(db: &Db, where_: &Value) -> Result<CompositeAccount, String> {
+fn filter_account(db: &polyspec_orm::Connection, where_: &Value) -> Result<CompositeAccount, String> {
     let map = columns(where_)?;
     if let Some(column) = map.keys().find(|column| *column != "tenant_id" && *column != "account_id") {
         return Err(format!("CompositeAccount column {column} has no recipe filter"));
@@ -355,12 +360,12 @@ fn filter_account(db: &Db, where_: &Value) -> Result<CompositeAccount, String> {
     Ok(query)
 }
 
-fn membership(db: &Db) -> CompositeMembership {
+fn membership(db: &polyspec_orm::Connection) -> CompositeMembership {
     CompositeMembership::new().connect(db)
 }
 
 /// A CompositeMembership with the columns of `values`, which are the setters of the recipe.
-fn set_membership(db: &Db, values: &Value) -> Result<CompositeMembership, String> {
+fn set_membership(db: &polyspec_orm::Connection, values: &Value) -> Result<CompositeMembership, String> {
     let mut row = membership(db);
     for (column, value) in columns(values)? {
         row = match column.as_str() {
@@ -374,7 +379,7 @@ fn set_membership(db: &Db, values: &Value) -> Result<CompositeMembership, String
 }
 
 /// The CompositeMembership filter of the equalities of `where`, which the recipe names by tenant_id only.
-fn filter_membership(db: &Db, where_: &Value) -> Result<CompositeMembership, String> {
+fn filter_membership(db: &polyspec_orm::Connection, where_: &Value) -> Result<CompositeMembership, String> {
     let map = columns(where_)?;
     if let Some(column) = map.keys().find(|column| *column != "tenant_id") {
         return Err(format!("CompositeMembership column {column} has no recipe filter"));
@@ -406,7 +411,7 @@ fn tuple_account(query: CompositeAccount, tuples: &Value, after: bool) -> Result
 
 /// The CompositeMembership relation of a model.query on CompositeAccount: matched by its pairs in the written order, and
 /// connected to the connection of the query when connect is true.
-fn membership_relation(relation: &Value, db: &Db) -> Result<CompositeMembership, String> {
+fn membership_relation(relation: &Value, db: &polyspec_orm::Connection) -> Result<CompositeMembership, String> {
     if relation["model"] != "CompositeMembership" {
         return Err(format!("CompositeAccount relation {} has no recipe entry", relation["model"]));
     }
@@ -434,13 +439,13 @@ fn membership_children<'a>(row: &'a CompositeAccount, relation: &Value) -> Resul
 }
 
 /// The CompositeAccount row of a key with `tenant_id` and `account_id`, or None when no row has it.
-async fn find_account(db: &Db, key: &Value) -> Result<Option<CompositeAccount>, ModelError> {
+async fn find_account(db: &polyspec_orm::Connection, key: &Value) -> Result<Option<CompositeAccount>, ModelError> {
     account(db).get_by_tenant_id_and_account_id(int(&key["tenant_id"])?, int(&key["account_id"])?).await.map_err(fail)
 }
 
 /// The Author chain of the equalities of `where`: the int equalities in name order, joined by and(()), then the bool equality
 /// of is_close, which the generated chain cannot open with; then the projection of `columns`, when it names any.
-fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, String> {
+fn author_chain(db: &polyspec_orm::Connection, where_: &Value, columns: &[String]) -> Result<Author, String> {
     let (mut ints, mut bools) = (Vec::new(), Vec::new());
     for (column, wrapper) in columns_of(where_)? {
         if wrapper.get("bool").is_some() {
@@ -490,7 +495,7 @@ fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, S
 
 /// model.query on the Author model: the chain of `where`, the orders (a leading "-" is descending), the window when limit or
 /// offset is greater than 0, and the projection of `columns`, each cell a recipe wrapper.
-async fn author_query(db: &Db, step: &Value) -> Result<Value, ModelError> {
+async fn author_query(db: &polyspec_orm::Connection, step: &Value) -> Result<Value, ModelError> {
     let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
     let mut author = author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &wanted)?;
     for order in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {

@@ -52,9 +52,9 @@ typed_model!(ZoneEvent, ENTITY, {
     created_ts: NaiveDateTime = "created_ts",
 });
 
-fn event(db: &Db) -> ZoneEvent {
+fn event(connection: impl Into<polyspec_orm::Connection>) -> ZoneEvent {
     let mut core = Core::new(&ENTITY);
-    core.connect(db);
+    core.connect(connection);
     ZoneEvent::from_core(core)
 }
 
@@ -320,28 +320,36 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
             Some((holder, held))
         };
         let committed = if held.is_some() { 1 } else { 0 };
-        let tx_db = db.clone();
         let dropped = tokio::time::timeout(
             std::time::Duration::from_millis(300),
-            db.transaction(async || {
-                let mut row = event(&tx_db);
-                row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-                polyspec_orm::model::create(&mut row).await?;
-                if driver == "sqlite" {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                } else {
-                    let mut core = Core::new(&ENTITY);
-                    core.connect(&tx_db);
-                    core.lock("update");
-                    polyspec_orm::model::get(&ZoneEvent::from_core(core)).await?;
-                }
-                Ok::<(), polyspec_orm::Error>(())
-            })
-            .retry(0),
+            db.transaction(
+                |tx: polyspec_orm::Tx| async move {
+                    let mut row = event(&tx);
+                    row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+                    polyspec_orm::model::create(&mut row).await?;
+                    if driver == "sqlite" {
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    } else {
+                        let mut core = Core::new(&ENTITY);
+                        core.connect(&tx);
+                        core.lock("update");
+                        polyspec_orm::model::get(&ZoneEvent::from_core(core)).await?;
+                    }
+                    Ok::<(), polyspec_orm::Error>(())
+                },
+                polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
+            ),
         )
         .await;
         assert!(dropped.is_err(), "{driver}: transaction future completed before it was dropped");
-        let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), polyspec_orm::Error>(())).retry(0)).await;
+        let next = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            db.transaction(
+                |_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) },
+                polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
+            ),
+        )
+        .await;
         assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
         if let Some((holder, held)) = held {
             held.release().await;

@@ -1,10 +1,11 @@
 //! Connects a test model to the database using its declared entity.
 
-use polyspec_orm::{Core, Db, Model};
+use polyspec_orm::{Connection, Core, Model};
 
-pub fn connected<M: Model>(db: &Db) -> M {
+/// A model connected to a `Db` or to the `Tx` of a transaction.
+pub fn connected<M: Model>(connection: impl Into<Connection>) -> M {
     let mut core = Core::new(M::entity());
-    core.connect(db);
+    core.connect(connection);
     M::from_core(core)
 }
 
@@ -12,8 +13,8 @@ pub fn with<M: Model>(values: &[(&str, polyspec_orm::Param)]) -> M {
     with_values(M::from_core(Core::new(M::entity())), values)
 }
 
-pub fn connected_with<M: Model>(db: &Db, values: &[(&str, polyspec_orm::Param)]) -> M {
-    with_values(connected(db), values)
+pub fn connected_with<M: Model>(connection: impl Into<Connection>, values: &[(&str, polyspec_orm::Param)]) -> M {
+    with_values(connected(connection), values)
 }
 
 fn with_values<M: Model>(mut model: M, values: &[(&str, polyspec_orm::Param)]) -> M {

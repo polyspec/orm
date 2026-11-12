@@ -4829,7 +4829,7 @@
                       [
                         "error",
                         {
-                          "text": "DUPLICATE_KEY"
+                          "text": "duplicate_key"
                         }
                       ]
                     ]
@@ -4975,7 +4975,7 @@
                       [
                         "error",
                         {
-                          "text": "DUPLICATE_KEY"
+                          "text": "duplicate_key"
                         }
                       ]
                     ]
@@ -5121,7 +5121,7 @@
                       [
                         "error",
                         {
-                          "text": "DUPLICATE_KEY"
+                          "text": "duplicate_key"
                         }
                       ]
                     ]

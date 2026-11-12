@@ -56,7 +56,7 @@ pub use ordered_json;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;
-pub use tx::{transaction_conflict, Isolation, SendTransaction, Transaction, TransactionOnce, TransactionOnceError, TransactionOnceFuture, TxFrame};
+pub use tx::{transaction_conflict, Connection, Isolation, TransactionOptions, Tx, DEFAULT_RETRY};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 

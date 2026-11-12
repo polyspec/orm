@@ -24,14 +24,16 @@ const WRITER_NAME: &str = "ORM_SQLITE_WRITER_NAME";
 
 /// Runs one transaction that reads the service count and then inserts the service `label`.
 async fn write_service(db: &Db, label: &str) -> polyspec_orm::Result<()> {
-    db.transaction(async || {
-        polyspec_orm::model::get_count(service(None).core()).await?;
-        let mut row = service(None);
-        row.core_mut().set("name", Param::Str(label.to_owned()));
-        polyspec_orm::model::create(&mut row).await?;
-        Ok(())
-    })
-    .retry(0)
+    db.transaction(
+        |tx: polyspec_orm::Tx| async move {
+            polyspec_orm::model::get_count(service(Some((&tx).into())).core()).await?;
+            let mut row = service(Some((&tx).into()));
+            row.core_mut().set("name", Param::Str(label.to_owned()));
+            polyspec_orm::model::create(&mut row).await?;
+            Ok(())
+        },
+        polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
+    )
     .await
 }
 
@@ -60,7 +62,7 @@ async fn run_writers(dbs: &[Db], prefix: &str, n: usize) -> Vec<String> {
 }
 
 async fn count(db: &Db) -> i64 {
-    polyspec_orm::model::get_count(service(Some(db)).core()).await.unwrap()
+    polyspec_orm::model::get_count(service_model::service_on(db).core()).await.unwrap()
 }
 
 #[tokio::main(flavor = "current_thread")]

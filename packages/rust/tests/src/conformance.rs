@@ -4,6 +4,7 @@
 //!
 //! Usage: conformance --dsn URI [--vector NAME]...
 //! Each --vector selects one vector by name; without one every vector runs.
+use polyspec_orm::{TransactionOptions, Tx};
 use polyspec_orm_testcase::OrPanic;
 use polyspec_orm_tests::recipe_error::RecipeCode as _;
 
@@ -93,7 +94,7 @@ async fn main() {
         ..Default::default()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
-    db.transaction(async || Ok(())).retry(0).await.expect("prepare conformance connection");
+    db.transaction(|_tx: Tx| async { Ok(()) }, TransactionOptions { retry: Some(0), ..Default::default() }).await.expect("prepare conformance connection");
     // Records each statement as that event (docs/operations/usage.md "Statement events"). A transaction's
     // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
     // code, or null.
@@ -211,54 +212,59 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
 
     run!(
         "now_defaults",
-        db.transaction(async || {
-            let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
-            let before = chrono::Utc::now().naive_utc();
-            let created = author()
-                .set_name("clock")
-                .set_user_seq(1)
-                .set_service_seq(999)
-                .set_service_region_seq(1)
-                .set_service_member_seq(1)
-                .set_start_dt(txt(start))?
-                .set_end_dt(txt(start))?
-                .create()
-                .await?;
-            let seq = created.get_seq().unwrap();
-            mask(shared, &[seq]);
-            let loaded = author().get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
-            let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
-            // The runner connects in +00:00, so the wall-clock value is UTC.
-            let near = (created_ts - before).num_seconds().abs() < 60;
-            loaded.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
-        })
-        .retry(0)
+        db.transaction(
+            |tx: Tx| async move {
+                let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+                let before = chrono::Utc::now().naive_utc();
+                let created = Author::new()
+                    .connect(&tx)
+                    .set_name("clock")
+                    .set_user_seq(1)
+                    .set_service_seq(999)
+                    .set_service_region_seq(1)
+                    .set_service_member_seq(1)
+                    .set_start_dt(txt(start))?
+                    .set_end_dt(txt(start))?
+                    .create()
+                    .await?;
+                let seq = created.get_seq().unwrap();
+                mask(shared, &[seq]);
+                let loaded = Author::new().connect(&tx).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
+                let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
+                // The runner connects in +00:00, so the wall-clock value is UTC.
+                let near = (created_ts - before).num_seconds().abs() < 60;
+                loaded.delete(false).await?;
+                Ok::<Value, polyspec_orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() }
+        )
     );
     run!(
         "delete_recursive",
-        db.transaction(async || {
-            let service = Service::new().connect(db).set_name("recursive").create().await?;
-            let seq = service.get_seq().unwrap();
-            let mut seqs = vec![seq];
-            for i in 0..2 {
-                let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
-                seqs.push(member.get_seq().unwrap());
-            }
-            let loaded = Service::new()
-                .connect(db)
-                .relations(ServiceMember::new().match_seq_with_service_seq())
-                .get_by_seq(seq)
-                .await?
-                .ok_or(polyspec_orm::Error::no_rows())?;
-            let members = loaded.get_service_member_models()?.expect("selected service members").len();
-            mask(shared, &seqs);
-            loaded.delete(true).await?;
-            let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
-            let service2 = Service::new().connect(db).get_by_seq(seq).await;
-            Ok::<Value, polyspec_orm::Error>(json!({"members": members, "members_left": left, "service_left": code_of(service2)}))
-        })
-        .retry(0)
+        db.transaction(
+            |tx: Tx| async move {
+                let service = Service::new().connect(&tx).set_name("recursive").create().await?;
+                let seq = service.get_seq().unwrap();
+                let mut seqs = vec![seq];
+                for i in 0..2 {
+                    let member = ServiceMember::new().connect(&tx).set_service_seq(seq).set_user_seq(i + 1).create().await?;
+                    seqs.push(member.get_seq().unwrap());
+                }
+                let loaded = Service::new()
+                    .connect(&tx)
+                    .relations(ServiceMember::new().match_seq_with_service_seq())
+                    .get_by_seq(seq)
+                    .await?
+                    .ok_or(polyspec_orm::Error::no_rows())?;
+                let members = loaded.get_service_member_models()?.expect("selected service members").len();
+                mask(shared, &seqs);
+                loaded.delete(true).await?;
+                let left = ServiceMember::new().connect(&tx).get_count_by_service_seq(seq).await?;
+                let service2 = Service::new().connect(&tx).get_by_seq(seq).await;
+                Ok::<Value, polyspec_orm::Error>(json!({"members": members, "members_left": left, "service_left": code_of(service2)}))
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() }
+        )
     );
 
     // the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
@@ -272,28 +278,30 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     // test entry point (docs/spec/protocol.md "Test write result").
     run!(
         "affected_counts",
-        db.transaction(async || {
-            let created = UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
-            let seq = created.get_seq().unwrap();
-            mask(shared, &[seq]);
-            let upsert_inserted = polyspec_orm::testing::last_affected(db);
-            UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
-            let upsert_updated = polyspec_orm::testing::last_affected(db);
-            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?.set_label("y");
-            row.update(false).await?;
-            let update_unchanged = polyspec_orm::testing::last_affected(db);
-            let mut row = row.set_label("z");
-            row.update(false).await?;
-            let update_changed = polyspec_orm::testing::last_affected(db);
-            row.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(json!({
-                "upsert_inserted": upsert_inserted,
-                "upsert_updated": upsert_updated,
-                "update_unchanged": update_unchanged,
-                "update_changed": update_changed
-            }))
-        })
-        .retry(0)
+        db.transaction(
+            |tx: Tx| async move {
+                let created = UpsertCell::new().connect(&tx).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
+                let seq = created.get_seq().unwrap();
+                mask(shared, &[seq]);
+                let upsert_inserted = polyspec_orm::testing::last_affected(db);
+                UpsertCell::new().connect(&tx).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
+                let upsert_updated = polyspec_orm::testing::last_affected(db);
+                let mut row = UpsertCell::new().connect(&tx).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?.set_label("y");
+                row.update(false).await?;
+                let update_unchanged = polyspec_orm::testing::last_affected(db);
+                let mut row = row.set_label("z");
+                row.update(false).await?;
+                let update_changed = polyspec_orm::testing::last_affected(db);
+                row.delete(false).await?;
+                Ok::<Value, polyspec_orm::Error>(json!({
+                    "upsert_inserted": upsert_inserted,
+                    "upsert_updated": upsert_updated,
+                    "update_unchanged": update_unchanged,
+                    "update_changed": update_changed
+                }))
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() }
+        )
     );
     // One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
     // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
@@ -302,43 +310,47 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     // the connection.
     run!(
         "clock_truncate_write",
-        db.transaction(async || {
-            use chrono::SubsecRound;
-            polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
-            let created = ClockCell::new().connect(db).set_label("write").create().await?;
-            let seq = created.get_seq().unwrap();
-            mask(shared, &[seq]);
-            let row = ClockCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
-            row.delete(false).await?;
-            let at6 = row.get_at6()?;
-            Ok::<Value, polyspec_orm::Error>(json!({
-                "at6_fixed": at6.format("%Y-%m-%d %H:%M:%S%.6f").to_string() == "2026-06-01 12:34:56.999999",
-                "p0_truncated": row.get_at0()? == at6.trunc_subsecs(0),
-                "p3_truncated": row.get_at3()? == at6.trunc_subsecs(3),
-            }))
-        })
-        .retry(0)
+        db.transaction(
+            |tx: Tx| async move {
+                use chrono::SubsecRound;
+                polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
+                let created = ClockCell::new().connect(&tx).set_label("write").create().await?;
+                let seq = created.get_seq().unwrap();
+                mask(shared, &[seq]);
+                let row = ClockCell::new().connect(&tx).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
+                row.delete(false).await?;
+                let at6 = row.get_at6()?;
+                Ok::<Value, polyspec_orm::Error>(json!({
+                    "at6_fixed": at6.format("%Y-%m-%d %H:%M:%S%.6f").to_string() == "2026-06-01 12:34:56.999999",
+                    "p0_truncated": row.get_at0()? == at6.trunc_subsecs(0),
+                    "p3_truncated": row.get_at3()? == at6.trunc_subsecs(3),
+                }))
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() }
+        )
     );
     run!(
         "clock_compare_six_digits",
-        db.transaction(async || {
-            polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
-            let day = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
-            let created = ClockCell::new()
-                .connect(db)
-                .set_label("compare")
-                .set_at0(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
-                .set_at3(txt(day.and_hms_milli_opt(12, 34, 56, 999).unwrap()))?
-                .set_at6(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
-                .create()
-                .await?;
-            mask(shared, &[created.get_seq().unwrap()]);
-            let ge_now = ClockCell::new().connect(db).label("compare").and_ge_at0(polyspec_orm::now()).get_count().await?;
-            let lt_now = ClockCell::new().connect(db).label("compare").and_lt_at3(polyspec_orm::now()).get_count().await?;
-            created.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(json!({"at0_ge_now": ge_now, "at3_lt_now": lt_now}))
-        })
-        .retry(0)
+        db.transaction(
+            |tx: Tx| async move {
+                polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
+                let day = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
+                let created = ClockCell::new()
+                    .connect(&tx)
+                    .set_label("compare")
+                    .set_at0(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
+                    .set_at3(txt(day.and_hms_milli_opt(12, 34, 56, 999).unwrap()))?
+                    .set_at6(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
+                    .create()
+                    .await?;
+                mask(shared, &[created.get_seq().unwrap()]);
+                let ge_now = ClockCell::new().connect(&tx).label("compare").and_ge_at0(polyspec_orm::now()).get_count().await?;
+                let lt_now = ClockCell::new().connect(&tx).label("compare").and_lt_at3(polyspec_orm::now()).get_count().await?;
+                created.delete(false).await?;
+                Ok::<Value, polyspec_orm::Error>(json!({"at0_ge_now": ge_now, "at3_lt_now": lt_now}))
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() }
+        )
     );
     out
 }

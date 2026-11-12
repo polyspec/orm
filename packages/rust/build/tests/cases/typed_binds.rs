@@ -207,7 +207,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
             if changed.rows[0][1] != GridCell::Null || changed.rows[0][2] != GridCell::Binary(vec![]) {
                 failures.push("updated-null-empty-binary");
             }
-            connection.exec("rollback_failed", &[]).await.expect("rollback owned update");
+            connection.exec("ROLLBACK", &[]).await.expect("rollback owned update");
             if connection.grid_query_bounded(&read, &[], QueryLimits::default()).await.expect("rollback verification").rows != vec![expected] {
                 failures.push("rollback-or-rejected-write");
             }

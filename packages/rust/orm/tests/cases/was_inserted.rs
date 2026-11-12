@@ -7,14 +7,18 @@ use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};
 
 use std::time::Duration;
 
-use polyspec_orm::{Db, Model, Param, Val};
+use polyspec_orm::{Db, Model, Param, TransactionOptions, Tx, Val};
+
+fn once() -> TransactionOptions {
+    TransactionOptions { retry: Some(0), ..Default::default() }
+}
 use polyspec_orm_case_database::CaseDatabase;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
 
-/// Inserts one clock event with label in the active transaction and returns its identity key.
-async fn insert_event(db: &Db, label: &str) -> i64 {
-    let mut row = connected::<ClockEvent>(db);
+/// Inserts one clock event with label in the transaction of `tx` and returns its identity key.
+async fn insert_event(tx: &Tx, label: &str) -> i64 {
+    let mut row = connected::<ClockEvent>(tx);
     row.core_mut().set("label", Param::from(label));
     let created = polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("create {label}: {e}"));
     match created.value("seq") {
@@ -28,32 +32,35 @@ async fn insert_event(db: &Db, label: &str) -> i64 {
 /// to ten seconds.
 async fn postgres_waiter(dsn: &str, db: &Db) {
     let utils = db.utils();
-    let seq = db.transaction(async || Ok(insert_event(db, "held").await)).retry(0).await.or_panic(|e| format!("postgres: {e}"));
+    let seq = db.transaction(|tx: Tx| async move { Ok(insert_event(&tx, "held").await) }, once()).await.or_panic(|e| format!("postgres: {e}"));
+    let utils = &utils;
     let (waiting, waiter) = db
-        .transaction(async || {
-            let mut row = connected::<ClockEvent>(db);
-            row.core_mut().set("seq", Param::from(seq));
-            row.core_mut().set("label", Param::from("parent"));
-            polyspec_orm::model::update(&mut row, false).await?;
-            let owned = dsn.to_owned();
-            let waiter = tokio::spawn(async move {
-                let other = Db::connect_schema(&owned, &CLOCK_SCHEMA, 1, polyspec_orm::Config::default()).await?;
-                let mut row = connected::<ClockEvent>(&other);
+        .transaction(
+            |tx: Tx| async move {
+                let mut row = connected::<ClockEvent>(&tx);
                 row.core_mut().set("seq", Param::from(seq));
-                row.core_mut().set("label", Param::from("waiter"));
-                let result = polyspec_orm::model::update(&mut row, false).await;
-                other.close().await;
-                result
-            });
-            let deadline = std::time::Instant::now() + Duration::from_secs(10);
-            let mut waiting = false;
-            while !waiting && std::time::Instant::now() < deadline {
-                waiting = utils.backend_waiting_for_lock().await?;
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
-            Ok((waiting, waiter))
-        })
-        .retry(0)
+                row.core_mut().set("label", Param::from("parent"));
+                polyspec_orm::model::update(&mut row, false).await?;
+                let owned = dsn.to_owned();
+                let waiter = tokio::spawn(async move {
+                    let other = Db::connect_schema(&owned, &CLOCK_SCHEMA, 1, polyspec_orm::Config::default()).await?;
+                    let mut row = connected::<ClockEvent>(&other);
+                    row.core_mut().set("seq", Param::from(seq));
+                    row.core_mut().set("label", Param::from("waiter"));
+                    let result = polyspec_orm::model::update(&mut row, false).await;
+                    other.close().await;
+                    result
+                });
+                let deadline = std::time::Instant::now() + Duration::from_secs(10);
+                let mut waiting = false;
+                while !waiting && std::time::Instant::now() < deadline {
+                    waiting = utils.backend_waiting_for_lock().await?;
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+                Ok((waiting, waiter))
+            },
+            once(),
+        )
         .await
         .or_panic(|e| format!("postgres: {e}"));
     assert!(waiting, "postgres: the waiting backend is reported while the transaction holds the row");

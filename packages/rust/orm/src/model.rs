@@ -17,7 +17,7 @@ use crate::ir;
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
 use crate::schema::Schema;
-use crate::tx::resolve;
+use crate::tx::{resolve, Connection};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 use polyspec_orm_schema::dbspec;
@@ -391,8 +391,12 @@ fn val_param_key(p: &Param) -> String {
 
 /// Applies the request hook of the handle the model runs on to req before planning. The handle is the handle the model is bound to, and
 /// if there is no connection, it is the handle that started the transaction (docs/operations/usage.md "Request hook").
-fn hook_request(conn: &Option<Db>, ex: &Executor, req: &mut Req) -> Result<()> {
-    apply_request_hook(conn.as_ref().unwrap_or_else(|| ex.db()), req)
+fn hook_request(conn: &Option<Connection>, ex: &Executor, req: &mut Req) -> Result<()> {
+    let db = match conn {
+        Some(connection) => connection.db(),
+        None => ex.db(),
+    };
+    apply_request_hook(db, req)
 }
 
 /// The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8).
@@ -412,13 +416,13 @@ fn checked_lock(ex: &Executor, req: &Req) -> Result<String> {
     Ok(lock)
 }
 
-async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
+async fn select(ex: &Executor, conn: &Option<Connection>, req: &mut Req) -> Result<QueryResult> {
     select_page(ex, conn, req, None).await
 }
 
 /// Runs a read. With `keep`, the size of a lookahead page, the root rows past `keep` set `has_next` and are dropped before
 /// the relation steps read their parents (INT-164).
-async fn select_page(ex: &Executor, conn: &Option<Db>, req: &mut Req, keep: Option<usize>) -> Result<QueryResult> {
+async fn select_page(ex: &Executor, conn: &Option<Connection>, req: &mut Req, keep: Option<usize>) -> Result<QueryResult> {
     hook_request(conn, ex, req)?;
     let db = ex.db().clone();
     // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
@@ -496,7 +500,7 @@ fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
 
 struct Assembler<'a> {
     res: &'a QueryResult,
-    conn: Option<Db>,
+    conn: Option<Connection>,
 }
 
 /// A model under assembly: children attach before it is moved into its parent.
@@ -1066,23 +1070,27 @@ pub async fn get_query(c: &Core) -> Result<Statement> {
     let ex = terminal(c)?;
     let mut req = build(c, "all");
     hook_request(&c.conn, &ex, &mut req)?;
-    ex.db().statement(&mut req).await
+    let audit = match &ex {
+        Executor::Tx(t) => t.audit(),
+        Executor::Db(_) => None,
+    };
+    ex.db().statement(&mut req, audit).await
 }
 
 // ---- writes ----
 
-pub(crate) async fn in_transaction<T, F, Fut>(conn: &Option<Db>, f: F) -> Result<T>
+/// Runs the statements of one write of several statements in one unit (INT-46): a new transaction without retry on a
+/// pool, or a savepoint of the transaction of a handle. `f` receives the connection of that unit, on which every
+/// statement of the write runs.
+pub(crate) async fn in_transaction<T, F, Fut>(conn: &Option<Connection>, f: F) -> Result<T>
 where
-    F: Fn() -> Fut + Send + Sync,
-    Fut: Future<Output = Result<T>> + Send,
-    T: Send,
+    F: Fn(Connection) -> Fut,
+    Fut: Future<Output = Result<T>>,
 {
     match conn {
-        Some(db) => db.transaction_send(f).retry(0).await,
-        None => {
-            resolve(&None)?;
-            f().await
-        }
+        Some(Connection::Db(db)) => db.transaction(|tx| f(Connection::Tx(tx)), crate::TransactionOptions { retry: Some(0), ..Default::default() }).await,
+        Some(Connection::Tx(tx)) => tx.savepoint(|savepoint| f(Connection::Tx(savepoint))).await,
+        None => Err(Error::config("the model has no connection; connect it to a Db or to the Tx of a transaction")),
     }
 }
 
@@ -1138,12 +1146,12 @@ pub(crate) fn validate_host_value(styles: &[String], value: &Param) -> Result<()
 
 /// Runs insert, update, delete, and restore, and returns the key of the inserted row, the generated identity, and the number of
 /// changed rows. Null if there is no key.
-async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
+async fn write(ex: &Executor, conn: &Option<Connection>, req: &mut Req) -> Result<(Val, u64)> {
     write_after_hook(ex, conn, req, |_| Ok(())).await
 }
 
 /// write, with `after` run on the request as the request hook left it, before the planner renumbers its parameters.
-async fn write_after_hook(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
+async fn write_after_hook(ex: &Executor, conn: &Option<Connection>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
     let written = write_request(ex, conn, req, after).await;
     if let (Ok((key, _)), Executor::Tx(t)) = (&written, ex) {
         record_inserted(t, req, key);
@@ -1155,7 +1163,7 @@ async fn write_after_hook(ex: &Executor, conn: &Option<Db>, req: &mut Req, after
     written
 }
 
-async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
+async fn write_request(ex: &Executor, conn: &Option<Connection>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
     hook_request(conn, ex, req)?;
     after(req)?;
     let db = ex.db().clone();
@@ -1332,10 +1340,12 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
     let mut probe = write_req(c, "insert");
     crate::request::insert_condition(&mut probe, c)?;
     batch_fits(ex.db().sql_driver(), &parts, columns.len(), probe.params.len())?;
-    in_transaction(&c.conn, async || {
+    let (rows, parts, columns, ent) = (&rows, &parts, &columns, &ent);
+    in_transaction(&c.conn, |unit: Connection| async move {
+        let unit = Some(unit);
         let mut total = 0;
         let mut start = 0;
-        for part in &parts {
+        for part in parts {
             let chunk = &rows[start..start + part];
             start += part;
             let mut req = write_req(c, "insert");
@@ -1345,19 +1355,19 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
                     return Err(config("every model of creates must set the same columns"));
                 }
                 let mut params = Vec::new();
-                for (s, column) in rc.sets.iter().zip(&columns) {
+                for (s, column) in rc.sets.iter().zip(columns.iter()) {
                     if &s.column != column {
                         return Err(config("every model of creates must set the same columns in the same order"));
                     }
                     let v = match &s.value {
                         SetValue::Value(v) => {
-                            let field = entity_field(&ent, &s.column)?;
+                            let field = entity_field(ent, &s.column)?;
                             validate_host_value(&field.codec, v)?;
                             v.clone()
                         }
                         SetValue::Null => Param::Null,
-                        SetValue::Json(v) => encode(&ent, &s.column, v)?,
-                        SetValue::Ordered(v) => encode_ordered(&ent, &s.column, v)?,
+                        SetValue::Json(v) => encode(ent, &s.column, v)?,
+                        SetValue::Ordered(v) => encode_ordered(ent, &s.column, v)?,
                         _ => return Err(config("creates accepts stored values only")),
                     };
                     let p = req.p(v);
@@ -1373,8 +1383,8 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
             }
             crate::request::insert_condition(&mut req, c)?;
             req.ir.n_params = req.params.len();
-            let inner = resolve(&c.conn)?;
-            let (_, n) = write(&inner, &c.conn, &mut req).await?;
+            let inner = resolve(&unit)?;
+            let (_, n) = write(&inner, &unit, &mut req).await?;
             total += n;
         }
         Ok(total)
@@ -1582,7 +1592,10 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
 /// written.
 pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
     let conn = m.core().conn.clone();
-    in_transaction(&conn, async || {
+    in_transaction(&conn, |unit: Connection| async move {
+        let mut m = m.clone();
+        m.core_mut().conn = Some(unit);
+        let m = &m;
         let (restored, q) = restore_step(m).await?;
         if restored > 0 {
             return get_core(&q).await?.ok_or(Error::no_rows());
@@ -1669,14 +1682,19 @@ pub async fn delete<M: Model>(m: &M, recursive: bool) -> Result<()> {
     terminal(m.core())?;
     if recursive {
         let conn = m.core().conn.clone();
-        return in_transaction(&conn, async || delete_row(m, true).await).await;
+        return in_transaction(&conn, |unit: Connection| async move { delete_row(m, true, Some(&unit)).await }).await;
     }
-    delete_row(m, false).await
+    delete_row(m, false, None).await
 }
 
-pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool) -> Result<()> {
+/// Deletes the row of `m`, on `unit` when given (the unit of a recursive delete) or else on the connection of `m`.
+pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&Connection>) -> Result<()> {
     let c = m.core_dyn();
     let ex = terminal(c)?;
+    let ex = match unit {
+        Some(unit) => unit.executor()?,
+        None => ex,
+    };
     if recursive {
         if let Some(row) = &c.row {
             for rel in row.related.values() {
@@ -1684,11 +1702,11 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool) -> Result<()> 
                     continue;
                 }
                 match &rel.value {
-                    RelatedValue::One(Some(child)) => Box::pin(delete_row(child.as_ref(), true)).await?,
+                    RelatedValue::One(Some(child)) => Box::pin(delete_row(child.as_ref(), true, unit)).await?,
                     RelatedValue::One(None) => {}
                     RelatedValue::Many(coll) => {
                         for child in coll.models_dyn() {
-                            Box::pin(delete_row(child, true)).await?;
+                            Box::pin(delete_row(child, true, unit)).await?;
                         }
                     }
                 }

@@ -453,18 +453,22 @@ async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     let mut row = User::new().connect(&slave1).name(name.as_str()).get().await.unwrap().expect("a row").connect(master).set_name(format!("{name}-renamed"));
     row.update(false).await.unwrap();
     let tx_name = format!("{name}-tx");
+    let (tx_name, slave1) = (&tx_name, &slave1);
     let r: polyspec_orm::Result<()> = master
-        .transaction(async || {
-            User::new().set_name(tx_name.as_str()).create().await?;
-            assert_eq!(User::new().connect(master).name(tx_name.as_str()).get_count().await?, 1, "the primary connection inside its transaction");
-            assert_eq!(User::new().connect(&slave1).name(tx_name.as_str()).get_count().await?, 0, "the replica connection reads no uncommitted row");
-            Ok(())
-        })
+        .transaction(
+            |tx: polyspec_orm::Tx| async move {
+                User::new().connect(&tx).set_name(tx_name.as_str()).create().await?;
+                assert_eq!(User::new().connect(&tx).name(tx_name.as_str()).get_count().await?, 1, "the primary connection inside its transaction");
+                assert_eq!(User::new().connect(slave1).name(tx_name.as_str()).get_count().await?, 0, "the replica connection reads no uncommitted row");
+                Ok(())
+            },
+            polyspec_orm::TransactionOptions::default(),
+        )
         .await;
     r.unwrap();
-    await_replica(master, &slave1).await;
+    await_replica(master, slave1).await;
     let committed = vec![format!("{name}-renamed"), tx_name.clone()];
-    assert_eq!(User::new().connect(&slave1).name(committed).get_count().await.unwrap(), 2, "the replica reads the committed rows");
+    assert_eq!(User::new().connect(slave1).name(committed).get_count().await.unwrap(), 2, "the replica reads the committed rows");
     slave1.close().await;
 }
 

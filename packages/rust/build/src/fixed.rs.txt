@@ -4,9 +4,9 @@ impl T {
         <Self as polyspec_orm::Model>::from_core(polyspec_orm::Core::new(&ENTITY))
     }
 
-    /// Sets the connection.
-    pub fn connect(mut self, db: &polyspec_orm::Db) -> Self {
-        self.__orm.connect(db);
+    /// Sets the connection: a `Db`, or the `Tx` of a transaction, whose terminals then run in that transaction.
+    pub fn connect(mut self, connection: impl Into<polyspec_orm::Connection>) -> Self {
+        self.__orm.connect(connection);
         self
     }
 

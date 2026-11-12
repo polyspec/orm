@@ -79110,7 +79110,7 @@
            [
             "error",
             {
-             "text": "FOREIGN_KEY"
+             "text": "foreign_key"
             }
            ]
           ]
@@ -80402,7 +80402,7 @@
            [
             "error",
             {
-             "text": "FOREIGN_KEY"
+             "text": "foreign_key"
             }
            ]
           ]
@@ -81694,7 +81694,7 @@
            [
             "error",
             {
-             "text": "FOREIGN_KEY"
+             "text": "foreign_key"
             }
            ]
           ]

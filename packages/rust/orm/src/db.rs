@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, NaiveDateTime, Utc};
@@ -582,10 +582,7 @@ impl Pool {
     }
 }
 
-static NEXT_DB: AtomicU64 = AtomicU64::new(1);
-
 pub(crate) struct DbInner {
-    pub(crate) id: u64,
     pub(crate) pool: Pool,
     /// Held while the connections beyond the idle size close, so that two ends of work do not close the same surplus twice.
     idle_trim: tokio::sync::Mutex<()>,
@@ -949,7 +946,6 @@ impl Db {
         };
         let db = Db {
             inner: Arc::new(DbInner {
-                id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
                 listen,
                 dialect,
@@ -980,10 +976,6 @@ impl Db {
             return Err(Error::internal("the owner of a new database was already set"));
         }
         Ok(db)
-    }
-
-    pub(crate) fn id(&self) -> u64 {
-        self.inner.id
     }
 
     /// Returns a handle on the same connection whose hook receives each request
@@ -1416,10 +1408,9 @@ impl Db {
     }
 
     /// The statement of a request without executing it.
-    pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
+    pub(crate) async fn statement(&self, req: &mut Req, audit: Option<AuditKey>) -> Result<Statement> {
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
-        let audit = crate::tx::active_for(self).and_then(|t| t.audit());
         let args = self.args(st, &req.params, &[], audit.as_ref())?;
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
@@ -1438,30 +1429,8 @@ impl Db {
     /// has an assemble) and a param slot past `params` fail with IR_INVALID before any statement
     /// runs (docs/operations/usage.md "Execute a compiled statement").
     pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
-        let ex = crate::tx::resolve(&Some(self.clone()))?;
-        if matches!(ex, Executor::Db(_)) {
-            self.ensure_open()?;
-        }
-        if step.assemble.is_some() {
-            return Err(Error::new(crate::Kind::IrInvalid, "execute runs a statement without rows; the statement is a read"));
-        }
-        for (i, b) in step.bind_slots.iter().enumerate() {
-            if b.from == "param" && b.param >= params.len() {
-                return Err(Error::new(
-                    crate::Kind::IrInvalid,
-                    format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len()),
-                ));
-            }
-        }
-        // The audit record precedes a write of an audited table; this entry point inserts it without a savepoint.
-        if let Executor::Tx(t) = &ex {
-            if crate::model::binds_audit(step) {
-                t.audit_for(false).await?;
-            }
-        }
-        // This is the same path as model writes: it runs on the connection or the active transaction, and uses the transaction's audit,
-        // statement fault, statement event, and driver error conversion as they are.
-        ex.execute(step, params).await.map(drop)
+        self.ensure_open()?;
+        execute_step(Executor::Db(self.clone()), step, params).await
     }
 
     pub(crate) fn ensure_open(&self) -> Result<()> {
@@ -1493,6 +1462,28 @@ pub(crate) struct Origin<'a> {
     kind: Option<&'a str>,
     tables: Option<&'a [String]>,
     transaction: Option<u64>,
+}
+
+/// Runs one compiled statement `step` on `ex` (docs/operations/usage.md "Execute a compiled statement"): `Db::execute` on
+/// the pool and `Tx::execute` in a transaction.
+pub(crate) async fn execute_step(ex: Executor, step: &Step, params: &[Param]) -> Result<()> {
+    if step.assemble.is_some() {
+        return Err(Error::new(crate::Kind::IrInvalid, "execute runs a statement without rows; the statement is a read"));
+    }
+    for (i, b) in step.bind_slots.iter().enumerate() {
+        if b.from == "param" && b.param >= params.len() {
+            return Err(Error::new(crate::Kind::IrInvalid, format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len())));
+        }
+    }
+    // The audit record precedes a write of an audited table; this entry point inserts it without a savepoint.
+    if let Executor::Tx(t) = &ex {
+        if crate::model::binds_audit(step) {
+            t.audit_for(false).await?;
+        }
+    }
+    // This is the same path as model writes: it runs on the connection or the active transaction, and uses the transaction's audit,
+    // statement fault, statement event, and driver error conversion as they are.
+    ex.execute(step, params).await.map(drop)
 }
 
 /// Where a statement runs: a connection or an active transaction.

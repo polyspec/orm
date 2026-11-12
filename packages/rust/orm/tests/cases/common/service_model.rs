@@ -18,11 +18,16 @@ typed_model!(Service, ENTITY, {
     name: String = "name",
 });
 
-/// A service model connected to `db`, or to the active transaction without one.
-pub fn service(db: Option<&Db>) -> Service {
+/// A service model connected to `connection`, or to none.
+pub fn service(connection: Option<polyspec_orm::Connection>) -> Service {
     let mut core = Core::new(&ENTITY);
-    if let Some(db) = db {
-        core.connect(db);
+    if let Some(connection) = connection {
+        core.connect(connection);
     }
     Service::from_core(core)
+}
+
+/// A service model connected to `db`.
+pub fn service_on(db: &Db) -> Service {
+    service(Some(db.into()))
 }

@@ -11,7 +11,7 @@ use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
 use crate::schema::Schema;
-use crate::tx::{active_for, transaction_conflict, TxFrame, TxShared};
+use crate::tx::{transaction_conflict, Tx, TxShared};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 use polyspec_orm_schema::dbspec::{self, Document};
@@ -22,12 +22,21 @@ const BACKEND_WAITING_FOR_LOCK: &str = "SELECT EXISTS(SELECT 1 FROM pg_locks l J
 
 pub struct Utils<'a> {
     db: &'a Db,
+    /// The transaction of `Tx::utils`, or None for `Db::utils`.
+    tx: Option<&'a Tx>,
 }
 
 impl Db {
-    /// Operations outside the query syntax.
+    /// Operations outside the query syntax, outside a transaction.
     pub fn utils(&self) -> Utils<'_> {
-        Utils { db: self }
+        Utils { db: self, tx: None }
+    }
+}
+
+impl<'a> Utils<'a> {
+    /// The operations of the transaction of `tx` (CORE-20).
+    pub(crate) fn of_transaction(tx: &'a Tx) -> Self {
+        Utils { db: tx.db(), tx: Some(tx) }
     }
 }
 
@@ -92,8 +101,16 @@ impl<'a> Utils<'a> {
         self.db.stats()
     }
 
+    /// The transaction of a utility that needs one: the transaction of `Tx::utils`, after the checks of CORE-22 and
+    /// CORE-23, or `config` for `Db::utils`.
     fn active(&self, name: &str) -> Result<Arc<TxShared>> {
-        active_for(self.db).ok_or_else(|| Error::config(format!("{name} requires an active transaction of the connection")))
+        match self.tx {
+            Some(tx) => match tx.executor()? {
+                Executor::Tx(shared) => Ok(shared),
+                Executor::Db(_) => Err(Error::internal("a transaction handle ran on the pool")),
+            },
+            None => Err(Error::config(format!("{name} requires a transaction: call it on the utils of the Tx of a transaction"))),
+        }
     }
 
     fn ph(&self, n: usize) -> String {
@@ -105,10 +122,10 @@ impl<'a> Utils<'a> {
     }
 
     /// The executor for reads: the connection's active transaction, or the connection's pool if there is none.
-    fn read(&self) -> Executor {
-        match active_for(self.db) {
-            Some(t) => Executor::Tx(t),
-            None => Executor::Db(self.db.clone()),
+    fn read(&self) -> Result<Executor> {
+        match self.tx {
+            Some(tx) => tx.executor(),
+            None => Ok(Executor::Db(self.db.clone())),
         }
     }
 
@@ -123,34 +140,30 @@ impl<'a> Utils<'a> {
         Ok(ex.execute_as(Some(kind), Some(tables), &step(sql, types), params).await?.1)
     }
 
-    /// Runs f in the active transaction of the connection, or in a new one.
+    /// Runs f in the transaction of `Tx::utils`, or in a new transaction for `Db::utils`, which ends as `transaction` does
+    /// and does not retry.
     async fn run_executor<T>(&self, f: impl AsyncFn(&Executor) -> Result<T>) -> Result<T> {
-        if let Some(t) = active_for(self.db) {
-            return f(&Executor::Tx(t)).await;
+        if let Some(tx) = self.tx {
+            return f(&tx.executor()?).await;
         }
-        let db = self.db;
-        db.transaction(async || {
-            let t = active_for(db).ok_or_else(|| Error::internal("transaction is not active"))?;
-            f(&Executor::Tx(t)).await
-        })
-        .retry(0)
-        .await
+        let f = &f;
+        self.db.transaction(move |tx: Tx| async move { f(&tx.executor()?).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
     }
 
-    /// Calls `f` with a transaction frame of the connection (INT-150). If a transaction of the connection is active, `f` joins
-    /// it; otherwise this call opens a transaction, ends it as `transaction` does, and does not retry. The frame's `run` runs
-    /// one statement in that transaction and never opens one.
-    pub async fn run<T>(&self, f: impl AsyncFn(&TxFrame) -> Result<T>) -> Result<T> {
-        self.run_executor(async |ex: &Executor| {
-            let Executor::Tx(t) = ex else { return Err(Error::internal("the statement runner has no transaction")) };
-            f(&TxFrame::new(Arc::clone(t))).await
-        })
-        .await
+    /// Calls `f` with the transaction handle (INT-150): the transaction of `Tx::utils`, or a new transaction for
+    /// `Db::utils`, which ends as `transaction` does and does not retry. `Tx::run` runs one statement in it.
+    pub async fn run<T>(&self, f: impl AsyncFn(&Tx) -> Result<T>) -> Result<T> {
+        if let Some(tx) = self.tx {
+            tx.executor()?;
+            return f(tx).await;
+        }
+        let f = &f;
+        self.db.transaction(move |tx: Tx| async move { f(&tx).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
     }
 
     /// Runs an existence-check statement that takes only text binds.
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
-        let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
+        let rows = self.query(&self.read()?, KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
@@ -286,7 +299,7 @@ impl SchemaUtils<'_> {
         match db.pool() {
             crate::db::Pool::MySql(pool) => {
                 // MySQL commits schema statements implicitly, so they run outside a transaction.
-                if active_for(db).is_some() {
+                if self.u.tx.is_some() {
                     return Err(Error::config("MySQL commits schema statements implicitly; install outside a transaction"));
                 }
                 let mut conn = pool.acquire().await?;
@@ -343,7 +356,7 @@ impl SchemaUtils<'_> {
                     })
                     .await
             }
-            _ if active_for(self.u.db).is_some() => Err(Error::config(format!(
+            _ if self.u.tx.is_some() => Err(Error::config(format!(
                 "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
                 self.u.db.sql_driver()
             ))),
@@ -503,7 +516,7 @@ impl PrivilegeUtils<'_> {
     pub async fn inspect_table(&self, table: &str) -> Result<TablePrivileges> {
         let (_, qualified) = self.table(table)?;
         let sql = "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')";
-        let rows = self.u.query(&self.u.read(), KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)], &["text"]).await?;
+        let rows = self.u.query(&self.u.read()?, KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)], &["text"]).await?;
         let r = rows.into_iter().next().ok_or_else(|| Error::internal("privilege query returned no row"))?;
         Ok(TablePrivileges { insert: truthy(&r[0]), select: truthy(&r[1]), update: truthy(&r[2]), delete: truthy(&r[3]), truncate: truthy(&r[4]) })
     }
@@ -603,7 +616,7 @@ impl AesUtils<'_> {
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
-        for row in self.u.query(&self.u.read(), KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[], &[]).await? {
+        for row in self.u.query(&self.u.read()?, KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[], &[]).await? {
             let stored = crate::row::stored_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {

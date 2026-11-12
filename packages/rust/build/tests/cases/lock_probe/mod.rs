@@ -37,7 +37,7 @@ pub fn row_lock_held(dsn: &str, dialect: &str, table: &str) -> bool {
             }
             connection.exec(if dialect == "mysql" { "START TRANSACTION" } else { "BEGIN" }, &[]).await.unwrap();
             let refused = connection.exec(&format!("SELECT id FROM {table} WHERE id=0 FOR UPDATE NOWAIT"), &[]).await.is_err();
-            connection.exec("rollback_failed", &[]).await.unwrap();
+            connection.exec("ROLLBACK", &[]).await.unwrap();
             refused
         })
     })
@@ -61,7 +61,7 @@ pub fn table_lock_held(dsn: &str, dialect: &str, table: &str) -> bool {
             }
             connection.exec("BEGIN", &[]).await.unwrap();
             let refused = connection.exec(&format!("LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE NOWAIT"), &[]).await.is_err();
-            connection.exec("rollback_failed", &[]).await.unwrap();
+            connection.exec("ROLLBACK", &[]).await.unwrap();
             refused
         })
     })

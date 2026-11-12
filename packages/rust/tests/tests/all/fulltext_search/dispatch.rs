@@ -6,7 +6,7 @@
 
 use polyspec_orm::args::Value as Slot;
 use polyspec_orm::core::{Arg, ChainKey};
-use polyspec_orm::{Db, Dialect, Model, Param};
+use polyspec_orm::{Dialect, Model, Param};
 use polyspec_orm_tests::bench_models::{bench_dispatcher, fail, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
 use polyspec_orm_tests::recipe::ModelError;
@@ -28,17 +28,17 @@ pub struct FulltextSearch {
 }
 
 impl BenchModels for FulltextSearch {
-    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+    async fn run(&self, db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
         match op {
             "query.search" => search(db, self.dialect, step).await,
-            "query.search_chain" => chain::search_chain(db, step).await,
+            "query.search_chain" => chain::search_chain(db.db(), step).await,
             other => Err(format!("OP_UNKNOWN {other}").into()),
         }
     }
 }
 
 /// The fields of query.search: the statement of the count and the bind value after the DIA-6 transform.
-async fn search(db: &Db, dialect: Dialect, step: &Value) -> Result<Value, ModelError> {
+async fn search(db: &polyspec_orm::Connection, dialect: Dialect, step: &Value) -> Result<Value, ModelError> {
     if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] != "Author" {
         return Err(format!("model {} has no query.search entry", polyspec_orm_tests::recipe_reads::read(step, "model")["model"]).into());
     }

@@ -20,7 +20,7 @@ use std::process::{Child, Command, Stdio};
 
 use crate::plain::Plain;
 use markdown_model::{CodecRows, Logs, People, Tags, Tasks};
-use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
+use polyspec_orm::{Config, Db, Error, Isolation, StyledValue, TransactionOptions, Tx};
 use serde_json::{json, Value};
 
 /// The directory of the shared suite: cases.json, flowmark.version, corpus/.
@@ -218,6 +218,11 @@ pub fn same(a: &Value, b: &Value) -> bool {
 }
 
 /// The error the callback returns to roll back the transaction.
+/// The options of a transaction of a case: the default retry, as the cases state none.
+fn options() -> TransactionOptions {
+    TransactionOptions::default()
+}
+
 fn stop() -> Error {
     Error::config("stop")
 }
@@ -276,7 +281,8 @@ fn install_catalog(s: &Served, name: &str) -> Value {
         .find_map(|line| line.strip_prefix("flowmark install: ")?.split_once(':').map(|(code, _)| code.to_owned()))
         .filter(|code| !code.is_empty() && code.bytes().all(|b| b.is_ascii_uppercase() || b == b'_'))
         .unwrap_or_else(|| panic!("flowmark install {}: {} without a refusal code\n{out}", dir.display(), install.status));
-    json!({ "error": code })
+    // flowmark writes the code of its refusal in capitals; a case writes it as a kind, in lower case (CORE-3).
+    json!({ "error": code.to_ascii_lowercase() })
 }
 
 /// Runs case `id` and returns the result value that the README defines. An error becomes the {"error": code} result for that code.
@@ -460,15 +466,18 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "id": m.get_id()?, "name": m.get_name()?, "count": count })
         }
         "transaction_commit" => {
-            db.transaction(async || Logs::new().set_task("T3").set_note("committed").create().await.map(drop)).await?;
+            db.transaction(|tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("committed").create().await.map(drop) }, options()).await?;
             json!(Logs::new().connect(db).get_count().await?)
         }
         "transaction_rollback" => {
             let ended: polyspec_orm::Result<()> = db
-                .transaction(async || {
-                    Logs::new().set_task("T3").set_note("rolled back").create().await?;
-                    Err(stop())
-                })
+                .transaction(
+                    |tx: Tx| async move {
+                        Logs::new().connect(&tx).set_task("T3").set_note("rolled back").create().await?;
+                        Err(stop())
+                    },
+                    options(),
+                )
                 .await;
             match ended {
                 Err(error) if is_stop(&error) => assert!(is_stop(&error), "{error:?}"),
@@ -477,36 +486,55 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!(Logs::new().connect(db).get_count().await?)
         }
         "savepoint_rollback" => {
-            db.transaction(async || {
-                Logs::new().set_task("T3").set_note("outer").create().await?;
-                let inner: polyspec_orm::Result<()> = db
-                    .transaction(async || {
-                        Logs::new().set_task("T3").set_note("inner").create().await?;
-                        Err(stop())
-                    })
-                    .await;
-                match inner {
-                    Err(error) if is_stop(&error) => Ok(()),
-                    other => Err(Error::config(format!("the savepoint ended with {other:?}, not its callback's error"))),
-                }
-            })
+            db.transaction(
+                |tx: Tx| async move {
+                    Logs::new().connect(&tx).set_task("T3").set_note("outer").create().await?;
+                    let inner: polyspec_orm::Result<()> = tx
+                        .savepoint(|savepoint: Tx| async move {
+                            Logs::new().connect(&savepoint).set_task("T3").set_note("inner").create().await?;
+                            Err(stop())
+                        })
+                        .await;
+                    match inner {
+                        Err(error) if is_stop(&error) => Ok(()),
+                        other => Err(Error::config(format!("the savepoint ended with {other:?}, not its callback's error"))),
+                    }
+                },
+                options(),
+            )
             .await?;
             let rows = Logs::new().connect(db).order_by_id_asc().gets().await?;
             let notes: Vec<String> = rows.models().map(|m| m.get_note().map(str::to_owned)).collect::<polyspec_orm::Result<_>>()?;
             json!(notes)
         }
         "read_only_write" => {
-            db.transaction(async || Logs::new().set_task("T3").set_note("read only").create().await.map(drop)).read_only().await?;
+            db.transaction(
+                |tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("read only").create().await.map(drop) },
+                TransactionOptions { read_only: Some(true), ..options() },
+            )
+            .await?;
             Value::Null
         }
         "lock_update" => {
-            db.transaction(async || {
-                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::no_rows())?.to_array()?.plain()
-            })
+            db.transaction(
+                |tx: Tx| async move {
+                    People::new()
+                        .connect(&tx)
+                        .remove_all_columns()
+                        .id("P1")
+                        .for_update()
+                        .get()
+                        .await?
+                        .ok_or(polyspec_orm::Error::no_rows())?
+                        .to_array()?
+                        .plain()
+                },
+                options(),
+            )
             .await?
         }
         "lock_nowait" => {
-            db.transaction(async || People::new().connect(db).id("P1").for_update_no_wait().get().await.map(drop)).await?;
+            db.transaction(|tx: Tx| async move { People::new().connect(&tx).id("P1").for_update_no_wait().get().await.map(drop) }, options()).await?;
             Value::Null
         }
         // The statement of a read, which the connection plans in SQLite's dialect (docs/spec/dialects.md), and its binds.
@@ -516,41 +544,53 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "sql": statement.sql, "binds": binds })
         }
         "isolation" => {
-            db.transaction(async || Ok(())).isolation(Isolation::Serializable).await?;
+            db.transaction(|_tx: Tx| async move { Ok(()) }, TransactionOptions { isolation: Some(Isolation::Serializable), ..options() }).await?;
             Value::Null
         }
         "write_conflict" => {
+            let dir = &s.dir;
             let committed = db
-                .transaction(async || {
-                    let mut m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_name("Ann C");
-                    m.update(false).await?;
-                    // An edit outside the engine: changes a file the transaction writes before commit.
-                    let path = s.dir.join("people.flowmark.md");
-                    let text = std::fs::read_to_string(&path).map_err(|e| Error::config(format!("{}: {e}", path.display())))?;
-                    if !text.contains("Cara") {
-                        return Err(Error::config(format!("{} holds no Cara to edit:\n{text}", path.display())));
-                    }
-                    std::fs::write(&path, text.replacen("Cara", "Carol", 1)).map_err(|e| Error::config(format!("{}: {e}", path.display())))
-                })
+                .transaction(
+                    |tx: Tx| async move {
+                        let mut m = People::new().connect(&tx).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_name("Ann C");
+                        m.update(false).await?;
+                        // An edit outside the engine: changes a file the transaction writes before commit.
+                        let path = dir.join("people.flowmark.md");
+                        let text = std::fs::read_to_string(&path).map_err(|e| Error::config(format!("{}: {e}", path.display())))?;
+                        if !text.contains("Cara") {
+                            return Err(Error::config(format!("{} holds no Cara to edit:\n{text}", path.display())));
+                        }
+                        std::fs::write(&path, text.replacen("Cara", "Carol", 1)).map_err(|e| Error::config(format!("{}: {e}", path.display())))
+                    },
+                    options(),
+                )
                 .await;
             let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
-            let code = committed.err().map(|error| error.code().to_owned()).unwrap_or_default();
+            let code = match committed.err() {
+                Some(error) => error.code(),
+                None => String::new(),
+            };
             json!({ "error": code, "name": read.get_name()? })
         }
-        // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when it
-        // commits) and how many times the callback ran. WRITE_CONFLICT is never retried (docs/spec/protocol.md section 5).
+        // A transaction that reads P1 and writes its own name back, with retry options: the commit's kind (null when it
+        // commits) and how many times the callback ran. write_conflict is never retried (docs/spec/protocol.md section 5).
         "transaction_retry_commit" => {
-            let runs = std::sync::atomic::AtomicU32::new(0);
+            let runs = &std::sync::atomic::AtomicU32::new(0);
             let committed = db
-                .transaction(async || {
-                    runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
-                    let name = m.get_name()?.to_owned();
-                    m.set_name(&name).update(false).await.map(drop)
-                })
-                .retry(3)
+                .transaction(
+                    |tx: Tx| async move {
+                        runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        let m = People::new().connect(&tx).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
+                        let name = m.get_name()?.to_owned();
+                        m.set_name(&name).update(false).await.map(drop)
+                    },
+                    TransactionOptions { retry: Some(3), ..Default::default() },
+                )
                 .await;
-            let code = committed.err().map(|error| Value::from(error.code().to_owned())).unwrap_or(Value::Null);
+            let code = match committed.err() {
+                Some(error) => Value::from(error.code()),
+                None => Value::Null,
+            };
             json!({ "error": code, "runs": runs.load(std::sync::atomic::Ordering::SeqCst) })
         }
         "connect_corpus_mismatch" => {

@@ -3,7 +3,6 @@
 //! opened. The test program includes the models of the bench set as `crate::model`, and the modules of both recipes share this file. A
 //! model, a column or an op without an arm here fails its step by name.
 
-use polyspec_orm::Db;
 use polyspec_orm_tests::bench_models::{bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
 use polyspec_orm_tests::recipe::ModelError;
@@ -20,13 +19,13 @@ pub fn models() -> Box<dyn ModelDispatcher> {
 pub struct BenchSet;
 
 impl BenchModels for BenchSet {
-    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+    async fn run(&self, db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
         run(db, op, step).await
     }
 }
 
 /// The op of `step` on `db`, routed by the model that the step names; its fields are what the expect of the step compares.
-async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn run(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     match polyspec_orm_tests::recipe_reads::read(step, "model")["model"].as_str() {
         Some("Author") => author_op(db, op, step).await,
         Some("User") => user_op(db, op, step).await,
@@ -35,7 +34,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
     }
 }
 
-async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn author_op(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.count" => {
             let count = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
@@ -93,7 +92,7 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError>
     }
 }
 
-async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn user_op(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.delete" => {
             let mut query = User::new().connect(db);
@@ -115,7 +114,7 @@ async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
 
 /// model.query on NoteReader with its relation to the external SharedNote model: each row is the seq of the reader and the
 /// title of its shared note, and a reader whose note is missing has no row.
-async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelError> {
+async fn note_reader_op(db: &polyspec_orm::Connection, op: &str, step: &Value) -> Result<Value, ModelError> {
     match op {
         "model.query" => {
             let relation = &polyspec_orm_tests::recipe_reads::read(step, "relation")["relation"];
@@ -152,7 +151,7 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, ModelE
 /// and seq, and the and_ filters and_service_seq and and_seq, but no and_user_seq, so the conditions go in the order
 /// user_seq, service_seq, seq (serde_json sorts the object keys): the first is the plain filter and each later one its
 /// and_ filter. A user_seq after another condition has no generated filter and fails its step by name.
-fn filter_author(db: &Db, where_: &Value) -> Result<Author, String> {
+fn filter_author(db: &polyspec_orm::Connection, where_: &Value) -> Result<Author, String> {
     let rank = |column: &str| match column {
         "user_seq" => Ok(0),
         "service_seq" => Ok(1),

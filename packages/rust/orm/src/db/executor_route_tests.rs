@@ -13,15 +13,18 @@ async fn query_and_execute_share_pool_and_transaction_routing() {
     Executor::Db(db.clone()).execute(&create, &[]).await.expect("execute through the pool");
 
     let standard = db
-        .transaction(async || {
-            let active = Executor::Tx(crate::tx::active_for(&db).expect("transaction is active"));
-            let insert = Step { sql: "INSERT INTO route_probe (value) VALUES (7)".into(), ..Step::default() };
-            active.execute(&insert, &[]).await?;
-            let select = Step { sql: "SELECT value FROM route_probe".into(), ..Step::default() };
-            let rows = active.query(&select, &[], Vec::new()).await?;
-            assert_eq!(rows.len(), 1);
-            Ok::<_, crate::Error>(())
-        })
+        .transaction(
+            |tx: crate::Tx| async move {
+                let active = tx.executor()?;
+                let insert = Step { sql: "INSERT INTO route_probe (value) VALUES (7)".into(), ..Step::default() };
+                active.execute(&insert, &[]).await?;
+                let select = Step { sql: "SELECT value FROM route_probe".into(), ..Step::default() };
+                let rows = active.query(&select, &[], Vec::new()).await?;
+                assert_eq!(rows.len(), 1);
+                Ok::<_, crate::Error>(())
+            },
+            crate::TransactionOptions::default(),
+        )
         .await;
     standard.expect("query and execute through the transaction");
 
@@ -39,6 +42,9 @@ async fn query_and_execute_share_pool_and_transaction_routing() {
     assert!(execute_error.kind() == crate::Kind::Config && execute_error.text() == "database is closed");
     let direct_execute_error = db.execute(&select, &[]).await.expect_err("direct execution on a closed database must fail");
     assert!(direct_execute_error.kind() == crate::Kind::Config && direct_execute_error.text() == "database is closed");
-    let transaction_error = db.transaction(|| async { Ok::<_, crate::Error>(()) }).await.expect_err("starting a transaction on a closed database must fail");
+    let transaction_error = db
+        .transaction(|_tx: crate::Tx| async { Ok::<_, crate::Error>(()) }, crate::TransactionOptions::default())
+        .await
+        .expect_err("starting a transaction on a closed database must fail");
     assert!(transaction_error.kind() == crate::Kind::Config && transaction_error.text() == "database is closed");
 }

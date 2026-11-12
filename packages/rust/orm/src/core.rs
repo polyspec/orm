@@ -7,7 +7,6 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 
 use crate::args::{Func, Value};
-use crate::db::Db;
 use crate::model::{AnyModel, Entity, RowState};
 use crate::value::Param;
 use crate::Error;
@@ -148,7 +147,7 @@ pub(crate) struct SetSpec {
 pub struct Core {
     pub(crate) id: u64,
     pub(crate) ent: &'static Entity,
-    pub(crate) conn: Option<Db>,
+    pub(crate) conn: Option<crate::Connection>,
     pub(crate) err: Option<(crate::Kind, String)>,
     pub(crate) group: bool,
     pub(crate) subject: Option<u64>,
@@ -304,13 +303,14 @@ impl Core {
         self.id
     }
 
-    /// Sets the connection of a model or a loaded row.
-    pub fn connect(&mut self, db: &Db) {
+    /// Sets the connection of a model or a loaded row: a `Db`, or the `Tx` of a transaction, whose terminals then run in
+    /// that transaction (CORE-20).
+    pub fn connect(&mut self, connection: impl Into<crate::Connection>) {
         if self.group {
             self.fail("connect is not allowed inside a group callback");
             return;
         }
-        self.conn = Some(db.clone());
+        self.conn = Some(connection.into());
     }
 
     /// Creates the core passed to an and/or group or an on callback.

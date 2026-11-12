@@ -431,9 +431,14 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
             runtime.block_on(async {
                 if call == "transactions" {
                     let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|error| format!("connect: {error}"))?;
-                    let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
+                    let nested: polyspec_orm::Result<()> = db
+                        .transaction(
+                            |tx: polyspec_orm::Tx| async move { tx.savepoint(|_savepoint: polyspec_orm::Tx| async { Ok(()) }).await },
+                            polyspec_orm::TransactionOptions { read_only: Some(true), ..Default::default() },
+                        )
+                        .await;
                     nested.map_err(|error| format!("the read-only transaction: {error}"))?;
-                    let last = db.transaction(async || Ok(())).await;
+                    let last = db.transaction(|_tx: polyspec_orm::Tx| async { Ok(()) }, polyspec_orm::TransactionOptions::default()).await;
                     db.close().await;
                     return Ok(last);
                 }
@@ -2496,7 +2501,8 @@ impl SendStep {
     /// Runs the call on the connection `db`.
     async fn call(&self, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
         if let Some(read_only) = self.begin {
-            return if read_only { db.transaction(async || Ok(())).read_only().await } else { db.transaction(async || Ok(())).await };
+            let options = polyspec_orm::TransactionOptions { read_only: Some(read_only), ..Default::default() };
+            return db.transaction(|_tx: polyspec_orm::Tx| async { Ok(()) }, options).await;
         }
         if self.contains {
             return match &self.value {
@@ -2924,7 +2930,12 @@ pub(crate) fn failure_text(error: &polyspec_orm::Error) -> String {
     let source = std::error::Error::source(error).map(ToString::to_string);
     let driver = if source.is_some() { DRIVER_CAUSE } else { "" };
     let cause = source.unwrap_or_default();
-    format!("{}: {error}{driver}{}{error}{}{cause}", error.code(), database::ERROR_DETAIL, database::ERROR_DETAIL)
+    // A rollback_failed error carries the failure of the callback unopened (CORE-25); the runner writes it in the message part.
+    let callback = match error.callback_error() {
+        Some(callback) => format!(" (callback: {callback})"),
+        None => String::new(),
+    };
+    format!("{}: {error}{callback}{driver}{}{error}{}{cause}", error.code(), database::ERROR_DETAIL, database::ERROR_DETAIL)
 }
 
 mod database {
@@ -2937,7 +2948,7 @@ mod database {
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::dbspec::Server;
-    use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
+    use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOptions, Tx};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{has_temporal_form, GridCell, GridQueryResult, ParamType, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
@@ -2963,12 +2974,14 @@ mod database {
                         let mut result = Ok(());
                         for write in 0..writes {
                             result = db
-                                .transaction(async || {
-                                    model::Service::new().connect(&db).get_count().await?;
-                                    model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
-                                    Ok(())
-                                })
-                                .retry(0)
+                                .transaction(
+                                    |tx: Tx| async move {
+                                        model::Service::new().connect(&tx).get_count().await?;
+                                        model::Service::new().connect(&tx).set_name(format!("w{index}-{write}")).create().await?;
+                                        Ok(())
+                                    },
+                                    TransactionOptions { retry: Some(0), ..Default::default() },
+                                )
                                 .await;
                             if result.is_err() {
                                 break;
@@ -3135,6 +3148,14 @@ mod database {
         fn db(&self, _name: &str) -> Option<Db> {
             None
         }
+        /// The transaction handle that a transaction step bound to the connection `name`, the innermost one; none by default.
+        fn transaction(&self, _name: &str) -> Option<polyspec_orm::Tx> {
+            None
+        }
+        /// Binds the transaction handle `tx` to the connection `name` while the steps of a transaction step run (CORE-20).
+        fn enter_transaction(&mut self, _name: &str, _tx: polyspec_orm::Tx) {}
+        /// Unbinds the innermost transaction handle of the connection `name`.
+        fn leave_transaction(&mut self, _name: &str) {}
         /// model.connect with aes_keyring: opens the connection with that keyring; a dispatcher without AES models refuses
         /// it by name.
         /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
@@ -3266,6 +3287,7 @@ mod database {
         assert!(markdown || database == MARIADB || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
+        supersede(&root, path, &mut recipe);
         // serde_json sorts the keys of an object, so the order of the seed tables comes from the document (seed_order).
         recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));
         let recipe = Arc::new(recipe);
@@ -3387,6 +3409,42 @@ mod database {
     }
 
     /// The recipe as serde values, and the order of its objects as the document writes them.
+    /// Replaces each case of the recipe `path` that a case of the same path under `contracts/fixtures/core/` names in
+    /// `supersedes` with that case (CORE-2). The superseding case has the steps of the case it replaces, apart from their
+    /// expectations, and the runner checks that.
+    fn supersede(root: &Path, path: &str, recipe: &mut Value) {
+        let Some(relative) = path.strip_prefix("contracts/fixtures/") else { return };
+        let core = root.join("contracts/fixtures/core").join(relative);
+        let Ok(text) = std::fs::read_to_string(&core) else { return };
+        let superseding: Value = match serde_json::from_str(&text) {
+            Ok(value) => value,
+            Err(error) => panic!("{}: {error}", core.display()),
+        };
+        let Some(cases) = recipe["cases"].as_array_mut() else { return };
+        for case in superseding["cases"].as_array().into_iter().flatten() {
+            let Some(id) = case["supersedes"].as_str() else { panic!("{}: a case names nothing in supersedes", core.display()) };
+            let Some(slot) = cases.iter_mut().find(|old| old["id"] == id) else { panic!("{}: {path} has no case {id}", core.display()) };
+            assert_eq!(
+                without_expectations(&slot["steps"]),
+                without_expectations(&case["steps"]),
+                "{}: the steps of {id} differ beyond their expectations",
+                core.display()
+            );
+            *slot = case.clone();
+        }
+    }
+
+    /// `steps` with every `expect` removed, at every depth.
+    fn without_expectations(steps: &Value) -> Value {
+        match steps {
+            Value::Array(items) => Value::Array(items.iter().map(without_expectations).collect()),
+            Value::Object(members) => Value::Object(
+                members.iter().filter(|(key, _)| key.as_str() != "expect").map(|(key, value)| (key.clone(), without_expectations(value))).collect(),
+            ),
+            other => other.clone(),
+        }
+    }
+
     fn read_recipe(path: &Path, text: &str) -> (Value, Written) {
         use serde::Deserialize as _;
         // A recipe may nest deeper than the 128 levels that serde_json reads by default (COD-70 json-depth).
@@ -3683,48 +3741,21 @@ mod database {
             .collect()
     }
 
-    /// A transaction step with isolation, read_only or audit: its steps run in db.transaction with those options, the form
-    /// that carries them, and the case state is reached through a lock, since that callback may be called again.
-    async fn transaction_with_options(
-        db: &Db,
-        step: &Value,
-        steps: &[Value],
-        fail: bool,
-        catalog: &mut Option<CatalogConnection>,
-        context: &mut Context<'_>,
-    ) -> Result<Output, Failure> {
-        let state = tokio::sync::Mutex::new((catalog, context));
-        let attempts = std::sync::atomic::AtomicU64::new(0);
-        let conflicts = crate::recipe_reads::read(step, "conflicts")["conflicts"].as_u64().unwrap_or(0);
-        let callback = async || {
-            let attempt = attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-            let mut guard = state.lock().await;
-            let (catalog, context) = &mut *guard;
-            for nested in steps {
-                if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
-                    return Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::config(message)));
-                }
-            }
-            if fail {
-                return Err(polyspec_orm::Error::config(CALLBACK_FAILED.to_owned()));
-            }
-            if attempt <= conflicts {
-                return Err(polyspec_orm::transaction_conflict("the recipe conflict"));
-            }
-            Ok(())
-        };
-        let mut transaction = db.transaction(callback);
-        // An absent retry passes 0 unless default_retry leaves it out (INT-43).
+    /// The options of a transaction step (INT-40 to INT-44): an absent retry is 0 unless default_retry leaves it to the core.
+    /// Whether the step names an option is the second value, which a nested transaction, a savepoint, refuses (CORE-21).
+    fn transaction_options(step: &Value) -> Result<(TransactionOptions, bool), Failure> {
+        let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
+        let named = optioned.iter().any(|option| crate::recipe_reads::read(step, option).get(*option).is_some())
+            || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true);
+        let mut options = TransactionOptions::default();
         if crate::recipe_reads::read(step, "default_retry")["default_retry"].as_bool() != Some(true) {
             let retry = u32::try_from(crate::recipe_reads::read(step, "retry")["retry"].as_u64().unwrap_or(0))
                 .map_err(|error| Failure::Step(format!("retry is not a count: {error}")))?;
-            transaction = transaction.retry(retry);
+            options.retry = Some(retry);
         }
-        if let Some(timeout) = crate::recipe_reads::read(step, "timeout_ms")["timeout_ms"].as_u64() {
-            transaction = transaction.timeout_ms(timeout);
-        }
+        options.timeout_ms = crate::recipe_reads::read(step, "timeout_ms")["timeout_ms"].as_u64();
         if let Some(level) = crate::recipe_reads::read(step, "isolation")["isolation"].as_str() {
-            transaction = transaction.isolation(match level {
+            options.isolation = Some(match level {
                 "read_uncommitted" => polyspec_orm::Isolation::ReadUncommitted,
                 "read_committed" => polyspec_orm::Isolation::ReadCommitted,
                 "repeatable_read" => polyspec_orm::Isolation::RepeatableRead,
@@ -3733,12 +3764,61 @@ mod database {
             });
         }
         if crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true) {
-            transaction = transaction.read_only();
+            options.read_only = Some(true);
         }
         if crate::recipe_reads::read(step, "audit").get("audit").is_some() {
-            transaction = transaction.audit(audit_values(&crate::recipe_reads::read(step, "audit")["audit"])?);
+            let values = audit_values(&crate::recipe_reads::read(step, "audit")["audit"])?;
+            options.audit = Some(values.into_iter().map(|(column, value)| (column, polyspec_orm::Param::from(value))).collect());
         }
-        let result = transaction.await;
+        Ok((options, named))
+    }
+
+    /// A transaction step (FCV-4): its steps run in `db.transaction` with the transaction handle bound to the connection
+    /// `name`, so the models of its steps on that connection run in the transaction (CORE-20). A transaction step inside
+    /// a transaction of the same connection is a savepoint of it, which takes no options (CORE-21). The case state is
+    /// reached through a lock, since a retried callback is called again.
+    async fn transaction_step(
+        db: &Db,
+        name: &str,
+        step: &Value,
+        steps: &[Value],
+        fail: bool,
+        catalog: &mut Option<CatalogConnection>,
+        context: &mut Context<'_>,
+    ) -> Result<Output, Failure> {
+        let (options, named) = transaction_options(step)?;
+        let parent = context.models.transaction(name);
+        let state = tokio::sync::Mutex::new((catalog, context));
+        let attempts = std::sync::atomic::AtomicU64::new(0);
+        let conflicts = crate::recipe_reads::read(step, "conflicts")["conflicts"].as_u64().unwrap_or(0);
+        let (state_ref, attempts_ref) = (&state, &attempts);
+        let callback = |tx: Tx| async move {
+            let attempt = attempts_ref.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            let mut guard = state_ref.lock().await;
+            let (catalog, context) = &mut *guard;
+            context.models.enter_transaction(name, tx);
+            let mut outcome = Ok(());
+            for nested in steps {
+                if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                    outcome = Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::config(message)));
+                    break;
+                }
+            }
+            context.models.leave_transaction(name);
+            outcome?;
+            if fail {
+                return Err(polyspec_orm::Error::config(CALLBACK_FAILED.to_owned()));
+            }
+            if attempt <= conflicts {
+                return Err(polyspec_orm::transaction_conflict("the recipe conflict"));
+            }
+            Ok(())
+        };
+        let result = match parent {
+            Some(_) if named => Err(polyspec_orm::Error::config("a savepoint takes no options")),
+            Some(parent) => parent.savepoint(callback).await,
+            None => db.transaction(callback, options).await,
+        };
         state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
         match result {
             Ok(()) => Ok(Output::fields(ok_value())),
@@ -3953,7 +4033,7 @@ mod database {
                 let missing = super::missing_hold(&message, &holds).map(str::to_owned);
                 // The transaction op composes this message from the callback error and the rollback error it returns.
                 if let Some(rollback) = expected.as_ref().and_then(|e| e.get("rollback")).and_then(Value::as_str) {
-                    let kept = message.rsplit_once("and rollback failed (").map(|(_, text)| text).and_then(error_code);
+                    let kept = message.split_once("the rollback failed after the callback failed: ").map(|(_, text)| text).and_then(error_code);
                     if kept != Some(rollback) {
                         return Err(format!("error message {message:?} keeps the rollback error {kept:?}, want code {rollback}"));
                     }
@@ -4165,45 +4245,8 @@ mod database {
                 };
                 let steps: Vec<Value> = crate::recipe_reads::read(step, "steps")["steps"].as_array().cloned().unwrap_or_default();
                 let fail = crate::recipe_reads::read(step, "fail")["fail"].as_bool().unwrap_or(false);
-                // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
-                // nested transaction that names one is refused with CONFIG.
-                let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
-                if optioned.iter().any(|option| crate::recipe_reads::read(step, option).get(*option).is_some())
-                    || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true)
-                {
-                    return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
-                }
-                let ran = std::sync::atomic::AtomicU64::new(0);
-                let ran_ref = &ran;
-                let (once_catalog, once_context) = (&mut *catalog, &mut *context);
-                let result = db
-                    .transaction_once(|| async move {
-                        ran_ref.store(1, std::sync::atomic::Ordering::SeqCst);
-                        for nested in &steps {
-                            Box::pin(run_step(once_catalog, nested, once_context)).await?;
-                        }
-                        if fail {
-                            return Err(CALLBACK_FAILED.to_owned());
-                        }
-                        Ok::<(), String>(())
-                    })
-                    .await;
-                context.attempts = ran.load(std::sync::atomic::Ordering::SeqCst);
-                result.map_err(|e| match e {
-                    TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
-                    TransactionOnceError::Callback(message) => match message.strip_prefix(UNEXPECTED_ERROR) {
-                        // The error of a public call reaches the transaction as the call returned it.
-                        Some(called) => Failure::Call(called.to_owned()),
-                        None => Failure::Step(message),
-                    },
-                    TransactionOnceError::Orm(error) => orm(error),
-                    TransactionOnceError::Rollback { callback, rollback } if callback.starts_with(UNEXPECTED_ERROR) || callback == CALLBACK_FAILED => {
-                        let callback = callback.strip_prefix(UNEXPECTED_ERROR).unwrap_or(&callback);
-                        Failure::Call(format!("rollback_failed: transaction failed ({callback}) and rollback failed ({rollback})"))
-                    }
-                    TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
-                })?;
-                Output::fields(ok_value())
+                let name = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or(CASE_CONNECTION).to_owned();
+                return transaction_step(&db, &name, step, &steps, fail, catalog, context).await;
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
             // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
@@ -4323,7 +4366,13 @@ mod database {
                     }
                     statements.push((kind, tables, sql, params));
                 }
-                let rows = db
+                // In a transaction step of the connection, the statements run in its transaction (CORE-20).
+                let name = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or(CASE_CONNECTION);
+                let connection = match context.models.transaction(name) {
+                    Some(tx) => polyspec_orm::Connection::Tx(tx),
+                    None => polyspec_orm::Connection::Db(db),
+                };
+                let rows = connection
                     .utils()
                     .run(async |frame| {
                         let mut last = Vec::new();
@@ -4936,7 +4985,7 @@ mod database {
         let head = message.split(':').next().unwrap_or_default();
         let mut characters = head.chars();
         let first = characters.next()?;
-        (first.is_ascii_uppercase() && characters.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')).then_some(head)
+        (first.is_ascii_lowercase() && characters.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')).then_some(head)
     }
 
     /// The table of a step, in the namespace of the step when it names one, and in the current namespace otherwise.
@@ -6092,7 +6141,9 @@ mod tables {
         gets_lookahead_page, gets_page, restore, restore_or_create, save, to_array, update,
     };
     use polyspec_orm::ordered_json;
-    use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
+    use polyspec_orm::{
+        AesKeyring, Collection, Config, Connection, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, TransactionOptions, Tx, Val,
+    };
     use serde_json::{json, Map, Value};
 
     use super::{database_trials_written_order, ModelDispatcher, ModelError, WRITTEN_ORDER};
@@ -6366,7 +6417,7 @@ mod tables {
         joined: HashMap<String, u64>,
         outer: Option<u64>,
         /// The connection of the step, for a join that names connect.
-        db: Option<Db>,
+        db: Option<Connection>,
         /// The bound connections, which a relation child names by `connection` (PLN-42).
         handles: HashMap<String, Db>,
     }
@@ -6944,7 +6995,7 @@ mod tables {
 
     impl Tables {
         /// A new row of a model, connected to db, with the values of an object set in the written order.
-        fn row(&self, model: &str, db: &Db, values: &Value) -> Result<TableRow, ModelError> {
+        fn row(&self, model: &str, db: &Connection, values: &Value) -> Result<TableRow, ModelError> {
             let mut core = core_of(model)?;
             core.connect(db);
             let mut row = TableRow::from_core(core);
@@ -6969,7 +7020,7 @@ mod tables {
         }
 
         /// The core of a read: the fields of the step applied, then the key of a terminal by.
-        fn built(&self, step: &Value, db: &Db) -> Result<Core, String> {
+        fn built(&self, step: &Value, db: &Connection) -> Result<Core, String> {
             // pick narrows the rows of the answer: an answer without a row asserts the same with or without it.
             crate::recipe_reads::read(step, "pick");
             let core = if let Some(from) = crate::recipe_reads::read(step, "from")["from"].as_str() {
@@ -7016,7 +7067,7 @@ mod tables {
         }
 
         /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
-        async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, ModelError> {
+        async fn query(&mut self, step: &Value, db: &Connection) -> Result<Value, ModelError> {
             let core = self.built(step, db)?;
             if let Some(column) = crate::recipe_reads::read(step, "bytes_hex_of")["bytes_hex_of"].as_str() {
                 let rows = gets(&TableRow::from_core(core)).await.map_err(orm)?;
@@ -7179,7 +7230,7 @@ mod tables {
 
         /// model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its terminal.
         /// The written model is bound with as, and its toArray is the result.
-        async fn write(&mut self, op: &str, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
+        async fn write(&mut self, op: &str, step: &Value, db: Option<&Connection>) -> Result<Value, ModelError> {
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
             let mut row = if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
                 let mut row = TableRow::from_core(core_of(model)?);
@@ -7225,7 +7276,7 @@ mod tables {
 
         /// Sets the where of a write step as the conditions of the model that inserts (DSL-162). That model owns the
         /// subqueries of its condition, so their outer names the written row (PRT-17, PRT-85).
-        fn insert_condition(&self, core: &mut Core, step: &Value, db: Option<&Db>) -> Result<(), String> {
+        fn insert_condition(&self, core: &mut Core, step: &Value, db: Option<&Connection>) -> Result<(), String> {
             let Some(filter) = crate::recipe_reads::read(step, "where").get("where").filter(|w| !w.is_null()) else {
                 return Ok(());
             };
@@ -7234,7 +7285,7 @@ mod tables {
         }
 
         /// model.creates on the rows of rows or rows_sequence.
-        async fn creates(&self, step: &Value, db: &Db) -> Result<Value, ModelError> {
+        async fn creates(&self, step: &Value, db: &Connection) -> Result<Value, ModelError> {
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.creates names no model".to_owned())?;
             let mut rows = Vec::new();
             let sequence = &crate::recipe_reads::read(step, "rows_sequence")["rows_sequence"];
@@ -7262,7 +7313,7 @@ mod tables {
         }
 
         /// model.update on the bound row, or on a new model set from values, which writes with no read.
-        async fn update_row(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
+        async fn update_row(&mut self, step: &Value, db: Option<&Connection>) -> Result<Value, ModelError> {
             let optimistic = crate::recipe_reads::read(step, "optimistic")["optimistic"].as_bool() == Some(true);
             let revision = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])?;
             let bound = crate::recipe_reads::read(step, "row").get("row").is_some();
@@ -7288,7 +7339,7 @@ mod tables {
         }
 
         /// model.delete on a bound row, a bound collection, the rows of a where, or a new model set from values.
-        async fn delete_rows(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, ModelError> {
+        async fn delete_rows(&mut self, step: &Value, db: Option<&Connection>) -> Result<Value, ModelError> {
             let recursive = crate::recipe_reads::read(step, "recursive")["recursive"].as_bool() == Some(true);
             if crate::recipe_reads::read(step, "row").get("row").is_some() {
                 let name = row_name(step)?;
@@ -7405,7 +7456,8 @@ mod tables {
                 };
             }
             self.handles = connections.all();
-            let db = connections.bound(connection)?;
+            let conn = connections.bound(connection)?;
+            let db = conn.db().clone();
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().unwrap_or_default();
             match op {
                 "hook.install" => {
@@ -7425,7 +7477,7 @@ mod tables {
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
                     let keyring = keyring_of(&crate::recipe_reads::read(step, "keyring")["keyring"])?;
-                    let row = self.row(model, &db, &Value::Null)?;
+                    let row = self.row(model, &conn, &Value::Null)?;
                     if op == "utils.aes_rotate" {
                         let n = db.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
                         return Ok(json!({ "value": { "int": n.to_string() } }));
@@ -7449,18 +7501,18 @@ mod tables {
                     Ok(json!({}))
                 }
                 "utils.lock" => {
-                    db.utils().lock(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    conn.utils().lock(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.set_local" => {
                     let Param::Str(value) = param(&crate::recipe_reads::read(step, "value")["value"])? else {
                         return Err("utils.set_local holds no text".into());
                     };
-                    db.utils().set_local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
+                    conn.utils().set_local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.local" => {
-                    Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? }))
+                    Ok(json!({ "json": conn.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? }))
                 }
                 // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
                 "row.connect" => {
@@ -7506,7 +7558,7 @@ mod tables {
                     let sequence =
                         crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
                     let inserted =
-                        db.utils().was_inserted(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
+                        conn.utils().was_inserted(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
                     Ok(json!({ "value": { "bool": inserted } }))
                 }
                 "utils.backend_waiting_for_lock" => {
@@ -7530,20 +7582,24 @@ mod tables {
                     for _ in 0..count {
                         let (db, active, peak, open, begun, gate) = (db.clone(), active.clone(), peak.clone(), open.clone(), begun.clone(), gate.clone());
                         tasks.push(local.spawn_local(async move {
-                            db.transaction(async || {
-                                let now = active.fetch_add(1, Ordering::SeqCst) + 1;
-                                peak.fetch_max(now, Ordering::SeqCst);
-                                open.fetch_max(db.stats().open_connections, Ordering::SeqCst);
-                                if begun.fetch_add(1, Ordering::SeqCst) + 1 >= hold {
-                                    gate.send_replace(true);
-                                } else {
-                                    if let Err(error) = gate.subscribe().wait_for(|opened| *opened).await {
-                                        return Err(polyspec_orm::Error::config(format!("the gate of the held transactions closed: {error}")));
+                            let (db, active, peak, open, begun, gate) = (&db, &active, &peak, &open, &begun, &gate);
+                            db.transaction(
+                                |_tx: Tx| async move {
+                                    let now = active.fetch_add(1, Ordering::SeqCst) + 1;
+                                    peak.fetch_max(now, Ordering::SeqCst);
+                                    open.fetch_max(db.stats().open_connections, Ordering::SeqCst);
+                                    if begun.fetch_add(1, Ordering::SeqCst) + 1 >= hold {
+                                        gate.send_replace(true);
+                                    } else {
+                                        if let Err(error) = gate.subscribe().wait_for(|opened| *opened).await {
+                                            return Err(polyspec_orm::Error::config(format!("the gate of the held transactions closed: {error}")));
+                                        }
                                     }
-                                }
-                                active.fetch_sub(1, Ordering::SeqCst);
-                                Ok(())
-                            })
+                                    active.fetch_sub(1, Ordering::SeqCst);
+                                    Ok(())
+                                },
+                                TransactionOptions::default(),
+                            )
                             .await
                         }));
                     }
@@ -7577,18 +7633,18 @@ mod tables {
                     Ok(json!({ "value": { "array": [{ "text": "aes" }, { "text": "privileges" }, { "text": "schema" }, { "text": "stats" }] } }))
                 }
                 "model.chain" => {
-                    let core = self.built(step, &db)?;
+                    let core = self.built(step, &conn)?;
                     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                         self.chains.insert(name.to_owned(), core);
                     }
                     Ok(json!({}))
                 }
-                "model.create" | "model.save" | "model.duplicate_create" | "model.restore" => self.write(op, step, Some(&db)).await,
-                "model.creates" => self.creates(step, &db).await,
-                "model.update" => self.update_row(step, Some(&db)).await,
-                "model.delete" => self.delete_rows(step, Some(&db)).await,
+                "model.create" | "model.save" | "model.duplicate_create" | "model.restore" => self.write(op, step, Some(&conn)).await,
+                "model.creates" => self.creates(step, &conn).await,
+                "model.update" => self.update_row(step, Some(&conn)).await,
+                "model.delete" => self.delete_rows(step, Some(&conn)).await,
                 "model.get_by" => {
-                    let core = self.built(step, &db)?;
+                    let core = self.built(step, &conn)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
                     if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) {
                         return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
@@ -7618,8 +7674,8 @@ mod tables {
                     }
                     Ok(fields)
                 }
-                "model.count" => Ok(count_fields(get_count(&self.built(step, &db)?).await.map_err(orm)?)),
-                "model.query" => self.query(step, &db).await,
+                "model.count" => Ok(count_fields(get_count(&self.built(step, &conn)?).await.map_err(orm)?)),
+                "model.query" => self.query(step, &conn).await,
                 other => Err(format!("OP_UNKNOWN {other}: the table models bind no such op").into()),
             }
         }

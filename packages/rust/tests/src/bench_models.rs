@@ -7,14 +7,15 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 
-use polyspec_orm::{Config, Db, Schema};
+use polyspec_orm::{Config, Connection, Db, Schema, Tx};
 use serde_json::{json, Map, Value};
 
 use crate::recipe::{ModelDispatcher, ModelError, ModelFuture, CASE_CONNECTION};
 
-/// The connections that model.connect opened in one case, by name.
+/// The connections that model.connect opened in one case, by name, and the transaction handles that the transaction steps
+/// bound to them, innermost last.
 #[derive(Default)]
-pub struct Connections(HashMap<String, Db>);
+pub struct Connections(HashMap<String, Db>, HashMap<String, Vec<Tx>>);
 
 impl Connections {
     /// Opens the connection `name` of the models of `schema` on `dsn`, in place of an open one of that name.
@@ -34,8 +35,17 @@ impl Connections {
         self.0.clone()
     }
 
-    /// The connection `name`; one that model.connect did not open fails its step by name.
-    pub fn bound(&self, name: &str) -> Result<Db, String> {
+    /// The connection `name`: the innermost transaction handle bound to it, or else its pool; one that model.connect did not
+    /// open fails its step by name.
+    pub fn bound(&self, name: &str) -> Result<Connection, String> {
+        if let Some(tx) = self.1.get(name).and_then(|stack| stack.last()) {
+            return Ok(Connection::Tx(tx.clone()));
+        }
+        self.bound_db(name).map(Connection::Db)
+    }
+
+    /// The pool of the connection `name`; one that model.connect did not open fails its step by name.
+    pub fn bound_db(&self, name: &str) -> Result<Db, String> {
         self.0.get(name).cloned().ok_or_else(|| format!("model op: connection {name} is not bound by model.connect"))
     }
 }
@@ -129,6 +139,20 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
         self.connections.0.get(name).cloned()
     }
 
+    fn transaction(&self, name: &str) -> Option<Tx> {
+        self.connections.1.get(name).and_then(|stack| stack.last()).cloned()
+    }
+
+    fn enter_transaction(&mut self, name: &str, tx: Tx) {
+        self.connections.1.entry(name.to_owned()).or_default().push(tx);
+    }
+
+    fn leave_transaction(&mut self, name: &str) {
+        if let Some(stack) = self.connections.1.get_mut(name) {
+            stack.pop();
+        }
+    }
+
     fn adopt(&mut self, name: &str, db: Db) {
         self.connections.0.insert(name.to_owned(), db);
     }
@@ -148,7 +172,7 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 /// The model ops of one recipe on the generated models of the bench set, each on the connection that its step names.
 pub trait BenchModels: Send + 'static {
     /// The op `op` of `step` on `db`: its fields, which the expect of the step compares.
-    fn run(&self, db: &Db, op: &str, step: &Value) -> impl Future<Output = Result<Value, ModelError>>;
+    fn run(&self, db: &Connection, op: &str, step: &Value) -> impl Future<Output = Result<Value, ModelError>>;
     /// The op `op` of a `step` whose model is built with no connection (PLN-16); no recipe has one by default.
     fn run_unconnected(&self, op: &str, _step: &Value) -> impl Future<Output = Result<Value, ModelError>> {
         let message = format!("{op} has no unconnected form");
