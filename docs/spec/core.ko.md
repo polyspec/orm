@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 1666672b634d3cf57b2ff50e11a8284fbc5c8649c15ff9cc8dc00242362796c5 -->
+<!-- source-sha256: 4263e05c7f7fede0518863793eb19abaaa98fce63c6d84ab3139ff15ecea8a42 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -114,3 +114,8 @@
 - **CORE-60** 열 값은 `orm_value`로 코어를 나간다: 64비트 열(`i64`와 MySQL 부호 없는 열)의 정수는 `int64`(Node
   `bigint`), 더 좁은 열의 정수는 크기와 관계없이 `int`(Node `number`), JSON 열은 `json_value`의 값, 날짜·시각·날짜시각은
   DBS-112와 DBS-121의 정규 텍스트, decimal은 정확한 텍스트다.
+- **CORE-61** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
+  `json`이다. 언어 구현은 그것을 쓰던 라이브러리 이름을 따라 `ordered_json`이라 부르지만 코어는 그 이름의 라이브러리에
+  의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓰고 거기서 `ordered_json`은 알 수 없는 stage다. 그런 값의
+  공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
+  `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.

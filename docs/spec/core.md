@@ -132,3 +132,9 @@ the core that differ from the rules that the language implementations of `legacy
   MySQL column) is `int64` (Node `bigint`), an integer of a narrower column is `int` (Node `number`), whatever its size, a
   JSON column is the value of `json_value`, a date, time or date-time is the canonical text of DBS-112 and DBS-121, and a
   decimal is its exact text.
+- **CORE-61** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
+  COD-16) is `json` in the core. The language implementations name it `ordered_json` after the library that wrote it,
+  and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json` and
+  `ordered_json` is an unknown stage there. The value wrapper of a shared case for such a value is `json_value`
+  (FCV-4), as the value that leaves the core is (CORE-60), and a case that tests the stage names it `json` in its id; the
+  fixed copies of CORE-1 keep the old names for the language implementations.
