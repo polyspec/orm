@@ -7347,7 +7347,11 @@ mod tables {
             let bound = crate::recipe_reads::read(step, "row").get("row").is_some();
             let mut row = if bound {
                 let name = row_name(step)?;
-                self.rows.remove(name).ok_or_else(|| format!("no bound row {name}"))?
+                let mut row = self.rows.remove(name).ok_or_else(|| format!("no bound row {name}"))?;
+                if let Some(tx) = transaction_of(db) {
+                    row.core.connect(tx.clone());
+                }
+                row
             } else {
                 let db = db.ok_or_else(|| "model.update names no connection and no row".to_owned())?;
                 let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?;
@@ -7372,10 +7376,16 @@ mod tables {
             if crate::recipe_reads::read(step, "row").get("row").is_some() {
                 let name = row_name(step)?;
                 if let Some(collection) = self.collections.get(name) {
-                    collection.delete(recursive).await.map_err(orm)?;
+                    match transaction_of(db) {
+                        Some(tx) => collection.clone().connect(tx.clone()).delete(recursive).await.map_err(orm)?,
+                        None => collection.delete(recursive).await.map_err(orm)?,
+                    }
                     return Ok(json!({}));
                 }
                 let mut row = self.rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))?;
+                if let Some(tx) = transaction_of(db) {
+                    row.core.connect(tx.clone());
+                }
                 if let Some((column, value)) = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])? {
                     row.core.expect_revision(&column, value);
                 }
@@ -7402,6 +7412,13 @@ mod tables {
             delete(&row, recursive).await.map_err(orm)?;
             Ok(json!({}))
         }
+    }
+
+    /// The transaction handle that a step inside a transaction step names. A row or a collection bound before the transaction
+    /// keeps the connection it was read on, and no flow state carries the transaction to it, so a write of it inside the
+    /// callback is connected to the handle, as a program connects it (CORE-20).
+    fn transaction_of(db: Option<&Connection>) -> Option<&Connection> {
+        db.filter(|conn| matches!(conn, Connection::Tx(_)))
     }
 
     /// The guard of a write.
