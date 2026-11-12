@@ -1,0 +1,452 @@
+{
+  "$schema": "../../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CORE-2",
+    "CORE-28"
+  ],
+  "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
+  "cases": [
+    {
+      "id": "a_failing_subscriber_returns_its_error_unchanged",
+      "requirements": [
+        "CORE-28",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "conn",
+          "as": "recorder"
+        },
+        {
+          "op": "events.fail_subscriber",
+          "connection": "conn",
+          "kind": "insert",
+          "as": "failing"
+        },
+        {
+          "op": "model.create",
+          "connection": "conn",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "subscriber",
+              "message": "subscriber: subscriber refused the event"
+            },
+            "postgres": {
+              "error": "subscriber",
+              "message": "subscriber: subscriber refused the event"
+            },
+            "sqlite": {
+              "error": "subscriber",
+              "message": "subscriber: subscriber refused the event"
+            }
+          }
+        },
+        {
+          "op": "events.stop_failing",
+          "ref": "failing"
+        },
+        {
+          "op": "model.count",
+          "connection": "conn",
+          "model": "EventProbe",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO `event_probe` (`label`) VALUES (?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `event_probe` AS `a`"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "supersedes": "subscriber_error"
+    },
+    {
+      "id": "a_subscriber_error_of_a_kind_keeps_its_kind",
+      "requirements": [
+        "CORE-28",
+        "INT-96"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.fail_subscriber",
+          "connection": "conn",
+          "kind": "insert",
+          "refusal": {
+            "code": "config",
+            "message": "the subscriber refuses the statement"
+          },
+          "as": "failing"
+        },
+        {
+          "op": "model.create",
+          "connection": "conn",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "config",
+              "message": "config: the subscriber refuses the statement"
+            },
+            "postgres": {
+              "error": "config",
+              "message": "config: the subscriber refuses the statement"
+            },
+            "sqlite": {
+              "error": "config",
+              "message": "config: the subscriber refuses the statement"
+            }
+          }
+        },
+        {
+          "op": "events.stop_failing",
+          "ref": "failing"
+        }
+      ],
+      "supersedes": "subscriber_orm_error"
+    }
+  ]
+}

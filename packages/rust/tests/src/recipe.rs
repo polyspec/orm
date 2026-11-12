@@ -2935,7 +2935,10 @@ pub(crate) fn failure_text(error: &polyspec_orm::Error) -> String {
         Some(callback) => format!(" (callback: {callback})"),
         None => String::new(),
     };
-    format!("{}: {error}{callback}{driver}{}{error}{}{cause}", error.code(), database::ERROR_DETAIL, database::ERROR_DETAIL)
+    // A runner error shows its own code and text (CORE-3); an error of a kind shows its Display.
+    let code = error.code();
+    let shown = if code == error.kind().as_str() { error.to_string() } else { error.recipe_message() };
+    format!("{code}: {shown}{callback}{driver}{}{shown}{}{cause}", database::ERROR_DETAIL, database::ERROR_DETAIL)
 }
 
 mod database {
