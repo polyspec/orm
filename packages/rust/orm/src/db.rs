@@ -360,7 +360,9 @@ fn postgres_tls_ca(mode: Option<&str>, ca: Option<&str>, host: Option<&str>) -> 
     if host.is_some_and(|host| host.starts_with('/')) {
         return Err(bad("postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host".into()));
     }
-    std::fs::read(ca).map(Some).map_err(|error| bad(format!("postgres DSN sslrootcert {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
+    std::fs::read(ca)
+        .map(Some)
+        .map_err(|error| bad(format!("postgres DSN sslrootcert {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
 }
 
 /// Refuses a MySQL or PostgreSQL database name, its path percent-decoded, that holds `;` or NUL, which the PDO DSN of PHP
@@ -488,11 +490,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            let o = PgConnectOptions::from_str(base.as_str())
-                .map_err(sqlx_err)?
-                .database(&database)
-                .extra_float_digits(None)
-                .options([("timezone", "UTC")]);
+            let o = PgConnectOptions::from_str(base.as_str()).map_err(sqlx_err)?.database(&database).extra_float_digits(None).options([("timezone", "UTC")]);
             // A DSN without sslmode, or with sslmode=disable, connects without TLS, also to a server that offers it (CFG-47);
             // sslmode=verify-full checks the certificate against the CA of sslrootcert alone and the host (CFG-45).
             ConnectOptions::Postgres(match ca {

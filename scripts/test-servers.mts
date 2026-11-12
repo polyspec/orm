@@ -775,7 +775,10 @@ async function startProxysql(p: Paths, ports: Ports): Promise<void> {
 // startPgbouncer pools the connections to the PostgreSQL primary in transaction mode over at most four server
 // connections per database. PgBouncer keeps the protocol-level prepared statements of each client and sets
 // the tracked parameters of the client, including statement_timeout sent as a startup parameter, on every server
-// connection it assigns to the client.
+// connection it assigns to the client. It offers no TLS to a client, and its server connections use none either, as
+// the backends of ProxySQL: the primary offers TLS (CFG-45), which PgBouncer would otherwise prefer, and pg_stat_ssl
+// of a pooled session reads the link of PgBouncer, so a plain DSN through it reads the plain link that the client has
+// (CFG-47).
 async function startPgbouncer(p: Paths, ports: Ports): Promise<void> {
   writeFileSync(join(p.dir, 'pgbouncer-users.txt'), '"orm" ""\n');
   writeFileSync(join(p.dir, 'pgbouncer.ini'), `[databases]
@@ -792,6 +795,7 @@ default_pool_size = 4
 max_client_conn = 500
 max_prepared_statements = 200
 track_extra_parameters = statement_timeout
+server_tls_sslmode = disable
 `);
   // PgBouncer logs "process up" after it listens on its sockets.
   await startLogged(p.dir, 'pgbouncer', 'process up', 'pgbouncer', [join(p.dir, 'pgbouncer.ini')]);
