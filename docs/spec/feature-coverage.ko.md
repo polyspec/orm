@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: f63e9cea8352f4cc4bcecf6cf2c894a539ee3af5424320b471dc3aa18839849c -->
+<!-- source-sha256: 8ead4d7b4d8e55c37af86e5fcadbda7b6ebb6f4e6f3f61d0925dabdb3027073f -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -303,7 +303,6 @@
   - `packages/rust/orm/tests/cases/rollback.rs`의 `transaction_forms_rollback_fault_mysql`, `transaction_forms_rollback_fault_postgres`, `transaction_forms_rollback_fault_sqlite`는 native 시험으로 남는다: 그 요구사항(INT-72a)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/rust/orm/tests/cases/rollback.rs`의 `rollback_fault_entry`는 native 시험으로 남는다: 이 runtime이 production이 싣는 것 밖에 test 진입점을 두는 방식을 이 runtime의 packaging으로 읽는다: build tag, crate feature, export condition, autoloader가 잇지 않는 파일, 어떤 import도 싣지 않는 module이다(PRT-43부터 PRT-62까지).
   - `packages/rust/orm/tests/cases/zone.rs`의 `postgres_float_round_trip`는 native 시험으로 남는다: 그 요구사항(CFG-32)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
-  - `packages/rust/orm/tests/cases/zone.rs`의 `pool_keeps_the_thirty_minute_lifetime_when_unset`는 native 시험으로 남는다: 그 요구사항(CFG-5)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다. pool이 있는 모든 client가 가진 pool 크기, idle 크기와 lifetime은 recipe `connection_pool`의 case다.
   - `packages/rust/tests/tests/all/conformance_runner.rs`의 `arguments_reject_missing_duplicate_and_unknown_flags`, `every_body_is_a_vector_of_the_vector_file`, `invalid_binds_cannot_be_rendered_as_valid_values`는 native 시험으로 남는다: recipe helper나 이 시험 파일의 P32 harness 시험이며 client 동작을 담지 않는다.
   - `packages/rust/tests/tests/all/coverage_model_generation.rs`의 `coverage_model_generation_check`는 native 시험으로 남는다: 그 요구사항(INT-100)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
   - `packages/ts/tests/browser-entry.mjs`의 `readDbspecBytes encodes the signature with TextEncoder`, `the subpath module exports exactly the parser functions`, `the subpath module reaches no Node module, undeclared package or Node global`는 native 시험으로 남는다: 그 요구사항(ORE-1, ORE-6)은 이 runtime의 package만의 동작을 적으며, 다른 runtime에는 이 동작이 없다.
