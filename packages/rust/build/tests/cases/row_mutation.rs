@@ -29,8 +29,7 @@ async fn check() {
         let name = format!("orm_row_mutation_{}", std::process::id());
         seed.exec(
             &format!(
-                "CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED){}",
-                if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
+                "CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"
             ),
             &[],
         )

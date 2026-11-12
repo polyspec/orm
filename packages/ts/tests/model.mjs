@@ -16,7 +16,7 @@ import {
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, caseTest, withTemporaryDirectory } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
-import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { mysqlConnection, onSqliteConnections, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 let failures = 0;
 let current = '';
@@ -437,18 +437,20 @@ programCase('failedEndDiscards', ['mysql'], async () => {
 programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
   const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
   try {
-    const state = db.pool.state;
-    const native = state.db;
-    const statement = state.statement.bind(state);
+    const natives = [];
     let rejects = () => false;
     let rejectRollback = false;
     // ROLLBACK returns the failure after actually running.
-    state.statement = sql => {
-      if (rejects(sql)) throw new Error('statement rejected by the test driver');
-      const prepared = statement(sql);
-      if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
-      return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
-    };
+    onSqliteConnections(db, state => {
+      natives.push(state.db);
+      const statement = state.statement.bind(state);
+      state.statement = sql => {
+        if (rejects(sql)) throw new Error('statement rejected by the test driver');
+        const prepared = statement(sql);
+        if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
+        return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
+      };
+    });
     rejectRollback = true;
     const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
     checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
@@ -461,7 +463,8 @@ programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-m
     check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
     const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
     checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
-    check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
+    // A connection whose session failed to end is closed by the pool; every other one is outside a transaction.
+    check(natives.length > 0 && natives.every(native => !native.isOpen || !native.isTransaction), 'the failed mode reset still rolls the transaction back');
   } finally {
     await db.close();
   }

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { DATABASE, caseTest } from '../../../tests/testcase.mts';
 import { Db } from '../dist/database.js';
+import { onSqliteConnections } from './case-database.mjs';
 
 async function withDatabase(name, run) {
   const directory = await mkdtemp(join(tmpdir(), 'orm-transaction-failure-'));
@@ -20,18 +21,19 @@ async function withDatabase(name, run) {
 // Requirements: INT-72.
 caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () => {
   await withDatabase('rollback.sqlite', async db => {
-    const state = db.pool.state;
-    const statement = state.statement.bind(state);
-    state.statement = sql => {
-      const prepared = statement(sql);
-      if (sql !== 'ROLLBACK') return prepared;
-      return {
-        run: (...values) => {
-          prepared.run(...values);
-          throw new Error('rollback rejected by the test driver');
-        },
+    onSqliteConnections(db, state => {
+      const statement = state.statement.bind(state);
+      state.statement = sql => {
+        const prepared = statement(sql);
+        if (sql !== 'ROLLBACK') return prepared;
+        return {
+          run: (...values) => {
+            prepared.run(...values);
+            throw new Error('rollback rejected by the test driver');
+          },
+        };
       };
-    };
+    });
     const callback = new Error('transaction callback failed');
     await assert.rejects(db.transaction(async () => { throw callback; }, { retry: 0 }), error => {
       assert.equal(error.code, 'ROLLBACK');

@@ -62,8 +62,7 @@ async fn check() {
         };
         seed.exec(
             &format!(
-                "CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED){}",
-                if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
+                "CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"
             ),
             &[],
         )

@@ -21,7 +21,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();
             let name = format!("orm_commit_permit_{}", std::process::id());
             seed.exec(
-                &format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL){}", if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }),
+                &format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL)"),
                 &[],
             )
             .await

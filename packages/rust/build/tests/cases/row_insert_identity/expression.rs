@@ -14,12 +14,12 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     let expression = match dialect {
         "mysql" => "UUID()",
         "postgres" => "gen_random_uuid()::text",
-        _ => "lower(hex(randomblob(16)))",
+        // SQLite has no uuid function: five random hex groups in the form of a uuid text, 36 characters as on the servers.
+        _ => "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(6)))",
     };
     seed.exec(
         &format!(
-            "CREATE TABLE {expression_name}(seq VARCHAR(36) NOT NULL DEFAULT ({expression}) PRIMARY KEY,n BIGINT NOT NULL UNIQUE,label VARCHAR(20) NULL){}",
-            if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
+            "CREATE TABLE {expression_name}(seq VARCHAR(36) NOT NULL DEFAULT ({expression}) PRIMARY KEY,n BIGINT NOT NULL UNIQUE,label VARCHAR(20) NULL)"
         ),
         &[],
     )
@@ -32,7 +32,7 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     let stored = catalog.table_page(&table, 2, 0).await.unwrap();
     if !metadata.columns[0].expression_default
         || !matches!(result, Ok(ref value) if value.rows.len()==1
-        && matches!(value.rows[0].as_slice(), [GridCell::Text(key),GridCell::Integer(1),GridCell::Null] if key.len()==if dialect=="sqlite" {32} else {36})
+        && matches!(value.rows[0].as_slice(), [GridCell::Text(key),GridCell::Integer(1),GridCell::Null] if key.len()==36)
         && value.rows==stored.result.rows)
     {
         failures.push(format!("{dialect}: unambiguous UUID expression identity must return the exact committed owner row"));

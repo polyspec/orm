@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 85609329d493afd8679afbc6293e8c87dd517221bfee09fd952e4d253e147c1b -->
+<!-- source-sha256: 52e07a28af65463254cecb90a94ac59a39aaa69d8a4302e28438b8f88e814ccd -->
 # 변경 이력
 
 ## Unreleased
+
+- branch 검사는 recipe step이 부르는 vector case를 따라갑니다(T426-6, FCV-16). 한 dialect용 dbspec vector나 일부 dialect 전용 항목은 recipe case의 분기이며 이유가 필요합니다. dialect만 다른 introspection vector는 모든 database에서 한 번 실행하고, ddl.json round trip을 되풀이하던 둘은 지웠습니다. MySQL ALTER 회귀 시험은 모든 database에서 실행하며, `addTablesAndColumns`의 추가 전용 step은 SQLite와 함께 MySQL과 PostgreSQL에도 적었습니다(SCH-8, INT-56).
 
 - fixture가 있는 recipe는 모든 database에서 한 시험을 실행합니다(T426-1, FCV-16). 일부 database에서만 step을 실행하거나 database마다 다른 문이나 결과를 적는 case는 server에 기능이 없거나 server가 자기 답을 줄 때만 그 분기를 남기고, `databases_differ`에 명세 항목을 들어 이유를 적습니다. `make recipe-branches-check`는 이유 없는 분기, 분기 없는 이유, 정의된 항목을 가리키지 않는 이유에서 실패합니다. orm이 database마다 다르게 답하던 분기는 고쳤고(T426-2부터 T426-5), 모든 server에서 유효한 한 형태로 바꿀 수 있는 문은 합쳤으며, 남은 분기 421개는 새 DIA-222부터 DIA-225를 포함해 각자 항목을 가리킵니다.
 
