@@ -362,6 +362,7 @@
         "packages/php/tests/generated_fixture.php",
         "packages/php/tests/limit_columns_peak.php",
         "packages/php/tests/markdown_test_server.php",
+        "packages/php/tests/memory_budget.php",
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php/tests/perf_extensions.php",
         "packages/php/tests/phpstan-runner.php",
