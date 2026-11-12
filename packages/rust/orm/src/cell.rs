@@ -5,7 +5,7 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use polyspec_orm_schema::dbspec::Type;
 
 use crate::value::Val;
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The message of a cell that its column type does not hold, one per column type in every client (COD-1).
 pub(crate) fn cell_message(column_type: &str) -> String {
@@ -23,12 +23,12 @@ pub(crate) fn cell_message(column_type: &str) -> String {
 
 /// The CODEC_DECODE of a cell that its column type does not hold (COD-1).
 pub(crate) fn cell_refusal(column_type: &str) -> Error {
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg: cell_message(column_type), source: None }
+    Error::new(crate::Kind::CodecDecode, cell_message(column_type))
 }
 
 /// The refusal of a text cell whose bytes are not UTF-8 (COD-69), which keeps the failure of the UTF-8 read.
 pub(crate) fn invalid_utf8(cause: impl std::error::Error + Send + Sync + 'static) -> Error {
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg: "text is not valid UTF-8".into(), source: Some(Box::new(cause)) }
+    Error::with_source(crate::Kind::CodecDecode, "text is not valid UTF-8", Box::new(cause))
 }
 
 fn digits(bytes: &[u8]) -> bool {
@@ -302,7 +302,7 @@ pub(crate) fn uuid_cell(value: &Val, text: bool) -> Result<String> {
 /// The 16 bytes that the 32 digits of the canonical text `text` of a uuid write in their order, two digits to a byte
 /// (DIA-27); the text is checked before (PRT-67), so another text is CODEC_ENCODE.
 pub(crate) fn uuid_bytes(text: &str) -> Result<Vec<u8>> {
-    let refused = || Error::Engine { code: codes::CODEC_ENCODE.into(), msg: "uuid value is not a lower-case canonical uuid".into(), source: None };
+    let refused = || Error::new(crate::Kind::CodecEncode, "uuid value is not a lower-case canonical uuid");
     if !is_canonical_uuid(text) {
         return Err(refused());
     }

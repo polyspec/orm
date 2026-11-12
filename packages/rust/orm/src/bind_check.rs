@@ -5,7 +5,7 @@ use crate::cell::is_canonical_uuid;
 use crate::db::{bound_time_value, time_value, Zone};
 use crate::plan::BindSlot;
 use crate::value::Param;
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The logical type of a slot that a parameter fills: a dbspec type kind with the precision of a decimal, time or
 /// datetime, the scale of a decimal and the length of a varchar.
@@ -25,13 +25,13 @@ pub(crate) fn bind_slot_type(b: &BindSlot) -> ParamSlot<'_> {
 }
 
 fn encode_error(msg: String) -> Error {
-    Error::Engine { code: codes::CODEC_ENCODE.into(), msg, source: None }
+    Error::new(crate::Kind::CodecEncode, msg)
 }
 
 /// The PRT-32a refusal text in place of the CODEC_ENCODE `error` that refused a parameter value; any other error is
 /// returned as it is, so it stays its own error.
 fn refused(error: Error, text: Error) -> Error {
-    if error.code() == codes::CODEC_ENCODE {
+    if error.kind() == crate::Kind::CodecEncode {
         text
     } else {
         error

@@ -5,6 +5,7 @@ pub mod markdown;
 pub mod plain;
 pub mod recipe;
 mod recipe_apply;
+pub mod recipe_error;
 mod recipe_generator;
 pub mod recipe_keys;
 pub mod recipe_reads;

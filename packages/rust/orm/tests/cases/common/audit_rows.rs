@@ -127,7 +127,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .or_panic(|e| format!("{driver}: transaction_once: {e:?}"));
     let without = adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "fourth"), false).await).await;
     assert!(
-        matches!(&without, Err(polyspec_orm::TransactionOnceError::Callback(e)) if e.code() == polyspec_orm::codes::CONFIG),
+        matches!(&without, Err(polyspec_orm::TransactionOnceError::Callback(e)) if e.kind() == polyspec_orm::Kind::Config),
         "{driver}: transaction_once without an audit: {without:?}"
     );
     let nested = adb
@@ -138,7 +138,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .audit(NO_VALUES)
         .retry(0)
         .await;
-    assert_eq!(code(nested), polyspec_orm::codes::CONFIG, "{driver}: a nested transaction_once audit");
+    assert_eq!(code(nested), "CONFIG", "{driver}: a nested transaction_once audit");
     let records = audit_records(db).await;
     let want = [("1", "transaction"), ("2", "send"), ("3", "once")].map(|(s, a)| (s.to_owned(), a.to_owned()));
     assert_eq!(records, want, "{driver}: audit records");

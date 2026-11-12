@@ -1,6 +1,6 @@
 use super::{bound_time_value, clock_digits, time_value, Zone};
 use crate::bind_check::{check_param, ParamSlot};
-use crate::{codes, Error, Param, Result};
+use crate::{Kind, Param, Result};
 
 fn slot(ty: &'static str, precision: i64) -> ParamSlot<'static> {
     ParamSlot { ty, precision, scale: 0, length: 0, not_null: false, column: "value" }
@@ -10,11 +10,8 @@ fn checked(ty: &'static str, precision: i64, value: Param) -> Result<()> {
     check_param(0, &value, &slot(ty, precision), &Zone)
 }
 
-fn error_code<T>(result: &Result<T>) -> Option<&str> {
-    match result {
-        Err(Error::Engine { code, .. }) => Some(code),
-        _ => None,
-    }
+fn error_code<T>(result: &Result<T>) -> Option<Kind> {
+    result.as_ref().err().map(crate::Error::kind)
 }
 
 #[test]
@@ -25,7 +22,7 @@ fn invalid_precision_is_schema_invalid_for_null_and_dotless_values() {
         for precision in [-1, 7] {
             for value in [Param::Null, Param::Str(dotless.to_owned())] {
                 let result = checked(ty, precision, value.clone());
-                if error_code(&result) != Some(codes::SCHEMA_INVALID) {
+                if error_code(&result) != Some(crate::Kind::SchemaInvalid) {
                     failures.push(format!("{ty}({precision}) {value:?}: {result:?}"));
                 }
             }
@@ -52,8 +49,8 @@ fn temporal_precision_boundaries_and_fraction_semantics_are_preserved() {
     let datetime = bound_time_value(Param::Str("2024-01-02 03:04:05.120000".into()), "datetime", 2, &Zone).unwrap();
     assert_eq!(datetime, Param::Str("2024-01-02 03:04:05.12".into()));
 
-    assert_eq!(error_code(&checked("time", 2, Param::Str("12:34:56.123".into()))), Some(codes::CODEC_ENCODE));
-    assert_eq!(error_code(&checked("datetime", 2, Param::Str("2024-01-02 03:04:05.123".into()))), Some(codes::CODEC_ENCODE));
+    assert_eq!(error_code(&checked("time", 2, Param::Str("12:34:56.123".into()))), Some(crate::Kind::CodecEncode));
+    assert_eq!(error_code(&checked("datetime", 2, Param::Str("2024-01-02 03:04:05.123".into()))), Some(crate::Kind::CodecEncode));
 }
 
 #[test]

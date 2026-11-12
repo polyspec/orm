@@ -56,8 +56,8 @@ pub struct StatementEvent<'a> {
     pub error: Option<&'a Error>,
 }
 
-/// The error a subscriber returns. It fails the operation with SUBSCRIBER.
-pub type SubscriberError = Box<dyn std::error::Error + Send + Sync>;
+/// The error a subscriber returns. It fails the operation unchanged (CORE-28).
+pub type SubscriberError = Error;
 
 /// A statement event subscriber: a function of the event that returns `Ok(())`
 /// or the error that fails the operation with SUBSCRIBER. Every such closure
@@ -160,9 +160,8 @@ impl Db {
             error: result.as_ref().err(),
         };
         for (_, subscriber) in list.iter() {
-            if let Err(source) = subscriber(&event) {
-                return Err(Error::Subscriber { msg: format!("statement event subscriber failed: {source}"), source });
-            }
+            // CORE-28: the failure of a subscriber is returned unchanged.
+            subscriber(&event)?;
         }
         result
     }

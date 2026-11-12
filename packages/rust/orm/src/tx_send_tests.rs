@@ -57,11 +57,14 @@ async fn behavior(driver: &str, dsn: &str) {
             let rejected = db
                 .transaction_send(|| async {
                     active_for(&db).expect("nested rollback frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (3)")).await?;
-                    Err::<(), _>(Error::Config("owned nested rejection".into()))
+                    Err::<(), _>(Error::config("owned nested rejection"))
                 })
                 .retry(0)
                 .await;
-            assert!(matches!(rejected,Err(Error::Config(ref text)) if text=="owned nested rejection"), "{driver}: callback error preserved");
+            assert!(
+                matches!(&rejected, Err(e) if e.kind() == crate::Kind::Config && e.text() == "owned nested rejection"),
+                "{driver}: callback error preserved"
+            );
             assert!(Arc::ptr_eq(&tx, &active_for(&db).expect("outer frame restored")));
             tx.raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (4)")).await
         })
@@ -79,13 +82,13 @@ async fn behavior(driver: &str, dsn: &str) {
             })
             .retry(0)
             .await?;
-            Err::<(), _>(Error::Config("owned outer rejection".into()))
+            Err::<(), _>(Error::config("owned outer rejection"))
         })
         .retry(0)
         .into_future(),
     )
     .await;
-    assert!(matches!(rejected,Err(Error::Config(ref text)) if text=="owned outer rejection"), "{driver}: outer error preserved");
+    assert!(matches!(&rejected, Err(e) if e.kind() == crate::Kind::Config && e.text() == "owned outer rejection"), "{driver}: outer error preserved");
     assert_eq!(state(&db, table).await, [1, 2, 4], "{driver}: outer rollback includes released nested savepoint");
     assert!(active_for(&db).is_none(), "{driver}: transaction frame removed");
     db.transaction_send(|| async { Ok::<_, Error>(()) }).retry(0).await.expect("connection remains usable");
@@ -100,9 +103,12 @@ async fn behavior(driver: &str, dsn: &str) {
     // Even when audit values are set, the transaction_send and transaction_once futures are Send. This connection has no audit default
     // , so both are CONFIG before they start.
     let send = require_send(db.transaction_send(|| async { Ok::<_, Error>(()) }).audit([("actor", "send")]).retry(0).into_future()).await;
-    assert!(matches!(send, Err(Error::Config(_))), "{driver}: transaction_send audit without defaults: {:?}", send.err());
+    assert!(matches!(&send, Err(e) if e.kind() == crate::Kind::Config), "{driver}: transaction_send audit without defaults: {:?}", send.err());
     let once = require_send(db.transaction_once(async || Ok::<_, Error>(())).audit([("actor", "once")]).into_future()).await;
-    assert!(matches!(once, Err(TransactionOnceError::Orm(Error::Config(_)))), "{driver}: transaction_once audit without defaults: {once:?}");
+    assert!(
+        matches!(&once, Err(TransactionOnceError::Orm(e)) if e.kind() == crate::Kind::Config),
+        "{driver}: transaction_once audit without defaults: {once:?}"
+    );
     assert_eq!(state(&db, table).await, [1, 2, 4, 7], "{driver}: the audit transactions wrote nothing");
     execute(&db, &format!("DROP TABLE {table}")).await;
     db.close().await;

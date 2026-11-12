@@ -3,6 +3,7 @@
 //! runner, and each case of the recipe is the trial `<recipe>_<database>::<case id>`, whose steps call the public API of
 //! `polyspec_orm` that each op names. It has no command line and no output of its own.
 
+use crate::recipe_error::RecipeCode as _;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -1957,7 +1958,7 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
                     && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
             });
             let worded = want["message"].as_str().is_none_or(|message| text == format!("{}: {message}", error.code()));
-            return if want["error"].as_str() == Some(error.code()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+            return if want["error"].as_str() == Some(error.code().as_str()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
         }
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
@@ -3701,11 +3702,11 @@ mod database {
             let (catalog, context) = &mut *guard;
             for nested in steps {
                 if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
-                    return Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::Config(message)));
+                    return Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::config(message)));
                 }
             }
             if fail {
-                return Err(polyspec_orm::Error::Config(CALLBACK_FAILED.to_owned()));
+                return Err(polyspec_orm::Error::config(CALLBACK_FAILED.to_owned()));
             }
             if attempt <= conflicts {
                 return Err(polyspec_orm::transaction_conflict("the recipe conflict"));
@@ -3741,10 +3742,12 @@ mod database {
         state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
         match result {
             Ok(()) => Ok(Output::fields(ok_value())),
-            Err(polyspec_orm::Error::Config(message)) if message == CALLBACK_FAILED => Err(Failure::Call(format!("{CALLBACK}: {message}"))),
+            Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text() == CALLBACK_FAILED => {
+                Err(Failure::Call(format!("{CALLBACK}: {}", error.text())))
+            }
             // The error of a public call reaches the transaction as the call returned it.
-            Err(polyspec_orm::Error::Config(message)) if message.starts_with(UNEXPECTED_ERROR) => {
-                Err(Failure::Call(message[UNEXPECTED_ERROR.len()..].to_owned()))
+            Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text().starts_with(UNEXPECTED_ERROR) => {
+                Err(Failure::Call(error.text()[UNEXPECTED_ERROR.len()..].to_owned()))
             }
             Err(error) => Err(orm(error)),
         }
@@ -4262,7 +4265,9 @@ mod database {
                 let db = connection_db(step, context).map_err(fault)?;
                 let code = crate::recipe_reads::read(step, "code")["code"].as_str().unwrap_or_default().to_owned();
                 let message = crate::recipe_reads::read(step, "message")["message"].as_str().unwrap_or_default().to_owned();
-                polyspec_orm::testing::fail_next_statement(&db, &code, &message);
+                let kind = polyspec_orm_test_support::catalog_code::kind_of_code(&code)
+                    .ok_or_else(|| fault(format!("fault.next_statement code {code} names no kind")))?;
+                polyspec_orm::testing::fail_next_statement(&db, kind, &message);
                 Output::fields(json!({}))
             }
             "events.fail_subscriber" => {
@@ -4280,8 +4285,8 @@ mod database {
                     .subscribe(move |event: &StatementEvent<'_>| {
                         if event.kind == kind {
                             return Err(match &refusal {
-                                Some((code, msg)) => polyspec_orm::Error::Engine { code: code.clone(), msg: msg.clone(), source: None }.into(),
-                                None => "subscriber refused the event".into(),
+                                Some((code, msg)) => crate::recipe_error::error_of_code(code, msg.clone()),
+                                None => crate::recipe_error::runner_error("SUBSCRIBER", "subscriber refused the event"),
                             });
                         }
                         Ok(())
@@ -6054,7 +6059,7 @@ mod statement {
             None => json!({ "null": "int" }),
         };
         let error = match e.error {
-            Some(error) => json!({ "text": error.code() }),
+            Some(error) => json!({ "text": crate::recipe_error::RecipeCode::code(error) }),
             None => json!({ "null": "text" }),
         };
         let record = json!({ "object": [
@@ -6870,11 +6875,7 @@ mod tables {
         if raw.get("null").is_some() && field.is_some_and(|field| field.styled_value() && !field.nullable) {
             // The generated setter of a non-null styled column refuses StyledValue::SqlNull with the name of the column
             // (COD-20, COD-73), before it changes the model.
-            return Err(orm(polyspec_orm::Error::Engine {
-                code: polyspec_orm::codes::CODEC_ENCODE.into(),
-                msg: format!("{column} does not accept SQL NULL"),
-                source: None,
-            }));
+            return Err(orm(polyspec_orm::Error::new(polyspec_orm::Kind::CodecEncode, format!("{column} does not accept SQL NULL"))));
         }
         let mut value = param(raw)?;
         if let (Some(Type::Decimal(precision, scale)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
@@ -7380,7 +7381,7 @@ mod tables {
 
         async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, ModelError> {
             let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
-                Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into(), source: None }))
+                Arc::new(|| Err(crate::recipe_error::runner_error("CALLBACK", "the audit source failed")))
             } else {
                 let values = pairs(&source["values"])?;
                 Arc::new(move || Ok(values.clone()))
@@ -7537,7 +7538,7 @@ mod tables {
                                     gate.send_replace(true);
                                 } else {
                                     if let Err(error) = gate.subscribe().wait_for(|opened| *opened).await {
-                                        return Err(polyspec_orm::Error::Config(format!("the gate of the held transactions closed: {error}")));
+                                        return Err(polyspec_orm::Error::config(format!("the gate of the held transactions closed: {error}")));
                                     }
                                 }
                                 active.fetch_sub(1, Ordering::SeqCst);
@@ -7810,8 +7811,8 @@ mod tables {
                         records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
                     }
                 }
-                ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind), source: None }),
-                (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value"), source: None }),
+                ("fail", _) => return Err(crate::recipe_error::error_of_code(&action.code, format!("request hook refused {}", request.kind))),
+                (other, _) => return Err(crate::recipe_error::runner_error("STEP", format!("hook action {other} has no column value"))),
             }
         }
         Ok(())

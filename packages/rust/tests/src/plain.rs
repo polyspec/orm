@@ -1,6 +1,6 @@
 //! The array form of a model as the plain JSON that the test programs compare.
 
-use polyspec_orm::{codes, ArrayValue, Error, Result};
+use polyspec_orm::{ArrayValue, Error, Result};
 use serde_json::{Map, Value};
 
 /// The plain JSON of an array value: bytes are their `bytes_hex` wrapper (FCV-4), an ordered-json value is its document,
@@ -11,7 +11,7 @@ pub trait Plain {
 
 impl Plain for ArrayValue {
     fn plain(&self) -> Result<Value> {
-        let encode = |msg: String| Error::Engine { code: codes::CODEC_ENCODE.into(), msg, source: None };
+        let encode = |msg: String| Error::new(polyspec_orm::Kind::CodecEncode, msg);
         Ok(match self {
             ArrayValue::Null => Value::Null,
             ArrayValue::Bool(b) => Value::Bool(*b),

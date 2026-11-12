@@ -6,14 +6,14 @@ use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, 
 use crate::ir;
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The value-free IR of one statement plus its parameter values.
 #[derive(Clone)]
 pub struct Req {
     pub ir: ir::Request,
     pub params: Vec<Param>,
-    pub err: Option<(String, String)>,
+    pub err: Option<(crate::Kind, String)>,
     /// The schema the statement is planned with.
     pub schema: &'static Schema,
     /// Relations whose child has its own connection, by parent model identity.
@@ -57,12 +57,12 @@ impl Req {
 
     pub(crate) fn fail(&mut self, e: Error) {
         if self.err.is_none() {
-            self.err = Some((e.code().to_owned(), e.to_string()));
+            self.err = Some((e.kind(), e.text().to_owned()));
         }
     }
 
     pub fn error(&self) -> Option<Error> {
-        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone(), source: None })
+        self.err.as_ref().map(|(kind, msg)| Error::new(*kind, msg.clone()))
     }
 
     /// The plan-cache key: FNV-1a 64 over the IR bytes, streamed without allocating them.
@@ -194,22 +194,18 @@ pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::
     let value = |index: usize, field: &str| -> crate::Result<i64> {
         match params.get(index) {
             Some(Param::I64(value)) => Ok(*value),
-            Some(_) => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("page {field} must be an integer"), source: None }),
-            None => Err(Error::Engine {
-                code: codes::IR_INVALID.into(),
-                msg: format!("page {field} parameter index {index} out of range (n_params {})", params.len()),
-                source: None,
-            }),
+            Some(_) => Err(Error::new(crate::Kind::CodecEncode, format!("page {field} must be an integer"))),
+            None => Err(Error::new(crate::Kind::IrInvalid, format!("page {field} parameter index {index} out of range (n_params {})", params.len()))),
         }
     };
     let offset = value(*offset_p, "offset")?;
     let count = value(*count_p, "count")?;
     const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
     if !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&offset) || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&count) {
-        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: "page offset and count must be safe integers".into(), source: None });
+        return Err(Error::new(crate::Kind::CodecEncode, "page offset and count must be safe integers"));
     }
     if offset < 0 || count <= 0 {
-        return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "limit offset>=0, count>0".into(), source: None });
+        return Err(Error::new(crate::Kind::IrInvalid, "limit offset>=0, count>0"));
     }
     Ok(())
 }
@@ -262,11 +258,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
         }
         if rel.child.conn.is_some() {
             if rel.child.limit.is_some() {
-                r.fail(Error::Engine {
-                    code: codes::LIMIT_IN_RELATION.into(),
-                    msg: format!("{} relation uses limit; use group_limit", rel.child.ent.name),
-                    source: None,
-                });
+                r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", rel.child.ent.name)));
                 return None;
             }
             r.external.entry(c.id).or_default().push(rel.clone());
@@ -302,7 +294,7 @@ fn relation(r: &mut Req, rel: &RelSpec) -> Option<ir::Relation> {
     let mut joins = HashSet::new();
     let mut q = query(r, ch, &mut f, &mut joins, false)?;
     if ch.limit.is_some() {
-        r.fail(Error::Engine { code: codes::LIMIT_IN_RELATION.into(), msg: format!("{} relation uses limit; use group_limit", ch.ent.name), source: None });
+        r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", ch.ent.name)));
         return None;
     }
     q.flatten = ch.parent_node;
@@ -510,16 +502,16 @@ mod page_parameter_tests {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert!(validate_page_params(&request(), &[Param::I64(0), Param::I64(1)]).is_ok());
         for (params, code) in [
-            (vec![Param::Null, Param::I64(1)], codes::CODEC_ENCODE),
-            (vec![Param::Bool(false), Param::I64(1)], codes::CODEC_ENCODE),
-            (vec![Param::Str("0".into()), Param::I64(1)], codes::CODEC_ENCODE),
-            (vec![Param::F64(1.5), Param::I64(1)], codes::CODEC_ENCODE),
-            (vec![Param::I64(9_007_199_254_740_992), Param::I64(1)], codes::CODEC_ENCODE),
-            (vec![Param::I64(-1), Param::I64(1)], codes::IR_INVALID),
-            (vec![Param::I64(0), Param::I64(0)], codes::IR_INVALID),
-            (vec![Param::I64(0)], codes::IR_INVALID),
+            (vec![Param::Null, Param::I64(1)], crate::Kind::CodecEncode),
+            (vec![Param::Bool(false), Param::I64(1)], crate::Kind::CodecEncode),
+            (vec![Param::Str("0".into()), Param::I64(1)], crate::Kind::CodecEncode),
+            (vec![Param::F64(1.5), Param::I64(1)], crate::Kind::CodecEncode),
+            (vec![Param::I64(9_007_199_254_740_992), Param::I64(1)], crate::Kind::CodecEncode),
+            (vec![Param::I64(-1), Param::I64(1)], crate::Kind::IrInvalid),
+            (vec![Param::I64(0), Param::I64(0)], crate::Kind::IrInvalid),
+            (vec![Param::I64(0)], crate::Kind::IrInvalid),
         ] {
-            assert_eq!(validate_page_params(&request(), &params).unwrap_err().code(), code);
+            assert_eq!(validate_page_params(&request(), &params).unwrap_err().kind(), code);
         }
     }
 }

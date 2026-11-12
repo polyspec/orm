@@ -15,8 +15,8 @@ use crate::plan::Plan;
 use crate::schema::Manifest;
 use crate::{Error, Result};
 
-pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into(), source: None }
+pub(crate) fn err(kind: crate::Kind, msg: impl Into<String>) -> Error {
+    Error::new(kind, msg)
 }
 
 /// Validates a request against the manifest and plans it for a dialect. A step of the plan that
@@ -132,14 +132,14 @@ mod tests {
         assert_eq!(columns(&child.parent_keys), ["tenant_id", "account_id"]);
         assert_eq!(columns(&child.child_keys), ["tenant_id", "account_id"]);
         for (keys, code) in [
-            (vec![], crate::codes::IR_INVALID),
-            (vec![("tenant_id", "tenant_id"), ("tenant_id", "account_id")], crate::codes::IR_INVALID),
-            (vec![("tenant_id", "tenant_id"), ("account_id", "tenant_id")], crate::codes::IR_INVALID),
-            (vec![("tenant_id", "")], crate::codes::IR_INVALID),
-            (vec![("tenant_id", "tenant_id"), ("nope", "account_id")], crate::codes::COLUMN_UNKNOWN),
+            (vec![], crate::Kind::IrInvalid),
+            (vec![("tenant_id", "tenant_id"), ("tenant_id", "account_id")], crate::Kind::IrInvalid),
+            (vec![("tenant_id", "tenant_id"), ("account_id", "tenant_id")], crate::Kind::IrInvalid),
+            (vec![("tenant_id", "")], crate::Kind::IrInvalid),
+            (vec![("tenant_id", "tenant_id"), ("nope", "account_id")], crate::Kind::ColumnUnknown),
         ] {
             let error = compile(&manifest, Dialect::MySql, &request(&keys)).expect_err("invalid relation keys");
-            assert_eq!(error.code(), code, "keys {keys:?}: {error}");
+            assert_eq!(error.kind(), code, "keys {keys:?}: {error}");
         }
     }
 
@@ -186,8 +186,8 @@ mod tests {
         for dialect in [Dialect::MySql, Dialect::Postgres, Dialect::Sqlite] {
             for (message, request) in &cases {
                 match compile(&manifest, dialect, request) {
-                    Err(Error::Engine { code, msg, .. }) => {
-                        assert!(code == crate::codes::IR_INVALID && msg.contains(message), "{dialect:?}: want {message}, got {code} {msg}")
+                    Err(error) => {
+                        assert!(error.kind() == crate::Kind::IrInvalid && error.text().contains(message), "{dialect:?}: want {message}, got {error}")
                     }
                     other => panic!("{dialect:?}: want {message}, got {other:?}"),
                 }
@@ -267,7 +267,7 @@ mod tests {
         }
         let mut bad_index = request.clone();
         bad_index.query.limit = Some(ir::Limit::Params { offset_p: 2, count_p: 1 });
-        assert_eq!(compile(&m, Dialect::Sqlite, &bad_index).unwrap_err().code(), crate::codes::IR_INVALID);
+        assert_eq!(compile(&m, Dialect::Sqlite, &bad_index).unwrap_err().kind(), crate::Kind::IrInvalid);
     }
 
     /// A request that restores an entity by (conn, column, op) conditions. Unless is_null, each condition has one param.
@@ -414,7 +414,7 @@ mod tests {
         ];
         for (name, request) in cases {
             let error = compile(&m, Dialect::Sqlite, &request).expect_err(name);
-            assert_eq!(error.code(), crate::codes::IR_INVALID, "{name}: {error}");
+            assert_eq!(error.kind(), crate::Kind::IrInvalid, "{name}: {error}");
         }
     }
 }

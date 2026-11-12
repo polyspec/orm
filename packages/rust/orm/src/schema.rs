@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 
 use polyspec_orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The runtime model of manifest text whose hash has been checked.
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub struct Manifest {
 }
 
 fn invalid(msg: String) -> Error {
-    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg, source: None }
+    Error::new(crate::Kind::SchemaInvalid, msg)
 }
 
 fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
@@ -37,11 +37,10 @@ fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
     }
     if manifest.manifest_hash != hash {
         // The text is a manifest but does not hash to the declared hash (docs/spec/dbspec.md, "Manifest and hashes").
-        return Err(Error::Engine {
-            code: codes::SCHEMA_HASH_MISMATCH.into(),
-            msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
-            source: None,
-        });
+        return Err(Error::new(
+            crate::Kind::SchemaHashMismatch,
+            format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
+        ));
     }
     Ok(documents)
 }
@@ -62,7 +61,7 @@ impl Manifest {
     }
 
     pub fn entity(&self, name: &str) -> Result<&Entity> {
-        self.model.entity(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned(), source: None })
+        self.model.entity(name).ok_or_else(|| Error::new(crate::Kind::EntityUnknown, name))
     }
 }
 
@@ -75,7 +74,7 @@ pub struct Schema {
     external: &'static str,
     hash: &'static str,
     /// The runtime model built the first time, or the code and message of the error raised then.
-    manifest: OnceLock<std::result::Result<Arc<Manifest>, (String, String)>>,
+    manifest: OnceLock<std::result::Result<Arc<Manifest>, (crate::Kind, String)>>,
 }
 
 impl Schema {
@@ -112,7 +111,7 @@ impl Schema {
     /// before any statement it is CONFIG; if the text is not a manifest, it is SCHEMA_INVALID.
     pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
         self.manifest().map_err(|e| match e {
-            Error::Engine { code, msg, .. } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
+            error if error.kind() == crate::Kind::SchemaHashMismatch => Error::config(format!("invalid schema manifest: {}", error.text())),
             other => other,
         })
     }
@@ -135,12 +134,13 @@ impl Schema {
         self.manifest
             .get_or_init(|| {
                 Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(|e| match e {
-                    Error::Engine { code, msg, .. } => (code, msg),
-                    other => (codes::SCHEMA_INVALID.to_owned(), other.to_string()),
+                    // A failure that is no refusal of the manifest itself, such as a configuration error, is SCHEMA_INVALID.
+                    error if error.kind() == crate::Kind::Config => (crate::Kind::SchemaInvalid, error.to_string()),
+                    error => (error.kind(), error.text().to_owned()),
                 })
             })
             .clone()
-            .map_err(|(code, msg)| Error::Engine { code, msg, source: None })
+            .map_err(|(kind, msg)| Error::new(kind, msg))
     }
 }
 
@@ -171,13 +171,13 @@ mod tests {
         assert_ne!(edited, text, "the fixture declares label varchar(32)");
         for schema in [Schema::new(leak(edited.clone()), leak(hash.clone())), Schema::new(leak(text.clone()), "0000000000000000")] {
             let error = schema.manifest().expect_err("edited manifest");
-            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+            assert_eq!(error.kind(), crate::Kind::SchemaHashMismatch, "{error}");
             let error = schema.documents().expect_err("edited manifest documents");
-            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+            assert_eq!(error.kind(), crate::Kind::SchemaHashMismatch, "{error}");
         }
         for invalid in ["not a manifest", "dbspec 1 rollback\n\ntable rollback_probe {\n"] {
             let error = Schema::new(invalid, leak(hash.clone())).manifest().expect_err("invalid manifest");
-            assert_eq!(error.code(), codes::SCHEMA_INVALID, "{error}");
+            assert_eq!(error.kind(), crate::Kind::SchemaInvalid, "{error}");
         }
     }
 }

@@ -6,6 +6,7 @@ use polyspec_orm::Db;
 use polyspec_orm_tests::bench_models::{bench_config, bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
 use polyspec_orm_tests::recipe::ModelError;
+use polyspec_orm_tests::recipe_error::RecipeCode as _;
 use serde_json::{json, Value};
 
 use crate::model::{Author, CompositeAccount, CompositeMembership, RankedTask, SCHEMA};
@@ -47,7 +48,7 @@ fn account_key(key: &Value) -> Result<(i64, i64), String> {
 /// Writes `name` to the name column of the row of `key` on `db`, a read and then an update.
 async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_orm::Result<()> {
     let row = account(db).get_by_tenant_id_and_account_id(key.0, key.1).await?;
-    let row = row.ok_or_else(|| polyspec_orm::Error::Config(format!("composite_account {key:?} is missing")))?;
+    let row = row.ok_or_else(|| polyspec_orm::Error::config(format!("composite_account {key:?} is missing")))?;
     row.set_name(name).update(false).await?;
     Ok(())
 }

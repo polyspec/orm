@@ -25,7 +25,7 @@ use crate::row::DriverRow;
 use crate::schema::Schema;
 use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The audit source of a connection: it returns the audit values of the
 /// current request, column names and values of the audit record table, such as
@@ -124,7 +124,7 @@ impl Zone {
     fn parse(value: &str) -> Result<Zone> {
         match value {
             "UTC" | "+00:00" => Ok(Zone),
-            _ => Err(Error::Config(format!(
+            _ => Err(Error::config(format!(
                 "dsn timezone {}: every connection reads and writes datetime values in UTC",
                 polyspec_orm_schema::message::Quoted(value)
             ))),
@@ -252,7 +252,7 @@ fn decoded(raw: &str, form: bool) -> Option<String> {
 /// `host` that holds `;` or NUL.
 fn query_parameters(scheme: &str, query: Option<&str>, accepted: &[&str]) -> Result<Vec<(String, String)>> {
     let unknown = |name: &str| {
-        Error::Config(format!("{scheme} DSN has the unknown parameter {}; it accepts {}", polyspec_orm_schema::message::Quoted(name), accepted.join(", ")))
+        Error::config(format!("{scheme} DSN has the unknown parameter {}; it accepts {}", polyspec_orm_schema::message::Quoted(name), accepted.join(", ")))
     };
     let mut parameters: Vec<(String, String)> = Vec::new();
     // An empty query has no pair; an empty pair has the name "", which no scheme accepts.
@@ -268,16 +268,16 @@ fn query_parameters(scheme: &str, query: Option<&str>, accepted: &[&str]) -> Res
         }
         let quoted = polyspec_orm_schema::message::Quoted(&name);
         if name != "_pragma" && parameters.iter().any(|(earlier, _)| *earlier == name) {
-            return Err(Error::Config(format!("{scheme} DSN repeats the parameter {quoted}")));
+            return Err(Error::config(format!("{scheme} DSN repeats the parameter {quoted}")));
         }
         let value = form_decoded(raw_value.unwrap_or_default())
-            .ok_or_else(|| Error::Config(format!("{scheme} DSN parameter {quoted} is not percent-encoded UTF-8")))?;
+            .ok_or_else(|| Error::config(format!("{scheme} DSN parameter {quoted} is not percent-encoded UTF-8")))?;
         if value.is_empty() {
-            return Err(Error::Config(format!("{scheme} DSN parameter {quoted} is empty")));
+            return Err(Error::config(format!("{scheme} DSN parameter {quoted} is empty")));
         }
         // The PDO DSN of PHP cannot hold these characters, so no client takes them (CFG-20).
         if matches!(name.as_str(), "socket" | "host" | "sslrootcert") && value.contains([';', '\0']) {
-            return Err(Error::Config(format!("{scheme} DSN parameter {quoted} holds a character that a connection string cannot hold")));
+            return Err(Error::config(format!("{scheme} DSN parameter {quoted} holds a character that a connection string cannot hold")));
         }
         parameters.push((name, value));
     }
@@ -314,7 +314,7 @@ fn mysql_tls_ca(url: &url::Url, mode: Option<&str>, ca: Option<&str>, socket: bo
     if mode.is_none() && ca.is_none() {
         return Ok(None);
     }
-    let bad = |msg: String| Error::Config(msg);
+    let bad = |msg: String| Error::config(msg);
     if mode != Some("VERIFY_IDENTITY") {
         return Err(bad(format!(
             "mysql DSN ssl-mode {} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca",
@@ -340,7 +340,7 @@ fn mysql_tls_ca(url: &url::Url, mode: Option<&str>, ca: Option<&str>, socket: bo
 /// path of a readable CA file in `sslrootcert`, over TCP (CFG-45); None for a DSN without either or with `sslmode=disable`
 /// (CFG-47).
 fn postgres_tls_ca(mode: Option<&str>, ca: Option<&str>, host: Option<&str>) -> Result<Option<Vec<u8>>> {
-    let bad = |msg: String| Error::Config(msg);
+    let bad = |msg: String| Error::config(msg);
     if let Some(mode) = mode.filter(|mode| *mode != "disable" && *mode != "verify-full") {
         return Err(bad(format!(
             "postgres DSN sslmode {} is not supported; it accepts disable, or verify-full with sslrootcert",
@@ -360,17 +360,19 @@ fn postgres_tls_ca(mode: Option<&str>, ca: Option<&str>, host: Option<&str>) -> 
     if host.is_some_and(|host| host.starts_with('/')) {
         return Err(bad("postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host".into()));
     }
-    std::fs::read(ca).map(Some).map_err(|error| bad(format!("postgres DSN sslrootcert {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
+    std::fs::read(ca)
+        .map(Some)
+        .map_err(|error| bad(format!("postgres DSN sslrootcert {} is not a readable file: {error}", polyspec_orm_schema::message::Quoted(ca))))
 }
 
 /// Refuses a MySQL or PostgreSQL database name, its path percent-decoded, that holds `;` or NUL, which the PDO DSN of PHP
 /// cannot hold (CFG-20).
 fn check_database(written: &str, scheme: &str) -> Result<String> {
     let Some(database) = percent_decoded(written) else {
-        return Err(Error::Config(format!("{scheme} DSN database {} is not percent-encoded UTF-8", polyspec_orm_schema::message::Quoted(written))));
+        return Err(Error::config(format!("{scheme} DSN database {} is not percent-encoded UTF-8", polyspec_orm_schema::message::Quoted(written))));
     };
     if database.contains([';', '\0']) {
-        return Err(Error::Config(format!(
+        return Err(Error::config(format!(
             "{scheme} DSN database {} holds a character that a connection string cannot hold",
             polyspec_orm_schema::message::Quoted(database)
         )));
@@ -381,7 +383,7 @@ fn check_database(written: &str, scheme: &str) -> Result<String> {
 /// Parses a DSN URI. The driver options are built from the closed parameter set of CFG-19 and the user, password, host,
 /// port and database of the URL; the query is never passed on to the driver (CFG-20).
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
-    let bad = |msg: String| Error::Config(msg);
+    let bad = |msg: String| Error::config(msg);
     // The text of the URL parser differs in every client, so the message states none (dsn_reject.json).
     let Ok(url) = url::Url::parse(dsn) else { return Err(bad("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://".into())) };
     let scheme = url.scheme();
@@ -459,7 +461,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let mut base = url.clone();
     base.set_query(None);
     base.set_fragment(None);
-    let sqlx_err = |e: sqlx::Error| Error::Config(format!("dsn: {e}"));
+    let sqlx_err = |e: sqlx::Error| Error::config(format!("dsn: {e}"));
     let options = match scheme {
         "mysql" => {
             let ca = mysql_tls_ca(&url, parameter("ssl-mode"), parameter("ssl-ca"), parameter("socket").is_some())?;
@@ -488,11 +490,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            let o = PgConnectOptions::from_str(base.as_str())
-                .map_err(sqlx_err)?
-                .database(&database)
-                .extra_float_digits(None)
-                .options([("timezone", "UTC")]);
+            let o = PgConnectOptions::from_str(base.as_str()).map_err(sqlx_err)?.database(&database).extra_float_digits(None).options([("timezone", "UTC")]);
             // A DSN without sslmode, or with sslmode=disable, connects without TLS, also to a server that offers it (CFG-47);
             // sslmode=verify-full checks the certificate against the CA of sslrootcert alone and the host (CFG-45).
             ConnectOptions::Postgres(match ca {
@@ -737,7 +735,7 @@ fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
 fn check_sqlite_version(version: &str) -> Result<()> {
     let parsed = parse_sqlite_version(version)?;
     if parsed < (3, 46, 0) {
-        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46"), source: None });
+        return Err(Error::new(crate::Kind::CapabilityUnsupported, format!("SQLite {version} is older than 3.46")));
     }
     Ok(())
 }
@@ -758,7 +756,7 @@ async fn run_sqlite_row_lock_sequence(ops: &mut impl SqliteRowLockSequenceOps) -
         (Ok(()), Ok(())) => Ok(()),
         (Err(primary), Ok(())) => Err(primary),
         (Ok(()), Err(restore)) => Err(restore),
-        (Err(primary), Err(restore)) => Err(Error::Cleanup { primary: Box::new(primary), cleanup: vec![restore] }),
+        (Err(primary), Err(restore)) => Err(Error::cleanup(primary, vec![restore])),
     }
 }
 
@@ -794,7 +792,7 @@ impl SqliteRowLockSequenceOps for SqliteRowLockSequence<'_> {
                 let busy = crate::sqlite_busy(&error);
                 let mapped = Error::from(error);
                 match busy {
-                    Ok(true) if self.nowait => Err(Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string(), source: None }),
+                    Ok(true) if self.nowait => Err(mapped.rekind(crate::Kind::LockNotAvailable)),
                     Ok(true) | Ok(false) => Err(mapped),
                     Err(error) => Err(error),
                 }
@@ -841,14 +839,14 @@ impl Db {
     /// `install` registers the set of the model.
     pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db> {
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
-            return Err(Error::Config("cache sizes must be positive".into()));
+            return Err(Error::config("cache sizes must be positive"));
         }
         if cfg.aes_version <= 0 {
-            return Err(Error::Config("aes current version is not declared".into()));
+            return Err(Error::config("aes current version is not declared"));
         }
         for (version, key) in &cfg.aes_keys {
             if *version <= 0 || key.is_empty() {
-                return Err(Error::Config("aes key list holds an invalid version or an empty key".into()));
+                return Err(Error::config("aes key list holds an invalid version or an empty key"));
             }
         }
         if cfg.aes_keys.is_empty() {
@@ -856,16 +854,16 @@ impl Db {
                 cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
             }
         } else {
-            let current = cfg.aes_keys.get(&cfg.aes_version).ok_or_else(|| Error::Config("aes current version is not declared".into()))?;
+            let current = cfg.aes_keys.get(&cfg.aes_version).ok_or_else(|| Error::config("aes current version is not declared"))?;
             if cfg.aes_key.is_empty() {
                 cfg.aes_key = current.clone();
             } else if &cfg.aes_key != current {
-                return Err(Error::Config("aes key differs from the key list at the current version".into()));
+                return Err(Error::config("aes key differs from the key list at the current version"));
             }
         }
         let pool_size = if pool_size == 0 { DEFAULT_POOL_SIZE } else { pool_size };
         if cfg.pool_idle_size > pool_size {
-            return Err(Error::Config(format!("pool idle size must be between 0 and the pool size {pool_size}")));
+            return Err(Error::config(format!("pool idle size must be between 0 and the pool size {pool_size}")));
         }
         let idle = if cfg.pool_idle_size == 0 { pool_size } else { cfg.pool_idle_size };
         let owner = PoolOwner::default();
@@ -1090,11 +1088,10 @@ impl Db {
         // A connection plans only the sets registered to it. The targets a request may run against are
         // decided by the database the connection uses, not by the code the process has read.
         if !self.inner.sets.read().unwrap().contains(req.schema.hash()) {
-            return Err(Error::Engine {
-                code: codes::SCHEMA_HASH_MISMATCH.into(),
-                msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
-                source: None,
-            });
+            return Err(Error::new(
+                crate::Kind::SchemaHashMismatch,
+                format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
+            ));
         }
         let Some(dialect) = self.inner.dialect else { return Err(Error::internal("the connection has no dialect")) };
         if let Some(n_params) = n_params {
@@ -1204,27 +1201,15 @@ impl Db {
                         v = time_value(v, b.precision)?;
                     }
                     if b.col_type == "decimal" {
-                        let precision = u8::try_from(b.precision).map_err(|error| Error::Engine {
-                            code: codes::SCHEMA_INVALID.into(),
-                            msg: format!("invalid decimal precision {}: {error}", b.precision),
-                            source: None,
-                        })?;
-                        let scale = u8::try_from(b.scale).map_err(|error| Error::Engine {
-                            code: codes::SCHEMA_INVALID.into(),
-                            msg: format!("invalid decimal scale {}: {error}", b.scale),
-                            source: None,
-                        })?;
+                        let precision = u8::try_from(b.precision)
+                            .map_err(|error| Error::new(crate::Kind::SchemaInvalid, format!("invalid decimal precision {}: {error}", b.precision)))?;
+                        let scale = u8::try_from(b.scale)
+                            .map_err(|error| Error::new(crate::Kind::SchemaInvalid, format!("invalid decimal scale {}: {error}", b.scale)))?;
                         v = match v {
                             Param::Null => Param::Null,
                             Param::Str(text) if sqlite => Param::I64(crate::decimal::scaled(&text, precision, scale)?),
                             Param::Str(text) => Param::Str(crate::decimal::normalize(&text, precision, scale)?),
-                            other => {
-                                return Err(Error::Engine {
-                                    code: codes::CODEC_ENCODE.into(),
-                                    msg: format!("decimal bind requires exact text, received {other:?}"),
-                                    source: None,
-                                })
-                            }
+                            other => return Err(Error::new(crate::Kind::CodecEncode, format!("decimal bind requires exact text, received {other:?}"))),
                         };
                     }
                     let v = if b.host_styles.is_empty() {
@@ -1242,7 +1227,7 @@ impl Db {
                 }
                 "config" => match b.name.as_str() {
                     "aes_version" => out.push(Param::I64(cfg.aes_version as i64)),
-                    _ => return Err(Error::Config(format!("config value {} is not configured", b.name))),
+                    _ => return Err(Error::config(format!("config value {} is not configured", b.name))),
                 },
                 "now" => {
                     // One statement reads the clock once, so its clock columns are equal.
@@ -1254,12 +1239,12 @@ impl Db {
                 "audit" => out.push(match audit {
                     Some(a) if a.table == b.name => self.uuid_bind(a.key.clone(), &b.col_type)?,
                     Some(a) => {
-                        return Err(Error::Config(format!(
+                        return Err(Error::config(format!(
                             "the audited table records its audits in {}, but the audit of the transaction is a row of {}",
                             b.name, a.table
                         )))
                     }
-                    None => return Err(Error::Config("a write of an audited table needs an audit: run it in a transaction with audit values".into())),
+                    None => return Err(Error::config("a write of an audited table needs an audit: run it in a transaction with audit values")),
                 }),
                 other => return Err(Error::internal(format!("bind from {other}"))),
             }
@@ -1316,7 +1301,7 @@ impl Db {
         }
         let tx = match target {
             Target::Tx(tx) if matches!(**tx, TxInner::Sqlite(_) | TxInner::Markdown(_)) => &mut **tx,
-            Target::Pool(Pool::Sqlite(_) | Pool::Markdown(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
+            Target::Pool(Pool::Sqlite(_) | Pool::Markdown(_)) => return Err(Error::config("SQLite row locks require an ORM transaction")),
             _ => return Ok(()),
         };
         let nowait = mode.ends_with("_nowait");
@@ -1458,19 +1443,14 @@ impl Db {
             self.ensure_open()?;
         }
         if step.assemble.is_some() {
-            return Err(Error::Engine {
-                code: codes::IR_INVALID.into(),
-                msg: "execute runs a statement without rows; the statement is a read".into(),
-                source: None,
-            });
+            return Err(Error::new(crate::Kind::IrInvalid, "execute runs a statement without rows; the statement is a read"));
         }
         for (i, b) in step.bind_slots.iter().enumerate() {
             if b.from == "param" && b.param >= params.len() {
-                return Err(Error::Engine {
-                    code: codes::IR_INVALID.into(),
-                    msg: format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len()),
-                    source: None,
-                });
+                return Err(Error::new(
+                    crate::Kind::IrInvalid,
+                    format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len()),
+                ));
             }
         }
         // The audit record precedes a write of an audited table; this entry point inserts it without a savepoint.
@@ -1486,7 +1466,7 @@ impl Db {
 
     pub(crate) fn ensure_open(&self) -> Result<()> {
         if self.inner.closed.load(Ordering::Acquire) {
-            return Err(Error::Config("database is closed".into()));
+            return Err(Error::config("database is closed"));
         }
         Ok(())
     }
@@ -1533,7 +1513,7 @@ macro_rules! with_executor_target {
             }
             Executor::Tx(tx) => {
                 let mut guard = tx.enter()?;
-                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+                let inner = guard.as_mut().ok_or_else(|| Error::config("transaction already finished"))?;
                 let $db = &tx.db;
                 let $target = Target::Tx(inner);
                 let $audit = tx.audit();
@@ -1592,7 +1572,7 @@ impl Executor {
             Executor::Db(d) => d.sqlite_row_lock(&mut Target::Pool(&d.inner.pool), None, mode).await,
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
-                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+                let inner = guard.as_mut().ok_or_else(|| Error::config("transaction already finished"))?;
                 t.db.sqlite_row_lock(&mut Target::Tx(inner), Some(t.number), mode).await
             }
         }
@@ -1759,13 +1739,10 @@ fn fractional_parts(text: &str, precision: i64) -> Result<Option<(&str, &str, us
 
 /// The number of fractional digits a precision names, which is between zero and six.
 pub(crate) fn precision_count(precision: i64) -> Result<usize> {
-    let count = usize::try_from(precision).map_err(|error| Error::Engine {
-        code: codes::SCHEMA_INVALID.into(),
-        msg: format!("precision {precision} is not a count of fractional digits: {error}"),
-        source: None,
-    })?;
+    let count = usize::try_from(precision)
+        .map_err(|error| Error::new(crate::Kind::SchemaInvalid, format!("precision {precision} is not a count of fractional digits: {error}")))?;
     if count > 6 {
-        return Err(Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("precision {precision} is outside 0..6"), source: None });
+        return Err(Error::new(crate::Kind::SchemaInvalid, format!("precision {precision} is outside 0..6")));
     }
     Ok(count)
 }
@@ -1790,5 +1767,5 @@ pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
 
 /// The CODEC_ENCODE of a value that its date, time or datetime type does not hold, which names no value (INT-163).
 fn invalid_time_text(col_type: &str) -> Error {
-    Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("{col_type} value is not a {col_type}"), source: None }
+    Error::new(crate::Kind::CodecEncode, format!("{col_type} value is not a {col_type}"))
 }

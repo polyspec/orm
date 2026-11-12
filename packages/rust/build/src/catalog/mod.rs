@@ -305,7 +305,7 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
 /// it (CFG-35). The thread id of CONNECTION_ID cannot stop the statement instead: through ProxySQL, KILL QUERY names a session
 /// of ProxySQL and answers OK for any other id. SQLite stops the read with its handle, so it rolls back as usual.
 fn stopped_by_budget<T>(result: &Result<T, CatalogError>) -> bool {
-    matches!(result, Err(error) if error.message().starts_with(polyspec_orm::codes::CATALOG_LIMIT))
+    matches!(result, Err(error) if error.message().starts_with(&code(polyspec_orm::Kind::CatalogLimit)))
 }
 
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {
@@ -326,10 +326,16 @@ fn read_limits(max_rows: Option<i64>, max_bytes: Option<i64>) -> Result<crate::t
     let default = crate::tool_db::QueryLimits::default();
     let count = |value: Option<i64>, otherwise: usize| match value {
         None => Ok(otherwise),
-        Some(n) if n < 0 => Err(format!("{}: limits must not be negative", polyspec_orm::codes::QUERY_LIMIT_INVALID)),
-        Some(n) => usize::try_from(n).map_err(|error| format!("{}: {error}", polyspec_orm::codes::QUERY_LIMIT_INVALID)),
+        Some(n) if n < 0 => Err(format!("{}: limits must not be negative", code(polyspec_orm::Kind::QueryLimitInvalid))),
+        Some(n) => usize::try_from(n).map_err(|error| format!("{}: {error}", code(polyspec_orm::Kind::QueryLimitInvalid))),
     };
     Ok(crate::tool_db::QueryLimits { max_rows: count(max_rows, default.max_rows)?, max_bytes: count(max_bytes, default.max_bytes)? })
+}
+
+/// The code of the error catalog that a message of the catalog writes for `kind`: the kind in capitals. The catalog
+/// writes the codes of the language implementations while they are in the repository (docs/spec/core.md CORE-1, CORE-3).
+pub(crate) fn code(kind: polyspec_orm::Kind) -> String {
+    kind.as_str().to_ascii_uppercase()
 }
 
 pub(super) fn catalog_query_error(error: sqlx::Error) -> CatalogError {
@@ -348,22 +354,23 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> CatalogError {
     if let sqlx::Error::Decode(inner) = &error {
         let detail = inner.to_string();
         if let Some(detail) = detail.strip_prefix("TOOL_QUERY_LIMIT:") {
-            return format!("{}:{detail}", polyspec_orm::codes::CATALOG_LIMIT).into();
+            return format!("{}:{detail}", code(polyspec_orm::Kind::CatalogLimit)).into();
         }
         // INT-124 and INT-125: the tool's column and statement errors keep their own codes as the head of the text.
-        for code in [polyspec_orm::codes::TOOL_QUERY_STATEMENT, polyspec_orm::codes::TOOL_QUERY_COLUMNS] {
-            if let Some(detail) = detail.strip_prefix(code).and_then(|rest| rest.strip_prefix(':')) {
+        for kind in [polyspec_orm::Kind::ToolQueryStatement, polyspec_orm::Kind::ToolQueryColumns] {
+            let code = code(kind);
+            if let Some(detail) = detail.strip_prefix(code.as_str()).and_then(|rest| rest.strip_prefix(':')) {
                 return format!("{code}:{detail}").into();
             }
         }
     }
     let error = polyspec_orm::Error::from(error);
     // A write that the read-only server refuses is the query that fails, as the write of a read query is refused before it runs.
-    if error.code() == polyspec_orm::codes::READ_ONLY {
-        return format!("{}: the database rejected a read-only query", polyspec_orm::codes::QUERY_READ_ONLY).into();
+    if error.kind() == polyspec_orm::Kind::ReadOnly {
+        return format!("{}: the database rejected a read-only query", code(polyspec_orm::Kind::QueryReadOnly)).into();
     }
     // A driver error carries the code of the error catalog, as every client reports it.
-    CatalogError::caused(error.to_string(), error)
+    CatalogError::caused(format!("{}: {}", code(error.kind()), error.text()), error)
 }
 
 /// The error of a catalog write: the driver error with the code of the error catalog as its head, as the other runtimes return

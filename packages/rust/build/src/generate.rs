@@ -1002,7 +1002,7 @@ fn model_source(gm: &Model<'_>) -> String {
             let sql_null = if c.nullable {
                 format!("self.__orm.set({col:?}, polyspec_orm::Param::Null);\n                self.{id} = None;")
             } else {
-                format!("return Err(polyspec_orm::Error::Engine {{ code: polyspec_orm::codes::CODEC_ENCODE.into(), msg: \"{col} does not accept SQL NULL\".into(), source: None }});")
+                format!("return Err(polyspec_orm::Error::new(polyspec_orm::Kind::CodecEncode, \"{col} does not accept SQL NULL\"));")
             };
             let field_value = if c.nullable { "Some(value)" } else { "value" };
             write!(

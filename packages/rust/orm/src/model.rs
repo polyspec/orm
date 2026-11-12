@@ -19,7 +19,7 @@ use crate::request::{build, result_name, Req};
 use crate::schema::Schema;
 use crate::tx::resolve;
 use crate::value::{Param, Val};
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 use polyspec_orm_schema::dbspec;
 
 /// Implemented by every generated model.
@@ -258,11 +258,10 @@ fn batch_fits(driver: &str, parts: &[usize], columns: usize, condition: usize) -
     for (i, part) in parts.iter().enumerate() {
         let binds = part * columns + condition;
         if binds > limit {
-            return Err(Error::Engine {
-                code: codes::BATCH_TOO_LARGE.into(),
-                msg: format!("creates batch {} of {part} rows binds {binds} parameters, over the {driver} limit of {limit}", i + 1),
-                source: None,
-            });
+            return Err(Error::new(
+                crate::Kind::BatchTooLarge,
+                format!("creates batch {} of {part} rows binds {binds} parameters, over the {driver} limit of {limit}", i + 1),
+            ));
         }
     }
     Ok(())
@@ -344,11 +343,7 @@ fn root_in_parts(req: &mut Req, binds: usize, driver: &str) -> Result<Vec<Req>> 
     if binds <= limit {
         return Ok(Vec::new());
     }
-    let too_large = || Error::Engine {
-        code: codes::IR_INVALID.into(),
-        msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}"),
-        source: None,
-    };
+    let too_large = || Error::new(crate::Kind::IrInvalid, format!("the statement needs {binds} bind parameters but {driver} permits {limit}"));
     let q = &req.ir.query;
     let Some(where_) = &q.where_ else { return Err(too_large()) };
     if q.limit.is_some() || !q.order.is_empty() || !q.group_by.is_empty() {
@@ -412,7 +407,7 @@ fn request_lock(q: &ir::Query) -> &str {
 fn checked_lock(ex: &Executor, req: &Req) -> Result<String> {
     let lock = request_lock(&req.ir.query).to_owned();
     if !lock.is_empty() && matches!(ex, Executor::Db(_)) {
-        return Err(Error::Config("row locks are allowed only inside a transaction".into()));
+        return Err(Error::config("row locks are allowed only inside a transaction"));
     }
     Ok(lock)
 }
@@ -494,11 +489,7 @@ async fn select_page(ex: &Executor, conn: &Option<Db>, req: &mut Req, keep: Opti
 }
 
 fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
-    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine {
-        code: codes::CODEC_DECODE.into(),
-        msg: "split query row identity contains SQL NULL".into(),
-        source: None,
-    })
+    Key::of_row(row, refs)?.ok_or_else(|| Error::new(crate::Kind::CodecDecode, "split query row identity contains SQL NULL"))
 }
 
 // ---- assembly ----
@@ -617,9 +608,7 @@ impl<'a> Assembler<'a> {
 /// `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes` (COD-26).
 fn column_output_error(entity: &str, column: &str, value: &Val, error: Error) -> Error {
     match (value, error) {
-        (Val::Bytes(_), Error::Engine { code, msg, .. }) if code == codes::CODEC_ENCODE => {
-            Error::Engine { code, msg: format!("{entity}.{column}: {msg}"), source: None }
-        }
+        (Val::Bytes(_), error) if error.kind() == crate::Kind::CodecEncode => Error::new(error.kind(), format!("{entity}.{column}: {}", error.text())),
         (_, other) => other,
     }
 }
@@ -627,7 +616,7 @@ fn column_output_error(entity: &str, column: &str, value: &Val, error: Error) ->
 /// A `CODEC_DECODE` of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41).
 pub(crate) fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
     match error {
-        Error::Engine { code, msg, .. } if code == codes::CODEC_DECODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}"), source: None },
+        error if error.kind() == crate::Kind::CodecDecode => Error::new(error.kind(), format!("{entity}.{column}: {}", error.text())),
         other => other,
     }
 }
@@ -651,11 +640,9 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Re
         let declared = asm.columns.iter().find(|column| column.index == reference.index).map(|column| column.typ.as_str());
         values.push(match (declared, row[reference.index].clone()) {
             (Some("bool"), Val::I64(number)) => Val::Bool(number != 0),
-            (Some("datetime"), Val::Str(text)) => Val::DateTime(crate::driver::parse_datetime(&text).map_err(|error| Error::Engine {
-                code: codes::CODEC_DECODE.into(),
-                msg: error,
-                source: None,
-            })?),
+            (Some("datetime"), Val::Str(text)) => {
+                Val::DateTime(crate::driver::parse_datetime(&text).map_err(|error| Error::new(crate::Kind::CodecDecode, error))?)
+            }
             (_, cell) => cell,
         });
     }
@@ -922,7 +909,7 @@ fn group_rows(core: &Core, result: &QueryResult) -> Result<GroupRows> {
             if !column.hidden {
                 let value = row.get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?;
                 if matches!(value, Val::Null) && column.column == column.name && entity.field(&column.column).is_some_and(|field| !field.nullable) {
-                    return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name), source: None });
+                    return Err(Error::new(crate::Kind::CodecDecode, format!("group column {} is SQL NULL", column.name)));
                 }
                 // A declared column holds the value of its type and an added column the value of its plan type, each refused as
                 // `<entity>.<column>: <message>` (COD-1, INT-160); a styled column was decoded through its stages.
@@ -992,7 +979,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Vec<Val>> {
     }
     if !parts.is_empty() {
         if kind != "count" {
-            return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "a split IN list can be merged only for a count".into(), source: None });
+            return Err(Error::new(crate::Kind::IrInvalid, "a split IN list can be merged only for a count"));
         }
         let mut total: i64 = 0;
         for mut part in parts {
@@ -1105,7 +1092,7 @@ fn write_req(c: &Core, kind: &str) -> Req {
 
 /// The field `column` of an entity, or COLUMN_UNKNOWN naming `entity.column`.
 fn entity_field<'a>(ent: &'a dbspec::Entity, column: &str) -> Result<&'a dbspec::Field> {
-    ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name), source: None })
+    ent.field(column).ok_or_else(|| Error::new(crate::Kind::ColumnUnknown, format!("{}.{column}", ent.name)))
 }
 
 fn encode(ent: &dbspec::Entity, column: &str, v: &serde_json::Value) -> Result<Param> {
@@ -1241,17 +1228,13 @@ async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(
 
 /// The error of an insert with a condition that wrote no row (docs/spec/protocol.md PRT-88).
 fn condition_not_met(entity: &str) -> Error {
-    Error::Engine {
-        code: codes::CONDITION_NOT_MET.into(),
-        msg: format!("the condition of the insert into {entity} does not hold; no row was written"),
-        source: None,
-    }
+    Error::new(crate::Kind::ConditionNotMet, format!("the condition of the insert into {entity} does not hold; no row was written"))
 }
 
 /// Fails an optimistic update that changed no row.
 fn finish_write(req: &Req, key: Val, affected: u64) -> Result<(Val, u64)> {
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
-        return Err(Error::OptimisticLock);
+        return Err(Error::optimistic_lock());
     }
     Ok((key, affected))
 }
@@ -1589,7 +1572,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// Reads never return a soft-deleted row: restore names it explicitly.
 pub async fn restore<M: Model>(m: &M) -> Result<M> {
     let (_, q) = restore_step(m).await?;
-    get_core(&q).await?.ok_or(Error::NoRows)
+    get_core(&q).await?.ok_or(Error::no_rows())
 }
 
 /// Restores the soft-deleted row of the key that restore picks, or creates it
@@ -1602,14 +1585,10 @@ pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
     in_transaction(&conn, async || {
         let (restored, q) = restore_step(m).await?;
         if restored > 0 {
-            return get_core(&q).await?.ok_or(Error::NoRows);
+            return get_core(&q).await?.ok_or(Error::no_rows());
         }
         if get_count(&q).await? > 0 {
-            return Err(Error::Engine {
-                code: codes::ROW_NOT_DELETED.into(),
-                msg: "restoreOrCreate: a row that is not deleted holds the key".into(),
-                source: None,
-            });
+            return Err(Error::new(crate::Kind::RowNotDeleted, "restoreOrCreate: a row that is not deleted holds the key"));
         }
         let mut row = m.clone();
         create(&mut row).await
@@ -1755,9 +1734,7 @@ fn revision_guard(c: &Core, ent: &dbspec::Entity, req: &mut Req, update: bool, o
 /// Fails with REVISION_CHANGED when a write with an expected revision matched no row.
 fn revision_checked(c: &Core, column: Option<&str>, affected: u64) -> Result<()> {
     match (column, &c.expected_revision) {
-        (Some(column), Some((_, revision))) if affected == 0 => {
-            Err(Error::Engine { code: codes::REVISION_CHANGED.into(), msg: format!("the row's {column} is not {revision}"), source: None })
-        }
+        (Some(column), Some((_, revision))) if affected == 0 => Err(Error::new(crate::Kind::RevisionChanged, format!("the row's {column} is not {revision}"))),
         _ => Ok(()),
     }
 }
@@ -1825,11 +1802,7 @@ pub fn to_json(m: &dyn AnyModel) -> Result<String> {
 /// The JSON output as a serde_json raw value, which a serde_json serializer
 /// writes unchanged; serde serialization of models and collections uses it.
 pub fn raw_json(text: Result<String>) -> Result<Box<serde_json::value::RawValue>> {
-    serde_json::value::RawValue::from_string(text?).map_err(|e| Error::Engine {
-        code: crate::codes::CODEC_ENCODE.into(),
-        msg: format!("json: model output: {e}"),
-        source: None,
-    })
+    serde_json::value::RawValue::from_string(text?).map_err(|e| Error::new(crate::Kind::CodecEncode, format!("json: model output: {e}")))
 }
 
 /// The members of the JSON output of a row: name and JSON text.
@@ -1924,7 +1897,7 @@ fn styled_column(c: &Core, name: &str) -> Result<bool> {
 
 fn missing_output_column(c: &Core, name: &str) -> Error {
     if c.row.is_none() {
-        Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name), source: None }
+        Error::new(crate::Kind::ColumnUnselected, format!("{}.{} has no decoded value", c.ent.name, name))
     } else {
         Error::internal(format!("model output column {name} is missing"))
     }
@@ -1933,15 +1906,15 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
 #[cfg(test)]
 mod column_decode_tests {
     use super::column_decode_error;
-    use crate::{codes, Error};
+    use crate::Error;
 
     #[test]
     fn decoded_cell_failure_names_the_column() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into(), source: None };
+        let error = Error::new(crate::Kind::CodecDecode, "non-null JSON column received NULL");
         let error = column_decode_error("author", "jsons_tags", error);
-        assert_eq!(error.code(), codes::CODEC_DECODE);
-        assert_eq!(error.to_string(), "CODEC_DECODE: author.jsons_tags: non-null JSON column received NULL");
+        assert_eq!(error.kind(), crate::Kind::CodecDecode);
+        assert_eq!(error.to_string(), "codec_decode: author.jsons_tags: non-null JSON column received NULL");
     }
 }
 
@@ -1980,7 +1953,7 @@ macro_rules! test_model {
 #[cfg(test)]
 mod related_tests {
     use super::{collect_boxed, new_boxed, Core, Entity, Model, Related, RelatedValue, RowState, Schema, Val};
-    use crate::{codes, Result};
+    use crate::Result;
     use std::collections::HashMap;
     use std::sync::Arc;
 
@@ -2023,7 +1996,7 @@ mod related_tests {
             (core.related_many::<Right>("one").map(|_| ()).unwrap_err(), ["one", "Right"]),
             (core.related_many::<Right>("empty").map(|_| ()).unwrap_err(), ["empty", "Right"]),
         ] {
-            assert_eq!(error.code(), codes::INTERNAL, "{error}");
+            assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
             for name in names {
                 assert!(error.to_string().contains(name), "{error} does not name {name}");
             }

@@ -13,7 +13,7 @@ use crate::row::read_row;
 use crate::schema::Schema;
 use crate::tx::{active_for, transaction_conflict, TxFrame, TxShared};
 use crate::value::{Param, Val};
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 use polyspec_orm_schema::dbspec::{self, Document};
 
 /// The utilities of a connection.
@@ -93,7 +93,7 @@ impl<'a> Utils<'a> {
     }
 
     fn active(&self, name: &str) -> Result<Arc<TxShared>> {
-        active_for(self.db).ok_or_else(|| Error::Config(format!("{name} requires an active transaction of the connection")))
+        active_for(self.db).ok_or_else(|| Error::config(format!("{name} requires an active transaction of the connection")))
     }
 
     fn ph(&self, n: usize) -> String {
@@ -158,7 +158,7 @@ impl<'a> Utils<'a> {
     pub async fn lock(&self, key: &str) -> Result<()> {
         let t = self.active("lock")?;
         if !valid_key(key) {
-            return Err(Error::Config(format!("lock key {} is invalid", polyspec_orm_schema::message::quote(key))));
+            return Err(Error::config(format!("lock key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let ex = Executor::Tx(t.clone());
         match self.db.sql_driver() {
@@ -182,7 +182,7 @@ impl<'a> Utils<'a> {
     pub async fn set_local(&self, key: &str, value: &str) -> Result<()> {
         let t = self.active("set_local")?;
         if !valid_key(key) {
-            return Err(Error::Config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
+            return Err(Error::config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let ex = Executor::Tx(t.clone());
         let params = [Param::Str(key.into()), Param::Str(value.into())];
@@ -205,7 +205,7 @@ impl<'a> Utils<'a> {
     pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool> {
         let t = self.active("wasInserted")?;
         if entity.is_empty() || sequence <= 0 {
-            return Err(Error::Config("inserted entity and positive key are required".into()));
+            return Err(Error::config("inserted entity and positive key are required"));
         }
         Ok(t.was_inserted(entity, sequence))
     }
@@ -224,10 +224,10 @@ impl<'a> Utils<'a> {
     pub fn local(&self, key: &str) -> Result<String> {
         let t = self.active("local")?;
         if !valid_key(key) {
-            return Err(Error::Config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
+            return Err(Error::config(format!("local key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let v = t.locals.lock().unwrap().get(key).cloned();
-        v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set"), source: None })
+        v.ok_or_else(|| Error::new(crate::Kind::NoRows, format!("local value {key} is not set")))
     }
 
     /// Schema installation and inspection.
@@ -287,7 +287,7 @@ impl SchemaUtils<'_> {
             crate::db::Pool::MySql(pool) => {
                 // MySQL commits schema statements implicitly, so they run outside a transaction.
                 if active_for(db).is_some() {
-                    return Err(Error::Config("MySQL commits schema statements implicitly; install outside a transaction".into()));
+                    return Err(Error::config("MySQL commits schema statements implicitly; install outside a transaction"));
                 }
                 let mut conn = pool.acquire().await?;
                 install_on(Observed { db, transaction: None }, &mut *conn, dialect, &statements, &target, &refs).await?;
@@ -343,7 +343,7 @@ impl SchemaUtils<'_> {
                     })
                     .await
             }
-            _ if active_for(self.u.db).is_some() => Err(Error::Config(format!(
+            _ if active_for(self.u.db).is_some() => Err(Error::config(format!(
                 "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
                 self.u.db.sql_driver()
             ))),
@@ -375,7 +375,7 @@ impl SchemaUtils<'_> {
     /// Whether a schema exists.
     pub async fn exists(&self, name: &str) -> Result<bool> {
         if !valid_key(name) {
-            return Err(Error::Config(format!("identifier {name} is invalid")));
+            return Err(Error::config(format!("identifier {name} is invalid")));
         }
         let p = [Param::Str(name.into())];
         match self.u.db.sql_driver() {
@@ -393,7 +393,7 @@ impl SchemaUtils<'_> {
     /// Whether a table of a schema exists.
     pub async fn installed(&self, name: &str, table: &str) -> Result<bool> {
         if !valid_key(name) || !valid_key(table) {
-            return Err(Error::Config("schema and table names are required".into()));
+            return Err(Error::config("schema and table names are required"));
         }
         match self.u.db.sql_driver() {
             "postgres" => self.u.exists("SELECT to_regclass($1) IS NOT NULL", &[Param::Str(format!("{name}.{table}"))]).await,
@@ -449,22 +449,18 @@ pub struct PrivilegeUtils<'a> {
 impl PrivilegeUtils<'_> {
     fn table(&self, table: &str) -> Result<(String, String)> {
         if self.u.db.sql_driver() != "postgres" {
-            return Err(Error::Engine {
-                code: codes::CAPABILITY_UNSUPPORTED.into(),
-                msg: "table privileges are supported only by postgres".into(),
-                source: None,
-            });
+            return Err(Error::new(crate::Kind::CapabilityUnsupported, "table privileges are supported only by postgres"));
         }
         let parts: Vec<&str> = table.split('.').collect();
         if parts.len() != 2 || !valid_key(parts[0]) || !valid_key(parts[1]) {
-            return Err(Error::Config("a qualified table name is required".into()));
+            return Err(Error::config("a qualified table name is required"));
         }
         Ok((quote("postgres", parts[0]), format!("{}.{}", quote("postgres", parts[0]), quote("postgres", parts[1]))))
     }
 
     fn role(name: &str) -> Result<String> {
         if !valid_key(name) {
-            return Err(Error::Config(format!("role {name} is invalid")));
+            return Err(Error::config(format!("role {name} is invalid")));
         }
         Ok(quote("postgres", name))
     }
@@ -493,7 +489,7 @@ impl PrivilegeUtils<'_> {
         let privilege = privilege.to_ascii_uppercase();
         if !["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"].contains(&privilege.as_str()) {
             // The refusal names the privilege as the caller gave it.
-            return Err(Error::Config(format!("unsupported table privilege {}", polyspec_orm_schema::message::quote(given))));
+            return Err(Error::config(format!("unsupported table privilege {}", polyspec_orm_schema::message::quote(given))));
         }
         self.u
             .run_executor(async |ex: &Executor| {
@@ -523,10 +519,10 @@ pub struct AesKeyring {
 impl AesKeyring {
     pub fn new(keys: BTreeMap<i32, String>, current: i32) -> Result<Self> {
         if keys.iter().any(|(version, key)| *version < 1 || key.is_empty()) {
-            return Err(Error::Config("aes key list holds an invalid version or an empty key".into()));
+            return Err(Error::config("aes key list holds an invalid version or an empty key"));
         }
         if !keys.contains_key(&current) {
-            return Err(Error::Config("aes current version is not declared".into()));
+            return Err(Error::config("aes current version is not declared"));
         }
         Ok(AesKeyring { keys, current })
     }
@@ -541,7 +537,7 @@ impl AesKeyring {
     }
 
     fn key(&self, version: i32) -> Result<&str> {
-        self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config("aes version is not declared".into()))
+        self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::config("aes version is not declared"))
     }
 }
 
@@ -589,7 +585,7 @@ impl AesUtils<'_> {
         let columns: Vec<(String, Vec<String>)> =
             ent.fields.iter().filter(|c| c.aes()).map(|c| (c.name.clone(), c.codec.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect())).collect();
         let Some(version) = ent.aes_version.clone().filter(|_| !columns.is_empty()) else {
-            return Err(Error::Config(format!("entity {name} has no AES columns with a key version")));
+            return Err(Error::config(format!("entity {name} has no AES columns with a key version")));
         };
         let type_of = |column: &str| -> Result<&'static str> {
             ent.fields.iter().find(|f| f.name == column).map(|f| f.ty.name()).ok_or_else(|| Error::internal(format!("entity {name} has no column {column}")))
@@ -701,14 +697,13 @@ where
     let mut live = introspect_set(on, &mut *conn, dialect, documents).await?;
     let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
     if !planned.differences.is_empty() {
-        return Err(Error::Engine {
-            code: codes::SCHEMA_DIFFERS.into(),
-            msg: format!(
+        return Err(Error::new(
+            crate::Kind::SchemaDiffers,
+            format!(
                 "the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: {}",
                 planned.differences.join("; ")
             ),
-            source: None,
-        });
+        ));
     }
     for step in &planned.steps {
         // A step with no table in its effect does not carry a table.
@@ -742,7 +737,7 @@ where
         live.document.tables.iter().map(|t| t.name.text.as_str()).chain(live.unsupported.iter().map(|u| u.table.as_str())).collect();
     let present: Vec<&str> = target.tables.iter().map(|t| t.name.text.as_str()).filter(|t| found.contains(t)).collect();
     if !present.is_empty() && present.len() < target.tables.len() {
-        return Err(Error::Config(format!("install found only some tables of the document set: {}", present.join(", "))));
+        return Err(Error::config(format!("install found only some tables of the document set: {}", present.join(", "))));
     }
     if present.is_empty() {
         for statement in statements {
@@ -802,7 +797,7 @@ fn verify_set(differences: Vec<String>) -> Result<()> {
     if differences.is_empty() {
         return Ok(());
     }
-    Err(Error::Config(format!("the database differs from the document set: {}", differences.join("; "))))
+    Err(Error::config(format!("the database differs from the document set: {}", differences.join("; "))))
 }
 
 /// The schema text document of the set, the target compared with the database. The use lines of the schema text point to external documents,
@@ -816,7 +811,7 @@ fn schema_target(documents: &[Document]) -> Result<Document> {
 
 /// A diagnostic of the document set is SCHEMA_INVALID.
 fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
-    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "), source: None }
+    Error::new(crate::Kind::SchemaInvalid, errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
 }
 
 /// Turns off foreign keys on the SQLite connection, adds tables and columns in a BEGIN IMMEDIATE transaction, then checks the foreign
@@ -856,7 +851,7 @@ where
             }
             Err(error) => match events::raw(db, &mut *conn, inside(KIND_ROLLBACK, "ROLLBACK")).await {
                 Ok(()) => Err(error),
-                Err(rollback) => Err(Error::Rollback { callback: Box::new(error), rollback: Box::new(rollback) }),
+                Err(rollback) => Err(Error::rollback_failed(crate::CallbackFailure::Kind(error), rollback)),
             },
         }
     }
@@ -866,9 +861,7 @@ where
         (result, Ok(())) => result,
         (Ok(_), Err(e)) => Err(e),
         // An error from failing to turn foreign keys back on is also kept in the message.
-        (Err(error), Err(restore)) => {
-            Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}"), source: None })
-        }
+        (Err(error), Err(restore)) => Err(Error::new(error.kind(), format!("{}; restoring foreign keys failed: {restore}", error.text()))),
     }
 }
 
@@ -877,7 +870,7 @@ fn external_error(differences: Vec<String>) -> Result<()> {
     if differences.is_empty() {
         return Ok(());
     }
-    Err(Error::Config(format!("the tables that the set uses from external documents differ from the database: {}", differences.join("; "))))
+    Err(Error::config(format!("the tables that the set uses from external documents differ from the database: {}", differences.join("; "))))
 }
 
 #[cfg(test)]
@@ -891,6 +884,6 @@ mod keyring_tests {
     fn rotation_row_without_aes_column_is_internal() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let row = [Val::I64(7), Val::I64(1)];
-        assert_eq!(rotation_columns(&row, 1, 1).unwrap_err().code(), crate::codes::INTERNAL);
+        assert_eq!(rotation_columns(&row, 1, 1).unwrap_err().kind(), crate::Kind::Internal);
     }
 }

@@ -13,6 +13,7 @@ mod markdown_model {
     include!(concat!(env!("OUT_DIR"), "/markdown/orm_model.rs"));
 }
 
+use crate::recipe_error::RecipeCode as _;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -218,11 +219,11 @@ pub fn same(a: &Value, b: &Value) -> bool {
 
 /// The error the callback returns to roll back the transaction.
 fn stop() -> Error {
-    Error::Config("stop".into())
+    Error::config("stop")
 }
 
 fn is_stop(error: &Error) -> bool {
-    matches!(error, Error::Config(message) if message == "stop")
+    error.kind() == polyspec_orm::Kind::Config && error.text() == "stop"
 }
 
 /// The orm code of the error of `r`, or null when it holds a value.
@@ -322,7 +323,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("P1")
             .get()
             .await?
-            .ok_or(polyspec_orm::Error::NoRows)?
+            .ok_or(polyspec_orm::Error::no_rows())?
             .to_array()?
             .plain()?,
         "one_no_rows" => People::new().connect(db).id("P9").get().await?.map(|m| m.to_array().and_then(|v| v.plain())).transpose()?.unwrap_or(Value::Null),
@@ -402,7 +403,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("P1")
             .get()
             .await?
-            .ok_or(polyspec_orm::Error::NoRows)?
+            .ok_or(polyspec_orm::Error::no_rows())?
             .to_array()?
             .plain()?,
         "relation_one" => Tasks::new()
@@ -413,17 +414,17 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("T3")
             .get()
             .await?
-            .ok_or(polyspec_orm::Error::NoRows)?
+            .ok_or(polyspec_orm::Error::no_rows())?
             .to_array()?
             .plain()?,
         "update" => {
-            let mut m = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_age(Some(26));
+            let mut m = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_age(Some(26));
             m.update(false).await?;
-            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?.plain()?
+            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.ok_or(polyspec_orm::Error::no_rows())?.to_array()?.plain()?
         }
         "update_optimistic_conflict" => {
-            let stale = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
-            let mut fresh = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_name("Bobby");
+            let stale = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
+            let mut fresh = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_name("Bobby");
             fresh.update(false).await?;
             let mut stale = stale.set_age(Some(27));
             stale.update(true).await?;
@@ -431,26 +432,26 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         "insert_on_duplicate" => {
             let m = People::new().connect(db).set_id("P1").set_name("Ann B").duplication(People::new().set_name("Ann B")).create().await?;
-            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
             json!({ "created": m.get_id()?, "name": read.get_name()? })
         }
         "insert_on_duplicate_unique" => {
             let created = Tags::new().connect(db).set_name("spec").set_uses(1).create().await?;
             let met = Tags::new().connect(db).set_name("spec").set_uses(1).duplication(Tags::new().set_uses(2)).create().await?;
-            let read = Tags::new().connect(db).name("spec").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let read = Tags::new().connect(db).name("spec").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
             let count = Tags::new().connect(db).get_count().await?;
             json!({ "created": created.get_id()?, "met": met.get_id()?, "uses": read.get_uses()?, "count": count })
         }
         "delete" => {
-            Tasks::new().connect(db).id("T2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+            Tasks::new().connect(db).id("T2").get().await?.ok_or(polyspec_orm::Error::no_rows())?.delete(false).await?;
             json!(Tasks::new().connect(db).get_count().await?)
         }
         "delete_referenced" => {
-            Tasks::new().connect(db).id("T1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+            Tasks::new().connect(db).id("T1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.delete(false).await?;
             Value::Null
         }
         "soft_delete" => {
-            People::new().connect(db).id("P3").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+            People::new().connect(db).id("P3").get().await?.ok_or(polyspec_orm::Error::no_rows())?.delete(false).await?;
             json!(People::new().connect(db).get_count().await?)
         }
         "restore" => {
@@ -471,7 +472,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 .await;
             match ended {
                 Err(error) if is_stop(&error) => assert!(is_stop(&error), "{error:?}"),
-                other => return Err(Error::Config(format!("the transaction ended with {other:?}, not its callback's error"))),
+                other => return Err(Error::config(format!("the transaction ended with {other:?}, not its callback's error"))),
             }
             json!(Logs::new().connect(db).get_count().await?)
         }
@@ -486,7 +487,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                     .await;
                 match inner {
                     Err(error) if is_stop(&error) => Ok(()),
-                    other => Err(Error::Config(format!("the savepoint ended with {other:?}, not its callback's error"))),
+                    other => Err(Error::config(format!("the savepoint ended with {other:?}, not its callback's error"))),
                 }
             })
             .await?;
@@ -500,7 +501,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         "lock_update" => {
             db.transaction(async || {
-                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?.plain()
+                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::no_rows())?.to_array()?.plain()
             })
             .await?
         }
@@ -521,18 +522,18 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "write_conflict" => {
             let committed = db
                 .transaction(async || {
-                    let mut m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_name("Ann C");
+                    let mut m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_name("Ann C");
                     m.update(false).await?;
                     // An edit outside the engine: changes a file the transaction writes before commit.
                     let path = s.dir.join("people.flowmark.md");
-                    let text = std::fs::read_to_string(&path).map_err(|e| Error::Config(format!("{}: {e}", path.display())))?;
+                    let text = std::fs::read_to_string(&path).map_err(|e| Error::config(format!("{}: {e}", path.display())))?;
                     if !text.contains("Cara") {
-                        return Err(Error::Config(format!("{} holds no Cara to edit:\n{text}", path.display())));
+                        return Err(Error::config(format!("{} holds no Cara to edit:\n{text}", path.display())));
                     }
-                    std::fs::write(&path, text.replacen("Cara", "Carol", 1)).map_err(|e| Error::Config(format!("{}: {e}", path.display())))
+                    std::fs::write(&path, text.replacen("Cara", "Carol", 1)).map_err(|e| Error::config(format!("{}: {e}", path.display())))
                 })
                 .await;
-            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
             let code = committed.err().map(|error| error.code().to_owned()).unwrap_or_default();
             json!({ "error": code, "name": read.get_name()? })
         }
@@ -543,7 +544,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let committed = db
                 .transaction(async || {
                     runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    let m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
                     let name = m.get_name()?.to_owned();
                     m.set_name(&name).update(false).await.map(drop)
                 })
@@ -594,7 +595,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 .id("T3")
                 .get()
                 .await?
-                .ok_or(polyspec_orm::Error::NoRows)?
+                .ok_or(polyspec_orm::Error::no_rows())?
                 .to_array()?
                 .plain()?;
             json!({ "duplicate": duplicate, "upsert": upsert, "met": met, "count": Tasks::new().connect(db).get_count().await? })
@@ -672,7 +673,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         // NULL and matches no row.
         "now_truncated" => {
             use polyspec_orm::chrono::Timelike;
-            let joined = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.get_joined()?;
+            let joined = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.get_joined()?;
             let far = || polyspec_orm::seconds_later(1000000000000000);
             json!({
                 "fraction": joined.nanosecond(),
@@ -687,7 +688,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         // file, and reads again once the file is restored.
         "unavailable_table" => {
             let path = s.dir.join("tasks.flowmark.md");
-            let io = |e: std::io::Error| Error::Config(format!("{}: {e}", path.display()));
+            let io = |e: std::io::Error| Error::config(format!("{}: {e}", path.display()));
             let text = std::fs::read(&path).map_err(io)?;
             let mut broken_text = text.clone();
             broken_text.extend_from_slice(b"\n## people row P1\n");
@@ -705,13 +706,13 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         // codec_default_select asks for a select-explicit getter without selecting it.
         "codec_default_select" => {
-            let row = CodecRows::new().connect(db).id("C1").get().await?.ok_or(Error::NoRows)?;
+            let row = CodecRows::new().connect(db).id("C1").get().await?.ok_or(Error::no_rows())?;
             let _payload = row.get_payload()?;
             Value::Null
         }
         // codec_explicit_select reads the selected column through its base64 codec.
         "codec_explicit_select" => {
-            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::no_rows())?;
             match row.get_payload()? {
                 StyledValue::Value(value) => json!(value),
                 StyledValue::SqlNull => json!("sql-null"),
@@ -719,9 +720,9 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         // codec_update changes the encoded value and reads back the decoded text.
         "codec_update" => {
-            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::no_rows())?;
             row.set_payload(StyledValue::Value("updated encoded value".into()))?.update(false).await?;
-            let read = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            let read = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::no_rows())?;
             match read.get_payload()? {
                 StyledValue::Value(value) => json!(value),
                 StyledValue::SqlNull => json!("sql-null"),
@@ -734,7 +735,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         // select_explicit_read_null includes the omitted SQL NULL column in the read.
         "select_explicit_read_null" => {
-            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C2").get().await?.ok_or(Error::NoRows)?;
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C2").get().await?.ok_or(Error::no_rows())?;
             match row.get_payload()? {
                 StyledValue::SqlNull => json!("sql-null"),
                 StyledValue::Value(_) => json!("value"),

@@ -68,15 +68,14 @@ async fn count(db: &Db) -> i64 {
     polyspec_orm::model::get_count(connected::<Probe>(db).core()).await.unwrap()
 }
 
-/// Checks the error of a refused statement: its code and message are the fixture's.
-/// An empty code or an empty message panics (the programmer-error signal of
-/// Rust) and arms nothing: the next insert runs.
+/// An empty message panics (the programmer-error signal of Rust) and arms nothing: the next insert runs. The fault takes a
+/// kind, so an empty code cannot be written; the code of the fixture names a kind (CORE-3).
 async fn empty_argument_refused(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
-    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, "", &fixture.message)));
-    assert!(refused.is_err(), "{driver}: an empty code panics");
-    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, &fixture.code, "")));
+    assert!(!fixture.message.is_empty(), "{driver}: the fixture states the message of the fault");
+    let Some(kind) = polyspec_orm_test_support::catalog_code::kind_of_code(&fixture.code) else { panic!("{driver}: the code {} names no kind", fixture.code) };
+    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, kind, "")));
     assert!(refused.is_err(), "{driver}: an empty message panics");
     create(&db, "kept").await.or_panic(|e| format!("{driver}: a refused arming leaves the next insert running: {e}"));
     assert_eq!(count(&db).await, 1, "{driver}: the insert ran");

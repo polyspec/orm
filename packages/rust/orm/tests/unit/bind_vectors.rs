@@ -3,7 +3,7 @@
 //! file a unit test module.
 use super::{check_assign, check_param, transform_param, ParamSlot};
 use crate::db::Zone;
-use crate::{Error, Param};
+use crate::Param;
 use base64::Engine as _;
 use serde_json::Value;
 
@@ -85,7 +85,7 @@ fn bind_vectors() {
                     None => check_assign(0, &value, &slot).and_then(|()| check_param(0, &value, &slot, &Zone)).map(|()| value.clone()),
                 };
                 let ok = match (&got, c.get("code")) {
-                    (Err(Error::Engine { code, .. }), Some(want)) => want == code.as_str(),
+                    (Err(error), Some(want)) => want.as_str() == Some(error.kind().as_str().to_ascii_uppercase().as_str()),
                     (Ok(bound), None) => format!("{bound:?}") == format!("{:?}", vector_value(&c["bound"])),
                     _ => false,
                 };

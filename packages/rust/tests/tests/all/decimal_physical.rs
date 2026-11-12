@@ -2,6 +2,7 @@
 //! generated models of the bench and decimal document sets on one connection.
 
 use polyspec_orm_testcase::OrPanic;
+use polyspec_orm_tests::recipe_error::RecipeCode as _;
 
 #[allow(
     dead_code,
@@ -24,14 +25,14 @@ async fn decimal_physical(env: &str) {
         .transaction(async || {
             let row = DecimalCase::new().set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
             assert_eq!(row.get_amount()?, "48.0450");
-            let loaded = DecimalCase::new().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let loaded = DecimalCase::new().get_by_seq(1).await?.ok_or(polyspec_orm::Error::no_rows())?;
             assert_eq!(loaded.get_amount()?, "48.0450");
             assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
-            Err(polyspec_orm::Error::Config("decimal fixture rollback".into()))
+            Err(polyspec_orm::Error::config("decimal fixture rollback"))
         })
         .await;
     assert!(
-        matches!(result, Err(polyspec_orm::Error::Config(ref message)) if message == "decimal fixture rollback"),
+        matches!(&result, Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text() == "decimal fixture rollback"),
         "transaction rollback result: {result:?}"
     );
     db.close().await;

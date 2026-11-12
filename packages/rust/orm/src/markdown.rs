@@ -17,7 +17,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::db::DbStats;
 use crate::value::{Param, Val};
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The flowmark server address, the corpus name, the token and the `_pragma` settings of a `markdown://` DSN.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,18 +39,18 @@ const DSN_FORM: &str = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?tok
 /// the `token` values and `pragmas` the `_pragma` values of the query, which parse_dsn has read (CFG-20) and whose
 /// `_pragma` values it checks after the timezone.
 pub(crate) fn parse_markdown_dsn(url: &url::Url, path: &str, tokens: &[&str], pragmas: &[String]) -> Result<MarkdownDsn> {
-    let bad = |reason: String| Error::Config(format!("{DSN_FORM}; {reason}"));
+    let bad = |reason: String| Error::config(format!("{DSN_FORM}; {reason}"));
     // The query reader refused a repeated or empty token (CFG-20); the token, the user, the host, the port and the corpus are
     // checked in that order, before the values of timezone and _pragma (PRT-63).
     let Some(token) = tokens.first().map(|token| (*token).to_owned()) else {
-        return Err(Error::Config("markdown DSN is missing the parameter \"token\"".into()));
+        return Err(Error::config("markdown DSN is missing the parameter \"token\""));
     };
     if !url.username().is_empty() || url.password().is_some() {
         return Err(bad("it takes no user".into()));
     }
     let host = url.host_str().unwrap_or("");
     if host.contains('%') {
-        return Err(Error::Config(format!(
+        return Err(Error::config(format!(
             "markdown DSN host {} holds a percent escape, which no host name needs",
             polyspec_orm_schema::message::Quoted(host)
         )));
@@ -141,9 +141,9 @@ impl sqlx::error::DatabaseError for MarkdownServerError {
             Some(275) => ErrorKind::CheckViolation,
             // A refusal of the engine states its code and no result code, as a deferred foreign key at the commit does.
             _ => match self.code.as_str() {
-                codes::DUPLICATE_KEY => ErrorKind::UniqueViolation,
-                codes::FOREIGN_KEY => ErrorKind::ForeignKeyViolation,
-                codes::CONSTRAINT => ErrorKind::CheckViolation,
+                "DUPLICATE_KEY" => ErrorKind::UniqueViolation,
+                "FOREIGN_KEY" => ErrorKind::ForeignKeyViolation,
+                "CONSTRAINT" => ErrorKind::CheckViolation,
                 _ => ErrorKind::Other,
             },
         }
@@ -155,11 +155,11 @@ fn session_error(code: &str, message: impl Into<String>) -> sqlx::Error {
 }
 
 fn connection_lost(message: impl Into<String>) -> sqlx::Error {
-    session_error(codes::CONNECTION_LOST, message)
+    session_error("CONNECTION_LOST", message)
 }
 
 fn answer_error(message: impl std::fmt::Display) -> sqlx::Error {
-    session_error(codes::INTERNAL, format!("the flowmark answer: {message}"))
+    session_error("INTERNAL", format!("the flowmark answer: {message}"))
 }
 
 /// One connection to the flowmark server, that is, one server session. One task uses it at a time: when the pool hands it out or
@@ -320,7 +320,7 @@ pub fn wire_float(x: f64) -> std::result::Result<Value, sqlx::Error> {
     if x == f64::NEG_INFINITY {
         return Ok(serde_json::json!({ "float": "-Inf" }));
     }
-    serde_json::Number::from_f64(x).map(Value::Number).ok_or_else(|| session_error(codes::CONFIG, format!("the statement parameter {x} has no wire form")))
+    serde_json::Number::from_f64(x).map(Value::Number).ok_or_else(|| session_error("CONFIG", format!("the statement parameter {x} has no wire form")))
 }
 
 /// The wire form of bytes: `{"bytes": base64}`.
@@ -362,9 +362,9 @@ impl MarkdownSession {
     /// Connects to the server, sends the corpus and token in the first message, connect, and states the `_pragma` settings of the
     /// DSN.
     async fn dial(dsn: &MarkdownDsn) -> std::result::Result<MarkdownSession, sqlx::Error> {
-        let stream = TcpStream::connect(&dsn.address).await.map_err(|e| {
-            session_error(codes::DRIVER, format!("connecting to the flowmark server {}: {e}; start flowmark serve for the corpus", dsn.address))
-        })?;
+        let stream = TcpStream::connect(&dsn.address)
+            .await
+            .map_err(|e| session_error("DRIVER", format!("connecting to the flowmark server {}: {e}; start flowmark serve for the corpus", dsn.address)))?;
         let (read, write) = stream.into_split();
         let mut session = MarkdownSession { read: BufReader::new(read), write, created: Instant::now(), broken: false };
         session.call(&MarkdownConnect { op: "connect", corpus: &dsn.corpus, token: &dsn.token }).await?;
@@ -382,7 +382,7 @@ impl MarkdownSession {
         if self.broken {
             return Err(connection_lost("the flowmark session has ended"));
         }
-        let mut line = serde_json::to_vec(msg).map_err(|e| session_error(codes::INTERNAL, format!("writing the message: {e}")))?;
+        let mut line = serde_json::to_vec(msg).map_err(|e| session_error("INTERNAL", format!("writing the message: {e}")))?;
         line.push(b'\n');
         self.broken = true;
         let answer = self.exchange(&line).await.map_err(|e| connection_lost(format!("the flowmark server connection broke: {e}")))?;
@@ -390,7 +390,7 @@ impl MarkdownSession {
         let Ok(object) = serde_json::from_slice::<serde_json::Map<String, Value>>(&answer) else {
             self.broken = true;
             return Err(session_error(
-                codes::INTERNAL,
+                "INTERNAL",
                 format!("the flowmark server answered {}, not a JSON object", polyspec_orm_schema::message::quote_bytes(&answer)),
             ));
         };
@@ -401,7 +401,7 @@ impl MarkdownSession {
             return Err(answer_error(format!("the error {error} has no code")));
         }
         // The server writes CONNECTION_LOST and then closes the connection (idle transaction).
-        if code == codes::CONNECTION_LOST {
+        if code == "CONNECTION_LOST" {
             self.broken = true;
         }
         Err(sqlx::Error::Database(Box::new(MarkdownServerError {

@@ -1,49 +1,49 @@
 //! The refusals of a catalog conversion of a driver value: one code and one text per rule of docs/spec/interfaces.md
 //! "Catalog value rules" (INT-165 to INT-186), and the 1-based position of the column whose value breaks it.
 
-use polyspec_orm::codes::{CATALOG_VALUE, GRID_TEMPORAL_PRECISION, GRID_TEMPORAL_VALUE};
+use polyspec_orm::Kind;
 
 /// One rule of the catalog value rules: its code and its text, which names no value, no type and no column label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rule {
-    pub code: &'static str,
+    pub kind: Kind,
     pub text: &'static str,
 }
 
 /// INT-167
-pub const MYSQL_TIMESTAMP: Rule = Rule { code: CATALOG_VALUE, text: "MySQL TIMESTAMP follows a time zone" };
+pub const MYSQL_TIMESTAMP: Rule = Rule { kind: Kind::CatalogValue, text: "MySQL TIMESTAMP follows a time zone" };
 /// INT-168
-pub const POSTGRES_ZONED: Rule = Rule { code: CATALOG_VALUE, text: "PostgreSQL timestamptz and timetz are unsupported" };
+pub const POSTGRES_ZONED: Rule = Rule { kind: Kind::CatalogValue, text: "PostgreSQL timestamptz and timetz are unsupported" };
 /// INT-169
-pub const POSTGRES_NUMERIC_NOT_FINITE: Rule = Rule { code: CATALOG_VALUE, text: "PostgreSQL numeric is not finite" };
+pub const POSTGRES_NUMERIC_NOT_FINITE: Rule = Rule { kind: Kind::CatalogValue, text: "PostgreSQL numeric is not finite" };
 /// INT-170
-pub const UNSUPPORTED_NATIVE_TYPE: Rule = Rule { code: CATALOG_VALUE, text: "unsupported native type" };
+pub const UNSUPPORTED_NATIVE_TYPE: Rule = Rule { kind: Kind::CatalogValue, text: "unsupported native type" };
 /// INT-171
-pub const UNSUPPORTED_DRIVER_VALUE: Rule = Rule { code: CATALOG_VALUE, text: "unsupported driver value" };
+pub const UNSUPPORTED_DRIVER_VALUE: Rule = Rule { kind: Kind::CatalogValue, text: "unsupported driver value" };
 /// INT-172
-pub const UNDECODABLE: Rule = Rule { code: CATALOG_VALUE, text: "the driver could not decode the value" };
+pub const UNDECODABLE: Rule = Rule { kind: Kind::CatalogValue, text: "the driver could not decode the value" };
 /// INT-173
-pub const DATE_RANGE: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "date outside 0001-01-01 to 9999-12-31" };
+pub const DATE_RANGE: Rule = Rule { kind: Kind::GridTemporalValue, text: "date outside 0001-01-01 to 9999-12-31" };
 /// INT-174
-pub const CALENDAR_DATE: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "date is not a calendar date" };
+pub const CALENDAR_DATE: Rule = Rule { kind: Kind::GridTemporalValue, text: "date is not a calendar date" };
 /// INT-175
-pub const TIME_OF_DAY: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "time outside 00:00:00 to 23:59:59.999999" };
+pub const TIME_OF_DAY: Rule = Rule { kind: Kind::GridTemporalValue, text: "time outside 00:00:00 to 23:59:59.999999" };
 /// INT-176
-pub const SQLITE_DATE_FORM: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "the stored value is not a dbspec date" };
+pub const SQLITE_DATE_FORM: Rule = Rule { kind: Kind::GridTemporalValue, text: "the stored value is not a dbspec date" };
 /// INT-177
-pub const SQLITE_TIME_FORM: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "the stored value is not a dbspec time" };
+pub const SQLITE_TIME_FORM: Rule = Rule { kind: Kind::GridTemporalValue, text: "the stored value is not a dbspec time" };
 /// INT-178
-pub const SQLITE_DATETIME_FORM: Rule = Rule { code: GRID_TEMPORAL_VALUE, text: "the stored value is not a dbspec datetime" };
+pub const SQLITE_DATETIME_FORM: Rule = Rule { kind: Kind::GridTemporalValue, text: "the stored value is not a dbspec datetime" };
 /// INT-179
-pub const SQLITE_FRACTION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, text: "the fraction digits are not the count that its dbspec CHECK fixes" };
+pub const SQLITE_FRACTION: Rule = Rule { kind: Kind::GridTemporalPrecision, text: "the fraction digits are not the count that its dbspec CHECK fixes" };
 /// INT-180
-pub const FRACTION_PAST_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, text: "temporal value has more fraction digits than its precision" };
+pub const FRACTION_PAST_PRECISION: Rule = Rule { kind: Kind::GridTemporalPrecision, text: "temporal value has more fraction digits than its precision" };
 /// INT-181
-pub const NATIVE_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, text: "native type declares more than 6 fraction digits" };
+pub const NATIVE_PRECISION: Rule = Rule { kind: Kind::GridTemporalPrecision, text: "native type declares more than 6 fraction digits" };
 /// INT-182
-pub const BOOLEAN: Rule = Rule { code: CATALOG_VALUE, text: "a boolean column holds a value that is not a boolean" };
+pub const BOOLEAN: Rule = Rule { kind: Kind::CatalogValue, text: "a boolean column holds a value that is not a boolean" };
 /// INT-186
-pub const OUTPUT_SETTING_CHANGED: Rule = Rule { code: CATALOG_VALUE, text: "the query changed a setting that the output of its values depends on" };
+pub const OUTPUT_SETTING_CHANGED: Rule = Rule { kind: Kind::CatalogValue, text: "the query changed a setting that the output of its values depends on" };
 
 /// A value that a catalog conversion refuses by one rule, at the 1-based position of its column. A driver or library failure
 /// (INT-172) names no column and keeps that failure as its source.
@@ -70,8 +70,8 @@ impl ValueRefusal {
     pub fn rule(&self) -> Rule {
         self.rule
     }
-    pub fn code(&self) -> &'static str {
-        self.rule.code
+    pub fn kind(&self) -> Kind {
+        self.rule.kind
     }
     /// The 1-based position of the column, or None for INT-172, which names none.
     pub fn column(&self) -> Option<usize> {
@@ -86,8 +86,8 @@ impl ValueRefusal {
 impl std::fmt::Display for ValueRefusal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.column {
-            Some(column) => write!(f, "{}: column {column}: {}", self.rule.code, self.rule.text),
-            None => write!(f, "{}: {}", self.rule.code, self.rule.text),
+            Some(column) => write!(f, "{}: column {column}: {}", crate::catalog::code(self.rule.kind), self.rule.text),
+            None => write!(f, "{}: {}", crate::catalog::code(self.rule.kind), self.rule.text),
         }
     }
 }

@@ -69,19 +69,18 @@ pub fn fail_next_rollback(db: &Db) {
 /// The statement fault of a connection: the code and the message of the error
 /// that the next statement ends with.
 pub(crate) struct StatementFault {
-    code: String,
+    kind: crate::Kind,
     message: String,
 }
 
 /// Sets the test fault of the next statement on the connection of `db` and all its clones. The next
-/// statement is not sent to the database and ends with an ORM error of `code` and `message`. A transaction
+/// statement is not sent to the database and ends with an ORM error of `kind` and `message`. A transaction
 /// control statement does not consume this fault. An already configured statement fault is replaced.
 ///
-/// If `code` or `message` is empty, it panics and sets nothing.
-pub fn fail_next_statement(db: &Db, code: &str, message: &str) {
-    assert!(!code.is_empty(), "fail_next_statement: the code is empty");
+/// If `message` is empty, it panics and sets nothing.
+pub fn fail_next_statement(db: &Db, kind: crate::Kind, message: &str) {
     assert!(!message.is_empty(), "fail_next_statement: the message is empty");
-    let fault = StatementFault { code: code.to_owned(), message: message.to_owned() };
+    let fault = StatementFault { kind, message: message.to_owned() };
     *db.inner.statement_fault.lock().unwrap() = Some(fault);
 }
 
@@ -95,7 +94,7 @@ pub fn sqlite_result_error(message: &str, result: i64) -> sqlx::Error {
 /// Consumes the configured statement fault of `db` and returns its error. None if there is no fault.
 pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
     let fault = db.inner.statement_fault.lock().unwrap().take()?;
-    Some(Error::Engine { code: fault.code, msg: fault.message, source: None })
+    Some(Error::new(fault.kind, fault.message))
 }
 
 /// The statement gate of a connection: the next statement on one of its transactions waits there, holding the

@@ -3,6 +3,7 @@
 //! must be the one pinned by tests/markdown/flowmark.version; if it is missing or a different build, the test fails (it does not
 //! skip). The cases run in polyspec_orm_tests::markdown; the model is made by build.rs from tests/markdown/corpus/dbspec/conformance.dbs.
 
+use polyspec_orm_tests::recipe_error::RecipeCode as _;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Mutex;

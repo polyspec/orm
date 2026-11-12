@@ -11,6 +11,6 @@ pub fn statement_record(event: &StatementEvent<'_>, binds: Vec<Value>, transacti
         "kind": event.kind,
         "tables": event.tables,
         "transaction": transaction,
-        "error": event.error.map(|error| error.code().to_owned()),
+        "error": event.error.map(crate::catalog_code::catalog_code),
     })
 }

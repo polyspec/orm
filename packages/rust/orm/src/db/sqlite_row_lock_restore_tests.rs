@@ -1,5 +1,5 @@
 use super::{run_sqlite_row_lock_sequence, SqliteRowLockSequenceOps};
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 struct FakeSequence {
     set_error: Option<Error>,
@@ -35,11 +35,11 @@ impl SqliteRowLockSequenceOps for FakeSequence {
 }
 
 fn lock_error() -> Error {
-    Error::Engine { code: codes::LOCK_NOT_AVAILABLE.into(), msg: "busy".into(), source: None }
+    Error::new(crate::Kind::LockNotAvailable, "busy")
 }
 
 fn restore_error() -> Error {
-    Error::Config("restore rejected".into())
+    Error::config("restore rejected")
 }
 
 #[tokio::test]
@@ -53,12 +53,13 @@ async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore()
         assert_eq!(sequence.calls, ["set-zero", "lock", "restore"]);
         match (primary, restore, result) {
             (false, false, Ok(())) => {}
-            (false, true, Err(Error::Config(message))) => assert_eq!(message, "restore rejected"),
-            (true, false, Err(error)) => assert_eq!(error.code(), codes::LOCK_NOT_AVAILABLE),
-            (true, true, Err(Error::Cleanup { primary, cleanup })) => {
-                assert_eq!(primary.code(), codes::LOCK_NOT_AVAILABLE);
+            (false, true, Err(error)) => assert_eq!(error.text(), "restore rejected"),
+            (true, false, Err(error)) => assert_eq!(error.kind(), crate::Kind::LockNotAvailable),
+            (true, true, Err(error)) => {
+                let (Some(primary), cleanup) = (error.cleanup_primary(), error.cleanup_errors()) else { panic!("{error}: no cleanup errors") };
+                assert_eq!(primary.kind(), crate::Kind::LockNotAvailable);
                 assert_eq!(cleanup.len(), 1);
-                assert_eq!(cleanup[0].code(), codes::CONFIG);
+                assert_eq!(cleanup[0].kind(), crate::Kind::Config);
             }
             (_, _, other) => panic!("unexpected result: {other:?}"),
         }
@@ -70,19 +71,20 @@ async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore()
 async fn failed_nowait_setup_still_restores_and_skips_lock_attempt() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut sequence = FakeSequence {
-        set_error: Some(Error::Engine { code: codes::CANCELED.into(), msg: "set zero failed".into(), source: None }),
+        set_error: Some(Error::new(crate::Kind::Canceled, "set zero failed")),
         primary_error: None,
         restore_error: Some(restore_error()),
         calls: Vec::new(),
     };
     let result = run_sqlite_row_lock_sequence(&mut sequence).await;
     assert_eq!(sequence.calls, ["set-zero", "restore"]);
-    assert_eq!(result.as_ref().unwrap_err().code(), codes::CANCELED);
+    assert_eq!(result.as_ref().unwrap_err().kind(), crate::Kind::Canceled);
     match result {
-        Err(Error::Cleanup { primary, cleanup }) => {
-            assert_eq!(primary.code(), codes::CANCELED);
+        Err(error) => {
+            let (Some(primary), cleanup) = (error.cleanup_primary(), error.cleanup_errors()) else { panic!("{error}: no cleanup errors") };
+            assert_eq!(primary.kind(), crate::Kind::Canceled);
             assert_eq!(cleanup.len(), 1);
-            assert_eq!(cleanup[0].code(), codes::CONFIG);
+            assert_eq!(cleanup[0].kind(), crate::Kind::Config);
         }
         other => panic!("unexpected result: {other:?}"),
     }

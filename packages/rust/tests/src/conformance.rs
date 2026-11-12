@@ -5,6 +5,7 @@
 //! Usage: conformance --dsn URI [--vector NAME]...
 //! Each --vector selects one vector by name; without one every vector runs.
 use polyspec_orm_testcase::OrPanic;
+use polyspec_orm_tests::recipe_error::RecipeCode as _;
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -164,7 +165,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
     run!("terminal_by", async {
-        let one = author().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+        let one = author().get_by_seq(42).await?.ok_or(polyspec_orm::Error::no_rows())?;
         let missing = author().get_by_seq(-1).await;
         let rows = author().order_by_seq_asc().limit(0, 2).gets_by_service_seq_and_is_close(7, false).await?;
         let count = author().get_count_by_service_seq(7).await?;
@@ -203,7 +204,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("aes_values", async {
         let row =
-            author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::no_rows())?;
         let found = author().aes_hex_email("user42@example.com").get_count().await?;
         Ok::<Value, polyspec_orm::Error>(json!({"row": row.to_array()?.plain()?, "found": found}))
     });
@@ -225,7 +226,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .await?;
             let seq = created.get_seq().unwrap();
             mask(shared, &[seq]);
-            let loaded = author().get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let loaded = author().get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
             let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
             // The runner connects in +00:00, so the wall-clock value is UTC.
             let near = (created_ts - before).num_seconds().abs() < 60;
@@ -249,7 +250,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .relations(ServiceMember::new().match_seq_with_service_seq())
                 .get_by_seq(seq)
                 .await?
-                .ok_or(polyspec_orm::Error::NoRows)?;
+                .ok_or(polyspec_orm::Error::no_rows())?;
             let members = loaded.get_service_member_models()?.expect("selected service members").len();
             mask(shared, &seqs);
             loaded.delete(true).await?;
@@ -278,7 +279,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let upsert_inserted = polyspec_orm::testing::last_affected(db);
             UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
             let upsert_updated = polyspec_orm::testing::last_affected(db);
-            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?.set_label("y");
+            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?.set_label("y");
             row.update(false).await?;
             let update_unchanged = polyspec_orm::testing::last_affected(db);
             let mut row = row.set_label("z");
@@ -307,7 +308,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let created = ClockCell::new().connect(db).set_label("write").create().await?;
             let seq = created.get_seq().unwrap();
             mask(shared, &[seq]);
-            let row = ClockCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let row = ClockCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::no_rows())?;
             row.delete(false).await?;
             let at6 = row.get_at6()?;
             Ok::<Value, polyspec_orm::Error>(json!({

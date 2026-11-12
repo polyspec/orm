@@ -6,7 +6,7 @@ fn public_package_entry() {
     let _: Option<Db> = None;
     let _: Option<Schema> = None;
     let _: Option<Val> = None;
-    assert_eq!(Error::NoRows.to_string(), "NO_ROWS: query returned no rows");
+    assert_eq!(Error::no_rows().to_string(), "NO_ROWS: query returned no rows");
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

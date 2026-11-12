@@ -33,13 +33,9 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
         Param::I64(x) => x.to_string(),
         Param::F64(x) => x.to_string(),
         Param::Str(s) => s.clone(),
-        Param::Bytes(b) => std::str::from_utf8(b)
-            .map_err(|error| Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("relation key bytes are not UTF-8: {error}"),
-                source: None,
-            })?
-            .to_owned(),
+        Param::Bytes(b) => {
+            std::str::from_utf8(b).map_err(|error| Error::new(crate::Kind::CodecDecode, format!("relation key bytes are not UTF-8: {error}")))?.to_owned()
+        }
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
     };
@@ -120,7 +116,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool, parent_
                 i += 1;
                 continue;
             }
-            let k: usize = st.sql[i + 1..j].parse().map_err(|error| Error::Config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
+            let k: usize = st.sql[i + 1..j].parse().map_err(|error| Error::config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
             if k == parent {
                 for m in 0..n * width {
                     if m > 0 {
@@ -323,8 +319,8 @@ pub(crate) fn parse_datetime(s: &str) -> std::result::Result<NaiveDateTime, Stri
 /// as the parameter type, so it does not ask the server for the type. A value that cannot be that type is CONFIG.
 pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> Result<PgQuery<'q>> {
     let name = ty;
-    let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
-    let bad_with = |error: &dyn std::fmt::Display| Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}: {error}", i + 1));
+    let bad = || Error::config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
+    let bad_with = |error: &dyn std::fmt::Display| Error::config(format!("postgres parameter ${} is {name}: cannot bind {p:?}: {error}", i + 1));
     macro_rules! int {
         ($t:ty) => {
             match p {
@@ -417,7 +413,7 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
             Param::Str(s) => q.bind(PgUuid::parse(s.trim()).ok_or_else(bad)?),
             _ => return Err(bad()),
         },
-        other => return Err(Error::Config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
+        other => return Err(Error::config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
     })
 }
 
@@ -743,11 +739,7 @@ fn parent_bind_slot(st: &Step) -> Result<usize> {
         }
     }
     if count != 1 {
-        return Err(Error::Engine {
-            code: crate::codes::IR_INVALID.into(),
-            msg: format!("relation {} requires exactly one parent bind slot, found {count}", st.id),
-            source: None,
-        });
+        return Err(Error::new(crate::Kind::IrInvalid, format!("relation {} requires exactly one parent bind slot, found {count}", st.id)));
     }
     Ok(parent_slot.expect("a single parent bind slot has an index"))
 }
@@ -755,17 +747,16 @@ fn parent_bind_slot(st: &Step) -> Result<usize> {
 pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
     let width = st.parent.as_ref().map(|parent| parent.keys.len()).unwrap_or(0);
     if width == 0 || !vals.len().is_multiple_of(width) {
-        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id), source: None });
+        return Err(Error::new(crate::Kind::IrInvalid, format!("relation {} has invalid parent key values", st.id)));
     }
     let non_parent = st.bind_slots.iter().filter(|bind| bind.from != "parent").count();
     let limit: usize = if driver == "sqlite" { 999 } else { 65535 };
     let max_tuples = (limit.saturating_sub(non_parent)) / width;
     if max_tuples == 0 {
-        return Err(Error::Engine {
-            code: crate::codes::IR_INVALID.into(),
-            msg: format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit),
-            source: None,
-        });
+        return Err(Error::new(
+            crate::Kind::IrInvalid,
+            format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit),
+        ));
     }
     let mut chunk_tuples = 1usize;
     while chunk_tuples.saturating_mul(2) <= max_tuples {

@@ -5,7 +5,7 @@
 use crate::ir;
 #[cfg(feature = "test-faults")]
 use crate::schema::Manifest;
-use crate::{codes, Result};
+use crate::Result;
 #[cfg(feature = "test-faults")]
 use polyspec_orm_schema::dbspec::Entity;
 use polyspec_orm_schema::dbspec::Field;
@@ -165,7 +165,7 @@ impl<'m> ParamUses<'m> {
 /// The type of the result of applying column function `name` to column f: the parameter compared with it and the output that selects it
 /// has the column's type.
 pub(crate) fn function_type(name: &str, f: Option<&Field>, entity: &str, column: &str) -> Result<String> {
-    let f = f.ok_or_else(|| crate::engine::err(codes::INTERNAL, format!("{entity}.{column}")))?;
+    let f = f.ok_or_else(|| crate::engine::err(crate::Kind::Internal, format!("{entity}.{column}")))?;
     Ok(match name {
         "day_of_week" | "year" | "month" => "i64".into(),
         "date" => "date".into(),

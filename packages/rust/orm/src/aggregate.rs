@@ -3,7 +3,7 @@
 use polyspec_orm_schema::dbspec::{Field, Type};
 
 use crate::value::Val;
-use crate::{codes, Error, Result};
+use crate::{Error, Result};
 
 /// The text of every refused sum or average scalar in every client (DSL-66).
 pub(crate) const REFUSED: &str = "aggregate scalar is not a finite number";
@@ -12,7 +12,7 @@ pub(crate) const REFUSED: &str = "aggregate scalar is not a finite number";
 const AVG_SCALE_EXTRA: u32 = 16;
 
 pub(crate) fn refused() -> Error {
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg: REFUSED.into(), source: None }
+    Error::new(crate::Kind::CodecDecode, REFUSED)
 }
 
 /// The scale of an exact column (DSL-161): 0 for an integer column and S for a `decimal(P,S)` column; None for an `f64` column.
@@ -31,7 +31,7 @@ pub(crate) fn non_integer_refusal(column: &str, ty: &Type) -> Error {
         Type::Decimal(_, scale) => format!("column {column} holds a value that is not a decimal of scale {scale}"),
         _ => format!("column {column} holds a value that is not an integer"),
     };
-    Error::Engine { code: codes::CODEC_DECODE.into(), msg, source: None }
+    Error::new(crate::Kind::CodecDecode, msg)
 }
 
 /// The sum cell of the exact column field as its sign and the digits of the sum × 10^scale: an integer cell is that integer
@@ -131,11 +131,7 @@ pub(crate) fn sum_cell(field: &Field, cells: &[Val]) -> Result<Val> {
 /// (DSL-66).
 fn nearest_binary64(negative: bool, digits: &str, scale: u32) -> Result<f64> {
     let sign = if negative && digits.bytes().any(|b| b != b'0') { "-" } else { "" };
-    let value = format!("{sign}{digits}e-{scale}").parse::<f64>().map_err(|error| Error::Engine {
-        code: codes::CODEC_DECODE.into(),
-        msg: REFUSED.into(),
-        source: Some(Box::new(error)),
-    })?;
+    let value = format!("{sign}{digits}e-{scale}").parse::<f64>().map_err(|error| Error::with_source(crate::Kind::CodecDecode, REFUSED, Box::new(error)))?;
     if !value.is_finite() {
         return Err(refused());
     }
@@ -205,10 +201,10 @@ pub(crate) fn avg_value(field: &Field, sum: &Val, count: &Val) -> Result<Option<
 /// MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it
 /// is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-216).
 pub(crate) fn range_error(error: Error) -> Error {
-    let out_of_range = matches!(&error, Error::Driver { code, source, .. }
-        if code == codes::DRIVER && source.as_database_error().and_then(|d| d.code()).as_deref() == Some("22003"));
+    let out_of_range =
+        error.kind() == crate::Kind::Driver && error.driver_error().and_then(sqlx::Error::as_database_error).and_then(|d| d.code()).as_deref() == Some("22003");
     if out_of_range {
-        return Error::Engine { code: codes::CODEC_DECODE.into(), msg: REFUSED.into(), source: Some(Box::new(error)) };
+        return Error::with_source(crate::Kind::CodecDecode, REFUSED, Box::new(error));
     }
     error
 }

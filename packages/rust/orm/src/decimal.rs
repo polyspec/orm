@@ -2,12 +2,12 @@
 
 /// The CODEC_ENCODE `decimal: <reason>` of a value outside its decimal type, which names no value (COD-2, INT-163).
 fn invalid(reason: &str) -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("decimal: {reason}"), source: None }
+    crate::Error::new(crate::Kind::CodecEncode, format!("decimal: {reason}"))
 }
 
 /// The COD-1 refusal of a decimal cell that is no decimal of its precision and scale, which names no value.
 fn undecodable() -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "decimal cell is not a decimal of its precision and scale".into(), source: None }
+    crate::Error::new(crate::Kind::CodecDecode, "decimal cell is not a decimal of its precision and scale")
 }
 
 /// Validate a decimal field value and pad it to its declared scale.
@@ -82,5 +82,5 @@ pub fn decode(value: crate::Val, precision: u8, scale: u8) -> crate::Result<Stri
         }
         _ => return Err(undecodable()),
     };
-    normalize(&text, precision, scale).map_err(|error| if error.code() == crate::codes::CODEC_ENCODE { undecodable() } else { error })
+    normalize(&text, precision, scale).map_err(|error| if error.kind() == crate::Kind::CodecEncode { undecodable() } else { error })
 }

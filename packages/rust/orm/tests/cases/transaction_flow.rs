@@ -25,14 +25,14 @@ async fn spawned_task_has_no_transaction() {
         .transaction(async || {
             let inside = polyspec_orm::model::get_count(service(None).core()).await?;
             let spawned = tokio::spawn(async { polyspec_orm::model::get_count(service(None).core()).await }).await.expect("the spawned task ends");
-            Ok((inside, spawned.err().map(|e| e.code().to_owned())))
+            Ok((inside, spawned.err().map(|e| polyspec_orm_test_support::catalog_code::catalog_code(&e))))
         })
         .retry(0)
         .await
         .unwrap();
     db.close().await;
     assert_eq!(inside, 0, "the callback reads in its transaction");
-    assert_eq!(spawned.as_deref(), Some(polyspec_orm::codes::CONFIG), "a task spawned in the callback has no active transaction");
+    assert_eq!(spawned.as_deref(), Some("CONFIG"), "a task spawned in the callback has no active transaction");
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -55,14 +55,14 @@ async fn overlapping_statements_on_the_transaction_connection_return_config() {
                 second
             };
             let (a, b) = tokio::join!(held, attempt);
-            Ok([a, b].map(|r| r.err().map(|e| e.code().to_owned())))
+            Ok([a, b].map(|r| r.err().map(|e| polyspec_orm_test_support::catalog_code::catalog_code(&e))))
         })
         .retry(0)
         .await
         .unwrap();
     db.close().await;
     assert_eq!(codes[0], None, "the held statement of the transaction gave {codes:?}");
-    assert_eq!(codes[1].as_deref(), Some(polyspec_orm::codes::CONFIG), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
+    assert_eq!(codes[1].as_deref(), Some("CONFIG"), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

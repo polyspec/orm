@@ -71,7 +71,7 @@ fn decode_error_code(assembly: &polyspec_orm::plan::Assemble, row: Vec<Val>, key
     let mut data = vec![row];
     match polyspec_orm::row::decode_styled(assembly, &mut data, keys) {
         Ok(()) => String::new(),
-        Err(error) => error.code().to_owned(),
+        Err(error) => polyspec_orm_test_support::catalog_code::catalog_code(&error),
     }
 }
 

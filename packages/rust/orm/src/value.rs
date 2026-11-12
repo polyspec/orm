@@ -12,28 +12,28 @@ mod checked_value_tests {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let bad_integers = [Val::Str("not-a-number".into()), Val::Str("9223372036854775808".into()), Val::F64(1.5), Val::F64(f64::NAN), Val::Null];
         for value in bad_integers {
-            assert_eq!(value.as_i64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
+            assert_eq!(value.as_i64().unwrap_err().kind(), crate::Kind::CodecDecode, "{value:?}");
         }
         for value in [Val::Str("NaN".into()), Val::Str("1e999".into()), Val::F64(f64::INFINITY), Val::Bool(true), Val::Bytes(b"0.5".to_vec())] {
-            assert_eq!(value.as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
+            assert_eq!(value.as_f64().unwrap_err().kind(), crate::Kind::CodecDecode, "{value:?}");
         }
         for value in [Val::Str("perhaps".into()), Val::I64(2), Val::Null] {
-            assert_eq!(value.as_bool().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
+            assert_eq!(value.as_bool().unwrap_err().kind(), crate::Kind::CodecDecode, "{value:?}");
         }
-        assert_eq!(Val::Str("2026-02-30".into()).as_date().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Str("bad time".into()).as_datetime().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Date(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()).as_datetime().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::F64(f64::NAN).to_json().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::I64(40000).as_i16().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::Str("2026-02-30".into()).as_date().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::Str("bad time".into()).as_datetime().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::Date(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()).as_datetime().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::F64(f64::NAN).to_json().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::I64(40000).as_i16().unwrap_err().kind(), crate::Kind::CodecDecode);
         assert_eq!(Val::I64(-32768).as_i16().unwrap(), i16::MIN);
-        assert_eq!(Val::Bytes(vec![0xff]).as_string().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Null.as_string().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::Bytes(vec![0xff]).as_string().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::Null.as_string().unwrap_err().kind(), crate::Kind::CodecDecode);
         let mut wrong = Val::I64(7);
-        assert_eq!(wrong.take_bytes().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(wrong.take_bytes().unwrap_err().kind(), crate::Kind::CodecDecode);
         assert_eq!(wrong, Val::I64(7));
-        assert_eq!(wrong.take_ordered().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(wrong.take_ordered().unwrap_err().kind(), crate::Kind::CodecDecode);
         assert_eq!(wrong, Val::I64(7));
-        assert_eq!(Val::Null.take_ordered().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::Null.take_ordered().unwrap_err().kind(), crate::Kind::CodecDecode);
         let mut text = Val::Str(String::new());
         assert_eq!(text.take_string().unwrap(), "");
         assert_eq!(text, Val::Null);
@@ -43,8 +43,8 @@ mod checked_value_tests {
         let literal_null = ordered_json::Value::null();
         assert_eq!(Val::ordered(literal_null.clone()), Val::Ordered(literal_null));
         assert_ne!(Val::ordered(ordered_json::Value::null()), Val::Null);
-        assert_eq!(Param::try_from(u64::MAX).unwrap_err().code(), crate::codes::CODEC_ENCODE);
-        assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
+        assert_eq!(Param::try_from(u64::MAX).unwrap_err().kind(), crate::Kind::CodecEncode);
+        assert_eq!(transform("unknown", "input").unwrap_err().kind(), crate::Kind::Config);
     }
 
     /// A decimal text reads as the nearest finite binary64, whatever its number of digits (COD-1, INT-141): a text that no f64
@@ -89,7 +89,7 @@ mod checked_value_tests {
             Err(error) => panic!("2^53 + 1: {error}"),
         }
         for text in ["1e999", "-1e999", "0x10", "", "1.", ".5", "inf"] {
-            assert_eq!(Val::Str(text.into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{text}");
+            assert_eq!(Val::Str(text.into()).as_f64().unwrap_err().kind(), crate::Kind::CodecDecode, "{text}");
         }
     }
 
@@ -106,9 +106,9 @@ mod checked_value_tests {
     fn aggregate_numbers_round_integers_and_refuse_other_kinds() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(Val::I64((1i64 << 53) + 1).as_aggregate_f64().unwrap().to_bits(), 0x4340_0000_0000_0000);
-        assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Bytes(b"48.0450".to_vec()).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode);
+        assert_eq!(Val::Bytes(b"48.0450".to_vec()).as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode);
     }
 }
 
@@ -143,7 +143,7 @@ mod aggregate_numeric {
                 assert!(number.is_finite(), "{id}");
                 assert_eq!(number.to_bits(), expected, "{id}");
             }
-            (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{id}"),
+            (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode, "{id}"),
             other => panic!("{id}: invalid expected result {other:?}"),
         }
     }
@@ -192,11 +192,9 @@ impl TryFrom<u64> for Param {
     type Error = crate::Error;
 
     fn try_from(x: u64) -> crate::Result<Self> {
-        i64::try_from(x).map(Param::I64).map_err(|error| crate::Error::Engine {
-            code: crate::codes::CODEC_ENCODE.into(),
-            msg: "unsigned integer is outside i64".into(),
-            source: Some(Box::new(error)),
-        })
+        i64::try_from(x)
+            .map(Param::I64)
+            .map_err(|error| crate::Error::with_source(crate::Kind::CodecEncode, "unsigned integer is outside i64", Box::new(error)))
     }
 }
 
@@ -234,12 +232,12 @@ pub enum Val {
 }
 
 fn decode_value(message: impl Into<String>) -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: message.into(), source: None }
+    crate::Error::new(crate::Kind::CodecDecode, message)
 }
 
 /// The CODEC_DECODE of a cell with message, keeping the failure that found it.
 fn decode_value_by(message: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: message.into(), source: Some(Box::new(cause)) }
+    crate::Error::with_source(crate::Kind::CodecDecode, message, Box::new(cause))
 }
 
 /// Ordered-json values are equal when their compact texts are equal.
@@ -411,9 +409,7 @@ impl Val {
             Val::F64(_) => return Err(decode_value("non-finite f64 cannot be JSON")),
             Val::Str(s) => serde_json::json!(s),
             // JSON has no bytes, so the JSON output refuses a bytes value (COD-26).
-            Val::Bytes(_) => {
-                return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "JSON output cannot write bytes".into(), source: None })
-            }
+            Val::Bytes(_) => return Err(crate::Error::new(crate::Kind::CodecEncode, "JSON output cannot write bytes")),
             Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
@@ -443,11 +439,11 @@ pub fn transform(kind: &str, s: &str) -> crate::Result<String> {
         "fulltext_boolean" => {
             let out = fulltext_boolean(s);
             if out.is_empty() {
-                return Err(crate::engine::err(crate::codes::IR_INVALID, "fulltext search text has no term"));
+                return Err(crate::engine::err(crate::Kind::IrInvalid, "fulltext search text has no term"));
             }
             out
         }
-        _ => return Err(crate::Error::Config(format!("unknown value transform {kind}"))),
+        _ => return Err(crate::Error::config(format!("unknown value transform {kind}"))),
     })
 }
 
@@ -477,9 +473,5 @@ fn esc(s: &str) -> String {
 /// The serde_json form of an ordered-json value (the array form of a row).
 /// A number outside the serde_json range, such as 1e400, returns CODEC_ENCODE.
 pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> crate::Result<serde_json::Value> {
-    serde_json::from_str(&v.compact()).map_err(|e| crate::Error::Engine {
-        code: crate::codes::CODEC_ENCODE.into(),
-        msg: format!("json: the value has no serde_json form: {e}"),
-        source: None,
-    })
+    serde_json::from_str(&v.compact()).map_err(|e| crate::Error::new(crate::Kind::CodecEncode, format!("json: the value has no serde_json form: {e}")))
 }

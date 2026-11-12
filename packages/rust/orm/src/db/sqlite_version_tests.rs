@@ -1,5 +1,4 @@
 use super::check_sqlite_version;
-use crate::codes;
 
 // Requirements: DSL-150.
 #[test]
@@ -33,11 +32,11 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
         "٣.46.0",
     ] {
         let error = check_sqlite_version(version).expect_err(version);
-        assert_eq!(error.code(), codes::INTERNAL, "{version:?}: {error}");
+        assert_eq!(error.kind(), crate::Kind::Internal, "{version:?}: {error}");
     }
     assert_eq!(
         check_sqlite_version("3.46.0\n").unwrap_err().to_string(),
-        r#"INTERNAL: SQLite library version "3.46.0\n" is invalid; expected three or four decimal components that each fit u32"#
+        r#"internal: SQLite library version "3.46.0\n" is invalid; expected three or four decimal components that each fit u32"#
     );
 }
 
@@ -46,7 +45,7 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
 fn compares_minimum_version_numerically() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for version in ["3.45.999", "2.999.999", "003.045.999.0"] {
-        assert_eq!(check_sqlite_version(version).unwrap_err().code(), codes::CAPABILITY_UNSUPPORTED, "{version}");
+        assert_eq!(check_sqlite_version(version).unwrap_err().kind(), crate::Kind::CapabilityUnsupported, "{version}");
     }
     assert!(check_sqlite_version("3.100.0").is_ok());
     assert!(check_sqlite_version("4.0.0").is_ok());

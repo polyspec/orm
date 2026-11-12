@@ -49,16 +49,18 @@ async fn create(label: &str) -> polyspec_orm::Result<()> {
 /// Checks a ROLLBACK error: it keeps the callback error and the rollback
 /// error, and its message names both. Returns the callback error.
 fn check_rollback<'e>(driver: &str, error: &'e polyspec_orm::Error, subject: &str) -> &'e polyspec_orm::Error {
-    let polyspec_orm::Error::Rollback { callback, rollback } = error else { panic!("{driver}: {subject} = {error}, want ROLLBACK") };
-    assert_eq!(error.code(), "ROLLBACK", "{driver}: {subject}");
+    assert_eq!(error.kind(), polyspec_orm::Kind::RollbackFailed, "{driver}: {subject} = {error}");
+    let (Some(polyspec_orm::CallbackFailure::Kind(callback)), Some(rollback)) = (error.callback_error(), error.rollback_error()) else {
+        panic!("{driver}: {subject} = {error}, want rollback_failed with both errors")
+    };
     let text = error.to_string();
-    assert!(text.contains(&callback.to_string()) && text.contains(&rollback.to_string()), "{driver}: {subject} message does not name both errors: {text}");
+    assert!(text.contains(&rollback.to_string()), "{driver}: {subject} message does not name the rollback error: {text}");
     callback
 }
 
 /// The callback error of a rollback fault case.
 fn fault_callback() -> polyspec_orm::Error {
-    polyspec_orm::Error::Config("rollback fault callback failed".into())
+    polyspec_orm::Error::config("rollback fault callback failed")
 }
 
 /// The ROLLBACK error of a rollback fault carries the callback error and the FAULT error;
@@ -66,8 +68,8 @@ fn fault_callback() -> polyspec_orm::Error {
 fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     let callback = check_rollback(driver, error, subject);
     assert_eq!(callback.to_string(), fault_callback().to_string(), "{driver}: {subject}: callback error");
-    let polyspec_orm::Error::Rollback { rollback, .. } = error else { unreachable!() };
-    assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
+    let rollback = error.rollback_error().unwrap_or_else(|| unreachable!());
+    assert_eq!(rollback.kind(), polyspec_orm::Kind::Fault, "{driver}: {subject}: rollback error {rollback}");
 }
 
 /// The rollback fault of the test entry point on the two forms of this crate. A committed transaction
@@ -100,7 +102,7 @@ async fn transaction_forms_rollback_fault(driver: &str, dsn: &str) {
     match error {
         polyspec_orm::TransactionOnceError::Rollback { callback, rollback } => {
             assert_eq!(callback.to_string(), "rollback fault callback failed", "{driver}: transaction_once callback error");
-            assert_eq!(rollback.code(), "FAULT", "{driver}: transaction_once rollback error {rollback}");
+            assert_eq!(rollback.kind(), polyspec_orm::Kind::Fault, "{driver}: transaction_once rollback error {rollback}");
         }
         other => panic!("{driver}: transaction_once = {other}, want Rollback"),
     }

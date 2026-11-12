@@ -1434,6 +1434,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "polyspec-bindgen-core"
+version = "0.0.1"
+source = "git+https://github.com/polyspec/bindgen.git?branch=v1%2Frust-core#1507c4e5677190b685057713f28f64d5c8a07795"
+dependencies = [
+ "indexmap",
+ "tokio-util",
+]
+
+[[package]]
 name = "polyspec-ordered-json"
 version = "0.0.25"
 source = "git+https://github.com/polyspec/ordered-json.git?tag=v0.0.25#01dc5da4456e06e30c041ba26c3c0cfb6dc5112b"
@@ -1455,6 +1464,7 @@ dependencies = [
  "indexmap",
  "libsqlite3-sys",
  "log",
+ "polyspec-bindgen-core",
  "polyspec-ordered-json",
  "polyspec-orm",
  "polyspec-orm-case-clock",
@@ -2541,6 +2551,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3d06f0b082ba57c26b79407372e57cf2a1e28124f78e9479fe80322cf53420b"
 dependencies = [
  "futures-core",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-util"
+version = "0.7.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e464cf451ba96ebfc6f9b6542f17ee8b8956e33f1e40d9690624e59d7a7f8a4b"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
  "pin-project-lite",
  "tokio",
 ]

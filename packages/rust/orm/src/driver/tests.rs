@@ -1,6 +1,6 @@
 use super::{bind_sqlite, decode_declared_text_columns, statement, BindSlot, ParentRef, Step};
 use crate::plan::{Assemble, KeyRef, OutCol};
-use crate::{codes, Error, Param, Val};
+use crate::{Param, Val};
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::{Connection, Row};
 
@@ -17,14 +17,10 @@ fn relation_step(sql: &str, slots: &[&str], key_width: usize) -> Step {
 
 fn assert_parent_slot_invalid(step: &Step, numbered: bool) {
     let error = statement(step, vec![Param::I64(7)], numbered).expect_err("invalid parent bind slot must fail before query");
-    match error {
-        Error::Engine { code, msg, .. } => {
-            assert_eq!(code, codes::IR_INVALID);
-            assert!(msg.contains("relation 67"), "{msg}");
-            assert!(msg.contains("parent bind slot"), "{msg}");
-        }
-        other => panic!("expected IR_INVALID, got {other}"),
-    }
+    let msg = error.text();
+    assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
+    assert!(msg.contains("relation 67"), "{msg}");
+    assert!(msg.contains("parent bind slot"), "{msg}");
 }
 
 #[test]
@@ -42,7 +38,7 @@ fn declared_mysql_text_decodes_utf8_bytes_without_coercing_byte_columns() {
     assert_eq!(rows, [vec![Val::Str("a1".into()), Val::Bytes(vec![0, 0xff])]]);
 
     let mut invalid = vec![vec![Val::Bytes(vec![0xff]), Val::Bytes(vec![0xff])]];
-    assert_eq!(decode_declared_text_columns(&assemble, &mut invalid).unwrap_err().code(), codes::CODEC_DECODE);
+    assert_eq!(decode_declared_text_columns(&assemble, &mut invalid).unwrap_err().kind(), crate::Kind::CodecDecode);
     assert_eq!(invalid[0][1], Val::Bytes(vec![0xff]), "a declared bytes value remains bytes");
 }
 

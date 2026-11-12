@@ -205,22 +205,13 @@ fn numeric_text(row: &PgRow, i: usize) -> Result<Option<String>> {
     if raw.is_null() {
         return Ok(None);
     }
-    let refused = |what: &str| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("numeric cell {i} is {what}"), source: None };
+    let refused = |what: &str| crate::Error::new(crate::Kind::CodecDecode, format!("numeric cell {i} is {what}"));
     let text = match raw.format() {
-        PgValueFormat::Text => raw
-            .as_str()
-            .map_err(|error| crate::Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("numeric cell {i} is not text"),
-                source: Some(error),
-            })?
-            .to_owned(),
+        PgValueFormat::Text => {
+            raw.as_str().map_err(|error| crate::Error::with_source(crate::Kind::CodecDecode, format!("numeric cell {i} is not text"), error))?.to_owned()
+        }
         PgValueFormat::Binary => {
-            let bytes = raw.as_bytes().map_err(|error| crate::Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("numeric cell {i} has no bytes"),
-                source: Some(error),
-            })?;
+            let bytes = raw.as_bytes().map_err(|error| crate::Error::with_source(crate::Kind::CodecDecode, format!("numeric cell {i} has no bytes"), error))?;
             numeric_binary_text(bytes).ok_or_else(|| refused("not a binary numeric"))?
         }
     };
@@ -515,7 +506,7 @@ pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
         },
         "BLOB" => Val::Bytes(row.try_get::<Vec<u8>, _>(i)?),
         "BOOLEAN" => Val::Bool(row.try_get::<bool, _>(i)?),
-        other => return Err(crate::Error::Config(format!("sqlite column {i} holds a {other} value"))),
+        other => return Err(crate::Error::config(format!("sqlite column {i} holds a {other} value"))),
     })
 }
 
@@ -565,13 +556,11 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                 // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
                 if !sc.host.is_empty() && !matches!(v, Val::Null) {
                     let key = if sc.host.iter().any(|style| style == "aes") {
-                        let index = node.version_index.ok_or_else(|| Error::Engine {
-                            code: crate::codes::INTERNAL.into(),
-                            msg: format!("{}: the AES version column is not selected", node.entity),
-                            source: None,
-                        })?;
+                        let index = node
+                            .version_index
+                            .ok_or_else(|| Error::new(crate::Kind::Internal, format!("{}: the AES version column is not selected", node.entity)))?;
                         let version = aes_row_version(row, index).map_err(|error| crate::model::column_decode_error(node.entity, node.version_name, error))?;
-                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config("aes version is not declared".into()))?
+                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::config("aes version is not declared"))?
                     } else {
                         // Non-AES host stages do not consume an AES key.
                         ""
@@ -614,11 +603,10 @@ fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>
         let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
         let version_index = if has_aes {
             // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-            let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
-                code: crate::codes::INTERNAL.into(),
-                msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
-                source: None,
-            })?;
+            let column = asm
+                .aes_version
+                .map(|at| &asm.columns[at])
+                .ok_or_else(|| Error::new(crate::Kind::Internal, format!("{}: the plan reads an AES column without its key version column", asm.entity)))?;
             Some(column)
         } else {
             None
@@ -643,7 +631,7 @@ fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>
 /// fraction or its digits, with leading zeros, as a text or bytes (COD-44, COD-49, COD-53); otherwise
 /// `aes version is not a positive 32-bit integer`, which names no value (INT-163).
 pub(crate) fn stored_version(value: &Val) -> Result<i32> {
-    let refused = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "aes version is not a positive 32-bit integer".into(), source: None };
+    let refused = || Error::new(crate::Kind::CodecDecode, "aes version is not a positive 32-bit integer");
     let stored = match value {
         Val::I64(n) => *n,
         Val::F64(x) if x.is_finite() && x.trunc() == *x && x.abs() < 4_294_967_296.0 => *x as i64,
@@ -740,7 +728,7 @@ mod declared_boolean_tests {
         assert_eq!(rows[0], vec![Val::Bool(false), Val::I64(3), Val::Bool(true)]);
         assert_eq!(rows[1], vec![Val::Bool(true), Val::I64(4), Val::Null]);
         let mut invalid = vec![vec![Val::I64(2), Val::I64(3), Val::I64(1)]];
-        assert_eq!(decode_boolean_columns(&assemble, &mut invalid).unwrap_err().code(), "CODEC_DECODE");
+        assert_eq!(decode_boolean_columns(&assemble, &mut invalid).unwrap_err().kind(), crate::Kind::CodecDecode);
     }
 }
 

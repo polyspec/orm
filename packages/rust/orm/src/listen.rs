@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use sqlx::postgres::{PgListener, PgPool, PgPoolOptions};
 
-use crate::codes;
 use crate::db::{Db, Executor};
 use crate::events::KIND_UTILITY;
 use crate::tx::active_for;
@@ -36,11 +35,7 @@ impl Db {
         self.listenable("notify")?;
         check_channel(channel)?;
         if payload.len() >= 8000 || payload.contains('\0') {
-            return Err(Error::Engine {
-                code: codes::DRIVER.into(),
-                msg: "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000".into(),
-                source: None,
-            });
+            return Err(Error::new(crate::Kind::Driver, "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000"));
         }
         let ex = match active_for(self) {
             Some(t) => Executor::Tx(t),
@@ -61,7 +56,7 @@ impl Db {
     pub async fn listen(&self, channel: &str) -> Result<Subscription> {
         self.listenable("listen")?;
         check_channel(channel)?;
-        let options = self.inner.listen.clone().ok_or_else(|| Error::Config("this connection has no LISTEN connection".into()))?;
+        let options = self.inner.listen.clone().ok_or_else(|| Error::config("this connection has no LISTEN connection"))?;
         let pool = PgPoolOptions::new().max_connections(1).connect_with(options).await?;
         let mut listener = match PgListener::connect_with(&pool).await {
             Ok(listener) => listener,
@@ -81,7 +76,7 @@ impl Db {
     /// The error of a LISTEN or NOTIFY operation on a connection without it (DIA-196).
     fn listenable(&self, surface: &str) -> Result<()> {
         if self.driver() != "postgres" {
-            return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("{surface} is supported on PostgreSQL only"), source: None });
+            return Err(Error::new(crate::Kind::CapabilityUnsupported, format!("{surface} is supported on PostgreSQL only")));
         }
         Ok(())
     }
@@ -102,18 +97,18 @@ impl Subscription {
             Ok(Ok(Some(n))) => Ok(Notification { channel: n.channel().to_owned(), payload: n.payload().to_owned(), pid: n.process_id() }),
             Ok(Ok(None)) => {
                 self.inner = None;
-                Err(Error::Engine { code: codes::CONNECTION_LOST.into(), msg: "the LISTEN connection was lost".into(), source: None })
+                Err(Error::new(crate::Kind::ConnectionLost, "the LISTEN connection was lost"))
             }
             Ok(Err(error)) => {
                 let mapped = Error::from(error);
-                if mapped.code() == codes::CONNECTION_LOST {
+                if mapped.kind() == crate::Kind::ConnectionLost {
                     self.inner = None;
                 }
                 Err(mapped)
             }
             Err(_) => {
                 self.inner = None;
-                Err(Error::Engine { code: codes::CANCELED.into(), msg: "the receive of the LISTEN subscription expired".into(), source: None })
+                Err(Error::new(crate::Kind::Canceled, "the receive of the LISTEN subscription expired"))
             }
         }
     }
@@ -142,13 +137,13 @@ impl Subscription {
 }
 
 fn closed() -> Error {
-    Error::Config("the LISTEN subscription is closed".into())
+    Error::config("the LISTEN subscription is closed")
 }
 
 /// Checks a channel of 1 to 63 bytes without U+0000 (DIA-192).
 fn check_channel(channel: &str) -> Result<()> {
     if channel.is_empty() || channel.len() > 63 || channel.contains('\0') {
-        return Err(Error::Config("a channel is 1 to 63 bytes without U+0000".into()));
+        return Err(Error::config("a channel is 1 to 63 bytes without U+0000"));
     }
     Ok(())
 }

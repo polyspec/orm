@@ -10,18 +10,18 @@ use ordered_json as strict_json;
 use regex::Regex;
 use serde_json::Value;
 
-use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
 use crate::value::{Param, StyledValue, Val};
+use crate::Kind;
 use crate::{Error, Result};
 
-fn err(code: &str, msg: impl Into<String>) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into(), source: None }
+fn err(kind: crate::Kind, msg: impl Into<String>) -> Error {
+    Error::new(kind, msg)
 }
 
 /// The stage text `msg` of a failure of the library a stage reads or writes with, which keeps that failure as its
 /// source (COD-41).
-fn err_cause(code: &str, msg: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into(), source: Some(Box::new(cause)) }
+fn err_cause(kind: crate::Kind, msg: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
+    Error::with_source(kind, msg, Box::new(cause))
 }
 
 /// An error of the ordered-json library that a caller meets while it builds, parses or reads an ordered-json value is the
@@ -33,9 +33,9 @@ impl From<strict_json::Error> for Error {
         use strict_json::ErrorKind;
         let (code, text) = match error.kind() {
             // A depth limit above 256 asks for a value nested deeper than the 256 levels of every stage (`json-depth`).
-            ErrorKind::MaximumDepthExceeded | ErrorKind::DepthLimitOutOfRange => (CODEC_ENCODE, "json: value nesting exceeds 256 levels"),
-            ErrorKind::NonStringKey => (CODEC_ENCODE, "json: member keys must be strings"),
-            ErrorKind::WrongKind => (CODEC_DECODE, "json: the value is not a string"),
+            ErrorKind::MaximumDepthExceeded | ErrorKind::DepthLimitOutOfRange => (Kind::CodecEncode, "json: value nesting exceeds 256 levels"),
+            ErrorKind::NonStringKey => (Kind::CodecEncode, "json: member keys must be strings"),
+            ErrorKind::WrongKind => (Kind::CodecDecode, "json: the value is not a string"),
             // The library refuses the text of a value (`json-text`): a parse, a strict parse and a number literal.
             ErrorKind::ExpectedValue
             | ErrorKind::ExpectedDigit
@@ -50,7 +50,7 @@ impl From<strict_json::Error> for Error {
             | ErrorKind::InvalidUtf8
             | ErrorKind::TrailingInput
             | ErrorKind::DuplicateObjectKey
-            | ErrorKind::InvalidNumberLiteral => (CODEC_ENCODE, "json: the value has no JSON text"),
+            | ErrorKind::InvalidNumberLiteral => (Kind::CodecEncode, "json: the value has no JSON text"),
         };
         err_cause(code, text, error)
     }
@@ -70,12 +70,12 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         Val::Json(v) if styles.len() == 1 && styles[0] == "ordered_json" => v.to_string().into_bytes(),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
-        _ => return Err(err(CODEC_DECODE, "cell is not bytes")),
+        _ => return Err(err(Kind::CodecDecode, "cell is not bytes")),
     };
-    // An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an empty
+    // An empty cell is codec_decode, except under a last base64 stage and under no stage, whose encoders write an empty
     // cell for empty text (docs/spec/codec.md COD-14).
     if cur.is_empty() && styles.last().is_some_and(|last| last != "base64") {
-        return Err(err(CODEC_DECODE, "styled cell is empty"));
+        return Err(err(Kind::CodecDecode, "styled cell is empty"));
     }
     let mut value: Option<Val> = None;
     // check_styles puts a value stage first in the list, which a decode applies last, so no stage follows a decoded value
@@ -84,14 +84,16 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         match st.as_str() {
             "gz" => {
                 let mut out = Vec::new();
-                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|error| err_cause(CODEC_DECODE, "gz: bad zlib stream", error))?;
+                flate2::read::ZlibDecoder::new(cur.as_slice())
+                    .read_to_end(&mut out)
+                    .map_err(|error| err_cause(Kind::CodecDecode, "gz: bad zlib stream", error))?;
                 cur = out;
             }
             "base64" => {
-                let text = std::str::from_utf8(&cur).map_err(|error| err_cause(CODEC_DECODE, "base64: bad input", error))?;
+                let text = std::str::from_utf8(&cur).map_err(|error| err_cause(Kind::CodecDecode, "base64: bad input", error))?;
                 // A stored cell is decoded only in the form the encoder writes (docs/spec/codec.md). STANDARD rejects whitespace, missing padding,
                 // and nonzero padding bits.
-                cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|error| err_cause(CODEC_DECODE, "base64: bad input", error))?;
+                cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|error| err_cause(Kind::CodecDecode, "base64: bad input", error))?;
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
             "yaml" => {
@@ -105,16 +107,16 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                     } else {
                         "json: the cell is not JSON"
                     };
-                    err_cause(CODEC_DECODE, text, error)
+                    err_cause(Kind::CodecDecode, text, error)
                 })?))
             }
-            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+            other => return Err(err(Kind::CodecUnsupported, format!("style {other}"))),
         }
     }
     // Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes.
     Ok(match value {
         Some(value) => value,
-        None => Val::Str(String::from_utf8(cur).map_err(|error| err_cause(CODEC_DECODE, "decoded text is not valid UTF-8", error))?),
+        None => Val::Str(String::from_utf8(cur).map_err(|error| err_cause(Kind::CodecDecode, "decoded text is not valid UTF-8", error))?),
     })
 }
 
@@ -125,8 +127,8 @@ fn check_styles<'a>(styles: impl IntoIterator<Item = &'a str>) -> Result<()> {
         match st {
             "gz" | "base64" => {}
             "ordered_json" | "serialize" | "yaml" if i == 0 => {}
-            "ordered_json" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
-            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+            "ordered_json" | "serialize" | "yaml" => return Err(err(Kind::CodecUnsupported, format!("{st} must be the first style"))),
+            other => return Err(err(Kind::CodecUnsupported, format!("style {other}"))),
         }
     }
     Ok(())
@@ -182,8 +184,8 @@ pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> R
         Some(&"ordered_json") => finish(&styles[1..], Written::Text(ordered_text(v))),
         // An ordered-json value is written by the ordered_json stage only (COD-16); a first gz or base64 stage and an
         // empty list take a string value.
-        Some(&st @ ("serialize" | "yaml")) => Err(err(CODEC_ENCODE, format!("{st}: an ordered-json value is written only by the ordered_json stage"))),
-        first => Err(err(CODEC_ENCODE, text_kind(first.copied()))),
+        Some(&st @ ("serialize" | "yaml")) => Err(err(Kind::CodecEncode, format!("{st}: an ordered-json value is written only by the ordered_json stage"))),
+        first => Err(err(Kind::CodecEncode, text_kind(first.copied()))),
     }
 }
 
@@ -227,10 +229,10 @@ fn encode_binary_stage(style: &str, cur: Written) -> Result<Written> {
         "base64" => Ok(Written::Text(base64::engine::general_purpose::STANDARD.encode(cur.into_bytes()))),
         "gz" => {
             let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-            enc.write_all(&cur.into_bytes()).map_err(|error| err_cause(CODEC_ENCODE, "gz: the compression failed", error))?;
-            Ok(Written::Bytes(enc.finish().map_err(|error| err_cause(CODEC_ENCODE, "gz: the compression failed", error))?))
+            enc.write_all(&cur.into_bytes()).map_err(|error| err_cause(Kind::CodecEncode, "gz: the compression failed", error))?;
+            Ok(Written::Bytes(enc.finish().map_err(|error| err_cause(Kind::CodecEncode, "gz: the compression failed", error))?))
         }
-        other => Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+        other => Err(err(Kind::CodecUnsupported, format!("style {other}"))),
     }
 }
 
@@ -249,7 +251,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
         Some("ordered_json") => Written::Text(json_encode(value)?),
         _ => match value {
             Value::String(text) => Written::Text(text.clone()),
-            _ => return Err(err(CODEC_ENCODE, text_kind(first))),
+            _ => return Err(err(Kind::CodecEncode, text_kind(first))),
         },
     };
     // A first gz or base64 stage encodes the UTF-8 of the string; the stages after the first apply in order.
@@ -276,8 +278,8 @@ pub fn check_setter_ordered(styles: &[&str], value: &strict_json::Value) -> Resu
 /// the library is `json-text`.
 fn json_encode(value: &Value) -> Result<String> {
     write_check(value, "json", false)?;
-    let raw = serde_json::to_vec(value).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
-    let parsed = strict_json::parse_bytes(&raw).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
+    let raw = serde_json::to_vec(value).map_err(|error| err_cause(Kind::CodecEncode, "json: the value has no JSON text", error))?;
+    let parsed = strict_json::parse_bytes(&raw).map_err(|error| err_cause(Kind::CodecEncode, "json: the value has no JSON text", error))?;
     Ok(strict_json::stringify(&parsed))
 }
 
@@ -289,13 +291,13 @@ fn write_check(value: &Value, style: &str, numbers: bool) -> Result<()> {
     while let Some((node, level)) = nodes.pop() {
         match node {
             Value::Array(_) | Value::Object(_) if level > NESTING_LEVELS => {
-                return Err(err(CODEC_ENCODE, format!("{style}: value nesting exceeds 256 levels")));
+                return Err(err(Kind::CodecEncode, format!("{style}: value nesting exceeds 256 levels")));
             }
             // The stack takes the members in reverse, so that they are met in their order.
             Value::Array(items) => nodes.extend(items.iter().rev().map(|item| (item, level + 1))),
             Value::Object(map) => nodes.extend(map.values().rev().map(|item| (item, level + 1))),
             Value::Number(number) if numbers && number.is_u64() && number.as_i64().is_none() => {
-                return Err(err(CODEC_ENCODE, format!("{style}: integer is outside the i64 range")));
+                return Err(err(Kind::CodecEncode, format!("{style}: integer is outside the i64 range")));
             }
             _ => {}
         }
@@ -307,7 +309,7 @@ fn write_check(value: &Value, style: &str, numbers: bool) -> Result<()> {
 
 /// The refusal of the rule `message`, which names no position (COD-70), with the failure that found it, if any.
 fn yaml_refusal(message: &str, source: Option<YamlCause>) -> Error {
-    Error::Engine { code: CODEC_DECODE.into(), msg: format!("yaml: {message}"), source }
+    Error::with_optional_source(Kind::CodecDecode, format!("yaml: {message}"), source)
 }
 
 /// The failure that found a refused plain scalar.
@@ -381,27 +383,27 @@ fn yaml_printable(c: char) -> bool {
 /// `yaml-utf8` and `yaml-printable` hold over the whole stream before the reader reads the characters after the one
 /// byte order mark that may start it (COD-75).
 fn yaml_decode(bytes: &[u8]) -> Result<Value> {
-    let source = std::str::from_utf8(bytes).map_err(|error| err_cause(CODEC_DECODE, "yaml: the stream is not UTF-8", error))?;
+    let source = std::str::from_utf8(bytes).map_err(|error| err_cause(Kind::CodecDecode, "yaml: the stream is not UTF-8", error))?;
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
     if source.chars().any(|c| !yaml_printable(c)) {
-        return Err(err(CODEC_DECODE, "yaml: the stream holds a character that is not printable"));
+        return Err(err(Kind::CodecDecode, "yaml: the stream holds a character that is not printable"));
     }
     yaml_reader::read(source)
 }
 
 /// Writes a common value as one YAML document with serde-saphyr, which quotes every string the
 /// core schema would read as another value and escapes every character outside c-printable. A
-/// number outside the common value model returns CODEC_ENCODE. The written text is read back by the
-/// reader, and a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
+/// number outside the common value model returns codec_encode. The written text is read back by the
+/// reader, and a text that does not read back as the value returns codec_encode instead of storing it.
 fn yaml_encode(value: &Value) -> Result<String> {
     write_check(value, "yaml", true)?;
-    let text = serde_saphyr::to_string(value).map_err(|error| err_cause(CODEC_ENCODE, "yaml: the value has no YAML text", error))?;
+    let text = serde_saphyr::to_string(value).map_err(|error| err_cause(Kind::CodecEncode, "yaml: the value has no YAML text", error))?;
     const READ_BACK: &str = "yaml: the written text does not read back as the value";
     match yaml_decode(text.as_bytes()) {
         Ok(read) if read == *value => Ok(text),
         // The text and the value are data, so the refusal names neither (INT-163); a failed read is its cause (COD-71).
-        Ok(_) => Err(err(CODEC_ENCODE, READ_BACK)),
-        Err(error) => Err(err_cause(CODEC_ENCODE, READ_BACK, error)),
+        Ok(_) => Err(err(Kind::CodecEncode, READ_BACK)),
+        Err(error) => Err(err_cause(Kind::CodecEncode, READ_BACK, error)),
     }
 }
 
@@ -414,7 +416,7 @@ mod yaml_reader {
     use serde_json::{Map, Value};
 
     use super::{err_cause, yaml_core_key, yaml_core_scalar, yaml_refusal, YamlCause};
-    use crate::codes::CODEC_DECODE;
+    use crate::Kind;
     use crate::Result;
 
     /// The characters of an implicit key, from its first character to its `:` (COD-76, COD-77).
@@ -709,7 +711,7 @@ mod yaml_reader {
             Err(Refusal::Rule(message, cause)) => Err(yaml_refusal(message, cause)),
             Err(Refusal::Parse(at)) => {
                 let (line, column) = reader.position(at);
-                Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", YamlSyntaxError { line, column }))
+                Err(err_cause(Kind::CodecDecode, "yaml: the stream does not parse", YamlSyntaxError { line, column }))
             }
         }
     }
@@ -2063,7 +2065,7 @@ mod yaml_reader {
 /// `serialize-depth-write` before its members, so the recursion holds at most 257 calls (COD-70).
 fn php_serialize(out: &mut String, v: &Value, level: usize) -> Result<()> {
     if matches!(v, Value::Array(_) | Value::Object(_)) && level > NESTING_LEVELS {
-        return Err(err(CODEC_ENCODE, "serialize: value nesting exceeds 256 levels"));
+        return Err(err(Kind::CodecEncode, "serialize: value nesting exceeds 256 levels"));
     }
     match v {
         Value::Null => out.push_str("N;"),
@@ -2073,7 +2075,7 @@ fn php_serialize(out: &mut String, v: &Value, level: usize) -> Result<()> {
             match (n.as_i64(), n.as_f64()) {
                 (Some(i), _) => out.push_str(&format!("i:{i};")),
                 (None, Some(f)) if n.is_f64() => out.push_str(&format!("d:{};", php_float(f))),
-                _ => return Err(err(CODEC_ENCODE, "serialize: integer is outside the i64 range")),
+                _ => return Err(err(Kind::CodecEncode, "serialize: integer is outside the i64 range")),
             }
         }
         Value::String(s) => out.push_str(&format!("s:{}:\"{}\";", s.len(), s)),
@@ -2248,12 +2250,12 @@ static PHP_FLOAT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A[-+]?(?:[0-9
 impl<'a> Parser<'a> {
     /// The refusal of the rule `msg`, which names no offset (COD-70).
     fn fail(&self, msg: &str) -> Error {
-        err(CODEC_DECODE, format!("serialize: {msg}"))
+        err(Kind::CodecDecode, format!("serialize: {msg}"))
     }
 
     /// The refusal of the rule `msg`, keeping the failure that found it (COD-71).
     fn fail_cause(&self, msg: &str, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
-        err_cause(CODEC_DECODE, format!("serialize: {msg}"), cause)
+        err_cause(Kind::CodecDecode, format!("serialize: {msg}"), cause)
     }
 
     fn expect(&mut self, c: u8) -> Result<()> {
@@ -2355,7 +2357,7 @@ impl<'a> Parser<'a> {
                 self.expect(b';')?;
                 Ok(Value::String(s))
             }
-            b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, "serialize: objects and references are not supported")),
+            b'O' | b'C' | b'r' | b'R' => Err(err(Kind::CodecUnsupported, "serialize: objects and references are not supported")),
             _ => Err(self.fail("unknown type")),
         }
     }
@@ -2400,7 +2402,7 @@ fn is_host(style: &str) -> bool {
 /// `host-style`).
 fn check_host_styles(styles: &[String]) -> Result<()> {
     match styles.iter().find(|st| !matches!(st.as_str(), "aes" | "hex" | "ip")) {
-        Some(other) => Err(err(CODEC_UNSUPPORTED, format!("host style {other}"))),
+        Some(other) => Err(err(Kind::CodecUnsupported, format!("host style {other}"))),
         None => Ok(()),
     }
 }
@@ -2424,13 +2426,13 @@ const AES_V2_PREFIX: &[u8] = b"ORM-AES2\0";
 /// Returns the stable lowercase HMAC-SHA256 index for plaintext.
 pub fn blind_index(v: &Param, key: &str) -> Result<String> {
     if key.is_empty() {
-        return Err(Error::Config("secret blind_index not configured".into()));
+        return Err(Error::config("secret blind_index not configured"));
     }
     let plain = match v {
         Param::Null => return Ok(String::new()),
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
-        _ => return Err(err(CODEC_ENCODE, "blind index input must be text or bytes")),
+        _ => return Err(err(Kind::CodecEncode, "blind index input must be text or bytes")),
     };
     let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).expect("HMAC takes a key of any length");
     mac.update(&plain);
@@ -2451,30 +2453,31 @@ const AES_ENCRYPT_FAILED: &str = "aes: the encryption failed";
 /// `aes-encrypt` with the failure as its cause (COD-71).
 pub fn aes_encrypt(plain: &[u8], key: &str) -> Result<Vec<u8>> {
     use rand::TryRng as _;
-    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).map_err(|error| err_cause(CODEC_ENCODE, AES_ENCRYPT_FAILED, error))?;
+    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).map_err(|error| err_cause(Kind::CodecEncode, AES_ENCRYPT_FAILED, error))?;
     let mut nonce = [0u8; 12];
-    rand::rngs::SysRng.try_fill_bytes(&mut nonce).map_err(|error| err_cause(CODEC_ENCODE, AES_ENCRYPT_FAILED, error))?;
+    rand::rngs::SysRng.try_fill_bytes(&mut nonce).map_err(|error| err_cause(Kind::CodecEncode, AES_ENCRYPT_FAILED, error))?;
     let nonce = Nonce::from(nonce);
-    let encrypted = cipher.encrypt(&nonce, Payload { msg: plain, aad: AES_V2_PREFIX }).map_err(|error| err_cause(CODEC_ENCODE, AES_ENCRYPT_FAILED, error))?;
+    let encrypted =
+        cipher.encrypt(&nonce, Payload { msg: plain, aad: AES_V2_PREFIX }).map_err(|error| err_cause(Kind::CodecEncode, AES_ENCRYPT_FAILED, error))?;
     Ok([AES_V2_PREFIX, &nonce, &encrypted].concat())
 }
 
 /// Authenticates and decrypts a v2 envelope.
 pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
     if !cipher_text.starts_with(AES_V2_PREFIX) {
-        return Err(err(CODEC_DECODE, "aes: unsupported ciphertext format"));
+        return Err(err(Kind::CodecDecode, "aes: unsupported ciphertext format"));
     }
     if cipher_text.len() < AES_V2_PREFIX.len() + 12 + 16 {
-        return Err(err(CODEC_DECODE, "aes: truncated v2 envelope"));
+        return Err(err(Kind::CodecDecode, "aes: truncated v2 envelope"));
     }
     let offset = AES_V2_PREFIX.len();
     // Any failure of the decryption is `aes-auth` (COD-70), with the failure as its cause.
-    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).map_err(|error| err_cause(CODEC_DECODE, "aes: authentication failed", error))?;
-    let nonce: [u8; 12] = cipher_text[offset..offset + 12].try_into().map_err(|error| err_cause(CODEC_DECODE, "aes: authentication failed", error))?;
+    let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).map_err(|error| err_cause(Kind::CodecDecode, "aes: authentication failed", error))?;
+    let nonce: [u8; 12] = cipher_text[offset..offset + 12].try_into().map_err(|error| err_cause(Kind::CodecDecode, "aes: authentication failed", error))?;
     let nonce = Nonce::from(nonce);
     cipher
         .decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX })
-        .map_err(|error| err_cause(CODEC_DECODE, "aes: authentication failed", error))
+        .map_err(|error| err_cause(Kind::CodecDecode, "aes: authentication failed", error))
 }
 
 /// Upper-case hex text, the form every encoder writes.
@@ -2493,7 +2496,7 @@ const HEX_REFUSED: &str = "hex: odd length or non-hex input";
 
 /// Reads the upper-case hex text that `hex_upper` writes. The
 /// text is decoded exactly: a lower-case letter, white space or any other byte
-/// outside the upper-case hex digits is `CODEC_DECODE` (docs/spec/codec.md).
+/// outside the upper-case hex digits is `codec_decode` (docs/spec/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
     hex_bytes(s.as_bytes())
 }
@@ -2501,13 +2504,13 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
 /// The bytes of upper-case hex text; every refusal states the one text of COD-39.
 fn hex_bytes(s: &[u8]) -> Result<Vec<u8>> {
     if !s.len().is_multiple_of(2) {
-        return Err(err(CODEC_DECODE, HEX_REFUSED));
+        return Err(err(Kind::CodecDecode, HEX_REFUSED));
     }
     let nibble = |c: u8| -> Result<u8> {
         match c {
             b'0'..=b'9' => Ok(c - b'0'),
             b'A'..=b'F' => Ok(c - b'A' + 10),
-            _ => Err(err(CODEC_DECODE, HEX_REFUSED)),
+            _ => Err(err(Kind::CodecDecode, HEX_REFUSED)),
         }
     };
     s.as_chunks::<2>().0.iter().map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?)).collect()
@@ -2515,11 +2518,11 @@ fn hex_bytes(s: &[u8]) -> Result<Vec<u8>> {
 
 /// `INET6_ATON`: 4 bytes for IPv4, 16 for IPv6.
 fn pack_ip(s: &str) -> Result<Vec<u8>> {
-    // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
+    // The exact text only: white space around the address is codec_encode (docs/spec/codec.md).
     match s.parse::<std::net::IpAddr>() {
         Ok(std::net::IpAddr::V4(a)) => Ok(a.octets().to_vec()),
         Ok(std::net::IpAddr::V6(a)) => Ok(a.octets().to_vec()),
-        Err(_) => Err(err(CODEC_ENCODE, "ip: the text is not an address")),
+        Err(_) => Err(err(Kind::CodecEncode, "ip: the text is not an address")),
     }
 }
 
@@ -2528,7 +2531,7 @@ fn unpack_ip(b: &[u8]) -> Result<String> {
     match b.len() {
         4 => Ok(std::net::Ipv4Addr::from(<[u8; 4]>::try_from(b).unwrap()).to_string()),
         16 => Ok(std::net::Ipv6Addr::from(<[u8; 16]>::try_from(b).unwrap()).to_string()),
-        _ => Err(err(CODEC_DECODE, "ip: the cell is not 4 or 16 packed bytes")),
+        _ => Err(err(Kind::CodecDecode, "ip: the cell is not 4 or 16 packed bytes")),
     }
 }
 
@@ -2536,7 +2539,7 @@ fn unpack_ip(b: &[u8]) -> Result<String> {
 /// The result binds as text after `hex`, as bytes otherwise; NULL stays NULL.
 pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param> {
     if styles.is_empty() {
-        return Err(err(CODEC_ENCODE, "host style list is empty"));
+        return Err(err(Kind::CodecEncode, "host style list is empty"));
     }
     check_host_styles(styles)?;
     let mut cur = match v {
@@ -2544,20 +2547,20 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
         Param::Str(s) => Written::Bytes(s.as_bytes().to_vec()),
         Param::Bytes(b) => Written::Bytes(b.clone()),
         // A host stage takes text or bytes only (COD-1).
-        _ => return Err(err(CODEC_ENCODE, "host input must be text or bytes")),
+        _ => return Err(err(Kind::CodecEncode, "host input must be text or bytes")),
     };
     for st in styles {
         cur = match st.as_str() {
             "aes" => {
                 if aes_key.is_empty() {
-                    return Err(Error::Config("secret aes not configured".into()));
+                    return Err(Error::config("secret aes not configured"));
                 }
                 Written::Bytes(aes_encrypt(&cur.into_bytes(), aes_key)?)
             }
             "hex" => Written::Text(hex_upper(&cur.into_bytes())),
             // Bytes that are not UTF-8 are no text of an address (COD-70 `ip-text`).
             _ => Written::Bytes(pack_ip(
-                &String::from_utf8(cur.into_bytes()).map_err(|error| err_cause(CODEC_ENCODE, "ip: the text is not an address", error))?,
+                &String::from_utf8(cur.into_bytes()).map_err(|error| err_cause(Kind::CodecEncode, "ip: the text is not an address", error))?,
             )?),
         };
     }
@@ -2576,7 +2579,7 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
         Val::Null => return Ok(Val::Null),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
-        _ => return Err(err(CODEC_DECODE, "cell is not bytes")),
+        _ => return Err(err(Kind::CodecDecode, "cell is not bytes")),
     };
     for st in styles.iter().rev() {
         cur = match st.as_str() {
@@ -2584,7 +2587,7 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
             "hex" => hex_bytes(&cur)?,
             "aes" => {
                 if aes_key.is_empty() {
-                    return Err(Error::Config("secret aes not configured".into()));
+                    return Err(Error::config("secret aes not configured"));
                 }
                 aes_decrypt(&cur, aes_key)?
             }

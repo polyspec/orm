@@ -10,7 +10,7 @@ use crate::args::{Func, Value};
 use crate::db::Db;
 use crate::model::{AnyModel, Entity, RowState};
 use crate::value::Param;
-use crate::{codes, Error};
+use crate::Error;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -149,7 +149,7 @@ pub struct Core {
     pub(crate) id: u64,
     pub(crate) ent: &'static Entity,
     pub(crate) conn: Option<Db>,
-    pub(crate) err: Option<(String, String)>,
+    pub(crate) err: Option<(crate::Kind, String)>,
     pub(crate) group: bool,
     pub(crate) subject: Option<u64>,
 
@@ -189,7 +189,7 @@ pub struct Core {
 }
 
 pub(crate) fn config(msg: impl Into<String>) -> Error {
-    Error::Engine { code: codes::CONFIG.into(), msg: msg.into(), source: None }
+    Error::new(crate::Kind::Config, msg)
 }
 
 impl Core {
@@ -253,11 +253,7 @@ impl Core {
         if held {
             return Ok(());
         }
-        Err(Error::Engine {
-            code: codes::CODEC_ENCODE.into(),
-            msg: format!("{}.{column}: {column_type} value is not a {column_type}", self.ent.name),
-            source: None,
-        })
+        Err(Error::new(crate::Kind::CodecEncode, format!("{}.{column}: {column_type} value is not a {column_type}", self.ent.name)))
     }
 
     /// Marks a generated field assigned from a checked value.
@@ -276,31 +272,25 @@ impl Core {
         if self.field_ready(name) {
             Ok(())
         } else {
-            Err(Error::Engine {
-                code: crate::codes::COLUMN_UNSELECTED.into(),
-                msg: format!("{}.{name} was not loaded or assigned", self.ent.name),
-                source: None,
-            })
+            Err(Error::new(crate::Kind::ColumnUnselected, format!("{}.{name} was not loaded or assigned", self.ent.name)))
         }
     }
 
     /// The first recorded builder error.
     pub fn err(&self) -> Option<Error> {
-        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone(), source: None })
+        self.err.as_ref().map(|(kind, msg)| Error::new(*kind, msg.clone()))
     }
 
     pub(crate) fn fail(&mut self, msg: impl Into<String>) {
         if self.err.is_none() {
-            self.err = Some((codes::CONFIG.into(), msg.into()));
+            self.err = Some((crate::Kind::Config, msg.into()));
         }
     }
 
     pub(crate) fn fail_err(&mut self, e: Error) {
         if self.err.is_none() {
-            // err() builds an Engine error, whose text writes the code, so the message holds it no second time.
-            let (code, text) = (e.code().to_owned(), e.to_string());
-            let msg = text.strip_prefix(&format!("{code}: ")).map_or_else(|| text.clone(), str::to_owned);
-            self.err = Some((code, msg));
+            // err() builds the error again from its kind and the text of its message (CORE-12).
+            self.err = Some((e.kind(), e.text().to_owned()));
         }
     }
 
@@ -703,7 +693,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
                 return Err(config("tuple values must be a list of value groups"));
             };
             if rows.is_empty() {
-                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: "tuple condition received an empty list".into(), source: None });
+                return Err(Error::new(crate::Kind::EmptyIn, "tuple condition received an empty list"));
             }
             let op = if key.op == "tuple" { "tuple_in" } else { "tuple_not_in" };
             return Ok(PredSpec { column: String::new(), op, value: PredValue::Tuples(key.columns.to_vec(), rows) });
@@ -760,7 +750,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
                 return Err(config(format!("a list is not accepted by the {} operator", key.op)));
             }
             if list.is_empty() {
-                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: format!("{} received an empty list", key.column), source: None });
+                return Err(Error::new(crate::Kind::EmptyIn, format!("{} received an empty list", key.column)));
             }
             Ok(pred(if key.op == "ne" { "not_in" } else { "in" }, PredValue::List(list)))
         }

@@ -62,7 +62,7 @@ fn explicitly_rejected(error: &sqlx::Error) -> bool {
     if error
         .as_database_error()
         .and_then(|error| error.try_downcast_ref::<polyspec_orm::markdown::MarkdownServerError>())
-        .is_some_and(|error| error.code() == polyspec_orm::codes::DEADLOCK)
+        .is_some_and(|error| error.code() == crate::catalog::code(polyspec_orm::Kind::Deadlock))
     {
         return true;
     }

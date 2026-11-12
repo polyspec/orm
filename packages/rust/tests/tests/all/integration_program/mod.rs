@@ -23,7 +23,7 @@ fn generated_typed_getter_is_a_checked_public_consumer_api() {
 
     let unselected = Author::new();
     let error = read_seq(&unselected).expect_err("an unselected generated field must fail");
-    assert_eq!(error.code(), polyspec_orm::codes::COLUMN_UNSELECTED);
+    assert_eq!(error.kind(), polyspec_orm::Kind::ColumnUnselected);
 
     let assigned = Author::new().set_seq(17);
     let sequence: i64 = read_seq(&assigned).expect("an assigned generated field is readable");
@@ -85,7 +85,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
     };
-    assert_eq!(err.code(), polyspec_orm::codes::CODEC_ENCODE);
+    assert_eq!(err.kind(), polyspec_orm::Kind::CodecEncode);
     let value = polyspec_orm::ordered_json::Value::null();
     let row = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::Value(value.clone())) {
         Ok(row) => row,
@@ -148,7 +148,7 @@ fn config() -> polyspec_orm::Config {
 fn generated_fields_require_selection_or_assignment() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let model = Author::new();
-    assert_eq!(model.get_name().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED);
+    assert_eq!(model.get_name().unwrap_err().kind(), polyspec_orm::Kind::ColumnUnselected);
     assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
     assert_eq!(model.set_name("checked").get_name().unwrap(), "checked");
 }
@@ -301,13 +301,13 @@ async fn columns_and_subqueries_case(t: &Target) {
     assert_eq!((sum, avg), (60.0, Some(15.0)), "aggregates");
     let projected = Author::new().connect(db).remove_all_columns().add_column_name().get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(projected.get_name().unwrap(), "alpha", "selected field");
-    assert_eq!(projected.get_description().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED, "unselected field");
+    assert_eq!(projected.get_description().unwrap_err().kind(), polyspec_orm::Kind::ColumnUnselected, "unselected field");
     let grouped = Author::new().connect(db).group_by_is_close().gets_count().await.unwrap();
     assert_eq!(grouped.len(), 2, "gets_count");
     for row in grouped.iter() {
         assert!(row.count() > 0);
         assert!(matches!(row.value("is_close").unwrap(), polyspec_orm::Val::Bool(_)));
-        assert_eq!(row.value("name").unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED);
+        assert_eq!(row.value("name").unwrap_err().kind(), polyspec_orm::Kind::ColumnUnselected);
     }
     let page = Author::new().connect(db).order_by_seq_asc().gets_page(2, 3).await.unwrap();
     assert_eq!((page.total_count, page.total_pages, page.items.len()), (4, 2, 1), "page");
@@ -441,7 +441,7 @@ async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     assert_eq!(User::new().connect(&slave1).name(name.as_str()).get_count().await.unwrap(), 1, "the replica reads the row written through the primary");
     assert_eq!(
         code(User::new().connect(&slave1).set_name(format!("{name}-replica")).create().await),
-        polyspec_orm::codes::READ_ONLY,
+        polyspec_orm_test_support::catalog_code::code_of_kind(polyspec_orm::Kind::ReadOnly),
         "a write through the replica connection is rejected"
     );
     assert_eq!(
@@ -479,7 +479,11 @@ async fn read_only_sqlite(t: &Target) {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
     let db = crate::model::connect(&t.dsn, 2, config()).await.unwrap();
     assert_eq!(User::new().connect(&db).name("read-only").get_count().await.unwrap(), 1, "the read-only database reads the row");
-    assert_eq!(code(User::new().connect(&db).set_name("rejected").create().await), polyspec_orm::codes::READ_ONLY, "a write to the read-only database");
+    assert_eq!(
+        code(User::new().connect(&db).set_name("rejected").create().await),
+        polyspec_orm_test_support::catalog_code::code_of_kind(polyspec_orm::Kind::ReadOnly),
+        "a write to the read-only database"
+    );
     db.close().await;
 }
 
@@ -498,7 +502,7 @@ async fn json_values_case(t: &Target) {
         }
     }
     let db = &t.db;
-    assert_eq!(Author::new().get_jsons_tags().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED, "unselected JSON column");
+    assert_eq!(Author::new().get_jsons_tags().unwrap_err().kind(), polyspec_orm::Kind::ColumnUnselected, "unselected JSON column");
     let f = seed(db).await;
     let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
     let tags = r#"["z",{"y":[]},-0.0]"#;

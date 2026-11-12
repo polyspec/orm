@@ -6,7 +6,6 @@ use std::sync::Arc;
 use super::dialect::Dialect;
 use super::err;
 use super::params::{function_type, interval_type};
-use crate::codes;
 use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
 use crate::schema::Manifest;
@@ -69,7 +68,7 @@ impl Asm {
             .iter()
             .find(|c| c.name == name)
             .map(|c| c.index)
-            .ok_or_else(|| err(codes::INTERNAL, format!("planner: column {name} is not projected in {}", self.entity)))
+            .ok_or_else(|| err(crate::Kind::Internal, format!("planner: column {name} is not projected in {}", self.entity)))
     }
 
     fn key_refs(&self, columns: &[String]) -> Result<Vec<KeyRef>> {
@@ -94,7 +93,7 @@ fn key_refs_of(a: &Assemble, columns: &[String]) -> Result<Vec<KeyRef>> {
         .map(|c| {
             a.index_of(c)
                 .map(|index| KeyRef { column: c.clone(), index })
-                .ok_or_else(|| err(codes::INTERNAL, format!("planner: column {c} is not projected in {}", a.entity)))
+                .ok_or_else(|| err(crate::Kind::Internal, format!("planner: column {c} is not projected in {}", a.entity)))
         })
         .collect()
 }
@@ -141,7 +140,7 @@ impl Builder {
     /// Adds a slot with a type. A slot without a type is a planner error.
     fn slot(&mut self, slot: BindSlot) -> String {
         if slot.col_type.is_empty() && self.error.is_none() {
-            self.error = Some(err(codes::IR_INVALID, format!("bind slot {} ({}) has no declared type", self.binds.len(), slot.from)));
+            self.error = Some(err(crate::Kind::IrInvalid, format!("bind slot {} ({}) has no declared type", self.binds.len(), slot.from)));
         }
         self.push(slot)
     }
@@ -242,7 +241,7 @@ fn assigns_aes(ent: &Entity, set: &[ir::Assign]) -> bool {
 fn validate_audit_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     let audited = audit_column(ent);
     if !audited.is_empty() && assigned(set, audited) {
-        return Err(err(codes::IR_INVALID, format!("{}.{audited} is written by the executor from the audit of the transaction", ent.name)));
+        return Err(err(crate::Kind::IrInvalid, format!("{}.{audited} is written by the executor from the audit of the transaction", ent.name)));
     }
     Ok(())
 }
@@ -272,14 +271,14 @@ fn validate_aes_assignments(ent: &Entity, set: &[ir::Assign], require_complete: 
         return Ok(());
     }
     if assigned(set, version) {
-        return Err(err(codes::IR_INVALID, format!("{version} is managed by the AES writer")));
+        return Err(err(crate::Kind::IrInvalid, format!("{version} is managed by the AES writer")));
     }
     if !require_complete || !assigns_aes(ent, set) {
         return Ok(());
     }
     for col in &ent.fields {
         if col.aes() && !assigned(set, &col.name) {
-            return Err(err(codes::IR_INVALID, format!("AES update must assign every AES column; missing {}", col.name)));
+            return Err(err(crate::Kind::IrInvalid, format!("AES update must assign every AES column; missing {}", col.name)));
         }
     }
     Ok(())
@@ -295,7 +294,7 @@ fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()>
         if col.nullable || col.default.is_some() || col.identity || col.name == version || col.name == audited || assigned(set, &col.name) {
             continue;
         }
-        return Err(err(codes::IR_INVALID, format!("required column {}.{} is not set", ent.name, col.name)));
+        return Err(err(crate::Kind::IrInvalid, format!("required column {}.{} is not set", ent.name, col.name)));
     }
     Ok(())
 }
@@ -310,7 +309,7 @@ fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Result
         }
         if let Some(previous) = sources.insert(index.clone(), col.name.clone()) {
             if previous != col.name {
-                return Err(err(codes::IR_INVALID, format!("blind index {index} is derived from both {previous} and {}", col.name)));
+                return Err(err(crate::Kind::IrInvalid, format!("blind index {index} is derived from both {previous} and {}", col.name)));
             }
         }
     }
@@ -433,7 +432,7 @@ impl<'m> Planner<'m> {
             "delete" => steps.push(self.delete_step(r)?),
             "restore" => steps.push(self.restore_step(r)?),
             "restart_identity" => steps.push(self.restart_identity_step(r)?),
-            other => return Err(err(codes::IR_INVALID, format!("unknown kind {other}", other = polyspec_orm_schema::message::Quoted(&other)))),
+            other => return Err(err(crate::Kind::IrInvalid, format!("unknown kind {other}", other = polyspec_orm_schema::message::Quoted(&other)))),
         }
         for (i, st) in steps.iter_mut().enumerate() {
             st.id = i as u32;
@@ -619,7 +618,7 @@ impl<'m> Planner<'m> {
                 if !q.lock.is_empty() {
                     let lock = self.d.row_lock(&q.lock, self.server).ok_or_else(|| {
                         err(
-                            codes::CAPABILITY_UNSUPPORTED,
+                            crate::Kind::CapabilityUnsupported,
                             format!("{} row lock {} is not supported", self.d.name(), polyspec_orm_schema::message::Quoted(&q.lock)),
                         )
                     })?;
@@ -660,7 +659,7 @@ impl<'m> Planner<'m> {
             };
             let rc = RelCtx { parent_step: step_id, parent_keys: asm.key_refs(&parent_keys)?, if_parent, child_keys: child_keys.clone(), kind: kind.clone() };
             let id = self.select_step(steps, &r.query, "all", "", Some(&rc), false)?;
-            let child_asm = steps[id].assemble.clone().ok_or_else(|| err(codes::INTERNAL, "relation step without assembly"))?;
+            let child_asm = steps[id].assemble.clone().ok_or_else(|| err(crate::Kind::Internal, "relation step without assembly"))?;
             let key = if !r.query.key_by.is_empty() {
                 key_refs_of(&child_asm, std::slice::from_ref(&r.query.key_by))?
             } else {
@@ -716,7 +715,7 @@ impl<'m> Planner<'m> {
             parts.push(format!("{col} {}{nulls}", if o.desc { "DESC" } else { "ASC" }));
         }
         for join in &q.joins {
-            let child = s.join(&join.rel).ok_or_else(|| err(codes::INTERNAL, format!("join {} is not in the scope", join.rel)))?;
+            let child = s.join(&join.rel).ok_or_else(|| err(crate::Kind::Internal, format!("join {} is not in the scope", join.rel)))?;
             self.append_order(child, child.q, parts)?;
         }
         Ok(())
@@ -738,7 +737,7 @@ impl<'m> Planner<'m> {
             asm.columns.push(OutCol { index: asm.columns.len(), ..col });
         };
         for name in &s.q.group_by {
-            let col = s.ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
+            let col = s.ent.field(name).ok_or_else(|| err(crate::Kind::ColumnUnknown, format!("{}.{name}", s.ent.name)))?;
             let expr = self.d.read_expr(&self.qcol(s, name), col.ty, &self.read_sql_styles(&col.codec));
             let out =
                 OutCol { name: name.clone(), column: name.clone(), typ: col.ty.name().into(), styles: self.client_styles(&col.codec), ..Default::default() };
@@ -811,7 +810,7 @@ impl<'m> Planner<'m> {
                     continue;
                 }
                 OutKind::Column => {
-                    let col = col.ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, c.column)))?;
+                    let col = col.ok_or_else(|| err(crate::Kind::ColumnUnknown, format!("{}.{}", s.ent.name, c.column)))?;
                     styles = self.client_styles(&col.codec);
                     self.d.read_expr(&self.qcol(s, &c.column), col.ty, &self.read_sql_styles(&col.codec))
                 }
@@ -830,7 +829,7 @@ impl<'m> Planner<'m> {
                 .aes_version
                 .as_deref()
                 .and_then(|name| s.ent.field(name))
-                .ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires the aes_version setting", s.ent.name)))?;
+                .ok_or_else(|| err(crate::Kind::SchemaInvalid, format!("{}: AES column requires the aes_version setting", s.ent.name)))?;
             // If there is a selected version column, it is used; only when there is none is a hidden one read.
             asm.aes_version = asm.columns.iter().position(|c| c.column == version.name && c.styles.is_empty());
             if asm.aes_version.is_none() {
@@ -964,8 +963,9 @@ impl<'m> Planner<'m> {
                 ir::Item::Pred { pred } => (&pred.conn, self.render_pred(b, root, s, pred)?),
                 ir::Item::Group { group } => (&group.conn, self.render_group(b, root, s, group, false)?),
                 ir::Item::Joined { joined } => {
-                    let js = s.join(&joined.join).ok_or_else(|| err(codes::ENTITY_NOT_JOINED, format!("{} is not joined in this statement", joined.join)))?;
-                    let w = js.q.where_.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("joined {} has no conditions", joined.join)))?;
+                    let js =
+                        s.join(&joined.join).ok_or_else(|| err(crate::Kind::EntityNotJoined, format!("{} is not joined in this statement", joined.join)))?;
+                    let w = js.q.where_.as_ref().ok_or_else(|| err(crate::Kind::IrInvalid, format!("joined {} has no conditions", joined.join)))?;
                     (&joined.conn, self.render_group(b, root, js, w, false)?)
                 }
             };
@@ -980,7 +980,7 @@ impl<'m> Planner<'m> {
     }
 
     fn render_pred(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, pr: &ir::Pred) -> Result<String> {
-        let p = || pr.p.ok_or_else(|| err(codes::IR_INVALID, format!("{} {}.{} needs a value (p)", pr.op, s.ent.name, pr.column)));
+        let p = || pr.p.ok_or_else(|| err(crate::Kind::IrInvalid, format!("{} {}.{} needs a value (p)", pr.op, s.ent.name, pr.column)));
         match pr.op.as_str() {
             "tuple_in" | "tuple_not_in" => {
                 let cols = self.qualified(s, &pr.cols);
@@ -988,7 +988,7 @@ impl<'m> Planner<'m> {
                 for chunk in pr.ps.chunks(pr.cols.len()) {
                     let mut row = Vec::with_capacity(chunk.len());
                     for (k, name) in pr.cols.iter().enumerate() {
-                        let col = s.ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
+                        let col = s.ent.field(name).ok_or_else(|| err(crate::Kind::ColumnUnknown, format!("{}.{name}", s.ent.name)))?;
                         row.push(self.render_value(b, col, chunk[k]));
                     }
                     rows.push(row);
@@ -999,15 +999,15 @@ impl<'m> Planner<'m> {
                 let cols = self.qualified(s, &pr.cols);
                 let i = p()?;
                 let sql = self.d.fulltext(&cols, &mut |t| b.transformed(i, t), pr.op == "fulltext_boolean");
-                return sql.ok_or_else(|| err(codes::OPERATOR_NOT_ALLOWED, format!("{} on {}", pr.op, s.ent.name)));
+                return sql.ok_or_else(|| err(crate::Kind::OperatorNotAllowed, format!("{} on {}", pr.op, s.ent.name)));
             }
             _ => {}
         }
         let col = s.ent.field(&pr.column).ok_or_else(|| {
             if pr.r#fn.is_some() {
-                err(codes::INTERNAL, format!("{}.{}", s.ent.name, pr.column))
+                err(crate::Kind::Internal, format!("{}.{}", s.ent.name, pr.column))
             } else {
-                err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, pr.column))
+                err(crate::Kind::ColumnUnknown, format!("{}.{}", s.ent.name, pr.column))
             }
         })?;
         let mut lhs = self.qcol(s, &pr.column);
@@ -1029,7 +1029,7 @@ impl<'m> Planner<'m> {
             let value = self
                 .d
                 .value_function(&v.name, &mut arg, &mut now)
-                .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} is not available on {}", v.name, self.d.name())))?;
+                .ok_or_else(|| err(crate::Kind::CapabilityUnsupported, format!("{} is not available on {}", v.name, self.d.name())))?;
             if let (Type::DateTime(p), false) = (col.ty, v.name == "today") {
                 lhs = self.d.clock_operand(&lhs, p);
             }
@@ -1057,7 +1057,7 @@ impl<'m> Planner<'m> {
             "eq" | "not_eq" | "gt" | "gte" | "lt" | "lte" => {
                 if col.aes() {
                     if op != "eq" && op != "not_eq" {
-                        return Err(err(codes::OPERATOR_NOT_ALLOWED, "AES columns support only equality through a declared blind index"));
+                        return Err(err(crate::Kind::OperatorNotAllowed, "AES columns support only equality through a declared blind index"));
                     }
                     lhs = self.blind_lhs(s, col)?;
                     let rhs = self.blind_value(b, self.blind_index(s, col)?, p()?);
@@ -1067,10 +1067,10 @@ impl<'m> Planner<'m> {
                 format!("{lhs} {} {rhs}", cmp(op))
             }
             "eq_col" | "not_eq_col" | "gt_col" | "gte_col" | "lt_col" | "lte_col" => {
-                let r = pr.r#ref.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("{op} needs ref")))?;
+                let r = pr.r#ref.as_ref().ok_or_else(|| err(crate::Kind::IrInvalid, format!("{op} needs ref")))?;
                 let rs = self.resolve_path(root, &r.path)?;
                 if rs.ent.field(&r.column).is_none() {
-                    return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{}", rs.ent.name, r.column)));
+                    return Err(err(crate::Kind::ColumnUnknown, format!("{}.{}", rs.ent.name, r.column)));
                 }
                 format!("{lhs} {} {}", cmp(op.trim_end_matches("_col")), self.qcol(rs, &r.column))
             }
@@ -1106,7 +1106,7 @@ impl<'m> Planner<'m> {
                 let i = p()?;
                 self.d.contains_binary(&lhs, &mut |t| b.col_param(i, col, t))
             }
-            _ => return Err(err(codes::OPERATOR_UNKNOWN, op.to_owned())),
+            _ => return Err(err(crate::Kind::OperatorUnknown, op.to_owned())),
         })
     }
 
@@ -1114,7 +1114,7 @@ impl<'m> Planner<'m> {
         let index = col
             .blind_index
             .as_ref()
-            .ok_or_else(|| err(codes::IR_INVALID, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
+            .ok_or_else(|| err(crate::Kind::IrInvalid, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
         Ok(self.qcol(s, index))
     }
 
@@ -1123,7 +1123,7 @@ impl<'m> Planner<'m> {
         let index = col
             .blind_index
             .as_ref()
-            .ok_or_else(|| err(codes::IR_INVALID, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
+            .ok_or_else(|| err(crate::Kind::IrInvalid, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
         self.column_of(s.ent, index)
     }
 
@@ -1149,14 +1149,14 @@ impl<'m> Planner<'m> {
 
     fn resolve_path<'s>(&self, root: &'s Scope<'s>, path: &str) -> Result<&'s Scope<'s>> {
         if path == "^" {
-            return root.outer.ok_or_else(|| err(codes::IR_INVALID, "^ reference outside a subquery"));
+            return root.outer.ok_or_else(|| err(crate::Kind::IrInvalid, "^ reference outside a subquery"));
         }
         let mut cur = root;
         if path.is_empty() {
             return Ok(cur);
         }
         for seg in path.split('/') {
-            cur = cur.join(seg).ok_or_else(|| err(codes::ENTITY_NOT_JOINED, format!("{}.{seg}", cur.ent.name)))?;
+            cur = cur.join(seg).ok_or_else(|| err(crate::Kind::EntityNotJoined, format!("{}.{seg}", cur.ent.name)))?;
         }
         Ok(cur)
     }
@@ -1164,7 +1164,7 @@ impl<'m> Planner<'m> {
     fn column_function(&self, s: &Scope<'_>, column: &str, f: &ir::Func) -> Result<String> {
         self.d
             .column_function(&f.name, &self.qcol(s, column))
-            .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} is not available on {}", f.name, self.d.name())))
+            .ok_or_else(|| err(crate::Kind::CapabilityUnsupported, format!("{} is not available on {}", f.name, self.d.name())))
     }
 
     /// A subquery for an IN list or a scalar column; its root gets its own
@@ -1203,7 +1203,7 @@ impl<'m> Planner<'m> {
             if let Some(l) = &sub.query.limit {
                 sb.push_str(&self.render_order(root, &sub.query)?);
                 let ir::Limit::Literal { offset, count } = l else {
-                    return Err(err(codes::IR_INVALID, "scalar subquery limit must be literal"));
+                    return Err(err(crate::Kind::IrInvalid, "scalar subquery limit must be literal"));
                 };
                 sb.push_str(&self.d.limit(*offset, *count));
             }
@@ -1248,7 +1248,7 @@ impl<'m> Planner<'m> {
                             name.to_owned()
                         }
                     })
-                    .map_err(|_error| err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))
+                    .map_err(|_error| err(crate::Kind::Internal, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))
             }
         }
     }
@@ -1263,7 +1263,7 @@ impl<'m> Planner<'m> {
     fn render_assign(&self, b: &mut Builder, ent: &Entity, col: &Field, a: &ir::Assign) -> Result<String> {
         if blind_index_source(ent, &col.name).is_some() {
             if a.plus_p.is_some() || a.minus_p.is_some() {
-                return Err(err(codes::IR_INVALID, "blind index assignment must use its AES source value"));
+                return Err(err(crate::Kind::IrInvalid, "blind index assignment must use its AES source value"));
             }
             if a.null {
                 return Ok("NULL".into());
@@ -1286,14 +1286,14 @@ impl<'m> Planner<'m> {
         if a.null {
             return Ok("NULL".into());
         }
-        let p = a.p.ok_or_else(|| err(codes::IR_INVALID, format!("set {}: exactly one of p/null/plus_p/minus_p", a.column)))?;
+        let p = a.p.ok_or_else(|| err(crate::Kind::IrInvalid, format!("set {}: exactly one of p/null/plus_p/minus_p", a.column)))?;
         let start = b.binds.len();
         let sql = self.render_value(b, col, p);
         Ok(mark_assigned(b, start, col, sql))
     }
 
     fn column_of<'e>(&self, ent: &'e Entity, name: &str) -> Result<&'e Field> {
-        ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", ent.name)))
+        ent.field(name).ok_or_else(|| err(crate::Kind::ColumnUnknown, format!("{}.{name}", ent.name)))
     }
 
     fn insert_step(&self, r: &ir::Request) -> Result<Step> {
@@ -1306,7 +1306,7 @@ impl<'m> Planner<'m> {
         // load writes the row with its stored key as is, so it accepts and requires the identity column value.
         if let Some(identity) = ent.identity.as_deref().filter(|_| r.load) {
             if !set.iter().any(|a| a.column == identity && a.p.is_some()) {
-                return Err(err(codes::IR_INVALID, format!("load of {} needs a value for the identity column {identity}", ent.name)));
+                return Err(err(crate::Kind::IrInvalid, format!("load of {} needs a value for the identity column {identity}", ent.name)));
             }
         }
         let version = aes_version_column(ent);
@@ -1316,7 +1316,7 @@ impl<'m> Planner<'m> {
         for a in &set {
             let col = self.column_of(ent, &a.column)?;
             if col.identity && !r.load {
-                return Err(err(codes::IR_INVALID, format!("cannot set identity column {}", a.column)));
+                return Err(err(crate::Kind::IrInvalid, format!("cannot set identity column {}", a.column)));
             }
             cols.push(self.d.quote(&a.column));
             vals.push(self.render_assign(&mut b, ent, col, a)?);
@@ -1338,12 +1338,12 @@ impl<'m> Planner<'m> {
                     source.push(i);
                 } else {
                     let src = assigned_blind_index_source(ent, &a.column, &r.set)
-                        .ok_or_else(|| err(codes::IR_INVALID, format!("no assigned AES source for blind index {}", a.column)))?;
+                        .ok_or_else(|| err(crate::Kind::IrInvalid, format!("no assigned AES source for blind index {}", a.column)))?;
                     let source_index = r
                         .set
                         .iter()
                         .position(|x| x.column == src.name)
-                        .ok_or_else(|| err(codes::IR_INVALID, format!("assigned AES source {} is missing from insert set", src.name)))?;
+                        .ok_or_else(|| err(crate::Kind::IrInvalid, format!("assigned AES source {} is missing from insert set", src.name)))?;
                     source.push(source_index);
                 }
             }
@@ -1501,7 +1501,7 @@ impl<'m> Planner<'m> {
         if !audited.is_empty() {
             sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
         }
-        let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "update without where"))?;
+        let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(crate::Kind::IrInvalid, "update without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         if let Some(o) = &r.optimistic {
             let ph = b.col_param(o.p, self.column_of(ent, &o.column)?, "");
@@ -1530,7 +1530,7 @@ impl<'m> Planner<'m> {
                 sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
             }
         }
-        let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "delete without where"))?;
+        let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(crate::Kind::IrInvalid, "delete without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         let sql = match &ent.soft_delete {
             Some(soft_delete) => {
@@ -1575,7 +1575,7 @@ impl<'m> Planner<'m> {
     fn restart_identity_step(&self, r: &ir::Request) -> Result<Step> {
         let ent = self.entity(&r.query.entity)?;
         let Some(identity) = ent.identity.as_deref() else {
-            return Err(err(codes::IR_INVALID, format!("restart_identity of {}, which has no identity column", ent.name)));
+            return Err(err(crate::Kind::IrInvalid, format!("restart_identity of {}, which has no identity column", ent.name)));
         };
         let mut b = Builder::new(self.d);
         b.table(&ent.table);

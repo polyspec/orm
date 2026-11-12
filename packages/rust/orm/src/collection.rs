@@ -22,7 +22,7 @@ pub enum Key {
 }
 
 fn null_key() -> Error {
-    Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "collection row identity contains SQL NULL".into(), source: None }
+    Error::new(crate::Kind::CodecDecode, "collection row identity contains SQL NULL")
 }
 
 impl Key {
@@ -337,7 +337,7 @@ impl GroupRow {
         let mut names = std::collections::HashSet::new();
         for (name, _) in &values {
             if !names.insert(name) {
-                return Err(crate::Error::Config(format!("group result repeats column {name}")));
+                return Err(crate::Error::config(format!("group result repeats column {name}")));
             }
         }
         let count_index = values.iter().position(|(name, _)| name == "row_count").ok_or_else(|| crate::Error::internal("group result has no row_count"))?;
@@ -351,11 +351,11 @@ impl GroupRow {
     }
 
     pub fn value(&self, name: &str) -> Result<&Val> {
-        self.values.iter().find(|(key, _)| key == name).map(|(_, value)| value).ok_or_else(|| crate::Error::Engine {
-            code: crate::codes::COLUMN_UNSELECTED.into(),
-            msg: format!("group result has no selected column {name}"),
-            source: None,
-        })
+        self.values
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value)
+            .ok_or_else(|| crate::Error::new(crate::Kind::ColumnUnselected, format!("group result has no selected column {name}")))
     }
 
     /// The selected values by name, with `row_count`, in the array form of every runtime (COD-27, INT-69).
@@ -369,13 +369,7 @@ impl GroupRow {
         let mut parts = Vec::with_capacity(self.values.len());
         for (name, value) in &self.values {
             let text = match value {
-                Val::Bytes(_) => {
-                    return Err(Error::Engine {
-                        code: crate::codes::CODEC_ENCODE.into(),
-                        msg: format!("group column {name}: JSON output cannot write bytes"),
-                        source: None,
-                    })
-                }
+                Val::Bytes(_) => return Err(Error::new(crate::Kind::CodecEncode, format!("group column {name}: JSON output cannot write bytes"))),
                 Val::Ordered(value) => value.compact(),
                 other => other.to_json()?.to_string(),
             };
@@ -387,7 +381,7 @@ impl GroupRow {
 
 fn checked_group_row_count(value: &Val) -> Result<i64> {
     const MAX_SAFE: i64 = 9_007_199_254_740_991;
-    let invalid = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is not an exact integer".into(), source: None };
+    let invalid = || Error::new(crate::Kind::CodecDecode, "group result row_count is not an exact integer");
     let count = match value {
         Val::I64(count) => *count,
         Val::F64(count) if count.is_finite() && count.fract() == 0.0 && *count >= 0.0 && *count <= MAX_SAFE as f64 => *count as i64,
@@ -397,7 +391,7 @@ fn checked_group_row_count(value: &Val) -> Result<i64> {
         _ => return Err(invalid()),
     };
     if count < 0 {
-        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into(), source: None });
+        return Err(Error::new(crate::Kind::CodecDecode, "group result row_count is negative"));
     }
     if count > MAX_SAFE {
         return Err(invalid());
@@ -465,7 +459,7 @@ mod group_tests {
             Val::F64(-1.0),
             Val::F64(9_007_199_254_740_992.0),
         ] {
-            assert_eq!(GroupRow::new(vec![("row_count".into(), invalid)]).err().unwrap().code(), "CODEC_DECODE");
+            assert_eq!(GroupRow::new(vec![("row_count".into(), invalid)]).err().unwrap().kind(), crate::Kind::CodecDecode);
         }
         for (input, count) in [
             (Val::Str("0".into()), 0),
@@ -477,6 +471,6 @@ mod group_tests {
             assert_eq!(row.count(), count);
             assert_eq!(row.to_json().unwrap(), format!(r#"{{"row_count":{count}}}"#));
         }
-        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().kind(), crate::Kind::Config);
     }
 }

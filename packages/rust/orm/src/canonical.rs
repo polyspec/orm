@@ -4,7 +4,6 @@
 //! in walk order, and renumbers the IR from that walk alone, so the plan cache key of a request does not depend
 //! on the order its parameters were built in. A parameter no reference names keeps its value after the slots.
 
-use crate::codes;
 use crate::ir;
 use crate::value::Param;
 use crate::{Error, Result};
@@ -41,9 +40,9 @@ struct Canonicalizer {
 }
 
 impl Canonicalizer {
-    fn fail(&mut self, code: &str, msg: impl Into<String>) {
+    fn fail(&mut self, kind: crate::Kind, msg: impl Into<String>) {
         if self.err.is_none() {
-            self.err = Some(Error::Engine { code: code.into(), msg: msg.into(), source: None });
+            self.err = Some(Error::new(kind, msg));
         }
     }
 
@@ -51,7 +50,7 @@ impl Canonicalizer {
     /// IR_INVALID, which the validator would also report.
     fn index(&mut self, p: usize) -> usize {
         if p >= self.params.len() {
-            self.fail(codes::IR_INVALID, format!("param index {p} out of range (n_params {})", self.params.len()));
+            self.fail(crate::Kind::IrInvalid, format!("param index {p} out of range (n_params {})", self.params.len()));
             return p;
         }
         self.used[p] = true;
@@ -159,7 +158,7 @@ impl Canonicalizer {
             }
             ir::Limit::Literal { offset, count } => {
                 if count == 0 {
-                    self.fail(codes::IR_INVALID, "limit offset>=0, count>0");
+                    self.fail(crate::Kind::IrInvalid, "limit offset>=0, count>0");
                     ir::Limit::Literal { offset, count }
                 } else if root {
                     let offset_p = self.literal(offset);
