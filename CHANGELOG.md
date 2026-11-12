@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.32
+
 - A MySQL catalog runs its sessions on one connection and stops a read with no reconnect in every runtime (T423, CFG-35). A session that ends with an acknowledged ROLLBACK keeps its connection for the next, as a committed one did, and a budget stop ends its statement with `KILL QUERY` on a kill connection that the catalog opens at its first stop and keeps until close; the stopped connection rolls back and stays. Before, Go, TypeScript, Python and Rust closed the connection of every read session and opened another, and PHP and the extension closed the kill connection of every stop, so two stops and two reads opened 5, 8 or 3 connections for 2, and a reconnect that `max_user_connections` refused waited on the 2 s timer of CFG-35. A user of a catalog that stops a read needs two places in `max_user_connections`; with one place the kill connection is refused, the read closes its socket as before, and the timer stays for that path alone.
 
 - Breaking (0.x): `getsPage` on a chain that declares no order orders its page by the primary key ascending, in key column order, in every runtime and on every database (T395, DSL-67, PRT-38), as the lookahead page does (INT-164); the count query keeps no order. Before, each database returned the rows of `LIMIT` and `OFFSET` in the order of its plan, and consecutive pages could repeat or skip a row: page 1 and page 2 of 4 rows skipped one row on MySQL, MariaDB, PostgreSQL, SQLite and markdown alike. A chain with an order is unchanged.

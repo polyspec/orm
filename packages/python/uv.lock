@@ -177,7 +177,7 @@ wheels = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.31"
+version = "0.0.32"
 source = { editable = "." }
 default-groups = ["test"]
 dependencies = [

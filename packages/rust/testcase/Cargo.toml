@@ -2,7 +2,7 @@
 # Its integration tests run as groups of the one test program, packages/rust/tests/tests/all.
 autotests = false
 name = "polyspec-orm-testcase"
-version = "0.0.31"
+version = "0.0.32"
 edition = "2021"
 rust-version = "1.99.0"
 publish = false
