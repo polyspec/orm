@@ -659,13 +659,19 @@ struct Loaded {
 }
 
 fn terminal(c: &Core) -> Result<Executor> {
+    terminal_checks(c)?;
+    resolve(&c.conn)
+}
+
+/// The refusals of a terminal before its connection: inside a group callback, and the deferred error of the model.
+fn terminal_checks(c: &Core) -> Result<()> {
     if c.group {
         return Err(config("a terminal is not allowed inside a group callback"));
     }
     if let Some(e) = c.err() {
         return Err(e);
     }
-    resolve(&c.conn)
+    Ok(())
 }
 
 async fn load(c: &Core, kind: &str) -> Result<Loaded> {
@@ -1690,10 +1696,14 @@ pub async fn delete<M: Model>(m: &M, recursive: bool) -> Result<()> {
 /// Deletes the row of `m`, on `unit` when given (the unit of a recursive delete) or else on the connection of `m`.
 pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&Connection>) -> Result<()> {
     let c = m.core_dyn();
-    let ex = terminal(c)?;
-    let ex = match unit {
-        Some(unit) => unit.executor()?,
-        None => ex,
+    // In a unit, every statement runs on the connection of the unit and never on the one of the model, which a running
+    // savepoint makes busy (CORE-21).
+    let (ex, conn) = match unit {
+        Some(unit) => {
+            terminal_checks(c)?;
+            (unit.executor()?, Some(unit.clone()))
+        }
+        None => (terminal(c)?, c.conn.clone()),
     };
     if recursive {
         if let Some(row) = &c.row {
@@ -1719,7 +1729,7 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&
     key_where(&mut req, &ent, &keys);
     let revision = revision_guard(c, &ent, &mut req, false, false)?;
     req.ir.n_params = req.params.len();
-    let (_, affected) = write(&ex, &c.conn, &mut req).await?;
+    let (_, affected) = write(&ex, &conn, &mut req).await?;
     revision_checked(c, revision.as_deref(), affected)
 }
 
