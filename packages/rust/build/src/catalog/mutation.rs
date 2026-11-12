@@ -110,7 +110,7 @@ pub(super) fn bind(value: &GridCell) -> Result<P, CatalogError> {
         GridCell::Decimal(v) => P::Decimal(v.clone()),
         GridCell::Boolean(v) => P::Boolean(*v),
         GridCell::Binary(v) => P::Binary(v.clone()),
-        GridCell::Null => return Err("ROW_UPDATE_INVALID: NULL row identity".into()),
+        GridCell::Null => return Err("row_update_invalid: NULL row identity".into()),
         GridCell::Date(v) => P::Date(v.clone()),
         GridCell::Time(v) => P::Time(v.clone()),
         GridCell::DateTime(v) => P::DateTime(v.clone()),
@@ -172,12 +172,12 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
     let grantee = match account.rows.as_slice() {
         [row] => match row.as_slice() {
             [GridCell::Text(account)] => {
-                let (user, host) = account.rsplit_once('@').ok_or_else(|| "ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".to_owned())?;
+                let (user, host) = account.rsplit_once('@').ok_or_else(|| "row_mutation_unsupported: unverifiable MySQL account".to_owned())?;
                 format!("'{user}'@'{host}'")
             }
-            _ => return Err("ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".into()),
+            _ => return Err("row_mutation_unsupported: unverifiable MySQL account".into()),
         },
-        _ => return Err("ROW_MUTATION_UNSUPPORTED: unverifiable MySQL account".into()),
+        _ => return Err("row_mutation_unsupported: unverifiable MySQL account".into()),
     };
     let grants=connection.grid_query_bounded(
         "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
@@ -192,7 +192,7 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
         .await
         .map_err(|e| e.to_string())?;
     if !matches!(result.rows.as_slice(),[row] if matches!(row.as_slice(),[GridCell::Text(engine)] if engine.eq_ignore_ascii_case("InnoDB"))) {
-        return Err("ROW_MUTATION_UNSUPPORTED: MySQL requires InnoDB".into());
+        return Err("row_mutation_unsupported: MySQL requires InnoDB".into());
     }
     let triggers = connection
         .grid_query_bounded(
@@ -203,7 +203,7 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
         .await
         .map_err(|e| e.to_string())?;
     if !triggers.rows.is_empty() {
-        return Err("ROW_MUTATION_UNSUPPORTED: MySQL triggers require effect verification".into());
+        return Err("row_mutation_unsupported: MySQL triggers require effect verification".into());
     }
     Ok(())
 }
@@ -211,14 +211,14 @@ fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), Cata
     if result.rows.is_empty() {
         Ok(())
     } else {
-        Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into())
+        Err("row_mutation_unsupported: MySQL partial-revoke visibility requires verification".into())
     }
 }
 fn require_trigger_privilege(result: &GridQueryResult) -> Result<(), CatalogError> {
     if result.rows.iter().any(|row| matches!(row.as_slice(),[GridCell::Text(value)] if value=="TRIGGER")) {
         Ok(())
     } else {
-        Err("ROW_MUTATION_UNSUPPORTED: MySQL trigger visibility is unverified".into())
+        Err("row_mutation_unsupported: MySQL trigger visibility is unverified".into())
     }
 }
 impl CatalogConnection {
@@ -233,7 +233,7 @@ impl CatalogConnection {
     ) -> Result<GridQueryResult, CatalogError> {
         cancelled(&cancellation)?;
         if changes.is_empty() || changes.len() > original.metadata().columns.len() {
-            return Err("ROW_UPDATE_INVALID: invalid column assignments".into());
+            return Err("row_update_invalid: invalid column assignments".into());
         }
         tool_db::validate_param_refs(changes.iter().map(|(_, value)| value), &self.dialect).map_err(|e| e.to_string())?;
         let params = changes.iter().map(|(_, value)| value.clone()).collect::<Vec<_>>();
@@ -251,7 +251,7 @@ impl CatalogConnection {
                 .enumerate()
                 .map(|(index, (name, value))| {
                     let column =
-                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_UPDATE_INVALID: unknown column".to_owned())?;
+                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "row_update_invalid: unknown column".to_owned())?;
                     Ok(format!("{}={}", quote(name, &self.dialect)?, assigned_slot(index + 1, value, &column.native_type, &self.dialect)))
                 })
                 .collect::<Result<Vec<_>, CatalogError>>()?
@@ -263,7 +263,7 @@ impl CatalogConnection {
             let affected = connection.exec(&sql, &bound).await.map_err(super::catalog_write_error)?;
             // MySQL may report zero changed rows for an exact no-op; post-read is authoritative.
             if affected > 1 || (affected == 0 && self.dialect != "mysql") {
-                return Err("ROW_WRITE_MISMATCH: unexpected affected row count".into());
+                return Err("row_write_mismatch: unexpected affected row count".into());
             }
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;

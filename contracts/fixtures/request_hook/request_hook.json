@@ -980,7 +980,7 @@
             {
               "action": "fail",
               "kinds": "reads",
-              "error": "FAULT"
+              "error": "fault"
             }
           ],
           "connection": "db"
@@ -998,13 +998,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "FAULT"
+              "error": "fault"
             },
             "postgres": {
-              "error": "FAULT"
+              "error": "fault"
             },
             "sqlite": {
-              "error": "FAULT"
+              "error": "fault"
             }
           },
           "connection": "db"
@@ -1014,13 +1014,13 @@
           "model": "HookItem",
           "expect": {
             "mysql": {
-              "error": "FAULT"
+              "error": "fault"
             },
             "postgres": {
-              "error": "FAULT"
+              "error": "fault"
             },
             "sqlite": {
-              "error": "FAULT"
+              "error": "fault"
             }
           },
           "connection": "db"
@@ -2909,13 +2909,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             },
             "postgres": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             },
             "sqlite": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             }
           },
           "connection": "db"
@@ -3125,13 +3125,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "postgres": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "sqlite": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           },
           "connection": "db"
@@ -3221,13 +3221,13 @@
           "model": "HookItem",
           "expect": {
             "mysql": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "postgres": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "sqlite": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           },
           "connection": "db"

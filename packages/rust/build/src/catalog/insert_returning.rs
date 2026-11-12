@@ -12,7 +12,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
     temporal::declared_precision(metadata, dialect, &checks, &mut result)?;
     row_snapshot::projection(metadata, &result)?;
     if result.rows.len() != 1 {
-        return Err("ROW_WRITE_MISMATCH: expected one returned insert row".into());
+        return Err("row_write_mismatch: expected one returned insert row".into());
     }
     row_snapshot::row(metadata, &result.rows[0])?;
     row_snapshot::key_params(metadata, &result.rows[0])

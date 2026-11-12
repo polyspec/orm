@@ -21,7 +21,7 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "codec_encode"
           }
         }
       ]
@@ -43,7 +43,7 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "codec_encode"
           }
         }
       ]
@@ -64,7 +64,7 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "codec_encode"
           }
         }
       ]

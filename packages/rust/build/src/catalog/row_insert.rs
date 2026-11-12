@@ -67,12 +67,12 @@ impl CatalogConnection {
             if let Some(keys) = &keys {
                 let existing = lookup(&mut connection, declared, &self.dialect, keys, true).await?;
                 if !existing.rows.is_empty() {
-                    return Err("ROW_CONFLICT: insertion key already exists".into());
+                    return Err("row_conflict: insertion key already exists".into());
                 }
             }
             let descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &declared.table).await?;
             if &descriptor != declared {
-                return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
+                return Err("row_schema_changed: insertion descriptor changed".into());
             }
             super::temporal::check_write_precision(&mut connection, &descriptor, values, &self.dialect).await?;
             if self.dialect == "mysql" {
@@ -100,7 +100,7 @@ impl CatalogConnection {
                 .enumerate()
                 .map(|(index, (name, value))| {
                     let column =
-                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
+                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "row_insert_invalid: unknown column".to_owned())?;
                     Ok(assigned_slot(index + 1, value, &column.native_type, &self.dialect))
                 })
                 .collect::<Result<Vec<_>, CatalogError>>()?
@@ -118,13 +118,13 @@ impl CatalogConnection {
             let keys = if let Some(keys) = keys {
                 let affected = connection.exec(&sql, &params).await.map_err(super::catalog_write_error)?;
                 if affected != 1 {
-                    return Err("ROW_WRITE_MISMATCH: expected exactly one inserted row".into());
+                    return Err("row_write_mismatch: expected exactly one inserted row".into());
                 }
                 keys
             } else if let Some(locator) = locator {
                 let affected = connection.exec(&sql, &params).await.map_err(super::catalog_write_error)?;
                 if affected != 1 {
-                    return Err("ROW_WRITE_MISMATCH: expected exactly one inserted row".into());
+                    return Err("row_write_mismatch: expected exactly one inserted row".into());
                 }
                 locator.returned_keys(&mut connection, &descriptor, values).await?
             } else if self.dialect == "mysql" {
@@ -137,18 +137,18 @@ impl CatalogConnection {
             let after = lookup(&mut connection, &descriptor, &self.dialect, &keys, false).await?;
             let after_descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &descriptor.table).await?;
             if descriptor != after_descriptor {
-                return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
+                return Err("row_schema_changed: insertion descriptor changed".into());
             }
             row_snapshot::projection(&descriptor, &after)?;
             if after.rows.len() != 1 {
-                return Err("ROW_WRITE_MISMATCH: expected exactly one inserted row".into());
+                return Err("row_write_mismatch: expected exactly one inserted row".into());
             }
             row_snapshot::row(&descriptor, &after.rows[0])?;
             row_snapshot::revision(&descriptor, &after.rows[0])?;
             for (name, value) in values {
-                let index = descriptor.columns.iter().position(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
+                let index = descriptor.columns.iter().position(|column| column.name == *name).ok_or_else(|| "row_insert_invalid: unknown column".to_owned())?;
                 if after.rows[0][index] != cell(value) {
-                    return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ").into());
+                    return Err(format!("row_write_mismatch: stored inserted values of \"{name}\" differ").into());
                 }
             }
             cancelled(&cancellation)?;

@@ -2,7 +2,7 @@
   "schema": 1,
   "comment": "The collection key identity that every implementation shares. Each entry of keys is one value of one type; two entries have the same key only when their type and value are equal, except an entry that names the entry it equals in same_as (the same instant in another zone). A composite component is encoded as its type tag, the byte length of its canonical payload, a colon, then the payload; tags are i integer, t boolean, s text, b bytes and d datetime. Composite bytes use lowercase hex, datetime payloads are UTC RFC3339 with trailing fractional zeroes trimmed, and text length is UTF-8 bytes. The composites here are the forms that no key column can hold (bytes, a text with U+0000, a time in another zone); the others are the composite_key cases of contracts/fixtures/model_queries_chain/model_queries_chain.json. A NULL key component is an error in every implementation. Other value types retain their existing client behavior and are outside this typed-composite contract. Read by the unit tests of each client, not by the conformance runners.",
   "null": {
-    "code": "CODEC_DECODE",
+    "code": "codec_decode",
     "message": "collection row identity contains SQL NULL"
   },
   "keys": [

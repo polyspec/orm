@@ -59,7 +59,7 @@ async fn multirange_session() {
     for _ in 0..3 {
         let error = connection.query("SELECT 1, NULL::int4multirange", &[]).await.expect_err("a multirange column is refused");
         let refusal = tool_db::value::refusal_of(&error).map(ToString::to_string);
-        assert_eq!(refusal.as_deref(), Some("CATALOG_VALUE: column 2: unsupported native type"), "{error}");
+        assert_eq!(refusal.as_deref(), Some("catalog_value: column 2: unsupported native type"), "{error}");
     }
     let after = connection.query(count, &[]).await.expect("statements after the reads");
     assert_eq!(after, before, "the refused reads left prepared statements on the session");

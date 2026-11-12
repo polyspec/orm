@@ -309,15 +309,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 3"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 3"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 3"
             }
           }
@@ -750,15 +750,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 10"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 10"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "the pool size 10"
             }
           }

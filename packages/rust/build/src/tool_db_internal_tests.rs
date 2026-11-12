@@ -16,10 +16,10 @@ async fn query_shapes_share_bounded_statement_preflight() {
     let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.expect("in-memory SQLite pool");
     let mut connection = super::Conn::Sqlite(pool.acquire().await.expect("in-memory SQLite connection"));
     let query_error = connection.query_result_bounded("SELECT 1; SELECT 2", &[], super::QueryLimits::default()).await.unwrap_err().to_string();
-    assert!(query_error.contains("TOOL_QUERY_STATEMENT: expected one statement"), "{query_error}");
+    assert!(query_error.contains("tool_query_statement: expected one statement"), "{query_error}");
 
     let grid_error = connection.grid_query_bounded("SELECT 1; SELECT 2", &[], super::QueryLimits::default()).await.unwrap_err().to_string();
-    assert!(grid_error.contains("TOOL_QUERY_STATEMENT: expected one statement"), "{grid_error}");
+    assert!(grid_error.contains("tool_query_statement: expected one statement"), "{grid_error}");
     drop(connection);
     pool.close().await;
 }

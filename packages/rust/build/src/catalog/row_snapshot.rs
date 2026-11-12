@@ -17,11 +17,11 @@ impl std::fmt::Debug for RowSnapshot {
     }
 }
 fn invalid() -> CatalogError {
-    "ROW_SNAPSHOT_INVALID: invalid original row or descriptor".into()
+    "row_snapshot_invalid: invalid original row or descriptor".into()
 }
 
 fn invalid_with(error: impl std::fmt::Display) -> CatalogError {
-    format!("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: {error}").into()
+    format!("row_snapshot_invalid: invalid original row or descriptor: {error}").into()
 }
 pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, CatalogError> {
     metadata::validate_name(&value.table.namespace).map_err(invalid_with)?;
@@ -120,7 +120,7 @@ impl Write for RevisionWriter {
 pub(super) fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, CatalogError> {
     let mut writer = RevisionWriter { hash: Sha256::new(), bytes: 0 };
     serde_json::to_writer(&mut writer, &("orm-row-baseline-v1", metadata, cells))
-        .map_err(|error| format!("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: {error}"))?;
+        .map_err(|error| format!("row_snapshot_limit: original row encoding exceeds its budget: {error}"))?;
     Ok(format!("{:x}", writer.hash.finalize()))
 }
 impl RowSnapshot {
@@ -155,18 +155,18 @@ impl RowSnapshot {
     /// Caller must fetch by original keys under its owning writable lock.
     pub fn check_current(&self, metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), CatalogError> {
         if metadata != &self.metadata {
-            return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());
+            return Err("row_schema_changed: original descriptor changed".into());
         }
         projection(metadata, result)?;
         match result.rows.len() {
-            0 => return Err("ROW_CONFLICT: original row is missing".into()),
+            0 => return Err("row_conflict: original row is missing".into()),
             1 => {}
-            _ => return Err("ROW_IDENTITY_AMBIGUOUS: key selected multiple rows".into()),
+            _ => return Err("row_identity_ambiguous: key selected multiple rows".into()),
         }
         row(metadata, &result.rows[0])?;
         revision(metadata, &result.rows[0])?;
         if result.rows[0] != self.cells {
-            return Err("ROW_CONFLICT: original values changed".into());
+            return Err("row_conflict: original values changed".into());
         }
         Ok(())
     }

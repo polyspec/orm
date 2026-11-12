@@ -35,13 +35,13 @@
           "batch": 1,
           "expect": {
             "mysql": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             },
             "postgres": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             },
             "sqlite": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             }
           }
         },
@@ -111,11 +111,11 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "Incorrect string value"
             },
             "postgres": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "invalid byte sequence for encoding \"UTF8\""
             },
             "sqlite": {

@@ -142,7 +142,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                     .exec(&format!("UPDATE {table} SET note={}", tool_db::placeholder(dialect, 1)), &[value])
                     .await
                     .expect_err("invalid bind must reject");
-                let code = if index == 1 { "TOOL_BIND_LIMIT" } else { "TOOL_BIND_INVALID" };
+                let code = if index == 1 { "tool_bind_limit" } else { "tool_bind_invalid" };
                 let source = std::error::Error::source(&error).map(ToString::to_string);
                 if !source.is_some_and(|message| message.starts_with(code) && !message.contains("private")) {
                     failures.push("bind-rejection");
@@ -189,7 +189,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                     if !result.is_ok_and(|result| result.rows == vec![vec![GridCell::Null]]) {
                         failures.push("typed-null");
                     }
-                } else if !result.is_err_and(|error| error.to_string().contains("TOOL_BIND_INVALID")) {
+                } else if !result.is_err_and(|error| error.to_string().contains("tool_bind_invalid")) {
                     failures.push("typed-null-rejection");
                 }
             }
@@ -207,7 +207,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
             if changed.rows[0][1] != GridCell::Null || changed.rows[0][2] != GridCell::Binary(vec![]) {
                 failures.push("updated-null-empty-binary");
             }
-            connection.exec("ROLLBACK", &[]).await.expect("rollback owned update");
+            connection.exec("rollback_failed", &[]).await.expect("rollback owned update");
             if connection.grid_query_bounded(&read, &[], QueryLimits::default()).await.expect("rollback verification").rows != vec![expected] {
                 failures.push("rollback-or-rejected-write");
             }

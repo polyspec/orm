@@ -255,12 +255,12 @@ async fn conditions_case(t: &Target) {
     let second = q.get_count().await.unwrap();
     assert_eq!((first, second), (2, 4), "a terminal changed the model");
     assert_eq!(Author::new().connect(db).ge_read_count(20).get_count().await.unwrap(), 2, "ge");
-    assert_eq!(code(Author::new().connect(db).name("a").is_close(true).gets().await), "CONFIG", "missing connector");
-    assert_eq!(code(Author::new().connect(db).name("a").and(()).gets().await), "CONFIG", "dangling connector");
-    assert_eq!(code(Author::new().connect(db).seq(Vec::<i64>::new()).gets().await), "EMPTY_IN", "empty list");
+    assert_eq!(code(Author::new().connect(db).name("a").is_close(true).gets().await), "config", "missing connector");
+    assert_eq!(code(Author::new().connect(db).name("a").and(()).gets().await), "config", "dangling connector");
+    assert_eq!(code(Author::new().connect(db).seq(Vec::<i64>::new()).gets().await), "empty_in", "empty list");
     let stmt = Author::new().connect(db).name("alpha").get_query().await.unwrap();
     assert!(stmt.sql.contains("name") && stmt.binds.len() == 1, "get_query: {} {:?}", stmt.sql, stmt.binds);
-    assert_eq!(code(Author::new().name("alpha").gets().await), "CONFIG", "no connection");
+    assert_eq!(code(Author::new().name("alpha").gets().await), "config", "no connection");
 }
 
 // Requirements: PLN-8, PLN-9, PLN-14.
@@ -347,7 +347,7 @@ async fn writes_case(t: &Target) {
     let again = Author::new().connect(db).get_by_seq(b.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!((again.get_name().unwrap(), again.get_read_count().unwrap()), ("renamed", 5), "update");
     let mut b = b.set_name("stale");
-    assert_eq!(code(b.update(true).await), "CONFIG", "optimistic update without a fresh version");
+    assert_eq!(code(b.update(true).await), "config", "optimistic update without a fresh version");
     let mut again = again.set_name("again");
     again.update(false).await.unwrap();
     let mut b = b.set_name("x");

@@ -330,7 +330,7 @@
           },
           "expect": {
             "none": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           }
         }
@@ -701,7 +701,7 @@
           },
           "expect": {
             "none": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           }
         }

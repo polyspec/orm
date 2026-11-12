@@ -118,13 +118,13 @@
           "limit": 10,
           "expect": {
             "mysql": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "postgres": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "sqlite": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           },
           "connection": "db"
@@ -200,13 +200,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             },
             "postgres": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             },
             "sqlite": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             }
           }
         }
@@ -260,13 +260,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             },
             "postgres": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             },
             "sqlite": {
-              "error": "CODEC_DECODE"
+              "error": "codec_decode"
             }
           }
         }
@@ -684,10 +684,10 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
               "json": {
@@ -763,10 +763,10 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
               "json": {
@@ -1047,10 +1047,10 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
               "json": {
@@ -1074,10 +1074,10 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
               "json": {

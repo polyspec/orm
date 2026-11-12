@@ -45,17 +45,17 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             },
             "postgres": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             },
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             }
@@ -72,17 +72,17 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             },
             "postgres": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             },
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "table refused_row is immutable",
               "driver_cause": true
             }

@@ -2946,13 +2946,13 @@
           "fail": true,
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -3575,13 +3575,13 @@
               "fail": true,
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             }
@@ -4699,13 +4699,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -5218,18 +5218,18 @@
           },
           "expect": {
             "mysql": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: subscriber refused the event",
               "cause": "subscriber refused the event"
             },
             "postgres": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: subscriber refused the event",
               "cause": "subscriber refused the event"
             },
             "sqlite": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: subscriber refused the event",
               "cause": "subscriber refused the event"
             }
           }
@@ -5583,7 +5583,7 @@
           "connection": "conn",
           "kind": "insert",
           "refusal": {
-            "code": "CONFIG",
+            "code": "config",
             "message": "the subscriber refuses the statement"
           },
           "as": "failing"
@@ -5599,19 +5599,19 @@
           },
           "expect": {
             "mysql": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
-              "cause": "CONFIG: the subscriber refuses the statement"
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "config: the subscriber refuses the statement"
             },
             "postgres": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
-              "cause": "CONFIG: the subscriber refuses the statement"
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "config: the subscriber refuses the statement"
             },
             "sqlite": {
-              "error": "SUBSCRIBER",
-              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
-              "cause": "CONFIG: the subscriber refuses the statement"
+              "error": "subscriber",
+              "message": "subscriber: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "config: the subscriber refuses the statement"
             }
           }
         },
@@ -6452,13 +6452,13 @@
               "model": "EventProbe",
               "expect": {
                 "mysql": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "postgres": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "sqlite": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 }
               }
             },
@@ -6472,13 +6472,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "postgres": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "sqlite": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 }
               }
             }
@@ -6528,13 +6528,13 @@
               "model": "EventProbe",
               "expect": {
                 "mysql": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "postgres": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "sqlite": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 }
               }
             },
@@ -6548,13 +6548,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "postgres": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 },
                 "sqlite": {
-                  "error": "SCHEMA_HASH_MISMATCH"
+                  "error": "schema_hash_mismatch"
                 }
               }
             }
@@ -6644,13 +6644,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -6667,13 +6667,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             }
@@ -6703,13 +6703,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },

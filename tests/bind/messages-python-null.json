@@ -19,7 +19,7 @@
             "nil": true
           },
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "codec_encode"
           }
         }
       ]

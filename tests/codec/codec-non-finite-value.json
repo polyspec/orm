@@ -22,8 +22,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -37,8 +37,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -52,8 +52,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -74,8 +74,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -100,8 +100,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -117,8 +117,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: non-finite number"
+              "error": "codec_encode",
+              "message": "codec_encode: json: non-finite number"
             }
           }
         },
@@ -132,8 +132,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -147,8 +147,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -162,8 +162,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -184,8 +184,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -210,8 +210,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -227,8 +227,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: number is not finite"
             }
           }
         },
@@ -242,8 +242,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         },
@@ -257,8 +257,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         },
@@ -272,8 +272,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         },
@@ -294,8 +294,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         },
@@ -320,8 +320,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         },
@@ -337,8 +337,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: number is not finite"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: number is not finite"
             }
           }
         }

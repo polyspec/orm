@@ -161,15 +161,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "install found only some tables of the document set: user"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "install found only some tables of the document set: user"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "install found only some tables of the document set: user"
             }
           }
@@ -234,7 +234,7 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
                   "value": {
@@ -415,13 +415,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -505,13 +505,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -590,15 +590,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "column user.coverage_missing does not exist"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "column user.coverage_missing does not exist"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "column user.coverage_missing does not exist"
             }
           }
@@ -690,15 +690,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             }
           }
@@ -715,15 +715,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
             }
           }
@@ -1115,15 +1115,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             }
           }
@@ -1140,15 +1140,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
             }
           }
@@ -1596,13 +1596,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "postgres": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "sqlite": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             }
           }
         },
@@ -1885,13 +1885,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1904,13 +1904,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1923,13 +1923,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1942,13 +1942,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1961,13 +1961,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1980,13 +1980,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -1999,13 +1999,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -2230,13 +2230,13 @@
           "message_contains": "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan",
           "expect": {
             "mysql": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "postgres": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             },
             "sqlite": {
-              "error": "SCHEMA_DIFFERS"
+              "error": "schema_differs"
             }
           }
         },
@@ -2441,7 +2441,7 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
                   "value": {
@@ -2483,20 +2483,20 @@
                   }
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             }
           ],
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -2723,13 +2723,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3432,13 +3432,13 @@
           "schema": "bad name",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3447,13 +3447,13 @@
           "schema": "",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3463,13 +3463,13 @@
           "table": "bad name",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3479,13 +3479,13 @@
           "table": "user",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3497,16 +3497,16 @@
               "schema": "bad-name",
               "expect": {
                 "mysql": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: identifier bad-name is invalid"
+                  "error": "config",
+                  "message": "config: identifier bad-name is invalid"
                 },
                 "postgres": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: identifier bad-name is invalid"
+                  "error": "config",
+                  "message": "config: identifier bad-name is invalid"
                 },
                 "sqlite": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: identifier bad-name is invalid"
+                  "error": "config",
+                  "message": "config: identifier bad-name is invalid"
                 }
               }
             }
@@ -3544,7 +3544,7 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
                   "value": {
@@ -3827,13 +3827,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -3858,13 +3858,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "SCHEMA_INVALID"
+              "error": "schema_invalid"
             },
             "postgres": {
-              "error": "SCHEMA_INVALID"
+              "error": "schema_invalid"
             },
             "sqlite": {
-              "error": "SCHEMA_INVALID"
+              "error": "schema_invalid"
             }
           }
         }
@@ -3919,15 +3919,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the database differs from the document set: drop_column user.junk"
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the database differs from the document set: drop_column user.junk"
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "message_suffix": "the database differs from the document set: unsupported_column user.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
             }
           }
@@ -3981,16 +3981,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
+              "error": "config",
+              "message": "config: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
+              "error": "config",
+              "message": "config: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: unsupported_check install_note.install_note$score: the check typeof(\"points\") IN ('integer', 'null') is not the renderer CHECK; unsupported_column install_note.points: declared type bigint with CHECK \"\" has no dbspec type"
+              "error": "config",
+              "message": "config: the database differs from the document set: unsupported_check install_note.install_note$score: the check typeof(\"points\") IN ('integer', 'null') is not the renderer CHECK; unsupported_column install_note.points: declared type bigint with CHECK \"\" has no dbspec type"
             }
           }
         },
@@ -4076,16 +4076,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: drop_column install_note.junk"
+              "error": "config",
+              "message": "config: the database differs from the document set: drop_column install_note.junk"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: drop_column install_note.junk"
+              "error": "config",
+              "message": "config: the database differs from the document set: drop_column install_note.junk"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: the database differs from the document set: unsupported_column install_note.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
+              "error": "config",
+              "message": "config: the database differs from the document set: unsupported_column install_note.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
             }
           }
         },

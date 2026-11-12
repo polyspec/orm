@@ -138,7 +138,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .audit(NO_VALUES)
         .retry(0)
         .await;
-    assert_eq!(code(nested), "CONFIG", "{driver}: a nested transaction_once audit");
+    assert_eq!(code(nested), "config", "{driver}: a nested transaction_once audit");
     let records = audit_records(db).await;
     let want = [("1", "transaction"), ("2", "send"), ("3", "once")].map(|(s, a)| (s.to_owned(), a.to_owned()));
     assert_eq!(records, want, "{driver}: audit records");

@@ -36,8 +36,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": []}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: json: value nesting exceeds 256 levels"
             }
           }
         },
@@ -49,8 +49,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"int": "1"}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: json: value nesting exceeds 256 levels"
             }
           }
         },
@@ -62,8 +62,8 @@
           "value": {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": []}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: json: value nesting exceeds 256 levels"
             }
           }
         }
@@ -101,8 +101,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: value nesting exceeds 256 levels",
+              "error": "codec_decode",
+              "message": "codec_decode: json: value nesting exceeds 256 levels",
               "library_cause": true
             }
           }
@@ -117,8 +117,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: value nesting exceeds 256 levels",
+              "error": "codec_decode",
+              "message": "codec_decode: json: value nesting exceeds 256 levels",
               "library_cause": true
             }
           }
@@ -133,8 +133,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: value nesting exceeds 256 levels",
+              "error": "codec_decode",
+              "message": "codec_decode: json: value nesting exceeds 256 levels",
               "library_cause": true
             }
           }
@@ -149,8 +149,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON",
+              "error": "codec_decode",
+              "message": "codec_decode: json: the cell is not JSON",
               "library_cause": true
             }
           }
@@ -188,8 +188,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -203,8 +203,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -218,8 +218,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -233,8 +233,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -248,8 +248,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         },
@@ -275,8 +275,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": []}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -288,8 +288,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"int": "1"}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: value nesting exceeds 256 levels"
             }
           }
         },
@@ -301,8 +301,8 @@
           "value": {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": []}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: value nesting exceeds 256 levels"
             }
           }
         }
@@ -339,8 +339,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -354,8 +354,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -369,8 +369,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -384,8 +384,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -399,8 +399,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -414,8 +414,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -449,8 +449,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": []}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -462,8 +462,8 @@
           "value": {"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"array": [{"int": "1"}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -475,8 +475,8 @@
           "value": {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": [["a", {"object": []}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]}]]},
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: value nesting exceeds 256 levels"
             }
           }
         }

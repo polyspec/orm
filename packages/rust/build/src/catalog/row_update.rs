@@ -9,11 +9,11 @@ use std::collections::HashSet;
 mod tests;
 
 fn invalid() -> CatalogError {
-    "ROW_UPDATE_INVALID: invalid column assignments".into()
+    "row_update_invalid: invalid column assignments".into()
 }
 
 fn invalid_with(error: impl std::fmt::Display) -> CatalogError {
-    format!("ROW_UPDATE_INVALID: invalid column assignments: {error}").into()
+    format!("row_update_invalid: invalid column assignments: {error}").into()
 }
 
 fn declared_capacity(native_type: &str, names: &[&str]) -> Result<Option<usize>, std::num::ParseIntError> {
@@ -69,14 +69,14 @@ impl RowSnapshot {
                 return Err(invalid());
             }
             if exceeds_declared_capacity(&column.native_type, cell).map_err(invalid_with)? {
-                return Err(format!("ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"{name}\"").into());
+                return Err(format!("row_update_invalid: value exceeds the declared capacity of column \"{name}\"").into());
             }
             let size = match cell {
                 GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => value.len(),
                 GridCell::Binary(value) => value.len(),
                 _ => 16,
             };
-            bytes = assignment_budget::add(bytes, name.len(), size).ok_or_else(|| "ROW_UPDATE_LIMIT: assignment budget exceeded".to_owned())?;
+            bytes = assignment_budget::add(bytes, name.len(), size).ok_or_else(|| "row_update_limit: assignment budget exceeded".to_owned())?;
         }
         let mut cells = self.cells().to_vec();
         for (name, value) in changes {
@@ -84,7 +84,7 @@ impl RowSnapshot {
             cells[index] = value.clone();
         }
         row_snapshot::row(self.metadata(), &cells).map_err(invalid_with)?;
-        row_snapshot::revision(self.metadata(), &cells).map_err(|error| format!("ROW_UPDATE_LIMIT: updated row budget exceeded: {error}"))?;
+        row_snapshot::revision(self.metadata(), &cells).map_err(|error| format!("row_update_limit: updated row budget exceeded: {error}"))?;
         Ok(cells)
     }
     /// Validate before any SQL is executed. This does not authorize a write.
@@ -96,17 +96,17 @@ impl RowSnapshot {
     pub fn check_updated(&self, metadata: &TableMetadata, result: &GridQueryResult, changes: &[(String, GridCell)]) -> Result<(), CatalogError> {
         let expected = self.updated_cells(changes)?;
         if metadata != self.metadata() {
-            return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());
+            return Err("row_schema_changed: original descriptor changed".into());
         }
         row_snapshot::projection(metadata, result)?;
         if result.rows.len() != 1 {
-            return Err("ROW_WRITE_MISMATCH: expected exactly one updated row".into());
+            return Err("row_write_mismatch: expected exactly one updated row".into());
         }
         row_snapshot::row(metadata, &result.rows[0])?;
         row_snapshot::revision(metadata, &result.rows[0])?;
         for ((column, actual), wanted) in metadata.columns.iter().zip(&result.rows[0]).zip(&expected) {
             if !column.generated && actual != wanted {
-                return Err("ROW_WRITE_MISMATCH: stored ordinary values differ".into());
+                return Err("row_write_mismatch: stored ordinary values differ".into());
             }
         }
         Ok(())

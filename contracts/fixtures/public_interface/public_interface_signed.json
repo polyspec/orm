@@ -18,8 +18,8 @@
           ],
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: limit requires a non-negative offset and a positive count"
+              "error": "config",
+              "message": "config: limit requires a non-negative offset and a positive count"
             }
           }
         }

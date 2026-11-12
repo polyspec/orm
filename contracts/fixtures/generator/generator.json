@@ -36,7 +36,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.create: column name is a reserved method name: create"
             }
           }
@@ -61,7 +61,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.delete: column name is a reserved method name: delete"
             }
           }
@@ -86,7 +86,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.restore: column name is a reserved method name: restore"
             }
           }
@@ -111,7 +111,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.random: column name is a reserved method name: random"
             }
           }
@@ -136,7 +136,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.order_by_x: column name may not start with \"order_by\": order_by_x"
             }
           }
@@ -161,7 +161,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.get_name: column name may not start with \"get\": get_name"
             }
           }
@@ -213,7 +213,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.price_gt_limit: column name may not contain the segment \"gt\": price_gt_limit"
             }
           }
@@ -237,7 +237,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.with_tax: column name may not contain the segment \"with\": with_tax"
             }
           }
@@ -261,7 +261,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.fulltext_note: column name may not contain the segment \"fulltext\": fulltext_note"
             }
           }
@@ -313,7 +313,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message": "item.sum_amount"
             }
           }
@@ -350,7 +350,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -386,7 +386,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -422,7 +422,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -458,7 +458,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -494,7 +494,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -530,7 +530,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -566,7 +566,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -602,7 +602,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -1374,7 +1374,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }

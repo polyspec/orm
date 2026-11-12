@@ -15479,15 +15479,15 @@
      },
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "key_by price is nullable"
       },
       "postgres": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "key_by price is nullable"
       },
       "sqlite": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "key_by price is nullable"
       }
      }
@@ -15713,13 +15713,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -18160,16 +18160,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_lookahead_paginate needs group_by"
       },
       "postgres": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_lookahead_paginate needs group_by"
       },
       "sqlite": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_lookahead_paginate needs group_by"
       }
      }
     },
@@ -18198,16 +18198,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_by is only valid on count or group_count, not paginate"
       },
       "postgres": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_by is only valid on count or group_count, not paginate"
       },
       "sqlite": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+       "error": "ir_invalid",
+       "message": "ir_invalid: group_by is only valid on count or group_count, not paginate"
       }
      }
     },
@@ -22028,13 +22028,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -25954,13 +25954,13 @@
        "optimistic": true,
        "expect": {
         "mysql": {
-         "error": "CONFIG"
+         "error": "config"
         },
         "postgres": {
-         "error": "CONFIG"
+         "error": "config"
         },
         "sqlite": {
-         "error": "CONFIG"
+         "error": "config"
         }
        }
       },
@@ -27490,15 +27490,15 @@
        },
        "expect": {
         "mysql": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.state is not set"
         },
         "postgres": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.state is not set"
         },
         "sqlite": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.state is not set"
         }
        }
@@ -27514,15 +27514,15 @@
        },
        "expect": {
         "mysql": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.title is not set"
         },
         "postgres": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.title is not set"
         },
         "sqlite": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "required column task.title is not set"
         }
        }
@@ -30897,13 +30897,13 @@
      "batch": 0,
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -33098,13 +33098,13 @@
      "batch": 21846,
      "expect": {
       "mysql": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       },
       "postgres": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       },
       "sqlite": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       }
      }
     },
@@ -33359,13 +33359,13 @@
        "fail": true,
        "expect": {
         "mysql": {
-         "error": "CALLBACK"
+         "error": "callback"
         },
         "postgres": {
-         "error": "CALLBACK"
+         "error": "callback"
         },
         "sqlite": {
-         "error": "CALLBACK"
+         "error": "callback"
         }
        }
       },
@@ -33467,13 +33467,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -35370,13 +35370,13 @@
        },
        "expect": {
         "mysql": {
-         "error": "NO_ROWS"
+         "error": "no_rows"
         },
         "postgres": {
-         "error": "NO_ROWS"
+         "error": "no_rows"
         },
         "sqlite": {
-         "error": "NO_ROWS"
+         "error": "no_rows"
         }
        }
       }
@@ -35384,13 +35384,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -37251,13 +37251,13 @@
        },
        "expect": {
         "mysql": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         },
         "postgres": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         },
         "sqlite": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         }
        },
        "restore_or_create": true,
@@ -37304,13 +37304,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -39182,13 +39182,13 @@
        },
        "expect": {
         "mysql": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         },
         "postgres": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         },
         "sqlite": {
-         "error": "ROW_NOT_DELETED"
+         "error": "row_not_deleted"
         }
        },
        "restore_or_create": true
@@ -39234,13 +39234,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -42077,13 +42077,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -45016,16 +45016,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       }
      }
     },
@@ -45040,16 +45040,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: hex_cell.value: hex: odd length or non-hex input"
+       "error": "codec_decode",
+       "message": "codec_decode: hex_cell.value: hex: odd length or non-hex input"
       }
      }
     },
@@ -48686,15 +48686,15 @@
        },
        "expect": {
         "mysql": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "on_duplicate needs exactly one conflict key; unique (code) can meet the row but the insert does not assign code"
         },
         "postgres": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "on_duplicate needs exactly one conflict key; unique (code) can meet the row but the insert does not assign code"
         },
         "sqlite": {
-         "error": "IR_INVALID",
+         "error": "ir_invalid",
          "message_suffix": "on_duplicate needs exactly one conflict key; unique (code) can meet the row but the insert does not assign code"
         }
        }
@@ -52926,16 +52926,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       }
      }
     },
@@ -52994,16 +52994,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is longer than varchar(8)"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is longer than varchar(8)"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is longer than varchar(8)"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is longer than varchar(8)"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is longer than varchar(8)"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is longer than varchar(8)"
       }
      }
     },
@@ -53065,16 +53065,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 holds U+0000, which no text value holds"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 holds U+0000, which no text value holds"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 holds U+0000, which no text value holds"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 holds U+0000, which no text value holds"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 holds U+0000, which no text value holds"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 holds U+0000, which no text value holds"
       }
      }
     },
@@ -53136,16 +53136,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54225,16 +54225,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54255,16 +54255,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54279,16 +54279,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54309,16 +54309,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54333,16 +54333,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54363,16 +54363,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54387,16 +54387,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54417,16 +54417,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54441,16 +54441,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54471,16 +54471,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54495,16 +54495,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54525,16 +54525,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is not a lower-case canonical uuid"
       }
      }
     },
@@ -54840,16 +54840,16 @@
      "batch": 2,
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 assigns NULL to the non-null label"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 assigns NULL to the non-null label"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 assigns NULL to the non-null label"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 assigns NULL to the non-null label"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 1 assigns NULL to the non-null label"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 1 assigns NULL to the non-null label"
       }
      }
     },
@@ -58466,16 +58466,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     }
@@ -58590,16 +58590,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: column account_id holds a value that is not an integer"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: column account_id holds a value that is not an integer"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: column account_id holds a value that is not an integer"
       }
      }
     },
@@ -58618,16 +58618,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       }
      }
     },
@@ -58646,16 +58646,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: column account_id holds a value that is not an integer"
+       "error": "codec_decode",
+       "message": "codec_decode: column account_id holds a value that is not an integer"
       }
      }
     }
@@ -59129,16 +59129,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -59194,16 +59194,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -59259,16 +59259,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -59324,16 +59324,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -59389,16 +59389,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     }
@@ -59532,16 +59532,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.at: datetime cell is not a datetime"
+       "error": "codec_decode",
+       "message": "codec_decode: user.at: datetime cell is not a datetime"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.at: datetime cell is not a datetime"
+       "error": "codec_decode",
+       "message": "codec_decode: user.at: datetime cell is not a datetime"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.at: datetime cell is not a datetime"
+       "error": "codec_decode",
+       "message": "codec_decode: user.at: datetime cell is not a datetime"
       }
      }
     },
@@ -59588,16 +59588,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: user.day: date cell is not a date"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: user.day: date cell is not a date"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: user.day: date cell is not a date"
       }
      }
     }
@@ -59653,13 +59653,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59684,13 +59684,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59707,13 +59707,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       },
       "postgres": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       },
       "sqlite": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       }
      }
     },
@@ -59729,13 +59729,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59746,13 +59746,13 @@
      "lock": "update",
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59773,13 +59773,13 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59797,13 +59797,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -59833,13 +59833,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "LIMIT_IN_RELATION"
+       "error": "limit_in_relation"
       },
       "postgres": {
-       "error": "LIMIT_IN_RELATION"
+       "error": "limit_in_relation"
       },
       "sqlite": {
-       "error": "LIMIT_IN_RELATION"
+       "error": "limit_in_relation"
       }
      }
     },
@@ -59869,13 +59869,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -60698,13 +60698,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       },
       "postgres": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       },
       "sqlite": {
-       "error": "EMPTY_IN"
+       "error": "empty_in"
       }
      }
     },
@@ -60734,13 +60734,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -60765,13 +60765,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     }
@@ -61198,13 +61198,13 @@
      "optimistic": true,
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -61269,13 +61269,13 @@
      "optimistic": true,
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -61645,15 +61645,15 @@
      "compile": true,
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       }
      }
@@ -61685,15 +61685,15 @@
      "compile": true,
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       }
      }
@@ -61727,15 +61727,15 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "user_model"
       }
      }
@@ -61769,15 +61769,15 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "alias<Name>()"
       }
      }
@@ -73627,13 +73627,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -74452,13 +74452,13 @@
        },
        "expect": {
         "mysql": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         },
         "postgres": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         },
         "sqlite": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         }
        }
       },
@@ -74513,13 +74513,13 @@
        },
        "expect": {
         "mysql": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         },
         "postgres": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         },
         "sqlite": {
-         "error": "REVISION_CHANGED"
+         "error": "revision_changed"
         }
        }
       },
@@ -74585,13 +74585,13 @@
      "fail": true,
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -76662,13 +76662,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "postgres": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -76695,13 +76695,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "postgres": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -76723,13 +76723,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "postgres": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -76749,13 +76749,13 @@
      ],
      "expect": {
       "mysql": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "postgres": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -76780,13 +76780,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "postgres": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -78202,13 +78202,13 @@
      "recursive": true,
      "expect": {
       "mysql": {
-       "error": "FOREIGN_KEY"
+       "error": "foreign_key"
       },
       "postgres": {
-       "error": "FOREIGN_KEY"
+       "error": "foreign_key"
       },
       "sqlite": {
-       "error": "FOREIGN_KEY"
+       "error": "foreign_key"
       }
      }
     },
@@ -82577,16 +82577,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       }
      }
     },
@@ -82619,16 +82619,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 0 is outside i16"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 0 is outside i16"
       }
      }
     },
@@ -82658,13 +82658,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       },
       "postgres": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       },
       "sqlite": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     },
@@ -82697,16 +82697,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: typed_value.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: typed_value.clock: time value is not a time"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: typed_value.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: typed_value.clock: time value is not a time"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: typed_value.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: typed_value.clock: time value is not a time"
       }
      }
     },
@@ -82893,8 +82893,8 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.wide: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -82927,8 +82927,8 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.active: bool cell is not boolean"
       }
      }
     }
@@ -83005,8 +83005,8 @@
      ],
      "expect": {
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ratio: f64 cell is not a finite number"
       }
      }
     }
@@ -83067,8 +83067,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.small: i16 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.small: i16 cell is not an exact integer in its range"
       }
      }
     },
@@ -83086,8 +83086,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.wide: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -83105,8 +83105,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ratio: f64 cell is not a finite number"
       }
      }
     },
@@ -83124,8 +83124,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.active: bool cell is not boolean"
       }
      }
     },
@@ -83143,8 +83143,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not a uuid"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ref: uuid cell is not a uuid"
       }
      }
     },
@@ -83162,8 +83162,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.clock: time cell is not a time"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.clock: time cell is not a time"
       }
      }
     },
@@ -83181,8 +83181,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.day: date cell is not a date"
       }
      }
     },
@@ -83200,8 +83200,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.label: varchar cell is not text"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.label: varchar cell is not text"
       }
      }
     },
@@ -83219,8 +83219,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.note: text cell is not text"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.note: text cell is not text"
       }
      }
     },
@@ -83271,8 +83271,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.small: i16 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.small: i16 cell is not an exact integer in its range"
       }
      }
     },
@@ -83290,8 +83290,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.wide: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -83309,8 +83309,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ratio: f64 cell is not a finite number"
       }
      }
     },
@@ -83328,8 +83328,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.active: bool cell is not boolean"
       }
      }
     },
@@ -83347,8 +83347,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.clock: time cell is not a time"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.clock: time cell is not a time"
       }
      }
     },
@@ -83366,8 +83366,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.day: date cell is not a date"
       }
      }
     },
@@ -83385,8 +83385,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not a uuid"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ref: uuid cell is not a uuid"
       }
      }
     },
@@ -83432,8 +83432,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.small_copy: i16 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.small_copy: i16 cell is not an exact integer in its range"
       }
      }
     },
@@ -83449,8 +83449,8 @@
      },
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.active: bool cell is not boolean"
       }
      }
     },
@@ -83483,8 +83483,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: decimal_value.amount: decimal cell is not a decimal of its precision and scale"
+       "error": "codec_decode",
+       "message": "codec_decode: decimal_value.amount: decimal cell is not a decimal of its precision and scale"
       }
      }
     },
@@ -83517,8 +83517,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: byte_cell.body: bytes cell is not bytes"
+       "error": "codec_decode",
+       "message": "codec_decode: byte_cell.body: bytes cell is not bytes"
       }
      }
     },
@@ -83551,8 +83551,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: time_cell.at: datetime cell is not a datetime"
+       "error": "codec_decode",
+       "message": "codec_decode: time_cell.at: datetime cell is not a datetime"
       }
      }
     },
@@ -83575,8 +83575,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: time_cell.at: datetime cell is not a datetime"
+       "error": "codec_decode",
+       "message": "codec_decode: time_cell.at: datetime cell is not a datetime"
       }
      }
     }
@@ -83626,8 +83626,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: day_cell.day: date cell is not a date"
       }
      }
     },
@@ -83645,8 +83645,8 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: day_cell.day: date cell is not a date"
       }
      }
     },
@@ -83667,8 +83667,8 @@
      },
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: day_cell.day: date cell is not a date"
       }
      }
     },
@@ -83689,8 +83689,8 @@
      },
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: day_cell.day: date cell is not a date"
+       "error": "codec_decode",
+       "message": "codec_decode: day_cell.day: date cell is not a date"
       }
      }
     }
@@ -83770,16 +83770,16 @@
      "json_output": true,
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: byte_cell.body: JSON output cannot write bytes"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: byte_cell.body: JSON output cannot write bytes"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: byte_cell.body: JSON output cannot write bytes"
       }
      }
     },
@@ -83909,16 +83909,16 @@
      "json_output": true,
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: group column body: JSON output cannot write bytes"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: group column body: JSON output cannot write bytes"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+       "error": "codec_encode",
+       "message": "codec_encode: group column body: JSON output cannot write bytes"
       }
      }
     },
@@ -84113,16 +84113,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       }
      }
     },
@@ -84158,16 +84158,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: parameter 2 is not a finite f64"
+       "error": "codec_encode",
+       "message": "codec_encode: parameter 2 is not a finite f64"
       }
      }
     },
@@ -84380,7 +84380,7 @@
      ],
      "expect": {
       "mysql": {
-       "error": "DRIVER"
+       "error": "driver"
       },
       "postgres": {
        "value": {
@@ -84444,7 +84444,7 @@
      ],
      "expect": {
       "mysql": {
-       "error": "DRIVER"
+       "error": "driver"
       },
       "postgres": {
        "value": {
@@ -84494,12 +84494,12 @@
        }
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ratio: f64 cell is not a finite number"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+       "error": "codec_decode",
+       "message": "codec_decode: typed_value.ratio: f64 cell is not a finite number"
       }
      }
     }
@@ -85101,16 +85101,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: fraction exceeds scale"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: fraction exceeds scale"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: fraction exceeds scale"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: fraction exceeds scale"
       }
      }
     },
@@ -85128,16 +85128,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: value exceeds precision"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: value exceeds precision"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: value exceeds precision"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: value exceeds precision"
       }
      }
     },
@@ -85155,16 +85155,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: invalid text"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: invalid text"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: invalid text"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: invalid text"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: decimal: invalid text"
+       "error": "codec_encode",
+       "message": "codec_encode: decimal: invalid text"
       }
      }
     },
@@ -85715,16 +85715,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: author.json_setting: styled cell is empty"
+       "error": "codec_decode",
+       "message": "codec_decode: author.json_setting: styled cell is empty"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: author.json_setting: styled cell is empty"
+       "error": "codec_decode",
+       "message": "codec_decode: author.json_setting: styled cell is empty"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: author.json_setting: styled cell is empty"
+       "error": "codec_decode",
+       "message": "codec_decode: author.json_setting: styled cell is empty"
       }
      }
     }
@@ -90469,13 +90469,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE"
+       "error": "codec_decode"
       },
       "postgres": {
-       "error": "CODEC_DECODE"
+       "error": "codec_decode"
       },
       "sqlite": {
-       "error": "CODEC_DECODE"
+       "error": "codec_decode"
       }
      }
     }
@@ -90600,7 +90600,7 @@
      },
      "expect": {
       "postgres": {
-       "error": "CODEC_DECODE"
+       "error": "codec_decode"
       }
      }
     },
@@ -90625,7 +90625,7 @@
      },
      "expect": {
       "postgres": {
-       "error": "CODEC_DECODE"
+       "error": "codec_decode"
       }
      }
     }
@@ -91340,16 +91340,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+       "error": "codec_decode",
+       "message": "codec_decode: user.total: i64 cell is not an exact integer in its range"
       }
      }
     }
@@ -91913,15 +91913,15 @@
      ],
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "avg subquery is not one value on every database"
       },
       "postgres": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "avg subquery is not one value on every database"
       },
       "sqlite": {
-       "error": "IR_INVALID",
+       "error": "ir_invalid",
        "message_suffix": "avg subquery is not one value on every database"
       }
      }
@@ -91964,15 +91964,15 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_suffix": "possible applies only to a relation child"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_suffix": "possible applies only to a relation child"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_suffix": "possible applies only to a relation child"
       }
      }
@@ -92714,16 +92714,16 @@
      "params": [],
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+       "error": "ir_invalid",
+       "message": "ir_invalid: execute runs a statement without rows; the statement is a read"
       },
       "postgres": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+       "error": "ir_invalid",
+       "message": "ir_invalid: execute runs a statement without rows; the statement is a read"
       },
       "sqlite": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+       "error": "ir_invalid",
+       "message": "ir_invalid: execute runs a statement without rows; the statement is a read"
       }
      }
     },
@@ -92809,16 +92809,16 @@
      ],
      "expect": {
       "mysql": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+       "error": "ir_invalid",
+       "message": "ir_invalid: bind slot 1 reads parameter 1, but execute has 1 parameters"
       },
       "postgres": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+       "error": "ir_invalid",
+       "message": "ir_invalid: bind slot 1 reads parameter 1, but execute has 1 parameters"
       },
       "sqlite": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+       "error": "ir_invalid",
+       "message": "ir_invalid: bind slot 1 reads parameter 1, but execute has 1 parameters"
       }
      }
     },
@@ -93195,16 +93195,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: required_json does not accept SQL NULL"
+       "error": "codec_encode",
+       "message": "codec_encode: required_json does not accept SQL NULL"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: required_json does not accept SQL NULL"
+       "error": "codec_encode",
+       "message": "codec_encode: required_json does not accept SQL NULL"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: required_json does not accept SQL NULL"
+       "error": "codec_encode",
+       "message": "codec_encode: required_json does not accept SQL NULL"
       }
      }
     },
@@ -94250,16 +94250,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: json: value nesting exceeds 256 levels"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: json: value nesting exceeds 256 levels"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: json: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: json: value nesting exceeds 256 levels"
       }
      }
     },
@@ -95305,16 +95305,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: serialize: value nesting exceeds 256 levels"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: serialize: value nesting exceeds 256 levels"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: serialize: value nesting exceeds 256 levels"
+       "error": "codec_encode",
+       "message": "codec_encode: serialize: value nesting exceeds 256 levels"
       }
      }
     },
@@ -97947,13 +97947,13 @@
      "get": "json_setting",
      "expect": {
       "mysql": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       },
       "postgres": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       },
       "sqlite": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       }
      }
     },
@@ -100547,16 +100547,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.clock: time value is not a time"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.clock: time value is not a time"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.clock: time value is not a time"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.clock: time value is not a time"
       }
      }
     }
@@ -100587,16 +100587,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       }
      }
     },
@@ -100641,16 +100641,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "postgres": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE",
-       "message": "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"
+       "error": "codec_encode",
+       "message": "codec_encode: time_cell.at: datetime value is not a datetime"
       }
      }
     },
@@ -100878,8 +100878,8 @@
        "json": null
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
-       "message": "CODEC_DECODE: bind_cell.body: text is not valid UTF-8"
+       "error": "codec_decode",
+       "message": "codec_decode: bind_cell.body: text is not valid UTF-8"
       }
      }
     }

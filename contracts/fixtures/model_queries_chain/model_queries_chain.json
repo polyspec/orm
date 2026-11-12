@@ -829,15 +829,15 @@
      "key_by": "price",
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE",
+       "error": "codec_decode",
        "message_suffix": "collection row identity contains SQL NULL"
       },
       "postgres": {
-       "error": "CODEC_DECODE",
+       "error": "codec_decode",
        "message_suffix": "collection row identity contains SQL NULL"
       },
       "sqlite": {
-       "error": "CODEC_DECODE",
+       "error": "codec_decode",
        "message_suffix": "collection row identity contains SQL NULL"
       }
      }
@@ -1100,13 +1100,13 @@
      "group_value": "name",
      "expect": {
       "mysql": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       },
       "postgres": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       },
       "sqlite": {
-       "error": "COLUMN_UNSELECTED"
+       "error": "column_unselected"
       }
      }
     }

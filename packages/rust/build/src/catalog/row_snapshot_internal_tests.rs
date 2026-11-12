@@ -84,7 +84,7 @@ fn row_snapshot_descriptor_and_update_preserve_cause_message() {
     page.metadata.table.name.clear();
     let error = RowSnapshot::from_page(&page, 0).expect_err("empty table name must fail");
     assert!(
-        error.message().contains("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"),
+        error.message().contains("row_snapshot_invalid: invalid original row or descriptor: table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"),
         "{error}"
     );
 
@@ -92,13 +92,13 @@ fn row_snapshot_descriptor_and_update_preserve_cause_message() {
     page.metadata.columns[0].name.clear();
     let error = RowSnapshot::from_page(&page, 0).expect_err("empty column name must fail");
     assert!(
-        error.message().contains("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"),
+        error.message().contains("row_snapshot_invalid: invalid original row or descriptor: table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"),
         "{error}"
     );
 
     let snapshot = RowSnapshot::from_page(&fixture(), 0).expect("valid page");
     let error = snapshot.validate_update(&[("id".into(), GridCell::Decimal("01".into()))]).expect_err("invalid decimal assignment must fail");
-    assert!(error.message().contains("ROW_UPDATE_INVALID: invalid column assignments: ROW_SNAPSHOT_INVALID: invalid original row or descriptor"), "{error}");
+    assert!(error.message().contains("row_update_invalid: invalid column assignments: row_snapshot_invalid: invalid original row or descriptor"), "{error}");
 
     let page = fixture_with_payload(GridCell::Text("small".into()));
     let snapshot = RowSnapshot::from_page(&page, 0).expect("valid page with payload");
@@ -106,7 +106,7 @@ fn row_snapshot_descriptor_and_update_preserve_cause_message() {
     let error = snapshot.validate_update(&[("payload".into(), huge)]).expect_err("oversized update must fail");
     assert!(
         error.message().contains(
-            "ROW_UPDATE_LIMIT: updated row budget exceeded: ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: row snapshot budget exceeded"
+            "row_update_limit: updated row budget exceeded: row_snapshot_limit: original row encoding exceeds its budget: row snapshot budget exceeded"
         ),
         "{error}"
     );
@@ -117,7 +117,7 @@ fn row_snapshot_revision_preserves_writer_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let page = fixture_with_payload(GridCell::Text("x".repeat(8 * 1024 * 1024 + 1)));
     let error = RowSnapshot::from_page(&page, 0).expect_err("oversized row must fail");
-    assert!(error.message().contains("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: row snapshot budget exceeded"), "{error}");
+    assert!(error.message().contains("row_snapshot_limit: original row encoding exceeds its budget: row snapshot budget exceeded"), "{error}");
 }
 
 #[test]
@@ -126,6 +126,6 @@ fn row_baseline_tells_a_boolean_from_an_integer() {
     let original = fixture_with_payload(GridCell::Boolean(false));
     let changed = fixture_with_payload(GridCell::Integer(0));
     let snapshot = RowSnapshot::from_page(&original, 0).unwrap();
-    assert!(snapshot.check_current(&changed.metadata, &changed.result).unwrap_err().message().starts_with("ROW_CONFLICT"));
+    assert!(snapshot.check_current(&changed.metadata, &changed.result).unwrap_err().message().starts_with("row_conflict"));
     assert_ne!(snapshot.revision(), RowSnapshot::from_page(&changed, 0).unwrap().revision());
 }

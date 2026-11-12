@@ -23,17 +23,17 @@ impl CatalogConnection {
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
             let affected = connection.exec(&sql, &keys).await.map_err(super::catalog_write_error)?;
             if affected != 1 {
-                return Err(format!("ROW_WRITE_MISMATCH: expected exactly one deleted row, got {affected}").into());
+                return Err(format!("row_write_mismatch: expected exactly one deleted row, got {affected}").into());
             }
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;
             let after = lookup(&mut connection, &descriptor, &self.dialect, &keys, false).await?;
             let after_descriptor = metadata::describe(&mut connection, &self.dialect, self.server, &descriptor.table).await?;
             if descriptor != after_descriptor {
-                return Err("ROW_SCHEMA_CHANGED: original descriptor changed".into());
+                return Err("row_schema_changed: original descriptor changed".into());
             }
             if !after.rows.is_empty() {
-                return Err("ROW_WRITE_MISMATCH: deleted row remains".into());
+                return Err("row_write_mismatch: deleted row remains".into());
             }
             cancelled(&cancellation)?;
             Ok(affected)

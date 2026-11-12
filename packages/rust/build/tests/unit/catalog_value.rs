@@ -19,7 +19,7 @@ fn a_driver_value_of_another_host_form_is_refused_at_its_column() {
     assert_eq!(refusal.rule(), value::UNSUPPORTED_DRIVER_VALUE);
     assert_eq!(refusal.column(), Some(3));
     assert!(refusal.source().is_none());
-    assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 3: unsupported driver value");
+    assert_eq!(catalog_query_error(error).message(), "catalog_value: column 3: unsupported driver value");
 }
 
 #[test]
@@ -31,13 +31,13 @@ fn a_driver_failure_names_no_column_and_keeps_its_cause() {
     let refusal = refusal_of(&error).expect("a refusal");
     // INT-172 names no column, at whichever position the failure occurred.
     assert_eq!(refusal.column(), None);
-    assert_eq!(refusal.to_string(), "CATALOG_VALUE: the driver could not decode the value");
+    assert_eq!(refusal.to_string(), "catalog_value: the driver could not decode the value");
     let cause = refusal.source().expect("the driver failure is the cause");
     assert!(matches!(cause.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::ColumnDecode { .. })), "{cause:?}");
     assert!(cause.to_string().contains("invalid length 3 for a uuid"), "{cause}");
     // The public error of the catalog keeps the driver failure as its source.
     let public = catalog_query_error(error);
-    assert_eq!(public.message(), "CATALOG_VALUE: the driver could not decode the value");
+    assert_eq!(public.message(), "catalog_value: the driver could not decode the value");
     let cause = public.source().expect("the catalog error keeps the cause");
     assert!(matches!(cause.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::ColumnDecode { .. })), "{cause:?}");
 }
@@ -49,7 +49,7 @@ fn a_library_failure_keeps_its_cause() {
     let failure = render(&Form::Scalar(2950), &[1, 2, 3]).expect_err("a uuid holds 16 bytes");
     let error = at_column(failure, 0);
     let refusal = refusal_of(&error).expect("a refusal");
-    assert_eq!(refusal.to_string(), "CATALOG_VALUE: the driver could not decode the value");
+    assert_eq!(refusal.to_string(), "catalog_value: the driver could not decode the value");
     let cause = refusal.source().expect("the library failure is the cause");
     assert!(cause.to_string().contains("the length of a fixed-size value"), "{cause}");
 }
@@ -58,15 +58,15 @@ fn a_library_failure_keeps_its_cause() {
 fn a_refusal_takes_the_position_of_its_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = at_column(value::refuse(value::MYSQL_TIMESTAMP), 4);
-    assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 5: MySQL TIMESTAMP follows a time zone");
-    assert_eq!(ValueRefusal::new(value::TIME_OF_DAY, 1).to_string(), "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999");
+    assert_eq!(catalog_query_error(error).message(), "catalog_value: column 5: MySQL TIMESTAMP follows a time zone");
+    assert_eq!(ValueRefusal::new(value::TIME_OF_DAY, 1).to_string(), "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999");
 }
 
 #[test]
 fn the_tool_limit_errors_keep_their_catalog_codes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let limit = catalog_query_error(sqlx::Error::Decode("TOOL_QUERY_LIMIT: invalid or exceeded result budget".into()));
-    assert!(limit.message().starts_with("CATALOG_LIMIT:"), "{limit}");
+    assert!(limit.message().starts_with("catalog_limit:"), "{limit}");
 }
 
 #[test]
@@ -262,7 +262,7 @@ fn a_container_is_written_with_the_quotes_of_its_output_function() {
     dated.extend(4i32.to_be_bytes());
     dated.extend(0i32.to_be_bytes());
     let error = at_column(render(&Form::Record, &dated).expect_err("a date field has no text output"), 0);
-    assert_eq!(catalog_query_error(error).message(), "CATALOG_VALUE: column 1: unsupported native type");
+    assert_eq!(catalog_query_error(error).message(), "catalog_value: column 1: unsupported native type");
 }
 
 #[test]

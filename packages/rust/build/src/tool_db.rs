@@ -692,7 +692,7 @@ impl Conn {
         self.validate_params(params)?;
         let budget = budget()?;
         if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
-            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
+            return Err(sqlx::Error::Decode("tool_query_statement: expected one statement".into()));
         }
         Ok((AssertSqlSafe(sql.to_owned()), budget))
     }

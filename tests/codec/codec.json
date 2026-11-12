@@ -3737,8 +3737,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -3752,8 +3752,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -3767,8 +3767,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -3783,8 +3783,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -3800,8 +3800,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         }
@@ -7649,8 +7649,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -7678,8 +7678,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -7707,8 +7707,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -7736,8 +7736,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -7765,8 +7765,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -7794,8 +7794,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8009,8 +8009,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8054,8 +8054,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8131,8 +8131,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8173,8 +8173,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8221,8 +8221,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8320,8 +8320,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -8404,8 +8404,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8433,8 +8433,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8462,8 +8462,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8491,8 +8491,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8520,8 +8520,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8549,8 +8549,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8743,8 +8743,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8788,8 +8788,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8865,8 +8865,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8907,8 +8907,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -8955,8 +8955,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -9054,8 +9054,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         }
@@ -9082,8 +9082,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9110,8 +9110,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9138,8 +9138,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9166,8 +9166,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9194,8 +9194,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9222,8 +9222,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9250,8 +9250,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9278,8 +9278,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9306,8 +9306,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9334,8 +9334,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9362,8 +9362,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -9390,8 +9390,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -10151,8 +10151,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10184,8 +10184,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10217,8 +10217,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10250,8 +10250,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10283,8 +10283,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10316,8 +10316,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10349,8 +10349,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10382,8 +10382,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10415,8 +10415,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10448,8 +10448,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10481,8 +10481,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10514,8 +10514,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10547,8 +10547,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10580,8 +10580,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10613,8 +10613,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10646,8 +10646,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10679,8 +10679,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10712,8 +10712,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10745,8 +10745,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10778,8 +10778,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10811,8 +10811,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10844,8 +10844,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10877,8 +10877,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         }
@@ -10964,8 +10964,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: decoded text is not valid UTF-8"
             }
           }
         }
@@ -10993,8 +10993,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: decoded text is not valid UTF-8"
             }
           }
         }
@@ -11026,8 +11026,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: unexpected end"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: unexpected end"
             }
           }
         }
@@ -11055,8 +11055,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: decoded text is not valid UTF-8"
             }
           }
         }
@@ -11084,8 +11084,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         }
@@ -11142,8 +11142,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11171,8 +11171,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11229,8 +11229,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11258,8 +11258,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11287,8 +11287,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11345,8 +11345,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11374,8 +11374,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11403,8 +11403,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11432,8 +11432,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11461,8 +11461,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11490,8 +11490,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11519,8 +11519,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11548,8 +11548,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11577,8 +11577,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -11661,8 +11661,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: ip: the cell is not 4 or 16 packed bytes"
+              "error": "codec_decode",
+              "message": "codec_decode: ip: the cell is not 4 or 16 packed bytes"
             }
           }
         }
@@ -11690,8 +11690,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         }
@@ -11719,8 +11719,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         }
@@ -11748,8 +11748,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         }
@@ -11777,8 +11777,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         }
@@ -11806,8 +11806,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         }
@@ -11835,8 +11835,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: no document"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: no document"
             }
           }
         }
@@ -11864,8 +11864,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11893,8 +11893,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11922,8 +11922,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11951,8 +11951,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -12162,8 +12162,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         }
@@ -12255,8 +12255,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret aes not configured"
+              "error": "config",
+              "message": "config: secret aes not configured"
             }
           }
         }
@@ -12287,8 +12287,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret aes not configured"
+              "error": "config",
+              "message": "config: secret aes not configured"
             }
           }
         }
@@ -12320,8 +12320,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -12346,8 +12346,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret blind_index not configured"
+              "error": "config",
+              "message": "config: secret blind_index not configured"
             }
           }
         }
@@ -12411,8 +12411,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret blind_index not configured"
+              "error": "config",
+              "message": "config: secret blind_index not configured"
             }
           }
         }
@@ -12483,8 +12483,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -12500,8 +12500,8 @@
           "key": "other-key",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -12681,8 +12681,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         }
@@ -12711,8 +12711,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON",
+              "error": "codec_decode",
+              "message": "codec_decode: json: the cell is not JSON",
               "library_cause": true
             }
           }
@@ -12727,8 +12727,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -12743,8 +12743,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -12758,8 +12758,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize: objects and references are not supported"
             }
           }
         },
@@ -12773,8 +12773,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: unexpected end"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: unexpected end"
             }
           }
         },
@@ -12789,8 +12789,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: gz: bad zlib stream",
+              "error": "codec_decode",
+              "message": "codec_decode: gz: bad zlib stream",
               "library_cause": true
             }
           }
@@ -12806,8 +12806,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         },
@@ -12821,8 +12821,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -12836,8 +12836,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -12851,8 +12851,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -12866,8 +12866,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -12881,8 +12881,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -12896,8 +12896,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -12911,8 +12911,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -12926,8 +12926,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -12941,8 +12941,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize: objects and references are not supported"
             }
           }
         },
@@ -12956,8 +12956,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize: objects and references are not supported"
             }
           }
         },
@@ -12971,8 +12971,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize: objects and references are not supported"
             }
           }
         }
@@ -13032,8 +13032,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize: objects and references are not supported"
             }
           }
         }
@@ -13066,8 +13066,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         },
@@ -13081,8 +13081,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         }
@@ -13653,8 +13653,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -13668,8 +13668,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -13683,8 +13683,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -13698,8 +13698,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -13713,8 +13713,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -13728,8 +13728,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -13743,8 +13743,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -13758,8 +13758,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -13773,8 +13773,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13788,8 +13788,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13803,8 +13803,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13818,8 +13818,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13833,8 +13833,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13848,8 +13848,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13863,8 +13863,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13878,8 +13878,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13893,8 +13893,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -13908,8 +13908,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -13923,8 +13923,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -13938,8 +13938,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -13953,8 +13953,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -13968,8 +13968,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -13984,8 +13984,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream is not UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream is not UTF-8"
             }
           }
         },
@@ -13999,8 +13999,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -14014,8 +14014,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -14029,8 +14029,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -14044,8 +14044,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -14059,8 +14059,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -14074,8 +14074,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         }
@@ -14635,8 +14635,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad bool"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad bool"
             }
           }
         },
@@ -14650,8 +14650,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         },
@@ -14665,8 +14665,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         },
@@ -14680,8 +14680,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         }
@@ -14706,8 +14706,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         },
@@ -14722,8 +14722,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -15275,8 +15275,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: yaml must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: yaml must be the first style"
             }
           }
         },
@@ -15290,8 +15290,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: style filepart"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: style filepart"
             }
           }
         },
@@ -15306,8 +15306,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize must be the first style"
             }
           }
         },
@@ -15322,8 +15322,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize must be the first style"
             }
           }
         },
@@ -15338,8 +15338,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: ordered_json must be the first style"
             }
           }
         },
@@ -15354,8 +15354,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: ordered_json must be the first style"
             }
           }
         },
@@ -15370,8 +15370,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: serialize must be the first style"
             }
           }
         },
@@ -15386,8 +15386,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: ordered_json must be the first style"
             }
           }
         }
@@ -16070,8 +16070,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -16521,8 +16521,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: host input must be text or bytes"
             }
           }
         },
@@ -16537,8 +16537,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: host input must be text or bytes"
             }
           }
         },
@@ -16553,8 +16553,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: host input must be text or bytes"
             }
           }
         },
@@ -16569,8 +16569,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: host input must be text or bytes"
             }
           }
         },
@@ -16582,8 +16582,8 @@
           "key": "blind-key",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: blind index input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: blind index input must be text or bytes"
             }
           }
         },
@@ -16595,8 +16595,8 @@
           "key": "blind-key",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: blind index input must be text or bytes"
+              "error": "codec_encode",
+              "message": "codec_encode: blind index input must be text or bytes"
             }
           }
         }
@@ -16726,8 +16726,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON"
+              "error": "codec_decode",
+              "message": "codec_decode: json: the cell is not JSON"
             }
           }
         },
@@ -16741,8 +16741,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON"
+              "error": "codec_decode",
+              "message": "codec_decode: json: the cell is not JSON"
             }
           }
         },
@@ -16757,8 +16757,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON"
+              "error": "codec_decode",
+              "message": "codec_decode: json: the cell is not JSON"
             }
           }
         }
@@ -16835,8 +16835,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         },
@@ -16851,8 +16851,8 @@
           "key": "key-v1",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: unsupported ciphertext format"
             }
           }
         },
@@ -16867,8 +16867,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style serialize"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style serialize"
             }
           }
         },
@@ -16883,8 +16883,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style yaml"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style yaml"
             }
           }
         },
@@ -16897,8 +16897,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host style list is empty"
+              "error": "codec_encode",
+              "message": "codec_encode: host style list is empty"
             }
           }
         }
@@ -16964,8 +16964,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: decoded text is not valid UTF-8"
             }
           }
         },
@@ -17005,8 +17005,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: an empty stage list takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: an empty stage list takes a string value"
             }
           }
         },
@@ -17145,8 +17145,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: an ordered-json value is written only by the ordered_json stage"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: an ordered-json value is written only by the ordered_json stage"
             }
           }
         },
@@ -17175,8 +17175,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: an ordered-json value is written only by the ordered_json stage"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: an ordered-json value is written only by the ordered_json stage"
             }
           }
         },
@@ -17205,8 +17205,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         },
@@ -17235,8 +17235,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         },
@@ -17263,8 +17263,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: an empty stage list takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: an empty stage list takes a string value"
             }
           }
         }
@@ -17324,8 +17324,8 @@
           "key": "other-key",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -17444,8 +17444,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -17461,8 +17461,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -17478,8 +17478,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed",
+              "error": "codec_decode",
+              "message": "codec_decode: aes: authentication failed",
               "library_cause": true
             }
           }
@@ -17495,8 +17495,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17511,8 +17511,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: truncated v2 envelope"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: truncated v2 envelope"
             }
           }
         },
@@ -17528,8 +17528,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17545,8 +17545,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         },
@@ -17562,8 +17562,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17579,8 +17579,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
+              "error": "codec_decode",
+              "message": "codec_decode: aes: unsupported ciphertext format"
             }
           }
         }
@@ -17676,8 +17676,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         },
@@ -17692,8 +17692,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: ip: the cell is not 4 or 16 packed bytes"
+              "error": "codec_decode",
+              "message": "codec_decode: ip: the cell is not 4 or 16 packed bytes"
             }
           }
         },
@@ -17708,8 +17708,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style gz"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style gz"
             }
           }
         },
@@ -17724,8 +17724,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style unknown"
             }
           }
         }
@@ -17920,8 +17920,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         },
@@ -17936,8 +17936,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         },
@@ -18012,8 +18012,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         }
@@ -18038,8 +18038,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret aes not configured"
+              "error": "config",
+              "message": "config: secret aes not configured"
             }
           }
         },
@@ -18054,8 +18054,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: secret aes not configured"
+              "error": "config",
+              "message": "config: secret aes not configured"
             }
           }
         }
@@ -18298,8 +18298,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: styled cell is empty"
+              "error": "codec_decode",
+              "message": "codec_decode: styled cell is empty"
             }
           }
         },
@@ -18314,8 +18314,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         },
@@ -18330,8 +18330,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         },
@@ -18346,8 +18346,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: base64: bad input"
+              "error": "codec_decode",
+              "message": "codec_decode: base64: bad input"
             }
           }
         },
@@ -18389,8 +18389,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: style unknown"
             }
           }
         },
@@ -18404,8 +18404,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: style unknown"
             }
           }
         },
@@ -18481,8 +18481,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: cell is not bytes"
+              "error": "codec_decode",
+              "message": "codec_decode: cell is not bytes"
             }
           }
         },
@@ -18494,8 +18494,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: cell is not bytes"
+              "error": "codec_decode",
+              "message": "codec_decode: cell is not bytes"
             }
           }
         },
@@ -18510,8 +18510,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: cell is not bytes"
+              "error": "codec_decode",
+              "message": "codec_decode: cell is not bytes"
             }
           }
         }
@@ -18536,8 +18536,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected ;"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected ;"
             }
           }
         },
@@ -18551,8 +18551,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected ;"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected ;"
             }
           }
         },
@@ -18566,8 +18566,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: trailing data"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: trailing data"
             }
           }
         },
@@ -18581,8 +18581,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: unknown type"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: unknown type"
             }
           }
         },
@@ -18596,8 +18596,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected ;"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected ;"
             }
           }
         },
@@ -18611,8 +18611,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad bool"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad bool"
             }
           }
         },
@@ -18626,8 +18626,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad int"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad int"
             }
           }
         },
@@ -18641,8 +18641,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad int"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad int"
             }
           }
         },
@@ -18656,8 +18656,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad int"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad int"
             }
           }
         },
@@ -18671,8 +18671,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad int"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad int"
             }
           }
         },
@@ -18686,8 +18686,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad int"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad int"
             }
           }
         },
@@ -18701,8 +18701,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -18716,8 +18716,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18731,8 +18731,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18746,8 +18746,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18761,8 +18761,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18776,8 +18776,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18791,8 +18791,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad float"
             }
           }
         },
@@ -18806,8 +18806,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         },
@@ -18821,8 +18821,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad string length"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad string length"
             }
           }
         },
@@ -18836,8 +18836,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad string length"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad string length"
             }
           }
         },
@@ -18851,8 +18851,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad string length"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad string length"
             }
           }
         },
@@ -18866,8 +18866,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: string overruns input"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: string overruns input"
             }
           }
         },
@@ -18881,8 +18881,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected \""
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected \""
             }
           }
         },
@@ -18896,8 +18896,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: string is not valid UTF-8"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: string is not valid UTF-8"
             }
           }
         },
@@ -18911,8 +18911,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad array length"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad array length"
             }
           }
         },
@@ -18926,8 +18926,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: bad array length"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: bad array length"
             }
           }
         },
@@ -18941,8 +18941,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected {"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected {"
             }
           }
         },
@@ -18956,8 +18956,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: array key must be int or string"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: array key must be int or string"
             }
           }
         },
@@ -18971,8 +18971,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: array key must be int or string"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: array key must be int or string"
             }
           }
         },
@@ -18986,8 +18986,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: array key must be int or string"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: array key must be int or string"
             }
           }
         },
@@ -19001,8 +19001,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -19016,8 +19016,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: expected }"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: expected }"
             }
           }
         }
@@ -19107,8 +19107,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: gz: bad zlib stream",
+              "error": "codec_decode",
+              "message": "codec_decode: gz: bad zlib stream",
               "library_cause": true
             }
           }
@@ -19132,8 +19132,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -19147,8 +19147,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -19162,8 +19162,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -19177,8 +19177,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -19192,8 +19192,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         }
@@ -19216,8 +19216,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -19231,8 +19231,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -19246,8 +19246,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -19261,8 +19261,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -19276,8 +19276,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19291,8 +19291,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19306,8 +19306,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19321,8 +19321,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19336,8 +19336,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19351,8 +19351,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19366,8 +19366,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19381,8 +19381,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19396,8 +19396,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19411,8 +19411,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19426,8 +19426,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         }
@@ -19453,8 +19453,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: ip: the text is not an address"
+              "error": "codec_encode",
+              "message": "codec_encode: ip: the text is not an address"
             }
           }
         },
@@ -19469,8 +19469,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style blind_index"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style blind_index"
             }
           }
         },
@@ -19486,8 +19486,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style unknown"
             }
           }
         },
@@ -19502,8 +19502,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style blind_index"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style blind_index"
             }
           }
         },
@@ -19591,8 +19591,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -19606,8 +19606,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -19621,8 +19621,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -19636,8 +19636,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -19651,8 +19651,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -19666,8 +19666,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -19681,8 +19681,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -19696,8 +19696,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -19711,8 +19711,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -19726,8 +19726,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -19741,8 +19741,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -19756,8 +19756,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -19771,8 +19771,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -19786,8 +19786,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -19801,8 +19801,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         }
@@ -19825,8 +19825,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19840,8 +19840,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19855,8 +19855,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19870,8 +19870,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19885,8 +19885,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19900,8 +19900,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19915,8 +19915,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19930,8 +19930,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19945,8 +19945,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19960,8 +19960,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: duplicate array key"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: duplicate array key"
             }
           }
         },
@@ -19975,8 +19975,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: serialize: non-finite float"
+              "error": "codec_decode",
+              "message": "codec_decode: serialize: non-finite float"
             }
           }
         },
@@ -20223,8 +20223,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: no document"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: no document"
             }
           }
         },
@@ -20238,8 +20238,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: no document"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: no document"
             }
           }
         },
@@ -20253,8 +20253,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: no document"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: no document"
             }
           }
         }
@@ -20353,8 +20353,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20369,8 +20369,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20483,8 +20483,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20682,8 +20682,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20698,8 +20698,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20766,8 +20766,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -20781,8 +20781,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -20812,8 +20812,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -20827,8 +20827,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -20916,8 +20916,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20932,8 +20932,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20948,8 +20948,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20964,8 +20964,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -20996,8 +20996,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21012,8 +21012,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -21027,8 +21027,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21043,8 +21043,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21091,8 +21091,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -21106,8 +21106,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: multiple documents are not supported"
             }
           }
         },
@@ -21121,8 +21121,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21137,8 +21137,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21207,8 +21207,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21223,8 +21223,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21328,8 +21328,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21394,8 +21394,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21426,8 +21426,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21768,8 +21768,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21872,8 +21872,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21888,8 +21888,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -21904,8 +21904,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22038,8 +22038,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22136,8 +22136,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22191,8 +22191,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22282,8 +22282,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -22297,8 +22297,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22313,8 +22313,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22329,8 +22329,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22590,8 +22590,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -22605,8 +22605,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -22620,8 +22620,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -22635,8 +22635,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         }
@@ -22748,8 +22748,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22764,8 +22764,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22780,8 +22780,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -22975,8 +22975,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23018,8 +23018,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23186,8 +23186,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -23201,8 +23201,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -23216,8 +23216,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23316,8 +23316,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23624,8 +23624,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23640,8 +23640,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -23655,8 +23655,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -23670,8 +23670,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -23685,8 +23685,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23758,8 +23758,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23774,8 +23774,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23813,8 +23813,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -23852,8 +23852,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24068,8 +24068,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24084,8 +24084,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24100,8 +24100,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24116,8 +24116,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24473,8 +24473,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24489,8 +24489,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24505,8 +24505,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24611,8 +24611,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24627,8 +24627,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24643,8 +24643,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24659,8 +24659,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24675,8 +24675,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24691,8 +24691,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24707,8 +24707,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24723,8 +24723,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24739,8 +24739,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24755,8 +24755,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24867,8 +24867,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -24906,8 +24906,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25055,8 +25055,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25071,8 +25071,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25087,8 +25087,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25449,8 +25449,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25465,8 +25465,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25481,8 +25481,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25497,8 +25497,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -25513,8 +25513,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -26149,8 +26149,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -26260,8 +26260,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -26291,8 +26291,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -26322,8 +26322,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -26433,8 +26433,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -26448,8 +26448,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -26463,8 +26463,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -26478,8 +26478,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -26653,8 +26653,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -26777,8 +26777,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -26792,8 +26792,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -26807,8 +26807,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -26822,8 +26822,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -26837,8 +26837,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -26898,8 +26898,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -26913,8 +26913,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -26928,8 +26928,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -26943,8 +26943,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -26998,8 +26998,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -27013,8 +27013,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -27028,8 +27028,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: aliases are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: aliases are not supported"
             }
           }
         },
@@ -27043,8 +27043,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: explicit tags are not supported"
             }
           }
         },
@@ -27058,8 +27058,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: anchors are not supported"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: anchors are not supported"
             }
           }
         },
@@ -27127,8 +27127,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -27142,8 +27142,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -27157,8 +27157,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -27172,8 +27172,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -27187,8 +27187,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -27202,8 +27202,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -27218,8 +27218,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -27234,8 +27234,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -27250,8 +27250,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: duplicate map key"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: duplicate map key"
             }
           }
         },
@@ -27265,8 +27265,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -27281,8 +27281,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -27296,8 +27296,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: the stream does not parse",
               "library_cause": true
             }
           }
@@ -27312,8 +27312,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -28370,8 +28370,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -28385,8 +28385,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: number is not finite"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: number is not finite"
             }
           }
         },
@@ -28400,8 +28400,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: value nesting exceeds 256 levels"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: value nesting exceeds 256 levels"
             }
           }
         },
@@ -28415,8 +28415,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+              "error": "codec_decode",
+              "message": "codec_decode: yaml: map keys must be scalar strings"
             }
           }
         }

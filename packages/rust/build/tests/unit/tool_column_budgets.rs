@@ -10,7 +10,7 @@ fn metadata_budgets_reject_excess_and_preserve_exact_boundaries() {
     assert!(columns(0, [(name.as_str(), "INT")]).is_ok());
     let name = "s".repeat(64 * 1024 - 2);
     let error = columns(0, [(name.as_str(), "INT")]).unwrap_err();
-    assert!(error.to_string().contains("TOOL_QUERY_COLUMNS"));
+    assert!(error.to_string().contains("tool_query_columns"));
     assert!(!error.to_string().contains(&name));
     assert!(columns(1, [(name.as_str(), "INT")]).is_ok());
     let name = "s".repeat(64 * 1024 - 1);

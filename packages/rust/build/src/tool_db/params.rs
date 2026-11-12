@@ -50,11 +50,11 @@ impl P {
     }
 }
 pub(super) fn invalid() -> sqlx::Error {
-    sqlx::Error::Encode("TOOL_BIND_INVALID: unsupported or invalid native bind".into())
+    sqlx::Error::Encode("tool_bind_invalid: unsupported or invalid native bind".into())
 }
 
 pub(super) fn invalid_with(error: impl std::fmt::Display) -> sqlx::Error {
-    sqlx::Error::Encode(format!("TOOL_BIND_INVALID: unsupported or invalid native bind: {error}").into())
+    sqlx::Error::Encode(format!("tool_bind_invalid: unsupported or invalid native bind: {error}").into())
 }
 pub(super) fn decimal(value: &str) -> Result<bigdecimal::BigDecimal, sqlx::Error> {
     value.parse().map_err(invalid_with)
@@ -115,7 +115,7 @@ pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &s
     Ok(())
 }
 fn limit() -> sqlx::Error {
-    sqlx::Error::Encode("TOOL_BIND_LIMIT: native bind budget exceeded".into())
+    sqlx::Error::Encode("tool_bind_limit: native bind budget exceeded".into())
 }
 
 #[cfg(test)]

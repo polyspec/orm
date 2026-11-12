@@ -52,7 +52,7 @@ async fn stale_statement() {
     catalog.query("ALTER TABLE catalog_stale_statement ALTER COLUMN value TYPE BIGINT", &[], limits()).await.unwrap();
     assert_eq!(catalog.query(read, &[], limits()).await.unwrap().rows, vec![vec![Val::Int(7)]]);
     catalog.query("INSERT INTO catalog_stale_statement (value) VALUES (8)", &[], limits()).await.unwrap();
-    catalog.query("ROLLBACK", &[], limits()).await.unwrap();
+    catalog.query("rollback_failed", &[], limits()).await.unwrap();
     let kept = catalog.query(read, &[], limits()).await.unwrap().rows;
     assert_eq!(kept, vec![vec![Val::Int(7)], vec![Val::Int(8)]], "the statement that ran again left its transaction open");
 
@@ -61,7 +61,7 @@ async fn stale_statement() {
     catalog.query("ALTER TABLE catalog_stale_statement ALTER COLUMN value TYPE TEXT", &[], limits()).await.unwrap();
     let error = catalog.query(read, &[], limits()).await.unwrap_err();
     assert!(error.message().contains("cached plan must not change result type"), "{error}");
-    catalog.query("ROLLBACK", &[], limits()).await.unwrap();
+    catalog.query("rollback_failed", &[], limits()).await.unwrap();
     catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();
     catalog.close().await;
     physical_fixture::finish_physical_dialect(database, connection, "postgres", "passed").await;

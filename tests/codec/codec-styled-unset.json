@@ -20,8 +20,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -35,8 +35,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -50,8 +50,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -65,8 +65,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -80,8 +80,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -93,8 +93,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: styled value is unset"
+              "error": "codec_encode",
+              "message": "codec_encode: styled value is unset"
             }
           }
         },
@@ -108,8 +108,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: style unknown"
             }
           }
         }

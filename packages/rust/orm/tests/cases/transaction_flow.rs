@@ -32,7 +32,7 @@ async fn spawned_task_has_no_transaction() {
         .unwrap();
     db.close().await;
     assert_eq!(inside, 0, "the callback reads in its transaction");
-    assert_eq!(spawned.as_deref(), Some("CONFIG"), "a task spawned in the callback has no active transaction");
+    assert_eq!(spawned.as_deref(), Some("config"), "a task spawned in the callback has no active transaction");
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -62,7 +62,7 @@ async fn overlapping_statements_on_the_transaction_connection_return_config() {
         .unwrap();
     db.close().await;
     assert_eq!(codes[0], None, "the held statement of the transaction gave {codes:?}");
-    assert_eq!(codes[1].as_deref(), Some("CONFIG"), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
+    assert_eq!(codes[1].as_deref(), Some("config"), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

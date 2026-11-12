@@ -92,9 +92,9 @@ impl CatalogConnection {
                     .map_err(catalog_write_error)?,
             ),
             ConnectOptions::Sqlite(options) => {
-                let metadata = std::fs::symlink_metadata(options.get_filename()).map_err(|e| format!("CONFIG: CATALOG_SQLITE_FILE: {e}"))?;
+                let metadata = std::fs::symlink_metadata(options.get_filename()).map_err(|e| format!("config: CATALOG_SQLITE_FILE: {e}"))?;
                 if !metadata.is_file() {
-                    return Err("CONFIG: CATALOG_SQLITE_FILE: expected an existing regular file".into());
+                    return Err("config: CATALOG_SQLITE_FILE: expected an existing regular file".into());
                 }
                 Pool::Sqlite(
                     sqlx::sqlite::SqlitePoolOptions::new()
@@ -332,10 +332,9 @@ fn read_limits(max_rows: Option<i64>, max_bytes: Option<i64>) -> Result<crate::t
     Ok(crate::tool_db::QueryLimits { max_rows: count(max_rows, default.max_rows)?, max_bytes: count(max_bytes, default.max_bytes)? })
 }
 
-/// The code of the error catalog that a message of the catalog writes for `kind`: the kind in capitals. The catalog
-/// writes the codes of the language implementations while they are in the repository (docs/spec/core.md CORE-1, CORE-3).
+/// The kind string that a message of the catalog writes for `kind` (docs/spec/core.md CORE-12).
 pub(crate) fn code(kind: polyspec_orm::Kind) -> String {
-    kind.as_str().to_ascii_uppercase()
+    kind.as_str().to_owned()
 }
 
 pub(super) fn catalog_query_error(error: sqlx::Error) -> CatalogError {

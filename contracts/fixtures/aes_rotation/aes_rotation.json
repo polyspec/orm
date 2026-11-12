@@ -146,16 +146,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             }
           }
         },
@@ -391,16 +391,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         },
@@ -416,16 +416,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         }
@@ -553,16 +553,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             }
           }
         },
@@ -799,16 +799,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -982,16 +982,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -1118,16 +1118,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -1301,16 +1301,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -1438,16 +1438,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             }
           }
         }
@@ -1581,7 +1581,7 @@
               ]
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -1760,16 +1760,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -1896,16 +1896,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             }
           }
         }
@@ -2079,16 +2079,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }
@@ -2568,7 +2568,7 @@
                   ]
                 },
                 "postgres": {
-                  "error": "DRIVER"
+                  "error": "driver"
                 },
                 "sqlite": {
                   "rows": [
@@ -2613,13 +2613,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -3664,16 +3664,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes version is not declared"
+              "error": "config",
+              "message": "config: aes version is not declared"
             }
           }
         }
@@ -4390,16 +4390,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key differs from the key list at the current version"
+              "error": "config",
+              "message": "config: aes key differs from the key list at the current version"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key differs from the key list at the current version"
+              "error": "config",
+              "message": "config: aes key differs from the key list at the current version"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key differs from the key list at the current version"
+              "error": "config",
+              "message": "config: aes key differs from the key list at the current version"
             }
           }
         }
@@ -4419,16 +4419,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4443,16 +4443,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4467,16 +4467,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4491,16 +4491,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         },
@@ -4516,16 +4516,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         },
@@ -4541,16 +4541,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         }
@@ -4578,8 +4578,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key differs from the key list at the current version"
+              "error": "config",
+              "message": "config: aes key differs from the key list at the current version"
             }
           }
         },
@@ -4592,8 +4592,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4609,8 +4609,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4626,8 +4626,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes current version is not declared"
+              "error": "config",
+              "message": "config: aes current version is not declared"
             }
           }
         },
@@ -4643,8 +4643,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         },
@@ -4661,8 +4661,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         },
@@ -4679,8 +4679,8 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: aes key list holds an invalid version or an empty key"
+              "error": "config",
+              "message": "config: aes key list holds an invalid version or an empty key"
             }
           }
         }
@@ -4766,13 +4766,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DEADLOCK"
+              "error": "deadlock"
             },
             "sqlite": {
-              "error": "DEADLOCK"
+              "error": "deadlock"
             }
           }
         },
@@ -5377,16 +5377,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.token: aes: authentication failed"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.token: aes: authentication failed"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.token: aes: authentication failed"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.token: aes: authentication failed"
             }
           }
         }
@@ -5442,16 +5442,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: hex: odd length or non-hex input"
+              "error": "codec_decode",
+              "message": "codec_decode: hex: odd length or non-hex input"
             }
           }
         },
@@ -5716,16 +5716,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "postgres": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             },
             "sqlite": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
+              "error": "codec_decode",
+              "message": "codec_decode: rot_row.aes_key_version: aes version is not a positive 32-bit integer"
             }
           }
         }

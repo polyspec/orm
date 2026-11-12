@@ -41,7 +41,7 @@ pub(super) struct ReadOnlyError {
 
 impl std::fmt::Display for ReadOnlyError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("QUERY_READ_ONLY: expected one supported non-locking read query")
+        formatter.write_str("query_read_only: expected one supported non-locking read query")
     }
 }
 

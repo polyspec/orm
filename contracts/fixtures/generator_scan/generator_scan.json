@@ -243,7 +243,7 @@
           },
           "expect": {
             "none": {
-              "error": "GENERATOR_SCAN_PARSE",
+              "error": "generator_scan_parse",
               "position": {
                 "line": 3
               }
@@ -366,7 +366,7 @@
           },
           "expect": {
             "none": {
-              "error": "GENERATOR_SCAN_UNATTACHED"
+              "error": "generator_scan_unattached"
             }
           }
         }

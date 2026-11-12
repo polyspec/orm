@@ -27,7 +27,7 @@
           ],
           "expect": {
             "none": {
-              "error": "INTERNAL",
+              "error": "internal",
               "message_holds": "{\"blob\":\"AA==\"}"
             }
           }
@@ -51,7 +51,7 @@
           ],
           "expect": {
             "none": {
-              "error": "INTERNAL",
+              "error": "internal",
               "message_holds": "{\"blob\":\"AA==\"}"
             }
           }
@@ -83,7 +83,7 @@
           ],
           "expect": {
             "none": {
-              "error": "INTERNAL",
+              "error": "internal",
               "message_holds": "{\"blob\":\"AA==\"}"
             }
           }

@@ -47,7 +47,7 @@ async fn a_mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
         })
         .await
         .expect_err(text);
-        assert_eq!(refused.to_string(), format!("TABLE_METADATA_INVALID: column \"broken\": default {text} is not one string literal"));
+        assert_eq!(refused.to_string(), format!("table_metadata_invalid: column \"broken\": default {text} is not one string literal"));
     }
 }
 
@@ -80,7 +80,7 @@ async fn an_insert_whose_commit_is_unacknowledged_is_indeterminate_with_its_caus
     .expect_err("a commit with no acknowledgement fails");
     assert_eq!(
         refused.to_string(),
-        "ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: error communicating with database: the statement was rejected"
+        "row_commit_indeterminate: commit outcome unknown; do not retry: error communicating with database: the statement was rejected"
     );
     assert_eq!(events.lock().unwrap().last(), Some(&MutationPhase::Indeterminate));
     catalog.close().await;

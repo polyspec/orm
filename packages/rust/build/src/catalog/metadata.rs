@@ -7,7 +7,7 @@ use crate::tool_db::{Conn, QueryLimits, Rows, Val, P};
 /// DEFAULT_GENERATED.
 fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result<TableColumnMetadata, CatalogError> {
     if row.len() != 8 {
-        return Err(format!("TABLE_METADATA_INVALID: column shape of {} values", row.len()).into());
+        return Err(format!("table_metadata_invalid: column shape of {} values", row.len()).into());
     }
     let mut column = TableColumnMetadata {
         name: text(&row[0])?,
@@ -24,7 +24,7 @@ fn column_of(row: &[Val], server: polyspec_orm_schema::dbspec::Server) -> Result
     };
     if server == polyspec_orm_schema::dbspec::Server::MariaDb {
         (column.default_expression, column.expression_default) = polyspec_orm_schema::dbspec::mariadb_catalog_default(column.default_expression.take())
-            .map_err(|error| format!("TABLE_METADATA_INVALID: column {}: {error}", polyspec_orm_schema::message::Quoted(&column.name)))?;
+            .map_err(|error| format!("table_metadata_invalid: column {}: {error}", polyspec_orm_schema::message::Quoted(&column.name)))?;
     }
     Ok(column)
 }
@@ -67,14 +67,14 @@ pub struct TableMetadata {
 }
 pub(super) fn validate_name(value: &str) -> Result<(), CatalogError> {
     if value.is_empty() || value.len() > 1024 || value.contains('\0') {
-        return Err("TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL".into());
+        return Err("table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL".into());
     }
     Ok(())
 }
 fn text(value: &Val) -> Result<String, CatalogError> {
     match value {
         Val::Text(value) => Ok(value.clone()),
-        _ => Err("TABLE_METADATA_INVALID: expected text".into()),
+        _ => Err("table_metadata_invalid: expected text".into()),
     }
 }
 async fn rows(connection: &mut Conn, sql: &str, params: &[P]) -> Result<Rows, CatalogError> {
@@ -107,7 +107,7 @@ pub(super) async fn server(connection: &mut Conn, dialect: &str) -> Result<polys
         "mysql" => {
             let result = rows(connection, "SELECT VERSION()", &[]).await?;
             if result.len() != 1 || result[0].len() != 1 {
-                return Err("TABLE_METADATA_INVALID: VERSION() returned no one value".into());
+                return Err("table_metadata_invalid: VERSION() returned no one value".into());
             }
             if text(&result[0][0])?.contains("-MariaDB") {
                 polyspec_orm_schema::dbspec::Server::MariaDb
@@ -129,7 +129,7 @@ pub(super) async fn describe(
     validate_name(&table.namespace)?;
     validate_name(&table.name)?;
     if dialect == "sqlite" && table.namespace != "main" {
-        return Err("TABLE_NAMESPACE_UNSUPPORTED: SQLite requires main".into());
+        return Err("table_namespace_unsupported: SQLite requires main".into());
     }
     let params = [P::S(table.namespace.clone()), P::S(table.name.clone())];
     let kind_sql = match dialect {
@@ -143,7 +143,7 @@ pub(super) async fn describe(
         return Err("TABLE_NOT_FOUND".into());
     }
     if result.len() != 1 || result[0].len() != 1 {
-        return Err("TABLE_METADATA_INVALID: ambiguous relation".into());
+        return Err("table_metadata_invalid: ambiguous relation".into());
     }
     let native = text(&result[0][0])?;
     let kind = match (dialect, native.as_str()) {
@@ -154,7 +154,7 @@ pub(super) async fn describe(
         ("postgres", "f") => TableKind::Foreign,
         ("sqlite", "virtual") => TableKind::Virtual,
         ("sqlite", "shadow") => TableKind::Shadow,
-        _ => return Err(format!("TABLE_KIND_UNSUPPORTED: relation kind {} of {dialect}", polyspec_orm_schema::message::Quoted(&native)).into()),
+        _ => return Err(format!("table_kind_unsupported: relation kind {} of {dialect}", polyspec_orm_schema::message::Quoted(&native)).into()),
     };
     let sql=match dialect {
         // The key ordinal is a subquery that names the table by constants: a join of KEY_COLUMN_USAGE opens every table of every
@@ -172,11 +172,11 @@ pub(super) async fn describe(
     for row in result {
         let column = column_of(&row, server)?;
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
-            return Err(format!("TABLE_METADATA_INVALID: duplicate column {}", polyspec_orm_schema::message::Quoted(&column.name)).into());
+            return Err(format!("table_metadata_invalid: duplicate column {}", polyspec_orm_schema::message::Quoted(&column.name)).into());
         }
         let ordinal = row[4].int().map_err(|e| e.to_string())?;
         if ordinal < 0 {
-            return Err("TABLE_METADATA_INVALID: negative key ordinal".into());
+            return Err("table_metadata_invalid: negative key ordinal".into());
         }
         if ordinal > 0 {
             keys.push((ordinal, columns.len()));
@@ -186,13 +186,13 @@ pub(super) async fn describe(
     keys.sort_by_key(|key| key.0);
     for (index, key) in keys.iter().enumerate() {
         if key.0 != index as i64 + 1 {
-            return Err("TABLE_METADATA_INVALID: key order".into());
+            return Err("table_metadata_invalid: key order".into());
         }
     }
     if dialect == "sqlite" && kind == TableKind::Table && keys.len() == 1 && columns[keys[0].1].native_type.eq_ignore_ascii_case("INTEGER") {
         let indexes = rows(connection, "SELECT count(*) FROM pragma_index_list(?2,?1) WHERE origin='pk'", &params).await?;
         if indexes.len() != 1 || indexes[0].len() != 1 {
-            return Err("TABLE_METADATA_INVALID: primary index".into());
+            return Err("table_metadata_invalid: primary index".into());
         }
         if indexes[0][0].int().map_err(|e| e.to_string())? == 0 {
             columns[keys[0].1].nullable = false;

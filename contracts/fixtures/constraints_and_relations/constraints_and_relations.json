@@ -322,7 +322,7 @@
           },
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY",
+              "error": "foreign_key",
               "message_holds": [
                 "Cannot delete or update a parent row: a foreign key constraint fails (`",
                 "`.`author`, CONSTRAINT `fk_author_user` FOREIGN KEY (`user_seq`) REFERENCES `user` (`seq`)"
@@ -330,19 +330,19 @@
               "driver_cause": true
             },
             "postgres": {
-              "error": "FOREIGN_KEY",
+              "error": "foreign_key",
               "message_holds": "update or delete on table \"user\" violates foreign key constraint \"fk_author_user\" on table \"author\"",
               "driver_cause": true
             },
             "sqlite": {
-              "error": "FOREIGN_KEY",
+              "error": "foreign_key",
               "message_holds": "FOREIGN KEY constraint failed",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
             },
             "markdown": {
-              "error": "FOREIGN_KEY",
-              "message": "FOREIGN_KEY: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
+              "error": "foreign_key",
+              "message": "foreign_key: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
             }
           }
@@ -459,24 +459,24 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONSTRAINT",
+              "error": "constraint",
               "message_holds": "ck_author_counts",
               "driver_cause": true
             },
             "postgres": {
-              "error": "CONSTRAINT",
+              "error": "constraint",
               "message_holds": "new row for relation \"author\" violates check constraint \"ck_author_counts\"",
               "driver_cause": true
             },
             "sqlite": {
-              "error": "CONSTRAINT",
+              "error": "constraint",
               "message_holds": "CHECK constraint failed: ck_author_counts",
               "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
               "driver_cause": true
             },
             "markdown": {
-              "error": "CONSTRAINT",
-              "message": "CONSTRAINT: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
+              "error": "constraint",
+              "message": "constraint: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
               "driver_cause": true
             }
           }
@@ -497,7 +497,7 @@
           },
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY",
+              "error": "duplicate_key",
               "message_holds": [
                 "Duplicate entry 'uuid-author-2' for key '",
                 "uq_author_uuid'"
@@ -505,19 +505,19 @@
               "driver_cause": true
             },
             "postgres": {
-              "error": "DUPLICATE_KEY",
+              "error": "duplicate_key",
               "message_holds": "duplicate key value violates unique constraint \"uq_author_uuid\"",
               "driver_cause": true
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY",
+              "error": "duplicate_key",
               "message_holds": "UNIQUE constraint failed: author.uuid",
               "message_suffix": " (SQLITE_CONSTRAINT_UNIQUE)",
               "driver_cause": true
             },
             "markdown": {
-              "error": "DUPLICATE_KEY",
-              "message": "DUPLICATE_KEY: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
+              "error": "duplicate_key",
+              "message": "duplicate_key: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
               "driver_cause": true
             }
           }
@@ -735,7 +735,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "FOREIGN_KEY",
+              "error": "foreign_key",
               "message_holds": "FOREIGN KEY constraint failed",
               "message_suffix": " (SQLITE_CONSTRAINT_FOREIGNKEY)",
               "driver_cause": true
@@ -753,7 +753,7 @@
           },
           "expect": {
             "sqlite": {
-              "error": "FOREIGN_KEY",
+              "error": "foreign_key",
               "message_holds": "FOREIGN KEY constraint failed",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
@@ -776,7 +776,7 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CONSTRAINT",
+              "error": "constraint",
               "message_holds": "CHECK constraint failed: ck_author_counts",
               "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
               "driver_cause": true
@@ -798,7 +798,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "user refused",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
@@ -826,7 +826,7 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "READ_ONLY",
+                  "error": "read_only",
                   "message_holds": "attempt to write a readonly database",
                   "message_suffix": " (SQLITE_READONLY)",
                   "driver_cause": true

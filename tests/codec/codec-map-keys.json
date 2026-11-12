@@ -31,8 +31,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: member keys must be strings"
+              "error": "codec_encode",
+              "message": "codec_encode: json: member keys must be strings"
             }
           }
         },
@@ -63,8 +63,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: member keys must be strings"
+              "error": "codec_encode",
+              "message": "codec_encode: json: member keys must be strings"
             }
           }
         },
@@ -94,8 +94,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: member keys must be strings"
+              "error": "codec_encode",
+              "message": "codec_encode: json: member keys must be strings"
             }
           }
         },
@@ -118,8 +118,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: the value is not a codec value"
             }
           }
         },
@@ -142,8 +142,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: the value is not a codec value"
             }
           }
         },

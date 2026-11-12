@@ -1142,7 +1142,7 @@
        ]
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -1737,7 +1737,7 @@
        }
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     },
@@ -2162,15 +2162,15 @@
      "compile": true,
      "expect": {
       "mysql": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "product_lang_model is used twice; call alias<Name>()"
       },
       "postgres": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "product_lang_model is used twice; call alias<Name>()"
       },
       "sqlite": {
-       "error": "CONFIG",
+       "error": "config",
        "message_holds": "product_lang_model is used twice; call alias<Name>()"
       }
      }
@@ -2534,13 +2534,13 @@
      "plan_count": [],
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -2580,13 +2580,13 @@
      "plan_count": [],
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -2629,13 +2629,13 @@
      "plan_count": [],
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -2653,13 +2653,13 @@
      "plan_count": [],
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -2722,7 +2722,7 @@
        ]
       },
       "sqlite": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }

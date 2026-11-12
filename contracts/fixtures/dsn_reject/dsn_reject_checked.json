@@ -18,8 +18,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_CA&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"VERIFY_CA\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"VERIFY_CA\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -37,8 +37,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=REQUIRED&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"REQUIRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"REQUIRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -56,8 +56,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=PREFERRED&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"PREFERRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"PREFERRED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -75,8 +75,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=DISABLED&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"DISABLED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"DISABLED\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -94,8 +94,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=verify_identity&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"verify_identity\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"verify_identity\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -114,8 +114,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"ssl-mode\" is empty"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"ssl-mode\" is empty"
             }
           }
         }
@@ -132,8 +132,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file"
             }
           }
         }
@@ -150,8 +150,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-ca \"ca.pem\" is not an absolute path"
+              "error": "config",
+              "message": "config: mysql DSN ssl-ca \"ca.pem\" is not an absolute path"
             }
           }
         }
@@ -169,8 +169,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN ssl-mode \"\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN ssl-mode \"\" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca"
             }
           }
         }
@@ -187,8 +187,8 @@
           "dsn": "mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Fnonexistent%2Form-missing-ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message_holds": "CONFIG: mysql DSN ssl-ca \"/nonexistent/orm-missing-ca.pem\" is not a readable file: "
+              "error": "config",
+              "message_holds": "config: mysql DSN ssl-ca \"/nonexistent/orm-missing-ca.pem\" is not a readable file: "
             }
           }
         }
@@ -209,7 +209,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -230,7 +230,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -251,7 +251,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -271,7 +271,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "statement timeout must not be negative"
             }
           }

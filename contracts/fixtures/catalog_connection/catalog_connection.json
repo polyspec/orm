@@ -524,13 +524,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "postgres": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "sqlite": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             }
           }
         },
@@ -544,13 +544,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "postgres": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "sqlite": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             }
           }
         },
@@ -564,13 +564,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "postgres": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "sqlite": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             }
           }
         },
@@ -805,13 +805,13 @@
           "max_bytes": 1024,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -822,13 +822,13 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -1045,13 +1045,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -1123,7 +1123,7 @@
           "sql": "SELECT `catalog_readonly_fn`()",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -1481,8 +1481,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -1499,8 +1499,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION",
-              "message": "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
+              "error": "grid_temporal_precision",
+              "message": "grid_temporal_precision: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         },
@@ -1576,8 +1576,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: MySQL TIMESTAMP follows a time zone"
             }
           }
         },
@@ -1641,8 +1641,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -1659,8 +1659,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -1765,8 +1765,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION",
-              "message": "GRID_TEMPORAL_PRECISION: column 3: the fraction digits are not the count that its dbspec CHECK fixes"
+              "error": "grid_temporal_precision",
+              "message": "grid_temporal_precision: column 3: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         }
@@ -1978,12 +1978,12 @@
           "sql": "SELECT ts FROM grid_probe WHERE seq = 1",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: MySQL TIMESTAMP follows a time zone"
             },
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: PostgreSQL timestamptz and timetz are unsupported"
             },
             "sqlite": {
               "rows": [
@@ -2005,12 +2005,12 @@
           },
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: MySQL TIMESTAMP follows a time zone"
             },
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: PostgreSQL timestamptz and timetz are unsupported"
             },
             "sqlite": {
               "rows": [
@@ -2103,13 +2103,13 @@
           "sql": "COMMIT",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2118,13 +2118,13 @@
           "sql": "CALL missing_catalog_procedure()",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2133,13 +2133,13 @@
           "sql": "SELECT 1 INTO catalog_forbidden",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2148,13 +2148,13 @@
           "sql": "SELECT 1 FOR UPDATE",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2163,13 +2163,13 @@
           "sql": "SELECT 1; SELECT 2",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2182,13 +2182,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -2201,13 +2201,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         }
@@ -2287,13 +2287,13 @@
           "max_bytes": 128,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2304,13 +2304,13 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2356,13 +2356,13 @@
           "max_bytes": 7,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2411,13 +2411,13 @@
           "max_rows": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2477,13 +2477,13 @@
           "max_rows": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2543,13 +2543,13 @@
           "max_bytes": 16,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2579,13 +2579,13 @@
           "max_rows": -1,
           "expect": {
             "mysql": {
-              "error": "QUERY_LIMIT_INVALID"
+              "error": "query_limit_invalid"
             },
             "postgres": {
-              "error": "QUERY_LIMIT_INVALID"
+              "error": "query_limit_invalid"
             },
             "sqlite": {
-              "error": "QUERY_LIMIT_INVALID"
+              "error": "query_limit_invalid"
             }
           }
         },
@@ -2629,13 +2629,13 @@
           "max_bytes": 7,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2694,13 +2694,13 @@
           "max_bytes": 15,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2744,13 +2744,13 @@
           "max_bytes": 1,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2798,13 +2798,13 @@
           "max_bytes": 1,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         }
@@ -2864,13 +2864,13 @@
           "max_bytes": 14,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -2922,13 +2922,13 @@
           "max_bytes": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         }
@@ -3084,8 +3084,8 @@
           "sql": "SELECT d FROM grid_zero_date WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -3097,8 +3097,8 @@
           "sql": "SELECT dt FROM grid_zero_date WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         }
@@ -3206,13 +3206,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             },
             "postgres": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             },
             "sqlite": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             }
           }
         },
@@ -4081,13 +4081,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -4113,13 +4113,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -4138,13 +4138,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -4163,13 +4163,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -4194,13 +4194,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -4350,13 +4350,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -4547,15 +4547,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "file_created": false
             },
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "file_created": false
             },
             "sqlite": {
-              "error": "CONFIG",
+              "error": "config",
               "file_created": false
             }
           }
@@ -4756,13 +4756,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4770,13 +4770,13 @@
           "op": "catalog.current_namespace",
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4785,13 +4785,13 @@
           "table": "author",
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4810,13 +4810,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4835,13 +4835,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4850,13 +4850,13 @@
           "sql": "SELECT 1 AS value",
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -4867,13 +4867,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         },
@@ -5893,8 +5893,8 @@
           "sql": "SELECT CAST('-01:00:00' AS TIME)",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -5981,8 +5981,8 @@
           "sql": "SELECT '2020-01-02 03:04:05+00'::timestamptz",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -5994,8 +5994,8 @@
           "sql": "SELECT '24:00:00'::time",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -6007,8 +6007,8 @@
           "sql": "SELECT 'infinity'::timestamp",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -6516,13 +6516,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+              "error": "row_insert_identity_required"
             },
             "postgres": {
-              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+              "error": "row_insert_identity_required"
             },
             "sqlite": {
-              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+              "error": "row_insert_identity_required"
             }
           }
         },
@@ -6969,13 +6969,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -7289,13 +7289,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_IDENTITY_AMBIGUOUS"
+              "error": "row_identity_ambiguous"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -7839,13 +7839,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -7864,13 +7864,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -8119,13 +8119,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -8374,13 +8374,13 @@
           "sql": "SELECT 'a' < 'b' COLLATE nosuch",
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_suffix": " (SQLITE_ERROR_MISSING_COLLSEQ)"
             }
           }
@@ -8442,13 +8442,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "row_mutation_unsupported"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
             }
           }
@@ -8539,7 +8539,7 @@
           "table": "precision_limit",
           "expect": {
             "mysql": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             },
             "postgres": {
               "columns": [
@@ -8684,13 +8684,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "postgres": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "sqlite": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             }
           }
         },
@@ -8729,13 +8729,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -8754,13 +8754,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -9027,16 +9027,16 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             }
           }
         },
@@ -9054,16 +9054,16 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             }
           }
         },
@@ -9081,16 +9081,16 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID",
-              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+              "error": "row_snapshot_invalid",
+              "message_suffix": "table_reference_invalid: expected 1..1024 UTF-8 bytes without NUL"
             }
           }
         }
@@ -9230,13 +9230,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -9255,13 +9255,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         }
@@ -9337,13 +9337,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "postgres": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             },
             "sqlite": {
-              "error": "CATALOG_CLOSED"
+              "error": "catalog_closed"
             }
           }
         }
@@ -9395,13 +9395,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "postgres": {
-              "error": "ROW_COMMIT_REJECTED"
+              "error": "row_commit_rejected"
             },
             "sqlite": {
-              "error": "ROW_COMMIT_REJECTED"
+              "error": "row_commit_rejected"
             }
           }
         },
@@ -9461,13 +9461,13 @@
           "sql": "UPDATE catalog_readonly_row SET n=8",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9476,13 +9476,13 @@
           "sql": "DELETE FROM catalog_readonly_row",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9491,13 +9491,13 @@
           "sql": "COMMIT",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9506,13 +9506,13 @@
           "sql": "SELECT 1; SELECT 2",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9521,13 +9521,13 @@
           "sql": "SELECT 1 INTO new_table",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9536,13 +9536,13 @@
           "sql": "SELECT 1 /*! INTO OUTFILE '/private-value' */",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -9551,13 +9551,13 @@
           "sql": "SELECT 1 FROM missing_readonly_fixture",
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           }
         },
@@ -9693,13 +9693,13 @@
           "table": "missing' OR '1'='1",
           "expect": {
             "mysql": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             },
             "postgres": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             },
             "sqlite": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             }
           }
         },
@@ -9708,13 +9708,13 @@
           "table": "",
           "expect": {
             "mysql": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "postgres": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "sqlite": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             }
           }
         },
@@ -9723,13 +9723,13 @@
           "table": "bad\u0000name",
           "expect": {
             "mysql": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "postgres": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "sqlite": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             }
           }
         },
@@ -9738,13 +9738,13 @@
           "table": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
           "expect": {
             "mysql": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "postgres": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             },
             "sqlite": {
-              "error": "TABLE_REFERENCE_INVALID"
+              "error": "table_reference_invalid"
             }
           }
         },
@@ -9943,7 +9943,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "TABLE_NAMESPACE_UNSUPPORTED"
+              "error": "table_namespace_unsupported"
             }
           }
         }
@@ -10451,13 +10451,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             },
             "postgres": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             },
             "sqlite": {
-              "error": "TABLE_NOT_FOUND"
+              "error": "table_not_found"
             }
           }
         },
@@ -10489,13 +10489,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -10614,13 +10614,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "postgres": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             },
             "sqlite": {
-              "error": "TABLE_PAGE_INVALID"
+              "error": "table_page_invalid"
             }
           }
         }
@@ -10673,7 +10673,7 @@
           "max_rows": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_suffix": "result has more than 3 rows"
             }
           }
@@ -10945,13 +10945,13 @@
           "sql": "SELECT 1 /*! INTO OUTFILE '/secret' */",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -10960,13 +10960,13 @@
           "sql": "WITH x AS (DELETE FROM t RETURNING n) SELECT n FROM x",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -10975,13 +10975,13 @@
           "sql": "SELECT (SELECT n FROM t FOR UPDATE)",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -10990,13 +10990,13 @@
           "sql": "SELECT '",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -11005,13 +11005,13 @@
           "sql": "UPDATE t SET n = 2",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         }
@@ -11107,13 +11107,13 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -11128,13 +11128,13 @@
           "max_bytes": 1024,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -11143,13 +11143,13 @@
           "sql": "DELETE FROM grid_test_should_not_exist",
           "expect": {
             "mysql": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "postgres": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             },
             "sqlite": {
-              "error": "QUERY_READ_ONLY"
+              "error": "query_read_only"
             }
           }
         },
@@ -11405,13 +11405,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -11444,13 +11444,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -11607,7 +11607,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -11678,7 +11678,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         }
@@ -11756,7 +11756,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -11775,7 +11775,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -11932,7 +11932,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -12074,8 +12074,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: MySQL TIMESTAMP follows a time zone"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: MySQL TIMESTAMP follows a time zone"
             }
           },
           "only": [
@@ -12108,8 +12108,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: time outside 00:00:00 to 23:59:59.999999"
             }
           },
           "only": [
@@ -12142,8 +12142,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: date outside 0001-01-01 to 9999-12-31"
             }
           },
           "only": [
@@ -12168,8 +12168,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 3: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 3: date outside 0001-01-01 to 9999-12-31"
             }
           },
           "only": [
@@ -12269,8 +12269,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           },
           "only": [
@@ -12303,8 +12303,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: PostgreSQL timestamptz and timetz are unsupported"
             }
           },
           "only": [
@@ -12579,7 +12579,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+              "error": "row_insert_identity_required"
             }
           }
         },
@@ -12727,7 +12727,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -13047,7 +13047,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         }
@@ -13320,13 +13320,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "row_mutation_unsupported"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -13539,13 +13539,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "row_mutation_unsupported"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -13753,13 +13753,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -13771,13 +13771,13 @@
           "set": [],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -14232,13 +14232,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         }
@@ -14356,13 +14356,13 @@
           "index": 1,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14380,13 +14380,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14407,13 +14407,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14434,13 +14434,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14458,13 +14458,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14482,13 +14482,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14506,13 +14506,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14533,13 +14533,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_LIMIT"
+              "error": "row_snapshot_limit"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_LIMIT"
+              "error": "row_snapshot_limit"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_LIMIT"
+              "error": "row_snapshot_limit"
             }
           }
         },
@@ -14573,13 +14573,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14591,13 +14591,13 @@
           "index": 0,
           "expect": {
             "mysql": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "postgres": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14654,7 +14654,7 @@
               ]
             },
             "sqlite": {
-              "error": "ROW_SNAPSHOT_INVALID"
+              "error": "row_snapshot_invalid"
             }
           }
         },
@@ -14686,13 +14686,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "postgres": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "sqlite": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             }
           }
         },
@@ -14703,13 +14703,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "postgres": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "sqlite": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             }
           }
         }
@@ -14787,13 +14787,13 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -14863,8 +14863,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: PostgreSQL numeric is not finite"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: PostgreSQL numeric is not finite"
             }
           }
         }
@@ -14923,13 +14923,13 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT"
+              "error": "catalog_limit"
             }
           }
         },
@@ -15343,8 +15343,8 @@
           "sql": "SELECT d FROM value_rule_calendar WHERE id = 1",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date is not a calendar date"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date is not a calendar date"
             }
           }
         },
@@ -15356,8 +15356,8 @@
           "sql": "SELECT dt FROM value_rule_calendar WHERE id = 2",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date is not a calendar date"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date is not a calendar date"
             }
           }
         },
@@ -15374,8 +15374,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: date is not a calendar date"
             }
           }
         },
@@ -15392,8 +15392,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 3: date is not a calendar date"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 3: date is not a calendar date"
             }
           }
         }
@@ -15414,8 +15414,8 @@
           "sql": "SELECT CAST('838:59:59' AS TIME)",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -15427,8 +15427,8 @@
           "sql": "SELECT CAST('25:00:00' AS TIME) AS value",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         }
@@ -15470,8 +15470,8 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: a boolean column holds a value that is not a boolean"
             }
           }
         },
@@ -15504,8 +15504,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: a boolean column holds a value that is not a boolean"
             }
           }
         }
@@ -15526,8 +15526,8 @@
           "sql": "SELECT '0044-03-15 BC'::date",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -15539,8 +15539,8 @@
           "sql": "SELECT '10000-01-01'::date",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -15573,8 +15573,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -15607,8 +15607,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: date outside 0001-01-01 to 9999-12-31"
             }
           }
         }
@@ -15630,8 +15630,8 @@
           "sql": "SELECT '1 day'::interval",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15661,8 +15661,8 @@
           "sql": "SELECT 1.5::money",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15674,8 +15674,8 @@
           "sql": "SELECT '(1,2)'::point",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15687,8 +15687,8 @@
           "sql": "SELECT 'pg_class'::regclass",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15700,8 +15700,8 @@
           "sql": "SELECT ARRAY['2020-01-02'::date]",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15713,8 +15713,8 @@
           "sql": "SELECT ARRAY[1.5::double precision]",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15726,8 +15726,8 @@
           "sql": "SELECT ARRAY['\\x00'::bytea]",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: unsupported native type"
             }
           }
         },
@@ -15760,8 +15760,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: unsupported native type"
             }
           }
         },
@@ -15830,8 +15830,8 @@
           "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 3: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 3: unsupported native type"
             }
           }
         },
@@ -15843,8 +15843,8 @@
           "sql": "SELECT 1, NULL::int4multirange",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: unsupported native type"
             }
           }
         },
@@ -15856,8 +15856,8 @@
           "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 3: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 3: unsupported native type"
             }
           }
         },
@@ -15869,8 +15869,8 @@
           "sql": "SELECT 1, NULL::int4multirange",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: unsupported native type"
             }
           }
         },
@@ -15888,8 +15888,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 3: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 3: unsupported native type"
             }
           }
         },
@@ -15907,8 +15907,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 3: unsupported native type"
+              "error": "catalog_value",
+              "message": "catalog_value: column 3: unsupported native type"
             }
           }
         },
@@ -16076,10 +16076,10 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -16451,8 +16451,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 2: PostgreSQL numeric is not finite"
+              "error": "catalog_value",
+              "message": "catalog_value: column 2: PostgreSQL numeric is not finite"
             }
           }
         }
@@ -17081,8 +17081,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION",
-              "message": "GRID_TEMPORAL_PRECISION: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
+              "error": "grid_temporal_precision",
+              "message": "grid_temporal_precision: column 2: the fraction digits are not the count that its dbspec CHECK fixes"
             }
           }
         }
@@ -17174,7 +17174,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_COMMIT_REJECTED"
+              "error": "row_commit_rejected"
             }
           }
         },
@@ -17240,7 +17240,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_COMMIT_INDETERMINATE"
+              "error": "row_commit_indeterminate"
             }
           }
         },
@@ -17502,13 +17502,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -17621,13 +17621,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -17646,13 +17646,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -17671,13 +17671,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "postgres": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             },
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID"
+              "error": "row_update_invalid"
             }
           }
         },
@@ -17947,13 +17947,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "postgres": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             },
             "sqlite": {
-              "error": "ROW_SCHEMA_CHANGED"
+              "error": "row_schema_changed"
             }
           }
         },
@@ -18044,13 +18044,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "postgres": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "sqlite": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             }
           }
         },
@@ -18174,13 +18174,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -18363,13 +18363,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "postgres": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             },
             "sqlite": {
-              "error": "ROW_CONFLICT"
+              "error": "row_conflict"
             }
           }
         },
@@ -18394,13 +18394,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -18425,13 +18425,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH"
+              "error": "row_write_mismatch"
             }
           }
         },
@@ -18456,13 +18456,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "postgres": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "sqlite": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             }
           }
         },
@@ -18487,13 +18487,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "postgres": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             },
             "sqlite": {
-              "error": "ROW_INSERT_INVALID"
+              "error": "row_insert_invalid"
             }
           }
         },
@@ -18892,15 +18892,15 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             }
           }
@@ -18912,15 +18912,15 @@
           "max_bytes": 2,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 2 bytes of values"
             }
           }
@@ -19032,15 +19032,15 @@
           "max_bytes": 128,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             }
           }
@@ -19052,15 +19052,15 @@
           "max_bytes": 128,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 1 rows"
             }
           }
@@ -19136,15 +19136,15 @@
           "columns": [],
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 8388608 bytes of values"
             },
             "postgres": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 8388608 bytes of values"
             },
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 8388608 bytes of values"
             }
           }
@@ -19822,8 +19822,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -19848,8 +19848,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -19874,8 +19874,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: date is not a calendar date"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: date is not a calendar date"
             }
           }
         },
@@ -19900,8 +19900,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -19926,8 +19926,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -19939,8 +19939,8 @@
           "sql": "SELECT CAST('25:00:00' AS TIME)",
           "expect": {
             "mysql": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -19952,8 +19952,8 @@
           "sql": "SELECT CAST('24:00:00' AS time)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: time outside 00:00:00 to 23:59:59.999999"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999"
             }
           }
         },
@@ -19965,8 +19965,8 @@
           "sql": "SELECT CAST('infinity' AS timestamp)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -19978,8 +19978,8 @@
           "sql": "SELECT CAST('-infinity' AS date)",
           "expect": {
             "postgres": {
-              "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: column 1: date outside 0001-01-01 to 9999-12-31"
+              "error": "grid_temporal_value",
+              "message": "grid_temporal_value: column 1: date outside 0001-01-01 to 9999-12-31"
             }
           }
         },
@@ -19991,8 +19991,8 @@
           "sql": "SELECT CAST('2026-01-02 03:04:05+00' AS timestamptz)",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: PostgreSQL timestamptz and timetz are unsupported"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: PostgreSQL timestamptz and timetz are unsupported"
             }
           }
         },
@@ -20020,8 +20020,8 @@
           "sql": "SELECT ts FROM temporal_zone",
           "expect": {
             "mysql": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: column 1: MySQL TIMESTAMP follows a time zone"
+              "error": "catalog_value",
+              "message": "catalog_value: column 1: MySQL TIMESTAMP follows a time zone"
             }
           }
         }
@@ -20341,7 +20341,7 @@
           "max_bytes": 12,
           "expect": {
             "sqlite": {
-              "error": "CATALOG_LIMIT",
+              "error": "catalog_limit",
               "message_holds": "result has more than 12 bytes of values"
             }
           }
@@ -20434,8 +20434,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20444,8 +20444,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20454,8 +20454,8 @@
           "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20464,8 +20464,8 @@
           "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20474,8 +20474,8 @@
           "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20484,8 +20484,8 @@
           "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20498,8 +20498,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20508,8 +20508,8 @@
           "sql": "SELECT set_config('DateStyle', 'SQL, DMY', true) AS style, '2026-01-02'::date AS d, '2026-01-02 03:04:05.5'::timestamp AS dt",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20518,8 +20518,8 @@
           "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20528,8 +20528,8 @@
           "sql": "SELECT set_config('TimeZone', 'Asia/Seoul', true) AS zone, '2026-01-02'::date AS d",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20538,8 +20538,8 @@
           "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20548,8 +20548,8 @@
           "sql": "SELECT g, CASE WHEN g = 1 THEN set_config('extra_float_digits', '0', true) WHEN g = 3 THEN set_config('extra_float_digits', '1', true) END AS digits, 0.1::float8 + 0.2::float8 AS f FROM generate_series(1, 3) AS g ORDER BY g",
           "expect": {
             "postgres": {
-              "error": "CATALOG_VALUE",
-              "message": "CATALOG_VALUE: the query changed a setting that the output of its values depends on"
+              "error": "catalog_value",
+              "message": "catalog_value: the query changed a setting that the output of its values depends on"
             }
           }
         },
@@ -20633,7 +20633,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "trigger visibility"
             }
           }
@@ -21150,7 +21150,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "trigger visibility"
             }
           }
@@ -21170,7 +21170,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "trigger visibility"
             }
           }
@@ -21182,7 +21182,7 @@
           },
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "trigger visibility"
             }
           }
@@ -21289,7 +21289,7 @@
               ]
             },
             "mariadb": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "partial_revokes"
             }
           }
@@ -21368,11 +21368,11 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "read-only"
             }
           }
@@ -21392,11 +21392,11 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "read-only"
             }
           }
@@ -21408,11 +21408,11 @@
           },
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED",
+              "error": "row_mutation_unsupported",
               "message_holds": "partial-revoke"
             },
             "mariadb": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "read-only"
             }
           }
@@ -21519,7 +21519,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21559,7 +21559,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21599,7 +21599,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21639,7 +21639,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21679,7 +21679,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21719,7 +21719,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21759,7 +21759,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "error": "table_page_metadata_changed",
               "message_holds": "descriptor changed during read"
             }
           }
@@ -21819,13 +21819,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -21936,12 +21936,12 @@
           },
           "expect": {
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH",
-              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
+              "error": "row_write_mismatch",
+              "message": "row_write_mismatch: expected exactly one deleted row, got 0"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH",
-              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
+              "error": "row_write_mismatch",
+              "message": "row_write_mismatch: expected exactly one deleted row, got 0"
             }
           }
         },
@@ -22043,8 +22043,8 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH",
-              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+              "error": "row_write_mismatch",
+              "message": "row_write_mismatch: stored inserted values of \"payload\" differ"
             }
           }
         },
@@ -22117,15 +22117,15 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROW_MUTATION_UNSUPPORTED"
+              "error": "row_mutation_unsupported"
             },
             "postgres": {
-              "error": "ROW_WRITE_MISMATCH",
-              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+              "error": "row_write_mismatch",
+              "message": "row_write_mismatch: stored inserted values of \"payload\" differ"
             },
             "sqlite": {
-              "error": "ROW_WRITE_MISMATCH",
-              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+              "error": "row_write_mismatch",
+              "message": "row_write_mismatch: stored inserted values of \"payload\" differ"
             }
           }
         },
@@ -22216,8 +22216,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID",
-              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
+              "error": "row_update_invalid",
+              "message": "row_update_invalid: value exceeds the declared capacity of column \"label\""
             }
           }
         },
@@ -22236,8 +22236,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "ROW_UPDATE_INVALID",
-              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"payload\""
+              "error": "row_update_invalid",
+              "message": "row_update_invalid: value exceeds the declared capacity of column \"payload\""
             }
           }
         },

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "code": "DRIVER",
+  "code": "driver",
   "message": "the insert is refused",
   "cases": [
     "empty_argument_refused"

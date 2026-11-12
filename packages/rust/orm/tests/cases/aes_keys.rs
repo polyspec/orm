@@ -11,7 +11,7 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 /// A row of one AES cell without its version decodes with the INTERNAL code under the assemble `asm`.
 fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    assert_eq!(decode_error_code(asm, vec![Val::Str("00".into())], &keys), "INTERNAL");
+    assert_eq!(decode_error_code(asm, vec![Val::Str("00".into())], &keys), "internal");
 }
 
 // Requirements: COD-56.

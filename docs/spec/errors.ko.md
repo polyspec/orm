@@ -1,11 +1,11 @@
 <!-- doc-id: errors -->
-<!-- source-sha256: 3c7b7d151f37ee383c6fc6870c86f09f564bc6082ffb4f7978fd6cfb8290c10d -->
+<!-- source-sha256: 78807338154e4115e9136b0c96f9aa2dcd4fb74f08ff4e6b0eda7bac13a85e94 -->
 # 코어의 오류 kind
 
 - **ERR-1** Rust 코어 `polyspec-orm`의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가지며, 아래 표의 행이 그 변형이다(CORE-10). enum에는 와일드카드 변형이 없으므로 kind를 category로 옮기는 바인딩은 행이 빠지거나 늘면 컴파일되지 않는다.
 - **ERR-2** kind의 category가 바인딩의 오류 클래스를 정한다(CORE-11): 규칙이 거부하는 요청·스키마 참조·입력·결과는 `value`, 데이터베이스나 그 연결이 알린 실패는 `store`, 겹친 호출은 `busy`, 끝난 handle의 사용은 `type`, 시험 fault와 깨진 불변식은 `internal`이다.
 - **ERR-3** kind의 출처는 실패를 찾은 곳이다: 요청을 계획할 때 `engine`, 실행할 때 `executor`, 데이터베이스가 알리면 `driver`, 코어에만 있는 kind는 `core`(CORE-14).
-- **ERR-4** 카탈로그 [errors.yaml](errors.yaml)은 언어 구현이 없어질 때까지 그 코드를 둔다(CORE-1). 이 표의 kind 중 거기 코드가 있는 것은 그 코드의 소문자다.
+- **ERR-4** kind는 어디서나 소문자로 쓴다: 오류 메시지, 공유 case와 vector(CORE-3), 바인딩. 카탈로그 [errors.yaml](errors.yaml)은 언어 구현이 없어질 때까지 그 코드를 둔다(CORE-1). 이 표의 kind 중 거기 코드가 있는 것은 그 코드의 소문자다.
 
 | kind | category | 출처 | 뜻 |
 |---|---|---|---|

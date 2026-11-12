@@ -22,8 +22,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: the value is not a JSON value"
+              "error": "codec_encode",
+              "message": "codec_encode: json: the value is not a JSON value"
             }
           }
         },
@@ -44,8 +44,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: the value is not a JSON value"
+              "error": "codec_encode",
+              "message": "codec_encode: json: the value is not a JSON value"
             }
           }
         },
@@ -59,8 +59,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: the value is not a codec value"
             }
           }
         },
@@ -74,8 +74,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: the value is not a codec value"
             }
           }
         },
@@ -96,8 +96,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: the value is not a codec value"
             }
           }
         },
@@ -118,8 +118,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: the value is not a codec value"
             }
           }
         },
@@ -133,8 +133,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first gz stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first gz stage takes a string value"
             }
           }
         },
@@ -148,8 +148,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: a first base64 stage takes a string value"
             }
           }
         },
@@ -161,8 +161,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: an empty stage list takes a string value"
+              "error": "codec_encode",
+              "message": "codec_encode: an empty stage list takes a string value"
             }
           }
         }

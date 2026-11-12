@@ -143,7 +143,7 @@ mod aggregate_numeric {
                 assert!(number.is_finite(), "{id}");
                 assert_eq!(number.to_bits(), expected, "{id}");
             }
-            (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode, "{id}"),
+            (None, Some("codec_decode")) => assert_eq!(value.as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode, "{id}"),
             other => panic!("{id}: invalid expected result {other:?}"),
         }
     }

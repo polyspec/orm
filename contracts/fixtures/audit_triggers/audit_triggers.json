@@ -85,13 +85,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -122,13 +122,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -159,13 +159,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -192,13 +192,13 @@
           "audit": {},
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -229,13 +229,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -280,13 +280,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -368,13 +368,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -396,13 +396,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "IR_INVALID"
+                  "error": "ir_invalid"
                 },
                 "postgres": {
-                  "error": "IR_INVALID"
+                  "error": "ir_invalid"
                 },
                 "sqlite": {
-                  "error": "IR_INVALID"
+                  "error": "ir_invalid"
                 }
               }
             }
@@ -488,13 +488,13 @@
           "fail": true,
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -515,13 +515,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "postgres": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "sqlite": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             }
           }
         },
@@ -1007,13 +1007,13 @@
               "fail": true,
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             },
@@ -1173,13 +1173,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 },
                 "postgres": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 },
                 "sqlite": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 }
               }
             }
@@ -1242,13 +1242,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 },
                 "postgres": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 },
                 "sqlite": {
-                  "error": "CONDITION_NOT_MET"
+                  "error": "condition_not_met"
                 }
               }
             },
@@ -1518,13 +1518,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             }
@@ -2459,13 +2459,13 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "DUPLICATE_KEY"
+                  "error": "duplicate_key"
                 },
                 "postgres": {
-                  "error": "DUPLICATE_KEY"
+                  "error": "duplicate_key"
                 },
                 "sqlite": {
-                  "error": "DUPLICATE_KEY"
+                  "error": "duplicate_key"
                 }
               }
             }
@@ -2478,13 +2478,13 @@
           "fail": true,
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -2529,13 +2529,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -2920,13 +2920,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             },
             "postgres": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             },
             "sqlite": {
-              "error": "NO_ROWS"
+              "error": "no_rows"
             }
           }
         },
@@ -2941,13 +2941,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "postgres": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "sqlite": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           }
         },
@@ -2958,13 +2958,13 @@
           "values": {},
           "expect": {
             "mysql": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "postgres": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             },
             "sqlite": {
-              "error": "IR_INVALID"
+              "error": "ir_invalid"
             }
           }
         },
@@ -3761,13 +3761,13 @@
           "steps": [],
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }

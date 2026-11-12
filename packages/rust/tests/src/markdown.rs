@@ -142,7 +142,7 @@ pub fn send_listener() -> SendListener {
                             return;
                         }
                     }
-                    json!({ "error": { "code": "IR_INVALID", "message": "recorded by the markdown.send listener" } })
+                    json!({ "error": { "code": "ir_invalid", "message": "recorded by the markdown.send listener" } })
                 }
             };
             if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {

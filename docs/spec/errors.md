@@ -10,8 +10,9 @@
   or a broken invariant.
 - **ERR-3** The origin of a kind is where the failure is found: `engine` while planning a request, `executor` while running
   it, `driver` when the database reports it, and `core` for the kinds that only the core has (CORE-14).
-- **ERR-4** The catalog [errors.yaml](errors.yaml) keeps the codes of the language implementations until their removal
-  (CORE-1); a kind of this table that has a code there is that code in lower case.
+- **ERR-4** A kind is written in lower case everywhere: in the message of the error, in the shared cases and vectors
+  (CORE-3) and in the bindings. The catalog [errors.yaml](errors.yaml) keeps the codes of the language implementations
+  until their removal (CORE-1); a kind of this table that has a code there is that code in lower case.
 
 | kind | category | origin | meaning |
 |---|---|---|---|

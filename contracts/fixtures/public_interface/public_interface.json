@@ -59,7 +59,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -81,7 +81,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -102,8 +102,8 @@
           ],
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: limit requires a non-negative offset and a positive count"
+              "error": "config",
+              "message": "config: limit requires a non-negative offset and a positive count"
             }
           }
         }
@@ -124,8 +124,8 @@
           ],
           "expect": {
             "none": {
-              "error": "EMPTY_IN",
-              "message": "EMPTY_IN: i64_value received an empty list"
+              "error": "empty_in",
+              "message": "empty_in: i64_value received an empty list"
             }
           }
         }

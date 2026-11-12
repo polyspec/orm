@@ -69,13 +69,13 @@
               "name": "ormtest.missing",
               "expect": {
                 "mysql": {
-                  "error": "NO_ROWS"
+                  "error": "no_rows"
                 },
                 "postgres": {
-                  "error": "NO_ROWS"
+                  "error": "no_rows"
                 },
                 "sqlite": {
-                  "error": "NO_ROWS"
+                  "error": "no_rows"
                 }
               }
             }
@@ -104,13 +104,13 @@
           "name": "ormtest.actor",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -123,13 +123,13 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -252,13 +252,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             },
@@ -352,13 +352,13 @@
           "sequence": 1,
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -373,13 +373,13 @@
               "sequence": 1,
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -390,13 +390,13 @@
               "sequence": 0,
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -407,13 +407,13 @@
               "sequence": -1,
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             }
@@ -709,7 +709,7 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "lock orm_test.not_held was not held at transaction end"
             }
           }
@@ -733,13 +733,13 @@
           "name": "orm_test.outside",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -768,16 +768,16 @@
               "name": "orm test\n",
               "expect": {
                 "mysql": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                  "error": "config",
+                  "message": "config: lock key \"orm test\\n\" is invalid"
                 },
                 "postgres": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                  "error": "config",
+                  "message": "config: lock key \"orm test\\n\" is invalid"
                 },
                 "sqlite": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: lock key \"orm test\\n\" is invalid"
+                  "error": "config",
+                  "message": "config: lock key \"orm test\\n\" is invalid"
                 }
               }
             },
@@ -790,16 +790,16 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"orm\\tkey\" is invalid"
                 },
                 "postgres": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"orm\\tkey\" is invalid"
                 },
                 "sqlite": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"orm\\tkey\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"orm\\tkey\" is invalid"
                 }
               }
             },
@@ -809,16 +809,16 @@
               "name": "ormtest.é\u0007\"",
               "expect": {
                 "mysql": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"ormtest.é\\a\\\"\" is invalid"
                 },
                 "postgres": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"ormtest.é\\a\\\"\" is invalid"
                 },
                 "sqlite": {
-                  "error": "CONFIG",
-                  "message": "CONFIG: local key \"ormtest.é\\a\\\"\" is invalid"
+                  "error": "config",
+                  "message": "config: local key \"ormtest.é\\a\\\"\" is invalid"
                 }
               }
             }
@@ -963,7 +963,7 @@
           "table": "public.privilege_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
               "json": {
@@ -975,7 +975,7 @@
               }
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -986,13 +986,13 @@
           "table": "privilege_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1012,13 +1012,13 @@
           "role": "orm_priv_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1030,13 +1030,13 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1048,7 +1048,7 @@
           "role": "orm_priv_probe",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
               "value": {
@@ -1056,7 +1056,7 @@
               }
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1113,14 +1113,14 @@
           "privilege": " drop\u0007",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: unsupported table privilege \" drop\\a\""
+              "error": "config",
+              "message": "config: unsupported table privilege \" drop\\a\""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1133,13 +1133,13 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1152,13 +1152,13 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1171,14 +1171,14 @@
           "privilege": " select ",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: unsupported table privilege \" select \""
+              "error": "config",
+              "message": "config: unsupported table privilege \" select \""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1191,14 +1191,14 @@
           "privilege": "\u017felect",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: unsupported table privilege \"\u017felect\""
+              "error": "config",
+              "message": "config: unsupported table privilege \"\u017felect\""
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1211,7 +1211,7 @@
           "privilege": "select",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
               "value": {
@@ -1219,7 +1219,7 @@
               }
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1290,14 +1290,14 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: a qualified table name is required"
+              "error": "config",
+              "message": "config: a qualified table name is required"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1310,14 +1310,14 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: a qualified table name is required"
+              "error": "config",
+              "message": "config: a qualified table name is required"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1329,14 +1329,14 @@
           "role": "invalid-role",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: role invalid-role is invalid"
+              "error": "config",
+              "message": "config: role invalid-role is invalid"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -1349,14 +1349,14 @@
           "privilege": "SELECT",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: role invalid-role is invalid"
+              "error": "config",
+              "message": "config: role invalid-role is invalid"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },

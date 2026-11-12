@@ -144,7 +144,7 @@ async fn schema_set_edited_manifest(driver: &str) {
     let mut core = polyspec_orm::Core::new(entity);
     core.connect(&db);
     let error = polyspec_orm::model::get_count(&core).await.expect_err("a request of an edited manifest");
-    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
+    assert_eq!(error.code(), "schema_hash_mismatch", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), before, "{driver}: statements of the edited request");
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows after the rejected request");
     db.close().await;

@@ -18,7 +18,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
             }
           }
@@ -39,7 +39,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
             }
           }
@@ -60,7 +60,7 @@
           },
           "expect": {
             "none": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
             }
           }

@@ -852,13 +852,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       },
       "postgres": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       }
      }
     },
@@ -873,13 +873,13 @@
      },
      "expect": {
       "mysql": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       },
       "postgres": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       },
       "sqlite": {
-       "error": "CODEC_ENCODE"
+       "error": "codec_encode"
       }
      }
     },
@@ -1084,26 +1084,26 @@
        "optimistic": true,
        "expect": {
         "mysql": {
-         "error": "OPTIMISTIC_LOCK"
+         "error": "optimistic_lock"
         },
         "postgres": {
-         "error": "OPTIMISTIC_LOCK"
+         "error": "optimistic_lock"
         },
         "sqlite": {
-         "error": "OPTIMISTIC_LOCK"
+         "error": "optimistic_lock"
         }
        }
       }
      ],
      "expect": {
       "mysql": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "postgres": {
-       "error": "CALLBACK"
+       "error": "callback"
       },
       "sqlite": {
-       "error": "CALLBACK"
+       "error": "callback"
       }
      }
     },
@@ -1180,13 +1180,13 @@
      "batch": 0,
      "expect": {
       "mysql": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "postgres": {
-       "error": "CONFIG"
+       "error": "config"
       },
       "sqlite": {
-       "error": "CONFIG"
+       "error": "config"
       }
      }
     },
@@ -1210,13 +1210,13 @@
      "batch": 21846,
      "expect": {
       "mysql": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       },
       "postgres": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       },
       "sqlite": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       }
      }
     },
@@ -1280,7 +1280,7 @@
      "batch": 334,
      "expect": {
       "sqlite": {
-       "error": "BATCH_TOO_LARGE"
+       "error": "batch_too_large"
       }
      }
     },
@@ -2205,13 +2205,13 @@
      "batch": 2,
      "expect": {
       "mysql": {
-       "error": "DUPLICATE_KEY"
+       "error": "duplicate_key"
       },
       "postgres": {
-       "error": "DUPLICATE_KEY"
+       "error": "duplicate_key"
       },
       "sqlite": {
-       "error": "DUPLICATE_KEY"
+       "error": "duplicate_key"
       }
      }
     },
@@ -3421,16 +3421,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       }
      }
     },
@@ -3665,16 +3665,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       }
      }
     },
@@ -3824,16 +3824,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_account does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_account does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_account does not hold; no row was written"
       }
      }
     },
@@ -3997,16 +3997,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       }
      }
     },
@@ -4105,16 +4105,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into composite_member does not hold; no row was written"
       }
      }
     },
@@ -4332,16 +4332,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       }
      }
     },
@@ -4415,16 +4415,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       }
      }
     },
@@ -4535,16 +4535,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       }
      }
     },
@@ -4584,16 +4584,16 @@
      },
      "expect": {
       "mysql": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "postgres": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       },
       "sqlite": {
-       "error": "CONDITION_NOT_MET",
-       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+       "error": "condition_not_met",
+       "message": "condition_not_met: the condition of the insert into condition_cell does not hold; no row was written"
       }
      }
     },

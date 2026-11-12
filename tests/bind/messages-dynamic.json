@@ -23,8 +23,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside i16"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside i16"
           }
         }
       ]
@@ -47,8 +47,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside i16"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside i16"
           }
         }
       ]
@@ -71,8 +71,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside i32"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside i32"
           }
         }
       ]
@@ -95,8 +95,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a i64 value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a i64 value"
           }
         }
       ]
@@ -119,8 +119,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a i64 value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a i64 value"
           }
         }
       ]
@@ -143,8 +143,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a i64 value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a i64 value"
           }
         }
       ]
@@ -167,8 +167,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a f64 value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a f64 value"
           }
         }
       ]
@@ -191,8 +191,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a f64 value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a f64 value"
           }
         }
       ]
@@ -215,8 +215,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a bool value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a bool value"
           }
         }
       ]
@@ -239,8 +239,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a decimal value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a decimal value"
           }
         }
       ]
@@ -263,8 +263,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a varchar value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a varchar value"
           }
         }
       ]
@@ -287,8 +287,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a text value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a text value"
           }
         }
       ]
@@ -335,8 +335,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a bytes value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a bytes value"
           }
         }
       ]
@@ -380,8 +380,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: like_contains requires a string value"
+            "error": "codec_encode",
+            "text": "codec_encode: like_contains requires a string value"
           }
         }
       ]
@@ -403,8 +403,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: like_contains requires a string value"
+            "error": "codec_encode",
+            "text": "codec_encode: like_contains requires a string value"
           }
         }
       ]
@@ -427,8 +427,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a uuid value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a uuid value"
           }
         }
       ]
@@ -451,8 +451,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a date value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a date value"
           }
         }
       ]
@@ -475,8 +475,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -499,8 +499,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a datetime value"
           }
         }
       ]

@@ -708,7 +708,7 @@
      },
      "expect": {
       "none": {
-       "error": "COLUMN_UNKNOWN"
+       "error": "column_unknown"
       }
      }
     }
@@ -789,7 +789,7 @@
      },
      "expect": {
       "none": {
-       "error": "COLUMN_UNKNOWN"
+       "error": "column_unknown"
       }
      }
     }
@@ -994,7 +994,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -4144,7 +4144,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -4223,7 +4223,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -4302,7 +4302,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -4551,7 +4551,7 @@
      },
      "expect": {
       "none": {
-       "error": "COLUMN_UNKNOWN"
+       "error": "column_unknown"
       }
      }
     }
@@ -4647,7 +4647,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -4743,7 +4743,7 @@
      },
      "expect": {
       "none": {
-       "error": "ENTITY_NOT_JOINED"
+       "error": "entity_not_joined"
       }
      }
     }
@@ -5347,7 +5347,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -5418,7 +5418,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -5502,7 +5502,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -5589,7 +5589,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -5664,7 +5664,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -5747,7 +5747,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -6073,7 +6073,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -6150,7 +6150,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -6341,7 +6341,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6421,7 +6421,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6501,7 +6501,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6692,7 +6692,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6775,7 +6775,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6853,7 +6853,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -6935,7 +6935,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -7387,7 +7387,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -7490,7 +7490,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -7573,7 +7573,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -8415,7 +8415,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -8515,7 +8515,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -8607,7 +8607,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -9427,7 +9427,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -9505,7 +9505,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -10833,7 +10833,7 @@
      },
      "expect": {
       "none": {
-       "error": "OPERATOR_NOT_ALLOWED"
+       "error": "operator_not_allowed"
       }
      }
     }
@@ -11599,7 +11599,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     },
@@ -11628,7 +11628,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     },
@@ -11657,7 +11657,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -12208,7 +12208,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     },
@@ -12243,7 +12243,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     },
@@ -12278,7 +12278,7 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID"
+       "error": "ir_invalid"
       }
      }
     }
@@ -12345,8 +12345,8 @@
      },
      "expect": {
       "none": {
-       "error": "COLUMN_ALIAS_CONFLICT",
-       "message": "COLUMN_ALIAS_CONFLICT: author.first_author is already a row name"
+       "error": "column_alias_conflict",
+       "message": "column_alias_conflict: author.first_author is already a row name"
       }
      }
     }
@@ -13531,8 +13531,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: cannot set identity column seq"
+       "error": "ir_invalid",
+       "message": "ir_invalid: cannot set identity column seq"
       }
      }
     }
@@ -13569,8 +13569,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: load of load_probe needs a value for the identity column seq"
+       "error": "ir_invalid",
+       "message": "ir_invalid: load of load_probe needs a value for the identity column seq"
       }
      }
     }
@@ -13611,8 +13611,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: set load_probe.seq to null but column is NOT NULL"
+       "error": "ir_invalid",
+       "message": "ir_invalid: set load_probe.seq to null but column is NOT NULL"
       }
      }
     }
@@ -13660,8 +13660,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: load is only valid on insert without on_duplicate"
+       "error": "ir_invalid",
+       "message": "ir_invalid: load is only valid on insert without on_duplicate"
       }
      }
     }
@@ -13708,8 +13708,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: load is only valid on insert without on_duplicate"
+       "error": "ir_invalid",
+       "message": "ir_invalid: load is only valid on insert without on_duplicate"
       }
      }
     }
@@ -13800,8 +13800,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: restart_identity of load_note, which has no identity column"
+       "error": "ir_invalid",
+       "message": "ir_invalid: restart_identity of load_note, which has no identity column"
       }
      }
     }
@@ -13842,8 +13842,8 @@
      },
      "expect": {
       "none": {
-       "error": "IR_INVALID",
-       "message": "IR_INVALID: restart_identity takes no set, rows, on_duplicate, where or optimistic"
+       "error": "ir_invalid",
+       "message": "ir_invalid: restart_identity takes no set, rows, on_duplicate, where or optimistic"
       }
      }
     }

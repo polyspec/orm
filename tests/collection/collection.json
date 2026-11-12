@@ -283,8 +283,8 @@
           ],
           "expect": {
             "none": {
-              "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: collection row identity contains SQL NULL"
+              "error": "codec_decode",
+              "message": "codec_decode: collection row identity contains SQL NULL"
             }
           }
         }

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: cccd2ffa7ed1a9a36ccff4fb3d7b185ed05d6f83e8f88a8dbdd20a43cf92014f -->
+<!-- source-sha256: 7c3f1db7610a64b8d4479014b7cc024a998accf52c0e3871f7d0cbac0e911bce -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -14,10 +14,10 @@
 - **CORE-2** 이 문서의 규칙이 기대값을 바꾸는 공유 recipe case는 코어에서 `contracts/fixtures/core/`의 case가
   `supersedes`로 그 case를 가리켜 대체한다. Rust recipe 실행기는 대체된 case 대신 대체하는 case를 실행하고, 기대값 밖의
   step이 서로 같은지 확인한다.
-- **CORE-3** 오류를 기대하는 공유 recipe case는 카탈로그의 오류 코드를 대문자로 적는다(`NO_ROWS`). Rust recipe 실행기는
-  그것을 오류 kind의 대문자 표기와 비교하고(`no_rows`는 `NO_ROWS`), 기대 메시지 `<CODE>: <text>`는 kind를 대문자로 적은
-  오류 메시지와 비교한다. 카탈로그 코드가 없는 kind(CORE-14)는 대문자로 적지 않으며, 그것을 기대하는 case는 대체하는
-  case다(CORE-2).
+- **CORE-3** 오류를 기대하는 공유 recipe case와 공유 vector는 그 kind를 코어가 쓰는 대로 소문자로(`no_rows`), 기대
+  메시지는 `<kind>: <text>`로 적고, Rust 실행기는 둘을 그대로 비교한다. 실행기 자신이 알리는 case의 언어 코드 실패는 kind가
+  아닌 실행기의 코드(`callback`, `step`, `subscriber`)를 가진다. 언어 구현은 여전히 카탈로그 코드를 대문자로
+  쓰므로(CORE-1), 그 실행기는 기대 kind를 자기 코드의 소문자와 비교한다.
 
 ## 오류
 

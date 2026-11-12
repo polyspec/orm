@@ -7,18 +7,18 @@ use std::collections::HashSet;
 pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect: &str) -> Result<Option<Vec<P>>, CatalogError> {
     row_snapshot::descriptor(metadata)?;
     if values.len() > metadata.columns.len() {
-        return Err("ROW_INSERT_INVALID: invalid assignments".into());
+        return Err("row_insert_invalid: invalid assignments".into());
     }
     tool_db::validate_param_refs(values.iter().map(|(_, value)| value), dialect).map_err(|e| e.to_string())?;
     let mut names = HashSet::new();
     let mut bytes = 0usize;
     for (name, value) in values {
-        let column = metadata.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
+        let column = metadata.columns.iter().find(|column| column.name == *name).ok_or_else(|| "row_insert_invalid: unknown column".to_owned())?;
         if !names.insert(name) || column.generated || (!column.nullable && matches!(value, P::Null(_))) {
-            return Err("ROW_INSERT_INVALID: invalid column assignment".into());
+            return Err("row_insert_invalid: invalid column assignment".into());
         }
-        if exceeds_declared_capacity(&column.native_type, &cell(value)).map_err(|error| format!("ROW_INSERT_INVALID: invalid declared capacity: {error}"))? {
-            return Err(format!("ROW_INSERT_INVALID: value exceeds the declared capacity of column \"{name}\"").into());
+        if exceeds_declared_capacity(&column.native_type, &cell(value)).map_err(|error| format!("row_insert_invalid: invalid declared capacity: {error}"))? {
+            return Err(format!("row_insert_invalid: value exceeds the declared capacity of column \"{name}\"").into());
         }
         let size = match value {
             P::S(v) | P::Decimal(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => v.len(),
@@ -36,7 +36,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
                 || {
                     let column = metadata.columns.iter().find(|column| column.name == *name).unwrap();
                     if !column.automatic_key && column.default_expression.is_none() {
-                        return Err("ROW_INSERT_IDENTITY_REQUIRED: primary key has no generator".to_owned());
+                        return Err("row_insert_identity_required: primary key has no generator".to_owned());
                     }
                     omitted.push(column);
                     Ok(None)
@@ -46,7 +46,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
         })
         .collect::<Result<Vec<_>, _>>()?;
     if dialect == "mysql" && omitted.iter().filter(|column| column.automatic_key).count() > 1 {
-        return Err("ROW_INSERT_UNSUPPORTED: multiple AUTO_INCREMENT identities".into());
+        return Err("row_insert_unsupported: multiple AUTO_INCREMENT identities".into());
     }
     let params = values.iter().map(|(_, value)| value.clone()).collect::<Vec<_>>();
     tool_db::validate_params(&params, dialect).map_err(|e| e.to_string())?;

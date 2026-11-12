@@ -281,16 +281,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             }
           }
         },
@@ -310,16 +310,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             }
           }
         },
@@ -334,16 +334,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "postgres": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message": "CONFIG: ext_account is owned by another document set"
+              "error": "config",
+              "message": "config: ext_account is owned by another document set"
             }
           }
         },

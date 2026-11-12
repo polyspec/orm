@@ -58,7 +58,7 @@ fn string(object: &Map<String, Value>, at: &str, key: &str) -> String {
 /// A panic after `REJECTED` is a request shape that Rust's typed request cannot hold: an unknown member, a member of
 /// the wrong type, or a missing required member. As a client that decodes JSON refuses such a request with IR_INVALID
 /// (docs/spec/protocol.md), the typed request cannot be built from it.
-pub const REJECTED: &str = "IR_INVALID: ";
+pub const REJECTED: &str = "ir_invalid: ";
 
 /// A text member. A non-string value cannot be held by a typed request.
 fn text(object: &Map<String, Value>, at: &str, key: &str) -> String {

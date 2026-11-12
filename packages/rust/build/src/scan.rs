@@ -137,7 +137,7 @@ pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &Hash
         let text = std::fs::read_to_string(f).map_err(|e| format!("{}: {e}", f.display()))?;
         let ast = syn::parse_file(&text).map_err(|e| {
             let at = e.span().start();
-            format!("GENERATOR_SCAN_PARSE: {}:{}:{}: {e}", f.display(), at.line, at.column + 1)
+            format!("generator_scan_parse: {}:{}:{}: {e}", f.display(), at.line, at.column + 1)
         })?;
         parsed.push(ast);
     }

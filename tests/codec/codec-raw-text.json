@@ -22,8 +22,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: json: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -37,8 +37,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -52,8 +52,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -67,8 +67,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: gz: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: gz: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -82,8 +82,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: base64: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: base64: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -95,8 +95,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -124,8 +124,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: json: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: json: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -153,8 +153,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: the text is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -182,8 +182,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: the text is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: the text is not a sequence of Unicode scalar values"
             }
           }
         }
@@ -207,8 +207,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: host input is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -224,8 +224,8 @@
           "key": "key-v1",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: host input is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -240,8 +240,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: host input is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: host input is not a sequence of Unicode scalar values"
             }
           }
         },
@@ -256,8 +256,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED",
-              "message": "CODEC_UNSUPPORTED: host style unknown"
+              "error": "codec_unsupported",
+              "message": "codec_unsupported: host style unknown"
             }
           }
         },
@@ -269,8 +269,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: blind index input is not a sequence of Unicode scalar values"
+              "error": "codec_encode",
+              "message": "codec_encode: blind index input is not a sequence of Unicode scalar values"
             }
           }
         }

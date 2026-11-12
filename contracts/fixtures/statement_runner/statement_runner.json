@@ -2718,13 +2718,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           }
         },
@@ -3763,13 +3763,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "duplicate_key"
             }
           }
         },
@@ -3898,13 +3898,13 @@
           "fail": true,
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -4790,16 +4790,16 @@
           "conflict": "retryable",
           "expect": {
             "mysql": {
-              "error": "DEADLOCK",
-              "message": "DEADLOCK: retryable"
+              "error": "deadlock",
+              "message": "deadlock: retryable"
             },
             "postgres": {
-              "error": "DEADLOCK",
-              "message": "DEADLOCK: retryable"
+              "error": "deadlock",
+              "message": "deadlock: retryable"
             },
             "sqlite": {
-              "error": "DEADLOCK",
-              "message": "DEADLOCK: retryable"
+              "error": "deadlock",
+              "message": "deadlock: retryable"
             }
           }
         },
@@ -5249,13 +5249,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONSTRAINT"
+              "error": "constraint"
             },
             "postgres": {
-              "error": "CONSTRAINT"
+              "error": "constraint"
             },
             "sqlite": {
-              "error": "CONSTRAINT"
+              "error": "constraint"
             }
           }
         },
@@ -5275,13 +5275,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             },
             "sqlite": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           }
         }

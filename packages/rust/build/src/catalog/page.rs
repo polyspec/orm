@@ -16,7 +16,7 @@ pub(super) fn validate_request(table: &TableRef, limit: usize, offset: u64) -> R
     metadata::validate_name(&table.namespace)?;
     metadata::validate_name(&table.name)?;
     if !(1..=1000).contains(&limit) || offset > 1_000_000 {
-        return Err("TABLE_PAGE_INVALID: limit requires 1..1000 and offset 0..1000000".into());
+        return Err("table_page_invalid: limit requires 1..1000 and offset 0..1000000".into());
     }
     Ok(())
 }
@@ -38,7 +38,7 @@ pub(super) async fn read(
 ) -> Result<TablePage, CatalogError> {
     let metadata = metadata::describe(connection, dialect, server, table).await?;
     if metadata.columns.is_empty() {
-        return Err("TABLE_PAGE_UNSUPPORTED: relation has no selectable columns".into());
+        return Err("table_page_unsupported: relation has no selectable columns".into());
     }
     let columns = metadata.columns.iter().map(|column| quote(&column.name, dialect)).collect::<Result<Vec<_>, _>>()?;
     let order_by = metadata.primary_key.clone();
@@ -59,10 +59,10 @@ pub(super) async fn read(
     let (result, has_more) = match read {
         Ok(page) => page,
         // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
-        Err(error) if error.message().starts_with("CATALOG_LIMIT") => return Err(error),
+        Err(error) if error.message().starts_with("catalog_limit") => return Err(error),
         Err(error) => {
             return match metadata::describe(connection, dialect, server, table).await {
-                Ok(after) if after != metadata => Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into()),
+                Ok(after) if after != metadata => Err("table_page_metadata_changed: descriptor changed during read".into()),
                 _ => Err(error),
             };
         }
@@ -79,10 +79,10 @@ fn assemble(
     offset: u64,
 ) -> Result<TablePage, CatalogError> {
     if result.columns.len() != metadata.columns.len() || result.columns.iter().zip(&metadata.columns).any(|(actual, declared)| actual.name != declared.name) {
-        return Err("TABLE_PAGE_METADATA_CHANGED: prepared columns differ from descriptor".into());
+        return Err("table_page_metadata_changed: prepared columns differ from descriptor".into());
     }
     if after != metadata {
-        return Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into());
+        return Err("table_page_metadata_changed: descriptor changed during read".into());
     }
     let order_by = metadata.primary_key.clone();
     Ok(TablePage { metadata, result, limit, offset, order_by, has_more })

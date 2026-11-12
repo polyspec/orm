@@ -60,13 +60,13 @@
           "dsn": "invalid://database",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -244,7 +244,7 @@
           "query": "_txlock=immediate",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -254,7 +254,7 @@
           "query": "timezone=Asia%2FSeoul",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -264,7 +264,7 @@
           "query": "_pragma=busy_timeout(soon)",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -373,7 +373,7 @@
           "name": "a%zzb.sqlite",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -382,7 +382,7 @@
           "name": "a%2",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -391,7 +391,7 @@
           "name": "a%00b.sqlite",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -400,7 +400,7 @@
           "name": "a%FFb.sqlite",
           "expect": {
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -513,7 +513,7 @@
           "dsn": "env:ORM_TEST_MYSQL_TLS_OTHER_CA_DSN",
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "TLS connection failed"
             }
           }
@@ -523,7 +523,7 @@
           "dsn": "env:ORM_TEST_MYSQL_TLS_MISMATCH_DSN",
           "expect": {
             "mysql": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "TLS connection failed"
             }
           }
@@ -604,7 +604,7 @@
           "dsn": "env:ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN",
           "expect": {
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "TLS connection failed"
             }
           }
@@ -614,7 +614,7 @@
           "dsn": "env:ORM_TEST_POSTGRES_TLS_MISMATCH_DSN",
           "expect": {
             "postgres": {
-              "error": "CONFIG",
+              "error": "config",
               "message_holds": "TLS connection failed"
             }
           }
@@ -636,8 +636,8 @@
           "dsn": "postgres://orm@127.0.0.1:1/orm_test?sslmode=verify-full&sslrootcert=/nonexistent/orm-ca.pem",
           "expect": {
             "postgres": {
-              "error": "CONFIG",
-              "message_holds": "CONFIG: postgres DSN sslrootcert \"/nonexistent/orm-ca.pem\" is not a readable file: "
+              "error": "config",
+              "message_holds": "config: postgres DSN sslrootcert \"/nonexistent/orm-ca.pem\" is not a readable file: "
             }
           }
         }
@@ -1625,7 +1625,7 @@
           },
           "expect": {
             "sqlite": {
-              "error": "CODEC_ENCODE"
+              "error": "codec_encode"
             }
           }
         }
@@ -1722,10 +1722,10 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 },
                 "postgres": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             }
@@ -1855,7 +1855,7 @@
               ],
               "expect": {
                 "postgres": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             }
@@ -2492,7 +2492,7 @@
               ],
               "expect": {
                 "postgres": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             }
@@ -2699,7 +2699,7 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "CANCELED",
+                  "error": "canceled",
                   "message_suffix": " (SQLITE_BUSY)"
                 }
               }
@@ -2905,7 +2905,7 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             },
@@ -3185,11 +3185,11 @@
           },
           "expect": {
             "mysql": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "read-only"
             },
             "postgres": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "read-only"
             }
           }
@@ -3296,7 +3296,7 @@
           },
           "expect": {
             "sqlite": {
-              "error": "READ_ONLY",
+              "error": "read_only",
               "message_holds": "readonly database"
             }
           }
@@ -3325,7 +3325,7 @@
           "payload": "invalid channel",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3336,7 +3336,7 @@
           "as": "never",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3347,7 +3347,7 @@
           "payload": "invalid channel",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           },
           "channel_repeat": 64
@@ -3360,7 +3360,7 @@
           "channel_repeat": 64,
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3371,7 +3371,7 @@
           "payload": "invalid channel",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           },
           "channel_repeat": 32
@@ -3384,7 +3384,7 @@
           "channel_repeat": 32,
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3395,7 +3395,7 @@
           "payload": "invalid channel",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3406,7 +3406,7 @@
           "as": "never",
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3447,7 +3447,7 @@
           "payload": "x",
           "expect": {
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           },
           "payload_repeat": 8000
@@ -3459,7 +3459,7 @@
           "payload": "x",
           "expect": {
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           },
           "payload_repeat": 8001
@@ -3471,7 +3471,7 @@
           "payload": "é",
           "expect": {
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           },
           "payload_repeat": 4000
@@ -3483,7 +3483,7 @@
           "payload": "é",
           "expect": {
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           },
           "payload_repeat": 4001
@@ -3495,7 +3495,7 @@
           "payload": "bad\u0000payload",
           "expect": {
             "postgres": {
-              "error": "DRIVER"
+              "error": "driver"
             }
           }
         },
@@ -3647,7 +3647,7 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -3713,7 +3713,7 @@
           "within_ms": 50,
           "expect": {
             "postgres": {
-              "error": "CANCELED"
+              "error": "canceled"
             }
           }
         },
@@ -3723,7 +3723,7 @@
           "within_ms": 50,
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3803,7 +3803,7 @@
           "within_ms": 5000,
           "expect": {
             "postgres": {
-              "error": "CONNECTION_LOST"
+              "error": "connection_lost"
             }
           }
         },
@@ -3813,7 +3813,7 @@
           "within_ms": 50,
           "expect": {
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -3846,10 +3846,10 @@
           "payload": "x",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         },
@@ -3860,10 +3860,10 @@
           "as": "never",
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED"
+              "error": "capability_unsupported"
             }
           }
         }

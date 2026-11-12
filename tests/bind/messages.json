@@ -320,8 +320,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -343,8 +343,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -521,8 +521,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -545,8 +545,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -569,8 +569,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -659,8 +659,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a decimal of its precision and scale"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a decimal of its precision and scale"
           }
         }
       ]
@@ -683,8 +683,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a decimal of its precision and scale"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a decimal of its precision and scale"
           }
         }
       ]
@@ -726,7 +726,7 @@
             "text": "abc"
           },
           "expect": {
-            "error": "IR_INVALID"
+            "error": "ir_invalid"
           }
         }
       ]
@@ -815,8 +815,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -839,8 +839,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -863,8 +863,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -887,8 +887,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 holds U+0000, which no varchar value holds"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 holds U+0000, which no varchar value holds"
           }
         }
       ]
@@ -955,8 +955,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 holds U+0000, which no text value holds"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 holds U+0000, which no text value holds"
           }
         }
       ]
@@ -1071,8 +1071,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1095,8 +1095,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1119,8 +1119,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1209,8 +1209,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]
@@ -1233,8 +1233,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a date value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a date value"
           }
         }
       ]
@@ -1301,8 +1301,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -1369,8 +1369,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -1437,8 +1437,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -1483,8 +1483,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -1507,8 +1507,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a time value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a time value"
           }
         }
       ]
@@ -1575,8 +1575,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1643,8 +1643,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1711,8 +1711,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1779,8 +1779,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]
@@ -1803,8 +1803,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE",
-            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
+            "error": "codec_encode",
+            "text": "codec_encode: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]
@@ -1846,8 +1846,8 @@
           ],
           "expect": {
             "none": {
-              "error": "WRITE_CONFLICT",
-              "message_holds": "WRITE_CONFLICT: people.flowmark.md:3 changed since it was read"
+              "error": "write_conflict",
+              "message_holds": "write_conflict: people.flowmark.md:3 changed since it was read"
             }
           }
         }

@@ -7,7 +7,7 @@ async fn borrowed_bind_validation_stops_at_its_count_budget() {
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let value = P::I(1);
         let error = tool_db::validate_param_refs(std::iter::repeat(&value), "postgres").unwrap_err();
-        assert!(error.to_string().contains("TOOL_BIND_LIMIT"));
+        assert!(error.to_string().contains("tool_bind_limit"));
     })
     .await
     .expect("borrowed bind deadline");

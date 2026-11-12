@@ -112,7 +112,7 @@ async fn check() {
                 .update_row(&moved, &[("n".into(), P::I(14))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
                 .await
                 .unwrap_err();
-            if !error.message().starts_with("ROW_COMMIT_REJECTED") || events.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
+            if !error.message().starts_with("row_commit_rejected") || events.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
                 commit_rejection_misclassified = true;
             }
             assert_current_row(&mut catalog, &table, &moved).await;
@@ -219,7 +219,7 @@ async fn check() {
             let error = pending.await.unwrap_err();
             let cause = error
                 .message()
-                .strip_prefix("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: ")
+                .strip_prefix("row_commit_indeterminate: commit outcome unknown; do not retry: ")
                 .expect("a terminated PostgreSQL backend leaves commit outcome indeterminate");
             assert!(
                 cause.starts_with("error returned from database:") && cause.contains("terminating connection due to administrator command"),

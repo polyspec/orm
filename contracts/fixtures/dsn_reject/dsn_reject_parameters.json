@@ -22,8 +22,8 @@
           "dsn": "mysql://root@db.local/orm_example?charset=latin1",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -41,8 +41,8 @@
           "dsn": "mysql://root@db.local/orm_example?sslmode=disable",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -60,8 +60,8 @@
           "dsn": "postgres://root@db.local/orm_example?application_name=orm",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"application_name\"; it accepts timezone, host, sslmode, sslrootcert"
+              "error": "config",
+              "message": "config: postgres DSN has the unknown parameter \"application_name\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -79,8 +79,8 @@
           "dsn": "postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"ssl-mode\"; it accepts timezone, host, sslmode, sslrootcert"
+              "error": "config",
+              "message": "config: postgres DSN has the unknown parameter \"ssl-mode\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -98,8 +98,8 @@
           "dsn": "sqlite:///tmp/orm-tls.sqlite?cache=shared",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: sqlite DSN has the unknown parameter \"cache\"; it accepts timezone, _pragma, _txlock"
+              "error": "config",
+              "message": "config: sqlite DSN has the unknown parameter \"cache\"; it accepts timezone, _pragma, _txlock"
             }
           }
         }
@@ -117,8 +117,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode%5B%5D=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"ssl-mode[]\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"ssl-mode[]\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -136,8 +136,8 @@
           "dsn": "mysql://db.example/app?extra=%ZZ",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"extra\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"extra\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -156,8 +156,8 @@
           "dsn": "mysql://root@db.local/orm_example?SSL-MODE=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"SSL-MODE\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"SSL-MODE\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -176,8 +176,8 @@
           "dsn": "mysql://root@db.local/orm_example?sslmode=VERIFY_IDENTITY&sslca=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"sslmode\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -196,8 +196,8 @@
           "dsn": "mysql://root@db.local/orm_example?tls=skip-verify",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"tls\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"tls\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -216,8 +216,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslcert=/tmp/client.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN has the unknown parameter \"sslcert\"; it accepts timezone, host, sslmode, sslrootcert"
+              "error": "config",
+              "message": "config: postgres DSN has the unknown parameter \"sslcert\"; it accepts timezone, host, sslmode, sslrootcert"
             }
           }
         }
@@ -236,8 +236,8 @@
           "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?vfs=memdb",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: sqlite DSN has the unknown parameter \"vfs\"; it accepts timezone, _pragma, _txlock"
+              "error": "config",
+              "message": "config: sqlite DSN has the unknown parameter \"vfs\"; it accepts timezone, _pragma, _txlock"
             }
           }
         }
@@ -255,8 +255,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode%ZZ=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"ssl-mode%ZZ\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"ssl-mode%ZZ\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -274,8 +274,8 @@
           "dsn": "mysql://root@db.local/orm_example?charset=a&charset=b",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -293,8 +293,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=UTC&timezone=UTC",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN repeats the parameter \"timezone\""
+              "error": "config",
+              "message": "config: mysql DSN repeats the parameter \"timezone\""
             }
           }
         }
@@ -312,8 +312,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=Asia%2FSeoul&timezone=UTC",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN repeats the parameter \"timezone\""
+              "error": "config",
+              "message": "config: mysql DSN repeats the parameter \"timezone\""
             }
           }
         }
@@ -331,8 +331,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem&ssl-mode=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN repeats the parameter \"ssl-mode\""
+              "error": "config",
+              "message": "config: mysql DSN repeats the parameter \"ssl-mode\""
             }
           }
         }
@@ -350,8 +350,8 @@
           "dsn": "mysql://root@db.local/orm_example?socket=/tmp/a.sock&socket=/tmp/b.sock",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN repeats the parameter \"socket\""
+              "error": "config",
+              "message": "config: mysql DSN repeats the parameter \"socket\""
             }
           }
         }
@@ -369,8 +369,8 @@
           "dsn": "postgres://root@db.local/orm_example?host=/tmp&host=/var/run",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN repeats the parameter \"host\""
+              "error": "config",
+              "message": "config: postgres DSN repeats the parameter \"host\""
             }
           }
         }
@@ -388,8 +388,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=%ZZ",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"timezone\" is not percent-encoded UTF-8"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"timezone\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -407,8 +407,8 @@
           "dsn": "mysql://root@db.local/orm_example?socket=/tmp/%FF.sock",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"socket\" is not percent-encoded UTF-8"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"socket\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -426,8 +426,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"timezone\" is empty"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"timezone\" is empty"
             }
           }
         }
@@ -445,8 +445,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"timezone\" is empty"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"timezone\" is empty"
             }
           }
         }
@@ -464,8 +464,8 @@
           "dsn": "mysql://root@db.local/orm_example?socket=",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"socket\" is empty"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"socket\" is empty"
             }
           }
         }
@@ -483,8 +483,8 @@
           "dsn": "mysql://root@db.local/orm_example?socket=/tmp/a%3Bdbname%3Dx",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN parameter \"socket\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: mysql DSN parameter \"socket\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -502,8 +502,8 @@
           "dsn": "postgres://root@db.local/orm_example?host=/tmp%3Bsslmode%3Ddisable",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN parameter \"host\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: postgres DSN parameter \"host\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -521,8 +521,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=/tmp/ca.pem%3Bsslmode%3Ddisable",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN parameter \"sslrootcert\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: postgres DSN parameter \"sslrootcert\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -540,8 +540,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslmode=require",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
+              "error": "config",
+              "message": "config: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
             }
           }
         }
@@ -558,8 +558,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file"
+              "error": "config",
+              "message": "config: postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file"
             }
           }
         }
@@ -576,8 +576,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslrootcert=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+              "error": "config",
+              "message": "config: postgres DSN sslrootcert needs sslmode=verify-full"
             }
           }
         }
@@ -594,8 +594,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslmode=disable&sslrootcert=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+              "error": "config",
+              "message": "config: postgres DSN sslrootcert needs sslmode=verify-full"
             }
           }
         }
@@ -613,8 +613,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslmode=verify-full&sslrootcert=ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslrootcert \"ca.pem\" is not an absolute path"
+              "error": "config",
+              "message": "config: postgres DSN sslrootcert \"ca.pem\" is not an absolute path"
             }
           }
         }
@@ -631,8 +631,8 @@
           "dsn": "postgres:///orm_example?host=/tmp&sslmode=verify-full&sslrootcert=/tmp/ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host"
+              "error": "config",
+              "message": "config: postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host"
             }
           }
         }
@@ -650,8 +650,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem&sslmode=require",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
+              "error": "config",
+              "message": "config: postgres DSN sslmode \"require\" is not supported; it accepts disable, or verify-full with sslrootcert"
             }
           }
         }
@@ -668,8 +668,8 @@
           "dsn": "postgres://root@db.local/orm_example?sslrootcert=ca.pem",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN sslrootcert needs sslmode=verify-full"
+              "error": "config",
+              "message": "config: postgres DSN sslrootcert needs sslmode=verify-full"
             }
           }
         }
@@ -688,8 +688,8 @@
           "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_pragma=foreign_keys(1)%3BATTACH",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: sqlite DSN _pragma \"foreign_keys(1);ATTACH\" is invalid"
+              "error": "config",
+              "message": "config: sqlite DSN _pragma \"foreign_keys(1);ATTACH\" is invalid"
             }
           }
         }
@@ -707,8 +707,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=UTC&",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -726,8 +726,8 @@
           "dsn": "mysql://root@db.local/orm_example?&timezone=UTC",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -745,8 +745,8 @@
           "dsn": "mysql://root@db.local/orm%3Bx",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -764,8 +764,8 @@
           "dsn": "postgres://root@db.local/orm%3Bsslmode%3Drequire",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN database \"orm;sslmode=require\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: postgres DSN database \"orm;sslmode=require\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -783,8 +783,8 @@
           "dsn": "mysql://root@db.local/orm%ZZ",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN database \"orm%ZZ\" is not percent-encoded UTF-8"
+              "error": "config",
+              "message": "config: mysql DSN database \"orm%ZZ\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -802,8 +802,8 @@
           "dsn": "postgres://root@db.local/orm%FF",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN database \"orm%FF\" is not percent-encoded UTF-8"
+              "error": "config",
+              "message": "config: postgres DSN database \"orm%FF\" is not percent-encoded UTF-8"
             }
           }
         }
@@ -821,8 +821,8 @@
           "dsn": "mysql://root@db%2Elocal/orm_example",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+              "error": "config",
+              "message": "config: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
             }
           }
         }
@@ -840,8 +840,8 @@
           "dsn": "mysql://root@db.local/orm_example?timezone=UTC#x",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has a fragment, which no connection reads"
+              "error": "config",
+              "message": "config: mysql DSN has a fragment, which no connection reads"
             }
           }
         }
@@ -859,8 +859,8 @@
           "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite#x",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: sqlite DSN has a fragment, which no connection reads"
+              "error": "config",
+              "message": "config: sqlite DSN has a fragment, which no connection reads"
             }
           }
         }
@@ -878,8 +878,8 @@
           "dsn": "markdown://127.0.0.1:4100/tracker?token=a#x",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: markdown DSN has a fragment, which no connection reads"
+              "error": "config",
+              "message": "config: markdown DSN has a fragment, which no connection reads"
             }
           }
         }
@@ -897,8 +897,8 @@
           "dsn": "mysql://root@db%2Elocal/orm%3Bx?charset=a#x",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has a fragment, which no connection reads"
+              "error": "config",
+              "message": "config: mysql DSN has a fragment, which no connection reads"
             }
           }
         }
@@ -916,8 +916,8 @@
           "dsn": "mysql://root@db%2Elocal/orm%3Bx?charset=a",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
+              "error": "config",
+              "message": "config: mysql DSN has the unknown parameter \"charset\"; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }
@@ -935,8 +935,8 @@
           "dsn": "mysql://root@db%2Elocal/orm%3Bx",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+              "error": "config",
+              "message": "config: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
             }
           }
         }
@@ -955,8 +955,8 @@
           "dsn": "mysql://root@db.local/orm%3Bx?timezone=Asia%2FSeoul",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: mysql DSN database \"orm;x\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -975,8 +975,8 @@
           "dsn": "mysql:///orm?socket=/tmp/orm.sock",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN must include host and database"
+              "error": "config",
+              "message": "config: mysql DSN must include host and database"
             }
           }
         }
@@ -995,8 +995,8 @@
           "dsn": "mysql://root@db.local/orm?socket=/tmp/orm.sock",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN socket needs the host localhost, which names the local server"
+              "error": "config",
+              "message": "config: mysql DSN socket needs the host localhost, which names the local server"
             }
           }
         }
@@ -1015,8 +1015,8 @@
           "dsn": "postgres://root@db.local/orm?host=/tmp",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN names two hosts, \"db.local\" in the URL and \"/tmp\" in the host parameter"
+              "error": "config",
+              "message": "config: postgres DSN names two hosts, \"db.local\" in the URL and \"/tmp\" in the host parameter"
             }
           }
         }
@@ -1035,8 +1035,8 @@
           "dsn": "postgres:///orm",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN must include host and database"
+              "error": "config",
+              "message": "config: postgres DSN must include host and database"
             }
           }
         }
@@ -1055,8 +1055,8 @@
           "dsn": "mysql://root@db%2Elocal/",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
+              "error": "config",
+              "message": "config: mysql DSN host \"db%2Elocal\" holds a percent escape, which no host name needs"
             }
           }
         }
@@ -1074,8 +1074,8 @@
           "dsn": "mysql://root@db.local/?socket=/tmp/orm.sock",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN socket needs the host localhost, which names the local server"
+              "error": "config",
+              "message": "config: mysql DSN socket needs the host localhost, which names the local server"
             }
           }
         }
@@ -1095,8 +1095,8 @@
           "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_pragma=x(1)%3By&timezone=Asia%2FSeoul",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
+              "error": "config",
+              "message": "config: dsn timezone \"Asia/Seoul\": every connection reads and writes datetime values in UTC"
             }
           }
         }
@@ -1116,8 +1116,8 @@
           "dsn": "sqlite:///tmp/orm-dsn-parameters.sqlite?_txlock=immediate&_pragma=x(1)%3By",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: sqlite DSN _pragma \"x(1);y\" is invalid"
+              "error": "config",
+              "message": "config: sqlite DSN _pragma \"x(1);y\" is invalid"
             }
           }
         }
@@ -1136,8 +1136,8 @@
           "dsn": "mysql://root@db.local//orm;x",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: mysql DSN database \"/orm;x\" holds a character that a connection string cannot hold"
+              "error": "config",
+              "message": "config: mysql DSN database \"/orm;x\" holds a character that a connection string cannot hold"
             }
           }
         }
@@ -1156,8 +1156,8 @@
           "dsn": "postgres://root@db.local/x/../%zz",
           "expect": {
             "none": {
-              "error": "CONFIG",
-              "message": "CONFIG: postgres DSN database \"x/../%zz\" is not percent-encoded UTF-8"
+              "error": "config",
+              "message": "config: postgres DSN database \"x/../%zz\" is not percent-encoded UTF-8"
             }
           }
         }

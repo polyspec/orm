@@ -316,13 +316,13 @@
           "batch": 0,
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -2985,15 +2985,15 @@
           },
           "expect": {
             "mysql": {
-              "error": "IR_INVALID",
+              "error": "ir_invalid",
               "message_suffix": "required column ranked_task.position is not set"
             },
             "postgres": {
-              "error": "IR_INVALID",
+              "error": "ir_invalid",
               "message_suffix": "required column ranked_task.position is not set"
             },
             "sqlite": {
-              "error": "IR_INVALID",
+              "error": "ir_invalid",
               "message_suffix": "required column ranked_task.position is not set"
             }
           }

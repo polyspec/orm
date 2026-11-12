@@ -40,11 +40,11 @@ async fn row_baseline_rejects_what_only_the_rust_forms_hold() {
         assert!(!format!("{snapshot:?}").contains("private-original"));
         let mut ambiguous = page.result.clone();
         ambiguous.rows.push(ambiguous.rows[0].clone());
-        assert!(snapshot.check_current(&page.metadata, &ambiguous).unwrap_err().message().starts_with("ROW_IDENTITY_AMBIGUOUS"));
+        assert!(snapshot.check_current(&page.metadata, &ambiguous).unwrap_err().message().starts_with("row_identity_ambiguous"));
         let mut huge = fixture();
         huge.result.rows[0][1] = GridCell::Text("private".repeat(2 * 1024 * 1024));
         let error = RowSnapshot::from_page(&huge, 0).unwrap_err();
-        assert!(error.message().starts_with("ROW_SNAPSHOT_LIMIT") && !error.message().contains("private"));
+        assert!(error.message().starts_with("row_snapshot_limit") && !error.message().contains("private"));
     })
     .await
     .expect("row snapshot validation deadline");

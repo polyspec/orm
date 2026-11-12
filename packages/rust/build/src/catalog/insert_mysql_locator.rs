@@ -37,7 +37,7 @@ impl Locator {
     }
     pub(super) async fn require_absent(&self, connection: &mut Conn) -> Result<(), CatalogError> {
         if !self.read(connection).await?.rows.is_empty() {
-            return Err("ROW_IDENTITY_AMBIGUOUS: generated identity locator already matches rows".into());
+            return Err("row_identity_ambiguous: generated identity locator already matches rows".into());
         }
         Ok(())
     }
@@ -46,14 +46,14 @@ impl Locator {
         super::temporal::declared_precision(metadata, "mysql", &[], &mut result)?;
         row_snapshot::projection(metadata, &result)?;
         if result.rows.len() != 1 {
-            return Err("ROW_IDENTITY_AMBIGUOUS: expected exactly one inserted locator row".into());
+            return Err("row_identity_ambiguous: expected exactly one inserted locator row".into());
         }
         row_snapshot::row(metadata, &result.rows[0])?;
         row_snapshot::revision(metadata, &result.rows[0])?;
         for (name, value) in values {
             let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
             if result.rows[0][index] != cell(value) {
-                return Err("ROW_WRITE_MISMATCH: locator values differ from requested values".into());
+                return Err("row_write_mismatch: locator values differ from requested values".into());
             }
         }
         row_snapshot::key_params(metadata, &result.rows[0])

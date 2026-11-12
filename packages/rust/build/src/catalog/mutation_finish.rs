@@ -15,7 +15,7 @@ pub(super) async fn finish<T: Send + 'static>(
         Err(error) => {
             if connection.rollback().await.is_err() {
                 publish(MutationPhase::Indeterminate);
-                return Err("ROW_ROLLBACK_FAILED: rollback acknowledgement failed".into());
+                return Err("row_rollback_failed: rollback acknowledgement failed".into());
             }
             publish(MutationPhase::RolledBack);
             return Err(error);
@@ -40,18 +40,18 @@ pub(super) async fn finish<T: Send + 'static>(
             Err(error) if explicitly_rejected(&error) => {
                 if connection.rollback().await.is_err() {
                     publish(MutationPhase::Indeterminate);
-                    return Err(format!("ROW_COMMIT_INDETERMINATE: rejection cleanup unconfirmed; do not retry: {error}").into());
+                    return Err(format!("row_commit_indeterminate: rejection cleanup unconfirmed; do not retry: {error}").into());
                 }
                 publish(MutationPhase::RolledBack);
-                Err(format!("ROW_COMMIT_REJECTED: native commit rejected: {error}").into())
+                Err(format!("row_commit_rejected: native commit rejected: {error}").into())
             }
             Err(error) => {
                 publish(MutationPhase::Indeterminate);
-                Err(format!("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: {error}").into())
+                Err(format!("row_commit_indeterminate: commit outcome unknown; do not retry: {error}").into())
             }
         }
     });
-    task.await.map_err(|error| format!("ROW_COMMIT_INDETERMINATE: commit owner interrupted; do not retry: {error}"))?
+    task.await.map_err(|error| format!("row_commit_indeterminate: commit owner interrupted; do not retry: {error}"))?
 }
 fn explicitly_rejected(error: &sqlx::Error) -> bool {
     // A constraint that the server checks at the commit rejects the commit on every database.
@@ -62,7 +62,7 @@ fn explicitly_rejected(error: &sqlx::Error) -> bool {
     if error
         .as_database_error()
         .and_then(|error| error.try_downcast_ref::<polyspec_orm::markdown::MarkdownServerError>())
-        .is_some_and(|error| error.code() == crate::catalog::code(polyspec_orm::Kind::Deadlock))
+        .is_some_and(|error| error.code() == "DEADLOCK")
     {
         return true;
     }

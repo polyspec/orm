@@ -14,7 +14,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
         .any(|name| metadata.columns.iter().any(|column| column.name == *name && column.automatic_key) && !values.iter().any(|(column, _)| column == name));
     let (affected, identity) = connection.mysql_insert(sql, params).await.map_err(super::catalog_write_error)?;
     if affected != 1 || (auto && identity == 0) {
-        return Err("ROW_WRITE_MISMATCH: insert acknowledgement mismatch".into());
+        return Err("row_write_mismatch: insert acknowledgement mismatch".into());
     }
     let mut bound = Vec::new();
     let mut predicates = Vec::new();
@@ -28,7 +28,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
             let value = if column.native_type.to_ascii_lowercase().contains("unsigned") {
                 P::Unsigned(identity)
             } else {
-                P::I(i64::try_from(identity).map_err(|error| format!("ROW_WRITE_MISMATCH: signed identity overflow: {error}"))?)
+                P::I(i64::try_from(identity).map_err(|error| format!("row_write_mismatch: signed identity overflow: {error}"))?)
             };
             bound.push(value);
             predicates.push(format!("{quoted}=?"));
@@ -50,13 +50,13 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
     .await?;
     row_snapshot::projection(metadata, &result)?;
     if result.rows.len() != 1 {
-        return Err("ROW_WRITE_MISMATCH: expected one generated-key row".into());
+        return Err("row_write_mismatch: expected one generated-key row".into());
     }
     row_snapshot::row(metadata, &result.rows[0])?;
     for (name, value) in values {
         let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
         if result.rows[0][index] != cell(value) {
-            return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ").into());
+            return Err(format!("row_write_mismatch: stored inserted values of \"{name}\" differ").into());
         }
     }
     row_snapshot::key_params(metadata, &result.rows[0])

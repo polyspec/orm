@@ -99,13 +99,13 @@
           "lock": "update",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           },
           "columns": [
@@ -232,13 +232,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -336,13 +336,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             }
@@ -468,13 +468,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -502,13 +502,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             }
@@ -677,13 +677,13 @@
           "model": "CompositeAccount",
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -726,13 +726,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -1121,13 +1121,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -1152,13 +1152,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -1183,13 +1183,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         },
@@ -1214,13 +1214,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "config"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "config"
             }
           }
         }
@@ -1336,10 +1336,10 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "LOCK_NOT_AVAILABLE"
+                  "error": "lock_not_available"
                 },
                 "postgres": {
-                  "error": "LOCK_NOT_AVAILABLE"
+                  "error": "lock_not_available"
                 }
               }
             },
@@ -1371,10 +1371,10 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "LOCK_NOT_AVAILABLE"
+                  "error": "lock_not_available"
                 },
                 "postgres": {
-                  "error": "LOCK_NOT_AVAILABLE"
+                  "error": "lock_not_available"
                 }
               }
             }
@@ -1456,13 +1456,13 @@
               "steps": [],
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -1493,13 +1493,13 @@
               "steps": [],
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -1530,13 +1530,13 @@
               "steps": [],
               "expect": {
                 "mysql": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "postgres": {
-                  "error": "CONFIG"
+                  "error": "config"
                 },
                 "sqlite": {
-                  "error": "CONFIG"
+                  "error": "config"
                 }
               }
             },
@@ -1638,13 +1638,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             },
@@ -1910,13 +1910,13 @@
               "connection": "connection",
               "expect": {
                 "mysql": {
-                  "error": "READ_ONLY"
+                  "error": "read_only"
                 },
                 "postgres": {
-                  "error": "READ_ONLY"
+                  "error": "read_only"
                 },
                 "sqlite": {
-                  "error": "READ_ONLY"
+                  "error": "read_only"
                 }
               }
             }
@@ -1988,7 +1988,7 @@
           "steps": [],
           "expect": {
             "mysql": {
-              "error": "CAPABILITY_UNSUPPORTED",
+              "error": "capability_unsupported",
               "message_holds": "transaction timeoutMs is supported only by postgres"
             },
             "postgres": {
@@ -1997,7 +1997,7 @@
               }
             },
             "sqlite": {
-              "error": "CAPABILITY_UNSUPPORTED",
+              "error": "capability_unsupported",
               "message_holds": "transaction timeoutMs is supported only by postgres"
             }
           }
@@ -2180,7 +2180,7 @@
               ],
               "expect": {
                 "postgres": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             }
@@ -2333,7 +2333,7 @@
               },
               "expect": {
                 "mysql": {
-                  "error": "CANCELED",
+                  "error": "canceled",
                   "driver_cause": true,
                   "message_holds": "Lock wait timeout exceeded"
                 }
@@ -2563,13 +2563,13 @@
           "steps": [],
           "expect": {
             "mysql": {
-              "error": "DEADLOCK"
+              "error": "deadlock"
             },
             "postgres": {
-              "error": "DEADLOCK"
+              "error": "deadlock"
             },
             "sqlite": {
-              "error": "DEADLOCK"
+              "error": "deadlock"
             }
           }
         },
@@ -2681,7 +2681,7 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             },
@@ -2888,12 +2888,12 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             },
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             }
@@ -3043,12 +3043,12 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             },
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             },
@@ -3178,12 +3178,12 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             },
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
               "rollback": "CONNECTION_LOST"
             }
@@ -3249,7 +3249,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "rollback probe ended the transaction",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
             }
@@ -3338,7 +3338,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "DRIVER",
+              "error": "driver",
               "message_holds": "rollback probe ended the transaction",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
             }
@@ -3424,19 +3424,19 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
             },
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
             },
             "sqlite": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
@@ -3494,13 +3494,13 @@
           ],
           "expect": {
             "mysql": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -3592,13 +3592,13 @@
               ],
               "expect": {
                 "mysql": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "postgres": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 },
                 "sqlite": {
-                  "error": "CALLBACK"
+                  "error": "callback"
                 }
               }
             }
@@ -3672,19 +3672,19 @@
           ],
           "expect": {
             "mysql": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
             },
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
             },
             "sqlite": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
@@ -3797,10 +3797,10 @@
           ],
           "expect": {
             "postgres": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             },
             "sqlite": {
-              "error": "FOREIGN_KEY"
+              "error": "foreign_key"
             }
           }
         },
@@ -3850,13 +3850,13 @@
           ],
           "expect": {
             "postgres": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
             },
             "sqlite": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
@@ -3887,10 +3887,10 @@
           ],
           "expect": {
             "postgres": {
-              "error": "CALLBACK"
+              "error": "callback"
             },
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -3986,7 +3986,7 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "CANCELED"
+                  "error": "canceled"
                 }
               }
             },
@@ -4043,7 +4043,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "ROLLBACK",
+              "error": "rollback_failed",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
               "rollback": "FAULT",
               "keeps_callback": true
@@ -4074,7 +4074,7 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "CALLBACK"
+              "error": "callback"
             }
           }
         },
@@ -4115,7 +4115,7 @@
         {
           "op": "fault.next_statement",
           "connection": "connection",
-          "code": "DRIVER",
+          "code": "driver",
           "message": "the insert is refused"
         },
         {
@@ -4140,16 +4140,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "postgres": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "sqlite": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             }
           }
         },
@@ -4386,7 +4386,7 @@
         {
           "op": "fault.next_statement",
           "connection": "connection",
-          "code": "DRIVER",
+          "code": "driver",
           "message": "the insert is refused"
         },
         {
@@ -4406,16 +4406,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "postgres": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "sqlite": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             }
           }
         },
@@ -4482,7 +4482,7 @@
         {
           "op": "fault.next_statement",
           "connection": "connection",
-          "code": "DRIVER",
+          "code": "driver",
           "message": "the insert is refused"
         },
         {
@@ -4513,16 +4513,16 @@
           ],
           "expect": {
             "mysql": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "postgres": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             },
             "sqlite": {
-              "error": "DRIVER",
-              "message": "DRIVER: the insert is refused"
+              "error": "driver",
+              "message": "driver: the insert is refused"
             }
           },
           "retry": 0

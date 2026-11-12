@@ -16,10 +16,11 @@ the core that differ from the rules that the language implementations of `packag
 - **CORE-2** A shared recipe case whose expectation a rule of this document changes is superseded for the core by a case
   of `contracts/fixtures/core/` that names it in `supersedes`. The Rust recipe runner runs the superseding case in place of
   the case it supersedes, and checks that their steps, apart from the expectations, are the same.
-- **CORE-3** A shared recipe case that expects an error writes the error code of the catalog in capitals (`NO_ROWS`). The
-  Rust recipe runner compares it with the kind of the error written in capitals (`no_rows` is `NO_ROWS`), and an expected
-  message `<CODE>: <text>` with the message of the error whose kind it writes in capitals. A kind that no catalog code
-  names (CORE-14) is never written in capitals: a case that expects it is a superseding case (CORE-2).
+- **CORE-3** A shared recipe case and a shared vector that expect an error write its kind as the core writes it, in lower
+  case (`no_rows`), and an expected message as `<kind>: <text>`; the Rust runners compare both as they are. A failure of
+  the language code of a case that the runner itself reports has a code of the runner that is no kind (`callback`,
+  `step`, `subscriber`). The language implementations still write the codes of the catalog in capitals (CORE-1); their
+  runners compare an expected kind with their code in lower case.
 
 ## Errors
 

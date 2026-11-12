@@ -16,7 +16,7 @@
           "column": "slots.i64_value",
           "operator": "gt_method",
           "params": [{"array": [{"int": "5"}, {"int": "20"}]}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     },
@@ -29,7 +29,7 @@
           "column": "slots.varchar_null_value",
           "operator": "gt_method",
           "params": [{"nil": true}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     },
@@ -42,7 +42,7 @@
           "column": "slots.i64_value",
           "operator": "eq",
           "params": [{"nil": true}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     },
@@ -55,7 +55,7 @@
           "column": "slots.i64_value",
           "operator": "eq_method",
           "params": [{"nil": true}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     },
@@ -68,7 +68,7 @@
           "column": "slots.i64_value",
           "operator": "ne_method",
           "params": [{"nil": true}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     },
@@ -81,7 +81,7 @@
           "column": "slots.i64_value",
           "operator": "new_method",
           "params": [{"int": "1"}],
-          "expect": {"error": "CONFIG"}
+          "expect": {"error": "config"}
         }
       ]
     }

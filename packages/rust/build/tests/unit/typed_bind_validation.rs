@@ -4,7 +4,7 @@ use super::*;
 fn decimal_parse_preserves_native_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = decimal("private-decimal").expect_err("invalid decimal must fail").to_string();
-    assert!(error.contains("TOOL_BIND_INVALID: unsupported or invalid native bind: "), "{error}");
+    assert!(error.contains("tool_bind_invalid: unsupported or invalid native bind: "), "{error}");
     assert!(!error.contains("private-decimal"), "{error}");
 }
 
@@ -13,7 +13,7 @@ fn temporal_parse_preserves_native_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for error in [date("private-date").unwrap_err(), time("private-time").unwrap_err(), datetime("private-datetime").unwrap_err()] {
         let message = error.to_string();
-        assert!(message.contains("TOOL_BIND_INVALID: unsupported or invalid native bind: "), "{message}");
+        assert!(message.contains("tool_bind_invalid: unsupported or invalid native bind: "), "{message}");
         assert!(!message.contains("private-"), "{message}");
     }
 }
@@ -25,15 +25,15 @@ async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for dialect in ["mysql", "postgres", "sqlite"] {
             assert!(validate(&vec![P::Null(ParamType::Text); 65535], dialect).is_ok());
-            assert!(validate(&vec![P::Null(ParamType::Text); 65536], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
+            assert!(validate(&vec![P::Null(ParamType::Text); 65536], dialect).unwrap_err().to_string().contains("tool_bind_limit"));
             let exact = P::S("x".repeat(16 * 1024 * 1024));
             assert!(validate(std::slice::from_ref(&exact), dialect).is_ok());
-            assert!(validate(&[exact, P::I(1)], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
-            assert!(validate(&[P::Binary(vec![0; 16 * 1024 * 1024 + 1])], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
+            assert!(validate(&[exact, P::I(1)], dialect).unwrap_err().to_string().contains("tool_bind_limit"));
+            assert!(validate(&[P::Binary(vec![0; 16 * 1024 * 1024 + 1])], dialect).unwrap_err().to_string().contains("tool_bind_limit"));
         }
         for value in ["", "01", "-", "+1", "1.", "1e3", "NaN", "Infinity", "private-decimal"] {
             let error = validate(&[P::Decimal(value.into())], "postgres").unwrap_err().to_string();
-            assert!(error.contains("TOOL_BIND_INVALID") && !error.contains("private-decimal"));
+            assert!(error.contains("tool_bind_invalid") && !error.contains("private-decimal"));
         }
         for value in ["0", "-0", "100.23000", "-12345678901234567890.00001"] {
             assert!(validate(&[P::Decimal(value.into())], "postgres").is_ok());
@@ -89,13 +89,13 @@ fn mysql_and_postgres_share_typed_binding_with_unsigned_policy() {
         Ok(_) => panic!("PostgreSQL must reject unsigned values"),
         Err(error) => error.to_string(),
     };
-    assert!(error.contains("TOOL_BIND_INVALID"), "{error}");
+    assert!(error.contains("tool_bind_invalid"), "{error}");
     assert!(!error.contains("9"), "{error}");
     let null_unsigned_error = match crate::tool_db::binds::postgres(sqlx::query("SELECT $1"), &[P::Null(ParamType::Unsigned)]) {
         Ok(_) => panic!("PostgreSQL must reject null unsigned values"),
         Err(error) => error.to_string(),
     };
-    assert!(null_unsigned_error.contains("TOOL_BIND_INVALID"), "{null_unsigned_error}");
+    assert!(null_unsigned_error.contains("tool_bind_invalid"), "{null_unsigned_error}");
 
     let valid = [P::S("value".into()), P::I(7)];
     let mut postgres = crate::tool_db::binds::postgres(sqlx::query("SELECT $1, $2"), &valid).unwrap();

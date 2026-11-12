@@ -217,7 +217,7 @@
           ],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["1:1 header"]
             }
           }
@@ -239,7 +239,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["1:1 header"]
             }
           }
@@ -273,7 +273,7 @@
           ],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["1:1 header"]
             }
           }
@@ -298,7 +298,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["3:7 key"]
             }
           }
@@ -332,7 +332,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["3:7 key", "7:7 key", "3:7 key"]
             }
           }
@@ -365,7 +365,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "message": "4:7 type: document first: type \"nosuchtype\" is not a dbspec type; 5:9 type: document second: varchar(n) needs 1 <= n <= 16383"
             }
           }
@@ -400,7 +400,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["1:10 name.duplicate"]
             }
           }
@@ -419,7 +419,7 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID",
+              "error": "schema_invalid",
               "diagnostics": ["1:1 header"]
             }
           }

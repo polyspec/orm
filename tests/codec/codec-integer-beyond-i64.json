@@ -22,8 +22,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -37,8 +37,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: integer is outside the i64 range"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -59,8 +59,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -81,8 +81,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: yaml: integer is outside the i64 range"
+              "error": "codec_encode",
+              "message": "codec_encode: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -96,8 +96,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE",
-              "message": "CODEC_ENCODE: serialize: integer is outside the i64 range"
+              "error": "codec_encode",
+              "message": "codec_encode: serialize: integer is outside the i64 range"
             }
           }
         }

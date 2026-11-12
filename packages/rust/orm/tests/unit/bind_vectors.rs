@@ -85,7 +85,7 @@ fn bind_vectors() {
                     None => check_assign(0, &value, &slot).and_then(|()| check_param(0, &value, &slot, &Zone)).map(|()| value.clone()),
                 };
                 let ok = match (&got, c.get("code")) {
-                    (Err(error), Some(want)) => want.as_str() == Some(error.kind().as_str().to_ascii_uppercase().as_str()),
+                    (Err(error), Some(want)) => want.as_str() == Some(error.kind().as_str()),
                     (Ok(bound), None) => format!("{bound:?}") == format!("{:?}", vector_value(&c["bound"])),
                     _ => false,
                 };
@@ -100,7 +100,7 @@ fn bind_vectors() {
     assert!(!flagged.is_empty(), "the native time vectors must flag that Rust has no host value");
     assert_eq!(no_host, flagged, "the cases without a Rust host value are exactly the vectors that flag it");
     for c in cases.iter().filter(|c| c["rust"] == "no-host-value") {
-        assert_eq!(c["code"], "CODEC_ENCODE", "{}: a native time is refused with CODEC_ENCODE", c["name"]);
+        assert_eq!(c["code"], "codec_encode", "{}: a native time is refused with codec_encode", c["name"]);
     }
     assert!(failed.is_empty(), "{}", failed.join("\n"));
 }

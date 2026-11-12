@@ -86,7 +86,7 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, ModelError
                             }
                             first?;
                             let second = write_account_name(&conn, keys[1 - index], &name).await;
-                            if first_attempt && second.as_ref().is_err_and(|error| error.code() == "DEADLOCK") {
+                            if first_attempt && second.as_ref().is_err_and(|error| error.code() == "deadlock") {
                                 deadlocks.set(1);
                             }
                             second

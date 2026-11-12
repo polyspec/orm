@@ -222,8 +222,8 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
         Value::Null => Ok(0),
         value => match value.as_u64().map(u32::try_from) {
             Some(Ok(count)) => Ok(count),
-            Some(Err(error)) => Err(("STEP".to_owned(), format!("{name} {value} is not a u32: {error}"))),
-            None => Err(("STEP".to_owned(), format!("{name} {value} is not a u32"))),
+            Some(Err(error)) => Err(("step".to_owned(), format!("{name} {value} is not a u32: {error}"))),
+            None => Err(("step".to_owned(), format!("{name} {value} is not a u32"))),
         },
     };
     let aes_keys = config["aes_keys"]
@@ -231,7 +231,7 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
         .into_iter()
         .flatten()
         .map(|(version, key)| {
-            let number = version.parse::<i32>().map_err(|error| ("STEP".to_owned(), format!("aes_keys version {version}: {error}")))?;
+            let number = version.parse::<i32>().map_err(|error| ("step".to_owned(), format!("aes_keys version {version}: {error}")))?;
             Ok((number, key.as_str().unwrap_or_default().to_owned()))
         })
         .collect::<Result<_, (String, String)>>()?;
@@ -276,7 +276,7 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
                         })
                         .collect();
                     if rows.len() != 1 || got != want {
-                        return Err(("STEP".to_owned(), format!("{} returned {rows:?}, want {want:?}", config["session_read"]["sql"])));
+                        return Err(("step".to_owned(), format!("{} returned {rows:?}, want {want:?}", config["session_read"]["sql"])));
                     }
                 }
                 Some(Err(error)) => return Err((error.code().to_owned(), error.to_string())),
@@ -287,7 +287,7 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
                     let version = rows.first().and_then(|row| row.get(1));
                     let held = matches!(version, Some(Val::Str(text)) if text == "TLSv1.2" || text == "TLSv1.3");
                     if !held {
-                        return Err(("STEP".to_owned(), format!("the connection has Ssl_version {version:?}, want TLSv1.2 or TLSv1.3")));
+                        return Err(("step".to_owned(), format!("the connection has Ssl_version {version:?}, want TLSv1.2 or TLSv1.3")));
                     }
                 }
                 Some(Err(error)) => return Err((error.code().to_owned(), error.to_string())),
@@ -295,7 +295,7 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
             }
             match answer {
                 Ok(rows) if matches!(rows.as_slice(), [row] if matches!(row.as_slice(), [Val::I64(1)])) => Ok(driver),
-                Ok(rows) => Err(("STEP".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
+                Ok(rows) => Err(("step".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
                 Err(error) => Err((error.code().to_owned(), error.to_string())),
             }
         }
@@ -1322,7 +1322,7 @@ fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
         Err(payload) => {
             let message = payload.downcast_ref::<String>().cloned().unwrap_or_default();
             match message.strip_prefix(ir_request::REJECTED) {
-                Some(rest) => Err(("IR_INVALID".to_owned(), format!("IR_INVALID: {rest}"))),
+                Some(rest) => Err(("ir_invalid".to_owned(), format!("ir_invalid: {rest}"))),
                 None => std::panic::resume_unwind(payload),
             }
         }
@@ -3015,7 +3015,7 @@ mod database {
     /// The message of the error that a transaction callback returns when its op has fail: true.
     const CALLBACK_FAILED: &str = "statement events recipe callback failed";
     /// The expect code of that callback error; it is not an orm error code.
-    const CALLBACK: &str = "CALLBACK";
+    const CALLBACK: &str = "callback";
 
     /// The publisher of the phases of a catalog mutation, as the catalog mutation methods take it.
     type Publish = Arc<dyn Fn(MutationPhase) + Send + Sync>;
@@ -4016,7 +4016,7 @@ mod database {
 
     /// The open catalog connection of a case, or the CATALOG_CLOSED error of a step after catalog.close.
     fn live(catalog: &mut Option<CatalogConnection>) -> Result<&mut CatalogConnection, Failure> {
-        catalog.as_mut().ok_or_else(|| Failure::Call("CATALOG_CLOSED: the catalog connection is closed".into()))
+        catalog.as_mut().ok_or_else(|| Failure::Call("catalog_closed: the catalog connection is closed".into()))
     }
 
     /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
@@ -4199,7 +4199,7 @@ mod database {
                     TransactionOnceError::Orm(error) => orm(error),
                     TransactionOnceError::Rollback { callback, rollback } if callback.starts_with(UNEXPECTED_ERROR) || callback == CALLBACK_FAILED => {
                         let callback = callback.strip_prefix(UNEXPECTED_ERROR).unwrap_or(&callback);
-                        Failure::Call(format!("ROLLBACK: transaction failed ({callback}) and rollback failed ({rollback})"))
+                        Failure::Call(format!("rollback_failed: transaction failed ({callback}) and rollback failed ({rollback})"))
                     }
                     TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
                 })?;
@@ -4286,7 +4286,7 @@ mod database {
                         if event.kind == kind {
                             return Err(match &refusal {
                                 Some((code, msg)) => crate::recipe_error::error_of_code(code, msg.clone()),
-                                None => crate::recipe_error::runner_error("SUBSCRIBER", "subscriber refused the event"),
+                                None => crate::recipe_error::runner_error("subscriber", "subscriber refused the event"),
                             });
                         }
                         Ok(())
@@ -7381,7 +7381,7 @@ mod tables {
 
         async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, ModelError> {
             let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
-                Arc::new(|| Err(crate::recipe_error::runner_error("CALLBACK", "the audit source failed")))
+                Arc::new(|| Err(crate::recipe_error::runner_error("callback", "the audit source failed")))
             } else {
                 let values = pairs(&source["values"])?;
                 Arc::new(move || Ok(values.clone()))
@@ -7812,7 +7812,7 @@ mod tables {
                     }
                 }
                 ("fail", _) => return Err(crate::recipe_error::error_of_code(&action.code, format!("request hook refused {}", request.kind))),
-                (other, _) => return Err(crate::recipe_error::runner_error("STEP", format!("hook action {other} has no column value"))),
+                (other, _) => return Err(crate::recipe_error::runner_error("step", format!("hook action {other} has no column value"))),
             }
         }
         Ok(())

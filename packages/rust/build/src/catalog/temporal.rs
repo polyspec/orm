@@ -261,7 +261,7 @@ pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &Ta
             crate::tool_db::Val::Text(text) => text.clone(),
             _ => {
                 return Err(format!(
-                    "TABLE_METADATA_INVALID: the definition of table {} is not one text",
+                    "table_metadata_invalid: the definition of table {} is not one text",
                     polyspec_orm_schema::message::Quoted(&metadata.table.name)
                 )
                 .into())
@@ -269,7 +269,7 @@ pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &Ta
         },
         _ => {
             return Err(format!(
-                "TABLE_METADATA_INVALID: the definition of table {} is not one text",
+                "table_metadata_invalid: the definition of table {} is not one text",
                 polyspec_orm_schema::message::Quoted(&metadata.table.name)
             )
             .into())
@@ -299,7 +299,7 @@ pub(super) async fn check_write_precision(connection: &mut Conn, metadata: &Tabl
         let Some((_, precision, declared)) = temporal_kind(&metadata.columns[index], dialect, checks[index]) else { continue };
         let Some((_, fraction)) = text.split_once('.') else { continue };
         if declared && fraction.get(precision..).is_some_and(|rest| rest.bytes().any(|digit| digit != b'0')) {
-            return Err(format!("CODEC_ENCODE: temporal value \"{text}\" has more fraction digits than its precision {precision}").into());
+            return Err(format!("codec_encode: temporal value \"{text}\" has more fraction digits than its precision {precision}").into());
         }
     }
     Ok(())
@@ -428,10 +428,10 @@ mod tests {
     #[test]
     fn a_described_refusal_names_the_position_of_its_column() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(refused(value::BOOLEAN, 1).message(), "CATALOG_VALUE: column 2: a boolean column holds a value that is not a boolean");
+        assert_eq!(refused(value::BOOLEAN, 1).message(), "catalog_value: column 2: a boolean column holds a value that is not a boolean");
         assert_eq!(
             refused(value::FRACTION_PAST_PRECISION, 0).message(),
-            "GRID_TEMPORAL_PRECISION: column 1: temporal value has more fraction digits than its precision"
+            "grid_temporal_precision: column 1: temporal value has more fraction digits than its precision"
         );
     }
 }

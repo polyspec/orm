@@ -24,7 +24,7 @@ pub(super) fn columns<'a>(statement: usize, values: impl IntoIterator<Item = (&'
     Ok(result)
 }
 fn error() -> sqlx::Error {
-    sqlx::Error::Decode("TOOL_QUERY_COLUMNS: column metadata budget exceeded".into())
+    sqlx::Error::Decode("tool_query_columns: column metadata budget exceeded".into())
 }
 
 #[cfg(test)]
