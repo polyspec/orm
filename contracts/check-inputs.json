@@ -900,6 +900,19 @@
       ],
       "inputs": []
     },
+    "rust-lock-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "benchmarks/rust/Cargo.toml",
+        "benchmarks/rust/Cargo.lock",
+        "packages/rust/**/Cargo.toml",
+        "packages/rust/Cargo.lock",
+        "packages/rust/testing/interfaces/Cargo.lock"
+      ]
+    },
     "rust-150-check": {
       "scope": "owner",
       "needs": [
