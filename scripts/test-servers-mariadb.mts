@@ -7,7 +7,7 @@
 // data directories under .runtime/servers, their own four free ports, their own lease directory and the environment file
 // .runtime/servers/mariadb.env, which WITH_MARIADB_ENV of the Makefile reads.
 //
-// The servers are those of MARIADB_VERSION (scripts/mariadb-build.mts) and are started from the programs on PATH: the Makefile
+// The servers are a release of MARIADB_SERIES (scripts/mariadb-build.mts) and are started from the programs on PATH: the Makefile
 // puts the bin folder of the local build first, and on the CI runner they are the programs of the Ubuntu packages. They take the
 // settings of the MySQL servers wherever MariaDB has them: lower_case_table_names=1, the server zone Asia/Seoul, binary logging
 // with trust-function-creators on, the time zone tables, the users orm and the TLS files, so a case meets the same server
@@ -15,7 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MARIADB_VERSION, MARIADB_VERSION_LINE } from './mariadb-build.mts';
+import { MARIADB_SERIES, MARIADB_SERIES_LINE, MARIADB_VERSION } from './mariadb-build.mts';
 import {
   checkedPort, holdExclusiveLease, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
   type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopServerProcess, TestServerError,
@@ -167,11 +167,12 @@ function mariadbTls(p: Paths): void {
   issueTls(dir, [['mariadb', MYSQL_TLS_SERVER_NAMES.mysql], ['mariadb-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]]);
 }
 
-// mariadbVersion requires the mariadbd on PATH to be MARIADB_VERSION.
+// mariadbVersion requires the mariadbd on PATH to be a release of MARIADB_SERIES: the local build of MARIADB_VERSION or the
+// newest package of the series on the CI runner.
 function mariadbVersion(): void {
   const line = spawnSync('mariadbd', ['--version'], { encoding: 'utf8' }).stdout ?? '';
-  if (!MARIADB_VERSION_LINE.test(line))
-    throw new TestServerError(`test-servers: mariadbd on PATH prints ${JSON.stringify(line.trim())}, not MariaDB ${MARIADB_VERSION}; run make orm-install-mariadb`);
+  if (!MARIADB_SERIES_LINE.test(line))
+    throw new TestServerError(`test-servers: mariadbd on PATH prints ${JSON.stringify(line.trim())}, not MariaDB ${MARIADB_SERIES}; run make orm-install-mariadb`);
 }
 
 // ROOT_TCP_SQL gives root the host 127.0.0.1, by which every DSN of the environment reaches it over TCP: mariadb-install-db creates
