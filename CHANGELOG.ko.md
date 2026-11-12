@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7a71d75a586e438b80c6a99fe5f3f44ed27c5d005bdbb472d8e7780db5699ef0 -->
+<!-- source-sha256: 93fffc87bd1ebfb52fc99bdeaa6a7a102abd9ff4209ae2a73ceb97e42be10619 -->
 # 변경 이력
 
 ## Unreleased
+
+- MySQL catalog은 모든 runtime에서 세션을 연결 하나로 실행하고 재연결 없이 읽기를 멈춘다(T423, CFG-35). 서버가 확인한 ROLLBACK으로 끝난 세션은 commit된 세션처럼 연결을 다음 세션에 남기고, 예산 중단은 catalog가 첫 중단에서 열어 닫을 때까지 쥐는 kill 연결에서 `KILL QUERY`로 문장을 종료한다. 멈춘 연결은 rollback한 뒤 남는다. 전에는 Go, TypeScript, Python, Rust가 읽기 세션마다 연결을 닫고 새로 열었고 PHP와 extension은 중단마다 kill 연결을 닫았으므로, 두 번의 중단과 두 번의 읽기가 연결을 2개가 아니라 5개, 8개, 3개 열었고, `max_user_connections`가 거부한 재연결은 CFG-35의 2초 timer를 기다렸다. 읽기를 멈추는 catalog의 사용자에게는 `max_user_connections`에 자리 두 개가 필요하다. 자리가 하나면 kill 연결이 거부되어 읽기는 전처럼 socket을 닫고, timer는 그 경로에서만 남는다.
 
 - Breaking (0.x): 순서를 선언하지 않은 체인의 `getsPage`는 모든 runtime과 모든 데이터베이스에서 lookahead 페이지처럼(INT-164) 페이지를 primary key의 key 컬럼 순서대로 오름차순으로 정렬한다(T395, DSL-67, PRT-38). count 쿼리에는 순서가 없다. 전에는 데이터베이스마다 `LIMIT`과 `OFFSET`의 행을 자기 plan의 순서로 돌려주어 이어지는 페이지가 행을 되풀이하거나 건너뛸 수 있었다. 4행씩의 1쪽과 2쪽은 MySQL, MariaDB, PostgreSQL, SQLite, markdown 모두에서 행 하나를 건너뛰었다. 순서를 가진 체인은 바뀌지 않는다.
 

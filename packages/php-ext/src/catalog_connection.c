@@ -240,12 +240,20 @@ static bool cat_open_connection(zval *owner, zval *out)
     return connected;
 }
 
-/* Kills the running query of a connection id through a connection of its own, which ends with the kill: the killed query ends
- * with an error on its own connection, which keeps the connection that the stop rolls back. */
+/* Kills the running query of a connection id through the kill connection of the catalog, which the first stop opens and the
+ * catalog keeps until close, so that no stop closes a connection that a later stop must open again (CFG-35): the killed query
+ * ends with an error on its own connection, which keeps the connection that the stop rolls back. A kill connection that failed
+ * is closed. */
 static bool cat_kill_thread(zval *owner, zend_long id)
 {
-    zval killer, pdo, ret;
-    if (!cat_open_connection(owner, &killer)) return false;
+    zval killer, pdo, ret, rv_kept;
+    zval *kept = catalog_prop(owner, "killer", &rv_kept);
+    if (Z_TYPE_P(kept) == IS_OBJECT) {
+        ZVAL_COPY(&killer, kept);
+    } else {
+        if (!cat_open_connection(owner, &killer)) return false;
+        zend_update_property(Z_OBJCE_P(owner), Z_OBJ_P(owner), "killer", sizeof("killer") - 1, &killer);
+    }
     bool ok = pdo_call(&killer, "pdo", &pdo, 0, NULL, NULL);
     if (ok) {
         char sql[64];
@@ -253,10 +261,14 @@ static bool cat_kill_thread(zval *owner, zend_long id)
         ok = cat_try_exec(&pdo, sql);
         zval_ptr_dtor(&pdo);
     }
-    if (pdo_call(&killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
+    ok = ok && EG(exception) == NULL;
+    if (!ok) {
+        if (pdo_call(&killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
+        zend_update_property_null(Z_OBJCE_P(owner), Z_OBJ_P(owner), "killer", sizeof("killer") - 1);
+        cat_closed_connection(owner);
+    }
     zval_ptr_dtor(&killer);
-    cat_closed_connection(owner);
-    return ok && EG(exception) == NULL;
+    return ok;
 }
 
 /* Reads the one value of a statement as text. */
@@ -5638,11 +5650,24 @@ ZEND_METHOD(Polyspec_Orm_Catalog, close)
     zval *closed = catalog_prop(ZEND_THIS, "closed", &rv_closed);
     if (Z_TYPE_P(closed) == IS_TRUE) return;
     init_bool(ZEND_THIS, "closed", true);
-    zval rv, ret;
+    zval rv, ret, rv_killer, killer;
+    /* The kill connection closes after the connection of the catalog, and closes even when that close throws. */
+    ZVAL_COPY(&killer, catalog_prop(ZEND_THIS, "killer", &rv_killer));
+    zend_update_property_null(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), "killer", sizeof("killer") - 1);
     zval *db = catalog_prop(ZEND_THIS, "db", &rv);
     if (pdo_call(db, "close", &ret, 0, NULL, NULL)) {
         zval_ptr_dtor(&ret);
     }
+    if (Z_TYPE(killer) == IS_OBJECT) {
+        zend_object *pending = EG(exception);
+        EG(exception) = NULL;
+        if (pdo_call(&killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
+        if (pending != NULL) {
+            if (EG(exception) != NULL) zend_exception_set_previous(EG(exception), pending);
+            else EG(exception) = pending;
+        }
+    }
+    zval_ptr_dtor(&killer);
 }
 
 ZEND_METHOD(Polyspec_Orm_Catalog, currentNamespace)

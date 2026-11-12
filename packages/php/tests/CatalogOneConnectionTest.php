@@ -13,8 +13,9 @@ use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
 // A MySQL catalog of PHP holds one connection, PDO, across every operation: the processlist of its database shows it
-// alone (INT-157). A budget stop ends its query through a connection that closes with the stop.
-// Requirements: INT-157.
+// alone (INT-157). A budget stop ends its query through the kill connection, which the catalog opens at that stop and
+// keeps, so the processlist then shows the two, and a read after the stop opens no other (CFG-35).
+// Requirements: INT-157, CFG-35.
 #[Medium]
 class CatalogOneConnectionTest extends TestCase
 {
@@ -42,7 +43,9 @@ class CatalogOneConnectionTest extends TestCase
                 } catch (OrmException $stop) {
                     self::assertSame(Code::CATALOG_LIMIT, $stop->code_);
                 }
-                self::assertOneAfterClose($catalog, 'a budget stop');
+                self::assertConnections(2, $catalog, 'a budget stop');
+                $catalog->readOnlyQuery('SELECT seq FROM item');
+                self::assertConnections(2, $catalog, 'a read after a budget stop');
             } finally {
                 $catalog->close();
             }
@@ -105,23 +108,12 @@ class CatalogOneConnectionTest extends TestCase
 
     private static function assertOne(Catalog $catalog, string $after): void
     {
-        self::assertSame(1, self::connections($catalog), "the connections of the catalog's database after $after");
+        self::assertConnections(1, $catalog, $after);
     }
 
-    /**
-     * The kill connection of a budget stop is closed by the stop, and the server ends its thread within the 2 s of
-     * CFG-35, which it announces to no one; until then PROCESSLIST still lists it. So the count is read again until it
-     * is one or those 2 s end, and the last count read is the one asserted.
-     */
-    private static function assertOneAfterClose(Catalog $catalog, string $after): void
+    private static function assertConnections(int $count, Catalog $catalog, string $after): void
     {
-        $end = hrtime(true) + 2_000_000_000;
-        $count = self::connections($catalog);
-        while ($count !== 1 && hrtime(true) < $end) {
-            usleep(10_000);
-            $count = self::connections($catalog);
-        }
-        self::assertSame(1, $count, "the connections of the catalog's database within 2 s after $after");
+        self::assertSame($count, self::connections($catalog), "the connections of the catalog's database after $after");
     }
 
     private static function connections(Catalog $catalog): mixed

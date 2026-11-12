@@ -71,6 +71,11 @@ pub struct CatalogConnection {
     server: polyspec_orm_schema::dbspec::Server,
     /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
     reopen_until: std::sync::Mutex<std::time::Instant>,
+    /// The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its first
+    /// stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
+    killer: Option<Conn>,
+    /// The MySQL connection id of the connection of the running read, which its stop kills (CFG-35).
+    read_id: Option<u64>,
 }
 impl CatalogConnection {
     pub async fn connect(raw: &str) -> Result<Self, CatalogError> {
@@ -113,10 +118,14 @@ impl CatalogConnection {
         };
         let mut reopen_until = std::time::Instant::now();
         if dialect == "mysql" {
-            drop(connection.take());
+            // The connection goes back to the pool before the first operation, which takes it: a drop would return it from a task of
+            // its own, and an operation that came first would open a second connection, which the catalog would then keep (CFG-35).
+            if let Some(connection) = connection.take() {
+                connection.return_to_pool().await;
+            }
             reopen_until += REOPEN_AFTER_CLOSE;
         }
-        Ok(Self { connection, pool, dialect, server, reopen_until: std::sync::Mutex::new(reopen_until) })
+        Ok(Self { connection, pool, dialect, server, reopen_until: std::sync::Mutex::new(reopen_until), killer: None, read_id: None })
     }
     pub fn dialect(&self) -> &str {
         &self.dialect
@@ -225,18 +234,80 @@ impl CatalogConnection {
         let limits = read_limits(max_rows, max_bytes)?;
         self.read_only_grid_query(sql, params, limits).await
     }
-    /// Ends a read and drops its connection, which closes with the drop. A read that a budget stopped closes its socket without a
-    /// rollback, whichever operation read it.
+    /// Ends a read. A read that ends with an acknowledged ROLLBACK gives its connection back to the pool, so that a catalog runs its
+    /// reads on one connection (CFG-35); a read whose rollback failed closes it. A MySQL read that a budget stopped kills its
+    /// statement through the kill connection and rolls back; a PostgreSQL read that a budget stopped, and a MySQL one whose kill
+    /// failed, close their socket without a rollback, whichever operation read it.
     async fn end_read<T>(&mut self, mut connection: Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {
+        let read_id = self.read_id.take();
         if stopped_by_budget(&result) && self.dialect != "sqlite" {
-            connection.close_now();
-            self.closed_connection();
-            return result;
+            let killed = match read_id {
+                Some(id) => self.kill_query(id).await.is_ok(),
+                None => false,
+            };
+            if !killed {
+                connection.close_now();
+                self.closed_connection();
+                return result;
+            }
+            // The next command on the connection first reads the end of the killed statement, which is the error of the kill,
+            // 1317, and sqlx reports it as the error of that command before sending it; a statement that ended before the kill
+            // reached it ends with its rows, and the ROLLBACK runs at once.
+            match connection.rollback().await {
+                Err(error) if interrupted(&error) => {}
+                Err(_) => {
+                    connection.close_now();
+                    self.closed_connection();
+                    return result;
+                }
+                Ok(()) => {
+                    connection.return_to_pool().await;
+                    return result;
+                }
+            }
         }
-        let result = finish_read_only(&mut connection, result).await;
-        drop(connection);
-        self.closed_connection();
-        result
+        let cleanup = connection.rollback().await;
+        // query_only is a setting of the SQLite connection, which the next session of the pool would keep.
+        let cleanup = match cleanup {
+            Ok(()) if self.dialect == "sqlite" => connection.exec("PRAGMA query_only=OFF", &[]).await.map(|_| ()),
+            other => other,
+        };
+        match cleanup {
+            Ok(()) => {
+                connection.return_to_pool().await;
+                result
+            }
+            Err(cleanup) => {
+                drop(connection);
+                self.closed_connection();
+                let cleanup = cleanup.to_string();
+                match result {
+                    Ok(_) => Err(format!("QUERY_READ_ONLY_CLEANUP: {cleanup}").into()),
+                    Err(error) => {
+                        let message = format!("{error}; QUERY_READ_ONLY_CLEANUP: {cleanup}");
+                        Err(error.with_message(message))
+                    }
+                }
+            }
+        }
+    }
+    /// Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens and the
+    /// catalog keeps (CFG-35). A kill connection that failed is closed.
+    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
+        if self.killer.is_none() {
+            self.killer = Some(self.open_connection().await?);
+        }
+        let Some(killer) = self.killer.as_mut() else {
+            return Err("CATALOG_CONNECTION: the kill connection is missing".into());
+        };
+        if let Err(error) = killer.exec(&format!("KILL QUERY {id}"), &[]).await {
+            if let Some(killer) = self.killer.take() {
+                killer.close_now();
+            }
+            self.closed_connection();
+            return Err(CatalogError::caused(error.to_string(), error));
+        }
+        Ok(())
     }
     /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
     pub(super) fn closed_connection(&self) {
@@ -256,11 +327,16 @@ impl CatalogConnection {
         }
         acquired.map_err(connect_error)
     }
-    /// The read-only connection of a read, which closes when it drops.
-    async fn read_only_connection(&self, sql: &str) -> Result<Conn, CatalogError> {
+    /// The read-only connection of a read, which closes when it drops unless the read ends with an acknowledged ROLLBACK, and the MySQL
+    /// connection id of that connection, which a stop of the read kills (CFG-35).
+    async fn read_only_connection(&mut self, sql: &str) -> Result<Conn, CatalogError> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
         let mut connection = self.open_connection().await?;
         connection.discard_on_drop();
+        self.read_id = None;
+        if self.dialect == "mysql" {
+            self.read_id = connection.mysql_connection_id().await.map_err(|error| CatalogError::caused(error.to_string(), error))?;
+        }
         if self.dialect == "sqlite" {
             connection.exec("PRAGMA query_only=ON", &[]).await.map_err(|error| error.to_string())?;
         }
@@ -277,8 +353,9 @@ impl CatalogConnection {
         Ok(connection)
     }
     pub async fn close(self) {
-        let Self { connection, pool, .. } = self;
+        let Self { connection, pool, killer, .. } = self;
         drop(connection);
+        drop(killer);
         pool.close().await;
     }
 }
@@ -300,12 +377,17 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
     Ok(())
 }
 
-/// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so on MySQL and
-/// PostgreSQL the read returns without one and closes its socket at once, and the server ends the statement and the transaction with
-/// it (CFG-35). The thread id of CONNECTION_ID cannot stop the statement instead: through ProxySQL, KILL QUERY names a session
-/// of ProxySQL and answers OK for any other id. SQLite stops the read with its handle, so it rolls back as usual.
+/// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so a MySQL read
+/// kills its statement by the id of its connection first, which CONNECTION_ID answers as the id of the ProxySQL session through
+/// ProxySQL, the id that its KILL QUERY names; a PostgreSQL read returns without a rollback and closes its socket at once, and the
+/// server ends the statement and the transaction with it (CFG-35). SQLite stops the read with its handle, so it rolls back as usual.
 fn stopped_by_budget<T>(result: &Result<T, CatalogError>) -> bool {
     matches!(result, Err(error) if error.message().starts_with(polyspec_orm::codes::CATALOG_LIMIT))
+}
+
+/// Whether a statement ended with the error of a kill, 1317 on MySQL and MariaDB.
+fn interrupted(error: &sqlx::Error) -> bool {
+    error.as_database_error().and_then(|error| error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()).is_some_and(|error| error.number() == 1317)
 }
 
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {

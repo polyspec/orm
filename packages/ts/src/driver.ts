@@ -42,11 +42,14 @@ export interface DriverResult {
 
 /**
  * Receives a streamed result: columns once, before the first row, then each row. A row returns false to stop the result; the
- * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it.
+ * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it. On MySQL, stop
+ * runs when a row stops the result: when it answers true, it has killed the statement, and the scan reads the end of the
+ * statement, so the connection stays usable (CFG-35).
  */
 export interface RowSink {
   columns(columns: DriverColumn[]): void;
   row(values: unknown[]): boolean;
+  stop?(): Promise<boolean>;
 }
 
 export interface PoolStats { maxOpenConnections: number; openConnections: number; inUse: number; idle: number; }
@@ -100,6 +103,11 @@ export interface DriverSession extends DriverConnection {
   scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void>;
   /** Whether the SQLite connection is inside a transaction. Other drivers do not report it. */
   inTransaction?(): boolean;
+  /**
+   * The MySQL connection id of the connection: the thread id of its handshake, which is the id of the server session, or, through
+   * ProxySQL, the id of the ProxySQL session, which its KILL QUERY names (CFG-35). Other drivers have none.
+   */
+  readonly threadId?: number;
   /**
    * Returns the connection. With discard, it is not returned to the pool but closed, so the server ends that session. For SQLite
    * a single connection is not closed.
@@ -423,6 +431,10 @@ function mysqlScan(connection: MySqlConnection, sql: string, params: readonly Dr
   const core = privateMember<{ query(options: { sql: string; rowsAsArray: boolean }, values: DriverValue[]): CoreQuery }>(connection, 'connection');
   return new Promise<void>((resolve, reject) => {
     let stopped = false;
+    // A stop that killed the statement waits for its end, which the killed statement reaches with an error: both ends are kept until
+    // the kill answers.
+    let ended = false;
+    let killed: boolean | undefined;
     const query = core.query({ sql, rowsAsArray: true }, [...params]);
     query.on('fields', (fields: FieldPacket[] | undefined) => {
       sink.columns((fields ?? []).map(mysqlColumn));
@@ -431,11 +443,27 @@ function mysqlScan(connection: MySqlConnection, sql: string, params: readonly Dr
       if (stopped) return;
       if (!sink.row(arrayRows([row])[0] ?? [])) {
         stopped = true;
-        resolve();
+        if (sink.stop === undefined) {
+          resolve();
+          return;
+        }
+        sink.stop().then(answer => {
+          killed = answer;
+          if (!answer || ended) resolve();
+        }, reject);
       }
     });
-    query.on('end', () => { if (!stopped) resolve(); });
-    query.on('error', (error: unknown) => { if (!stopped) reject(error); });
+    const end = (error?: unknown): void => {
+      if (!stopped) {
+        if (error === undefined) resolve();
+        else reject(error);
+        return;
+      }
+      ended = true;
+      if (killed === true) resolve();
+    };
+    query.on('end', () => { end(); });
+    query.on('error', (error: unknown) => { end(error ?? new Error('the statement failed')); });
   });
 }
 
@@ -520,6 +548,7 @@ class MySqlPoolDriver implements DriverPool {
 class MySqlSession implements DriverSession {
   public readonly name = 'mysql' as const;
   public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool, private readonly server: MySqlServer) {}
+  public get threadId(): number { return Number(this.connection.threadId); }
   public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone, nowait = false): Promise<DriverResult> {
     const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params), this.server, nowait);
     return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done, this.server), work);
