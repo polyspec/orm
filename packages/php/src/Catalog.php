@@ -145,6 +145,12 @@ final class Catalog
     /** Until when, in hrtime seconds, a refused connect is a connection of this catalog still on the server (CFG-35). */
     private float $reopenUntil = 0.0;
 
+    /**
+     * The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at
+     * its first stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
+     */
+    private ?Db $killer = null;
+
     private function __construct(
         private Db $db,
         private readonly string $dialect,
@@ -197,21 +203,34 @@ final class Catalog
             return;
         }
         $this->closed = true;
-        $this->closeConnection();
+        $killer = $this->killer;
+        $this->killer = null;
+        try {
+            $this->closeConnection();
+        } finally {
+            $killer?->close();
+        }
     }
 
     /**
-     * Stops the statement that a budget ended on the server: KILL QUERY on a second connection, so that the
-     * budgeted connection stays usable. The catalog is not poisoned, unlike a Cancellation signal.
+     * Stops the statement that a budget ended on the server: KILL QUERY on the kill connection, which the first stop
+     * opens and the catalog keeps, so that the budgeted connection stays usable and no connection closes (CFG-35). The
+     * catalog is not poisoned, unlike a Cancellation signal. A kill connection that failed is closed.
      */
     private function killQuery(int $connectionId): void
     {
-        $killer = $this->openConnection();
+        $this->killer ??= $this->openConnection();
         try {
-            $killer->pdo()->exec('KILL QUERY ' . $connectionId);
-        } finally {
-            $killer->close();
-            $this->reopenUntil = hrtime(true) / 1e9 + self::REOPEN_SECONDS;
+            $this->killer->pdo()->exec('KILL QUERY ' . $connectionId);
+        } catch (\Throwable $e) {
+            $killer = $this->killer;
+            $this->killer = null;
+            try {
+                $killer->close();
+            } finally {
+                $this->reopenUntil = hrtime(true) / 1e9 + self::REOPEN_SECONDS;
+            }
+            throw $e;
         }
     }
 

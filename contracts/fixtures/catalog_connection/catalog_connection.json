@@ -10704,6 +10704,108 @@
       ]
     },
     {
+      "id": "budget_stops_keep_the_connections_of_the_catalog",
+      "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
+      "requirements": [
+        "INT-115",
+        "INT-157",
+        "CFG-35"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "the bench user table of 5000 rows: 4995 rows join the 5 of the seed, so the stream budgets read the whole table",
+          "sql": {
+            "mysql": "INSERT INTO `user` (name) WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) SELECT CONCAT('bulk-', i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
+            "postgres": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995",
+            "sqlite": "WITH RECURSIVE a(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM a WHERE i < 99), b(j) AS (SELECT 0 UNION ALL SELECT j + 1 FROM b WHERE j < 49) INSERT INTO \"user\" (name) SELECT 'bulk-' || (i * 50 + j) FROM a CROSS JOIN b WHERE i * 50 + j < 4995"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a user of this case that the server allows two connections, the connection of the catalog and the connection of its kill, and that reads its own count of connections; its name is in the database of the case, as runners on one server share users",
+          "sql": "CREATE PROCEDURE two_connection_user(IN verb VARCHAR(16)) BEGIN DECLARE name VARCHAR(40) DEFAULT CONCAT('o2_', RIGHT(DATABASE(), 28)); IF verb = 'create' THEN SET @statement = CONCAT('CREATE USER IF NOT EXISTS ''', name, '''@''%'' WITH MAX_USER_CONNECTIONS 2'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT ON `', DATABASE(), '`.* TO ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT ON performance_schema.users TO ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; ELSE SET @statement = CONCAT('DROP USER IF EXISTS ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END IF; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a rerun finds the user of a run that failed",
+          "sql": "CALL two_connection_user('drop')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "creates that user",
+          "sql": "CALL two_connection_user('create')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "o2_"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.seq FROM `user` a CROSS JOIN `user` b CROSS JOIN `user` c",
+          "max_rows": 3,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_suffix": "result has more than 3 rows"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.seq FROM `user` a CROSS JOIN `user` b CROSS JOIN `user` c",
+          "max_rows": 3,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_suffix": "result has more than 3 rows"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'answers' AS value",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "answers"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(TOTAL_CONNECTIONS AS CHAR) AS connections FROM performance_schema.users WHERE USER = SUBSTRING_INDEX(CURRENT_USER(), '@', 1)",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "drops that user",
+          "sql": "CALL two_connection_user('drop')"
+        }
+      ]
+    },
+    {
       "id": "plain_connect_on_a_held_place_is_refused_once",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [

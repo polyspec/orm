@@ -1448,7 +1448,8 @@ def _setting_text(value) -> str:
 
 
 class _Session:
-    """One driver connection inside one transaction. The connection ends with the session, unless a commit keeps it (INT-106e)."""
+    """One driver connection inside one transaction. The connection ends with the session, unless a commit (INT-106e) or a
+    rollback (CFG-35) that the server acknowledged keeps it."""
 
     def __init__(self, dialect: str, wrapper):
         self.dialect = dialect
@@ -1459,6 +1460,8 @@ class _Session:
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
+        # Kills the statement of a MySQL connection id through the kill connection of the catalog (CFG-35); None elsewhere.
+        self.kill: Callable[[int], None] | None = None
         # The PostgreSQL output settings when the transaction began (INT-186); None on the other dialects.
         self.settings: tuple | None = None
 
@@ -1730,8 +1733,10 @@ class _Session:
         with contextlib.suppress(*_driver_errors(self.dialect)):
             if self.dialect == "mysql":
                 try:
-                    self.wrapper.cancel_query()
-                except _driver_errors(self.dialect):
+                    if self.kill is None:
+                        raise _error(codes.DRIVER, "the session has no kill connection")
+                    self.kill(int(self.raw.thread_id()))
+                except (OrmError, *_driver_errors(self.dialect)):
                     # Closing the cursor would read the rest of the result; closing the socket does not, and the
                     # server then ends the statement on its failed write (INT-157).
                     self.abandoned = True
@@ -1979,6 +1984,10 @@ class CatalogConnection:
         self._idle_lock = threading.Lock()
         # Until when a refused connect is a socket of this catalog still on the server (CFG-35).
         self._reopen_until = 0.0
+        # The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its
+        # first stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
+        self._killer = None
+        self._killer_lock = threading.Lock()
 
     @property
     def dialect(self) -> str:
@@ -1990,6 +1999,28 @@ class CatalogConnection:
         idle = self._take_idle()
         if idle is not None:
             idle.close()
+        with self._killer_lock:
+            killer, self._killer = self._killer, None
+        if killer is not None:
+            killer.close()
+
+    def _kill_query(self, thread_id: int) -> None:
+        """Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens
+        (CFG-35). The id is the thread id of the handshake: the id of the server session, or, through ProxySQL, the id of the
+        ProxySQL session, which its KILL QUERY names. A refused kill connection or kill raises, and a kill connection that
+        failed is closed."""
+        with self._killer_lock:
+            if self._killer is None:
+                self._killer = self._connect_mysql()
+            try:
+                with self._killer.connection.cursor() as cursor:
+                    cursor.execute(f"KILL QUERY {thread_id}")
+            except BaseException:
+                killer, self._killer = self._killer, None
+                with contextlib.suppress(*_driver_errors("mysql")):
+                    killer.close()
+                self._reopen_until = _monotonic() + 2.0
+                raise
 
     def _ensure_open(self) -> None:
         if self._closed:
@@ -2002,22 +2033,25 @@ class CatalogConnection:
         elif self._dialect == "sqlite":
             wrapper = _SqliteConnection(self._parsed)
         elif self._dialect == "mysql":
-            # A socket that this catalog closed holds its place in max_user_connections until the server ends that thread.
-            # The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
-            # from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
-            while True:
-                try:
-                    wrapper = _MysqlConnection(self._parsed)
-                    break
-                except OrmError as error:
-                    refused = getattr(error.__cause__, "args", (None,))[:1] == (1226,)
-                    if not refused or _monotonic() >= self._reopen_until:
-                        raise
-                    _sleep(0.01)
+            wrapper = self._connect_mysql()
         else:
             wrapper = _PostgresConnection(self._parsed)
         session = _Session(self._dialect, wrapper)
         return session
+
+    def _connect_mysql(self) -> _MysqlConnection:
+        """Opens a MySQL connection. A socket that this catalog closed holds its place in max_user_connections until the
+        server ends that thread. The server announces that to no one, so this is a timer: the reopen is tried again within
+        the 2 s of CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at
+        once."""
+        while True:
+            try:
+                return _MysqlConnection(self._parsed)
+            except OrmError as error:
+                refused = getattr(error.__cause__, "args", (None,))[:1] == (1226,)
+                if not refused or _monotonic() >= self._reopen_until:
+                    raise
+                _sleep(0.01)
 
     def _close(self, session: _Session) -> None:
         session.close()
@@ -2050,6 +2084,8 @@ class CatalogConnection:
         return self._begin_on(self._open(), read_only)
 
     def _begin_on(self, session: _Session, read_only: bool) -> _Session:
+        if self._dialect == "mysql":
+            session.kill = self._kill_query
         try:
             if read_only and self._dialect == "sqlite":
                 session.run("PRAGMA query_only=ON")
@@ -2081,10 +2117,10 @@ class CatalogConnection:
         return "BEGIN" if read_only else "BEGIN IMMEDIATE"
 
     def _end(self, session: _Session, error: BaseException | None) -> None:
-        """Rolls the session back and closes it. A failed rollback is reported with the error that ended the session. SQLite
-        rolls a transaction back by itself after some errors, such as RAISE(ROLLBACK) or an I/O error; then no ROLLBACK is
-        sent, so the error is the one that ended the session (INT-155). A session that a stop abandoned has
-        no connection left to roll back."""
+        """Rolls the session back and keeps its connection for the next session (CFG-35). A failed rollback is reported
+        with the error that ended the session. SQLite rolls a transaction back by itself after some errors, such as
+        RAISE(ROLLBACK) or an I/O error; then no ROLLBACK is sent, so the error is the one that ended the session
+        (INT-155). A session that a stop abandoned has no connection left to roll back."""
         if session.abandoned:
             self._reopen_until = _monotonic() + 2.0
             if error is not None:
@@ -2098,7 +2134,9 @@ class CatalogConnection:
             raise _error(
                 codes.ROW_ROLLBACK_FAILED, f"rollback: {rollback_error}", error
             ) from rollback_error
-        self._close(session)
+        # The acknowledged ROLLBACK ended the transaction and its locks, so the next session takes this connection, and a
+        # catalog runs its sessions on one connection (CFG-35); SQLite closes its file as before.
+        self._keep(session)
         if error is not None:
             raise error
 

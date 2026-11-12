@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: b1c5bf28068fa4fdf423dea98bdc920429c77df3e588a3997710061f4b8a3911 -->
+<!-- source-sha256: 6494807479cc2d5d9183e2a303a420c0af91b3959554ba85f3d09e10bdf1df20 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -109,7 +109,7 @@ PgBouncer 설정:
 ProxySQL 설정:
 
 - **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
-- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다. 중단된 읽기의 socket을 닫을 수 있는 runtime은 kill이 실패하거나 kill이 없을 때 기다리지 않고 닫는다. catalog가 닫은 연결은 서버가 그 thread를 끝낼 때까지 `max_user_connections`의 자리를 차지하며 서버는 이를 아무에게도 알리지 않으므로, 그 닫기로부터 2초 안에 한도가 거부한 재연결은 그 2초가 끝날 때까지 다시 시도한다(알림이 없어 쓰는 timer이며, 측정값은 40 ms 이내). 그 catalog의 닫기 뒤가 아닌 연결은 곧바로 실패한다. 연결을 닫은 budget 중단은 rollback을 시도하지 않으며 오류는 `CATALOG_LIMIT` 하나다.
+- **CFG-35** MySQL catalog은 모든 runtime에서 세션을 연결 하나로 실행한다: transaction이 서버가 확인한 `COMMIT`이나 `ROLLBACK`으로 끝난 세션은 연결을 다음 세션에 남긴다. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며, 두 번째 연결인 kill 연결에서 `SELECT CONNECTION_ID()`가 답하는 자기 연결 id로 `KILL QUERY`를 보내 문장을 종료한다. kill 연결은 catalog가 첫 중단에서 열고 닫힐 때까지 쥔다. ProxySQL을 거치면 그 id는 ProxySQL 세션의 id이며, ProxySQL은 그 문장에 스스로 답하고 그 `KILL QUERY`는 이 id의 세션에 작용한다. 멈춘 연결은 그 뒤 kill된 문장의 끝을 읽고 rollback한 뒤 남으므로, 중단이 연결을 남기는 catalog는 다른 연결을 열지 않고, 그 사용자에게는 `max_user_connections`에 자리 두 개가 필요하다. 서버가 kill 연결을 거부하거나 kill이 실패하면, 읽기는 예산으로 멈춘 PostgreSQL 읽기처럼 기다리지 않고 socket을 닫는다. 이때 ProxySQL의 `mysql-kill_backend_connection_when_disconnect`(기본값 `true`) 아래에서는 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문장도 닫기와 함께 즉시 kill되며, `false`에서는 끝까지 실행된다. catalog가 닫은 연결은 서버가 그 thread를 끝낼 때까지 `max_user_connections`의 자리를 차지하며 서버는 이를 아무에게도 알리지 않으므로, 그 닫기로부터 2초 안에 한도가 거부한 그 catalog의 연결은 그 2초가 끝날 때까지 다시 시도한다(알림이 없어 쓰는 timer이며, 측정값은 40 ms 이내). 그 catalog의 닫기 뒤가 아닌 연결은 곧바로 실패한다. 연결을 닫은 budget 중단은 rollback을 시도하지 않으며 오류는 `CATALOG_LIMIT` 하나다. catalog recipe의 case `budget_stops_keep_the_connections_of_the_catalog`는 자리 두 개의 사용자로 읽기 두 번을 멈추고 두 번 읽으며, 서버는 그 사용자에게 연결 두 개를 받아들인다.
 
 ProxySQL은 기본 multiplexing으로 실행한다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`(MariaDB에서는 `max_statement_time`)을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 
