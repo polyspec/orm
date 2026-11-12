@@ -19,7 +19,7 @@ final class Orm
     /** The parameters that each scheme's DSN accepts (docs/spec/config.md). Other parameters are CONFIG. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
-        'postgres' => ['timezone', 'host', 'sslmode'],
+        'postgres' => ['timezone', 'host', 'sslmode', 'sslrootcert'],
         'sqlite' => ['timezone', '_pragma', '_txlock'],
     ];
 
@@ -79,6 +79,9 @@ final class Orm
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
+                if ($sslCa !== null) {
+                    self::readableCaFile('postgres DSN sslrootcert', $sslCa);
+                }
                 // Startup parameters belong to the client session, so a pooler in transaction mode
                 // puts them on every server connection assigned to this connection, and does not put them on
                 // other connections. Since the time zone is also a startup parameter, the connection does not
@@ -121,8 +124,12 @@ final class Orm
                 }
             }
         } catch (\PDOException $e) {
-            $tls = $sslCa !== null && str_contains($e->getMessage(), 'SSL');
-            $prefix = $tls ? 'mysql TLS connection failed: ' : 'cannot connect: ';
+            // libpq reports a certificate of another authority or of another host as text alone (CFG-45).
+            $tls = $sslCa !== null && ($driver === 'mysql'
+                ? str_contains($e->getMessage(), 'SSL')
+                : str_contains($e->getMessage(), 'certificate verify failed')
+                    || str_contains($e->getMessage(), 'does not match host name'));
+            $prefix = $tls ? "$driver TLS connection failed: " : 'cannot connect: ';
             // A connection that the server refuses is DRIVER, as any other error of the driver (CFG-1). A certificate,
             // a file and a time zone that the server does not know are what the DSN gives.
             $refused = !$tls && $driver !== 'sqlite' && (int) $e->getCode() !== 1298;
@@ -369,7 +376,7 @@ final class Orm
      *
      * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>, 5: ?string}
      *     driver, PDO DSN, user, password, the SQLite `_pragma=name(value)` parameters, and the
-     *     MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY
+     *     MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY or the PostgreSQL `sslrootcert` path of sslmode=verify-full
      */
     public static function parseDsn(string $dsn): array
     {
@@ -420,14 +427,14 @@ final class Orm
                 return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '',
                     $password ?? '', [], self::mysqlTls($query, $host)];
             case 'postgres':
-                // CFG-19: sslmode takes only disable, and a DSN without it connects without TLS, so the PDO DSN
-                // always names sslmode=disable (libpq would otherwise prefer TLS without checking the certificate).
-                if (isset($query['sslmode']) && $query['sslmode'] !== 'disable') {
-                    throw new OrmException(Code::CONFIG, 'postgres DSN sslmode '
-                        . Message::quote((string) $query['sslmode']) . ' is not supported; it accepts disable');
-                }
+                // A DSN without sslmode, or with sslmode=disable, connects without TLS, so the PDO DSN names
+                // sslmode=disable (libpq would otherwise prefer TLS without checking the certificate, CFG-47);
+                // sslmode=verify-full names the CA file of sslrootcert, which libpq reads in place of any default
+                // (CFG-45).
+                $ca = self::postgresTls($query);
                 return [$driver, 'pgsql:host=' . $host . ';port=' . ($parts['port'] ?? 5432) . ';dbname=' . $name
-                    . ';sslmode=disable', $user, $password, [], null];
+                    . ($ca === null ? ';sslmode=disable' : ';sslmode=verify-full;sslrootcert=' . $ca),
+                    $user, $password, [], $ca];
             default:
                 $pragmas = [];
                 foreach ((array) ($query['_pragma'] ?? []) as $value) {
@@ -579,6 +586,73 @@ final class Orm
     }
 
     /**
+     * Checks the PostgreSQL TLS parameters in the order of CFG-46: `sslmode=verify-full` with the absolute path of the
+     * CA file in `sslrootcert` over TCP (CFG-45), or no TLS without either or with `sslmode=disable` (CFG-47). Returns
+     * the CA path or null.
+     *
+     * @param array<string, mixed> $query
+     */
+    private static function postgresTls(array $query): ?string
+    {
+        $mode = isset($query['sslmode']) ? (string) $query['sslmode'] : null;
+        $ca = isset($query['sslrootcert']) ? (string) $query['sslrootcert'] : null;
+        if ($mode !== null && $mode !== 'disable' && $mode !== 'verify-full') {
+            throw new OrmException(Code::CONFIG, 'postgres DSN sslmode ' . Message::quote($mode)
+                . ' is not supported; it accepts disable, or verify-full with sslrootcert');
+        }
+        if ($ca !== null && $mode !== 'verify-full') {
+            throw new OrmException(Code::CONFIG, 'postgres DSN sslrootcert needs sslmode=verify-full');
+        }
+        if ($mode !== 'verify-full') {
+            return null;
+        }
+        if ($ca === null) {
+            throw new OrmException(
+                Code::CONFIG,
+                'postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file'
+            );
+        }
+        if (!str_starts_with($ca, '/')) {
+            throw new OrmException(
+                Code::CONFIG,
+                'postgres DSN sslrootcert ' . Message::quote($ca) . ' is not an absolute path'
+            );
+        }
+        if (str_starts_with((string) ($query['host'] ?? ''), '/')) {
+            throw new OrmException(
+                Code::CONFIG,
+                'postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host'
+            );
+        }
+        return $ca;
+    }
+
+    /**
+     * Refuses a CA file that the client cannot read, with the platform error of opening or reading it after the text
+     * (CFG-18, CFG-46, INT-187); a directory opens and fails its read. $label names the parameter, such as
+     * `mysql DSN ssl-ca`.
+     */
+    private static function readableCaFile(string $label, string $path): void
+    {
+        error_clear_last();
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
+        $handle = @fopen($path, 'rb');
+        if ($handle !== false) {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
+            @fread($handle, 1);
+            fclose($handle);
+        }
+        $warning = error_get_last();
+        if ($handle === false || $warning !== null) {
+            throw new OrmException(
+                Code::CONFIG,
+                $label . ' ' . Message::quote($path) . ' is not a readable file'
+                    . ($warning === null ? '' : ': ' . $warning['message'])
+            );
+        }
+    }
+
+    /**
      * Either the PDO option made from the ssl-ca path of ssl-mode=VERIFY_IDENTITY, or an empty array: the server
      * certificate is checked against the CA and the host name, over TLS. The password travels only inside TLS,
      * and the client
@@ -591,24 +665,7 @@ final class Orm
         if ($sslCa === null) {
             return [];
         }
-        // The platform error of opening or reading the file follows the text (INT-187); a directory opens and
-        // fails its read.
-        error_clear_last();
-        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
-        $handle = @fopen($sslCa, 'rb');
-        if ($handle !== false) {
-            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the error, read by error_get_last
-            @fread($handle, 1);
-            fclose($handle);
-        }
-        $warning = error_get_last();
-        if ($handle === false || $warning !== null) {
-            throw new OrmException(
-                Code::CONFIG,
-                'mysql DSN ssl-ca ' . Message::quote($sslCa) . ' is not a readable file'
-                    . ($warning === null ? '' : ': ' . $warning['message'])
-            );
-        }
+        self::readableCaFile('mysql DSN ssl-ca', $sslCa);
         return [\Pdo\Mysql::ATTR_SSL_CA => $sslCa, \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true];
     }
 

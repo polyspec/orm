@@ -27,7 +27,7 @@
 // LEASE and STOP_PROCESS are the Go programs that the Makefile builds (tests/lease, tests/stop-process): Node has no
 // cross-process lease and no exit event of a process that is not its child.
 import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createHash, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
@@ -156,6 +156,11 @@ export function mysqlEnvironment(base: NodeJS.ProcessEnv = process.env): NodeJS.
 // mismatch DSN uses localhost so TLS identity verification reaches the replica over TCP before rejecting the name.
 export const MYSQL_TLS_SERVER_NAMES = { mysql: 'DNS:localhost', mysqlReplica: 'DNS:orm-mismatch.invalid' } as const;
 export const MYSQL_TLS_MISMATCH_HOST = 'localhost.';
+// TLS_SERVERS are the certificates of the MySQL and the PostgreSQL servers under <dir>/tls: each primary names localhost, and the
+// PostgreSQL primary also its address 127.0.0.1, which PostgreSQL listens on alone; each replica deliberately names
+// orm-mismatch.invalid, so a DSN that reaches a replica fails the identity check.
+export const TLS_SERVERS = [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica],
+  ['postgres', 'DNS:localhost,IP:127.0.0.1'], ['postgres-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const;
 
 // Only the orm role may connect without a password. Replication uses the same role with the replication database.
 // PostgreSQL reads the first matching host rule, so both trust rules precede the SCRAM rule.
@@ -190,6 +195,7 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
   const mysql = `mysql://root@127.0.0.1:${ports.mysql}`;
   const postgres = `postgres://orm@127.0.0.1:${ports.postgres}`;
   const tls = (port: number, ca: string, host = 'localhost.') => `mysql://root@${host}:${port}/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${p.dir}/tls/${ca}.pem`;
+  const postgresTls = (port: number, ca: string) => `postgres://orm@127.0.0.1:${port}/orm_test?sslmode=verify-full&sslrootcert=${p.dir}/tls/${ca}.pem`;
   return {
     ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`,
     ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test`,
@@ -208,6 +214,9 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
     ORM_TEST_MYSQL_TLS_DSN: tls(ports.mysql, 'ca'),
     ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: tls(ports.mysql, 'other-ca'),
     ORM_TEST_MYSQL_TLS_MISMATCH_DSN: tls(ports.mysqlReplica, 'ca', MYSQL_TLS_MISMATCH_HOST),
+    ORM_TEST_POSTGRES_TLS_DSN: postgresTls(ports.postgres, 'ca'),
+    ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(ports.postgres, 'other-ca'),
+    ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(ports.postgresReplica, 'ca'),
     // The Unix socket of the primary: the case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10).
     ORM_TEST_MYSQL_SOCKET: p.sockets.mysql,
   };
@@ -599,9 +608,12 @@ export const POSTGRES_WAL = ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep
 
 // postgresArguments are the arguments of the postgres server on data and port: the primary names the replica as its
 // synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
-export function postgresArguments(data: string, port: number, primary: boolean): string[] {
+export function postgresArguments(data: string, port: number, primary: boolean, tlsDir: string): string[] {
+  const name = primary ? 'postgres' : 'postgres-replica';
   return ['-D', data, '-p', String(port), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
     '-c', `timezone=${SERVER_TIME_ZONE}`,
+    // TLS with the certificate of TLS_SERVERS, which tls issues before the servers start (CFG-45); a client without sslmode sends no TLS (CFG-47).
+    '-c', 'ssl=on', '-c', `ssl_cert_file=${tlsDir}/${name}-cert.pem`, '-c', `ssl_key_file=${tlsDir}/${name}-key.pem`,
     ...(primary ? ['-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'] : []), ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
 }
 
@@ -610,11 +622,11 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
   // initdb's temporary trust rules allow the passwordless bootstrap role; replace the complete host policy before start.
   writeFileSync(join(p.postgresData, 'pg_hba.conf'), `${POSTGRES_HBA.join('\n')}\n`);
   // `pg_ctl start -w` would wait at most 60 s; startLogged waits for the ready line.
-  await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', postgresArguments(p.postgresData, ports.postgres, true), postgresEnvironment());
+  await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', postgresArguments(p.postgresData, ports.postgres, true, join(p.dir, 'tls')), postgresEnvironment());
   console.log(`test-servers: PostgreSQL on 127.0.0.1:${ports.postgres}`);
   run('pg_basebackup', postgresBaseBackupArguments(p.postgresReplicaData, ports.postgres), { env: postgresEnvironment() });
   // A standby logs that it accepts read-only connections.
-  await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', postgresArguments(p.postgresReplicaData, ports.postgresReplica, false), postgresEnvironment());
+  await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', postgresArguments(p.postgresReplicaData, ports.postgresReplica, false, join(p.dir, 'tls')), postgresEnvironment());
   console.log(`test-servers: PostgreSQL replica on 127.0.0.1:${ports.postgresReplica}`);
 }
 
@@ -649,14 +661,14 @@ export function issueTls(dir: string, servers: readonly (readonly [string, strin
 function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const dir = join(p.dir, 'tls');
   if (!existsSync(join(dir, 'other-ca.pem'))) {
-    issueTls(dir, [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]]);
+    issueTls(dir, TLS_SERVERS);
   } else {
-    const expected = [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const;
-    const stale = expected.filter(([name, san]) => {
+    const stale = TLS_SERVERS.filter(([name, san]) => {
       const certificate = join(dir, `${name}-cert.pem`);
       if (!existsSync(certificate)) return true;
       const cached = readFileSync(certificate);
-      try { return new X509Certificate(cached).subjectAltName !== san; }
+      // X509Certificate writes the names as openssl prints them: IP: as IP Address:, and a space after each comma.
+      try { return new X509Certificate(cached).subjectAltName !== san.replaceAll('IP:', 'IP Address:').replaceAll(',', ', '); }
       // catch-any -- A malformed cached PEM is stale and is replaced using the existing test CA.
       catch { return true; }
     });
@@ -683,6 +695,8 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
       }
     }
   }
+  // PostgreSQL refuses a key file that its group or others can read.
+  for (const [name] of TLS_SERVERS) chmodSync(join(dir, `${name}-key.pem`), 0o600);
   for (const [name, port] of [['mysql', ports.mysql], ['mysql-replica', ports.mysqlReplica]] as const)
     mysqlAt(port, `SET GLOBAL ssl_ca = '${dir}/ca.pem'; SET GLOBAL ssl_cert = '${dir}/${name}-cert.pem'; SET GLOBAL ssl_key = '${dir}/${name}-key.pem'; ALTER INSTANCE RELOAD TLS;`);
   console.log(`test-servers: MySQL TLS from ${dir}`);

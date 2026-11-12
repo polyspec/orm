@@ -16,7 +16,10 @@
     "CFG-29",
     "CFG-13",
     "DIA-154",
-    "CFG-44"
+    "CFG-44",
+    "CFG-45",
+    "CFG-46",
+    "CFG-47"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
@@ -522,6 +525,119 @@
             "mysql": {
               "error": "CONFIG",
               "message_holds": "TLS connection failed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_plain_dsn_connects_without_tls",
+      "requirements": [
+        "CFG-47"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "session_read": {
+              "sql": "SELECT ssl::text FROM pg_stat_ssl WHERE pid = pg_backend_pid()",
+              "row": [
+                "false"
+              ]
+            }
+          },
+          "expect": {
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_tls_verifies_the_server_identity",
+      "requirements": [
+        "CFG-45"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_POSTGRES_TLS_DSN",
+          "config": {
+            "session_read": {
+              "sql": "SELECT ssl::text FROM pg_stat_ssl WHERE pid = pg_backend_pid()",
+              "row": [
+                "true"
+              ]
+            }
+          },
+          "expect": {
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_tls_refuses_an_untrusted_identity",
+      "requirements": [
+        "CFG-45"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_POSTGRES_TLS_MISMATCH_DSN",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_unreadable_sslrootcert_is_refused",
+      "requirements": [
+        "CFG-46",
+        "INT-187"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://orm@127.0.0.1:1/orm_test?sslmode=verify-full&sslrootcert=/nonexistent/orm-ca.pem",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "CONFIG: postgres DSN sslrootcert \"/nonexistent/orm-ca.pem\" is not a readable file: "
             }
           }
         }

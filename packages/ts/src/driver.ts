@@ -250,9 +250,9 @@ export function driverError(name: DriverName, error: unknown, server: MySqlServe
   const suffix = name === 'sqlite' && source.errcode !== undefined ? sqliteResultCodeSuffix(source.errcode) : '';
   const message = (typeof text === 'string' ? text : errorText(error)) + suffix;
   if (connectionLost(name, source, server)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
-  // A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
-  if (name === 'mysql' && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED|HANDSHAKE_SSL_ERROR/.test(source.code)) {
-    return new OrmError(codes.CONFIG, `mysql TLS connection failed: ${message}`, error);
+  // A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY or of sslmode=verify-full refuses is CONFIG (CFG-16, CFG-45).
+  if ((name === 'mysql' || name === 'postgres') && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED|HANDSHAKE_SSL_ERROR/.test(source.code)) {
+    return new OrmError(codes.CONFIG, `${name} TLS connection failed: ${message}`, error);
   }
   // A mysql error is read by its number in the table of its server (DIA-201).
   if (name === 'mysql') {
@@ -936,7 +936,7 @@ class SqliteSession implements DriverSession {
 }
 
 /**
- * A DSN of a SQL database: the driver, the connection time zone, the MySQL TLS CA, the MySQL socket or the PostgreSQL socket
+ * A DSN of a SQL database: the driver, the connection time zone, the TLS CA of MySQL or PostgreSQL, the MySQL socket or the PostgreSQL socket
  * directory, and the SQLite pragmas, name and value. These are the only values of the query that reach the driver (CFG-20).
  */
 export interface SqlDsn {
@@ -959,7 +959,7 @@ export type DsnParameters = ReadonlyMap<string, readonly string[]>;
 /** The parameters a DSN accepts for each scheme, in the order of CFG-19 and PRT-63. Any other parameter is CONFIG. */
 const DSN_PARAMETERS: Readonly<Record<string, readonly string[]>> = {
   mysql: ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
-  postgres: ['timezone', 'host', 'sslmode'],
+  postgres: ['timezone', 'host', 'sslmode', 'sslrootcert'],
   sqlite: ['timezone', '_pragma', '_txlock'],
   markdown: ['token', 'timezone', '_pragma'],
 };
@@ -1021,7 +1021,7 @@ function readDsnQuery(scheme: string, query: string): DsnParameters {
     const value = eq < 0 ? '' : formDecode(pair.slice(eq + 1));
     if (value === undefined) throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} is not percent-encoded UTF-8`);
     if (value === '') throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} is empty`);
-    if ((decoded === 'socket' || decoded === 'host') && /[;\0]/.test(value)) {
+    if ((decoded === 'socket' || decoded === 'host' || decoded === 'sslrootcert') && /[;\0]/.test(value)) {
       throw new OrmError(codes.CONFIG, `${scheme} DSN parameter ${name} holds a character that a connection string cannot hold`);
     }
     if (values === undefined) parameters.set(decoded, [value]);
@@ -1065,6 +1065,33 @@ function mysqlTls(url: URL, parameters: DsnParameters): string | undefined {
   // The identity check compares the host name with the certificate. The driver compares a host that is an IP address with the name localhost.
   if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
   return ca;
+}
+
+/**
+ * Checks the PostgreSQL TLS parameters in the order of CFG-46: `sslmode=verify-full` with the absolute path of the CA file in
+ * `sslrootcert` over TCP (CFG-45), or no TLS without either or with `sslmode=disable` (CFG-47). Returns the CA path or undefined.
+ */
+function postgresTls(parameters: DsnParameters, host: string | undefined): string | undefined {
+  const mode = dsnParameter(parameters, 'sslmode');
+  const ca = dsnParameter(parameters, 'sslrootcert');
+  if (mode !== undefined && mode !== 'disable' && mode !== 'verify-full') throw new OrmError(codes.CONFIG, `postgres DSN sslmode ${messageQuote(mode)} is not supported; it accepts disable, or verify-full with sslrootcert`);
+  if (ca !== undefined && mode !== 'verify-full') throw new OrmError(codes.CONFIG, 'postgres DSN sslrootcert needs sslmode=verify-full');
+  if (mode !== 'verify-full') return undefined;
+  if (ca === undefined) throw new OrmError(codes.CONFIG, 'postgres DSN sslmode=verify-full needs sslrootcert, the absolute path of the CA file');
+  if (!ca.startsWith('/')) throw new OrmError(codes.CONFIG, `postgres DSN sslrootcert ${messageQuote(ca)} is not an absolute path`);
+  if (host?.startsWith('/')) throw new OrmError(codes.CONFIG, 'postgres DSN sslmode=verify-full connects over TCP and does not accept a socket directory as host');
+  return ca;
+}
+
+/**
+ * The pg TLS option for sslmode=verify-full, or false: the CA of `sslrootcert` alone, the rejection of certificates not signed by
+ * that CA, and the host check of Node, which pg asks for by the host of the connection (CFG-45).
+ */
+function postgresSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true } | false {
+  if (parsed.sslCa === undefined) return false;
+  try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true }; } catch (error) {
+    throw new OrmError(codes.CONFIG, `postgres DSN sslrootcert ${messageQuote(parsed.sslCa)} is not a readable file: ${errorText(error)}`, error);
+  }
 }
 
 /**
@@ -1191,9 +1218,8 @@ export function parseDsn(dsn: string): ParsedDsn {
     }
     case 'postgres': {
       const host = dsnParameter(parameters, 'host');
-      const sslmode = dsnParameter(parameters, 'sslmode');
-      if (sslmode !== undefined && sslmode !== 'disable') throw new OrmError(codes.CONFIG, `postgres DSN sslmode ${messageQuote(sslmode)} is not supported; it accepts disable`);
-      return { driver: 'postgres', zone, ...(host === undefined ? {} : { host }) };
+      const sslCa = postgresTls(parameters, host);
+      return { driver: 'postgres', zone, ...(sslCa === undefined ? {} : { sslCa }), ...(host === undefined ? {} : { host }) };
     }
     case 'sqlite': {
       // The values in the CFG-19 order (CFG-20): _pragma before _txlock.
@@ -1359,14 +1385,15 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       return new MySqlPoolDriver(created, setup, bounds.size);
     }
     case 'postgres': {
-      // The connection without sslmode, or with sslmode=disable, sends no TLS (CFG-19); ssl: false keeps PGSSLMODE from choosing it.
+      // The connection without sslmode, or with sslmode=disable, sends no TLS (CFG-47); ssl: false keeps PGSSLMODE from choosing it.
+      // sslmode=verify-full checks the certificate against the CA of sslrootcert and the host (CFG-45).
       const config: pg.PoolConfig = {
         host: parsed.host ?? url.hostname.replace(/^\[|\]$/g, ''),
         ...(url.port ? { port: Number(url.port) } : {}),
         ...(url.username ? { user: decodeURIComponent(url.username) } : {}),
         ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
         database: dsnDatabase(dsn),
-        ssl: false,
+        ssl: postgresSsl(parsed),
         max: bounds.size,
       };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.

@@ -609,6 +609,17 @@ func openPool(ctx context.Context, sqlDriver string, dsn parsedDSN, cfg Config) 
 }
 
 func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
+	if dsn.driver == "postgres" && dsn.sslCA != "" {
+		// sslmode=verify-full: the driver reads the CA file itself, so the client reads it first to refuse an
+		// unreadable file with the text of CFG-46.
+		pem, err := os.ReadFile(dsn.sslCA)
+		if err != nil {
+			return nil, fmt.Errorf("postgres DSN sslrootcert %s is not a readable file: %w", message.Quote(dsn.sslCA, '"'), err)
+		}
+		if !x509.NewCertPool().AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("postgres DSN sslrootcert %s holds no PEM certificate", message.Quote(dsn.sslCA, '"'))
+		}
+	}
 	if dsn.driver != "mysql" || sqlDriver != "mysql" {
 		return sql.Open(sqlDriver, dsn.native)
 	}

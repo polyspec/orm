@@ -10,7 +10,7 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
-import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, type Paths } from './test-servers.mts';
+import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -558,6 +558,20 @@ caseTest('the MySQL primary has a positive localhost TLS DSN and the replica has
   assert.match(mismatchTls, /ssl-mode=VERIFY_IDENTITY/);
 });
 
+caseTest('the PostgreSQL primary has a verified localhost TLS DSN and the replica has a hostname-mismatch DSN', COMPUTE, () => {
+  const p = paths('/checkout');
+  const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  const dsn = (name: string) => { const value = variables[name]; assert.ok(value, `the environment writes ${name}`); return new URL(value); };
+  const [positive, otherCa, mismatch] = [dsn('ORM_TEST_POSTGRES_TLS_DSN'), dsn('ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN'), dsn('ORM_TEST_POSTGRES_TLS_MISMATCH_DSN')];
+  for (const url of [positive, otherCa, mismatch]) {
+    assert.equal(url.hostname, '127.0.0.1');
+    assert.equal(url.searchParams.get('sslmode'), 'verify-full');
+  }
+  assert.deepEqual([positive.port, otherCa.port, mismatch.port], ['2', '2', '4']);
+  assert.deepEqual([positive, otherCa, mismatch].map(url => url.searchParams.get('sslrootcert')), [`${p.dir}/tls/ca.pem`, `${p.dir}/tls/other-ca.pem`, `${p.dir}/tls/ca.pem`]);
+  assert.deepEqual(TLS_SERVERS.filter(([name]) => name.startsWith('postgres')), [['postgres', 'DNS:localhost,IP:127.0.0.1'], ['postgres-replica', 'DNS:orm-mismatch.invalid']]);
+});
+
 // The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.mts passes to mysqld, with
 // small values, to a fixture server on a temporary data directory and a free port, leaving the shared servers alone. The
 // server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a
@@ -575,10 +589,10 @@ caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, 
   assert.deepEqual(MYSQLD_STORAGE, ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216']);
   assert.equal(typeof postgresArguments, 'function', 'scripts/test-servers.mts states no arguments of the PostgreSQL servers');
   assert.deepEqual(POSTGRES_WAL, ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0']);
-  assert.deepEqual(postgresArguments('/data', 5432, true), ['-D', '/data', '-p', '5432', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'timezone=Asia/Seoul', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
-  assert.deepEqual(postgresArguments('/replica', 5433, false), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'timezone=Asia/Seoul', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+  assert.deepEqual(postgresArguments('/data', 5432, true, '/tls'), ['-D', '/data', '-p', '5432', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-cert.pem', '-c', 'ssl_key_file=/tls/postgres-key.pem', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+  assert.deepEqual(postgresArguments('/replica', 5433, false, '/tls'), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-replica-cert.pem', '-c', 'ssl_key_file=/tls/postgres-replica-key.pem', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
 });
 
 caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', COMPUTE, () => {
@@ -659,9 +673,13 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
     { encoding: 'utf8', timeout }).trim();
   // The PostgreSQL programs run with the environment of the server tool (postgresEnvironment), which sets the locale.
   const env = postgresEnvironment();
+  // The servers take the TLS files of TLS_SERVERS, as the test servers do.
+  const tlsDir = join(root, 'tls');
+  issueTls(tlsDir, TLS_SERVERS);
+  for (const [name] of TLS_SERVERS) chmodSync(join(tlsDir, `${name}-key.pem`), 0o600);
   // Both servers start with the arguments of test-servers.mts (postgresArguments), its WAL settings included.
   const start = (data: string, port: number, primary: boolean) => execFileSync('pg_ctl', ['-D', data, '-l', `${data}.log`, '-w', '-t', '60', '-o',
-    postgresArguments(data, port, primary).slice(2).join(' '), 'start'], { stdio: 'ignore', env });
+    postgresArguments(data, port, primary, tlsDir).slice(2).join(' '), 'start'], { stdio: 'ignore', env });
   const stop = (data: string) => { if (existsSync(join(data, 'postmaster.pid'))) execFileSync('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', env }); };
   try {
     execFileSync('initdb', ['-D', primary, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: 'ignore', env });

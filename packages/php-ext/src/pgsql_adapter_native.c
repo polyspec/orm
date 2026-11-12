@@ -342,16 +342,30 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, __construct)
     if (!pg_constant_long("PGSQL_CONNECT_FORCE_NEW", &force_new)) force_new = 2;
     ZVAL_LONG(&args[1], force_new);
     zend_string_release(conninfo);
-    if (!pg_call_function("pg_connect", &connection, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        RETURN_THROWS();
+    /* The warning of pg_connect states the reason of a failure, such as a certificate that verify-full refuses (CFG-45): it
+     * is read into the error and not reported, as the library adapter does with its error handler. */
+    zval saved_handler;
+    ZVAL_COPY_VALUE(&saved_handler, &EG(user_error_handler));
+    ZVAL_UNDEF(&EG(user_error_handler));
+    int saved_reporting = EG(error_reporting);
+    EG(error_reporting) &= ~E_WARNING;
+    if (PG(last_error_message) != NULL) {
+        zend_string_release(PG(last_error_message));
+        PG(last_error_message) = NULL;
     }
+    bool called = pg_call_function("pg_connect", &connection, 2, args);
+    EG(error_reporting) = saved_reporting;
+    ZVAL_COPY_VALUE(&EG(user_error_handler), &saved_handler);
     zval_ptr_dtor(&args[0]);
     zval_ptr_dtor(&args[1]);
+    if (!called) RETURN_THROWS();
     if (Z_TYPE(connection) != IS_OBJECT) {
         zval_ptr_dtor(&connection);
-        pg_raise("cannot connect to PostgreSQL");
+        zend_string *reason = PG(last_error_message);
+        zend_string *message = reason == NULL ? zend_string_init("cannot connect to PostgreSQL", sizeof("cannot connect to PostgreSQL") - 1, 0)
+            : strpprintf(0, "cannot connect to PostgreSQL: %s", ZSTR_VAL(reason));
+        pg_raise(ZSTR_VAL(message));
+        zend_string_release(message);
         RETURN_THROWS();
     }
     pg_set(ZEND_THIS, "connection", &connection);

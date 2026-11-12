@@ -2185,7 +2185,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -2197,7 +2197,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "base64",
  "bigdecimal",
@@ -2236,7 +2236,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2248,7 +2248,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-core"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "cfg-if",
  "dotenvy",
@@ -2273,7 +2273,7 @@ dependencies = [
 [[package]]
 name = "sqlx-mysql"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "bigdecimal",
  "bitflags",
@@ -2301,7 +2301,7 @@ dependencies = [
 [[package]]
 name = "sqlx-postgres"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "atoi",
  "base64",
@@ -2340,7 +2340,7 @@ dependencies = [
 [[package]]
 name = "sqlx-sqlite"
 version = "0.9.0"
-source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.1#a0361b7a405a91a2fc7822c41536818c88754f2b"
+source = "git+https://github.com/min-0-max/sqlx?tag=v0.9.0-polyspec.2#1957f711932967b06a0e72d6938e50def1c14f4a"
 dependencies = [
  "atoi",
  "chrono",

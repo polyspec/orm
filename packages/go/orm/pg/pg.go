@@ -8,6 +8,7 @@ package pg
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -70,6 +71,11 @@ func mapErr(err error) error {
 	// with driver.ErrBadConn so the transaction's rollback does not report a session the server ended as a failure.
 	if errors.Is(err, pgconn.ErrConnClosed) {
 		return &ir.Error{Code: orm.CodeConnectionLost, Msg: err.Error(), Cause: fmt.Errorf("%w: %w", driver.ErrBadConn, err)}
+	}
+	// A certificate that the CA or the host of sslmode=verify-full refuses is CONFIG (CFG-45).
+	var refused *tls.CertificateVerificationError
+	if errors.As(err, &refused) {
+		return &ir.Error{Code: orm.CodeConfig, Msg: "postgres TLS connection failed: " + err.Error(), Cause: err}
 	}
 	var pe *pgconn.PgError
 	if !errors.As(err, &pe) {

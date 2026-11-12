@@ -100,7 +100,7 @@ final class DsnUrl
             if ($value === '') {
                 throw new OrmException(Code::CONFIG, "$scheme DSN parameter $quoted is empty");
             }
-            if (($name === 'socket' || $name === 'host') && strpbrk($value, ";\0") !== false) {
+            if (in_array($name, ['socket', 'host', 'sslrootcert'], true) && strpbrk($value, ";\0") !== false) {
                 throw new OrmException(
                     Code::CONFIG,
                     "$scheme DSN parameter $quoted holds a character that a connection string cannot hold"
