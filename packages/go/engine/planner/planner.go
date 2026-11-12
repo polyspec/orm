@@ -156,7 +156,8 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	case "paginate":
 		// Compile the root and its relations before the count, then move the count
 		// step immediately after the root so every client executes the same plan order.
-		if _, err = p.selectStep(ps, &r.Query, "all", "", nil); err == nil {
+		// The root of a chain without an order is ordered by its primary key (INT-64).
+		if _, err = p.selectStep(ps, pageQuery(p.M.Entities[r.Entity], r), "all", "", nil); err == nil {
 			_, err = p.selectStep(ps, &r.Query, "count", "", nil)
 			if err == nil {
 				reorderPaginateCount(ps)
@@ -164,7 +165,7 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		}
 	case "lookahead_paginate", "group_lookahead_paginate":
 		// One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
-		_, err = p.selectStep(ps, lookaheadQuery(p.M.Entities[r.Entity], r), lookaheadRoot[r.Kind], "", nil)
+		_, err = p.selectStep(ps, pageQuery(p.M.Entities[r.Entity], r), lookaheadRoot[r.Kind], "", nil)
 	case "insert":
 		var st *plan.Step
 		if st, err = p.insertStep(r); err == nil {
@@ -203,9 +204,10 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 // lookaheadRoot is the select kind of the root statement of each lookahead kind.
 var lookaheadRoot = map[string]string{"lookahead_paginate": "all", "group_lookahead_paginate": "group_count"}
 
-// lookaheadQuery is the root query of a lookahead page: a query without an order is ordered by the primary key of its
-// entity, or by its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
-func lookaheadQuery(ent *runtimemodel.Entity, r *ir.Request) *ir.Query {
+// pageQuery is the root query of a page, counted or lookahead: a query without an order is ordered by the primary key of
+// its entity, or by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive pages
+// neither repeat nor skip a row (INT-64, INT-164).
+func pageQuery(ent *runtimemodel.Entity, r *ir.Request) *ir.Query {
 	if len(r.Order) > 0 {
 		return &r.Query
 	}

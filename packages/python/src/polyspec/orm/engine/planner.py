@@ -345,16 +345,19 @@ class Planner:
         if kind in ("one", "all", "count", "group_count", "sum", "avg"):
             self._select_step(add, steps, r, kind, r.get("agg") or "", None)
         elif kind == "paginate":
-            # The page query and count run before any relation query.
+            # The page query and count run before any relation query. The root of a chain without an order is
+            # ordered by its primary key (INT-64).
             deferred = []
-            self._select_step(add, steps, r, "all", "", None, deferred)
+            self._select_step(
+                add, steps, self._page_query(r), "all", "", None, deferred
+            )
             self._select_step(add, steps, r, "count", "", None)
             for scope, asm, step_id in deferred:
                 self._relation_steps(add, steps, scope, asm, step_id)
         elif kind in ("lookahead_paginate", "group_lookahead_paginate"):
             # One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
             root = "all" if kind == "lookahead_paginate" else "group_count"
-            self._select_step(add, steps, self._lookahead_query(r), root, "", None)
+            self._select_step(add, steps, self._page_query(r), root, "", None)
         elif kind == "insert":
             add(self._insert_step(r))
         elif kind == "update":
@@ -369,15 +372,16 @@ class Planner:
             _fail(codes.IR_INVALID, f"unknown request kind {kind}")
         return {"manifest_hash": self.m.manifest_hash, "kind": kind, "steps": steps}
 
-    def _lookahead_query(self, r: dict) -> dict:
-        """The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or
-        by its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row."""
+    def _page_query(self, r: dict) -> dict:
+        """The root query of a page, counted or lookahead: a query without an order is ordered by the primary key of its
+        entity, or by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive
+        pages neither repeat nor skip a row (INT-64, INT-164)."""
         if r.get("order"):
             return r
         columns = (
-            self._entity(r["entity"]).primary_key
-            if r["kind"] == "lookahead_paginate"
-            else r["group_by"]
+            r["group_by"]
+            if r["kind"] == "group_lookahead_paginate"
+            else self._entity(r["entity"]).primary_key
         )
         return {**r, "order": [{"column": column} for column in columns]}
 

@@ -262,15 +262,16 @@ export class Planner {
         this.selectStep(add, steps, r, r.kind, r.agg ?? '', undefined);
         break;
       case 'paginate':
-        // The root query runs first, then the independent count, then its relation steps.
+        // The root query runs first, then the independent count, then its relation steps. The root of a chain without an
+        // order is ordered by its primary key (INT-64).
         let appendRelations: (() => void) | undefined;
-        this.selectStep(add, steps, r, 'all', '', undefined, append => { appendRelations = append; });
+        this.selectStep(add, steps, this.pageQuery(r), 'all', '', undefined, append => { appendRelations = append; });
         this.selectStep(add, steps, r, 'count', '', undefined);
         present(appendRelations, 'the relation steps of a paginate plan')();
         break;
       case 'lookahead_paginate': case 'group_lookahead_paginate':
         // One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
-        this.selectStep(add, steps, this.lookaheadQuery(r), r.kind === 'lookahead_paginate' ? 'all' : 'group_count', '', undefined);
+        this.selectStep(add, steps, this.pageQuery(r), r.kind === 'lookahead_paginate' ? 'all' : 'group_count', '', undefined);
         break;
       case 'insert': add(this.insertStep(r)); break;
       case 'update': add(this.updateStep(r)); break;
@@ -282,10 +283,11 @@ export class Planner {
   }
 
   /**
-   * The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or by its
-   * group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+   * The root query of a page, counted or lookahead: a query without an order is ordered by the primary key of its entity, or
+   * by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive pages neither repeat
+   * nor skip a row (INT-64, INT-164).
    */
-  private lookaheadQuery(r: Request): RequestQuery {
+  private pageQuery(r: Request): RequestQuery {
     if ((r.order ?? []).length > 0) return r;
     const columns = r.kind === 'group_lookahead_paginate' ? r.group_by ?? [] : this.entity(r.entity).primaryKey;
     return { ...r, order: columns.map(column => ({ column })) };
