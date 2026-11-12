@@ -3516,6 +3516,27 @@ static pstep *restart_identity_step(pctx *c, HashTable *r)
     return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), newlist(c), tables);
 }
 
+/* The root query of a page, counted or lookahead: a query without an order is ordered by the primary key of its entity, or
+ * by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive pages neither repeat nor
+ * skip a row (INT-64, INT-164). */
+static HashTable *page_query(pctx *c, HashTable *r, bool grouped)
+{
+    if (count_of(lst(r, "order")) != 0) return r;
+    HashTable *columns = grouped ? lst(r, "group_by") : lst(entity(c, gs(c, r, "entity")), "pk");
+    zval *order = newlist(c);
+    zval *column;
+    ZEND_HASH_FOREACH_VAL(columns, column) {
+        ZVAL_DEREF(column);
+        zval *item = newlist(c);
+        put(item, "column", column);
+        lpush(order, item);
+    } ZEND_HASH_FOREACH_END();
+    zval *copy = keep(c);
+    ZVAL_ARR(copy, zend_array_dup(r));
+    put(copy, "order", order);
+    return Z_ARRVAL_P(copy);
+}
+
 /* Planner::compile: the plan of a validated request as the PHP array. */
 static bool compile_body(pctx *c, HashTable *r, zval *ret)
 {
@@ -3524,7 +3545,8 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
     const char *k = ZSTR_VAL(kind);
     pstep *st = NULL;
     if (strcmp(k, "paginate") == 0) {
-        pstep *main = select_step(c, steps, r, "all", ZSTR_EMPTY_ALLOC(), NULL, true);
+        /* The root of a chain without an order is ordered by its primary key (INT-64). */
+        pstep *main = select_step(c, steps, page_query(c, r, false), "all", ZSTR_EMPTY_ALLOC(), NULL, true);
         OKB(main);
         OKB(select_step(c, steps, r, "count", ZSTR_EMPTY_ALLOC(), NULL, false));
         pscope *root = scopes(c, r, fmt(c, "a"), NULL);
@@ -3536,25 +3558,7 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
     } else if (strcmp(k, "lookahead_paginate") == 0 || strcmp(k, "group_lookahead_paginate") == 0) {
         /* One statement and its relations, with no count: the root limit reads one row past the page (INT-164). */
         bool grouped = strcmp(k, "group_lookahead_paginate") == 0;
-        HashTable *q = r;
-        if (count_of(lst(r, "order")) == 0) {
-            /* A query without an order is ordered by the primary key, or by its group_by columns, ascending in their
-             * order, so that consecutive pages neither repeat nor skip a row. */
-            HashTable *columns = grouped ? lst(r, "group_by") : lst(entity(c, gs(c, r, "entity")), "pk");
-            zval *order = newlist(c);
-            zval *column;
-            ZEND_HASH_FOREACH_VAL(columns, column) {
-                ZVAL_DEREF(column);
-                zval *item = newlist(c);
-                put(item, "column", column);
-                lpush(order, item);
-            } ZEND_HASH_FOREACH_END();
-            zval *copy = keep(c);
-            ZVAL_ARR(copy, zend_array_dup(r));
-            put(copy, "order", order);
-            q = Z_ARRVAL_P(copy);
-        }
-        OKB(select_step(c, steps, q, grouped ? "group_count" : "all", ZSTR_EMPTY_ALLOC(), NULL, false));
+        OKB(select_step(c, steps, page_query(c, r, grouped), grouped ? "group_count" : "all", ZSTR_EMPTY_ALLOC(), NULL, false));
     } else if (strcmp(k, "insert") == 0) {
         st = insert_step(c, r);
         OKB(st);

@@ -19850,6 +19850,141 @@
    ]
   },
   {
+   "id": "page_without_an_order_is_ordered_by_its_primary_key",
+   "requirements": [
+    "INT-64",
+    "PRT-38",
+    "DSL-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "page": true,
+     "limit": {
+      "offset": 0,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "page": true,
+     "limit": {
+      "offset": 4,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "empty_reads",
    "requirements": [
     "DSL-56",

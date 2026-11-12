@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 789bb804961cceb3f22b3b93e458a76a5e58d1eaefbcede0b023160900deeac3 -->
+<!-- source-sha256: 7a71d75a586e438b80c6a99fe5f3f44ed27c5d005bdbb472d8e7780db5699ef0 -->
 # 변경 이력
 
 ## Unreleased
+
+- Breaking (0.x): 순서를 선언하지 않은 체인의 `getsPage`는 모든 runtime과 모든 데이터베이스에서 lookahead 페이지처럼(INT-164) 페이지를 primary key의 key 컬럼 순서대로 오름차순으로 정렬한다(T395, DSL-67, PRT-38). count 쿼리에는 순서가 없다. 전에는 데이터베이스마다 `LIMIT`과 `OFFSET`의 행을 자기 plan의 순서로 돌려주어 이어지는 페이지가 행을 되풀이하거나 건너뛸 수 있었다. 4행씩의 1쪽과 2쪽은 MySQL, MariaDB, PostgreSQL, SQLite, markdown 모두에서 행 하나를 건너뛰었다. 순서를 가진 체인은 바뀌지 않는다.
 
 - PostgreSQL DSN은 모든 runtime에서 검증된 TLS로 연결한다(T435, CFG-45~CFG-47). `sslmode=verify-full`과 인증 기관 PEM 파일의 절대 경로 `sslrootcert`를 함께 쓰면 server 인증서를 그 인증 기관만으로 검사하고, DSN의 host를 인증서와 대조한다. 다른 인증 기관이 서명했거나 다른 host를 가리키는 인증서는 `CONFIG`로 실패하며, message에 `TLS connection failed`가 들어간다. 어떤 client도 `~/.postgresql/root.crt`나 platform store 같은 기본 인증 기관을 읽지 않는다. 두 매개변수의 거부는 여섯 runtime에서 같은 텍스트이고 같은 순서로 나온다. `sslrootcert`는 `socket`, `host`와 함께 `;`나 NUL을 담을 수 없는 값이 된다(CFG-20). `sslmode`가 없거나 `sslmode=disable`인 DSN은 TLS를 제공하는 server에도 TLS 없이 연결한다. Rust는 fork release `v0.9.0-polyspec.2`의 sqlx를 쓴다. 이 release에서 CA 파일을 지정한 연결은 그 파일만 신뢰한다. 전에는 Rust가 PostgreSQL처럼 MySQL(CFG-16)에서도 platform store까지 신뢰했다. PHP extension은 거부된 PostgreSQL 연결의 이유를 library처럼 알린다. 전에는 `cannot connect to PostgreSQL`만 알리고 `pg_connect`의 warning을 그대로 흘렸다.
 

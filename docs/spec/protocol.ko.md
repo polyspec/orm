@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: b637e6c92144ed172266e49b39face9e96bc6609d356c2e54889832d62e8d1e5 -->
+<!-- source-sha256: ed925dcefb379ac69f013298326d436c7a766a115c9c2c2fe12349f0291e2919 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -191,7 +191,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 ### 2.1 관계 단계
 
-- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`는 단계를 main, count, relation 순서로 둔다. count 단계는 main 단계 다음에 오며, main의 조건과 join을 그대로 갖되 order와 page limit은 갖지 않는다. `lookahead_paginate`와 `group_lookahead_paginate`는 count 단계가 없다. main 단계는 order와 루트 limit을 가진 `all` 또는 `group_count`의 문장이고 client는 그 count를 `perPage + 1`로 정하며, `lookahead_paginate`는 그 뒤에 relation 단계가 오고 relation 단계는 추가 행을 뺀 페이지의 부모를 읽는다. `order`가 없는 query는 `lookahead_paginate`에서 primary key의, `group_lookahead_paginate`에서 `group_by` 컬럼의 차례대로 오름차순 정렬하며, lookahead kind는 루트 `limit`이 필요하고 없으면 `IR_INVALID` "%s needs limit"이다.
+- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`는 단계를 main, count, relation 순서로 둔다. count 단계는 main 단계 다음에 오며, main의 조건과 join을 그대로 갖되 order와 page limit은 갖지 않는다. `lookahead_paginate`와 `group_lookahead_paginate`는 count 단계가 없다. main 단계는 order와 루트 limit을 가진 `all` 또는 `group_count`의 문장이고 client는 그 count를 `perPage + 1`로 정하며, `lookahead_paginate`는 그 뒤에 relation 단계가 오고 relation 단계는 추가 행을 뺀 페이지의 부모를 읽는다. `order`가 없는 query는 `paginate`(count 단계에는 순서가 없다)와 `lookahead_paginate`에서 primary key의, `group_lookahead_paginate`에서 `group_by` 컬럼의 차례대로 오름차순 정렬하며, lookahead kind는 루트 `limit`이 필요하고 없으면 `IR_INVALID` "%s needs limit"이다.
 - **PRT-39** 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
 - **PRT-40** `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
 - **PRT-40a** `polyspec/orm-php-ext` package의 PHP extension은 composite relation의 `parent` slot을 native class에서 펼치고, 각 행의 두 key 구성 요소를 bind한다(PRT-40).
