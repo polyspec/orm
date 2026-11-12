@@ -13,7 +13,12 @@
   "DSL-104",
   "DSL-107",
   "INT-35",
-  "PRT-41"
+  "PRT-41",
+  "PRT-85",
+  "PRT-86",
+  "PRT-87",
+  "PRT-88",
+  "DSL-162"
  ],
  "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
  "seed": {
@@ -3279,6 +3284,1414 @@
          "name": "order-a"
         }
        ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_writes_only_when_it_holds",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990436"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990436"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990436"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990436"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_is_a_group_of_groups",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "role": {
+       "text": "guest"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "and": [
+         {
+          "account_id": {
+           "in": {
+            "sub": {
+             "model": "CompositeAccount",
+             "columns": [
+              "account_id"
+             ],
+             "where": {
+              "and": [
+               {
+                "tenant_id": {
+                 "int": "990437"
+                }
+               },
+               {
+                "name": {
+                 "text": "ok"
+                }
+               }
+              ]
+             }
+            }
+           }
+          }
+         },
+         {
+          "role": {
+           "text": "member"
+          }
+         }
+        ]
+       },
+       {
+        "and": [
+         {
+          "role": {
+           "text": "guest"
+          }
+         },
+         {
+          "tenant_id": {
+           "int": "990437"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeMember",
+     "values": {
+      "tenant_id": {
+       "int": "990437"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "role": {
+       "text": "member"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "and": [
+         {
+          "account_id": {
+           "in": {
+            "sub": {
+             "model": "CompositeAccount",
+             "columns": [
+              "account_id"
+             ],
+             "where": {
+              "and": [
+               {
+                "tenant_id": {
+                 "int": "990437"
+                }
+               },
+               {
+                "name": {
+                 "text": "ok"
+                }
+               }
+              ]
+             }
+            }
+           }
+          }
+         },
+         {
+          "role": {
+           "text": "member"
+          }
+         }
+        ]
+       },
+       {
+        "and": [
+         {
+          "role": {
+           "text": "guest"
+          }
+         },
+         {
+          "tenant_id": {
+           "int": "990437"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990437"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_reads_its_own_table_as_before_the_statement",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990438"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "same"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990438"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "same"
+       }
+      }
+     ],
+     "where": {
+      "name": {
+       "not_in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "tenant_id": {
+           "eq": {
+            "outer": "tenant_id"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990438"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "same"
+      }
+     },
+     "where": {
+      "name": {
+       "not_in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "tenant_id": {
+           "eq": {
+            "outer": "tenant_id"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_account does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "990438"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_writes_every_row_or_none",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "1"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "2"
+      },
+      "name": {
+       "text": "no"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "990439"
+      },
+      "account_id": {
+       "int": "3"
+      },
+      "name": {
+       "text": "ok"
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 1,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into composite_member does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeMember",
+     "batch": 10,
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "member"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "990439"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "member"
+       }
+      }
+     ],
+     "where": {
+      "account_id": {
+       "in": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "and": [
+           {
+            "tenant_id": {
+             "int": "990439"
+            }
+           },
+           {
+            "name": {
+             "text": "ok"
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "CompositeMember",
+     "where": {
+      "tenant_id": {
+       "int": "990439"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_reads_null_as_sql_does",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436a"
+      },
+      "body": {
+       "null": "text"
+      }
+     },
+     "where": {
+      "or": [
+       {
+        "body": {
+         "is_null": true
+        }
+       },
+       {
+        "body": {
+         "not_in": {
+          "sub": {
+           "model": "ConditionCell",
+           "columns": [
+            "body"
+           ],
+           "where": {
+            "code": {
+             "text": "c436z"
+            }
+           }
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436b"
+      },
+      "body": {
+       "text": "b"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "code": {
+           "text": "c436a"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436b"
+      },
+      "body": {
+       "text": "b"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "and": [
+           {
+            "code": {
+             "text": "c436a"
+            }
+           },
+           {
+            "body": {
+             "not_null": true
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436c"
+      },
+      "body": {
+       "null": "text"
+      }
+     },
+     "where": {
+      "body": {
+       "not_in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "body"
+         ],
+         "where": {
+          "code": {
+           "text": "c436b"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "or": [
+       {
+        "code": {
+         "text": "c436a"
+        }
+       },
+       {
+        "code": {
+         "text": "c436b"
+        }
+       },
+       {
+        "code": {
+         "text": "c436c"
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "insert_condition_bounds_an_insert_with_on_duplicate",
+   "requirements": [
+    "PRT-85",
+    "PRT-86",
+    "PRT-87",
+    "PRT-88",
+    "DSL-162"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "one"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "none"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c437"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "none"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "postgres": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      },
+      "sqlite": {
+       "error": "CONDITION_NOT_MET",
+       "message": "CONDITION_NOT_MET: the condition of the insert into condition_cell does not hold; no row was written"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "ConditionCell",
+     "values": {
+      "code": {
+       "text": "c436"
+      },
+      "body": {
+       "text": "two"
+      }
+     },
+     "duplication": {
+      "body": {
+       "text": "two"
+      }
+     },
+     "where": {
+      "code": {
+       "in": {
+        "sub": {
+         "model": "ConditionCell",
+         "columns": [
+          "code"
+         ],
+         "where": {
+          "body": {
+           "text": "one"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ConditionCell",
+     "where": {
+      "and": [
+       {
+        "code": {
+         "text": "c436"
+        }
+       },
+       {
+        "body": {
+         "text": "two"
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
       }
      }
     }

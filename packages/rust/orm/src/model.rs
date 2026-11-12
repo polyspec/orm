@@ -252,11 +252,11 @@ fn insert_parts(rows: usize, batch: usize) -> Vec<usize> {
 }
 
 /// Refuses, before any statement, the first batch whose binds exceed the bind limit of `driver`, naming the batch,
-/// its bind count and the limit.
-fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
+/// its bind count and the limit. The binds of a batch are its values and the parameters of the insert condition (DSL-162).
+fn batch_fits(driver: &str, parts: &[usize], columns: usize, condition: usize) -> Result<()> {
     let limit = bind_limit(driver);
     for (i, part) in parts.iter().enumerate() {
-        let binds = part * columns;
+        let binds = part * columns + condition;
         if binds > limit {
             return Err(Error::Engine {
                 code: codes::BATCH_TOO_LARGE.into(),
@@ -1177,7 +1177,8 @@ async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: i
     // The audit record precedes the first write of an audited table; an update, delete or restore guards it
     // with a savepoint that keeps it only when the write changed a row.
     if let Executor::Tx(t) = ex {
-        if binds_audit(st) && t.audit_for(req.ir.kind != "insert").await? {
+        // A write that can change no row, an insert with a condition too, takes the guard (DBS-87).
+        if binds_audit(st) && t.audit_for(req.ir.kind != "insert" || req.ir.query.where_.is_some()).await? {
             let written = sql_write(ex, st, req).await;
             let changed = matches!(&written, Ok((_, affected)) if *affected > 0);
             let settled = t.settle_audit(changed).await;
@@ -1216,10 +1217,18 @@ pub(crate) fn binds_audit(st: &crate::plan::Step) -> bool {
 async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(Val, u64)> {
     if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
+        if req.ir.query.where_.is_some() && rows.is_empty() {
+            // An insert with a condition returns no key when its condition does not hold (docs/spec/protocol.md PRT-88).
+            return Err(condition_not_met(&req.ir.query.entity));
+        }
         // The returned key is the identity, an integer.
         return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
     }
     let (id, affected) = ex.execute(st, &req.params).await?;
+    if req.ir.kind == "insert" && req.ir.query.where_.is_some() && affected == 0 {
+        // The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not hold.
+        return Err(condition_not_met(&req.ir.query.entity));
+    }
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
     let affected = if req.ir.kind == "insert" && !req.ir.on_duplicate.is_empty() { 1 } else { affected };
     let key = if req.ir.kind == "insert" {
@@ -1228,6 +1237,15 @@ async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(
         Val::Null
     };
     Ok((key, affected))
+}
+
+/// The error of an insert with a condition that wrote no row (docs/spec/protocol.md PRT-88).
+fn condition_not_met(entity: &str) -> Error {
+    Error::Engine {
+        code: codes::CONDITION_NOT_MET.into(),
+        msg: format!("the condition of the insert into {entity} does not hold; no row was written"),
+        source: None,
+    }
 }
 
 /// Fails an optimistic update that changed no row.
@@ -1260,6 +1278,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             return Err(config("duplication model has no set_<col> values"));
         }
     }
+    crate::request::insert_condition(&mut req, c)?;
     req.ir.n_params = req.params.len();
     let (key, _) = write(&ex, &c.conn, &mut req).await?;
     let mut out = M::from_core(Core::new(c.ent));
@@ -1327,7 +1346,9 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
     }
     let columns: Vec<String> = first.sets.iter().map(|s| s.column.clone()).collect();
     let parts = insert_parts(rows.len(), batch);
-    batch_fits(ex.db().sql_driver(), &parts, columns.len())?;
+    let mut probe = write_req(c, "insert");
+    crate::request::insert_condition(&mut probe, c)?;
+    batch_fits(ex.db().sql_driver(), &parts, columns.len(), probe.params.len())?;
     in_transaction(&c.conn, async || {
         let mut total = 0;
         let mut start = 0;
@@ -1367,6 +1388,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
                     req.ir.rows.push(params);
                 }
             }
+            crate::request::insert_condition(&mut req, c)?;
             req.ir.n_params = req.params.len();
             let inner = resolve(&c.conn)?;
             let (_, n) = write(&inner, &c.conn, &mut req).await?;

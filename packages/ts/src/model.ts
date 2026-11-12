@@ -1,5 +1,5 @@
 import { isUtf8 } from 'node:buffer';
-import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
+import { BuiltRequest, CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { CodecError, encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Db, DatetimeKey, keyOfValues, keyText, keyValue, lookahead, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
@@ -856,6 +856,22 @@ function assign(r: WriteRequest, schema: Entity, s: SetSpec): NonNullable<Reques
   return { column: s.column, p: param(r, value) };
 }
 
+/**
+ * Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162), their parameters after those of r;
+ * returns the number of those parameters.
+ */
+function insertCondition(c: Core, r: WriteRequest): number {
+  const built = new BuiltRequest('insert', r.ir.manifest_hash);
+  built.params.push(...r.params);
+  const where = built.insertCondition(c);
+  if (built.error) throw built.error;
+  if (where === undefined) return 0;
+  const added = built.params.slice(r.params.length);
+  r.params.push(...added);
+  r.ir.where = where;
+  return added.length;
+}
+
 function finishWrite(r: WriteRequest): Request {
   r.ir.n_params = r.params.length;
   return r.ir;
@@ -871,6 +887,7 @@ async function create(c: Core): Promise<Model> {
     r.ir.on_duplicate = c.duplication.sets.map(s => assign(r, schema, s));
     if (r.ir.on_duplicate.length === 0) throw configError('duplication model has no set<Col> values');
   }
+  insertCondition(c, r);
   const { key } = await write(ex, finishWrite(r), r.params);
   const m = newModel(c.ent);
   m.conn = c.conn;
@@ -914,7 +931,7 @@ async function creates(c: Core, models: readonly Model[], batch: number): Promis
     return s.column;
   });
   const parts = insertParts(models.length, batch);
-  batchFits(ex.db.dialect, parts, columns.length);
+  batchFits(ex.db.dialect, parts, columns.length, insertCondition(c, writeRequest(c, 'insert')));
   const schema = c.ent.entity;
   let total = 0;
   await inTransaction(c.conn, async () => {
@@ -932,6 +949,7 @@ async function creates(c: Core, models: readonly Model[], batch: number): Promis
         else rows.push(ps);
       });
       if (rows.length > 0) r.ir.rows = rows;
+      insertCondition(c, r);
       const { affected } = await write(resolve(c.conn), finishWrite(r), r.params);
       total += affected;
       start += part;
@@ -942,12 +960,12 @@ async function creates(c: Core, models: readonly Model[], batch: number): Promis
 
 /**
  * Refuses, before any statement, the first batch whose binds exceed the bind limit of driver, naming the batch, its
- * bind count and the limit.
+ * bind count and the limit; the parameters of the insert condition are bound in every batch.
  */
-function batchFits(driver: string, parts: readonly number[], columns: number): void {
+function batchFits(driver: string, parts: readonly number[], columns: number, condition: number): void {
   const limit = driver === 'sqlite' ? 999 : 65535;
   parts.forEach((part, i) => {
-    const binds = part * columns;
+    const binds = part * columns + condition;
     if (binds > limit) throw new OrmError(codes.BATCH_TOO_LARGE, `creates batch ${i + 1} of ${part} rows binds ${binds} parameters, over the ${driver} limit of ${limit}`);
   });
 }

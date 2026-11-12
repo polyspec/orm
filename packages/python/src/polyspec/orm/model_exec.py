@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from polyspec.orm import codes
 from polyspec.orm.codec import CodecError
-from polyspec.orm.core import Core, SetSpec
+from polyspec.orm.core import BuiltRequest, Core, Frame, SetSpec
 from polyspec.orm.database import (
     Db,
     Executor,
@@ -681,6 +681,24 @@ def _write_request(c: Core, kind: str) -> dict:
     }
 
 
+def _insert_condition(c: Core, r: dict) -> None:
+    """Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column
+    compares the value that the insert writes to that column."""
+    if c.where.pending != "":
+        raise OrmError(
+            codes.CONFIG, f"connector {c.where.pending} without a following condition"
+        )
+    if not c.where.items:
+        return
+    built = BuiltRequest("insert", r["ir"].get("manifest_hash", ""))
+    # The condition binds after the values of the insert, in the same parameter list.
+    built.params = r["params"]
+    where = built._group(c.where, c, Frame(c, None))
+    if built.error is not None:
+        raise built.error
+    r["ir"]["where"] = where
+
+
 def create(c: Core):
     """Inserts a row with the set_<col>() values and returns the row that was made."""
     from polyspec.orm.database import column_type
@@ -695,6 +713,7 @@ def create(c: Core):
         r["ir"]["on_duplicate"] = [_assign(r, schema, s) for s in c.duplication.sets]
         if not r["ir"]["on_duplicate"]:
             raise OrmError(codes.CONFIG, "duplication model has no set<col> values")
+    _insert_condition(c, r)
     r["ir"]["n_params"] = len(r["params"])
     written = write(ex, r["ir"], r["params"])
     core = _new_model(c.ent)
@@ -753,8 +772,11 @@ def creates(c: Core, models, batch: int) -> int:
     schema = c.ent.entity
     parts = _insert_parts(len(models), batch)
     limit = 999 if ex.db.sql_driver == "sqlite" else 65535
+    # The condition binds its parameters once in every batch.
+    probe: dict = {"ir": {}, "params": []}
+    _insert_condition(c, probe)
     for n, size in enumerate(parts, 1):
-        binds = size * len(columns)
+        binds = size * len(columns) + len(probe["params"])
         if binds > limit:
             raise OrmError(
                 codes.BATCH_TOO_LARGE,
@@ -798,6 +820,7 @@ def creates(c: Core, models, batch: int) -> int:
                     rows.append(ps)
             if rows:
                 r["ir"]["rows"] = rows
+            _insert_condition(c, r)
             r["ir"]["n_params"] = len(r["params"])
             total += write(tx, r["ir"], r["params"])["affected"]
 

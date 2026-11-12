@@ -1289,9 +1289,7 @@ class Planner:
         for column, value in managed:
             cols.append(self.d.quote(column))
             vals.append(value(b))
-        sql = (
-            f"INSERT INTO {b.table(ent)} ({', '.join(cols)}) VALUES ({', '.join(vals)})"
-        )
+        rows = [vals]
         if r.get("rows") or []:
             # A derived blind-index column takes the value of its AES source column.
             source = []
@@ -1325,7 +1323,14 @@ class Planner:
                     )
                 for column, value in managed:
                     more.append(value(b))
-                sql += f", ({', '.join(more)})"
+                rows.append(more)
+        sql = f"INSERT INTO {b.table(ent)} ({', '.join(cols)}) "
+        if r.get("where") is not None:
+            names = [a["column"] for a in assignments] + [c for c, _ in managed]
+            sql += self._conditional_rows(b, ent, names, rows, r["where"])
+        else:
+            sql += "VALUES " + ", ".join(f"({', '.join(row)})" for row in rows)
+        if r.get("rows") or []:
             return {
                 "role": "main",
                 "sql": sql,
@@ -1365,6 +1370,34 @@ class Planner:
             "tables": b.tables(),
             "bind_slots": [s.as_dict() for s in b.binds],
         }
+
+    def _conditional_rows(
+        self, b: _Builder, ent: Entity, names: list, rows: list, where: dict
+    ) -> str:
+        """The select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87): the rows of the request, named
+        by their columns in a common table expression, are selected only when no row leaves the condition other than true,
+        so the statement writes every row or none, and a NULL condition does not hold. The condition reads each row as the
+        scope of the written row, which a subquery names with ^; the tables it reads are read as they were before the
+        statement."""
+        quoted = [self.d.quote(name) for name in names]
+        selects = []
+        for i, row in enumerate(rows):
+            items = []
+            for k, value in enumerate(row):
+                item = self.d.insert_value(value, field_of(ent, names[k]).type)
+                if i == 0:
+                    item += f" AS {quoted[k]}"
+                items.append(item)
+            selects.append("SELECT " + ", ".join(items))
+        written = _Scope(ent, "orm_written", {"entity": ent.name}, None)
+        condition = self._render_group(b, written, where, True)
+        rows_name = self.d.quote("orm_rows")
+        read = ", ".join(f"{rows_name}.{q}" for q in quoted)
+        return (
+            f"WITH {rows_name} AS ({' UNION ALL '.join(selects)}) SELECT {read} FROM {rows_name} "
+            f"WHERE NOT EXISTS (SELECT 1 FROM {rows_name} AS {self.d.quote('orm_written')} "
+            f"WHERE ({condition}) IS NOT TRUE)"
+        )
 
     def _update_step(self, r: dict) -> dict:
         b = _Builder(self.d)

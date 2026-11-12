@@ -3763,7 +3763,8 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     bool has_frame = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
     bool settle_needed = false;
     if (has_frame && binds_audit(&step)) {
-        bool guard = !is_str(aget(ir, "kind"), "insert");
+        /* A write that can change no row, an insert with a condition too, takes the guard (DBS-87). */
+        bool guard = !is_str(aget(ir, "kind"), "insert") || aget(ir, "where") != NULL;
         if (!audit_for(self, frame, guard, &settle_needed)) {
             zval_ptr_dtor(&step);
             zval_ptr_dtor(&plan);
@@ -3800,6 +3801,14 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
             return false;
         }
         zval_ptr_dtor(&settled);
+    }
+    if (is_str(aget(ir, "kind"), "insert") && aget(ir, "where") != NULL && n == 0) {
+        /* The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not
+         * hold. */
+        zval_ptr_dtor(&id);
+        db_throw_orm("CONDITION_NOT_MET", "the condition of the insert into %s does not hold; no row was written",
+            Z_STRVAL_P(aget(ir, "entity")));
+        return false;
     }
     if (aget(ir, "optimistic") != NULL && n == 0) {
         zval_ptr_dtor(&id);
@@ -3885,16 +3894,18 @@ static bool op_write(zval *self, void *ctx, zval *ret)
         zval_ptr_dtor(&id);
         ZVAL_COPY_VALUE(&id, &r);
     }
-    if (upsert) {
+    zval rc;
+    if (!mcall(&st, "rowCount", &rc, 0, NULL)) {
+        zval_ptr_dtor(&id);
+        zval_ptr_dtor(&st);
+        return false;
+    }
+    ZVAL_COPY_VALUE(&affected, &rc);
+    /* An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1. An insert with a
+     * condition that writes no row counts 0 (docs/spec/protocol.md PRT-88). */
+    if (upsert && !(aget(ir, "where") != NULL && zval_get_long(&affected) == 0)) {
+        zval_ptr_dtor(&affected);
         ZVAL_LONG(&affected, 1);
-    } else {
-        zval rc;
-        if (!mcall(&st, "rowCount", &rc, 0, NULL)) {
-            zval_ptr_dtor(&id);
-            zval_ptr_dtor(&st);
-            return false;
-        }
-        ZVAL_COPY_VALUE(&affected, &rc);
     }
     zval_ptr_dtor(&st);
     array_init(ret);

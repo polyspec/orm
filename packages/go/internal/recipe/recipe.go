@@ -1473,8 +1473,9 @@ func validate(m *runtimemodel.Model, raw json.RawMessage, manifestHash string) e
 // {error: CODE} for a request that fails with CODE (the error text starts with CODE and a colon).
 func checkValidate(raw json.RawMessage, err error) error {
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value   json.RawMessage `json:"value"`
+		Error   string          `json:"error"`
+		Message string          `json:"message"`
 	}
 	if e := decodeOutcome(raw, &outcome); e != nil {
 		return e
@@ -1482,6 +1483,9 @@ func checkValidate(raw json.RawMessage, err error) error {
 	if outcome.Error != "" {
 		if err == nil || !strings.HasPrefix(err.Error(), outcome.Error+":") {
 			return fmt.Errorf("got %w, want %s", err, outcome.Error)
+		}
+		if outcome.Message != "" && err.Error() != outcome.Message {
+			return fmt.Errorf("error message %q, want %q", err.Error(), outcome.Message)
 		}
 		return nil
 	}

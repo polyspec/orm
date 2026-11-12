@@ -1,5 +1,6 @@
 /* Native write and CRUD methods for Polyspec\Orm\Model. */
 #include "model_write.h"
+#include "model_query.h"
 #include "model_state.h"
 #include "model_native_methods.h"
 #include "object_method_lookup.h"
@@ -553,6 +554,41 @@ static bool append_set_values(zval *model, zval *request, zval *sets, zval *prim
     return true;
 }
 
+/* Model::insertCondition: makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162). A condition on
+ * a column compares the value that the insert writes to that column, and a subquery of it names the written row as its outer
+ * model. False with an exception. */
+static bool insert_condition(zval *model, zval *request)
+{
+    zval *where = model_field(model, "where");
+    zval *pending = array_key(where, "pending");
+    if (pending != NULL && Z_TYPE_P(pending) == IS_STRING && Z_STRLEN_P(pending) > 0) {
+        zend_string *message = strpprintf(0, "connector %s without a following condition", Z_STRVAL_P(pending));
+        model_write_throw("CONFIG", message, NULL);
+        zend_string_release(message);
+        return false;
+    }
+    zval *items = array_key(where, "items");
+    if (items == NULL || Z_TYPE_P(items) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(items)) == 0) {
+        return true;
+    }
+    zval frame;
+    ZVAL_UNDEF(&frame);
+    if (!query_make_frame(model, NULL, &frame)) {
+        call_result_dtor(&frame);
+        return false;
+    }
+    zval args[3], group;
+    ZVAL_COPY(&args[0], items);
+    ZVAL_COPY(&args[1], request);
+    ZVAL_COPY_VALUE(&args[2], &frame);
+    bool ok = model_call(model, "groupIr", &group, 3, args);
+    for (int i = 0; i < 3; i++)
+        zval_ptr_dtor(&args[i]);
+    ok = ok && request_set_ir_value(request, "where", &group);
+    call_result_dtor(&group);
+    return ok;
+}
+
 static bool model_create(zval *model, zval *result_model)
 {
     zval db, frame, meta, request, written;
@@ -603,6 +639,7 @@ static bool model_create(zval *model, zval *result_model)
             goto failed;
         }
     }
+    if (!insert_condition(model, &request)) goto failed;
 
     if (!write_of(&db, &frame, &request, NULL, &written))
         goto failed;
@@ -1316,6 +1353,9 @@ static bool creates_callback_run(zval *callback)
             }
             zval_ptr_dtor(&params);
         }
+        if (!insert_condition(model, &request)) {
+            zval_ptr_dtor(&request); zval_ptr_dtor(&resolved[0]); return false;
+        }
         zval written;
         if (!write_of(db, frame, &request, NULL, &written)) {
             zval_ptr_dtor(&request); zval_ptr_dtor(&resolved[0]); call_result_dtor(&written); return false;
@@ -1395,9 +1435,18 @@ ZEND_METHOD(Polyspec_Orm_Model, creates)
     zval_ptr_dtor(&limit_arg);
     ZVAL_LONG(&parts_args[0], zend_hash_num_elements(Z_ARRVAL_P(rows))); ZVAL_LONG(&parts_args[1], batch);
     if (!named_call("Polyspec\\Orm\\Db::insertParts", &parts, 2, parts_args)) { zval_ptr_dtor(&driver); zval_ptr_dtor(&limit); zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&parts); RETURN_THROWS(); }
+    /* The condition binds its parameters in every batch. */
+    zval probe;
+    ZVAL_UNDEF(&probe);
+    if (!write_request(ZEND_THIS, "insert", &db, &probe) || !insert_condition(ZEND_THIS, &probe)) {
+        call_result_dtor(&probe); zval_ptr_dtor(&driver); zval_ptr_dtor(&limit); zval_ptr_dtor(&parts); zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); zval_ptr_dtor(&meta); RETURN_THROWS();
+    }
+    zval *probe_params = object_property(&probe, "params");
+    zend_long condition_binds = Z_TYPE_P(probe_params) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL_P(probe_params)) : 0;
+    zval_ptr_dtor(&probe);
     zend_long i = 0;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(parts), spec) {
-        zend_long binds = Z_LVAL_P(spec) * zend_hash_num_elements(Z_ARRVAL(columns));
+        zend_long binds = Z_LVAL_P(spec) * zend_hash_num_elements(Z_ARRVAL(columns)) + condition_binds;
         if (binds > Z_LVAL(limit)) {
             smart_str msg = {0}; smart_str_append_printf(&msg, "creates batch " ZEND_LONG_FMT " of " ZEND_LONG_FMT " rows binds " ZEND_LONG_FMT " parameters, over the %s limit of " ZEND_LONG_FMT, ++i, Z_LVAL_P(spec), binds, Z_STRVAL(driver), Z_LVAL(limit));
             zend_string *text = smart_str_extract(&msg); throw_model_error("BATCH_TOO_LARGE", ZSTR_VAL(text)); zend_string_release(text);

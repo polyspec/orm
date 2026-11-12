@@ -964,17 +964,22 @@ export class Planner {
       cols.push(this.d.quote(c.column));
       vals.push(c.value(b));
     }
-    let sql = `INSERT INTO ${b.table(ent)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
+    const rendered: string[][] = [vals];
     const rows = r.rows ?? [];
-    if (rows.length > 0) {
-      // Each derived target carries the input position of its source for every additional row.
-      for (const row of rows) {
-        const more = set.map((a, i) => this.renderAssign(b, ent, present(columnOf(ent, a.column), `column ${a.column}`), { column: a.column, p: present(row[present(sourceIndices[i], `the source of ${a.column}`)], `the parameter of ${a.column} in a row`) }));
-        for (const c of managed) more.push(c.value(b));
-        sql += `, (${more.join(', ')})`;
-      }
-      return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
+    // Each derived target carries the input position of its source for every additional row.
+    for (const row of rows) {
+      const more = set.map((a, i) => this.renderAssign(b, ent, present(columnOf(ent, a.column), `column ${a.column}`), { column: a.column, p: present(row[present(sourceIndices[i], `the source of ${a.column}`)], `the parameter of ${a.column} in a row`) }));
+      for (const c of managed) more.push(c.value(b));
+      rendered.push(more);
     }
+    let sql = `INSERT INTO ${b.table(ent)} (${cols.join(', ')}) `;
+    if (r.where !== undefined) {
+      const names = [...set.map(a => a.column), ...managed.map(c => c.column)];
+      sql += this.conditionalRows(b, ent, names, rendered, r.where);
+    } else {
+      sql += `VALUES ${rendered.map(row => `(${row.join(', ')})`).join(', ')}`;
+    }
+    if (rows.length > 0) return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
     if ((r.on_duplicate ?? []).length > 0) {
       const { assignments: duplicate } = addBlindIndexAssignments(ent, (r.on_duplicate ?? []).slice());
       validateAESAssignments(ent, duplicate, true);
@@ -990,6 +995,25 @@ export class Planner {
     }
     if (this.d.insertReturningId && ent.identity !== '') sql += ` RETURNING ${this.d.quote(ent.identity)}`;
     return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
+  }
+
+  /**
+   * The select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87): the rows of the request, named by their
+   * columns in a common table expression, are selected only when no row leaves the condition other than true, so the statement
+   * writes every row or none, and a NULL condition does not hold. The condition reads each row as the scope of the written row,
+   * which a subquery names with ^; the tables it reads are read as they were before the statement.
+   */
+  private conditionalRows(b: Builder, ent: Entity, names: readonly string[], rows: readonly (readonly string[])[], where: Group): string {
+    const quoted = names.map(name => this.d.quote(name));
+    const selects = rows.map((row, i) => `SELECT ${row.map((v, k) => {
+      const value = this.d.insertValue(v, columnIn(ent, present(names[k], `the column of value ${k + 1}`)).type);
+      return i === 0 ? `${value} AS ${present(quoted[k], `the quoted column of value ${k + 1}`)}` : value;
+    }).join(', ')}`);
+    const written: Scope = { ent, alias: 'orm_written', q: { entity: ent.name }, joins: new Map(), parent: undefined, outer: undefined, extra: [] };
+    const condition = this.renderGroup(b, written, where, true);
+    const rowsName = this.d.quote('orm_rows');
+    return `WITH ${rowsName} AS (${selects.join(' UNION ALL ')}) SELECT ${quoted.map(q => `${rowsName}.${q}`).join(', ')}`
+      + ` FROM ${rowsName} WHERE NOT EXISTS (SELECT 1 FROM ${rowsName} AS ${this.d.quote('orm_written')} WHERE (${condition}) IS NOT TRUE)`;
   }
 
   private updateStep(r: Request): Omit<PlanStep, 'id'> {

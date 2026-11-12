@@ -93,7 +93,8 @@ fn normalized(value: &Value) -> Value {
                     continue;
                 }
                 // The typed relation holds no keys for an empty list, as for an absent one: both are IR_INVALID.
-                if key == "keys" && member.as_array().is_some_and(Vec::is_empty) {
+                // A function without arguments holds no ps either, as for an absent one.
+                if (key == "keys" || key == "ps") && member.as_array().is_some_and(Vec::is_empty) {
                     continue;
                 }
                 let mut member = normalized(member);

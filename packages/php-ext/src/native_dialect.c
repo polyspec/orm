@@ -720,6 +720,32 @@ ZEND_METHOD(Polyspec_Orm_Dialect, restartIdentity)
     RETURN_STR(result);
 }
 
+/* The value of a column of dbspec type type in the rows that an insert with a condition selects (docs/spec/protocol.md
+ * PRT-86): PostgreSQL types it by the base type of the column, without its length, precision or scale, since a
+ * parameter in a select list is otherwise text; MySQL and SQLite take the value as is. */
+ZEND_METHOD(Polyspec_Orm_Dialect, insertValue)
+{
+    static const char *const base_types[][2] = {
+        {"i16", "smallint"}, {"i32", "integer"}, {"i64", "bigint"}, {"bool", "boolean"}, {"decimal", "numeric"},
+        {"f64", "double precision"}, {"varchar", "text"}, {"text", "text"}, {"bytes", "bytea"}, {"uuid", "uuid"},
+        {"date", "date"}, {"time", "time"}, {"datetime", "timestamp"},
+    };
+    zend_string *expr, *type;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(expr)
+        Z_PARAM_STR(type)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!dialect_is(ZEND_THIS, "postgres")) {
+        RETURN_STR_COPY(expr);
+    }
+    for (size_t i = 0; i < sizeof(base_types) / sizeof(base_types[0]); i++) {
+        if (zend_string_equals_cstr(type, base_types[i][0], strlen(base_types[i][0]))) {
+            RETURN_STR(zend_strpprintf(0, "CAST(%s AS %s)", ZSTR_VAL(expr), base_types[i][1]));
+        }
+    }
+    zend_throw_error(NULL, "Undefined array key \"%s\"", ZSTR_VAL(type));
+}
+
 ZEND_METHOD(Polyspec_Orm_Dialect, random)
 {
     ZEND_PARSE_PARAMETERS_NONE();

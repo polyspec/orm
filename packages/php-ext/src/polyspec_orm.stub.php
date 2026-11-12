@@ -985,6 +985,7 @@ final class Dialect
     public function rowLock(string $mode): ?string {}
     public static function literal(string $text): string {}
     public function restartIdentity(string $table, string $column): string {}
+    public function insertValue(string $expr, string $type): string {}
     public function random(): string {}
     public function nullsOrder(bool $desc): string {}
     public function tupleIn(array $cols, array $rows, bool $negate): string {}
@@ -1286,6 +1287,8 @@ final class Code
     public const string COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const string OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
+    /** executor: an insert with a condition wrote no row, because the condition does not hold for one of its rows; nothing was written */
+    public const string CONDITION_NOT_MET = 'CONDITION_NOT_MET';
     /** executor: a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it */
     public const string WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/spec/codec.md) */

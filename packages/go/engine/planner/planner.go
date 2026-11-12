@@ -1218,26 +1218,47 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		cols = append(cols, p.D.Quote(c.column))
 		vals = append(vals, c.value(b))
 	}
-	sql := "INSERT INTO " + b.table(ent) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
-	if len(r.Rows) > 0 {
-		// source maps each rendered column to its value in r.Set; derived blind-index columns
-		// retain the assignment position of the AES source that derived them.
-		for _, row := range r.Rows {
-			more := make([]string, len(set))
-			for i := range set {
-				param := row[source[i]]
-				a := ir.Assign{Column: set[i].Column, P: &param}
-				v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
-				if err != nil {
-					return nil, err
-				}
-				more[i] = v
+	rows := [][]string{vals}
+	// source maps each rendered column to its value in r.Set; derived blind-index columns
+	// retain the assignment position of the AES source that derived them.
+	for _, row := range r.Rows {
+		more := make([]string, len(set))
+		for i := range set {
+			param := row[source[i]]
+			a := ir.Assign{Column: set[i].Column, P: &param}
+			v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
+			if err != nil {
+				return nil, err
 			}
-			for _, c := range managed {
-				more = append(more, c.value(b))
-			}
-			sql += ", (" + strings.Join(more, ", ") + ")"
+			more[i] = v
 		}
+		for _, c := range managed {
+			more = append(more, c.value(b))
+		}
+		rows = append(rows, more)
+	}
+	sql := "INSERT INTO " + b.table(ent) + " (" + strings.Join(cols, ", ") + ") "
+	if r.Where != nil {
+		names := make([]string, 0, len(cols))
+		for _, a := range set {
+			names = append(names, a.Column)
+		}
+		for _, c := range managed {
+			names = append(names, c.column)
+		}
+		selected, err := p.conditionalRows(b, ent, names, rows, r.Where)
+		if err != nil {
+			return nil, err
+		}
+		sql += selected
+	} else {
+		lists := make([]string, len(rows))
+		for i, row := range rows {
+			lists[i] = "(" + strings.Join(row, ", ") + ")"
+		}
+		sql += "VALUES " + strings.Join(lists, ", ")
+	}
+	if len(r.Rows) > 0 {
 		if b.err != nil {
 			return nil, b.err
 		}
@@ -1277,6 +1298,42 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
 	}
 	return b.mainStep(sql)
+}
+
+// conditionalRows is the select of an insert with a condition (docs/spec/protocol.md PRT-85 to PRT-87): the rows of the
+// request, named by their columns in a common table expression, are selected only when no row leaves the condition
+// other than true, so the statement writes every row or none, and a NULL condition does not hold. The condition reads
+// each row as the scope of the written row, which a subquery names with ^; the tables it reads are read as they were
+// before the statement.
+func (p *Planner) conditionalRows(b *builder, ent *runtimemodel.Entity, names []string, rows [][]string, where *ir.Group) (string, error) {
+	quoted := make([]string, len(names))
+	for i, name := range names {
+		quoted[i] = p.D.Quote(name)
+	}
+	selects := make([]string, len(rows))
+	for i, row := range rows {
+		items := make([]string, len(row))
+		for k, v := range row {
+			items[k] = p.D.InsertValue(v, ent.Field(names[k]).Type)
+			if i == 0 {
+				items[k] += " AS " + quoted[k]
+			}
+		}
+		selects[i] = "SELECT " + strings.Join(items, ", ")
+	}
+	written := &scope{ent: ent, alias: "orm_written"}
+	condition, err := p.renderGroup(b, written, where, true)
+	if err != nil {
+		return "", err
+	}
+	rowsName := p.D.Quote("orm_rows")
+	read := make([]string, len(names))
+	for i, q := range quoted {
+		read[i] = rowsName + "." + q
+	}
+	return "WITH " + rowsName + " AS (" + strings.Join(selects, " UNION ALL ") + ") SELECT " + strings.Join(read, ", ") +
+		" FROM " + rowsName + " WHERE NOT EXISTS (SELECT 1 FROM " + rowsName + " AS " + p.D.Quote("orm_written") +
+		" WHERE (" + condition + ") IS NOT TRUE)", nil
 }
 
 // managedColumn is a column that the executor writes on every insert, and its bind slot.

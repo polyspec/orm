@@ -2016,7 +2016,8 @@ def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
 
 def _validate(step: dict, model: Any, database: str) -> None:
     """Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema added, and checks the
-    outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE."""
+    outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE,
+    and with message, the whole text of the error."""
     if model is None:
         raise AssertionError("ir.validate needs the schema key of the recipe")
     outcome = step["expect"].get(database)
@@ -2025,6 +2026,7 @@ def _validate(step: dict, model: Any, database: str) -> None:
     if "manifest_hash" in step["request"]:
         raise AssertionError("request already holds manifest_hash")
     got = None
+    message = ""
     try:
         validate(
             model,
@@ -2035,9 +2037,14 @@ def _validate(step: dict, model: Any, database: str) -> None:
         )
     except OrmError as error:
         got = error.code
+        message = str(error)
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
+        if outcome.get("message") and message != outcome["message"]:
+            raise AssertionError(
+                f"error message {message!r}, want {outcome['message']!r}"
+            )
         return
     if outcome.get("value") != {"bool": True}:
         raise AssertionError(
@@ -3994,6 +4001,16 @@ def _chain_assign(model: Model, values, context: dict) -> Model:
     return model
 
 
+def _chain_insert_condition(model: Model, step: dict, context: dict, db) -> None:
+    """Sets the where of a write step as the conditions of the model that inserts (DSL-162). The model that inserts owns the
+    subqueries of its condition, so their outer names the written row (PRT-17, PRT-85)."""
+    if not step.get("where"):
+        return
+    build = _ChainBuild(context, model)
+    build.db = db
+    build.predicate(model, "", step["where"])
+
+
 def _chain_write(step: dict, context: dict, terminal) -> dict:
     """A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result."""
     db = _connection_of(step, context)
@@ -4004,6 +4021,7 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
         step.get("values"),
         context,
     )
+    _chain_insert_condition(model, step, context, db)
     for name, value in step.get("attached", {}).items():
         model.core.set_new(name, _chain_value(value, context))
     if "duplication" in step:
@@ -4255,7 +4273,9 @@ def _table_model_creates(step: dict, context: dict) -> dict:
             row.core.set_value(sequence["column"], sequence["from"] + i)
             rows.append(_chain_assign(row, sequence.get("values"), context))
     batch = step.get("batch", len(rows))
-    return _count_fields(_new_row(context, db, step["model"]).creates(rows, batch))
+    model = _new_row(context, db, step["model"])
+    _chain_insert_condition(model, step, context, db)
+    return _count_fields(model.creates(rows, batch))
 
 
 def _table_model_update(step: dict, context: dict) -> dict:

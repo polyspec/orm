@@ -1556,7 +1556,8 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
   const { request, params } = hooked(ex, given, givenParams, afterHook);
   const db = ex.db;
   const step = mainStep((await db.plan(request)).plan);
-  const settle = await db.auditFor(ex, step, request.kind !== 'insert');
+  // A write that can change no row, an insert with a condition too, takes the guard (DBS-87).
+  const settle = await db.auditFor(ex, step, request.kind !== 'insert' || request.where !== undefined);
   let written: { key: number | null; affected: number };
   try {
     written = await writeStep(ex, request, params, step);
@@ -1591,16 +1592,26 @@ async function writeStep(ex: Executor, request: Request, params: readonly unknow
   return guarded(ex, async (): Promise<{ key: number | null; affected: number }> => {
     const db = ex.db;
     const result = await db.runStep(ex, step.sql, step, params);
+    const conditional = request.kind === 'insert' && request.where !== undefined;
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) {
+      // An insert with a condition returns no key when its condition does not hold (docs/spec/protocol.md PRT-88).
+      if (conditional && result.rows.length === 0) throw conditionNotMet(request.entity);
       // The returned key is the identity, an integer.
       return { key: Number(result.rows[0]?.[0]), affected: 1 };
     }
+    // The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not hold.
+    if (conditional && result.affected === 0) throw conditionNotMet(request.entity);
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
     return { key, affected: upsert ? 1 : result.affected };
   });
+}
+
+/** The error of an insert with a condition that wrote no row (docs/spec/protocol.md PRT-88). */
+function conditionNotMet(entity: string): OrmError {
+  return new OrmError(codes.CONDITION_NOT_MET, `the condition of the insert into ${entity} does not hold; no row was written`);
 }
 
 /** One statement of a plan: role is main, count or relation, tables are the tables that it reads. */

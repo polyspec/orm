@@ -3561,7 +3561,11 @@ def write(ex: Executor, request: dict, params, after_hook=None):
         step = cached["plan"]["steps"][0]
         settle = None
         if _binds_audit(step):
-            settle = db._audit_for(ex.frame, request["kind"] != "insert")
+            # A write that can change no row, an insert with a condition too, takes the guard (DBS-87).
+            settle = db._audit_for(
+                ex.frame,
+                request["kind"] != "insert" or request.get("where") is not None,
+            )
         try:
             result = db._send_step(ex, step["sql"], step, params)
         except BaseException as error:
@@ -3570,9 +3574,16 @@ def write(ex: Executor, request: dict, params, after_hook=None):
             raise
         if settle is not None:
             settle(result["affected"], None)
+        conditional = request["kind"] == "insert" and request.get("where") is not None
         if request["kind"] == "insert" and " RETURNING " in step["sql"]:
+            if conditional and not result["rows"]:
+                # An insert with a condition returns no key when its condition does not hold (docs/spec/protocol.md PRT-88).
+                raise _condition_not_met(request["entity"])
             # The returned key is the identity, an integer.
             return {"id": int(result["rows"][0][0]), "affected": 1}
+        if conditional and result["affected"] == 0:
+            # The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not hold.
+            raise _condition_not_met(request["entity"])
         if (
             request["kind"] == "update"
             and request.get("optimistic")
@@ -3595,6 +3606,14 @@ def write(ex: Executor, request: dict, params, after_hook=None):
     _record_inserted(ex, request, written["id"])
     ex.db._shared.last_affected = written["affected"]
     return {**written, "request": request, "params": params}
+
+
+def _condition_not_met(entity: str) -> OrmError:
+    """The error of an insert with a condition that wrote no row (docs/spec/protocol.md PRT-88)."""
+    return OrmError(
+        codes.CONDITION_NOT_MET,
+        f"the condition of the insert into {entity} does not hold; no row was written",
+    )
 
 
 def _record_inserted(ex: Executor, request: dict, key) -> None:

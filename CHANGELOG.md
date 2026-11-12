@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Breaking (0.x): an insert writes only when the conditions of its model hold (T436, PRT-85 to PRT-89, DSL-162). `create()`, `creates()` and `duplication()` with `create()` take the conditions set on the model as the `where` of the insert; a condition on a column compares the value that the insert writes. The statement is one `INSERT ... SELECT` that writes every row or none, a subquery reads every table, the written one too, as before the statement, and a condition that does not hold fails with the new code `CONDITION_NOT_MET` and writes nothing; an audit record that such an insert would have opened is undone with it (DBS-87). Before, the conditions of a model were dropped by an insert. Requested by limepie.
+
 ## 0.0.30
 
 - The message of an error reads the same in every runtime (T430, INT-187). A name, a key, a refused input and a text of the database that a message quotes are written in double quotes with the quoting of DBS-144 by one function per runtime, which the dbspec diagnostics use too; no message uses the quoting of the host language (Go `%q`, Rust `{:?}`, Python `repr`, TypeScript `JSON.stringify`, PHP `json_encode`). The lock key, local key and privilege refusals, which were bare in some runtimes, the MySQL `ssl-mode` refusal and the role refusal read the same everywhere, and the recipes state their whole text. `local` refuses a key outside the key grammar with `CONFIG`, as `lock` and `setLocal` do, where it answered `NO_ROWS` with the key unquoted. A flowmark answer that is not UTF-8 is reported with its bytes, where TypeScript replaced them and the extension wrote an empty text.

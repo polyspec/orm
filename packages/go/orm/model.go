@@ -1031,6 +1031,25 @@ func (c *Core) writeRequest(kind string, d *DB) (*request, *runtimemodel.Entity,
 	return r, ent, nil
 }
 
+// insertCondition makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a
+// column compares the value that the insert writes to that column.
+func (c *Core) insertCondition(r *request) error {
+	if c.where.pending != "" {
+		return configErr("connector %s without a following condition", c.where.pending)
+	}
+	if len(c.where.items) == 0 {
+		return nil
+	}
+	if r.joins == nil {
+		r.joins = map[string]*Core{}
+	}
+	if r.relations == nil {
+		r.relations = map[*ir.Relation]*Core{}
+	}
+	r.ir.Where = r.group(&c.where, c, newFrame(c, nil))
+	return r.err
+}
+
 // Create inserts the model and returns the created model.
 func (c *Core) Create() (Model, error) {
 	c.ensureStatement()
@@ -1064,6 +1083,9 @@ func (c *Core) Create() (Model, error) {
 		if len(r.ir.OnDuplicate) == 0 {
 			return nil, configErr("duplication model has no set<Col> values")
 		}
+	}
+	if err := c.insertCondition(r); err != nil {
+		return nil, err
 	}
 	r.ir.NParams = len(r.params)
 	m := c.ent.New(NewCore(c.ent)).Orm_()
@@ -1189,7 +1211,11 @@ func Creates[T Model](c *Core, models []T, batch int) (int64, error) {
 		columns[i] = s.column
 	}
 	parts := insertParts(len(models), batch)
-	if err := batchFits(d.driver, parts, len(columns)); err != nil {
+	probe := &request{}
+	if err := c.insertCondition(probe); err != nil {
+		return 0, err
+	}
+	if err := batchFits(d.driver, parts, len(columns), len(probe.params)); err != nil {
 		return 0, err
 	}
 	var total int64
@@ -1229,6 +1255,9 @@ func Creates[T Model](c *Core, models []T, batch int) (int64, error) {
 					r.ir.Rows = append(r.ir.Rows, row)
 				}
 			}
+			if err := c.insertCondition(r); err != nil {
+				return err
+			}
 			r.ir.NParams = len(r.params)
 			inner, err := resolve(c.conn)
 			if err != nil {
@@ -1248,10 +1277,10 @@ func Creates[T Model](c *Core, models []T, batch int) (int64, error) {
 
 // batchFits refuses, before any statement, the first batch whose binds exceed the bind limit of
 // driver, naming the batch, its bind count and the limit.
-func batchFits(driver string, parts []int, columns int) error {
+func batchFits(driver string, parts []int, columns, condition int) error {
 	limit := driverBindLimit(driver)
 	for i, part := range parts {
-		if binds := part * columns; binds > limit {
+		if binds := part*columns + condition; binds > limit {
 			return &ir.Error{Code: CodeBatchTooLarge, Msg: fmt.Sprintf("creates batch %d of %d rows binds %d parameters, over the %s limit of %d", i+1, part, binds, driver, limit)}
 		}
 	}

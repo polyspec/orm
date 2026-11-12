@@ -138,6 +138,7 @@ final class Validator
         ) {
             throw self::err(Code::IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
         }
+        self::insertCondition($r);
         $this->n = $r['n_params'] ?? 0;
         $root = $this->scopes($r);
         $this->query($r, ['root' => $root, 'outer' => null, 'node' => $root], false, false, true);
@@ -960,6 +961,93 @@ final class Validator
             throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$output is already a row name");
         }
         $outputs[$output] = true;
+    }
+
+    /**
+     * Checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its
+     * predicates compare a value that the insert writes, so each names a column that the set assigns, by a form that
+     * reads only that value, and a ^ ref of a subquery names such a column too.
+     */
+    private static function insertCondition(array $r): void
+    {
+        if (($r['kind'] ?? '') !== 'insert' || !isset($r['where'])) {
+            return;
+        }
+        if (($r['where']['items'] ?? []) === []) {
+            throw self::err(Code::IR_INVALID, 'an insert condition holds no item');
+        }
+        $assigned = [];
+        foreach ($r['set'] ?? [] as $a) {
+            $assigned[$a['column'] ?? ''] = true;
+        }
+        self::insertConditionGroup($r['entity'] ?? '', $r['where'], $assigned);
+    }
+
+    /** @param array<string, true> $assigned */
+    private static function insertConditionGroup(string $entity, array $g, array $assigned): void
+    {
+        foreach ($g['items'] ?? [] as $it) {
+            if (isset($it['group'])) {
+                self::insertConditionGroup($entity, $it['group'], $assigned);
+            } elseif (isset($it['joined'])) {
+                throw self::err(Code::IR_INVALID, 'an insert condition takes no joined');
+            } elseif (isset($it['pred'])) {
+                self::insertConditionPred($entity, $it['pred'], $assigned);
+            }
+        }
+    }
+
+    /** @param array<string, true> $assigned */
+    private static function insertConditionPred(string $entity, array $p, array $assigned): void
+    {
+        $column = $p['column'] ?? '';
+        if ($column !== '' && !isset($assigned[$column])) {
+            throw self::insertConditionReads($entity, $column);
+        }
+        if (isset($p['fn'])) {
+            throw self::err(Code::IR_INVALID, 'an insert condition takes no fn');
+        }
+        if (isset($p['value'])) {
+            throw self::err(Code::IR_INVALID, 'an insert condition takes no value');
+        }
+        $op = $p['op'] ?? '';
+        if (in_array($op, ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'is_null', 'is_not_null'], true)) {
+            return;
+        }
+        if ($op === 'in' || $op === 'not_in') {
+            if (isset($p['sub']['query'])) {
+                self::insertConditionOuter($entity, $p['sub']['query']['where'] ?? null, $assigned);
+            }
+            return;
+        }
+        throw self::err(Code::IR_INVALID, "an insert condition takes no $op");
+    }
+
+    /**
+     * Checks the ^ refs of a subquery of the condition, which name the written row; a subquery nested in it names
+     * that subquery with ^, so it is not read.
+     *
+     * @param array<string, true> $assigned
+     */
+    private static function insertConditionOuter(string $entity, ?array $g, array $assigned): void
+    {
+        foreach ($g['items'] ?? [] as $it) {
+            if (isset($it['group'])) {
+                self::insertConditionOuter($entity, $it['group'], $assigned);
+            }
+            $ref = $it['pred']['ref'] ?? null;
+            if ($ref !== null && ($ref['path'] ?? '') === '^' && !isset($assigned[$ref['column'] ?? ''])) {
+                throw self::insertConditionReads($entity, $ref['column'] ?? '');
+            }
+        }
+    }
+
+    private static function insertConditionReads(string $entity, string $column): OrmException
+    {
+        return self::err(
+            Code::IR_INVALID,
+            "an insert condition reads $entity.$column, which the insert does not assign"
+        );
     }
 
     private function group(array $at, array $g, array $joined): void

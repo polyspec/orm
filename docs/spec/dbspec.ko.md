@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 35f13267f95454cafa79a0c354d1b33e2eb621c7c1174baf14b57c9c48cda7f4 -->
+<!-- source-sha256: ed91ebe177becf5a2d94ffba6d257f4a640fa8f89a9252e59e4552edccd9eb9f -->
 # dbspec
 
 [English](dbspec.md)
@@ -251,7 +251,7 @@ predicate는 다음 중 하나다.
 
 ### Audit
 
-- **DBS-87** 감사 대상 table은 자기 audit column에 audit 기록의 key를 갖고, 이력 table은 그 row의 모든 version을 갖는다. audit 기록은 선언한 table의 row이며, 작업 단위(transaction)마다 그 변경보다 먼저 한 번 쓴다. 작업 단위가 insert하거나 update하는 모든 감사 대상 row가 그 기록의 key를 갖는다. executor는 작업 단위가 감사 대상 table에 처음 쓰기 직전에 같은 transaction 안에서 그 기록을 insert한다. 그래서 감사 대상 row를 쓰지 않는 작업 단위는 audit 기록을 쓰지 않는다. 어떤 row와도 맞지 않는 첫 update, delete 또는 restore는 감사 대상 row를 쓰지 않으므로 그 기록도 함께 취소된다. rollback되는 savepoint나 transaction은 기록을 그것을 insert한 쓰기와 함께 취소하고, 다음 감사 대상 쓰기가 기록을 다시 insert한다. trigger는 기록하는 모든 값을 자신이 받은 row, 곧 `OLD`와 `NEW`에서 읽는다. 그래서 세 database 모두 executor와 trigger 사이에 다른 전달 장치가 필요 없다.
+- **DBS-87** 감사 대상 table은 자기 audit column에 audit 기록의 key를 갖고, 이력 table은 그 row의 모든 version을 갖는다. audit 기록은 선언한 table의 row이며, 작업 단위(transaction)마다 그 변경보다 먼저 한 번 쓴다. 작업 단위가 insert하거나 update하는 모든 감사 대상 row가 그 기록의 key를 갖는다. executor는 작업 단위가 감사 대상 table에 처음 쓰기 직전에 같은 transaction 안에서 그 기록을 insert한다. 그래서 감사 대상 row를 쓰지 않는 작업 단위는 audit 기록을 쓰지 않는다. 어떤 row와도 맞지 않는 첫 update, delete 또는 restore와, 조건이 성립하지 않는 첫 insert(PRT-88)는 감사 대상 row를 쓰지 않으므로 그 기록도 함께 취소된다. rollback되는 savepoint나 transaction은 기록을 그것을 insert한 쓰기와 함께 취소하고, 다음 감사 대상 쓰기가 기록을 다시 insert한다. trigger는 기록하는 모든 값을 자신이 받은 row, 곧 `OLD`와 `NEW`에서 읽는다. 그래서 세 database 모두 executor와 trigger 사이에 다른 전달 장치가 필요 없다.
 
 ```text
 table service {

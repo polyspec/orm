@@ -568,6 +568,54 @@ function requestShape(value: unknown): asserts value is Request {
   shape('Request', value, '');
 }
 
+// insertCondition checks the where of an insert before the other checks of its items (docs/spec/protocol.md PRT-85): its
+// predicates compare a value that the insert writes, so each names a column that the set assigns, by a form that reads only
+// that value, and a ^ ref of a subquery names such a column too.
+function insertCondition(r: Request): void {
+  if (r.kind !== 'insert' || r.where === undefined) return;
+  if (r.where.items.length === 0) fail(codes.IR_INVALID, 'an insert condition holds no item');
+  const assigned = new Set((r.set ?? []).map((a) => a.column));
+  insertConditionGroup(r.entity, r.where, assigned);
+}
+
+function insertConditionGroup(entity: string, g: Group, assigned: ReadonlySet<string>): void {
+  for (const item of g.items) {
+    if (item.group) insertConditionGroup(entity, item.group, assigned);
+    else if (item.joined) fail(codes.IR_INVALID, 'an insert condition takes no joined');
+    else if (item.pred) insertConditionPred(entity, item.pred, assigned);
+  }
+}
+
+const insertConditionOps = new Set(['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'is_null', 'is_not_null']);
+
+function insertConditionPred(entity: string, p: Predicate, assigned: ReadonlySet<string>): void {
+  if (p.column !== undefined && p.column !== '' && !assigned.has(p.column)) {
+    fail(codes.IR_INVALID, `an insert condition reads ${entity}.${p.column}, which the insert does not assign`);
+  }
+  if (p.fn) fail(codes.IR_INVALID, 'an insert condition takes no fn');
+  if (p.value) fail(codes.IR_INVALID, 'an insert condition takes no value');
+  const op = p.op ?? '';
+  if (insertConditionOps.has(op)) return;
+  if (op === 'in' || op === 'not_in') {
+    if (p.sub?.query) insertConditionOuter(entity, p.sub.query.where, assigned);
+    return;
+  }
+  fail(codes.IR_INVALID, `an insert condition takes no ${op}`);
+}
+
+// insertConditionOuter checks the ^ refs of a subquery of the condition, which name the written row; a subquery nested in
+// it names that subquery with ^, so it is not read.
+function insertConditionOuter(entity: string, g: Group | undefined, assigned: ReadonlySet<string>): void {
+  if (g === undefined) return;
+  for (const item of g.items) {
+    if (item.group) insertConditionOuter(entity, item.group, assigned);
+    const p = item.pred;
+    if (p?.ref && p.ref.path === '^' && !assigned.has(p.ref.column)) {
+      fail(codes.IR_INVALID, `an insert condition reads ${entity}.${p.ref.column}, which the insert does not assign`);
+    }
+  }
+}
+
 /** Checks a request against the manifest. */
 export function validate(m: RuntimeModel, r: Request): void {
   shape('Request', r, '');
@@ -584,6 +632,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {
     fail(codes.IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
   }
+  insertCondition(r);
   const v = new Validator(m, r.n_params, r);
   v.query(r, v.scopes(r, undefined, undefined), false, false);
   if ((r.lock ?? '') !== '' && r.kind !== 'one' && r.kind !== 'all') fail(codes.IR_INVALID, 'row lock is only valid on one or all');

@@ -171,6 +171,24 @@ pub(crate) fn build(c: &Core, kind: &str) -> Req {
     r
 }
 
+/// Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column compares
+/// the value that the insert writes to that column.
+pub(crate) fn insert_condition(r: &mut Req, c: &Core) -> Result<()> {
+    if !c.where_.pending.is_empty() {
+        return Err(config(format!("connector {} without a following condition", c.where_.pending)));
+    }
+    if c.where_.items.is_empty() {
+        return Ok(());
+    }
+    let mut f = Frame::new(c, None);
+    let g = group(r, &c.where_.items, c, &mut f);
+    if let Some(e) = r.error() {
+        return Err(e);
+    }
+    r.ir.query.where_ = g;
+    Ok(())
+}
+
 pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::Result<()> {
     let Some(ir::Limit::Params { offset_p, count_p }) = &r.query.limit else { return Ok(()) };
     let value = |index: usize, field: &str| -> crate::Result<i64> {

@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: bf6a13c0f5e2f90c53225c2e93fced15fc5679c9795a3fe8465ad2e9c1ffdcce -->
+<!-- source-sha256: 894f1767367c891f8807c95d387308ad52601588fdfdd47d2bc2149fb38a005a -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -258,6 +258,7 @@ rows, err := model.Product().Connect(slave1).
 - **DSL-103** `create()` — 동작: 삽입 후 생성 키를 포함한 행 반환
 - **DSL-104** `creates(models, batch)` — 동작: `set<Col>`로 만든 모델을 `batch` 행씩의 묶음으로, 묶음마다 multi-row INSERT 하나로, 모두 한 트랜잭션(활성 트랜잭션 안에서는 savepoint)에서 삽입하고 삽입한 행 수 반환. 모든 모델은 같은 컬럼을 설정해야 한다. `batch`는 필수이며 양의 정수이고, 아니면 `CONFIG`다. bind 수가 dialect bind 한도를 넘는 묶음은 `BATCH_TOO_LARGE`다. 둘 다 어떤 statement보다 먼저 실패한다
 - **DSL-105** `duplication(model)`과 `create()` — 동작: `model`의 변경 값으로 중복 키 갱신을 포함한 삽입
+- **DSL-162** `create()`, `creates(models, batch)`, 또는 `duplication(model)`과 `create()`를 부르는 model에 둔 조건 — 동작: insert는 쓰는 각 row에 조건이 성립할 때만 쓰며, 조건은 insert의 `where`이다(PRT-85에서 PRT-89까지). column에 대한 조건은 insert가 그 column에 쓰는 값을 뜻한다. 성립하지 않으면 `CONDITION_NOT_MET`이고 아무것도 쓰지 않는다.
 - **DSL-106** `update()` — 동작: 행의 변경 컬럼 갱신
 - **DSL-107** `update(true)` — 동작: 저장된 `updated_ts`가 조회 값과 같을 때만 갱신, 다르면 `OPTIMISTIC_LOCK`
 - **DSL-155** 새 갱신 시각이 없는 행의 `update(true)` — 결과: `CONFIG`. 갱신 시각 컬럼과 함께 읽지 않았거나, 같은 model의 앞선 `update`가 그 시각을 비운 행은 새 갱신 시각이 없다. 그런 행은 `update(true)` 전에 다시 읽어야 한다.

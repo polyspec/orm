@@ -18,4 +18,6 @@ ZEND_METHOD(Polyspec_Orm_Model, groupIr);
 ZEND_METHOD(Polyspec_Orm_Model, predIr);
 ZEND_METHOD(Polyspec_Orm_Model, getQuery);
 ZEND_METHOD(Polyspec_Orm_Model, timeValue);
+/* new Frame($model, $outer) in frame; outer is NULL for none. False with an exception. */
+bool query_make_frame(zval *model, zval *outer, zval *frame);
 #endif
