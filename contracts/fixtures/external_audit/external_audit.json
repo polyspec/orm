@@ -199,6 +199,197 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_write_through_an_external_model_is_refused",
+      "requirements": [
+        "DBS-110"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "schema.register",
+          "connection": "db",
+          "schema": {
+            "documents": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/board.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO ext_account (name) VALUES ('kim')",
+          "reason": "ext_account belongs to the core set, whose models are read-only to the member set"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ExtAccount",
+          "values": {
+            "name": {
+              "text": "lee"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "ExtAccount",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "name": {
+              "text": "park"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "ExtAccount",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: ext_account is owned by another document set"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, name FROM ext_account ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kim"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
