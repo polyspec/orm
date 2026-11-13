@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 77e592ab6ecf97acf39cd85690ae006cbd859050cd118d1ca0f4cb5ebcccff1e -->
+<!-- source-sha256: 524e77ccd6b477918cc017bd3d35f9c954450b8c09ff26e2ea518cd43529251a -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -70,9 +70,10 @@
 - **CORE-26** 코어 안의 panic(Rust callback의 panic 포함)은 트랜잭션을 롤백하고 오류 `internal`이 된다. 다시 일으키지
   않는다. INT-72의 Rust 문장을 대체한다. Go의 panic·`runtime.Goexit`과 PHP·Python·Node의 예외는 코어 밖에서 일어난다:
   바인딩이 callback이 버려졌다고 코어에 알리면 코어가 롤백하고, 언어는 그것을 계속한다.
-- **CORE-27** 코어는 문장의 작업 밖에서 언어 코드를 부른다. callback을 부르는 member는 I/O 없는 상태기계이며 `Io`(기다릴
-  작업), `Call`(인자와 함께 부를 callback), `Done`(결과)을 낸다. 바인딩은 `Io`를 member의 `wait`대로 기다리고 `Call`을
-  호출 스레드에서 부른 뒤 결과를 넣는다. 그래서 블로킹 런타임이 코어 안에서 코어를 블로킹하는 일이 없다.
+- **CORE-27** 코어는 문장의 작업 밖에서 언어 코드를 호출한다. 콜백을 호출하는 멤버는 I/O가 없는 상태 기계이고, `Io`(기다릴
+  작업), `Call`(인자와 함께 호출할 콜백), `Await`(콜백이 돌려준 값으로, 언어가 기다린다), `Done`(결과)을 낸다. 바인딩은
+  멤버의 `wait`대로 `Io`를 기다리고, 호출 스레드에서 `Call`을 호출해 그 결과를 되돌려 준다. 그래서 blocking 런타임이 코어
+  안에서 코어를 기다리며 막히지 않는다. 계약의 상태 기계는 CORE-100부터 CORE-105가 적는다.
 - **CORE-28** 문장 사건 subscriber가 던진 예외는 그대로 돌아간다. 그 문장은 실행되었고, 끝나지 않은 트랜잭션의 쓰기는
   함께 롤백된다. INT-96의 `SUBSCRIBER`는 코어의 kind가 아니다.
 
@@ -255,6 +256,57 @@
   rollback하고, 그것들이 끝난 뒤 결과 `{"ok": {}}`이나 rollback의 첫 실패를 돌려준다. 열린 transaction을 가진 채 놓인
   runner는, 그 callback이 더는 step이 올 수 없음을 알 때 그것을 rollback한다. transaction step은 `Db` 위의 runner와
   열린 transaction이 없음을 요구한다. 중첩 transaction이 열 것은 savepoint step이 열기 때문이다. 그 밖은 `config`다.
+
+## 상태 기계
+
+CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savepoint`, `Db::close`는 receiver를 빌리는 future이고,
+계약은 `machine`을 이름하지 않는다. `Passthrough`, `Step::Await`, `Machine::settle`이 있는 `polyspec-binding-core` release를
+기다리며, `Cargo.lock`이 고정한 release에는 이 셋이 없다.
+
+- **CORE-100** 계약의 멤버 `db.transaction`, `tx.savepoint`, `db.close`는 `core`에 `"machine": true`를 이름한다. 셋 다
+  `wait: async_driver`이고 언어 코드에 닿기 때문이다: 앞의 둘은 언어의 함수를 호출하고, `Db`나 `Tx`의 instance는 멤버가
+  실행되는 동안 언어 코드가 가진다. 계약에서 receiver는 `&self`로 남는다: 생성 코드는 instance가 가진 값의 clone을 코어
+  함수에 주며, clone은 instance에 되쓰지도 않고 instance를 소비하지도 않으므로, 멤버가 실행되는 동안 instance를 계속 쓸 수
+  있다.
+- **CORE-101** `Db`와 `Tx`는 clone이 하나의 상태를 공유하는 `Clone` handle이다. `Db`의 clone은 pool, 닫힘 상태(CORE-31),
+  plan cache, `stats`의 counter를 공유하고, 각 clone은 자기가 복제된 handle의 request hook과 취소(CORE-45)를 가진다. `Tx`의
+  clone은 트랜잭션, 두 번째 문장을 `busy`로 거부하는 CORE-22의 상태, 그리고 handle을 받은 콜백이 돌아왔는지(CORE-23)를
+  공유한다. 그래서 clone을 통한 문장은 그 handle을 통한 문장이다.
+- **CORE-102** 세 멤버의 코어 함수는 receiver를 값으로 받고, 인자를 소유하는 상태 기계(`binding_core::machine::Machine`)를
+  돌려준다:
+  - `Db::transaction(self, callback: F, options: TransactionOptions)`. `Done`은
+    `Result<binding_core::Passthrough, Failure<E>>`이다.
+  - `Tx::savepoint(self, callback: F)`. `Done`은 같다.
+  - `Db::close(self)`. `Done`은 `Result<(), E>`이다.
+  `F`는 `FnMut(Tx) -> Result<binding_core::Passthrough, Failure<E>>`이고, `E`는 코어의 error인 `polyspec_orm::Error`로,
+  kind와 메시지 전체를 가진다(CORE-12). `Passthrough`는 코어가 옮기기만 하고 읽지 않는 언어의 값이다: 콜백이 돌려준 값이
+  멤버가 돌려주는 값이다. Rust 코드가 await하는 함수 `Db::transaction_async(&self, callback, options)`와
+  `Tx::savepoint_async(&self, callback)`는 콜백이 future를 돌려주며, CORE-20부터 CORE-26의 규칙을 그대로 따르고 계약의
+  멤버가 아니다. CORE-93의 step runner가 이 둘을 호출한다.
+- **CORE-103** `Db::transaction`과 `Tx::savepoint`의 상태 기계는 다음 단계를 내고, 스스로 I/O를 하지 않는다:
+  1. `Io`: 시작. 연결을 빌리고 옵션과 함께 `BEGIN`을 보내거나(CORE-20), CORE-22와 CORE-23의 검사 뒤에 `SAVEPOINT`를
+     보낸다. 시작이 실패하면 기계는 `Done(Err(Failure::Kind))`로 끝나고 콜백은 실행되지 않는다.
+  2. `Call`: `Machine::call`이 기계를 구동하는 스레드에서 트랜잭션이나 savepoint의 handle `Tx`로 `callback`을 호출하고,
+     돌려받은 것을 보관한다.
+  3. 콜백이 `Ok(value)`를 돌려주면 `Await(value)`. driver는 자기 언어에 awaitable이 있으면 그 값을 기다리고, 다음 단계
+     전에 결과를 `Machine::settle`에 준다: `Ok(value)`는 awaitable이 낸 값이거나, awaitable이 없는 언어에서는 같은 값이다.
+     `Err(raised)`는 awaitable이 던진 예외다.
+  4. `Io`: 끝. `Ok(value)` 뒤에는 `COMMIT`이나 `RELEASE SAVEPOINT`를 보내고, 기계는 `Done(Ok(value))`로 끝난다. 콜백의
+     실패, 곧 2단계의 `Err(Failure::Kind)`나 `Err(Failure::Raised)` 또는 3단계의 `Err(raised)` 뒤에는 `ROLLBACK`을, 또는
+     `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 보내고, 기계는 그 실패를 그대로 가지고 끝난다: `settle`이 받은 예외는
+     `Done(Err(Failure::Raised))`로 끝나므로, 호출자는 같은 예외 객체를 받는다. 롤백도 실패하면 결과는
+     `rollback_failed`(CORE-25)이고, 그 `callbackError`가 이 실패다.
+  콜백의 handle은 4단계가 문장을 보내기 전에 끝난다(CORE-23). 기계가 실패로 끝날 때 가지고 있던 `Passthrough`는 drop되고,
+  그 drop이 언어 쪽의 값을 놓아 준다.
+- **CORE-104** CORE-24의 재시도는 CORE-24가 적는 대로 기다리는 `Io` 단계 뒤에 1~4단계를 다시 하는 것이다: 기계는 시도마다
+  `callback`을 한 번 호출하며(`F`가 `FnMut`인 이유다), commit이 `deadlock`으로 실패한 시도의 값은 drop한다. 실패
+  `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
+  통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께
+  이를 거부하기 때문이다. 이것이 적힐 때까지 CORE-24는 바인딩을 통해서는 commit의 `deadlock`에만 성립한다.
+  `db.transaction`의 매개변수 `options`가 required로 남는 이유도 같다: 생성기는 `machine`이 있는 멤버의 default 있는
+  매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
+- **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
+  호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.
 
 ## 인터페이스 계약
 

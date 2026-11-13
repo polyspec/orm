@@ -81,9 +81,10 @@ the core that differ from the rules that the language implementations of `legacy
   exception of PHP, Python or Node happen outside the core: the binding tells the core that the callback was abandoned, the
   core rolls back, and the language goes on with it.
 - **CORE-27** The core calls language code outside of the work of a statement. A member that calls a callback is a state
-  machine without I/O that yields `Io` (work to await), `Call` (a callback to call with its arguments) and `Done` (the
-  result); the binding awaits `Io` as the `wait` of the member says, calls `Call` on the calling thread, and feeds its
-  result back. A blocking runtime therefore never blocks on the core inside the core.
+  machine without I/O that yields `Io` (work to await), `Call` (a callback to call with its arguments), `Await` (a value
+  that the callback returned, which the language awaits) and `Done` (the result); the binding awaits `Io` as the `wait`
+  of the member says, calls `Call` on the calling thread, and feeds its result back. A blocking runtime therefore never
+  blocks on the core inside the core. CORE-100 to CORE-105 state the machines of the contract.
 - **CORE-28** An exception that a statement event subscriber raises is returned unchanged; the statement has run, and a
   write of a transaction that has not ended is rolled back with it. `SUBSCRIBER` of INT-96 is no kind of the core.
 
@@ -293,6 +294,62 @@ the core that differ from the rules that the language implementations of `legacy
   or the first failure of a rollback; a runner dropped with an open transaction rolls it back when its callback sees
   that no step can come. A transaction step needs a runner on a `Db` and no open transaction, since a savepoint step
   opens what a nested transaction would; another is `config`.
+
+## State machines
+
+CORE-100 to CORE-105 are not implemented: `Db::transaction`, `Tx::savepoint` and `Db::close` are futures that borrow
+their receiver, and the contract names no `machine`. They wait for a release of `polyspec-binding-core` that has
+`Passthrough`, `Step::Await` and `Machine::settle`, which the release that `Cargo.lock` pins does not have.
+
+- **CORE-100** The members `db.transaction`, `tx.savepoint` and `db.close` of the contract name `"machine": true` in
+  their `core`, because each has `wait: async_driver` and reaches language code: the first two call a function of the
+  language, and an instance of `Db` or `Tx` is held by language code while the member runs. Their receiver in the
+  contract stays `&self`: the generated code gives the core function a clone of the value of the instance, which
+  neither writes back into the instance nor consumes it, so the instance stays usable while the member runs.
+- **CORE-101** `Db` and `Tx` are `Clone` handles whose clones share one state. The clones of a `Db` share the pool, its
+  closed state (CORE-31), the plan cache and the counters of `stats`; each clone carries the request hook and the
+  cancellation (CORE-45) of the handle it was cloned from. The clones of a `Tx` share the transaction, the state of
+  CORE-22 that refuses a second statement with `busy`, and whether the callback that received the handle has returned
+  (CORE-23). A statement through a clone is therefore a statement through the handle.
+- **CORE-102** The core functions of the three members take their receiver by value and return a state machine
+  (`binding_core::machine::Machine`) that owns its arguments:
+  - `Db::transaction(self, callback: F, options: TransactionOptions)`, whose `Done` is
+    `Result<binding_core::Passthrough, Failure<E>>`;
+  - `Tx::savepoint(self, callback: F)`, with the same `Done`;
+  - `Db::close(self)`, whose `Done` is `Result<(), E>`.
+  `F` is `FnMut(Tx) -> Result<binding_core::Passthrough, Failure<E>>`, and `E` is the error of the core,
+  `polyspec_orm::Error`, which carries its kind and its whole message (CORE-12). A `Passthrough` is a value of the
+  language that the core moves and never reads: the value that the callback returned is the value that the member
+  returns. The functions that Rust code awaits, `Db::transaction_async(&self, callback, options)` and
+  `Tx::savepoint_async(&self, callback)`, whose callback returns a future, keep the rules of CORE-20 to CORE-26 and are
+  no members of the contract; the step runner of CORE-93 calls them.
+- **CORE-103** The machine of `Db::transaction` and of `Tx::savepoint` gives these steps, and makes no I/O itself:
+  1. `Io`: the opening, which borrows a connection and sends `BEGIN` with the options (CORE-20), or sends `SAVEPOINT`
+     after the check of CORE-22 and CORE-23. A failure of the opening ends the machine with `Done(Err(Failure::Kind))`,
+     and the callback does not run.
+  2. `Call`: `Machine::call` calls `callback` with the handle `Tx` of the transaction or of the savepoint, on the
+     thread that drives the machine, and keeps what it returned.
+  3. When the callback returned `Ok(value)`: `Await(value)`. The driver awaits the value where its language has an
+     awaitable, and gives `Machine::settle` the outcome before the next step: `Ok(value)`, the value that the awaitable
+     gave or, in a language without one, the same value; or `Err(raised)`, the exception that the awaitable raised.
+  4. `Io`: the end. After `Ok(value)` it sends `COMMIT` or `RELEASE SAVEPOINT`, and the machine ends with
+     `Done(Ok(value))`. After a failure of the callback, `Err(Failure::Kind)` or `Err(Failure::Raised)` of step 2 or
+     `Err(raised)` of step 3, it sends `ROLLBACK`, or `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT`, and the machine
+     ends with that failure unchanged: an exception that `settle` received ends it with `Done(Err(Failure::Raised))`,
+     so the caller gets the same exception object. When the rollback fails too, the result is `rollback_failed`
+     (CORE-25), whose `callbackError` is that failure.
+  The handle of the callback is ended (CORE-23) before step 4 sends its statement. A `Passthrough` that the machine
+  holds when it ends with a failure is dropped, which releases its value in the language.
+- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, after an `Io` step that waits as CORE-24 states: the machine
+  calls `callback` once per attempt, which is why `F` is `FnMut`, and drops the value of an attempt whose commit failed
+  with `deadlock`. A failure `Failure::Raised` has no kind for the core, so an exception of a statement of the callback
+  that the language code does not catch is not retried through a binding, although its kind was `deadlock`: the
+  contract states no `errors.recognize` on the function type of `callback`, which the generator refuses with `machine`,
+  and CORE-24 holds through a binding only for a `deadlock` of the commit until it is stated. The parameter `options`
+  of `db.transaction` stays required for the same reason: the generator refuses a parameter with a default on a member
+  with `machine`, so a caller that sets no option passes the empty record.
+- **CORE-105** The machine of `Db::close` gives one `Io` step, the close of the pool of CORE-31, and ends with
+  `Done(Ok(()))`; it calls no language code, so it gives neither `Call` nor `Await`, and its `settle` is never called.
 
 ## Interface contract
 
