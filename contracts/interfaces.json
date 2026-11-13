@@ -2218,7 +2218,7 @@
         },
         "rust": {
           "symbol": "packages/rust/orm/src/db.rs::Db::with_request_hook",
-          "signature": "pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db"
+          "signature": "pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db"
         },
         "typescript": {
           "symbol": "packages/ts/src/database.ts::Db.withRequestHook",

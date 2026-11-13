@@ -146,10 +146,12 @@ export function registerModel(manifestText: string, manifestHash: string, extern
 
 /**
  * The hook of a connection handle (Db.withRequestHook): it receives a request of the handle right
- * before planning and returns the request to plan. addParam appends a value to the parameters of
- * the request and returns its index; params holds the parameters that the request binds, read-only.
+ * before planning and returns the request to plan, or a promise of it, which the client awaits before it
+ * plans (INT-78), so that a hook can read on another connection between two requests. addParam appends a
+ * value to the parameters of the request and returns its index; params holds the parameters that the
+ * request binds, read-only.
  */
-export type RequestHook = (request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request;
+export type RequestHook = (request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request | Promise<Request>;
 
 /** The options of an outermost transaction. */
 interface BeginOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs: number; }
@@ -1317,16 +1319,16 @@ function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 
 interface Hooked { request: Request; params: readonly unknown[]; }
 
 /**
- * Applies the request hook of the executor handle before planning. The hook adds values to a copy of the parameter list with addParam,
+ * Applies the request hook of the executor handle before planning, awaiting the promise it returns (INT-78). The hook adds values to a copy of the parameter list with addParam,
  * and the client uses the n_params of the request the hook returned as its length. Validation is done by the plan. If the hook
  * is absent, the handle returns the request and params unchanged.
  */
-function hooked(ex: Executor, request: Request, params: readonly unknown[], afterHook?: (hooked: Hooked) => void): Hooked {
+async function hooked(ex: Executor, request: Request, params: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Hooked> {
   const hook = ex.db.requestHook;
   let planned: Hooked = { request, params };
   if (hook !== undefined) {
     const values = [...params];
-    const out = hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
+    const out = await hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
     if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError(codes.CONFIG, 'the request hook returns the request to plan');
     out.n_params = values.length;
     planned = { request: out, params: values };
@@ -1347,7 +1349,7 @@ async function readParts(ex: Executor, request: Request, params: readonly unknow
 }
 
 export async function query(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Result> {
-  const { request, params } = hooked(ex, given, givenParams);
+  const { request, params } = await hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     const { db, cached, parts } = await readParts(ex, request, params);
     const lock = requestLock(request);
@@ -1488,7 +1490,7 @@ function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T)
 }
 
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
-  const { request, params } = hooked(ex, given, givenParams);
+  const { request, params } = await hooked(ex, given, givenParams);
   // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-218); every other scalar statement
   // reads one cell.
   const cells = (rows: unknown[][]): unknown => request.kind === 'avg' || request.kind === 'sum'
@@ -1514,7 +1516,7 @@ export async function scalar(ex: Executor, given: Request, givenParams: readonly
 }
 
 export async function paginate(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ result: Result; total: number }> {
-  const { request, params } = hooked(ex, given, givenParams);
+  const { request, params } = await hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
@@ -1533,7 +1535,7 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
  * came, and the row is dropped before the relation steps read the parents of the page (INT-164).
  */
 export async function lookahead(ex: Executor, given: Request, givenParams: readonly unknown[], perPage: number): Promise<{ result: Result; hasNext: boolean }> {
-  const { request, params } = hooked(ex, given, givenParams);
+  const { request, params } = await hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     checkLock(ex, request);
     const cached = await ex.db.plan(request);
@@ -1553,7 +1555,7 @@ export interface Written extends Hooked { key: number | null; affected: number; 
  * request hook left it.
  */
 export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Written> {
-  const { request, params } = hooked(ex, given, givenParams, afterHook);
+  const { request, params } = await hooked(ex, given, givenParams, afterHook);
   const db = ex.db;
   const step = mainStep((await db.plan(request)).plan);
   // A write that can change no row, an insert with a condition too, takes the guard (DBS-87).
@@ -1619,7 +1621,7 @@ export interface QueryPlanStep { role: string; tables: string[]; sql: string; }
 
 /** Returns the steps of the plan of a page request, from the plan call that paginate runs. */
 export async function pagePlanSteps(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<QueryPlanStep[]> {
-  const { request } = hooked(ex, given, givenParams);
+  const { request } = await hooked(ex, given, givenParams);
   checkLock(ex, request);
   const cached = await ex.db.plan(request);
   return cached.plan.steps.map(step => ({ role: step.role, tables: [...step.tables], sql: step.sql }));
@@ -1627,7 +1629,7 @@ export async function pagePlanSteps(ex: Executor, given: Request, givenParams: r
 
 /** Returns the statement of a select request without executing it. */
 export async function statement(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
-  const { request, params } = hooked(ex, given, givenParams);
+  const { request, params } = await hooked(ex, given, givenParams);
   const cached = await ex.db.plan(request);
   const step = mainStep(cached.plan);
   return { sql: step.sql, binds: ex.db.args(step, params).masked };

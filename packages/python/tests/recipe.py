@@ -4740,6 +4740,7 @@ def _install_hook(step: dict, context: dict) -> None:
             else None,
             "nested": h.get("nested") is True,
             "code": h.get("error", ""),
+            "read": h.get("read"),
         }
         for h in hooks
     ]
@@ -4773,6 +4774,22 @@ def _install_hook(step: dict, context: dict) -> None:
                 and_where(
                     query,
                     {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
+            elif action == "locked_read":
+                # The hook reads with its lock in a transaction of another connection before the client plans the
+                # request, and a refusal of that read fails the operation unchanged (INT-78).
+                read = [0]
+
+                def locked(spec: dict = a["read"]) -> None:
+                    read[0] = len(_chain_built(spec, context).gets().values())
+
+                _connection_of(a["read"], context).transaction(locked, {"retry": 0})
+                context["records"].append(
+                    {
+                        "kind": query["kind"],
+                        "entity": query["entity"],
+                        "read": {"int": str(read[0])},
+                    }
                 )
             elif action == "record":
                 context["records"].append(
@@ -4816,6 +4833,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
                 *([["param", record["param"]]] if "param" in record else []),
+                *([["read", record["read"]]] if "read" in record else []),
             ]
         }
         for record in records

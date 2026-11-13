@@ -34,11 +34,15 @@ use crate::{codes, Error, Result};
 /// audit value of its own.
 pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Sync>;
 
+/// The future of a [`RequestHook`]: the client awaits it before it plans the request (INT-78), so that a hook can read
+/// on another connection between two requests.
+pub type HookFuture<'a> = futures_util::future::BoxFuture<'a, Result<()>>;
+
 /// The request hook of a handle (docs/operations/usage.md "Request hook"): it receives each
 /// request of the handle right before the client plans it, changes it in place
-/// and adds parameters with [`RequestParams::add`]. An error it returns fails the
-/// operation unchanged, before any statement.
-pub type RequestHook = Arc<dyn Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync>;
+/// and adds parameters with [`RequestParams::add`], in the future it returns, which the
+/// client awaits. An error it returns fails the operation unchanged, before any statement.
+pub type RequestHook = Arc<dyn for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync>;
 
 /// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
 /// parameters.
@@ -60,12 +64,13 @@ impl RequestParams {
 }
 
 /// Applies the handle's request hook to req. Does nothing if there is no hook. The hook receives the request and
-/// the parameters and may change them; n_params is then the number of parameters. A hook error is returned as is.
-pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
-    let Some(hook) = &handle.hook else { return Ok(()) };
+/// the parameters and may change them in the future it returns, which this awaits; n_params is then the number of
+/// parameters. A hook error is returned as is.
+pub(crate) async fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
+    let Some(hook) = handle.hook.clone() else { return Ok(()) };
     req.ir.n_params = req.params.len();
     let mut params = RequestParams { params: std::mem::take(&mut req.params) };
-    let result = hook(&mut req.ir, &mut params);
+    let result = hook(&mut req.ir, &mut params).await;
     req.params = params.params;
     req.ir.n_params = req.params.len();
     result
@@ -87,8 +92,8 @@ pub struct Config {
     pub statement_timeout_ms: u32,
     /// Maximum idle connections of the pool; zero keeps up to the pool size.
     pub pool_idle_size: u32,
-    /// Lifetime of a pool connection in milliseconds; zero keeps the pool
-    /// default of 30 minutes.
+    /// Lifetime of a pool connection in milliseconds; zero sets no lifetime
+    /// (CFG-5).
     pub pool_lifetime_ms: u32,
     /// The audit values of the transactions that record an audit; `None`
     /// fails such a transaction with CONFIG.
@@ -991,7 +996,7 @@ impl Db {
     /// hook"). The handle shares the pool, the caches, the subscribers and the
     /// active transactions of the connection; it carries one hook, so this
     /// replaces the hook of a hooked handle.
-    pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db {
+    pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)) }
     }
 

@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 83aebe71201ff3ffbb3cab76340eba8153392d8c528d8942dedf6f5191c8bdda -->
+<!-- source-sha256: e2ce669a2dbdfb9216a481e8f3671ae3cc20abda25ff6212183f5d265779d35e -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -469,8 +469,10 @@
     - `{"action": "record", "kinds": K}`는 일치하는 요청마다 `{"kind": <kind>, "entity": <table>}`을 기록한다.
     - `{"action": "record_param", "kinds": K, "column": C}`는 일치하는 요청의 Set에서 C의 각 대입마다 `{"kind": <kind>, "entity": <table>, "param": <value>}`를 기록한다. `param`은 hook이 읽은 바인딩 값이다(INT-78).
     - `{"action": "fail", "kinds": K, "error": CODE}`는 일치하는 요청을 오류 코드 CODE로 실패시킨다.
+    - `{"action": "locked_read", "kinds": K, "read": {connection, model, where, order, lock}}`는 client가 일치하는 요청을 계획하기 전에, `hook.install` 전에 `model.connect`가 묶은 연결 `connection`의 재시도 없는 트랜잭션에서 `model`을 `where`, `order`, 행 잠금 `lock`(`update`, `share`, `update_nowait`, `share_nowait`)으로 읽는다. 읽기의 오류는 요청을 바뀌지 않은 채 실패시키고, 읽으면 `{"kind": <kind>, "entity": <table>, "read": <행 수>}`를 기록한다. hook이 promise나 future를 돌려주는 runtime에서는 hook 안에서 읽기를 기다린다(INT-78).
+    helper가 모르는 hook action은 이름을 밝혀 요청을 실패시킨다.
     K는 요청 종류의 목록(`one`, `all`, `count`, `group_count`, `sum`, `avg`, `paginate`, `lookahead_paginate`, `group_lookahead_paginate`, `insert`, `update`, `delete`, `restore`)이거나 이름 `reads`(앞의 아홉), `reads+restore`(같은 것과 `restore`), `every` 중 하나이다.
-  - `hook.records {}`는 field가 없다. expect는 실행된 순서대로 `kind`와 `entity`, `record_param` action이면 `param`도 가진 객체의 `{"value": [<record>, ...]}`, 또는 entity별 기록 수 `{"counts": {<entity>: <정수>}}`이다.
+  - `hook.records {}`는 field가 없다. expect는 실행된 순서대로 `kind`와 `entity`, `record_param` action이면 `param`, `locked_read` action이면 `read`도 가진 객체의 `{"value": [<record>, ...]}`, 또는 entity별 기록 수 `{"counts": {<entity>: <정수>}}`이다.
   - `model.restore {connection, model, values, columns?}`는 `values`로 설정한 모델(키가 가리키는 soft delete된 행)에 `Restore`를 호출한다(INT-38). expect는 없거나 `{"error": <code>}`이고, `columns`가 있으면 `Restore`가 돌려준 행의 해당 컬럼인 `{"rows": [[<value>, ...]]}`이다.
   - 표 모델의 `model.update {connection, model, key, set}`는 읽기 없이 새 모델에 키와 대입을 설정하고 `Update`를 호출하므로, 어떤 행도 가리키지 않는 키는 일치하는 행이 없는 update다. `model.connect`는 `audit_source`를 받는다. `{"values": {<column>: <value>}}`는 이 값을 돌려주는 source이고, `{"fail": true}`는 자기 오류로 트랜잭션을 실패시키는 source이며 expect는 이를 `CALLBACK`으로 적는다(CFG-8). 없으면 연결에 audit source가 없다.
   - `model.connect {pool_size, as, aes_keyring}`는 AES 키링 `aes_keyring`, `{"current": <정수>, "versions": {"<version>": "<key text>"}}`로 연결을 연다. 연결은 `current`로 쓰고 `versions`의 모든 버전을 복호화한다(API unit `aes-keyring`, INT-130, `aes-utils`, INT-131). 공개 생성자가 거부하는 키링(빈 키, 또는 선언되지 않은 `current`)은 생성자가 돌려주는 코드(CONFIG)로 그 step을 실패시키며, step은 이를 `{"error": <code>}`로 기대한다.
