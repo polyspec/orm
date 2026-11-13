@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 5f37191d3f311ff0608841fb970b01ab5038d5030109bb745bda5cb3c2bc7a44 -->
+<!-- source-sha256: 99c950201d321c5e60ea8674aff42de3b0eb3effe0a2b272962a21ac04dcc346 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -76,7 +76,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | `postgres` | primary `postgres`; 그 standby `postgres-replica` |
 | `mariadb` | primary `mariadb` |
 
-각 service는 `config/containers.json`이 digest로 고정한 image와 `expose`에 server의 port를 적고 key `ports`는 적지 않는다. 그래서 host의 port는 publish되지 않는다. check는 `bay`가 service에 주는 이름 `<project>-<service>.container.test:<port>`로 server에 닿고, environment의 모든 DSN이 server를 그 이름으로 적는다. server는 `make orm-test-servers`의 native primary의 설정을 받는다(time zone, 소문자 table 이름, binary log 보존, InnoDB log 공간, PostgreSQL은 WAL과 synchronous standby). data는 container의 쓰기 layer에 있으므로 `bay down`이 container와 함께 data를 제거하고 volume은 남지 않는다.
+각 service는 `config/containers.json`이 digest로 고정한 image와 `expose`에 server의 port를 적고 key `ports`는 적지 않는다. 그래서 host의 port는 publish되지 않는다. check는 `bay`가 service에 주는 주소로 server에 닿고, environment의 모든 DSN이 server를 그 주소로 적는다. script는 그 주소의 형식도 접미사도 가지고 있지 않다. project의 file을 쓰기 전에 `bay brief --json`의 `serviceAddress`에서 형식을 읽는데, 형식은 project, service, port를 적는다. `bay up` 뒤에는 `bay status --json`에서 각 service의 주소와 IPv4 주소를 읽는다. `bay status`가 형식이 주는 주소와 다른 주소로 보고하는 service는 start를 실패시킨다. project의 certificate와 replica가 형식의 주소를 적기 때문이다. server는 `make orm-test-servers`의 native primary의 설정을 받는다(time zone, 소문자 table 이름, binary log 보존, InnoDB log 공간, PostgreSQL은 WAL과 synchronous standby). data는 container의 쓰기 layer에 있으므로 `bay down`이 container와 함께 data를 제거하고 volume은 남지 않는다.
 
 **server의 준비.** `bay`는 시작된 container 안에서 command를 실행하지 않는다. 그래서 server를 준비하는 각 단계는 service의 directory `/docker-entrypoint-initdb.d`의 file이며, image가 이를 server가 TCP 연결을 받기 전에 한 번 실행한다.
 
@@ -91,7 +91,9 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 **image.** 어떤 start도 image를 download하지 않는다. `bay`에는 image를 pull하는 command도, pull을 거부하는 설정도 없다. 그래서 script는 `bay up` 전에 platform의 container engine(`CONTAINER_PROGRAM`: macOS에서는 Apple `container`)에 project의 각 image가 machine에 있는지 묻고(`image inspect`), image가 없는 start는 그 image와 `make orm-install-container-images`를 적어 실패한다. 그 target만 pull하며, `bay`에 그 command가 생길 때까지 engine으로 pull한다(`image pull`).
 
-**변수.** `make orm-test-container`는 `bay up`이 돌아온 뒤에 `.runtime/containers/<kind>.env`를 쓰고, `make orm-test-container-run`은 같은 변수를 command에 주고 file은 쓰지 않는다. MySQL과 PostgreSQL 변수는 `TEST_ENV`의 primary의 변수이고, MariaDB 변수는 `MARIADB_ENV`의 primary의 변수이며, MySQL과 PostgreSQL에는 replica DSN이 있다. 각 server에는 script가 그 start를 위해 발급한 certificate의 TLS가 있고, certificate는 service의 host 이름을 적는다. TLS DSN은 그 이름으로 연결하고, 두 번째 CA의 DSN은 chain에서 실패하고, mismatch DSN은 host 이름이 resolve되는 IPv4 주소로 연결하는데 certificate는 그 주소를 적지 않는다. pooler는 시작하지 않고, `bay`가 Unix socket을 publish하지 않으므로 server의 Unix socket은 host에 없다. 그 변수는 없으며, 그 변수를 읽는 check는 변수 이름을 적어 실패한다.
+**변수.** `make orm-test-container`는 `bay up`이 돌아온 뒤에 `.runtime/containers/<kind>.env`를 쓰고, `make orm-test-container-run`은 같은 변수를 command에 주고 file은 쓰지 않는다. MySQL과 PostgreSQL 변수는 `TEST_ENV`의 primary의 변수이고, MariaDB 변수는 `MARIADB_ENV`의 primary의 변수이며, MySQL과 PostgreSQL에는 replica DSN이 있다. 각 server에는 script가 `bay`에서 주소의 형식을 읽은 뒤에 그 start를 위해 발급한 certificate의 TLS가 있고, certificate는 service 주소의 host 이름을 적는다. TLS DSN은 그 이름으로 연결하고, 두 번째 CA의 DSN은 chain에서 실패하고, mismatch DSN은 `bay status`가 service에 대해 보고하는 IPv4 주소로 연결하는데 certificate는 그 주소를 적지 않는다. pooler는 시작하지 않고, `bay`가 Unix socket을 publish하지 않으므로 server의 Unix socket은 host에 없다. 그 변수는 없으며, 그 변수를 읽는 check는 변수 이름을 적어 실패한다.
+
+**server가 도는 machine.** server는 check를 실행하는 machine에서 돈다. `bay`가 다른 machine의 TCP service에 닿는 방법을 문서화하지 않기 때문이다. server의 Unix socket으로 연결하는 check는 server가 check의 machine에서 도는 동안에만 성립하므로, 그런 check는 다른 machine의 server를 상대로 실행할 수 없다.
 
 **kind당 start 하나.** `make orm-test-container`는 checkout에서 이미 시작했고 `make orm-test-container-stop`이 아직 제거하지 않은 kind를 거부한다. `.runtime/containers/<kind>.env`가 project 하나를 가리키기 때문이다. `make orm-test-container-run`의 run은 세지 않는다. 각 run은 자기 project를 가지고 공유 file을 쓰지 않는다.
 
