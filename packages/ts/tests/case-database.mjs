@@ -101,7 +101,8 @@ export async function createCaseDatabase(dialect, step) {
     };
   }
   if (!(dialect in adminEnv)) throw new Error(`unknown dialect ${dialect}`);
-  const { dsn: base } = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
+  // The name is lower-case letters, digits and underscores, which every server takes unquoted.
+  const { dsn: base } = await admin(dialect, `CREATE DATABASE ${name}`);
   step(`database ${name} created`);
   return {
     dialect, name, path: null, dsn: relatedDsn(base, name),

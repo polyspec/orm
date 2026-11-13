@@ -295,12 +295,12 @@ async function insertParts(db) {
 const cases = { conditions, columnsAndSubqueries, writes, styledStates, insertParts };
 
 /**
- * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
- * busy_timeout. A failure of the body or of the database drop fails the dialect of the case.
+ * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN states no
+ * busy_timeout, so the connection waits for a lock as long as CFG-12 sets. A failure of the body or of the database drop
+ * fails the dialect of the case.
  */
 function inCaseDatabase(dialect, step, body) {
-  return withCaseDatabase(dialect, step, database =>
-    body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
+  return withCaseDatabase(dialect, step, database => body(database.dsn, database));
 }
 
 /** Runs fn(db, dsn) on a new case database of the dialect with the schema installed. */

@@ -89,24 +89,18 @@ export const cases = {
 };
 
 /**
- * Runs the cases on a case database of dialect (mysql or mariadb, the two servers of the MySQL dialect, DIA-200) with the
- * bench set installed, which is dropped when the file ends: the entries coverage_transactions-mysql.test.mjs and
- * coverage_transactions-mariadb.test.mjs.
+ * Runs the cases on a case database of dialect with the bench set installed, which is dropped when the file ends: this file
+ * runs them on SQLite and PostgreSQL, and the entries coverage_transactions-mysql.test.mjs and
+ * coverage_transactions-mariadb.test.mjs on the two servers of the MySQL dialect (DIA-200).
  */
-export async function runOnCaseDatabase(dialect) {
+export async function runOnCaseDatabase(dialect, file = `coverage_transactions-${dialect}.test.mjs`) {
   const database = await createCaseDatabase(dialect, text => console.log(text));
   after(() => database.drop(text => console.log(text)));
   const db = await connect(database.dsn);
   try { await installBench(db); } finally { await db.close(); }
-  await runCasesOn(dialect, `coverage_transactions-${dialect}.test.mjs`, cases, 300_000, database.dsn);
+  await runCasesOn(dialect, file, cases, 300_000, database.dsn);
 }
 
-// The cases write composite_account of the bench database of SQLite and PostgreSQL, which a recipe case database does not
-// hold; the servers of the MySQL dialect run them in their entries (runOnCaseDatabase).
 if (import.meta.main) {
-  for (const [database, name] of [['sqlite', 'BENCH_SQLITE_DSN'], ['postgres', 'BENCH_POSTGRES_DSN']]) {
-    const dsn = process.env[name];
-    if (!dsn) throw new Error(`${name} is required; run this test through make run-databases, which creates the bench databases`);
-    await runCasesOn(database, 'coverage_transactions.mjs', cases, 300_000, dsn);
-  }
+  for (const dialect of ['sqlite', 'postgres']) await runOnCaseDatabase(dialect, 'coverage_transactions.mjs');
 }
