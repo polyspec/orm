@@ -12,5 +12,5 @@ import (
 // DBS-59, DBS-113, DSL-113, DSL-128.
 func TestRecipeIRValidateNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../../tests/ir/validate.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/ir/validate.json"), recipe.None)
 }
