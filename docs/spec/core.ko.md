@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: a9a952d3c07fdb83a956dad02cb3c0a0dd2c066c7335fb7ebbb697c38762ff35 -->
+<!-- source-sha256: 2214fe6a31c1c7d21942162a7303273eee052fea6b2b6d1d246579c697444d1c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -126,6 +126,28 @@
 - **CORE-60** 열 값은 `orm_value`로 코어를 나간다: 64비트 열(`i64`와 MySQL 부호 없는 열)의 정수는 `int64`(Node
   `bigint`), 더 좁은 열의 정수는 크기와 관계없이 `int`(Node `number`), JSON 열은 `json_value`의 값, 날짜·시각·날짜시각은
   DBS-112와 DBS-121의 정규 텍스트, decimal은 정확한 텍스트다.
+- **CORE-62** `orm_value`는 코어의 값 타입 `polyspec_orm::OrmValue`이고, 계약은 그것을 값 alias `orm_value`로 선언한다.
+  그 kind는 `null`, `bool`, `int`, `int64`, `float`, `text`, `bytes`, `list`, 텍스트 key의 `map`, `nested:json_value`다.
+  열 값의 kind는 값이 아니라 열의 타입이 정한다: `i16`과 `i32`는 `int`, `i64`는 `int64`, `f64`는 `float`, `bool`은
+  `bool`, `bytes`는 `bytes`이고, `decimal`, `varchar`, `text`, `uuid`, `date`, `time`, `datetime`은 `text`이며
+  `datetime(p)`는 소수 자리가 정확히 p개다(PRT-69). SQL NULL은 `null`이다. stage `json` 뒤의 열은
+  `nested:json_value`다(CORE-61). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
+  `float`, `text`, `list`, `map`이다: 소수부와 지수가 없고 `i64`에 들어가는 수는 `int64`, `i64`나 유한한 `f64`에
+  들어가는 그 밖의 수는 `float`이고, 어느 쪽에도 들어가지 않는 수는 `codec_decode`다.
+- **CORE-63** 언어의 값은 함수 `from_host` 하나로 코어에 들어오며, 이 함수는 값만 읽는다: null은 `null`, boolean은
+  `bool`, 정수는 `int64`, float는 `float`, 텍스트는 `text`, bytes는 `bytes`, list는 `list`, map은 `map`이다. 수 타입이
+  하나인 언어의 수는 소수부가 없고 -(2^53 - 1)부터 2^53 - 1까지의 범위에 있으면 `int`이고 그렇지 않으면 `float`다.
+  텍스트가 byte인 언어의 텍스트는 그 byte가 UTF-8이면 `text`이고 아니면 `bytes`다. key가 순서대로 0부터 n-1인 PHP
+  배열은 `list`이고 그 밖의 PHP 배열은 `map`이며, 그 정수 key는 그 정수의 텍스트다. 다른 map의 key는 텍스트다. 열이
+  무엇을 받는지는 값을 bind하는 곳에서 열의 타입이 정하므로(PRT-32a) `int`와 `int64`는 똑같이 bind된다. 이 가운데
+  어느 것도 아닌 값은 `codec_encode`이고 메시지는 `the value is no value of a column: <what>`이며 값을 적지 않는다:
+  `i64` 밖의 정수, 유한하지 않은 float, Unicode scalar 값의 열이 아닌 텍스트, 텍스트가 아닌 map key, 256단계보다 깊이
+  중첩된 list나 map, 그리고 언어의 undefined 값, 날짜, 함수, 객체다. 구현되지 않았다: 들어오는 `json_value`의 값.
+  alias에는 다른 라이브러리의 값을 위한 `in` 행이 없으므로 그런 값은 객체이고 거부된다.
+- **CORE-64** 값은 함수 `to_host` 하나로 코어를 나가며, 이 함수는 값을 한 단계씩 기술한다. `nested:json_value`의 값은
+  `json_value`의 `out` 표의 kind로 기술한다: `null`, `bool`, 수 텍스트를 가진 `number`, `text`, `list`, member 순서의
+  `map`이다. 짝 없는 surrogate를 가진 JSON 문자열에는 `text`가 없으므로, 그런 문자열을 가진 JSON 값은 그 열의 값을
+  읽을 때 `codec_decode`이고 메시지는 `the JSON value holds a string that is no sequence of Unicode scalar values`다.
 - **CORE-61** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
   `json`이다. 언어 구현은 그것을 쓰던 라이브러리 이름을 따라 `ordered_json`이라 부르지만 코어는 그 이름의 라이브러리에
   의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓰고 거기서 `ordered_json`은 알 수 없는 stage다. 그런 값의
@@ -144,7 +166,10 @@
   연결이 없는 `Query`의 terminal은 `config`다. 프로세스는 `Query`가 이름한 schema의 엔티티마다 descriptor 하나를
   가진다.
 - **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `GtServiceSeqAndIsClose`)의 조건을 key마다 값
-  하나로 더한다. `And`나 `Or`로 시작하는 이름은 첫 조건을 그 연결어로 앞선 조건에 잇는다. 이름은 crate
+  하나로 더한다. 값은 `orm_value`다(CORE-62): `null`은 조건의 null이고, `list`는 연산자가 없거나 `Ne`인 key의 값
+  목록, 값이 둘일 때 `Between` key의 쌍, tuple key의 값 묶음 목록이며, `map`과 `nested:json_value`를 뺀 다른 kind는 값
+  하나다. `map`, `nested:json_value`, 값 목록 안의 list, 길이가 다른 `Between` list는 다음 terminal에서
+  `codec_encode`이고 메시지는 `the value of a condition is <what>`이다. `And`나 `Or`로 시작하는 이름은 첫 조건을 그 연결어로 앞선 조건에 잇는다. 이름은 crate
   `polyspec-orm-schema`의 `parse_chain`이 읽으며, 생성된 모델의 chain 이름도 읽는 하나뿐인 함수다. 엔티티의 chain이
   아닌 이름, 열이 허용하지 않는 연산자, key 수와 다른 값의 수는 `config`이고, 생성된 모델의 builder 오류처럼 다음
   terminal이 돌려준다. `order_by(spec)`는 `SeqDescAndLabelAsc` 같은 이름의 순서를 더하며 key마다 열과 `Asc`나
@@ -152,22 +177,24 @@
 - **CORE-83** terminal `get`, `gets`, `get_count`, `get_query`는 생성된 모델의 terminal처럼 질의를 실행하고,
   `get_by(chain, values)`, `gets_by(chain, values)`, `get_count_by(chain, values)`는 그 chain의 조건을 `and`로 이어
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
-  `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 돌려준다. 엔티티의 열이 아닌 이름은 `column_unknown`이고
+  `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 쓰기(`set`, `create`, `creates`, `update`, `save`, `delete`, `restore`,
   `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, 묶음(`andGroup`, `orGroup`,
   `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`, `getsPage`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`. `where`의 값은 `orm_value`(CORE-60)가 생길 때까지 Rust 값
-  `polyspec_orm::core::Arg`다.
+  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`. 열이나 값의 함수에 대한 조건(DSL-54)도 구현되지 않았다. `where`가
+  그것을 `orm_value`로 받을 수 없기 때문이다.
 
 ## 인터페이스 계약
 
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
-  타입이 계약의 타입인 unit과 member만 선언한다. 값이 열의 값인 member는 구현되지 않은 `orm_value`(CORE-60)를
-  기다리며 선언하지 않는다: `Tx::run`, `Tx::execute`, `Db::subscribe`, `Db::with_request_hook`, `Config`의 field
-  `audit_source`, `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`. `Utils`와 그
-  부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의 타입을 받으므로 이것들도
-  선언하지 않는다.
+  타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
+  member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다), `Tx::execute`(plan step),
+  `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Config`의 field
+  `audit_source`(함수), `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
+  `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
+  타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
   전체(CORE-12)를 적는다. 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를

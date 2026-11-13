@@ -147,6 +147,32 @@ the core that differ from the rules that the language implementations of `legacy
   MySQL column) is `int64` (Node `bigint`), an integer of a narrower column is `int` (Node `number`), whatever its size, a
   JSON column is the value of `json_value`, a date, time or date-time is the canonical text of DBS-112 and DBS-121, and a
   decimal is its exact text.
+- **CORE-62** `orm_value` is the value type `polyspec_orm::OrmValue` of the core, which the contract declares as the
+  value alias `orm_value`. Its kinds are `null`, `bool`, `int`, `int64`, `float`, `text`, `bytes`, `list`, `map` with
+  text keys, and `nested:json_value`. The type of a column decides the kind of its value, and the value does not:
+  `i16` and `i32` are `int`, `i64` is `int64`, `f64` is `float`, `bool` is `bool`, `bytes` is `bytes`, and `decimal`,
+  `varchar`, `text`, `uuid`, `date`, `time` and `datetime` are `text`, a `datetime(p)` with exactly p fraction digits
+  (PRT-69); SQL NULL is `null`. A column after the stage `json` is `nested:json_value` (CORE-61). A column after
+  another style stage is its value of the common value model in the kinds `null`, `bool`, `int64`, `float`, `text`,
+  `list` and `map`: a number with no fraction and no exponent that fits `i64` is `int64`, any other number that fits
+  `i64` or a finite `f64` is `float`, and a number that fits neither is `codec_decode`.
+- **CORE-63** A value of a language enters the core by the one function `from_host`, which reads the value alone:
+  null is `null`, a boolean `bool`, an integer `int64`, a float `float`, a text `text`, bytes `bytes`, a list `list`
+  and a map `map`. A number of a language with one number type is `int` when it has no fraction and is in the range
+  of -(2^53 - 1) to 2^53 - 1, and `float` otherwise. A text of a language whose text is bytes is `text` when the
+  bytes are UTF-8 and `bytes` when they are not. A PHP array whose keys are 0 to n-1 in order is `list` and any other
+  PHP array is `map`, an integer key of which is the text of that integer; a key of any other map is a text. What a
+  column accepts is decided where the value is bound, by the type of the column (PRT-32a), so `int` and `int64` bind
+  alike. A value that is none of these is `codec_encode` with the message `the value is no value of a column: <what>`,
+  which names no value: an integer outside `i64`, a float that is not finite, a text that is no sequence of Unicode
+  scalar values, a map key that is no text, a list or map nested deeper than 256 levels, and an undefined value, a
+  date, a function or an object of the language. Not implemented: a value of `json_value` that enters; the alias has
+  no `in` row for a value of another library, so such a value is an object and is refused.
+- **CORE-64** A value leaves the core by the one function `to_host`, which describes it one level at a time. A value
+  of `nested:json_value` is described in the kinds of the `out` table of `json_value`: `null`, `bool`, `number` with
+  the number text, `text`, `list` and `map` in member order. A JSON string that holds an unpaired surrogate has no
+  `text`, so a JSON value that holds one is `codec_decode` with the message `the JSON value holds a string that is no
+  sequence of Unicode scalar values` when the value of its column is read.
 - **CORE-61** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
   COD-16) is `json` in the core. The language implementations name it `ordered_json` after the library that wrote it,
   and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json` and
@@ -166,7 +192,12 @@ the core that differ from the rules that the language implementations of `legacy
   `connect(connection)`, where the connection is a `Db` or a `Tx` (CORE-20); a terminal of a `Query` with no connection
   is `config`. The process keeps one descriptor per entity of a schema that a `Query` named.
 - **CORE-82** `where(chain, values)` adds the conditions of a chain name of DSL-36 and DSL-37, such as
-  `GtServiceSeqAndIsClose`, with one value per key. A name that starts with `And` or `Or` joins its first condition to
+  `GtServiceSeqAndIsClose`, with one value per key. The values are `orm_value` (CORE-62): `null` is the null of a
+  condition, a `list` is the list of values of a key with no operator or with `Ne`, the pair of a `Between` key when
+  it holds two values, and the list of value groups of a tuple key, and any other kind but `map` and
+  `nested:json_value` is one value. A `map`, a `nested:json_value`, a list inside a list of values and a `Between`
+  list of another length are `codec_encode` at the next terminal, with the message `the value of a condition is
+  <what>`. A name that starts with `And` or `Or` joins its first condition to
   the conditions before it with that connector. The name is read by `parse_chain` of the crate `polyspec-orm-schema`,
   the one function that reads the chain names of the generated models too. A name that is no chain of the entity, an
   operator that its column does not allow and a number of values other than the number of keys are `config`, which
@@ -175,22 +206,26 @@ the core that differ from the rules that the language implementations of `legacy
 - **CORE-83** The terminals `get`, `gets`, `get_count` and `get_query` run the query as the terminals of a generated
   model do, and `get_by(chain, values)`, `gets_by(chain, values)` and `get_count_by(chain, values)` run it with the
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
-  entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row; a name
+  entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: the writes of a `Query` (`set`, `create`, `creates`, `update`, `save`, `delete`,
   `restore`, `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, the groups
   (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg` and `toArray`. The values of `where` are the Rust values
-  `polyspec_orm::core::Arg` until `orm_value` exists (CORE-60).
+  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg` and `toArray`. A condition on a function of a column or of a
+  value (DSL-54), which `where` cannot take as `orm_value`, is not implemented either.
 
 ## Interface contract
 
 - **CORE-70** The interface contract of the core is `packages/rust/interface.json`. It declares a unit or a member only
-  when the core has it and every type of its signature is a type of the contract. A member whose values are values of
-  columns waits for `orm_value` (CORE-60), which is not implemented, and is not declared: `Tx::run`, `Tx::execute`,
-  `Db::subscribe`, `Db::with_request_hook`, the field `audit_source` of `Config`, the field `audit` of
-  `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`. `Utils` and its parts borrow their handle, and
-  `Collection`, `Page` and `LookaheadPage` take the type of a generated model, so they are not declared either.
+  when the core has it and every type of its signature is a type of the contract. The value alias `orm_value`
+  (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
+  `get_count_by`. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
+  are borrowed texts and a row is a list of cells with no column), `Tx::execute` (a plan step), `Db::subscribe` (an
+  event that borrows its statement), `Db::with_request_hook` (the request of the protocol), the field `audit_source`
+  of `Config` (a function), the field `audit` of `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`
+  (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
+  `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
+  `gets`, `gets_by`) are not declared either.
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
   instance value, and a failure states its kind, its category and its whole message (CORE-12). The core runs every such
