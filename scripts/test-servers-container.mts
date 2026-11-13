@@ -239,9 +239,15 @@ function launch(context: Context, kind: Kind, server: Server, args: string[]): P
         else if (initialized && server.ready(line)) finish();
       }
     };
-    const watcher = watch(log, read);
+    // libuv watches a file with a one-shot kqueue event, which it adds in the poll phase after watch returns and adds
+    // again in the poll phase after each event, so a line written before the watch or between an event and that poll
+    // phase raises no event. settled reads in the second check phase from its call, which comes after a poll phase, also
+    // when it is called in one: it runs after the start of the watch and after each event, so each line is read (T445).
+    const settled = () => setImmediate(() => setImmediate(read));
+    const watcher = watch(log, () => { read(); settled(); });
     child.on('error', error => finish(new TestServerError(`test-servers-container: ${context.program}: ${error.message}`)));
     child.on('spawn', read);
+    settled();
     child.on('exit', (code, signal) => {
       read();
       finish(new TestServerError(`test-servers-container: the container of ${kind} stopped with ${code ?? signal} before it was ready; its log is ${log}`));

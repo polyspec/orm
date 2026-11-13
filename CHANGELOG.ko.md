@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6ca0845da7bbcd20cc04b585f1326df1e3b1b0c0e3a905d22937cc26c4ddfe8 -->
+<!-- source-sha256: 46636fd1ff318b12591b33ccec23dfd53466174dfca7e19c067eff5bace9f44d -->
 # 변경 이력
 
 ## Unreleased
@@ -34,6 +34,7 @@
 - Rust 코어의 `Db` step은 transaction과 savepoint를 실행한다(OM-3.1-12, CORE-93): option `isolation`, `read_only`, `timeout_ms`, `audit`을 가진 `transaction` step은 `retry` 0인 callback transaction을 열고, `savepoint` step은 가장 안쪽 것의 savepoint를 열며, 뒤따르는 step은 step `end`까지 그 handle에서 실행된다. `end`는 그것을 commit하거나 release하고, `rollback`이면 rollback하며, 그 끝의 결과를 돌려준다. `StepRunner::close`는 열린 것을 rollback하고 그 결과를 돌려주며, 놓인 runner는 자기 transaction을 rollback한다.
 - `make test-rust`는 cargo 시험이 실행되는 동안 `typescript-current`로 TypeScript client를 build하고 `$(READ_TYPESCRIPT)`로 hold한다(T339-5-1): Rust recipe의 case `public_interface_none::interface_symbols`는 `legacy/packages/ts/dist`를 읽는 `tests/interfaces/check/main.mts`를 실행하며, 그 build가 없는 checkout에서 `has no build of the TypeScript client`로 실패했다.
 - `make orm-test-container`의 시험 데이터베이스 컨테이너는 그것을 띄운 checkout에 속한다(T444): 이름은 checkout root의 sha256 앞 16진 12자리를 넣은 `polyspec-orm-test-<checkout>-<kind>`이므로, 두 번째 checkout이 `container polyspec-orm-test-mysql exists`로 실패하던 곳에서 두 checkout이 동시에 서버를 띄운다. `make orm-test-container-stop`은 자기 checkout의 컨테이너만 지우고, 실패한 시작은 자기가 띄운 컨테이너를 지우며, `make orm-test-container-run KIND=<kind> RUN='<command>'`는 서버의 변수로 명령을 실행하고 명령이 끝나거나 실패하거나 run이 SIGINT나 SIGTERM을 받으면 컨테이너를 지운다.
+- `make orm-test-container`는 컨테이너의 log 줄을 모두 읽는다(T445): 시작은 컨테이너의 spawn과 각 변경 event에서 log를 읽었는데, libuv는 파일을 one-shot kqueue event로 watch하며 그 event를 시작할 때와 각 event 뒤에 다음 poll 단계에서야 더하므로, 그 사이에 쓰인 줄은 event를 내지 않았고 마지막 줄이 ready 줄인 서버는 시작을 끝없이 기다리게 했다. 이제 시작은 watch의 시작과 각 event 뒤에 poll 단계를 지나 log를 한 번 더 읽는다.
 
 ## 0.0.31
 
