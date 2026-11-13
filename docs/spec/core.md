@@ -289,8 +289,10 @@ the core that differ from the rules that the language implementations of `legacy
   its outcome is the outcome of that end, such as `deadlock` of a commit. The options are `isolation`, `read_only`,
   `timeout_ms` and `audit`, the map of the audit values of CORE-20; a transaction of a step runs with `retry` 0, since
   the core that asked runs it again on `deadlock`. A savepoint or an end with no open transaction is `config`, and
-  `StepRunner::close` rolls back every open one, innermost first, and returns when they ended; a runner dropped with an
-  open transaction rolls it back when its callback sees that no step can come.
+  `StepRunner::close` rolls back every open one, innermost first, and returns, when they ended, the outcome `{"ok": {}}`
+  or the first failure of a rollback; a runner dropped with an open transaction rolls it back when its callback sees
+  that no step can come. A transaction step needs a runner on a `Db` and no open transaction, since a savepoint step
+  opens what a nested transaction would; another is `config`.
 
 ## Interface contract
 

@@ -225,7 +225,8 @@ async fn a_transaction_step_runs_the_steps_until_its_end() {
     let ok = json!({"ok": {}});
     assert_eq!(run(&mut runner, &json!({"kind": "transaction", "options": {}})).await, ok);
     assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
-    let locked = query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Email", "values": [text("d@x")]}, {"call": "for_update"}]}), "get");
+    let locked =
+        query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Email", "values": [text("d@x")]}, {"call": "for_update"}]}), "get");
     assert!(run(&mut runner, &locked).await["ok"]["row"].is_object(), "a locked read in the transaction sees its own row");
     assert_eq!(run(&mut runner, &end(false)).await, ok, "the end commits");
     assert_eq!(run(&mut runner, &count_account("d@x")).await, json!({"ok": {"count": 1}}));
@@ -286,7 +287,7 @@ async fn close_rolls_back_what_is_open() {
     assert_eq!(run(&mut runner, &json!({"kind": "transaction"})).await, ok);
     assert_eq!(run(&mut runner, &json!({"kind": "savepoint"})).await, ok);
     assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
-    runner.close().await;
+    assert_eq!(runner.close().await, r#"{"ok":{}}"#, "the outcome of close");
     assert_eq!(run(&mut runner, &count_account("d@x")).await, json!({"ok": {"count": 0}}), "close rolled back both");
     let outcome = run(&mut runner, &end(false)).await;
     assert_eq!(error_kind(&outcome), "config", "close ended every open one: {outcome}");

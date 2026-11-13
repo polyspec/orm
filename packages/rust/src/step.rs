@@ -2,13 +2,18 @@
 //! with orm without a judgement of its own. A step is JSON text; its query is the members of `Query` with their
 //! arguments in the order of the calls, and its outcome is the result or the kind of the failure.
 
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
 
 use crate::collection::Collection;
 use crate::orm_value::JsonValue;
-use crate::{Connection, Error, Kind, OrmValue, Query, Result, Schema};
+use crate::{Connection, Error, Isolation, Kind, OrmValue, Query, Result, Schema, TransactionOptions, Tx};
 
 /// One step (CORE-92).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,6 +21,66 @@ use crate::{Connection, Error, Kind, OrmValue, Query, Result, Schema};
 pub enum Step {
     /// Runs the query `query` with the terminal `terminal`.
     Query { query: QueryTree, terminal: Terminal },
+    /// Opens a transaction of the connection of the runner, whose callback runs the steps that follow (CORE-93).
+    Transaction {
+        #[serde(default)]
+        options: StepOptions,
+    },
+    /// Opens a savepoint of the innermost transaction or savepoint, whose callback runs the steps that follow (CORE-93).
+    Savepoint,
+    /// Ends the callback of the innermost transaction or savepoint: it commits or releases it, or with `rollback` rolls
+    /// it back (CORE-93).
+    End { rollback: bool },
+}
+
+/// The options of a transaction step (CORE-93): those of `TransactionOptions` but `retry`, which is 0.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepOptions {
+    #[serde(default)]
+    pub isolation: Option<StepIsolation>,
+    #[serde(default)]
+    pub read_only: Option<bool>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+    /// The audit values by column (CORE-20).
+    #[serde(default)]
+    pub audit: Option<BTreeMap<String, StepValue>>,
+}
+
+/// The isolation level of a transaction step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StepIsolation {
+    ReadUncommitted,
+    ReadCommitted,
+    RepeatableRead,
+    Serializable,
+}
+
+impl StepOptions {
+    /// The options of the transaction of the step, with `retry` 0: the core that asked runs it again on `deadlock`.
+    fn transaction(self) -> Result<TransactionOptions> {
+        let isolation = self.isolation.map(|level| match level {
+            StepIsolation::ReadUncommitted => Isolation::ReadUncommitted,
+            StepIsolation::ReadCommitted => Isolation::ReadCommitted,
+            StepIsolation::RepeatableRead => Isolation::RepeatableRead,
+            StepIsolation::Serializable => Isolation::Serializable,
+        });
+        let audit = match self.audit {
+            Some(values) => Some(
+                values
+                    .into_iter()
+                    .map(|(column, value)| match value.0.scalar() {
+                        Ok(param) => Ok((column, param)),
+                        Err(_refused) => Err(Error::new(Kind::CodecEncode, format!("the audit value of {column} is no value of a column"))),
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+            None => None,
+        };
+        Ok(TransactionOptions { isolation, read_only: self.read_only, timeout_ms: self.timeout_ms, retry: Some(0), audit })
+    }
 }
 
 /// A query: the entity and the members of `Query` called on it in order (CORE-92).
@@ -153,17 +218,50 @@ fn hex_bytes(hex: &str) -> Option<Vec<u8>> {
     bytes.chunks(2).map(|pair| Some(digit(pair[0])? << 4 | digit(pair[1])?)).collect()
 }
 
-/// Runs the steps of the core of another library on one connection (CORE-92).
+/// Runs the steps of the core of another library on one connection (CORE-92), and the steps of its transactions and
+/// savepoints on their handles (CORE-93).
 pub struct StepRunner {
     schema: Schema,
     connection: Connection,
+    /// The open transaction and savepoints, the innermost last.
+    frames: Vec<Frame>,
+}
+
+/// An open transaction or savepoint: the handle that its callback received, the end that the callback waits for and
+/// the task that runs it. A frame dropped without its end drops `end`, so the callback rolls back.
+struct Frame {
+    handle: Tx,
+    end: oneshot::Sender<bool>,
+    task: JoinHandle<Result<()>>,
+}
+
+/// The error of a callback that its end step rolled back (CORE-93).
+const ROLLED_BACK: &str = "the end step rolled back the callback";
+
+/// What a callback of a frame receives: where it sends its handle, and the end that it waits for.
+type Parts = (oneshot::Sender<Tx>, oneshot::Receiver<bool>);
+
+/// The callback of a frame: it sends its handle to the runner and waits for its end, which commits or releases it on
+/// `false` and rolls it back on `true` or when the runner is dropped (CORE-93).
+async fn serve(handle: Tx, parts: Arc<std::sync::Mutex<Option<Parts>>>) -> Result<()> {
+    let taken = parts.lock().map_err(|_poisoned| Error::internal("the parts of a step callback were poisoned by a panic"))?.take();
+    let Some((send, end)) = taken else {
+        return Err(Error::internal("the callback of a step transaction ran twice"));
+    };
+    if send.send(handle).is_err() {
+        return Err(Error::new(Kind::Internal, ROLLED_BACK));
+    }
+    match end.await {
+        Ok(false) => Ok(()),
+        Ok(true) | Err(_) => Err(Error::new(Kind::Internal, ROLLED_BACK)),
+    }
 }
 
 impl StepRunner {
     /// A runner of the steps of `schema` on `connection`.
     #[must_use]
     pub fn new(schema: &Schema, connection: Connection) -> StepRunner {
-        StepRunner { schema: schema.clone(), connection }
+        StepRunner { schema: schema.clone(), connection, frames: Vec::new() }
     }
 
     /// Runs the step of the JSON text `step` and returns its outcome as JSON text: `{"ok": <result>}`, or
@@ -173,26 +271,104 @@ impl StepRunner {
             Ok(step) => self.run_step(step).await,
             Err(error) => Err(Error::config(format!("the text is no step of CORE-92: {error}"))),
         };
-        let outcome = outcome.and_then(|result| {
-            serde_json::to_string(&json!({"ok": result})).map_err(|error| Error::internal(format!("the result of a step has no JSON text: {error}")))
-        });
-        match outcome {
-            Ok(text) => text,
-            Err(error) => json!({"error": {"kind": error.kind().as_str(), "message": error.to_string()}}).to_string(),
-        }
+        outcome_text(outcome)
     }
 
-    /// Ends what the runner holds open (CORE-93).
-    pub async fn close(&mut self) {}
+    /// Rolls back every open transaction and savepoint, the innermost first, and returns when they ended (CORE-93); the
+    /// outcome is `{"ok": {}}`, or the first failure of a rollback. The runner then runs its steps on its connection.
+    pub async fn close(&mut self) -> String {
+        let mut first = None;
+        while !self.frames.is_empty() {
+            if let Err(error) = self.end(true).await {
+                first.get_or_insert(error);
+            }
+        }
+        outcome_text(first.map_or(Ok(json!({})), Err))
+    }
+
+    /// The connection of the next query step: the handle of the innermost frame, or the connection of the runner.
+    fn current(&self) -> Connection {
+        match self.frames.last() {
+            Some(frame) => Connection::Tx(frame.handle.clone()),
+            None => self.connection.clone(),
+        }
+    }
 
     async fn run_step(&mut self, step: Step) -> Result<Value> {
         match step {
             Step::Query { query, terminal } => {
                 let mut query = build(&self.schema, query)?;
-                query.connect(self.connection.clone());
+                query.connect(self.current());
                 run_terminal(query, terminal).await
             }
+            Step::Transaction { options } => {
+                let Connection::Db(db) = &self.connection else {
+                    return Err(Error::config("a transaction step needs a runner on a Db; in a transaction a step opens a savepoint"));
+                };
+                if !self.frames.is_empty() {
+                    return Err(Error::config("a transaction step inside a transaction; a step opens a savepoint there"));
+                }
+                let options = options.transaction()?;
+                let db = db.clone();
+                self.open(move |parts| tokio::spawn(async move { db.transaction(move |tx| serve(tx, Arc::clone(&parts)), options).await })).await
+            }
+            Step::Savepoint => {
+                let Some(parent) = self.frames.last().map(|frame| frame.handle.clone()) else {
+                    return Err(Error::config("a savepoint step needs an open transaction"));
+                };
+                self.open(move |parts| tokio::spawn(async move { parent.savepoint(move |sp| serve(sp, parts)).await })).await
+            }
+            Step::End { rollback } => self.end(rollback).await.map(|()| json!({})),
         }
+    }
+
+    /// Opens a frame whose task `start` spawns with the parts of its callback; a frame whose callback does not run
+    /// returns the failure of its task, such as the failure of `BEGIN`.
+    async fn open(&mut self, start: impl FnOnce(Arc<std::sync::Mutex<Option<Parts>>>) -> JoinHandle<Result<()>>) -> Result<Value> {
+        let (send, handle) = oneshot::channel();
+        let (end, ended) = oneshot::channel();
+        let task = start(Arc::new(std::sync::Mutex::new(Some((send, ended)))));
+        match handle.await {
+            Ok(handle) => {
+                self.frames.push(Frame { handle, end, task });
+                Ok(json!({}))
+            }
+            Err(_unsent) => match joined(task.await) {
+                Err(error) => Err(error),
+                Ok(()) => Err(Error::internal("a step transaction ended before its callback ran")),
+            },
+        }
+    }
+
+    /// Ends the innermost frame: its callback succeeds, or with `rollback` fails, and the outcome is the outcome of its
+    /// end (CORE-93).
+    async fn end(&mut self, rollback: bool) -> Result<()> {
+        let Some(Frame { end, task, .. }) = self.frames.pop() else {
+            return Err(Error::config("an end step needs an open transaction or savepoint"));
+        };
+        let delivered = end.send(rollback).is_ok();
+        match joined(task.await) {
+            Ok(()) if delivered => Ok(()),
+            Ok(()) => Err(Error::internal("the callback of a step transaction ended before its end step")),
+            Err(error) if rollback && error.kind() == Kind::Internal && error.text() == ROLLED_BACK => Ok(()),
+            Err(error) => Err(error),
+        }
+    }
+}
+
+/// The result of the task of a frame; a task that panicked is `internal`.
+fn joined(result: std::result::Result<Result<()>, tokio::task::JoinError>) -> Result<()> {
+    result.map_err(|error| Error::internal(format!("the task of a step transaction failed: {error}")))?
+}
+
+/// The JSON text of an outcome (CORE-92).
+fn outcome_text(outcome: Result<Value>) -> String {
+    let outcome = outcome.and_then(|result| {
+        serde_json::to_string(&json!({"ok": result})).map_err(|error| Error::internal(format!("the result of a step has no JSON text: {error}")))
+    });
+    match outcome {
+        Ok(text) => text,
+        Err(error) => json!({"error": {"kind": error.kind().as_str(), "message": error.to_string()}}).to_string(),
     }
 }
 

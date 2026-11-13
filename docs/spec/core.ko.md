@@ -252,8 +252,9 @@
   `deadlock`). option은 `isolation`, `read_only`, `timeout_ms`, 그리고 CORE-20의 audit 값의 map인 `audit`이다. step의
   transaction은 `retry` 0으로 실행된다. 부탁한 코어가 `deadlock`에서 그것을 다시 실행하기 때문이다. 열린
   transaction이 없을 때의 savepoint나 end는 `config`이고, `StepRunner::close`는 열린 것을 가장 안쪽부터 모두
-  rollback하고 그것들이 끝난 뒤 돌아온다. 열린 transaction을 가진 채 놓인 runner는, 그 callback이 더는 step이 올 수
-  없음을 알 때 그것을 rollback한다.
+  rollback하고, 그것들이 끝난 뒤 결과 `{"ok": {}}`이나 rollback의 첫 실패를 돌려준다. 열린 transaction을 가진 채 놓인
+  runner는, 그 callback이 더는 step이 올 수 없음을 알 때 그것을 rollback한다. transaction step은 `Db` 위의 runner와
+  열린 transaction이 없음을 요구한다. 중첩 transaction이 열 것은 savepoint step이 열기 때문이다. 그 밖은 `config`다.
 
 ## 인터페이스 계약
 

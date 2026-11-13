@@ -3395,7 +3395,7 @@
           "kind": "method",
           "visibility": "public",
           "parameters": [],
-          "returns": "none",
+          "returns": "text",
           "raises": [],
           "wait": "async_driver",
           "core": {
