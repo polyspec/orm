@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 0eb2516aeee6e41535433048a5022754e75ba53da028c5c510824fd498b7f185 -->
+<!-- source-sha256: 4390e688ed1958d094d405f59d971cc4eda6f5dc0445348f2154accfa3f71cfa -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -568,6 +568,9 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
+make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 Apple container 안에 MySQL primary 하나를 띄운다
+. .runtime/containers/mysql.env                              # 그 서버의 DSN 변수. TEST_ENV를 읽는 대상은 TEST_ENV=.runtime/containers/mysql.env, MariaDB는 MARIADB_ENV를 받는다
+make orm-test-container-stop                                 # 컨테이너와 데이터를 지운다. 그다음 종류를 띄운다
 ```
 
 예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).

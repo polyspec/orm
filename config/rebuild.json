@@ -310,6 +310,10 @@
       "kind": "policy",
       "reason": "starts and stops the MariaDB servers of the database checks of this repository under .runtime/servers on free ports, beside scripts/test-servers.mts; it runs mariadbd and ProxySQL"
     },
+    "scripts/test-servers-container.mts": {
+      "kind": "policy",
+      "reason": "starts and stops one database server of the checks of this repository in an Apple container from an image pinned by its digest, with the settings of the native primary of scripts/test-servers.mts; it runs the container program"
+    },
     "scripts/test-servers-mysql.mts": {
       "kind": "policy",
       "reason": "compares the declared MySQL settings with an existing data directory and moves the data when they differ, for the test servers of this repository; it runs mysql and mysqldump"
