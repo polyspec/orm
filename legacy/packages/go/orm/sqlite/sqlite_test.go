@@ -59,7 +59,7 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 // table; the recipe case sqlite_extended_code_names tests the messages in every runtime.
 func TestResultCodeNamesMatchTable(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	src, err := os.ReadFile("../../../../../docs/spec/sqlite-result-codes.yaml")
+	src, err := os.ReadFile(testcase.RepositoryPath("docs/spec/sqlite-result-codes.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
