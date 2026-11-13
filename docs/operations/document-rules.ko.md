@@ -1,5 +1,5 @@
 <!-- doc-id: document-rules -->
-<!-- source-sha256: 4101ded045fd8b8e2d5f55c39fcbf2b344503ad4068e01d4797c5f17dd9a5541 -->
+<!-- source-sha256: 6d5356d9c710cd0cf58cdae0a4d77a869b54b0aa3048ad49cbb8d7ba03094fbb -->
 # 문서 및 변경 규칙
 
 영어 페이지와 한국어 페이지를 한 쌍으로 제공한다. 한국어 페이지는 같은 경로에서 `.md` 앞에 `.ko`를 추가한다.
@@ -20,3 +20,5 @@
 7. 체크리스트 항목은 구현, 테스트, 문서, 정적 배포가 모두 통과한 뒤에만 완료로 표시한다.
 
 기계 판정 규칙은 `contracts/rules.json`에 저장한다.
+
+`docs.writing-style`의 목록(`forbidden_en`, `forbidden_ko`)에는 직접적인 단어로 바꿀 수 있는 비유, 의인화, 모호한 쓰임의 단어만 넣는다. `contract`와 `계약`은 목록에 없다: `interface contract`는 binding 설계가 `packages/rust/interface.json`을 부르는 용어이고 AGENTS.md와 docs/spec/core.md가 그 용어를 쓰며, 용어를 대신할 직접적인 단어는 없다. 검사는 영어 항목을 온전한 단어로, 한국어 항목을 단어의 일부로 읽으므로, 목록의 항목이 더 긴 단어 안에 들어 있는 한국어 문장은 다른 단어로 쓴다.

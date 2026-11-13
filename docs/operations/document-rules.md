@@ -19,3 +19,5 @@ The following rules are enforced by the repository checks:
 7. A checklist item is complete only after implementation, tests, documentation, and static publication pass.
 
 Machine-readable rule definitions are stored in `contracts/rules.json`.
+
+The style lists of `docs.writing-style` (`forbidden_en`, `forbidden_ko`) hold a word only for a figurative, personifying or ambiguous use that a direct word replaces. The words `contract` and `계약` are not in the lists: `interface contract` is the term of the binding design for `packages/rust/interface.json`, AGENTS.md and docs/spec/core.md use it, and a term has no direct word that replaces it. The check reads an English entry as a whole word and a Korean entry as a part of a word, so a Korean sentence that holds an entry inside a longer word is written with another word.

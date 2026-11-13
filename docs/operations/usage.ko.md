@@ -481,7 +481,7 @@ $b->getJsonSetting()['a'];
 
 client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, 복제한 Rust 값, Python `with_request_hook`)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript, Python) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
 
-모든 client는 같은 transaction 제어 statement를 보낸다:
+모든 client는 같은 transaction 제어 statement를 전송한다:
 
 | Dialect | 시작 | 끝 |
 |---|---|---|
@@ -489,7 +489,7 @@ client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를
 | PostgreSQL | option에 따라 ` ISOLATION LEVEL <level>`과 ` READ ONLY`를 붙인 `BEGIN`, 그다음 `SET LOCAL statement_timeout = <ms>`(`utility`, `timeoutMs`가 있을 때) | `COMMIT` 또는 `ROLLBACK` |
 | SQLite | `BEGIN IMMEDIATE`, 읽기 전용 transaction은 `BEGIN`, 그다음 option에 따라 `PRAGMA read_uncommitted = 1`과 `PRAGMA query_only = 1`(`utility`) | 같은 `PRAGMA`를 0으로, 그다음 `COMMIT` 또는 `ROLLBACK` |
 
-`<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 보내고, callback이 실패한 뒤에는 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 보낸다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. MySQL이나 PostgreSQL transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다. 취소된 SQLite transaction은 그래도 `PRAGMA` mode를 되돌리고 `ROLLBACK`으로 끝난다.
+`<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 보내고, callback이 실패한 뒤에는 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 전송한다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. MySQL이나 PostgreSQL transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다. 취소된 SQLite transaction은 그래도 `PRAGMA` mode를 되돌리고 `ROLLBACK`으로 끝난다.
 
 물리 연결을 여는 statement(time zone 같은 session 설정, SQLite version 읽기), statement의 준비, protocol 수준의 취소는 event가 아니다.
 

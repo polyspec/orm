@@ -26,13 +26,13 @@
 - **CORE-10** 코어의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가진다. kind와 category와 뜻은
   [errors](errors.md)의 표다. kind는 카탈로그 코드의 소문자 snake 형태다(`NO_ROWS`는 `no_rows`). 코어에서는 INT-65와
   INT-89를 대체한다: 바인딩은 kind를 계약의 enum `ErrorKind`로, 모든 오류를 그 category의 클래스(CORE-11)로 내고, 어느
-  구현도 자기 상수 목록을 두지 않는다.
+  구현도 자기 상수 목록을 가지지 않는다.
 - **CORE-11** 오류의 클래스는 모든 바인딩에서 그 category의 클래스 `Orm<Category>Error`(`OrmValueError`,
   `OrmTypeError`, `OrmStoreError`, `OrmBusyError`, `OrmInternalError`)이며 kind를 `kind`로 가진다. kind별 클래스는
-  두지 않는다. kind 묶음을 잡는 규칙이 없기 때문이다.
+  가지지 않는다. kind 묶음을 잡는 규칙이 없기 때문이다.
 - **CORE-12** 오류 메시지는 `<kind>: <text>`이고 text는 INT-163과 INT-187을 따른다.
 - **CORE-13** 드라이버 오류는 INT-89와 DIA-201이 그 코드에 주는 kind나 `driver`를 가지며 드라이버 오류를 원인으로 담는다.
-  markdown 서버는 오류 코드를 답한다(PRT-71). 코어의 kind가 아닌 코드는 kind `driver`이며 메시지가 서버가 보낸 코드를
+  markdown 서버는 오류 코드를 돌려준다(PRT-71). 코어의 kind가 아닌 코드는 kind `driver`이며 메시지가 서버가 보낸 코드를
   적는다.
 - **CORE-14** 네 kind는 카탈로그 코드가 없다. 언어 구현은 그 실패를 `CONFIG`로 내기 때문이다: `busy`(CORE-22),
   `transaction_ended`(CORE-23), `closed`(CORE-31), `pool_timeout`(CORE-30). `rollback_failed`는 `ROLLBACK`을
@@ -71,10 +71,10 @@
   않는다. INT-72의 Rust 문장을 대체한다. Go의 panic·`runtime.Goexit`과 PHP·Python·Node의 예외는 코어 밖에서 일어난다:
   바인딩이 callback이 버려졌다고 코어에 알리면 코어가 롤백하고, 언어는 그것을 계속한다.
 - **CORE-27** 코어는 문장의 작업 밖에서 언어 코드를 호출한다. 콜백을 호출하는 멤버는 I/O가 없는 상태 기계이고, `Io`(기다릴
-  작업), `Call`(인자와 함께 호출할 콜백), `Await`(콜백이 돌려준 값으로, 언어가 기다린다), `Done`(결과)을 낸다. 바인딩은
+  작업), `Call`(인자와 함께 호출할 콜백), `Await`(콜백이 돌려준 값으로, 언어가 기다린다), `Done`(결과)을 돌려준다. 바인딩은
   멤버의 `wait`대로 `Io`를 기다리고, 호출 스레드에서 `Call`을 호출해 그 결과를 되돌려 준다. 그래서 blocking 런타임이 코어
   안에서 코어를 기다리며 막히지 않는다. 계약의 상태 기계는 CORE-100부터 CORE-105가 적는다.
-- **CORE-28** 문장 사건 subscriber가 던진 예외는 그대로 돌아간다. 그 문장은 실행되었고, 끝나지 않은 트랜잭션의 쓰기는
+- **CORE-28** 문장 event subscriber가 던진 예외는 그대로 돌아간다. 그 문장은 실행되었고, 끝나지 않은 트랜잭션의 쓰기는
   함께 롤백된다. INT-96의 `SUBSCRIBER`는 코어의 kind가 아니다.
 
 ## 연결
@@ -84,20 +84,20 @@
 - **CORE-31** `Db::close`는 진행 중인 호출을 끝까지 두고, 그 뒤 같은 pool의 모든 handle 호출을 `closed`로 실패시킨다. 두
   번째 `close`는 성공한다.
 - **CORE-32** `Db`는 동시 호출을 받는다. 문장은 pool 연결 하나를 빌리고 그 결과는 다른 호출과 무관하다. 트랜잭션 번호는
-  `BEGIN`을 보낼 때 센다.
+  `BEGIN`을 보낼 때 하나씩 더한다.
 
 ## 취소
 
 - **CORE-40** 코어의 취소 규칙은 하나다. 취소된 문장은 `canceled`로 끝나고, 트랜잭션의 롤백은 취소하지 않는다(CFG-9).
 - **CORE-41** PHP `Cancellation`은 다른 프로세스와 공유하는 상태 파일에 상태를 둔다. 그 디렉터리는 필수 인자다. 상태
-  파일은 정리가 읽지 않는 임시 이름으로 `O_CREAT | O_EXCL | O_CLOEXEC`, mode `0600`으로 만들고, 주인이 `flock(LOCK_SH)`를
-  얻은 뒤에야 상태 파일 이름으로 rename한다. 그래서 정리가 보는 상태 파일은 늘 주인이 잠근 것이다. 주인은 파일의 수명
+  파일은 정리가 읽지 않는 임시 이름을 붙여 `O_CREAT | O_EXCL | O_CLOEXEC`, mode `0600`으로 만들고, 주인이 `flock(LOCK_SH)`를
+  얻은 뒤에야 상태 파일의 이름이 되게 rename한다. 그래서 정리가 보는 상태 파일은 늘 주인이 잠근 것이다. 주인은 파일의 수명
   동안 잠금을 쥐고, 소멸할 때 파일을 지운다.
 - **CORE-42** `Cancellation`을 만들 때 그 디렉터리의 상태 파일 중 `flock(LOCK_EX | LOCK_NB)`가 성공하는 것을 모두 지운다.
   주인이 없기 때문이다. 잠금이 `EWOULDBLOCK`으로 실패한 파일은 주인이 있으므로 둔다. 그 밖의 실패는 오류다.
 - **CORE-43** 상태 파일은 표시 바이트(`0` 취소 안 됨, `1` 취소됨)와 그 뒤 진행 중인 문장마다 레코드 하나를 담는다:
   데이터베이스와 서버에서 그 문장을 끝내는 정보(MySQL connection id, PostgreSQL backend pid와 secret key). 문장은 시작할
-  때 레코드를 쓰고 끝날 때 지운다. `cancel()`은 표시를 쓰고 기록된 모든 문장을 자기 프로세스의 제어 연결로 끝낸다.
+  때 레코드를 쓰고 끝날 때 지운다. `cancel()`은 표시를 쓰고 기록된 모든 문장을 자기 프로세스의 제어 연결로 종료한다.
 - **CORE-44** 한 PHP 프로세스 안에서는 진행 중인 문장을 취소할 수 없다: 문장이 실행되는 동안 언어 코드는 실행되지
   않는다(CORE-27). 같은 프로세스의 `cancel()`은 그 handle의 다음 문장을 `canceled`로 실패시킨다.
 
@@ -111,7 +111,7 @@
 - **CORE-47** 취소가 발화할 때 진행 중인 문장은 그 서버에서 끝나고 `canceled`로 실패한다: MySQL과 MariaDB는 같은 DSN의
   제어 연결에서 `KILL QUERY <connection id>`로 끝내고 그 뒤 문장의 연결은 pool로 돌려주지 않고 닫는다. PostgreSQL은
   protocol의 CancelRequest로, SQLite는 문장을 interrupt하는 progress handler로, markdown 연결은 연결을 닫아서
-  끝낸다(PRT-71). 구현되지 않았다: 그런 문장은 끝까지 실행되어 자기 결과를 돌려준다.
+  종료한다(PRT-71). 구현되지 않았다: 그런 문장은 끝까지 실행되어 자기 결과를 돌려준다.
 
 ## 코드 생성
 
@@ -124,7 +124,7 @@
 
 ## 값
 
-- **CORE-60** 열 값은 `orm_value`로 코어를 나간다: 64비트 열(`i64`와 MySQL 부호 없는 열)의 정수는 `int64`(Node
+- **CORE-60** 열 값은 `orm_value`로 코어 밖으로 전달된다: 64비트 열(`i64`와 MySQL 부호 없는 열)의 정수는 `int64`(Node
   `bigint`), 더 좁은 열의 정수는 크기와 관계없이 `int`(Node `number`), JSON 열은 `json_value`의 값, 날짜·시각·날짜시각은
   DBS-112와 DBS-121의 정규 텍스트, decimal은 정확한 텍스트다.
 - **CORE-62** `orm_value`는 코어의 값 타입 `polyspec_orm::OrmValue`이고, 계약은 그것을 값 alias `orm_value`로 선언한다.
@@ -163,8 +163,8 @@
   둘 다 어떤 연결보다 앞선다. 불러온 schema는 자기 텍스트와 runtime model을 소유하고, 그것을 가리키는 값들이 그것을
   공유한다: schema 값과 그 사본, 그 schema의 `Query`와 그 `Query`의 행, 그런 `Query`의 요청, 그리고 그 schema가
   등록된 연결(그 연결이 놓일 때까지)이다. 그 가운데 마지막이 놓이면 schema의 메모리가 돌아오며, 프로세스는 불러온
-  schema를 두지 않는다. 생성된 코드의 schema는 그 코드의 static이고 세지 않는다.
-- **CORE-81** `Query`는 이름으로 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
+  schema를 가지지 않는다. 생성된 코드의 schema는 그 코드의 static이고 세지 않는다.
+- **CORE-81** `Query`는 이름을 주어 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
   엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
   연결이 없는 `Query`의 terminal은 `config`다. `Query`의 엔티티 descriptor는 그 `Query`와 그 사본, 그 행이 공유하고 그 가운데
   마지막과 함께 놓인다(CORE-80).
@@ -198,7 +198,7 @@
   only inside a transaction`이다. lock 절이 없는 SQLite는 transaction 안에서 lock을 잡는다(INT-49).
 - **CORE-87** `Query`의 행이 읽는 열(PRT-9): `add_all_columns`는 모든 열을 읽고, `remove_all_columns`는 primary key와
   foreign key의 열만 남기며, `add_column(column)`은 열 하나를 더하고 `remove_column(column)`은 열 하나를 뺀다(DSL-72,
-  DSL-75~DSL-77). 열은 `value`처럼 dbspec 문서의 이름으로 부른다. 엔티티의 열이 아닌 이름은 다음 terminal에서
+  DSL-75~DSL-77). 열은 `value`처럼 dbspec 문서의 이름을 써서 지정한다. 엔티티의 열이 아닌 이름은 다음 terminal에서
   `config`이고 메시지는 `<column> is not a column of <entity>`다. 행이 읽지 않은 열의 `value`는
   `column_unselected`다(CORE-83).
 - **CORE-88** `match_pair(pair)`는 relation key의 구성 요소 하나를 더한다. 이름은 `<Left>With<Right>`이고, `Left`는
@@ -292,7 +292,7 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   멤버가 아니다. CORE-93의 step runner가 이 둘을 호출한다.
 - **CORE-103** `Db::transaction`과 `Tx::savepoint`의 상태 기계는 다음 단계를 내고, 스스로 I/O를 하지 않는다:
   1. `Io`: 시작. 연결을 빌리고 옵션과 함께 `BEGIN`을 보내거나(CORE-20), CORE-22와 CORE-23의 검사 뒤에 `SAVEPOINT`를
-     보낸다. 시작이 실패하면 기계는 `Done(Err(Failure::Kind))`로 끝나고 콜백은 실행되지 않는다.
+     전송한다. 시작이 실패하면 기계는 `Done(Err(Failure::Kind))`로 끝나고 콜백은 실행되지 않는다.
   2. `Call`: `Machine::call`이 기계를 구동하는 스레드에서 트랜잭션이나 savepoint의 handle `Tx`로 `callback`을 호출하고,
      돌려받은 것을 보관한다.
   3. 콜백이 `Ok(value)`를 돌려주면 `Await(value)`. driver는 자기 언어에 awaitable이 있으면 그 값을 기다리고, 다음 단계
@@ -310,7 +310,7 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
   통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께
   이를 거부하기 때문이다. 이것이 적힐 때까지 CORE-24는 바인딩을 통해서는 commit의 `deadlock`에만 성립한다.
-  `db.transaction`의 매개변수 `options`가 required로 남는 이유도 같다: 생성기는 `machine`이 있는 멤버의 default 있는
+  `db.transaction`의 매개변수 `options`가 required로 남는 까닭도 같다: 생성기는 `machine`이 있는 멤버의 default 있는
   매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
 - **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
   호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.

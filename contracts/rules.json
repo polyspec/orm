@@ -37,7 +37,6 @@
       "checker": "docs-rules-check",
       "failure": "configured informal, figurative, personifying, or ambiguous wording appears in a manual",
       "forbidden_ko": [
-        "계약",
         "묶임",
         "진술",
         "남처럼",
@@ -100,7 +99,6 @@
         "실어"
       ],
       "forbidden_en": [
-        "contract",
         "boundary",
         "gate",
         "envelope",
