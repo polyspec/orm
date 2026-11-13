@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: a0002923dd9989c26a1ea2e34502267e99b7090489b69dc3947c0a9bc3213e72 -->
+<!-- source-sha256: 890900ae7f8d9270cf0845d3c6947889b1d8a3ffedf90293e444f439cc6d23a1 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
