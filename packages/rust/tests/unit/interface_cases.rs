@@ -395,23 +395,20 @@ async fn run_case(member: &str, case: &Value) {
             assert_eq!(&value, expected, "{what}: result");
         }
         (Ok(Returned::Instance(instance)), None) => {
-            assert!(fields.get("result").is_none(), "{what}: a class result is observed by after, not by result");
+            assert!(fields.get("result").is_none(), "{what}: a class result is observed by the cases of its methods, not by result");
             result = Some(instance);
         }
     }
+    // An after step is a call on the receiver of the case (binding CK-22): {call, args, result} and no other key.
     let after = fields.get("after").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
-    assert!(result.is_none() || !after.is_empty(), "{what}: the case observes nothing of the instance it made");
     let empty = Map::new();
     for step in after {
-        let on = step.get("on").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names on"));
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names call"));
+        for key in step.as_object().unwrap_or_else(|| panic!("{what}: an after step is an object")).keys() {
+            assert!(["call", "args", "result"].contains(&key.as_str()), "{what}: an after step has no key {key}");
+        }
         let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
-        let target = match on {
-            "receiver" => receiver.as_mut(),
-            "result" => result.as_mut(),
-            other => panic!("{what}: the case runner observes no {other}"),
-        };
-        let target = target.unwrap_or_else(|| panic!("{what}: the case has no {on} to observe"));
+        let target = receiver.as_mut().unwrap_or_else(|| panic!("{what}: {member} has no receiver, so the case names no after"));
         match call(name, Some(target), args).await {
             Ok(Returned::Value(value)) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
             Ok(Returned::Instance(_)) => panic!("{what}: after {name} returns an instance"),

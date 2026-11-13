@@ -74,6 +74,16 @@ pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
 /// The bound of the wait for a connection of the pool when the configuration states none (CORE-30).
 pub const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS: u32 = 30_000;
 
+/// The defaults of the other fields of [`Config`], which the contract names in `default_core` (binding GN-6i).
+pub const DEFAULT_AES_KEY: &str = "";
+pub const DEFAULT_BLIND_INDEX_KEY: &str = "";
+pub const DEFAULT_AES_VERSION: i32 = 1;
+pub const DEFAULT_PLAN_CACHE_SIZE: usize = 256;
+pub const DEFAULT_STATEMENT_CACHE_SIZE: usize = 256;
+pub const DEFAULT_STATEMENT_TIMEOUT_MS: u32 = 0;
+pub const DEFAULT_POOL_IDLE_SIZE: u32 = 0;
+pub const DEFAULT_POOL_LIFETIME_MS: u32 = 0;
+
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
@@ -104,16 +114,16 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            aes_key: String::new(),
-            blind_index_key: String::new(),
-            aes_version: 1,
+            aes_key: DEFAULT_AES_KEY.to_owned(),
+            blind_index_key: DEFAULT_BLIND_INDEX_KEY.to_owned(),
+            aes_version: DEFAULT_AES_VERSION,
             aes_keys: BTreeMap::new(),
-            statement_timeout_ms: 0,
-            pool_idle_size: 0,
-            pool_lifetime_ms: 0,
+            statement_timeout_ms: DEFAULT_STATEMENT_TIMEOUT_MS,
+            pool_idle_size: DEFAULT_POOL_IDLE_SIZE,
+            pool_lifetime_ms: DEFAULT_POOL_LIFETIME_MS,
             pool_acquire_timeout_ms: DEFAULT_POOL_ACQUIRE_TIMEOUT_MS,
-            plan_cache_size: 256,
-            statement_cache_size: 256,
+            plan_cache_size: DEFAULT_PLAN_CACHE_SIZE,
+            statement_cache_size: DEFAULT_STATEMENT_CACHE_SIZE,
             audit_source: None,
         }
     }

@@ -1,5 +1,5 @@
 {
-  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72, CORE-80 to CORE-83), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and a class result is observed by after. A failure is raises: its kind, its category and its whole message (CORE-12). A value of orm_value is {kind, value} of the kinds null, bool, int (a number, or its decimal text outside the safe integers), float, text, bytes as {hex}, list and map (CORE-62, CORE-63), and the group orm_value holds the cases of the alias: a value that from_host refuses.",
+  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72, CORE-80 to CORE-83), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and after is a list of calls on the receiver of a method, each with its result; a class result is observed by the cases of its methods, whose receiver makes it. A failure is raises: its kind, its category and its whole message (CORE-12). A value of orm_value is {kind, value} of the kinds null, bool, int (a number, or its decimal text outside the safe integers), float, text, bytes as {hex}, list and map (CORE-62, CORE-63), and the group orm_value holds the cases of the alias: a value that from_host refuses.",
   "db.connect": [
     {
       "id": "no_uri",
@@ -104,24 +104,7 @@
           "k1"
         ]
       ],
-      "current": 2,
-      "after": [
-        {
-          "on": "result",
-          "call": "aes_keyring.current",
-          "args": {},
-          "result": 2
-        },
-        {
-          "on": "result",
-          "call": "aes_keyring.versions",
-          "args": {},
-          "result": [
-            1,
-            2
-          ]
-        }
-      ]
+      "current": 2
     },
     {
       "id": "current_not_declared",
@@ -241,15 +224,7 @@
       "rule": "CORE-80",
       "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
       "external_text": "",
-      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb",
-      "after": [
-        {
-          "on": "result",
-          "call": "schema.hash",
-          "args": {},
-          "result": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
-        }
-      ]
+      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
     },
     {
       "id": "no_manifest",
@@ -303,15 +278,7 @@
           "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
         }
       },
-      "entity": "clock_event",
-      "after": [
-        {
-          "on": "result",
-          "call": "query.entity",
-          "args": {},
-          "result": "clock_event"
-        }
-      ]
+      "entity": "clock_event"
     },
     {
       "id": "entity_unknown",
@@ -664,7 +631,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -694,7 +660,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -919,7 +884,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -948,7 +912,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -977,7 +940,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1006,7 +968,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1035,7 +996,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1064,7 +1024,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1093,7 +1052,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1123,7 +1081,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1153,7 +1110,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1183,7 +1139,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1213,7 +1168,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1264,7 +1218,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1315,7 +1268,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1389,7 +1341,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1441,7 +1392,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1475,7 +1425,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1506,7 +1455,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
