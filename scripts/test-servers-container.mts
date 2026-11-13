@@ -1,8 +1,12 @@
 // test-servers-container starts one test database server, MySQL, PostgreSQL or MariaDB, in an Apple container from the
 // image that config/containers.json pins by its digest, and writes the environment file of that one server. It is the
-// container form of the primaries of scripts/test-servers.mts: the server takes the settings of the native primary
-// (time zone, lower-case table names, binary log retention, InnoDB log space), and its data lives on a tmpfs of the
-// container, so removing the container removes the data and no volume is left.
+// container form of the servers of scripts/test-servers.mts: the server takes the settings of the native primary
+// (time zone, lower-case table names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its
+// synchronous standby), and its data lives on a tmpfs of the container, so removing the container removes the data and no
+// volume is left. MySQL and PostgreSQL have a replica in a second container, polyspec-orm-test-<checkout>-<kind>-replica,
+// as the native primaries have: the MySQL replica reads the binary log of the primary from its first file, which the
+// primary resets after its image initialized it, and the PostgreSQL replica is a pg_basebackup of the primary that streams
+// through the physical replication slot orm_replica. Both follow the primary before it creates the databases of the checks.
 //
 //   node scripts/test-servers-container.mts start <mysql|postgres|mariadb>
 //   node scripts/test-servers-container.mts run <mysql|postgres|mariadb> -- <command> [argument...]
@@ -23,8 +27,9 @@
 // with a certificate that issueTls of scripts/test-servers.mts issues for each start under .runtime/containers/tls-<kind>:
 // it names the host name of the container, <name>.container.test, so the TLS DSN connects to that name, the DSN with the
 // second CA fails the chain, and the mismatch DSN connects to the address, which the certificate does not name. The Unix
-// socket of MySQL and MariaDB is published at .runtime/containers/<kind>.sock. A replica and a pooler are not started, so
-// their variables are absent and a check that reads them fails, naming the variable.
+// socket of MySQL and MariaDB is published at .runtime/containers/<kind>.sock. The replica DSN names the address of the
+// replica container. MariaDB has no replica, as the native MariaDB server has none, and no pooler is started, so their
+// variables are absent and a check that reads them fails, naming the variable.
 //
 // Waiting for a server is a long operation without a time limit: start reads the output of the attached container on each
 // change of its log file and resolves on the ready line that the server logs after its image finished its
@@ -34,7 +39,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, TestServerError } from './test-servers.mts';
+import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, REPLICA_PARTIAL_REVOKES_SQL, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 const PREFIX = 'polyspec-orm-test-';
@@ -59,18 +64,33 @@ function folders(root: string): Folders {
 // tlsDir is the folder of the TLS files of the server of kind on the host.
 const tlsDir = (dir: string, kind: Kind) => join(dir, `tls-${kind}`);
 
-interface Server {
+// Marks are the log lines that start waits for: initialized is the log line of the image after its initialization, and
+// ready is the first line after it that names a server that accepts connections on its port.
+interface Marks {
+  initialized: string;
+  ready: (line: string) => boolean;
+}
+
+// Replica is the replica of a primary in a container of its own. prepare runs in the primary after it is ready and before
+// the replica starts; arguments are the arguments of the replica container after its image, for the address of the
+// primary; follow, when the replica needs it, runs in the replica after it is ready and before the primary creates the
+// databases.
+interface Replica extends Marks {
+  prepare: string[];
+  arguments: (primary: string) => string[];
+  follow?: (primary: string) => string[];
+}
+
+interface Server extends Marks {
   // port is the port of the server in the container.
   port: number;
   // data is the data directory of the image, which a tmpfs replaces.
   data: string;
   environment: string[];
   arguments: string[];
-  // initialized is the log line of the image after its initialization; ready is the first line after it that names a
-  // server that accepts connections on its port.
-  initialized: string;
-  ready: (line: string) => boolean;
-  // databases runs in the container and creates the databases of the checks.
+  replica?: Replica;
+  // databases runs in the container and creates the databases of the checks and, for MySQL and MariaDB, the accounts of
+  // the user orm, as the native servers do.
   databases: string[];
   // socket is the Unix socket of the server in the container, which start publishes on the host.
   socket?: string;
@@ -78,8 +98,15 @@ interface Server {
 }
 
 // Endpoint is where the checks reach a started server: its address, its host name, which its certificate names, the
-// host path of its published socket, and the folders of its checkout.
-interface Endpoint { address: string; host: string; socket: string; folders: Folders }
+// host path of its published socket, the folders of its checkout, and the address of its replica, which a kind without a
+// replica has not.
+interface Endpoint { address: string; host: string; socket: string; folders: Folders; replica?: string }
+
+// started is the address of the replica of kind, which start sets for each kind that has a replica.
+function started(replica: string | undefined, kind: Kind): string {
+  if (replica === undefined) throw new TestServerError(`test-servers-container: the replica of ${kind} has no address`);
+  return replica;
+}
 
 const mysqlTls = (tls: string, host: string, ca: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/${ca}.pem`;
 const postgresTls = (tls: string, host: string, ca: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${tls}/${ca}.pem`;
@@ -87,51 +114,78 @@ const mysqlTlsOptions = (kind: Kind) => [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-
 
 // The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts). The temporary
 // server of the image initialization listens on port 0, so the ready line of the server names port 3306.
-const mysqlOptions = ['--secure-file-priv=NULL', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_BINLOG, ...MYSQLD_STORAGE, '--server-id=1'];
+const mysqlOptions = ['--secure-file-priv=NULL', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_BINLOG, ...MYSQLD_STORAGE];
+const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, `--server-id=${serverId}`, ...mysqlTlsOptions('mysql')];
+
+// The PostgreSQL servers take the settings of postgresArguments of scripts/test-servers.mts; the primary names the replica
+// as its synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
+// PostgreSQL refuses a key that another user than its own can read, so the key is copied for the user postgres first.
+const postgresKey = `install -m 0600 -o postgres -g postgres ${TLS_MOUNT}/postgres-key.pem ${POSTGRES_KEY}`;
+const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${TLS_MOUNT}/postgres-cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
+  ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
 const mysqlReady = (line: string) => line.includes('ready for connections') && line.includes('port: 3306');
 
 const SERVERS: Record<Kind, Server> = {
   mysql: {
     port: 3306, data: '/var/lib/mysql', environment: ['MYSQL_ALLOW_EMPTY_PASSWORD=yes'],
-    arguments: ['mysqld', '--mysqlx=OFF', ...mysqlOptions, ...mysqlTlsOptions('mysql')],
+    arguments: mysqlArguments(1),
     initialized: 'MySQL init process done', ready: mysqlReady,
-    databases: ['mysql', '-uroot', '-e', 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'],
+    // The replica reads the binary log of the primary from its first file, which the reset leaves empty, so it applies
+    // every change after the initialization of the image and none of the image, which initialized the replica as well. As
+    // the native replica, it enables partial_revokes, so it refuses a catalog row change (INT-119).
+    replica: {
+      initialized: 'MySQL init process done', ready: mysqlReady,
+      prepare: ['mysql', '-uroot', '-e', 'RESET BINARY LOGS AND GTIDS'],
+      arguments: () => [...mysqlArguments(2), '--skip-replica-start'],
+      follow: primary => ['mysql', '-uroot', '-e',
+        `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${primary}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON; ${REPLICA_PARTIAL_REVOKES_SQL}`],
+    },
+    databases: ['mysql', '-uroot', '-e', `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`],
     socket: '/var/run/mysqld/mysqld.sock',
-    variables: ({ address, host, socket, folders: { dir, leases } }) => {
+    variables: ({ address, host, socket, folders: { dir, leases }, replica }) => {
       const mysql = `mysql://root@${address}:3306`;
       const tls = tlsDir(dir, 'mysql');
       return {
         ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`, ORM_TEST_MYSQL_SERVER_DSN: `${mysql}/orm_test`, ORM_TOOLS_MYSQL_DSN: `${mysql}/orm_tools`,
         ORM_RUN_MYSQL_DSN: `${mysql}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
         ORM_TEST_MYSQL_TLS_DSN: mysqlTls(tls, host, 'ca'), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(tls, host, 'other-ca'), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(tls, address, 'ca'),
-        ORM_TEST_MYSQL_SOCKET: socket,
+        ORM_TEST_MYSQL_SOCKET: socket, ORM_TEST_MYSQL_REPLICA_DSN: `mysql://root@${started(replica, 'mysql')}:3306/orm_test`,
       };
     },
   },
   postgres: {
     port: 5432, data: '/var/lib/postgresql/data',
     environment: ['POSTGRES_USER=orm', 'POSTGRES_HOST_AUTH_METHOD=trust', 'POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C'],
-    // PostgreSQL refuses a key that another user than its own can read, so the key is copied for the user postgres first.
-    arguments: ['sh', '-c', `install -m 0600 -o postgres -g postgres ${TLS_MOUNT}/postgres-key.pem ${POSTGRES_KEY} && exec docker-entrypoint.sh "$@"`, 'sh',
-      'postgres', '-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB',
-      '-c', 'ssl=on', '-c', `ssl_cert_file=${TLS_MOUNT}/postgres-cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`],
+    arguments: ['sh', '-c', `${postgresKey} && exec docker-entrypoint.sh "$@"`, 'sh',
+      'postgres', ...postgresSettings, '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'],
     initialized: 'PostgreSQL init process complete', ready: line => line.includes('database system is ready to accept connections'),
+    // The rules of the image let every host connect to every database, which does not cover replication, so prepare lets
+    // the role orm replicate. The replica is a pg_basebackup of the primary into the empty data directory, and the image
+    // skips its initialization for that directory; -R writes the standby configuration with the application_name that
+    // synchronous_standby_names lists, and -C -S creates the slot orm_replica, as postgresBaseBackupArguments does.
+    replica: {
+      initialized: 'Skipping initialization', ready: line => line.includes('database system is ready to accept read-only connections'),
+      prepare: ['sh', '-c', `echo 'host replication orm all trust' >> "$PGDATA/pg_hba.conf" && psql -X -q -t -U orm -d postgres -c 'SELECT pg_reload_conf()'`],
+      arguments: primary => ['sh', '-c', `${postgresKey} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${primary} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
+        'postgres', ...postgresSettings],
+    },
     databases: ['psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'orm', '-d', 'postgres', '-c', 'CREATE DATABASE orm_test', '-c', 'CREATE DATABASE orm_tools'],
-    variables: ({ address, host, folders: { dir, leases } }) => {
+    variables: ({ address, host, folders: { dir, leases }, replica }) => {
       const postgres = `postgres://orm@${address}:5432`;
       const tls = tlsDir(dir, 'postgres');
       return {
         ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test`, ORM_TEST_POSTGRES_SERVER_DSN: `${postgres}/orm_test`, ORM_TOOLS_POSTGRES_DSN: `${postgres}/orm_tools`,
         ORM_RUN_POSTGRES_DSN: `${postgres}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
         ORM_TEST_POSTGRES_TLS_DSN: postgresTls(tls, host, 'ca'), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(tls, host, 'other-ca'), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(tls, address, 'ca'),
+        ORM_TEST_POSTGRES_REPLICA_DSN: `postgres://orm@${started(replica, 'postgres')}:5432/orm_test`,
       };
     },
   },
   mariadb: {
     port: 3306, data: '/var/lib/mysql', environment: ['MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1'],
-    arguments: ['mariadbd', ...mysqlOptions, ...mysqlTlsOptions('mariadb')],
+    arguments: ['mariadbd', ...mysqlOptions, '--server-id=1', ...mysqlTlsOptions('mariadb')],
     initialized: 'MariaDB init process done', ready: mysqlReady,
-    databases: ['mariadb', '-uroot', '-e', 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'],
+    databases: ['mariadb', '-uroot', '-e', `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`],
     socket: '/run/mysqld/mysqld.sock',
     variables: ({ address, host, socket, folders: { dir, leases } }) => {
       const mariadb = `mysql://root@${address}:3306`;
@@ -173,10 +227,13 @@ function checkout(root: string): string {
   return createHash('sha256').update(root).digest('hex').slice(0, 12);
 }
 
-// containerName is the name of the container of a kind that the checkout at root starts.
+// containerName is the name of the container of a kind that the checkout at root starts; its replica is that name with
+// the suffix -replica.
 export function containerName(root: string, kind: Kind): string {
   return `${PREFIX}${checkout(root)}-${kind}`;
 }
+
+const replicaName = (root: string, kind: Kind) => `${containerName(root, kind)}-replica`;
 
 // container runs the container program and returns its standard output, or fails naming the command and its output.
 function container(program: string, args: string[]): string {
@@ -204,13 +261,13 @@ function address(program: string, name: string): string {
   return text;
 }
 
-// launch starts the container attached, in a new session, with its output appended to .runtime/containers/<kind>.log: the
+// launch starts the container attached, in a new session, with its output appended to .runtime/containers/<label>.log: the
 // container program outlives this command, and its exit is the event that the container stopped, which a log follower of
 // the container program does not report. The log is read on each change event of the file; each line is shown on stderr as
-// "test-servers-container: <kind>: <line>". It resolves on the ready line after the line of the initialization, and fails
+// "test-servers-container: <label>: <line>". It resolves on the ready line after the line of the initialization, and fails
 // when the container stops first, naming the log.
-function launch(context: Context, kind: Kind, server: Server, args: string[]): Promise<void> {
-  const log = join(folders(context.root).dir, `${kind}.log`);
+function launch(context: Context, label: string, server: Marks, args: string[]): Promise<void> {
+  const log = join(folders(context.root).dir, `${label}.log`);
   writeFileSync(log, '');
   const fd = openSync(log, 'a');
   const child = spawn(context.program, args, { detached: true, stdio: ['ignore', fd, fd] });
@@ -234,7 +291,7 @@ function launch(context: Context, kind: Kind, server: Server, args: string[]): P
       pending = lines.pop() ?? '';
       for (const line of lines) {
         if (done) return;
-        process.stderr.write(`test-servers-container: ${kind}: ${line}\n`);
+        process.stderr.write(`test-servers-container: ${label}: ${line}\n`);
         if (line.includes(server.initialized)) initialized = true;
         else if (initialized && server.ready(line)) finish();
       }
@@ -250,7 +307,7 @@ function launch(context: Context, kind: Kind, server: Server, args: string[]): P
     settled();
     child.on('exit', (code, signal) => {
       read();
-      finish(new TestServerError(`test-servers-container: the container of ${kind} stopped with ${code ?? signal} before it was ready; its log is ${log}`));
+      finish(new TestServerError(`test-servers-container: the container of ${label} stopped with ${code ?? signal} before it was ready; its log is ${log}`));
     });
   });
 }
@@ -269,7 +326,8 @@ function writeEnvironment(file: string, variables: Record<string, string>): void
 export async function start(kind: Kind, context: Context): Promise<Record<string, string>> {
   const server = SERVERS[kind];
   const name = containerName(context.root, kind);
-  if (ours(context).includes(name)) throw new TestServerError(`test-servers-container: ${name} exists; run make orm-test-container-stop first`);
+  for (const each of [name, replicaName(context.root, kind)])
+    if (ours(context).includes(each)) throw new TestServerError(`test-servers-container: ${each} exists; run make orm-test-container-stop first`);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
   const env = join(dirs.dir, `${kind}.env`);
@@ -282,13 +340,22 @@ export async function start(kind: Kind, context: Context): Promise<Record<string
   rmSync(tls, { recursive: true, force: true });
   issueTls(tls, [[kind, `DNS:${host}`]]);
   for (const file of [`${kind}-key.pem`, `${kind}-cert.pem`, 'ca.pem']) chmodSync(join(tls, file), 0o644);
-  const started = launch(context, kind, server, ['run', '--name', name, '--cpus', '4', '--memory', '4G', '--tmpfs', server.data, '--volume', `${tls}:${TLS_MOUNT}`,
-    ...(server.socket ? ['--publish-socket', `${socket}:${server.socket}`] : []), '--env', `TZ=${SERVER_TIME_ZONE}`,
-    ...server.environment.flatMap(setting => ['--env', setting]), image(kind), ...server.arguments]);
+  const options = (container: string) => ['run', '--name', container, '--cpus', '4', '--memory', '4G', '--tmpfs', server.data, '--volume', `${tls}:${TLS_MOUNT}`,
+    '--env', `TZ=${SERVER_TIME_ZONE}`, ...server.environment.flatMap(setting => ['--env', setting])];
+  const started = launch(context, kind, server, [...options(name), ...(server.socket ? ['--publish-socket', `${socket}:${server.socket}`] : []), image(kind), ...server.arguments]);
   try {
     await started;
+    const primary = address(context.program, name);
+    let replica: string | undefined;
+    if (server.replica) {
+      const replicaContainer = replicaName(context.root, kind);
+      container(context.program, ['exec', name, ...server.replica.prepare]);
+      await launch(context, `${kind}-replica`, server.replica, [...options(replicaContainer), image(kind), ...server.replica.arguments(primary)]);
+      replica = address(context.program, replicaContainer);
+      if (server.replica.follow) container(context.program, ['exec', replicaContainer, ...server.replica.follow(primary)]);
+    }
     container(context.program, ['exec', name, ...server.databases]);
-    const variables = server.variables({ address: address(context.program, name), host, socket, folders: dirs });
+    const variables = server.variables({ address: primary, host, socket, folders: dirs, ...(replica === undefined ? {} : { replica }) });
     writeEnvironment(env, variables);
     return variables;
   } catch (error) {
@@ -303,13 +370,13 @@ export async function start(kind: Kind, context: Context): Promise<Record<string
 export function remove(context: Context, kind?: Kind): void {
   const { dir } = folders(context.root);
   const kinds = kind === undefined ? KINDS : [kind];
-  const names = new Set(kinds.map(each => containerName(context.root, each)));
+  const names = new Set(kinds.flatMap(each => [replicaName(context.root, each), containerName(context.root, each)]));
   for (const name of ours(context).filter(each => names.has(each))) {
     container(context.program, ['stop', name]);
     container(context.program, ['delete', name]);
     console.error(`test-servers-container: removed ${name}`);
   }
-  for (const each of kinds) for (const file of [`${each}.env`, `${each}.sock`, `${each}.log`, `tls-${each}`]) rmSync(join(dir, file), { recursive: true, force: true });
+  for (const each of kinds) for (const file of [`${each}.env`, `${each}.sock`, `${each}.log`, `${each}-replica.log`, `tls-${each}`]) rmSync(join(dir, file), { recursive: true, force: true });
 }
 
 // Signals is where a run receives SIGINT and SIGTERM: the process, or the emitter of a test.

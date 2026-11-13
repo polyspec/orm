@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: c76f35fe0411c3d1a10781dca86c500a2264d440ef58d071d637906a3fc3fff4 -->
+<!-- source-sha256: f079cb1b6efcb1615ab7a399b8ed4fc4dfd69ce3a368f624333c39acf266ad57 -->
 # 코덱 recipe
 
 `codec.json`은 `docs/spec/feature-coverage.md`(FCV-2~FCV-4)의 코덱 recipe다. 각 case는 database 없이 공개 코덱 호출

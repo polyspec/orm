@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: afce12863239fc91b2e9f238e06731160ea3ecbad464f243eff28ddf63cd5b5a -->
+<!-- source-sha256: 82b53672d6eb626541f030d22c74fd39af4dce68dead319af42879f7534e62bc -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](../spec/interfaces.ko.md), [기계 명세](../../contracts/interfaces.json), [생성 모델](../spec/interfaces-model.ko.md). 재현 명령과 검사 범위는 [검증 안내](../../tests/interfaces/README.ko.md)에 있다.

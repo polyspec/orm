@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 4071d0bb466abe01c1ea0b497bd073de195c1db0e8e49dc36aa890a97414750b -->
+<!-- source-sha256: 9d050b99774c3d10f126987c2a6a76a0b7c0ab861906332b75b521be9b1b08d8 -->
 # Markdown corpus 적합성
 
 markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../../docs/spec/dialects.ko.md)).

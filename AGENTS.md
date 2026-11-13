@@ -37,14 +37,15 @@ from kit and holds as its own; this file states only the rules of orm.
 - Refines S5: The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
   `php`, `php-ext` (the PHP-extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
-  `polyspec-orm`) keep it. The Go module is `github.com/polyspec/orm/packages/go`
-  (`legacy/packages/go/go.mod`): it holds the client (`orm`, `model` and the other generated models), the
+  `polyspec-orm`) keep it. The legacy Go module is `github.com/polyspec/orm/legacy/packages/go`
+  (`legacy/packages/go/go.mod`), the path of its directory: it holds the client (`orm`, `model` and the other generated models), the
   engine (`engine/`), the generator (`generator/`), `cmd/orm-gen`, the case harness `testcase` and
   the process events `procevent`, which the Go programs of `tests/` import and so are public
   packages, and `internal/testdb`. The Go runners, physical tests and tool programs of `tests/`
   are the module `github.com/polyspec/orm/tests` (`tests/go.mod`), the examples are
   `github.com/polyspec/orm/examples` (`examples/go.mod`), and the root `go.work` joins the three,
-  so they resolve `legacy/packages/go` from the checkout with no replace directive.
+  so they resolve `legacy/packages/go` from the checkout with no replace directive. `tests/` and `examples/` find it
+  only through the root `go.work`, so a Go command of theirs does not find it with `GOWORK=off`.
   Enforced by: `make layout-check`
 - Own: The core crate `polyspec-orm` is `packages/rust`, beside its contract `packages/rust/interface.json`, and the
   binding packages that `binding scaffold` writes sit beside it: `packages/ts` (Node), `packages/ts/wasm` (WASM),
@@ -54,8 +55,8 @@ from kit and holds as its own; this file states only the rules of orm.
   core at `../rust` and the generator checks that the root workspace holds every binding crate. A binding crate builds
   only after `make bindings` writes its generated folder, so a cargo command over the whole workspace leaves the
   binding crates out (`ORM_RUST_EXCLUDE_BINDINGS` of the Makefile), and `make lint-bindings` and `make test-bindings`
-  build them. The binding Go module `packages/go` has the module path of `legacy/packages/go`, so its commands run
-  with `GOWORK=off`. The npm workspaces of the root are the four dbspec editor packages by name, because
+  build them. The binding Go module `packages/go` is `github.com/polyspec/orm/packages/go`, which the root `go.work`
+  does not join, so its commands run with `GOWORK=off`. The npm workspaces of the root are the four dbspec editor packages by name, because
   `packages/ts` is the package `@polyspec/orm`, a name that `legacy/packages/ts` also holds.
   Enforced by: `make bindings-check`, which compares the binding packages with what binding scaffold writes (CK-19)
 - Own: The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
@@ -309,7 +310,7 @@ from kit and holds as its own; this file states only the rules of orm.
   dispatches the release with the id of that run: `gh workflow run release.yml -f run=<id>`. Its
   `make release-tag` requires that the run succeeded and that its exact commit is on `origin/main`, and creates
   and pushes the annotated tags `vX.Y.Z` and `legacy/packages/go/vX.Y.Z` at that commit, which releases the Go module
-  `github.com/polyspec/orm/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
+  `github.com/polyspec/orm/legacy/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
   pushes a tag by hand. Before it tags, `scripts/repo/release-run.mts` refuses a run of any other workflow, such as
   `documents.yml` or `docs-pages.yml`, of another event, without success or, for a release that the run started, on
   another commit.

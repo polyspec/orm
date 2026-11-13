@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: 2c2f2576b5371516d36f90ab6470df7fbb620ede586ed05810d8d60d3075b0ed -->
+<!-- source-sha256: f4505a8dd4c8205c2666c8509819ff3e00ff1067f3f3cc12ea6d46c28a218dc3 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
