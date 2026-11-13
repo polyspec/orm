@@ -2111,6 +2111,100 @@
         "category": "value",
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
       }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
+      }
     }
   ],
   "orm.value_function_unit": [
