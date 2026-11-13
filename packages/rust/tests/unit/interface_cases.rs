@@ -221,6 +221,101 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.order_by(&text(args, "spec", member));
             Returned::Value(Value::Null)
         }
+        ("query.for_update", Some(Instance::Query(query))) => {
+            query.for_update();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_share", Some(Instance::Query(query))) => {
+            query.for_share();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_update_no_wait", Some(Instance::Query(query))) => {
+            query.for_update_no_wait();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_share_no_wait", Some(Instance::Query(query))) => {
+            query.for_share_no_wait();
+            Returned::Value(Value::Null)
+        }
+        ("query.add_all_columns", Some(Instance::Query(query))) => {
+            query.add_all_columns();
+            Returned::Value(Value::Null)
+        }
+        ("query.remove_all_columns", Some(Instance::Query(query))) => {
+            query.remove_all_columns();
+            Returned::Value(Value::Null)
+        }
+        ("query.add_column", Some(Instance::Query(query))) => {
+            query.add_column(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.remove_column", Some(Instance::Query(query))) => {
+            query.remove_column(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.match_pair", Some(Instance::Query(query))) => {
+            query.match_pair(&text(args, "pair", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.alias", Some(Instance::Query(query))) => {
+            query.alias(&text(args, "name", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.relation", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "child", member), member)).await {
+            Instance::Query(child) => {
+                query.relation(*child);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: child is no query"),
+        },
+        ("query.relations", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "child", member), member)).await {
+            Instance::Query(child) => {
+                query.relations(*child);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: child is no query"),
+        },
+        ("query.related", Some(Instance::Query(query))) => match query.related(&text(args, "name", member))? {
+            Some(row) => Returned::Instance(Instance::Query(Box::new(row))),
+            None => Returned::Value(Value::Null),
+        },
+        ("query.related_rows", Some(Instance::Query(query))) => match query.related_rows(&text(args, "name", member))? {
+            Some(rows) => panic!("{member}: the case runner observes no list of {} rows", rows.len()),
+            None => Returned::Value(Value::Null),
+        },
+        ("query.key_name", Some(Instance::Query(query))) => {
+            query.key_name(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.where_in", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
+            Instance::Query(sub) => {
+                query.where_in(&text(args, "chain", member), *sub);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: query is no query"),
+        },
+        ("query.set", Some(Instance::Query(query))) => {
+            query.set(&text(args, "column", member), orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
+        ("query.expect_revision", Some(Instance::Query(query))) => {
+            let revision = field(args, "revision", member).as_i64().unwrap_or_else(|| panic!("{member}: revision is no integer"));
+            query.expect_revision(&text(args, "column", member), revision);
+            Returned::Value(Value::Null)
+        }
+        ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
+        ("query.update", Some(Instance::Query(query))) => {
+            query.update().await?;
+            Returned::Value(Value::Null)
+        }
+        ("query.delete", Some(Instance::Query(query))) => {
+            query.delete().await?;
+            Returned::Value(Value::Null)
+        }
+        ("query.limit", Some(Instance::Query(query))) => {
+            query.limit(uint(args, "offset", member), uint(args, "count", member));
+            Returned::Value(Value::Null)
+        }
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
             query.where_chain(&text(args, "chain", member), orm_values(args, "values", member)?);

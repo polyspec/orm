@@ -199,7 +199,7 @@ impl Core {
     /// The related row of a relation or join result. A row without the result
     /// or without a related row is `None`; a stored value of another model type
     /// or a collection is `INTERNAL`.
-    pub fn related_one<M: Model>(&self, name: &str) -> Result<Option<&M>> {
+    pub fn related_one<M: AnyModel>(&self, name: &str) -> Result<Option<&M>> {
         let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
         match &related.value {
             RelatedValue::One(None) => Ok(None),
@@ -214,7 +214,7 @@ impl Core {
     /// The related rows of a relation result. A row without the result is
     /// `None`; a stored collection of another model type or a single row is
     /// `INTERNAL`.
-    pub fn related_many<M: Model>(&self, name: &str) -> Result<Option<&Collection<M>>> {
+    pub fn related_many<M: AnyModel + Clone>(&self, name: &str) -> Result<Option<&Collection<M>>> {
         let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
         match &related.value {
             RelatedValue::Many(c) => {
@@ -788,7 +788,7 @@ fn value_key(v: &Option<Val>) -> Result<String> {
 fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
     ch.matches
         .iter()
-        .map(|&(left, right)| match m.value_dyn(if child { right } else { left }) {
+        .map(|(left, right)| match m.value_dyn(if child { right } else { left }) {
             None | Some(Val::Null) => None,
             Some(v) => Some(v),
         })
@@ -839,7 +839,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         q.alias.clear();
         // The parents above are the ones that possible_<col>() keeps, so the statement of the child has no possible.
         q.possible = None;
-        let rights: Vec<String> = ch.matches.iter().map(|&(_, right)| right.to_owned()).collect();
+        let rights: Vec<String> = ch.matches.iter().map(|(_, right)| right.clone()).collect();
         // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {
             PredSpec { column: rights[0].clone(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
@@ -901,12 +901,20 @@ fn clone_model(template: &Core, m: &dyn AnyModel) -> Result<Box<dyn AnyModel>> {
     Ok(out)
 }
 
-fn assign_model<M: Model>(model: &mut M, name: &str, value: Val) -> Result<()> {
-    if model.assign(name, value)? {
+fn assign_model<M: AnyModel + Clone>(model: &mut M, name: &str, value: Val) -> Result<()> {
+    if model.assign_dyn(name, value)? {
         Ok(())
     } else {
         Err(Error::internal(format!("model has no column {name}")))
     }
+}
+
+/// The row that the descriptor of a core made, as the row type `M` of the write that made it.
+fn row_of<M: AnyModel>(row: Box<dyn AnyModel>) -> Result<M> {
+    row.into_any()
+        .downcast::<M>()
+        .map(|row| *row)
+        .map_err(|_other| Error::internal(format!("the descriptor made a row that is no {}", std::any::type_name::<M>())))
 }
 
 fn typed<M: Model>(m: Box<dyn AnyModel>) -> M {
@@ -1322,8 +1330,8 @@ fn finish_write(req: &Req, key: Val, affected: u64) -> Result<(Val, u64)> {
 }
 
 /// Inserts the model and returns the created model.
-pub async fn create<M: Model>(m: &mut M) -> Result<M> {
-    let c = m.core();
+pub async fn create<M: AnyModel + Clone>(m: &mut M) -> Result<M> {
+    let c = m.core_dyn();
     let ex = terminal(c)?;
     if c.sets.is_empty() {
         return Err(config("create requires set_<col> values"));
@@ -1346,7 +1354,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
     crate::request::insert_condition(&mut req, c)?;
     req.ir.n_params = req.params.len();
     let (key, _) = write(&ex, &c.conn, &mut req).await?;
-    let mut out = M::from_core(Core::of(c.ent.clone()));
+    let mut out = row_of::<M>(c.ent.new_model(Core::of(c.ent.clone())))?;
     let mut st = RowState::default();
     for s in &c.sets {
         st.add_name(&s.column);
@@ -1373,7 +1381,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
     }
     st.loaded = true;
     for pk in &ent.primary_key {
-        match out.value(pk) {
+        match out.value_dyn(pk) {
             Some(v) if !matches!(v, Val::Null) && !(matches!(v, Val::I64(0))) && !(matches!(&v, Val::Str(s) if s.is_empty())) => {
                 st.original.insert(pk.clone(), val_param(&v));
             }
@@ -1382,11 +1390,11 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
     }
     let news = c.news.clone();
     let conn = c.conn.clone();
-    let core = out.core_mut();
+    let core = out.core_dyn_mut();
     core.conn = conn;
     core.news = news;
     core.row = Some(st);
-    let c = m.core_mut();
+    let c = m.core_dyn_mut();
     c.sets.clear();
     c.duplication = None;
     Ok(out)
@@ -1509,8 +1517,8 @@ fn key_where(req: &mut Req, ent: &dbspec::Entity, keys: &HashMap<String, Param>)
 
 /// The sets of an update plus the other AES columns of the row when one AES
 /// column changes, so every AES column is written with the same key version.
-fn with_aes_columns<M: Model>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec>> {
-    let c = m.core();
+fn with_aes_columns<M: AnyModel + Clone>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec>> {
+    let c = m.core_dyn();
     let mut sets = c.sets.clone();
     if ent.aes_version.is_none() {
         return Ok(sets);
@@ -1527,7 +1535,7 @@ fn with_aes_columns<M: Model>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec
         if !loaded {
             return Err(config(format!("changing an AES column of {} requires a row loaded with {}", ent.name, col.name)));
         }
-        let v = m.value(&col.name).ok_or_else(|| Error::internal(format!("model has no column {}", col.name)))?;
+        let v = m.value_dyn(&col.name).ok_or_else(|| Error::internal(format!("model has no column {}", col.name)))?;
         let value = match v {
             Val::Null => SetValue::Null,
             Val::Ordered(o) => SetValue::Ordered(o),
@@ -1541,9 +1549,9 @@ fn with_aes_columns<M: Model>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec
 
 /// Writes the changed columns. `update(true)` also requires the stored update
 /// time to equal the value that was read.
-pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
-    let ex = terminal(m.core())?;
-    let c = m.core();
+pub async fn update<M: AnyModel + Clone>(m: &mut M, optimistic: bool) -> Result<()> {
+    let ex = terminal(m.core_dyn())?;
+    let c = m.core_dyn();
     let ent = c.ent.entity_schema()?;
     let mut req = write_req(c, "update");
     let keys = key_values(c, &ent)?;
@@ -1585,7 +1593,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
     req.ir.n_params = req.params.len();
     let (_, affected) = write(&ex, &c.conn, &mut req).await?;
     revision_checked(c, revision.as_deref(), affected)?;
-    let c = m.core_mut();
+    let c = m.core_dyn_mut();
     c.expected_revision = None;
     if loaded {
         let changes: Vec<(String, Param)> = c
@@ -1752,10 +1760,10 @@ fn restore_key_value(own: &HashMap<usize, &SetSpec>, req: &Req, column: &str) ->
 
 /// Deletes the row; `delete(true)` first deletes loaded related rows that
 /// belong to it, except relations marked with delete_lock.
-pub async fn delete<M: Model>(m: &M, recursive: bool) -> Result<()> {
-    terminal(m.core())?;
+pub async fn delete<M: AnyModel + Clone>(m: &M, recursive: bool) -> Result<()> {
+    terminal(m.core_dyn())?;
     if recursive {
-        let conn = m.core().conn.clone();
+        let conn = m.core_dyn().conn.clone();
         return in_transaction(&conn, |unit: Connection| async move { delete_row(m, true, Some(&unit)).await }).await;
     }
     delete_row(m, false, None).await

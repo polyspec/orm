@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, NaiveDateTime, Utc};
 
 use crate::array::ArrayValue;
-use crate::model::{AnyModel, Model};
+use crate::model::AnyModel;
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 
@@ -255,12 +255,12 @@ impl<M: AnyModel + Clone> Collection<M> {
     }
 }
 
-impl<M: Model> Collection<M> {
+impl<M: AnyModel + Clone> Collection<M> {
     /// Deletes every model in one transaction; `delete(true)` first deletes
     /// loaded related rows.
     pub async fn delete(&self, recursive: bool) -> Result<()> {
         let Some(first) = self.first() else { return Ok(()) };
-        let conn = first.core().conn.clone();
+        let conn = first.core_dyn().conn.clone();
         crate::model::in_transaction(&conn, |unit: crate::Connection| async move {
             for m in self.models() {
                 crate::model::delete_row(m, recursive, Some(&unit)).await?;
