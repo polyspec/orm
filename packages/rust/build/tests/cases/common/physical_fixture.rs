@@ -37,7 +37,7 @@ pub fn server_dsn(variable: &str) -> String {
 pub fn fixture_dsn(variable: &str, value: Option<String>) -> Result<String, String> {
     match value {
         Some(dsn) if !dsn.is_empty() => Ok(dsn),
-        _ => Err(format!("{variable}: {:?}", value)),
+        _ => Err(format!("{variable} is required; run make orm-test-servers, which starts the databases and writes it")),
     }
 }
 

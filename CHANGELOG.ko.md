@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b2a493b8977ef1924531bbb1c81ae963cf75e18b0fc055327bfa3137c44e171d -->
+<!-- source-sha256: afa858779cc2803b56661626772b24769af109ffef78c320684bf1a41f12331d -->
 # 변경 이력
 
 ## Unreleased
+
+- MySQL이나 PostgreSQL database가 필요한 도구의 Rust 시험은 빠진 변수와 그것을 주는 방법을 적는다(T455). packages/rust/build/tests/cases/common/physical_fixture.rs의 `fixture_dsn`은 `ORM_TOOLS_MYSQL_DSN`이나 `ORM_TOOLS_POSTGRES_DSN`이 없거나 비어 있으면 `<variable> is required; run make orm-test-servers, which starts the databases and writes it`를 돌려주고, `dsn_for`, `row_insert_identity.rs`, `read_only_disposal.rs`가 그것으로 DSN을 읽는다. 전에는 `MySQL fixture DSN: NotPresent`로 panic하거나 변수를 unwrap했다. trial `physical_fixture::fixture_dsn_names_the_missing_variable_and_its_remedy`는 아직 실행하지 않았다.
 
 - `Query::to_array()`는 행이 읽은 열을 열 이름별 `orm_value`의 map으로, schema의 순서로 돌려준다(OM-3.1-3, CORE-120). 행이 읽지 않은 열은 key가 없고 null인 열은 null 값의 key가 있어서 둘을 구별하며, 행을 읽지 않은 query는 빈 map을 돌려준다. 이 member와 그 case는 아직 compile하거나 실행하지 않았다.
 
