@@ -18,9 +18,7 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
         _ => "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(6)))",
     };
     seed.exec(
-        &format!(
-            "CREATE TABLE {expression_name}(seq VARCHAR(36) NOT NULL DEFAULT ({expression}) PRIMARY KEY,n BIGINT NOT NULL UNIQUE,label VARCHAR(20) NULL)"
-        ),
+        &format!("CREATE TABLE {expression_name}(seq VARCHAR(36) NOT NULL DEFAULT ({expression}) PRIMARY KEY,n BIGINT NOT NULL UNIQUE,label VARCHAR(20) NULL)"),
         &[],
     )
     .await

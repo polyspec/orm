@@ -60,14 +60,9 @@ async fn check() {
             "mysql" => "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY",
             _ => "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY",
         };
-        seed.exec(
-            &format!(
-                "CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"
-            ),
-            &[],
-        )
-        .await
-        .expect("create owned table");
+        seed.exec(&format!("CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"), &[])
+            .await
+            .expect("create owned table");
         let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
         let table = TableRef { namespace: catalog.current_namespace().await.unwrap(), name: name.clone() };
         let descriptor = catalog.describe_table(&table).await.expect("generated-key metadata");
