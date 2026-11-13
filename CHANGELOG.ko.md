@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db32aa876f252016db77e5038e43992cf0556806ff54d8467d5889912d90980d -->
+<!-- source-sha256: d1bddd766f7930cc93664533536e0acae9ec577881f837dd818dcb43e23d6185 -->
 # 변경 이력
 
 ## Unreleased
 
+- docs/spec/core.md가 `Query`의 `restore`와 `restore_or_create`, 그리고 `Db` step의 그 terminal을 구현되지 않은 것으로 적는다(OM-3.1-13, CORE-94). 복원한 행 또는 `no_rows`, 한 transaction 안에서 복원하거나 만든 행 또는 `row_not_deleted`, `soft_delete`가 없는 엔티티의 `ir_invalid`이다. 한국어 문서는 바인딩 목록을 따로 한 문장으로 적는다.
 - PHP 시험은 추적되는 파일 `go.work`로 저장소 root를 찾는다(`legacy/packages/php/tests/repository_root.php`의 `ormRepositoryRoot`와 `ormLegacyRoot`). Go 시험과 같은 규칙이다(T450). 전에는 `dirname(__DIR__, 3)`으로 디렉터리 수를 셌고, package를 옮긴 뒤 그 값은 `legacy`다. `tests/bootstrap.php`가 `legacy/tests/dbspec/vectors.php`를 require해서 `make test-php`는 시험을 하나도 실행하지 못하고 `no test ran`으로 실패했고, autoloader, `orm-gen`, PHPUnit, PHPStan을 `legacy/vendor-php`에서 읽었다. stress 문서와 interface check는 `tests/dbspec/stress.mts`와 `tests/interfaces/check/main.mts`를 root에서 실행하고, dbspec compare runner는 `scripts/features/schema/recipe.schema.json`을 root에서 읽으며, `testing/interfaces/php.php`는 `legacy/packages/php/tests`의 autoloader를 읽는다. 이제 `make test-php`는 시험 5277개를 실행한다. database server나 flowmark가 필요한 시험은 없는 변수를 적고 바로 실패한다.
 - `AGENTS.md`는 Go module을 실제 경로로 적는다(OM-1.3). legacy module `legacy/packages/go`와 tag `legacy/packages/go/vX.Y.Z`가 `github.com/polyspec/orm/packages/go`를 release한다고 적었지만, `legacy/packages/go/go.mod`는 디렉터리 경로인 `github.com/polyspec/orm/legacy/packages/go`를 선언하고, `packages/go`는 root의 `go.work`가 묶지 않는 바인딩 module `github.com/polyspec/orm/packages/go`다. 이제 두 경로와, `tests/`와 `examples/`가 root의 `go.work`로만 legacy module을 찾는다는 것을 적는다.
 - `make documents-stamp`는 source가 바뀐 한국어 짝을 보고하지 않는다(OM-1.4). `docs/operations/interface-implementation.md`, `docs/operations/remediation-plan.md`, `packages/rust/README.md`, `tests/`와 `legacy/tests/`의 README(codec, conformance, markdown)의 짝은 core를 `packages/rust`로 옮긴 경로를 이미 담고 있었고, 지금의 source로 stamp되었다.

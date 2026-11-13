@@ -1,8 +1,8 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 524e77ccd6b477918cc017bd3d35f9c954450b8c09ff26e2ea518cd43529251a -->
+<!-- source-sha256: 5bb883963dda0952aa53b518b330e01b766674bd3be1971d561e760080af6e82 -->
 # Rust 코어와 생성 바인딩
 
-`packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
+`packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
 `packages/rust/interface.json`에서 생성한다. 이 문서는 `legacy/packages/go`, `legacy/packages/php`, `legacy/packages/php-ext`,
 `legacy/packages/python`, `legacy/packages/ts`의 언어 구현이 따르는 규칙과 다른 코어의 규칙을 적는다.
 
@@ -256,6 +256,13 @@
   rollback하고, 그것들이 끝난 뒤 결과 `{"ok": {}}`이나 rollback의 첫 실패를 돌려준다. 열린 transaction을 가진 채 놓인
   runner는, 그 callback이 더는 step이 올 수 없음을 알 때 그것을 rollback한다. transaction step은 `Db` 위의 runner와
   열린 transaction이 없음을 요구한다. 중첩 transaction이 열 것은 savepoint step이 열기 때문이다. 그 밖은 `config`다.
+- **CORE-94** 구현되지 않았다(OM-3.1-13): `Query`의 `restore`와 `restore_or_create`. 생성된 모델의 것과 같다(INT-38,
+  INT-39). `soft_delete` 설정이 있는 엔티티에서 `restore`는 `set`이 배정한 값의 restore 요청을 보내고 복원한 행을
+  돌려준다. 그 key는 planner가 배정한 값이 가진 primary key와 unique key 가운데에서 고른다. 그 key의 soft-delete된 행이
+  없으면 `no_rows`다. `restore_or_create`는 한 transaction 안에서 그 key의 soft-delete된 행을 복원하거나, 그 key를 가진
+  행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지
+  않는다. 둘 다 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
+  `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
 
 ## 상태 기계
 

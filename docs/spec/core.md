@@ -294,6 +294,14 @@ the core that differ from the rules that the language implementations of `legacy
   or the first failure of a rollback; a runner dropped with an open transaction rolls it back when its callback sees
   that no step can come. A transaction step needs a runner on a `Db` and no open transaction, since a savepoint step
   opens what a nested transaction would; another is `config`.
+- **CORE-94** Not implemented (OM-3.1-13): `restore` and `restore_or_create` of a `Query`, as those of a generated model
+  (INT-38, INT-39). On an entity with a `soft_delete` setting, `restore` sends the restore request of the assignments of
+  `set`, whose key the planner picks among the primary key and the unique keys that they hold, and returns the restored
+  row; with no soft-deleted row of that key it is `no_rows`. `restore_or_create` restores the soft-deleted row of that
+  key or, when no row holds the key, inserts the row of the assignments, in one transaction, and returns the row; a row
+  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments. The `Db` step
+  takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
+  without `soft_delete` is `ir_invalid`.
 
 ## State machines
 
