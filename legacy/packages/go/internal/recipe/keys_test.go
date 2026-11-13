@@ -2,6 +2,8 @@ package recipe
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,8 +11,22 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// testSchema names the recipe schema from this package directory, four levels below the repository root.
-const testSchema = "../../../../../scripts/features/schema/recipe.schema.json"
+// testSchema names the recipe schema from this package directory, where the recipes of recipeWith are (recipe.json): the
+// $schema of a recipe is relative to the recipe (FCV-2), so it is derived from the repository root.
+var testSchema = schemaFromPackage()
+
+// schemaFromPackage returns the path of the recipe schema relative to the package directory, the working directory of go test.
+func schemaFromPackage() string {
+	directory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	relative, err := filepath.Rel(directory, testcase.RepositoryPath(schemaPath))
+	if err != nil {
+		panic(err)
+	}
+	return filepath.ToSlash(relative)
+}
 
 // recipeWith is a recipe of one case whose steps are the given JSON, at the path recipe.json of this package.
 func recipeWith(top, steps string) string {

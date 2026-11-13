@@ -34,6 +34,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
 	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 	_ "modernc.org/sqlite"
 )
 
@@ -338,7 +339,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkBuilder(t, s, database, o.markdownBuilder)
 	}
 	if s.k("op").Op == "interface.symbols" {
-		return checkInterfaceSymbols(o.dir)
+		return checkInterfaceSymbols()
 	}
 	if s.k("op").Op == "keyring.versions" {
 		return checkKeyring(s, database)
@@ -2179,19 +2180,26 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 // the case reports the failure itself.
 const interfaceCheckDeadline = 280 * time.Second
 
-// checkInterfaceSymbols runs one interface.symbols step: the interface check of the Go client from the repository root, three
-// levels above dir, the directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
-func checkInterfaceSymbols(dir string) error {
+// checkInterfaceSymbols runs one interface.symbols step: the interface check of the Go client (INT-17, INT-18, INT-19, INT-57,
+// INT-61, INT-64). The check exits 0 when it holds.
+func checkInterfaceSymbols() error {
 	ctx, cancel := context.WithTimeout(context.Background(), interfaceCheckDeadline)
 	defer cancel()
-	command := exec.CommandContext(ctx, "node", "tests/interfaces/check/main.mts", "-language", "go")
-	command.Dir = filepath.Join(dir, "..", "..", "..")
+	command := interfaceCheckCommand(ctx)
 	// A child of the check that keeps the output pipes open ends the wait after the kill.
 	command.WaitDelay = 10 * time.Second
 	if output, err := command.CombinedOutput(); err != nil {
 		return fmt.Errorf("interface check: %w\n%s", err, output)
 	}
 	return nil
+}
+
+// interfaceCheckCommand is the interface check of the Go client, which starts at the repository root, where
+// tests/interfaces/check/main.mts is (testcase.RepositoryRoot).
+func interfaceCheckCommand(ctx context.Context) *exec.Cmd {
+	command := exec.CommandContext(ctx, "node", "tests/interfaces/check/main.mts", "-language", "go")
+	command.Dir = testcase.RepositoryRoot()
+	return command
 }
 
 // checkKeyring runs one keyring.versions step: the public constructor of the keyring, then its current version and its versions

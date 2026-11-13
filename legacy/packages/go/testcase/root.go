@@ -31,3 +31,13 @@ func RepositoryRoot() string {
 func LegacyRoot() string {
 	return filepath.Join(RepositoryRoot(), "legacy")
 }
+
+// RepositoryPath returns the absolute path of the slash-separated path relative under the repository root.
+func RepositoryPath(relative string) string {
+	return filepath.Join(RepositoryRoot(), filepath.FromSlash(relative))
+}
+
+// LegacyPath returns the absolute path of the slash-separated path relative under the legacy directory.
+func LegacyPath(relative string) string {
+	return filepath.Join(LegacyRoot(), filepath.FromSlash(relative))
+}

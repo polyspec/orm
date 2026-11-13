@@ -48,6 +48,7 @@
 - The dbspec parsers of Go, TypeScript, PHP, Python and the PHP extension read the codec stage `json` as `ordered_json` (DBS-69). They rejected `codec doc json` with `codec stage "json" is unknown`, while the core writes `json` (T446).
 - The Go tests of the legacy module find the repository root by `go.work` (`testcase.RepositoryRoot`). `internal/dialects` panicked at init opening `contracts/implementations.json` under `legacy`, so none of its tests ran, and `TestStressDocument` ran `legacy/tests/dbspec/stress.mts`, which does not exist; the runners of the cross-client tests now run from the repository root with their `legacy/` paths (T447).
 - The tests of `internal/buildconstraints` and `engine/dbspec` of the legacy Go module, with the fixture of `TestCaseHarnessReportsOnlyFailure`, find their root through `testcase.RepositoryRoot` and `testcase.LegacyRoot` instead of counting directories; `TestGoTestTagsAreReadFromTheRunner` and `TestNoBuildTagLeavesATestOut` failed opening `legacy/go.work` and `legacy/tests/go-test.mts` (T447).
+- The `interface.symbols` step of the Go recipe runner starts the interface check at the repository root (`testcase.RepositoryRoot`); it started three levels above the recipe, in `legacy`, where node did not find `tests/interfaces/check/main.mts` (T448).
 
 ## 0.0.31
 
