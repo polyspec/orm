@@ -28,8 +28,8 @@ hold for every member that this document names.
   and `plan.schema.json`, each of draft 2020-12 and naming no other file. The root of a file is one form, and its other
   forms are definitions that a rule names by their pointer, such as `#/$defs/type`. An object has no member that its
   schema does not name. A member that a form leaves out when it is false, zero, empty or absent has that value when it
-  is absent. Not implemented: no function of the core writes or reads the forms of `dbspec.schema.json` and of
-  `plan.schema.json`, and no test compares a value of the core with a schema.
+  is absent. The functions of FMS-80 write and read the forms, and the
+  tests of FMS-81 compare their values with the schemas; neither is compiled or run yet.
 - **FMS-4** Each of the 317 names is in exactly one group of the table. The kind of a group is `a`, a structure that
   flowmark only reads; `b`, an operation that flowmark calls; or `c`, a value that flowmark builds or changes and
   passes to orm. A name is of kind `c` when the source of flowmark writes it into a value that reaches a call of orm, so
@@ -66,8 +66,8 @@ hold for every member that this document names.
 | c | connection arguments: schema and configuration | 4 | FMS-43 |
 
 - **FMS-5** Of what this document names, the contract declares the classes `db` and `schema`, the record `config` and
-  the members `db.close`, `schema.load` and `aes_keyring.constructor`. Every other unit, member, function and form of
-  this document is not implemented, and its rule says so.
+  the members `db.close`, `schema.load` and `aes_keyring.constructor`. Every other unit and member of this document is not implemented, and its rule says so. The functions of FMS-80, which
+  write and read the forms, are written and not yet compiled or run.
 - **FMS-6** Eight names have no member of their own. Five are computed by flowmark from a JSON text that it read,
   because they read no state of orm: `Type.String`, the canonical text of a type, from the members of the type
   (FMS-11); `AuditSetting.Records`, whether the audit copies a column, from `column`, `exclude` and `include` of the
@@ -118,11 +118,12 @@ hold for every member that this document names.
   carries the types `Document`, `Table`, `Column`, `ForeignKey` and `Check` of `engine/dbspec` with their fields, and
   `Use`, `Unique`, `PrimaryKey` and `Default` by their fields. The field `Null` of a column is `nullable`, a default is
   `{"kind": "now"}` or `{"kind": "literal", "text": <text>}`, and the constants `ActionCascade` and `ActionSetNull` are
-  the texts `cascade` and `set_null` of `on_delete`. The core has no serde form of a document: a name of it holds the
-  position of its token (`Name`), so the form is a view of the document without positions. A function that writes the form refuses a
-  document that the form cannot hold: a table with more than one primary key, a setting of one line that a block holds
-  twice, an audit setting with two lists and a check literal without its canonical text. `dbspec::parse` returns no such
-  document. Not implemented.
+  the texts `cascade` and `set_null` of `on_delete`. A name of a document holds
+  the position of its token (`Name`), so the form is a view of the document without positions, which
+  `dbspec::json::document_to_json` writes. That function refuses a document that the form cannot hold: a table with more
+  than one primary key, a setting of one line that a block holds twice, an audit setting with two lists and a check
+  literal without its canonical text. `dbspec::parse` returns no such document. The member that carries the form is not
+  implemented.
 - **FMS-11** A column type is an object with `kind`, the name of the type (`Type::name`), and exactly the parameters
   of that kind: `length` for `varchar`, `precision` and `scale` for `decimal`, `precision` for `time` and `datetime`,
   and none for another kind (`#/$defs/type`). It carries `Type`, `TypeKind`, the four fields of `Type` and the 13
@@ -167,8 +168,8 @@ hold for every member that this document names.
   `blind_index` when the column has them. The form carries `Model`, `Entity` and `Field` of `engine/runtimemodel`:
   `Entities`, a map by name in the legacy module, is the list `entities`; `PK` is `primary_key`; `Null` is `nullable`;
   `Type`, `Length`, `Precision` and `Scale` of a field are its `type`; `Default`, a boolean in the legacy module, is
-  the presence of `default`; and `ManifestText` is `manifest_text` of the manifest (FMS-23). The core has no serde form
-  of the runtime model. Not implemented.
+  the presence of `default`; and `ManifestText` is `manifest_text` of the manifest (FMS-23). `dbspec::json::runtime_model_to_json` writes the object with
+  `entities`, and `Manifest::to_json` adds `manifest_hash`. The member is not implemented.
 
 ## Members of dbspec
 
@@ -199,13 +200,14 @@ hold for every member that this document names.
   diagnostics of the set (`#/$defs/statements_result`). `dialect` is `mysql`, `postgres` or `sqlite`, the texts of the
   constants `DialectMySQL`, `DialectPostgres` and `DialectSQLite`; another text is `config`. The member carries
   `RenderStatements`, `RenderedStatement` and the type `Dialect` of `engine/dbspec`. `Render` has no member: its result
-  is `sql` of each statement. Not implemented: the core has no function that reads the name of a `dbspec::Dialect`.
+  is `sql` of each statement. The member is not implemented; `dbspec_json::render_statements` reads the name of the
+  dialect.
 - **FMS-26** `dbspec.canonical_literal(type, literal)` returns the canonical text of `literal` as the default of a
   column of the type, or nothing when `literal` is no literal of the type. `type` is the JSON text of a type (FMS-11).
   A literal is one token with no space around it: a number whose minus sign is attached, a word or a quoted string. A
-  `text` or `bytes` column has no literal. The member carries `CanonicalLiteral`. Not implemented: the core holds the
-  rule for a token that the parser has read (`default_literal` of `packages/rust/schema/src/dbspec/literal.rs`, private
-  to its crate) and no function that reads a literal from a text.
+  `text` or `bytes` column has no literal. The member carries `CanonicalLiteral`. The member is not implemented; `dbspec::canonical_literal` of
+  `packages/rust/schema/src/dbspec/literal.rs` reads the literal from the text and applies `default_literal`, the rule
+  for a token that the parser has read.
 - **FMS-27** `dbspec.runtime_model(documents)` returns `{"model": <model>}` (FMS-16) or the diagnostics of the set
   (`#/$defs/runtime_model_result`): the entities of `dbspec::runtime_model` and the manifest hash of `dbspec::manifest`
   of the same documents. The member carries `Build`; `runtime_model.load` makes the handle of the model (FMS-30). Not
@@ -230,8 +232,9 @@ hold for every member that this document names.
   schema states the text that the core writes. A member that takes a request reads an absent member of the form as its
   default, except a member of a limit, and refuses with `ir_invalid` a text that is no JSON object, a member that the
   form does not have, a member that is `null`, a member of another type and text after the object. The legacy module writes a literal limit without a member that is 0
-  and reads `null` as an absent member; neither is a request of the form. Not implemented: the reader of
-  `ir::Request` takes a member that the form does not have, and no function of the core reads a request from a text.
+  and reads `null` as an absent member; neither is a request of the form. The reader of serde of
+  `ir::Request` takes a member that the form does not have and reads `null` as an absent member, so
+  `Request::from_json` checks the members of the text before serde reads them. No member reads a request yet.
 - **FMS-32** `runtime_model.validate(request)` validates the request against the model, as
   `polyspec_orm::engine::validate` does, and returns nothing. A request that the validation refuses fails with the
   kind of its cause, such as `ir_invalid`, `version_mismatch`, `schema_hash_mismatch`, `column_unknown` or
@@ -242,13 +245,14 @@ hold for every member that this document names.
   slot of a column also has `column`, `length`, `null`, `precision` and `scale` of the column, and `"assign": true` for
   an assignment. This is the form that `polyspec_orm::testing::param_uses` writes (`packages/rust/src/testing.rs`).
   The member carries `ParamUses` and `ParamUse`, whose `Column`, a pointer to a field in the legacy module, is the
-  name and the sizes of the column. Not implemented: the core builds `param_uses` only with the feature `test-faults`.
+  name and the sizes of the column. The member is not implemented; `Manifest::param_uses` writes the form in
+  every build, and `testing::param_uses` returns the same value.
 - **FMS-34** `runtime_model.restore_key(request)` picks the key of a restore request ([protocol](protocol.md) section
   1.5) and returns its parts (`#/$defs/restore_parts`):
   `{"key": [<column>, ...], "where": <group>, "set": [<assign>, ...], "soft_delete": <column>}`. The entity is the
   entity of the request; an entity that the model does not have is `entity_unknown`. The member carries `RestoreKey`
-  and `RestoreParts`. Not implemented: `restore_key` and `RestoreParts` of `packages/rust/src/engine/validate.rs` are
-  private to the crate, and `RestoreParts` has no serde form.
+  and `RestoreParts`. The member is not implemented; `Manifest::restore_key` writes the parts of `restore_key` of
+  `packages/rust/src/engine/validate.rs`, which stays private to the crate.
 - **FMS-35** `runtime_model.operator_allowed(entity, column, operator)` returns whether a condition of the operator on
   the column is allowed, as the validation decides (`op_allowed` of `packages/rust/src/engine/validate.rs`, which calls
   `dbspec::operator_allowed_for_field`). An entity that the model does not have is `entity_unknown`, and a column that
@@ -257,9 +261,9 @@ hold for every member that this document names.
 - **FMS-36** `orm.ir_version` is the constant 1, the version of the request form that the core validates; it carries
   the constant `Version` of `engine/ir`. `orm.value_function_unit(name)` returns the unit of the interval of a
   relative value function, `second`, `minute`, `hour`, `day` or `month`, or nothing for another name; it carries the
-  variable `ValueFunctionUnits` of `engine/dialect`, a map that flowmark reads by name. Not implemented: the constant
-  `IR_VERSION` of `packages/rust/src/engine/validate.rs` is private, and the function `value_function_unit` of
-  `packages/rust/src/engine/dialect.rs` is in a module that is private to the crate.
+  variable `ValueFunctionUnits` of `engine/dialect`, a map that flowmark reads by name. The members are not implemented; the constant is
+  `polyspec_orm::ir::VERSION`, also `polyspec_orm::IR_VERSION`, and the function is
+  `polyspec_orm::engine::value_function_unit`.
 - **FMS-37** A member fails with an error of the class of its category, which has a kind (CORE-10, CORE-11) and the
   message `<kind>: <text>` (CORE-12). The error carries the type `Error` of `engine/ir`: `Code` is the kind, in lower
   case, and `Msg` is the text after the kind. No member returns an error as JSON.
@@ -268,10 +272,10 @@ hold for every member that this document names.
 
 - **FMS-40** A plan is the JSON text of `plan.schema.json`: the plan of [protocol](protocol.md) section 2, whose
   members are the tags of `legacy/packages/go/engine/plan/plan.go`. A list that the form always writes (`steps`,
-  `tables`, `bind_slots`, `columns`, `key` and `keys`) is a list and never `null`. The value of the core,
-  `polyspec_orm::plan::Plan` of `packages/rust/src/plan.rs`, has no serde form; its field `typ` of an output column is
-  the member `type`, and its field `plan_id` of a step is no member. flowmark reads `steps` of a plan, `sql` and
-  `bind_slots` of a step and `col_type` of a slot. Not implemented.
+  `tables`, `bind_slots`, `columns`, `key` and `keys`) is a list and never `null`. `Plan::to_json` and `Step::to_json` of
+  `packages/rust/src/plan.rs` write the form of the value of the core, `polyspec_orm::plan::Plan`: the field `typ` of an
+  output column is the member `type`, and the field `plan_id` of a step is no member. flowmark reads `steps` of a plan,
+  `sql` and `bind_slots` of a step and `col_type` of a slot. No member returns a plan yet.
 - **FMS-41** `runtime_model.compile(request, dialect)` validates the request and plans it for the dialect, as
   `polyspec_orm::engine::compile` does, and returns the plan (FMS-40). `dialect` is `mysql`, `postgres` or `sqlite`
   (`Dialect::parse`); another text is `config`. The member carries `Planner.Compile`. The struct `Planner` with its
@@ -284,8 +288,9 @@ hold for every member that this document names.
   list, a map or a JSON value among `params` is `codec_encode`. flowmark writes `role`, `sql` and `bind_slots` of the
   step and `from`, `name`, `param` and `host_styles` of a slot; it gives `id` the value 0 and `tables` no item, as the
   value of the legacy module has them. One test of flowmark calls the member. It carries `DB.Execute` of `orm`, and
-  `Step` and `BindSlot` of `engine/plan`. Not implemented: `Db::execute` takes the Rust values `Step` and `Param`, so
-  CORE-70 does not declare it.
+  `Step` and `BindSlot` of `engine/plan`. The member is not implemented: `Db::execute` takes the Rust values `Step` and
+  `Param`, so CORE-70 does not declare it, and `Db::execute_text` takes the step as its JSON text and the parameters as
+  `orm_value`.
 - **FMS-43** `db.connect_schema(dsn, schema, pool_size, cfg)` connects and registers the set of `schema` on the
   connection, as `Db::connect_schema` does; every type of its signature is a type of the contract. It carries
   `ConnectSchema`. The struct `Schema` of the legacy module with its fields `Hash` and `Text` is the class `schema`,
@@ -301,8 +306,9 @@ hold for every member that this document names.
   `codec.host_decode(cell, stages, key)` undoes them, as `codec::host_decode` does. `codec.blind_index(value, key)`
   returns the blind index of a value, as `codec::blind_index` does. A value and a cell are `text`, `bytes` or `null`;
   another kind is `codec_encode` for a value and `codec_decode` for a cell. The members carry `HostEncode`,
-  `HostDecode`, `Decode` and `BlindIndex` of the package `orm`. Not implemented: the four functions of
-  `packages/rust/src/codec.rs` take and return the Rust values `Param` and `Val`, which are no types of the contract.
+  `HostDecode`, `Decode` and `BlindIndex` of the package `orm`. The members are not implemented; the four functions of
+  `packages/rust/src/orm_value.rs` take and return `orm_value` and call those of `packages/rust/src/codec.rs`, which
+  take and return the Rust values `Param` and `Val`.
 - **FMS-51** `NewAESKeyring` is the member `aes_keyring.constructor(keys, current)` of the contract. flowmark calls it
   to judge the keys of a keyring file and keeps no keyring.
 
@@ -332,8 +338,8 @@ hold for every member that this document names.
 
 - **FMS-70** Of the 317 names, 5 are units or members of the contract (`orm.DB`, `DB.Close`, `orm.Config`,
   `orm.Schema` and `orm.NewAESKeyring`), 255 have an item of the same name in the core, and 57 have none. None of the
-  57 is absent from the core: 52 are a public item of another name, the rows of the first table, and 5 are held by an
-  item that is not public or has another form, the rows of the second table. The files of both tables are under
+  57 is absent from the core: 52 are a public item of another name, the rows of the first table, and 5 are held by an item that is not public or has another form, the rows of the second table, each with
+  the public function of FMS-80 that carries it. The files of both tables are under
   `packages/rust`.
 
 | Names of the legacy module | Item of the core | File |
@@ -363,17 +369,16 @@ hold for every member that this document names.
 | `Model.ManifestText` | `dbspec::Manifest::manifest_text` | `schema/src/dbspec/mod.rs` |
 | `DB.Execute` | `Db::execute` | `src/db.rs` |
 
-| Name of the legacy module | Item of the core | File | What the member needs |
+| Name of the legacy module | Item of the core | File | What carries it |
 | --- | --- | --- | --- |
-| `CanonicalLiteral` | `default_literal`, for a token | `schema/src/dbspec/literal.rs` | a function that reads a text |
-| `ValueFunctionUnits` | `value_function_unit` | `src/engine/dialect.rs` | an export from `engine` |
-| `Version` of `engine/ir` | `IR_VERSION` | `src/engine/validate.rs` | a public constant |
-| `RestoreParts.Where` | `RestoreParts::where_` | `src/engine/validate.rs` | a public result (FMS-34) |
+| `CanonicalLiteral` | `default_literal`, for a token | `schema/src/dbspec/literal.rs` | `dbspec::canonical_literal`, which reads a text |
+| `ValueFunctionUnits` | `value_function_unit` | `src/engine/dialect.rs` | `engine::value_function_unit` |
+| `Version` of `engine/ir` | `ir::VERSION` | `src/ir.rs` | `ir::VERSION`, also `polyspec_orm::IR_VERSION` |
+| `RestoreParts.Where` | `RestoreParts::where_` | `src/engine/validate.rs` | `Manifest::restore_key` (FMS-34) |
 | `DiagnosticsError` | `diagnostics`, which returns an error | `src/schema.rs` | nothing (FMS-6) |
 
-- **FMS-71** An item of the same name is not always the same thing. `ir.Decode` has the name of `codec::decode`, and
-  the core has no function that reads a request (FMS-31). `runtimemodel.Build` has the name of `request::build`, which
-  builds a request; the model is built by `dbspec::runtime_model`. `ir.ParamUses` is built only with `test-faults`
+- **FMS-71** An item of the same name is not always the same thing. `ir.Decode` has the name of `codec::decode`, and the function that reads a request is `Request::from_json` (FMS-31). `runtimemodel.Build` has the name of `request::build`, which
+  builds a request; the model is built by `dbspec::runtime_model`. `ir.ParamUses` is `engine::param_uses`, which is private to the crate and which `Manifest::param_uses` calls
   (FMS-33). `ir.RestoreKey`, `ir.OpAllowed` and `planner.Planner` are `restore_key`, `op_allowed` and `Planner`, each
   private to the crate. `PositionTable` and `PositionConstraint` are the texts `table` and `constraint` of the parser,
   which has no constant for them. `Type.String` is `Type::render`.
@@ -382,8 +387,7 @@ hold for every member that this document names.
 
 - **FMS-80** The functions of the core that the members name need no binding, so they are written and tested before
   the contract changes. They are the signatures below; a function of the crate `polyspec-orm-schema` reports a value
-  that is not of its form as a text that names the member, and a function of the crate `polyspec-orm` as `config`, or
-  as `ir_invalid` for a request. Not implemented.
+  that is not of its form as a text that names the member, and a function of the crate `polyspec-orm` as `config`, or as `ir_invalid` for a request. The functions are written; they are not yet compiled or run.
 
 ```rust
 // packages/rust/schema/src/dbspec/literal.rs, exported from dbspec
@@ -451,7 +455,9 @@ impl Db {
 }
 ```
 
-- **FMS-81** Each function of FMS-80 has a test that fails before the function exists. Not implemented.
+- **FMS-81** Each function of FMS-80 has a test that fails before the function exists. The tests are
+  `packages/rust/schema/tests/unit/flowmark_surface.rs` and `packages/rust/tests/unit/flowmark_surface.rs`; they are
+  not yet run.
   1. A document: for every document of `contracts/fixtures/bench/` and every canonical text of
      `tests/dbspec/canonical.json`, `document_to_json` is a value of
      `dbspec.schema.json`, and `document_from_json` of it gives a document with the same text of `dbspec::emit`, the
@@ -479,5 +485,5 @@ impl Db {
   10. A statement: `Db::execute_text` inserts a row on a SQLite database with a step that `Manifest::compile` wrote.
 - **FMS-82** The declarations of the units and members of FMS-7 in `packages/rust/interface.json`, their cases in
   `contracts/interface/core.json` (CORE-71), the generated bindings and the Go code of flowmark follow the functions of
-  FMS-80. The schema tests of FMS-81 need a JSON Schema validator in the tests of `polyspec-orm`, which the tests of
-  `polyspec-orm-schema` already have (`jsonschema`). Not implemented.
+  FMS-80. The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
+  `polyspec-orm-schema`. The declarations are not implemented.

@@ -262,3 +262,193 @@ pub struct Optimist {
     pub column: String,
     pub p: usize,
 }
+
+/// The version of the request form that the core validates (docs/spec/flowmark-surface.md FMS-36).
+pub const VERSION: u32 = 1;
+
+impl Request {
+    /// The request of its JSON text (FMS-31). An absent member of the form has its default, except a member of a limit.
+    /// A text that is no JSON object, a member that the form does not have, a member that is `null`, a member of
+    /// another type and text after the object are `ir_invalid`.
+    pub fn from_json(text: &str) -> crate::Result<Request> {
+        let value: serde_json::Value = serde_json::from_str(text).map_err(|error| not_of_the_form(format!("the request is no JSON text: {error}")))?;
+        form::check(form::Form::Request, &value, "request").map_err(not_of_the_form)?;
+        serde_json::from_value(value).map_err(|error| not_of_the_form(format!("the request is not of its form: {error}")))
+    }
+}
+
+fn not_of_the_form(message: String) -> crate::Error {
+    crate::Error::new(crate::Kind::IrInvalid, message)
+}
+
+/// The members of the request form (FMS-31, `contracts/interface/flowmark/ir.schema.json`). The reader of serde takes
+/// a member that the form does not have and reads `null` as an absent member; this check refuses both before it.
+mod form {
+    use serde_json::Value;
+
+    /// An object of the form.
+    #[derive(Clone, Copy)]
+    pub(super) enum Form {
+        Request,
+        Query,
+        Columns,
+        Func,
+        ColFunc,
+        Sub,
+        Join,
+        Relation,
+        KeyPair,
+        Group,
+        Item,
+        JoinedRef,
+        Pred,
+        ColRef,
+        Order,
+        Limit,
+        IfParent,
+        Assign,
+        Optimist,
+    }
+
+    /// What a member holds.
+    #[derive(Clone, Copy)]
+    enum Member {
+        /// A text, a number, a boolean, or a list of them.
+        Plain,
+        One(Form),
+        List(Form),
+        /// An object whose member names are free and whose members are objects of one form.
+        Map(Form),
+    }
+
+    const QUERY: &[(&str, Member)] = &[
+        ("entity", Member::Plain),
+        ("columns", Member::One(Form::Columns)),
+        ("on", Member::One(Form::Group)),
+        ("where", Member::One(Form::Group)),
+        ("joins", Member::List(Form::Join)),
+        ("relations", Member::List(Form::Relation)),
+        ("order", Member::List(Form::Order)),
+        ("group_by", Member::Plain),
+        ("limit", Member::One(Form::Limit)),
+        ("force_index", Member::Plain),
+        ("lock", Member::Plain),
+        ("key_by", Member::Plain),
+        ("flatten", Member::Plain),
+        ("limit_per_parent", Member::Plain),
+        ("if_parent", Member::One(Form::IfParent)),
+        ("no_cascade_delete", Member::Plain),
+    ];
+
+    /// The members of a request beside those of its query.
+    const REQUEST: &[(&str, Member)] = &[
+        ("ir_version", Member::Plain),
+        ("manifest_hash", Member::Plain),
+        ("kind", Member::Plain),
+        ("load", Member::Plain),
+        ("set", Member::List(Form::Assign)),
+        ("on_duplicate", Member::List(Form::Assign)),
+        ("rows", Member::Plain),
+        ("optimistic", Member::One(Form::Optimist)),
+        ("agg", Member::Plain),
+        ("n_params", Member::Plain),
+    ];
+
+    fn members(form: Form) -> &'static [(&'static str, Member)] {
+        match form {
+            Form::Request => REQUEST,
+            Form::Query => QUERY,
+            Form::Columns => &[
+                ("mode", Member::Plain),
+                ("add", Member::Plain),
+                ("remove", Member::Plain),
+                ("fn", Member::Map(Form::ColFunc)),
+                ("sub", Member::Map(Form::Sub)),
+            ],
+            Form::Func => &[("name", Member::Plain), ("ps", Member::Plain)],
+            Form::ColFunc => &[("column", Member::Plain), ("fn", Member::One(Form::Func))],
+            Form::Sub => &[("query", Member::One(Form::Query)), ("column", Member::Plain), ("agg", Member::Plain)],
+            Form::Join => {
+                &[("rel", Member::Plain), ("kind", Member::Plain), ("query", Member::One(Form::Query)), ("left", Member::Plain), ("right", Member::Plain)]
+            }
+            Form::Relation => &[("rel", Member::Plain), ("query", Member::One(Form::Query)), ("kind", Member::Plain), ("keys", Member::List(Form::KeyPair))],
+            Form::KeyPair => &[("left", Member::Plain), ("right", Member::Plain)],
+            Form::Group => &[("conn", Member::Plain), ("not", Member::Plain), ("items", Member::List(Form::Item))],
+            Form::Item => &[("pred", Member::One(Form::Pred)), ("group", Member::One(Form::Group)), ("joined", Member::One(Form::JoinedRef))],
+            Form::JoinedRef => &[("conn", Member::Plain), ("join", Member::Plain)],
+            Form::Pred => &[
+                ("conn", Member::Plain),
+                ("column", Member::Plain),
+                ("op", Member::Plain),
+                ("p", Member::Plain),
+                ("ps", Member::Plain),
+                ("ref", Member::One(Form::ColRef)),
+                ("fn", Member::One(Form::Func)),
+                ("value", Member::One(Form::Func)),
+                ("cols", Member::Plain),
+                ("sub", Member::One(Form::Sub)),
+            ],
+            Form::ColRef => &[("path", Member::Plain), ("column", Member::Plain)],
+            Form::Order => &[("column", Member::Plain), ("desc", Member::Plain), ("random", Member::Plain), ("fn", Member::One(Form::Func))],
+            Form::Limit => &[("offset", Member::Plain), ("count", Member::Plain), ("offset_p", Member::Plain), ("count_p", Member::Plain)],
+            Form::IfParent => &[("column", Member::Plain), ("p", Member::Plain)],
+            Form::Assign => {
+                &[("column", Member::Plain), ("p", Member::Plain), ("null", Member::Plain), ("plus_p", Member::Plain), ("minus_p", Member::Plain)]
+            }
+            Form::Optimist => &[("column", Member::Plain), ("p", Member::Plain)],
+        }
+    }
+
+    /// The member `key` of an object of the form `form`; the members of a query are members of a request.
+    fn member(form: Form, key: &str) -> Option<Member> {
+        let own = members(form).iter().find(|(name, _)| *name == key).map(|(_, member)| *member);
+        match form {
+            Form::Request => own.or_else(|| member(Form::Query, key)),
+            _ => own,
+        }
+    }
+
+    /// Checks that `value` is an object of the form `form`, at the place `at` of the request.
+    pub(super) fn check(form: Form, value: &Value, at: &str) -> Result<(), String> {
+        let Value::Object(object) = value else { return Err(format!("{at} is no object")) };
+        for (key, held) in object {
+            let at = format!("{at}.{key}");
+            let Some(member) = member(form, key) else { return Err(format!("{at} is no member of the form")) };
+            match member {
+                Member::Plain => plain(held, &at)?,
+                Member::One(inner) => check(inner, held, &at)?,
+                Member::List(inner) => {
+                    let Value::Array(items) = held else { return Err(format!("{at} is no list")) };
+                    for (index, item) in items.iter().enumerate() {
+                        check(inner, item, &format!("{at}[{index}]"))?;
+                    }
+                }
+                Member::Map(inner) => {
+                    let Value::Object(entries) = held else { return Err(format!("{at} is no object")) };
+                    for (name, entry) in entries {
+                        check(inner, entry, &format!("{at}.{name}"))?;
+                    }
+                }
+            }
+        }
+        let holds = |key: &str| object.contains_key(key);
+        match form {
+            // An item is an object of exactly one of its three members.
+            Form::Item if object.len() != 1 => Err(format!("{at} holds {} members; an item holds one of pred, group and joined", object.len())),
+            // A limit is the pair of its literals or the pair of its parameters, with both members.
+            Form::Limit if !(object.len() == 2 && ((holds("offset") && holds("count")) || (holds("offset_p") && holds("count_p")))) => {
+                Err(format!("{at} is neither the pair offset and count nor the pair offset_p and count_p"))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// A member that holds no object of the form: `null` is no value of it, in a list either.
+    fn plain(value: &Value, at: &str) -> Result<(), String> {
+        match value {
+            Value::Null => Err(format!("{at} is null; an absent member is its default")),
+            Value::Array(items) => items.iter().enumerate().try_for_each(|(index, item)| plain(item, &format!("{at}[{index}]"))),
+            _ => Ok(()),
+        }
+    }
+}

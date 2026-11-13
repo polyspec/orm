@@ -2,13 +2,15 @@
 //! and schema DDL.
 
 pub(crate) mod dialect;
+mod json;
 mod params;
 mod planner;
 pub(crate) mod validate;
 
-pub use dialect::Dialect;
+pub use dialect::{value_function_unit, Dialect};
+// The test entry point writes the parameter uses of a request (testing::param_uses).
 #[cfg(feature = "test-faults")]
-pub(crate) use params::param_uses;
+pub(crate) use json::param_uses_json;
 
 use crate::ir;
 use crate::plan::Plan;

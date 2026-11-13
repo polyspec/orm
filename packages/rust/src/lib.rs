@@ -54,6 +54,7 @@ pub use db::{AuditSource, Config, Db, DbStats, HookFuture, QueryPlanStep, Reques
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
+pub use ir::VERSION as IR_VERSION;
 pub use kind::Kind;
 pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
 pub use orm_value::{JsonValue, OrmValue};

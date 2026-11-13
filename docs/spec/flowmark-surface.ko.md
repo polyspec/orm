@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: b75f8961150ea35185fc8efca1b770502d03132191bdca2d854a4012542b48c2 -->
+<!-- source-sha256: 98bfd483540e5dd5bbb6af7a70e4b89c309d53a48bfb6bd7608eeb5698ef2534 -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -25,9 +25,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 - **FMS-3** 형식은 `contracts/interface/flowmark/`의 JSON Schema다: `dbspec.schema.json`, `ir.schema.json`,
   `plan.schema.json`이며, 각각 draft 2020-12이고 다른 파일을 이름하지 않는다. 파일의 root는 형식 하나이고, 나머지
   형식은 규칙이 `#/$defs/type`처럼 pointer로 이름하는 definition이다. object는 그 schema가 이름하지 않는 member를
-  가지지 않는다. 형식이 false, 0, 빈 값, 없는 값일 때 생략하는 member는 없을 때 그 값을 가진다. 구현되지 않았다:
-  코어의 어느 함수도 `dbspec.schema.json`과 `plan.schema.json`의 형식을 쓰거나 읽지 않고, 어느 시험도 코어의 값을
-  schema와 비교하지 않는다.
+  가지지 않는다. 형식이 false, 0, 빈 값, 없는 값일 때 생략하는 member는 없을 때 그 값을 가진다. FMS-80의 함수가 그 형식을
+  쓰고 읽으며, FMS-81의 시험이 그 값을 schema와 비교한다. 둘 다 아직 compile하거나 실행하지 않았다.
 - **FMS-4** 317개 이름은 각각 표의 group 정확히 하나에 속한다. group의 종류는 셋이다: `a`는 flowmark가 읽기만 하는
   구조, `b`는 flowmark가 부르는 연산, `c`는 flowmark가 만들거나 바꿔서 orm에 넘기는 값이다. flowmark의 소스가 orm
   호출에 닿는 값에 써 넣는 이름은 종류 `c`이므로, 한 구조의 이름이 종류 `a`의 group과 종류 `c`의 group에 나뉘어
@@ -64,8 +63,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 | c | 연결 인자: schema와 설정 | 4 | FMS-43 |
 
 - **FMS-5** 이 문서가 이름하는 것 가운데 계약은 class `db`와 `schema`, record `config`, member `db.close`,
-  `schema.load`, `aes_keyring.constructor`를 선언한다. 이 문서의 그 밖의 unit, member, 함수, 형식은 모두 구현되지
-  않았고, 각 규칙이 그렇게 적는다.
+  `schema.load`, `aes_keyring.constructor`를 선언한다. 이 문서의 그 밖의 unit과 member는 모두 구현되지 않았고, 각 규칙이 그렇게 적는다.
+  형식을 쓰고 읽는 FMS-80의 함수는 작성되었고 아직 compile하거나 실행하지 않았다.
 - **FMS-6** 이름 여덟 개는 자기 member가 없다. 다섯 개는 orm의 상태를 읽지 않으므로 flowmark가 자기가 읽은 JSON
   텍스트에서 계산한다: 타입의 canonical 텍스트 `Type.String`은 타입의 member에서(FMS-11), audit이 열을 복사하는지
   알려 주는 `AuditSetting.Records`는 audit setting의 `column`, `exclude`, `include`에서(FMS-13), 이름의 field인
@@ -115,11 +114,11 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `primary`), FMS-11부터 FMS-13까지의 형식만 다르다. 이 형식은 `engine/dbspec`의 타입 `Document`, `Table`, `Column`,
   `ForeignKey`, `Check`를 그 field와 함께 전달하고, `Use`, `Unique`, `PrimaryKey`, `Default`는 그 field로 전달한다.
   열의 field `Null`은 `nullable`이고, default는 `{"kind": "now"}`나 `{"kind": "literal", "text": <text>}`이며, 상수
-  `ActionCascade`와 `ActionSetNull`은 `on_delete`의 텍스트 `cascade`와 `set_null`이다. 코어에는 문서의 serde 형식이
-  없다: 문서의 이름이 자기 token의 위치를 가지므로(`Name`), 이 형식은 위치를 뺀 문서의 view다. 이 형식을 쓰는
-  함수는 형식이 담을 수 없는 문서를 거부한다: primary key가 둘 이상인 table, block이 두 번 가진 한 줄짜리 setting,
-  list가 둘인 audit setting, canonical 텍스트가 없는 check literal이다. `dbspec::parse`는 그런 문서를 돌려주지 않는다.
-  구현되지 않았다.
+  `ActionCascade`와 `ActionSetNull`은 `on_delete`의 텍스트 `cascade`와 `set_null`이다. 문서의 이름이 자기 token의
+  위치를 가지므로(`Name`), 이 형식은 위치를 뺀 문서의 view이고 `dbspec::json::document_to_json`이 쓴다. 그 함수는
+  형식이 담을 수 없는 문서를 거부한다: primary key가 둘 이상인 table, block이 두 번 가진 한 줄짜리 setting, list가
+  둘인 audit setting, canonical 텍스트가 없는 check literal이다. `dbspec::parse`는 그런 문서를 돌려주지 않는다. 이
+  형식을 전달하는 member는 구현되지 않았다.
 - **FMS-11** 열 타입은 타입의 이름인 `kind`(`Type::name`)와 그 kind의 매개변수만 가진 object다: `varchar`는
   `length`, `decimal`은 `precision`과 `scale`, `time`과 `datetime`은 `precision`을 가지고, 다른 kind는 매개변수가
   없다(`#/$defs/type`). 이 형식은 `Type`, `TypeKind`, `Type`의 field 네 개, 상수 `TypeI16`부터 `TypeDatetime`까지
@@ -162,7 +161,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   이 형식은 `engine/runtimemodel`의 `Model`, `Entity`, `Field`를 전달한다: legacy 모듈에서 이름별 map인 `Entities`는
   list `entities`이고, `PK`는 `primary_key`, `Null`은 `nullable`이며, field의 `Type`, `Length`, `Precision`, `Scale`은
   그 `type`이다. legacy 모듈에서 boolean인 `Default`는 `default`가 있는지 여부이고, `ManifestText`는 manifest의
-  `manifest_text`다(FMS-23). 코어에는 runtime model의 serde 형식이 없다. 구현되지 않았다.
+  `manifest_text`다(FMS-23). `dbspec::json::runtime_model_to_json`은 `entities`를 가진 object를 쓰고,
+  `Manifest::to_json`이 `manifest_hash`를 더한다. 이 member는 구현되지 않았다.
 
 ## dbspec의 member
 
@@ -193,13 +193,13 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   diagnostic을 돌려준다(`#/$defs/statements_result`). `dialect`는 상수 `DialectMySQL`, `DialectPostgres`,
   `DialectSQLite`의 텍스트인 `mysql`, `postgres`, `sqlite` 가운데 하나이고, 다른 텍스트는 `config`다. 이 member는
   `RenderStatements`, `RenderedStatement`, `engine/dbspec`의 타입 `Dialect`를 전달한다. `Render`는 member가 없다: 그
-  결과는 각 statement의 `sql`이다. 구현되지 않았다: 코어에는 `dbspec::Dialect`의 이름을 읽는 함수가 없다.
+  결과는 각 statement의 `sql`이다. 이 member는 구현되지 않았다. dialect의 이름은 `dbspec_json::render_statements`가 읽는다.
 - **FMS-26** `dbspec.canonical_literal(type, literal)`은 그 타입의 열의 default로서 `literal`의 canonical 텍스트를
   돌려주고, `literal`이 그 타입의 literal이 아니면 아무것도 돌려주지 않는다. `type`은 타입의 JSON 텍스트다(FMS-11).
   literal은 앞뒤에 공백이 없는 token 하나다: 빼기 부호가 붙어 있는 수, 단어, 따옴표로 감싼 문자열이다. `text`나
-  `bytes` 열에는 literal이 없다. 이 member는 `CanonicalLiteral`을 전달한다. 구현되지 않았다: 코어는 parser가 읽은
-  token에 대한 규칙을 가지고(`packages/rust/schema/src/dbspec/literal.rs`의 `default_literal`, 그 crate 안에서만
-  보인다), 텍스트에서 literal을 읽는 함수는 없다.
+  `bytes` 열에는 literal이 없다. 이 member는 `CanonicalLiteral`을 전달한다. 이 member는 구현되지 않았다.
+  `packages/rust/schema/src/dbspec/literal.rs`의 `dbspec::canonical_literal`이 텍스트에서 literal을 읽고, parser가 읽은
+  token에 대한 규칙인 `default_literal`을 적용한다.
 - **FMS-27** `dbspec.runtime_model(documents)`는 `{"model": <model>}`(FMS-16)이나 집합의 diagnostic을
   돌려준다(`#/$defs/runtime_model_result`): 같은 문서의 `dbspec::runtime_model`의 entity와 `dbspec::manifest`의
   manifest hash다. 이 member는 `Build`를 전달하고, model의 handle은 `runtime_model.load`가 만든다(FMS-30). 구현되지
@@ -223,8 +223,9 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `null`을 쓰고, 다른 member는 읽기만 한다. schema는 코어가 쓰는 텍스트를 적는다. 요청을 받는 member는 형식의
   member가 없으면 그 default로 읽되 limit의 member는 예외이고, JSON object가 아닌 텍스트, 형식에 없는 member, `null`인 member,
   타입이 다른 member, object 뒤의 텍스트를 `ir_invalid`로 거부한다. legacy 모듈은 0인 member를 뺀 literal limit을 쓰고 `null`을 없는 member로
-  읽는데, 둘 다 이 형식의 요청이 아니다. 구현되지 않았다: `ir::Request`를 읽는 코드는 형식에 없는 member를 받고,
-  코어의 어느 함수도 텍스트에서 요청을 읽지 않는다.
+  읽는데, 둘 다 이 형식의 요청이 아니다. `ir::Request`를 읽는 serde의 코드는 형식에 없는 member를 받고
+  `null`을 없는 member로 읽으므로, `Request::from_json`은 serde가 읽기 전에 텍스트의 member를 검사한다. 요청을 읽는
+  member는 아직 없다.
 - **FMS-32** `runtime_model.validate(request)`는 `polyspec_orm::engine::validate`처럼 요청을 model에 대해 검증하고
   아무것도 돌려주지 않는다. 검증이 거부한 요청은 `ir_invalid`, `version_mismatch`, `schema_hash_mismatch`,
   `column_unknown`, `operator_not_allowed` 같은 그 원인의 kind로 실패한다. 이 member는 `Validate`를 전달한다.
@@ -234,14 +235,14 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   돌려준다(`ir.schema.json`의 `#/$defs/param_uses`). 열이 없는 slot은 `{"type": <type>}`이고, 열의 slot은 그 열의
   `column`, `length`, `null`, `precision`, `scale`도 가지며, 배정이면 `"assign": true`를 가진다. 이것은
   `polyspec_orm::testing::param_uses`가 쓰는 형식이다(`packages/rust/src/testing.rs`). 이 member는 `ParamUses`와
-  `ParamUse`를 전달하고, legacy 모듈에서 field의 pointer인 `Column`은 열의 이름과 크기다. 구현되지 않았다: 코어는
-  feature `test-faults`가 있을 때만 `param_uses`를 빌드한다.
+  `ParamUse`를 전달하고, legacy 모듈에서 field의 pointer인 `Column`은 열의 이름과 크기다. 이 member는 구현되지
+  않았다. `Manifest::param_uses`는 모든 빌드에서 그 형식을 쓰고, `testing::param_uses`는 같은 값을 돌려준다.
 - **FMS-34** `runtime_model.restore_key(request)`는 restore 요청의 key를 고르고([protocol](protocol.md) 1.5절) 그
   부분을 돌려준다(`#/$defs/restore_parts`):
   `{"key": [<column>, ...], "where": <group>, "set": [<assign>, ...], "soft_delete": <column>}`다. entity는 요청의
   entity이고, model에 없는 entity는 `entity_unknown`이다. 이 member는 `RestoreKey`와 `RestoreParts`를 전달한다.
-  구현되지 않았다: `packages/rust/src/engine/validate.rs`의 `restore_key`와 `RestoreParts`는 crate 안에서만 보이고,
-  `RestoreParts`에는 serde 형식이 없다.
+  이 member는 구현되지 않았다. `Manifest::restore_key`가 `packages/rust/src/engine/validate.rs`의 `restore_key`의 부분을
+  쓰고, `restore_key`는 crate 안에서만 보인다.
 - **FMS-35** `runtime_model.operator_allowed(entity, column, operator)`는 그 열에 그 연산자의 조건이 허용되는지를
   검증이 정하는 대로 돌려준다(`packages/rust/src/engine/validate.rs`의 `op_allowed`이고, 이 함수는
   `dbspec::operator_allowed_for_field`를 부른다). model에 없는 entity는 `entity_unknown`이고, entity에 없는 열은
@@ -250,9 +251,9 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 - **FMS-36** `orm.ir_version`은 상수 1, 곧 코어가 검증하는 요청 형식의 버전이고, `engine/ir`의 상수 `Version`을
   전달한다. `orm.value_function_unit(name)`은 상대 value function의 간격의 단위인 `second`, `minute`, `hour`, `day`,
   `month` 가운데 하나를 돌려주고, 다른 이름에는 아무것도 돌려주지 않는다. flowmark가 이름별로 읽는 map인
-  `engine/dialect`의 변수 `ValueFunctionUnits`를 전달한다. 구현되지 않았다:
-  `packages/rust/src/engine/validate.rs`의 상수 `IR_VERSION`은 공개되어 있지 않고,
-  `packages/rust/src/engine/dialect.rs`의 함수 `value_function_unit`은 crate 안에서만 보이는 module에 있다.
+  `engine/dialect`의 변수 `ValueFunctionUnits`를 전달한다. 이 member들은 구현되지 않았다. 그 상수는
+  `polyspec_orm::ir::VERSION`이고 `polyspec_orm::IR_VERSION`이기도 하며, 그 함수는
+  `polyspec_orm::engine::value_function_unit`이다.
 - **FMS-37** member는 그 category의 class의 오류로 실패하고, 그 오류는 kind(CORE-10, CORE-11)와 메시지
   `<kind>: <text>`(CORE-12)를 가진다. 이 오류는 `engine/ir`의 타입 `Error`를 전달한다: `Code`는 소문자로 쓴 kind이고,
   `Msg`는 kind 뒤의 텍스트다. 어느 member도 오류를 JSON으로 돌려주지 않는다.
@@ -261,10 +262,10 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 
 - **FMS-40** plan은 `plan.schema.json`의 JSON 텍스트다: [protocol](protocol.md) 2절의 plan이고, 그 member는
   `legacy/packages/go/engine/plan/plan.go`의 tag다. 형식이 언제나 쓰는 list(`steps`, `tables`, `bind_slots`,
-  `columns`, `key`, `keys`)는 list이고 `null`이 아니다. 코어의 값인 `packages/rust/src/plan.rs`의
-  `polyspec_orm::plan::Plan`에는 serde 형식이 없다. 출력 열의 field `typ`은 member `type`이고, step의 field
-  `plan_id`는 member가 아니다. flowmark는 plan의 `steps`, step의 `sql`과 `bind_slots`, slot의 `col_type`을 읽는다.
-  구현되지 않았다.
+  `columns`, `key`, `keys`)는 list이고 `null`이 아니다. `packages/rust/src/plan.rs`의 `Plan::to_json`과
+  `Step::to_json`이 코어의 값 `polyspec_orm::plan::Plan`의 형식을 쓴다. 출력 열의 field `typ`은 member `type`이고,
+  step의 field `plan_id`는 member가 아니다. flowmark는 plan의 `steps`, step의 `sql`과 `bind_slots`, slot의
+  `col_type`을 읽는다. plan을 돌려주는 member는 아직 없다.
 - **FMS-41** `runtime_model.compile(request, dialect)`는 `polyspec_orm::engine::compile`처럼 요청을 검증하고 그
   dialect로 plan을 세워 plan을 돌려준다(FMS-40). `dialect`는 `mysql`, `postgres`, `sqlite` 가운데
   하나이고(`Dialect::parse`), 다른 텍스트는 `config`다. 이 member는 `Planner.Compile`을 전달한다. field `M`과 `D`를
@@ -276,8 +277,9 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `orm_value`로 준 요청의 parameter다(CORE-62). 그 형식의 step이 아닌 텍스트는 `config`이고, `params` 안의 list, map,
   JSON 값은 `codec_encode`다. flowmark는 step의 `role`, `sql`, `bind_slots`와 slot의 `from`, `name`, `param`,
   `host_styles`를 쓰고, legacy 모듈의 값이 가진 대로 `id`에는 0을, `tables`에는 빈 list를 준다. flowmark의 시험
-  하나가 이 member를 부른다. 이 member는 `orm`의 `DB.Execute`와 `engine/plan`의 `Step`, `BindSlot`을 전달한다. 구현되지
-  않았다: `Db::execute`는 Rust 값 `Step`과 `Param`을 받으므로 CORE-70이 선언하지 않는다.
+  하나가 이 member를 부른다. 이 member는 `orm`의 `DB.Execute`와 `engine/plan`의 `Step`, `BindSlot`을 전달한다. 이 member는
+  구현되지 않았다. `Db::execute`는 Rust 값 `Step`과 `Param`을 받으므로 CORE-70이 선언하지 않고, `Db::execute_text`는
+  step을 그 JSON 텍스트로, parameter를 `orm_value`로 받는다.
 - **FMS-43** `db.connect_schema(dsn, schema, pool_size, cfg)`는 `Db::connect_schema`처럼 연결하고 `schema`의 집합을
   그 연결에 등록한다. 그 시그니처의 타입은 모두 계약의 타입이다. `ConnectSchema`를 전달한다. field `Hash`와 `Text`를
   가진 legacy 모듈의 struct `Schema`는 class `schema`이고, `schema.load(manifest_text, external_text, manifest_hash)`가
@@ -292,8 +294,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `codec.host_decode(cell, stages, key)`는 `codec::host_decode`처럼 그것을 되돌린다. `codec.blind_index(value, key)`는
   `codec::blind_index`처럼 값의 blind index를 돌려준다. 값과 cell은 `text`, `bytes`, `null` 가운데 하나이고, 다른
   kind는 값이면 `codec_encode`, cell이면 `codec_decode`다. 이 member들은 패키지 `orm`의 `HostEncode`, `HostDecode`,
-  `Decode`, `BlindIndex`를 전달한다. 구현되지 않았다: `packages/rust/src/codec.rs`의 네 함수는 계약의 타입이 아닌
-  Rust 값 `Param`과 `Val`을 받고 돌려준다.
+  `Decode`, `BlindIndex`를 전달한다. 이 member들은 구현되지 않았다. `packages/rust/src/orm_value.rs`의 네 함수는
+  `orm_value`를 받고 돌려주며, Rust 값 `Param`과 `Val`을 받고 돌려주는 `packages/rust/src/codec.rs`의 함수를 부른다.
 - **FMS-51** `NewAESKeyring`은 계약의 member `aes_keyring.constructor(keys, current)`다. flowmark는 keyring 파일의
   key를 판정하려고 그것을 부르고 keyring을 유지하지 않는다.
 
@@ -323,7 +325,7 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 - **FMS-70** 317개 이름 가운데 5개는 계약의 unit이나 member이고(`orm.DB`, `DB.Close`, `orm.Config`, `orm.Schema`,
   `orm.NewAESKeyring`), 255개는 코어에 같은 이름의 item이 있으며, 57개는 없다. 57개 가운데 코어에 없는 것은 없다:
   52개는 다른 이름의 공개 item이고 첫째 표의 행이며, 5개는 공개되지 않았거나 형식이 다른 item이 가지고 있고 둘째
-  표의 행이다. 두 표의 파일은 `packages/rust` 아래에 있다.
+  표의 행이며, 각 행은 그것을 전달하는 FMS-80의 공개 함수를 적는다. 두 표의 파일은 `packages/rust` 아래에 있다.
 
 | Legacy 모듈의 이름 | 코어의 item | 파일 |
 | --- | --- | --- |
@@ -352,17 +354,17 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 | `Model.ManifestText` | `dbspec::Manifest::manifest_text` | `schema/src/dbspec/mod.rs` |
 | `DB.Execute` | `Db::execute` | `src/db.rs` |
 
-| Legacy 모듈의 이름 | 코어의 item | 파일 | member에 필요한 것 |
+| Legacy 모듈의 이름 | 코어의 item | 파일 | 전달하는 것 |
 | --- | --- | --- | --- |
-| `CanonicalLiteral` | token을 받는 `default_literal` | `schema/src/dbspec/literal.rs` | 텍스트를 읽는 함수 |
-| `ValueFunctionUnits` | `value_function_unit` | `src/engine/dialect.rs` | `engine`의 export |
-| `engine/ir`의 `Version` | `IR_VERSION` | `src/engine/validate.rs` | 공개 상수 |
-| `RestoreParts.Where` | `RestoreParts::where_` | `src/engine/validate.rs` | 공개 결과(FMS-34) |
+| `CanonicalLiteral` | token을 받는 `default_literal` | `schema/src/dbspec/literal.rs` | 텍스트를 읽는 `dbspec::canonical_literal` |
+| `ValueFunctionUnits` | `value_function_unit` | `src/engine/dialect.rs` | `engine::value_function_unit` |
+| `engine/ir`의 `Version` | `ir::VERSION` | `src/ir.rs` | `ir::VERSION`, 곧 `polyspec_orm::IR_VERSION` |
+| `RestoreParts.Where` | `RestoreParts::where_` | `src/engine/validate.rs` | `Manifest::restore_key`(FMS-34) |
 | `DiagnosticsError` | 오류를 돌려주는 `diagnostics` | `src/schema.rs` | 없음(FMS-6) |
 
-- **FMS-71** 같은 이름의 item이 언제나 같은 것은 아니다. `ir.Decode`는 `codec::decode`와 이름이 같고, 코어에는
-  요청을 읽는 함수가 없다(FMS-31). `runtimemodel.Build`는 요청을 만드는 `request::build`와 이름이 같고, model은
-  `dbspec::runtime_model`이 만든다. `ir.ParamUses`는 `test-faults`가 있을 때만 빌드된다(FMS-33). `ir.RestoreKey`,
+- **FMS-71** 같은 이름의 item이 언제나 같은 것은 아니다. `ir.Decode`는 `codec::decode`와 이름이 같고, 요청을 읽는 함수는 `Request::from_json`이다(FMS-31). `runtimemodel.Build`는 요청을 만드는 `request::build`와 이름이 같고, model은
+  `dbspec::runtime_model`이 만든다. `ir.ParamUses`는 crate 안에서만 보이는 `engine::param_uses`이고
+  `Manifest::param_uses`가 그것을 부른다(FMS-33). `ir.RestoreKey`,
   `ir.OpAllowed`, `planner.Planner`는 `restore_key`, `op_allowed`, `Planner`이고 각각 crate 안에서만 보인다.
   `PositionTable`과 `PositionConstraint`는 parser의 텍스트 `table`과 `constraint`이고, parser에는 그 상수가 없다.
   `Type.String`은 `Type::render`다.
@@ -371,7 +373,7 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 
 - **FMS-80** member가 이름하는 코어의 함수는 바인딩이 필요 없으므로 계약이 바뀌기 전에 쓰고 시험한다. 그 함수는 아래
   시그니처다. crate `polyspec-orm-schema`의 함수는 자기 형식이 아닌 값을 그 member를 이름하는 텍스트로 알리고, crate
-  `polyspec-orm`의 함수는 `config`로, 요청이면 `ir_invalid`로 알린다. 구현되지 않았다.
+  `polyspec-orm`의 함수는 `config`로, 요청이면 `ir_invalid`로 알린다. 그 함수는 작성되었고, 아직 compile하거나 실행하지 않았다.
 
 ```rust
 // packages/rust/schema/src/dbspec/literal.rs, exported from dbspec
@@ -439,7 +441,9 @@ impl Db {
 }
 ```
 
-- **FMS-81** FMS-80의 함수는 각각 그 함수가 있기 전에는 실패하는 시험을 가진다. 구현되지 않았다.
+- **FMS-81** FMS-80의 함수는 각각 그 함수가 있기 전에는 실패하는 시험을 가진다. 그 시험은
+  `packages/rust/schema/tests/unit/flowmark_surface.rs`와 `packages/rust/tests/unit/flowmark_surface.rs`이고, 아직
+  실행하지 않았다.
   1. 문서: `contracts/fixtures/bench/`의 모든 문서와 `tests/dbspec/canonical.json`의 모든 canonical 텍스트에 대해 `document_to_json`은 `dbspec.schema.json`의 값이고, 그
      값의 `document_from_json`은 `dbspec::emit`의 텍스트, `dbspec::manifest`의 hash, bench 집합에서는 세
      dialect의 `dbspec::render_statements`의 statement도 같은 문서를 준다.
@@ -466,6 +470,5 @@ impl Db {
      `blind_index`는 `codec::blind_index`의 index를 주며, list는 `codec_encode`다.
   10. statement: `Db::execute_text`는 `Manifest::compile`이 쓴 step으로 SQLite 데이터베이스에 행 하나를 넣는다.
 - **FMS-82** `packages/rust/interface.json`에 FMS-7의 unit과 member를 선언하는 일, `contracts/interface/core.json`의
-  그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. FMS-81의 schema 시험에는
-  `polyspec-orm`의 시험에 JSON Schema validator가 필요하고, `polyspec-orm-schema`의 시험은 이미 그것을
-  가진다(`jsonschema`). 구현되지 않았다.
+  그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. FMS-81의 schema 시험은 `polyspec-orm-schema`처럼
+  `polyspec-orm`의 시험 dependency인 `jsonschema`로 schema를 읽는다. 그 선언은 구현되지 않았다.

@@ -1,16 +1,12 @@
 //! The slots that request parameters fill (ParamUses in Go engine/ir/params.go), which the `ir.param_uses` op of the
 //! testing entry point reads (docs/spec/feature-coverage.md FCV-4), and the result types of the functions the planner renders.
 
-#[cfg(feature = "test-faults")]
 use crate::ir;
-#[cfg(feature = "test-faults")]
 use crate::schema::Manifest;
 use crate::Result;
-#[cfg(feature = "test-faults")]
 use polyspec_orm_schema::dbspec::Entity;
 use polyspec_orm_schema::dbspec::Field;
 
-#[cfg(feature = "test-faults")]
 /// One slot that a request parameter fills: the slot's logical type (dbspec type name), and, for a column slot, the column it compares or
 /// writes.
 pub(crate) struct ParamUse<'m> {
@@ -20,7 +16,6 @@ pub(crate) struct ParamUse<'m> {
     pub(crate) assign: bool,
 }
 
-#[cfg(feature = "test-faults")]
 /// For each parameter of the validated request, in parameter order, these slots: the column compared or written, the column function's
 /// result, the interval of relative time functions (seconds as f64, the rest as i32), the text of contains and contains_binary, and the parent
 /// column of if_parent, and the column of optimistic.
@@ -45,13 +40,11 @@ pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Result<Vec<Vec
     Ok(u.out)
 }
 
-#[cfg(feature = "test-faults")]
 struct ParamUses<'m> {
     m: &'m Manifest,
     out: Vec<Vec<ParamUse<'m>>>,
 }
 
-#[cfg(feature = "test-faults")]
 impl<'m> ParamUses<'m> {
     fn add(&mut self, i: usize, ty: String, column: Option<&'m Field>) {
         if let Some(list) = self.out.get_mut(i) {

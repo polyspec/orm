@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d32966be5ec22b1efb1119dc6f91537aab0de773601511ea2a8a7e57df1e9f87 -->
+<!-- source-sha256: 1c5613b190b02b4f0666d12041048e46a4ea3b4fdd114f44c6fc02fadf57b0b7 -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust 코어는 docs/spec/flowmark-surface.md의 JSON surface를 binding이 필요 없는 함수로 쓰고 읽는다(OM-1.5-1, FMS-20부터 FMS-50, FMS-80). `polyspec_orm::dbspec_json`(`read_set`, `read_bytes`, `parse_set`, `manifest`, `emit`, `render_statements`, `canonical_literal`, `runtime_model`), `ir::VERSION`과 `polyspec_orm::IR_VERSION`을 가진 `ir::Request::from_json`, `Plan::to_json`, `Step::to_json`, `Step::from_json`, `Manifest::from_json`, `to_json`, `validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, `engine::value_function_unit`, `orm_value`의 codec 함수 `decode`, `host_encode`, `host_decode`, `blind_index`, `Db::execute_text`다. 형식에 없는 member, `null`인 member, object 뒤의 텍스트를 가진 요청 텍스트는 `ir_invalid`이고, 자기 형식이 아닌 model, step, 문서, dialect는 `config`이며, diagnostic을 찾은 함수는 실패하지 않고 `{"diagnostics": [..]}`를 돌려준다. `engine::param_uses`는 모든 빌드에 들어가고, `testing::param_uses`는 같은 함수의 값을 돌려준다. 그 함수와 packages/rust/tests/unit/flowmark_surface.rs의 case 11개는 아직 compile하거나 실행하지 않았고, 계약은 그 member를 하나도 선언하지 않는다.
 
 - `polyspec_orm_schema::dbspec::json`은 dbspec 값의 JSON 형식을 쓰고 읽으며, `dbspec::canonical_literal`은 텍스트에서 literal을 읽는다(OM-1.5-1, FMS-10부터 FMS-16, FMS-26, FMS-80). 함수는 `type_to_json`과 `type_from_json`, `document_to_json`과 `document_from_json`, `runtime_model_to_json`과 `runtime_model_from_json`, `diagnostic_to_json`과 `position_to_json`이다. 형식에서 읽은 문서는 모든 이름이 기본 위치를 가지고 같은 canonical 텍스트를 가진다. 자기 형식이 아닌 값은 `document.tables[0].engine is no member of the form`처럼 그 member를 이름하는 텍스트로 거부된다. 그 함수와 packages/rust/schema/tests/unit/flowmark_surface.rs의 case 7개는 아직 compile하거나 실행하지 않았다.
 

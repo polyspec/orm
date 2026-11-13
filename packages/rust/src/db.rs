@@ -1468,6 +1468,22 @@ impl Db {
         execute_step(Executor::Db(self.clone()), step, params).await
     }
 
+    /// Runs one statement of a plan that reads no rows, as `execute` does, with the step as the JSON text of its form
+    /// and the parameters as `orm_value` (docs/spec/flowmark-surface.md FMS-42). A text that is no step of the form is
+    /// `config`, and a list, a map or a JSON value among `params` is `codec_encode`.
+    pub async fn execute_text(&self, step: &str, params: Vec<crate::OrmValue>) -> Result<()> {
+        let value: serde_json::Value = serde_json::from_str(step).map_err(|error| Error::config(format!("the step is no JSON text: {error}")))?;
+        let step = Step::from_json(&value)?;
+        let params = params
+            .into_iter()
+            .enumerate()
+            .map(|(index, value)| {
+                value.scalar().map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the parameter {index} of execute is no value of a statement")))
+            })
+            .collect::<Result<Vec<Param>>>()?;
+        self.execute(&step, &params).await
+    }
+
     /// Refuses a statement of a handle whose cancellation has fired, before it is sent (CORE-46).
     pub(crate) fn ensure_not_canceled(&self) -> Result<()> {
         match &self.cancel {
