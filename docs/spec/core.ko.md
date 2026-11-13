@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 09ac67a23e13795e3534b65dd78e2970538bb22336a685d8a31ee1666725a382 -->
+<!-- source-sha256: de76f2f6a0a41fcda9aaeb09b32f690375accbaac7db3d9d2d981ebfe8a9d462 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -100,6 +100,18 @@
 - **CORE-44** 한 PHP 프로세스 안에서는 진행 중인 문장을 취소할 수 없다: 문장이 실행되는 동안 언어 코드는 실행되지
   않는다(CORE-27). 같은 프로세스의 `cancel()`은 그 handle의 다음 문장을 `canceled`로 실패시킨다.
 
+- **CORE-45** `Db::with_cancel(cancel)`은 취소 `cancel`을 가진 같은 pool의 handle을 돌려준다. 호출된 handle의 어떤
+  것도 바꾸지 않는다. 그 handle에 연결된 모델, 그 handle이 시작한 트랜잭션, 그 트랜잭션의 `Tx`는 같은 취소를 가진다.
+  코어에서는 이것이 CFG-9의 네 이름(`WithContext`, `withSignal`, `with_future`, `withCancellation`)을 대신한다.
+  구현되지 않았다.
+- **CORE-46** 취소가 발화한 handle의 문장은 보내기 전에 `canceled`로 실패하고, 트랜잭션의 `BEGIN`도 그렇다. `COMMIT`,
+  `ROLLBACK`, `ROLLBACK TO SAVEPOINT`, `RELEASE SAVEPOINT`는 취소와 관계없이 보내므로 취소된 트랜잭션도 끝난다(CFG-9).
+  구현되지 않았다.
+- **CORE-47** 취소가 발화할 때 진행 중인 문장은 그 서버에서 끝나고 `canceled`로 실패한다: MySQL과 MariaDB는 같은 DSN의
+  제어 연결에서 `KILL QUERY <connection id>`로 끝내고 그 뒤 문장의 연결은 pool로 돌려주지 않고 닫는다. PostgreSQL은
+  protocol의 CancelRequest로, SQLite는 문장을 interrupt하는 progress handler로, markdown 연결은 연결을 닫아서
+  끝낸다(PRT-71). 구현되지 않았다: 그런 문장은 끝까지 실행되어 자기 결과를 돌려준다.
+
 ## 코드 생성
 
 - **CORE-50** dbspec 집합의 엔티티 코드는 코어 함수 하나 `generate(set, language, options)`가 manifest만 읽어 PHP,
@@ -119,6 +131,34 @@
   의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓰고 거기서 `ordered_json`은 알 수 없는 stage다. 그런 값의
   공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
   `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.
+
+## 일반 질의
+
+- **CORE-80** `Schema::load(manifest_text, external_text, manifest_hash)`는 INT-133의 schema 값을 실행 시에 만든다.
+  manifest가 아닌 텍스트는 `schema_invalid`이고 `manifest_hash`로 hash되지 않는 텍스트는 `schema_hash_mismatch`이며,
+  둘 다 어떤 연결보다 앞선다. 프로세스는 불러온 schema의 텍스트를 끝날 때까지 가지며 manifest 텍스트, external 텍스트,
+  hash마다 사본 하나를 둔다. 요청과 cache된 plan이 프로세스의 수명 동안 자기 schema를 가리키기 때문이다. 거부된
+  텍스트는 두지 않는다. 구현되지 않았다.
+- **CORE-81** `Query`는 이름으로 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
+  엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
+  연결이 없는 `Query`의 terminal은 `config`다. 프로세스는 `Query`가 이름한 schema의 엔티티마다 descriptor 하나를
+  가진다. 구현되지 않았다.
+- **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `ServiceSeqGtAndIsClose`)의 조건을 key마다 값
+  하나로 더한다. `And`나 `Or`로 시작하는 이름은 첫 조건을 그 연결어로 앞선 조건에 잇는다. 이름은 crate
+  `polyspec-orm-schema`의 `parse_chain`이 읽으며, 생성된 모델의 chain 이름도 읽는 하나뿐인 함수다. 엔티티의 chain이
+  아닌 이름, 열이 허용하지 않는 연산자, key 수와 다른 값의 수는 `config`이고, 생성된 모델의 builder 오류처럼 다음
+  terminal이 돌려준다. `order_by(spec)`는 `SeqDescAndLabelAsc` 같은 이름의 순서를 더하며 key마다 열과 `Asc`나
+  `Desc`이고, 같은 crate의 `parse_order`가 읽는다. 구현되지 않았다.
+- **CORE-83** terminal `get`, `gets`, `get_count`, `get_query`는 생성된 모델의 terminal처럼 질의를 실행하고,
+  `get_by(chain, values)`, `gets_by(chain, values)`, `get_count_by(chain, values)`는 그 chain의 조건을 `and`로 이어
+  실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
+  `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 돌려준다. 엔티티의 열이 아닌 이름은 `column_unknown`이고
+  행이 읽지 않은 열은 `column_unselected`다. 구현되지 않았다.
+- **CORE-84** 구현되지 않았다: `Query`의 쓰기(`set`, `create`, `creates`, `update`, `save`, `delete`, `restore`,
+  `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, 묶음(`andGroup`, `orGroup`,
+  `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`, `getsPage`,
+  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`. `where`의 값은 `orm_value`(CORE-60)가 생길 때까지 Rust 값
+  `polyspec_orm::core::Arg`다.
 
 ## 인터페이스 계약
 
