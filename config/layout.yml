@@ -37,6 +37,12 @@ rules:
       - "!packages/dbspec-codemirror"
       - "!packages/dbspec-vscode"
 
+  # S5: the root folders of config/layout.kit.yml, and legacy/, which holds the language implementations of Go, PHP, the
+  # PHP extension, Python and TypeScript and the fixed copies of the cases that their tests read, until the Rust core and
+  # its bindings replace them (CORE-1). They leave every release; the step that removes legacy/ (V-6) removes this entry.
+  - id: layout-root-folders
+    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise", "!.claude", "!legacy"]
+
   # S5: the root files of the repository besides those of config/layout.kit.yml: VERSION, the one version of the
   # repository that config/release.json names and the version-bump commit sets, the community health files, which
   # GitHub reads only from the root, .github/ or docs/, each with its Korean twin (K145), and .npmrc, the setting of npm
