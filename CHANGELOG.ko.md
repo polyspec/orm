@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4946b302c97a76d6964a5e9a8324540788b721cade6943454f4cb74c4f4fe0b1 -->
+<!-- source-sha256: 5ee9657d11f3ad33c5f0b4fc108e14f881635aa02b2c94443578b937554b3d9f -->
 # 변경 이력
 
 ## Unreleased
 
+- docs/spec/core.md가 PHP `Cancellation`의 상태 파일을 전부 정한다(OM-5.2-2, CORE-41~CORE-43, CORE-106~CORE-110). 구현되지 않았다고 표시한다: 임시 이름 `.<random>.tmp`와 이름 `orm-cancel-<random>`, 바이트 0의 표시 `0`이나 `1`, 진행 중인 문장마다 JSON 한 줄, 모든 연산이 가지는 lock 파일 `<state file>.lock`, 두 파일의 정리, fork된 자식, 실패의 kind `config`, 코어의 취소를 발화시키는 표시 읽기다. 이 형식은 한 버전의 비공개 형식이고 legacy 형식을 대신하며, CORE-110은 legacy 형식을 읽거나 쓰는 legacy 코드를 적는다.
 - `make docs-rules-check`는 style 목록의 한국어 항목을 어절의 시작에서만 찾는다(T456). 검사는 한국어 항목을 단어의 일부로 읽어 `낸다`를 `끝낸다`에서, `유도`를 `이유도`에서, `답한다`를 `응답한다`에서 찾았다. scripts/docs/style-words.mts의 `styleEntryPattern`이 두 언어의 규칙을 정하고, docs/operations/document-rules.md가 그 규칙을 설명하며, target은 그 단위 시험을 먼저 실행한다. docs/operations/remediation-plan.ko.md, docs/spec/core.ko.md, 체크리스트의 한국어 문장 다섯은 더 긴 단어 안의 항목 때문에만 바꾼 단어를 원래대로 가진다.
 - `make docs-rules-check`가 통과한다(T454). contracts/rules.json의 `docs.writing-style` 목록에서 `contract`와 그 한국어 단어를 뺐다: `interface contract`는 AGENTS.md와 docs/spec/core.md가 쓰는 binding 설계의 용어이고, 목록에 그 단어가 있는 이유를 적은 기록이 없었다. docs/operations/document-rules.md는 목록에 넣는 단어와 이 단어들이 목록에 없는 이유를 적는다. docs/operations/packaging.md는 `polyspec-binding-core`의 type을 `boundary` 없이 이름하고, 한국어 문서 6개의 한국어 문장 23개는 목록의 항목이 더 긴 단어의 일부였던 곳에 다른 단어를 쓴다.
 - `make test-php`는 시험 전에 SQLite cancellation helper와 PHP model을 만들고, `RequestHookTest`는 case마다 자기 process에서 실행한다(T453). `QueryCancellationTest`는 새 checkout에서 `SQLite cancellation helper for darwin-arm64 is not installed in the polyspec/orm package`로 실패했다. `RequestHookTest`는 request hook recipe 뒤에 `CONFIG: entity hook_item of manifest ... is generated as both`로 실패했다. registry는 manifest의 엔티티마다 class 하나만 가지기 때문이다.

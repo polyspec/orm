@@ -101,20 +101,75 @@ the core that differ from the rules that the language implementations of `legacy
 
 - **CORE-40** The cancellation of the core is one rule. A cancelled statement ends with `canceled`; the rollback of a
   transaction is not cancelled (CFG-9).
-- **CORE-41** The PHP `Cancellation` keeps its state in a state file that other processes share. Its directory is a
-  required argument. The state file is created under a temporary name that the cleanup never reads, with
-  `O_CREAT | O_EXCL | O_CLOEXEC` and mode `0600`; its owner takes `flock(LOCK_SH)` on it and only then renames it to the
-  name of a state file, so every state file that the cleanup sees is already locked by its owner. The owner keeps the lock
-  while the file lives and removes the file when it is dropped.
-- **CORE-42** Creating a `Cancellation` removes every state file of its directory on which `flock(LOCK_EX | LOCK_NB)`
-  succeeds, since no owner holds it. A file on which the lock fails with `EWOULDBLOCK` has an owner and is kept; any other
-  failure is an error.
-- **CORE-43** A state file holds the mark byte (`0` not cancelled, `1` cancelled) followed by one record per statement in
-  progress: the database and what ends the statement on its server (the MySQL connection id, the PostgreSQL backend pid and
-  secret key). A statement writes its record when it starts and removes it when it ends. `cancel()` writes the mark and
-  ends every recorded statement with a control connection of its own process.
+- **CORE-41** The PHP `Cancellation` keeps its state in a state file that the processes of one request tree share: the
+  process that creates it, its owner, and the children that the owner forks. The state file is the private format of one
+  orm version: no other version and no other program reads it, and it is not the format of the legacy clients
+  (CORE-110). Its directory is a required argument. The owner creates the file under the temporary name `.<random>.tmp`
+  of that directory, which the cleanup never reads, exclusively (`O_CREAT | O_EXCL | O_CLOEXEC`) and with mode `0600`
+  before anything is written to it; `<random>` is 32 lowercase hexadecimal digits from the random source of the system.
+  The owner writes the mark `0` and a line feed, takes `flock(LOCK_SH)` on the file and only then renames it to
+  `orm-cancel-<random>`, the name of a state file, so every state file that the cleanup sees is already locked by its
+  owner. The owner keeps that lock, the lifetime lock, while the file lives: it is never upgraded and never released
+  before the drop. A failed step removes the temporary file and is an error of kind `config`. A process that ends
+  between the creation and the rename leaves its temporary file, and no cleanup removes it.
+- **CORE-42** Creating a `Cancellation` first cleans its directory. The cleanup reads the entries named
+  `orm-cancel-<random>` and `orm-cancel-<random>.lock` and no other entry. It opens each state file and tries
+  `flock(LOCK_EX | LOCK_NB)`. When the lock succeeds no process holds the lifetime lock, so the cleanup removes the
+  state file and then its lock file. A file on which the lock fails with `EWOULDBLOCK` has an owner and is kept; a file
+  that another cleanup removed between the listing and the open is passed over; any other failure is an error of kind
+  `config`. The cleanup then removes each lock file whose state file does not exist.
+- **CORE-43** A state file is text. Byte 0 is the mark, the ASCII digit `0` (not cancelled) or `1` (cancelled), and byte
+  1 is a line feed; any other mark is an error of kind `config`. After them the file holds one record per statement in
+  progress, a JSON object on a line of its own. That a statement is in progress is the presence of its record, not a
+  value of the mark. A record holds `statement` (32 random hexadecimal digits that identify the record), `process` (the
+  id of the process that runs the statement), `driver`, `database` (the SHA-256 of the DSN of the handle in hexadecimal,
+  so the file holds no DSN and no password) and what ends the statement on its server: `connection`, the MySQL or
+  MariaDB connection id, or `backend` and `secret`, the PostgreSQL backend pid and secret key. A SQLite or markdown
+  record holds neither. A statement of a handle that carries a `Cancellation` writes its record before it is sent and
+  removes it when it ends, after a success, a failure and an exception alike. A line that is no such object is an error
+  of kind `config`.
 - **CORE-44** In one PHP process a statement in progress cannot be cancelled: language code never runs while a
   statement runs (CORE-27). A `cancel()` in the same process makes the next statement of the handle fail with `canceled`.
+- **CORE-106** Every operation that reads or writes the mark or a record holds `flock(LOCK_EX)` on the lock file `<state
+  file>.lock` for that operation only, because a regular file has no write of any size that another process cannot see
+  half done. The operations are the start and the end of a statement, `cancel()`, the read of the mark before a
+  statement and the read of the mark by the SQLite progress handler. An operation opens the lock file with `O_CREAT |
+  O_CLOEXEC` and mode `0600`, so the first operation creates it. After it holds the lock it opens the state file by its
+  name, and a missing state file is an error of kind `config`. The lock file is the only lock that an operation takes:
+  no operation takes or changes a lock on the state file, and the lifetime lock is no part of the mutual exclusion. The
+  mark is written at offset 0 with one positioned write of one byte. The records are written by replacing the bytes
+  after byte 1 and truncating the file to its new length.
+- **CORE-107** `cancel()` holds the lock of CORE-106, writes the mark `1` and ends the recorded statements. For each
+  record whose `database` is that of a handle of its process that carries this `Cancellation`, it opens a control
+  connection with the DSN of that handle and sends `KILL QUERY <connection>` or the CancelRequest of `backend` and
+  `secret`. A record whose `database` no handle of the process has is left: its statement runs to its end, and the next
+  statement of its handle fails with `canceled`. A SQLite statement ends by its own progress handler, which reads the
+  mark (CORE-47). A markdown statement is ended only by a process that holds the socket of its session, the owner or a
+  child that was forked after the session opened, which shuts the socket down (PRT-71). A second `cancel()` changes
+  nothing. The record of a process that ended without removing it stays in the file, and `cancel()` sends what that
+  record names: a MySQL connection id that the server has given to a later session of the same user ends the statement
+  of that session.
+- **CORE-108** A `Cancellation` records the process id of its owner. When the owner drops it, the owner takes the lock
+  of CORE-106, removes the state file and then the lock file, and closes its descriptors. A forked child holds the same
+  object. It reads and writes through the lock file as the owner does, with descriptors that it opens itself, and when
+  it drops the object or ends, it removes neither file. The lifetime lock belongs to the open file description, which a
+  forked child inherits, so the cleanup keeps the state file until the owner and every such child have closed it. After
+  the owner removed the file, an operation of a child is an error of kind `config`.
+- **CORE-109** Every failure of creating, locking, reading or writing a state file or a lock file is an error of kind
+  `config` whose message names the step and the path. The PHP binding joins a `Cancellation` to the cancellation of the
+  core: `Db::with_cancel` with a `Cancellation` gives the handle one cancel value of the core for each `Cancellation`
+  and process, and before each statement of that handle the binding reads the mark and, when it is `1`, fires that
+  value, so the statement fails as CORE-46 states.
+- **CORE-110** This format replaces the format of the legacy PHP clients, whose state file is one flags byte and one
+  byte for each connection slot, and no implementation reads both. Every reader and writer of the legacy format changes
+  with the first implementation: `legacy/packages/php/src/Cancellation.php`; `send` of `legacy/packages/php/src/Db.php`,
+  which starts and ends a statement and hands the path and the slot to the SQLite helper;
+  `legacy/packages/php/src/SqliteCancellation.php` and `legacy/packages/php/src/native/sqlite_cancel.c`, which reads the
+  flags byte and the slot byte without a lock; the native class of `legacy/packages/php-ext/src/native_classes.c`, a
+  second implementation of the same class; `legacy/packages/php-ext/src/db.c`, which calls `statePath` and
+  `registerCancelQuery` and holds the slot; and `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`, which
+  compares the bytes of the file. Not implemented: no code follows the rules from CORE-41 to CORE-43 and from CORE-106
+  to CORE-109, and the legacy clients write their own format.
 
 - **CORE-45** `Db::with_cancel(cancel)` returns a handle of the same pool that carries the cancellation `cancel`; it
   changes nothing of the handle it is called on. A model that is connected to the handle, a transaction that the handle

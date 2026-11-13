@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 808be8209b6c292bb46882357298456e26505a8a52b50a25cb1f76dc9cab572a -->
+<!-- source-sha256: a122ae8563bd659cab35f968be7f0488e0019af37a048e011b0112f0c754fb41 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -89,17 +89,49 @@
 ## 취소
 
 - **CORE-40** 코어의 취소 규칙은 하나다. 취소된 문장은 `canceled`로 끝나고, 트랜잭션의 롤백은 취소하지 않는다(CFG-9).
-- **CORE-41** PHP `Cancellation`은 다른 프로세스와 공유하는 상태 파일에 상태를 둔다. 그 디렉터리는 필수 인자다. 상태
-  파일은 정리가 읽지 않는 임시 이름을 붙여 `O_CREAT | O_EXCL | O_CLOEXEC`, mode `0600`으로 만들고, 주인이 `flock(LOCK_SH)`를
-  얻은 뒤에야 상태 파일의 이름이 되게 rename한다. 그래서 정리가 보는 상태 파일은 늘 주인이 잠근 것이다. 주인은 파일의 수명
-  동안 잠금을 쥐고, 소멸할 때 파일을 지운다.
-- **CORE-42** `Cancellation`을 만들 때 그 디렉터리의 상태 파일 중 `flock(LOCK_EX | LOCK_NB)`가 성공하는 것을 모두 지운다.
-  주인이 없기 때문이다. 잠금이 `EWOULDBLOCK`으로 실패한 파일은 주인이 있으므로 둔다. 그 밖의 실패는 오류다.
-- **CORE-43** 상태 파일은 표시 바이트(`0` 취소 안 됨, `1` 취소됨)와 그 뒤 진행 중인 문장마다 레코드 하나를 담는다:
-  데이터베이스와 서버에서 그 문장을 끝내는 정보(MySQL connection id, PostgreSQL backend pid와 secret key). 문장은 시작할
-  때 레코드를 쓰고 끝날 때 지운다. `cancel()`은 표시를 쓰고 기록된 모든 문장을 자기 프로세스의 제어 연결로 끝낸다.
+- **CORE-41** PHP `Cancellation`은 한 요청 tree의 프로세스들이 공유하는 상태 파일에 상태를 가진다: 그 프로세스는 파일을 만든 프로세스인 주인과 주인이 fork한 자식이다. 상태 파일은
+  orm 한 버전의 비공개 형식이다: 다른 버전이나 다른 프로그램은 그 파일을 읽지 않으며, legacy client의 형식이 아니다(CORE-110). 디렉터리는 필수 인자다. 주인은 그 디렉터리에 정리가 읽지
+  않는 임시 이름 `.<random>.tmp`를 써서 파일을 배타적으로(`O_CREAT | O_EXCL | O_CLOEXEC`) 만들고, 파일에 무엇을 쓰기 전에 mode를 `0600`으로 한다.
+  `<random>`은 시스템의 난수원에서 얻은 소문자 16진수 32자리다. 주인은 표시 `0`과 line feed를 쓰고 파일에 `flock(LOCK_SH)`를 얻은 뒤에야 상태 파일의 이름인
+  `orm-cancel-<random>`으로 rename한다. 그래서 정리가 보는 상태 파일은 늘 주인이 잠근 것이다. 주인은 그 잠금, 곧 수명 잠금을 파일이 있는 동안 가진다: 수명 잠금은 upgrade되지
+  않고 drop 전에 풀리지 않는다. 실패한 단계는 임시 파일을 지우고 kind `config`의 오류다. 생성과 rename 사이에 끝난 프로세스는 임시 파일을 남기며, 어떤 정리도 그 파일을 지우지 않는다.
+- **CORE-42** `Cancellation`을 만들면 먼저 그 디렉터리를 정리한다. 정리는 이름이 `orm-cancel-<random>`과 `orm-cancel-<random>.lock`인 항목만 읽는다.
+  정리는 상태 파일마다 파일을 열고 `flock(LOCK_EX | LOCK_NB)`를 시도한다. 잠금이 성공하면 수명 잠금을 가진 프로세스가 없으므로 정리는 상태 파일을 지우고 이어서 그 lock 파일을 지운다.
+  잠금이 `EWOULDBLOCK`으로 실패한 파일은 주인이 있으므로 남긴다. 목록을 읽은 뒤 열기 전에 다른 정리가 지운 파일은 건너뛴다. 그 밖의 실패는 kind `config`의 오류다. 정리는 그다음 상태
+  파일이 없는 lock 파일을 각각 지운다.
+- **CORE-43** 상태 파일은 text다. 바이트 0은 표시로, ASCII 숫자 `0`(취소 안 됨)이나 `1`(취소됨)이고, 바이트 1은 line feed다. 그 밖의 표시는 kind `config`의
+  오류다. 그 뒤에 파일은 진행 중인 문장마다 레코드 하나를 가지며, 레코드는 한 줄을 차지하는 JSON object다. 문장이 진행 중이라는 사실은 표시의 값이 아니라 그 레코드가 있다는 것이다. 레코드는
+  `statement`(레코드를 식별하는 무작위 16진수 32자리), `process`(문장을 실행하는 프로세스의 id), `driver`, `database`(handle의 DSN의 SHA-256을 16진수로 쓴
+  값이므로 파일은 DSN도 password도 가지지 않는다)와 서버에서 그 문장을 끝내는 정보를 가진다: 그 정보는 MySQL이나 MariaDB의 connection id인 `connection`, 또는
+  PostgreSQL의 backend pid와 secret key인 `backend`와 `secret`이다. SQLite나 markdown의 레코드는 그 정보를 가지지 않는다. `Cancellation`을 가진
+  handle의 문장은 전송되기 전에 레코드를 쓰고, 성공이든 실패든 exception이든 끝날 때 레코드를 지운다. 그런 object가 아닌 줄은 kind `config`의 오류다.
 - **CORE-44** 한 PHP 프로세스 안에서는 진행 중인 문장을 취소할 수 없다: 문장이 실행되는 동안 언어 코드는 실행되지
   않는다(CORE-27). 같은 프로세스의 `cancel()`은 그 handle의 다음 문장을 `canceled`로 실패시킨다.
+- **CORE-106** 표시나 레코드를 읽거나 쓰는 모든 연산은 그 연산 동안만 lock 파일 `<state file>.lock`에 `flock(LOCK_EX)`를 가진다. 일반 파일에는 다른 프로세스가 절반만
+  쓰인 상태를 볼 수 없는 크기의 쓰기가 없기 때문이다. 그 연산은 문장의 시작과 끝, `cancel()`, 문장 전의 표시 읽기, SQLite progress handler의 표시 읽기다. 연산은 lock 파일을
+  `O_CREAT | O_CLOEXEC`와 mode `0600`으로 열므로 첫 연산이 lock 파일을 만든다. 연산은 잠금을 얻은 뒤 상태 파일을 그 이름을 써서 열고, 상태 파일이 없으면 kind
+  `config`의 오류다. lock 파일은 연산이 얻는 유일한 잠금이다: 어떤 연산도 상태 파일의 잠금을 얻거나 바꾸지 않으며, 수명 잠금은 상호 배제에 쓰이지 않는다. 표시는 offset 0에 한 바이트의
+  positioned write 한 번으로 쓴다. 레코드는 바이트 1 뒤의 바이트를 바꾸고 파일을 새 길이로 truncate해서 쓴다.
+- **CORE-107** `cancel()`은 CORE-106의 잠금을 가지고 표시 `1`을 쓴 뒤 기록된 문장을 끝낸다. `database`가 자기 프로세스에서 이 `Cancellation`을 가진 handle의
+  것과 같은 레코드마다, `cancel()`은 그 handle의 DSN으로 제어 연결을 열고 `KILL QUERY <connection>`이나 `backend`와 `secret`의 CancelRequest를
+  전송한다. 그 프로세스의 어떤 handle도 가지지 않은 `database`의 레코드는 그대로 남는다: 그 문장은 끝까지 실행되고, 그 handle의 다음 문장이 `canceled`로 실패한다. SQLite
+  문장은 표시를 읽는 자기 progress handler로 끝난다(CORE-47). markdown 문장은 그 session의 socket을 가진 프로세스, 곧 주인이나 session이 열린 뒤에 fork된 자식만
+  끝낼 수 있고, 그 프로세스는 socket을 shutdown한다(PRT-71). 두 번째 `cancel()`은 아무것도 바꾸지 않는다. 레코드를 지우지 않고 끝난 프로세스의 레코드는 파일에 남고,
+  `cancel()`은 그 레코드가 적은 대상에 전송한다: 서버가 같은 사용자의 나중 session에 준 MySQL connection id는 그 session의 문장을 끝낸다.
+- **CORE-108** `Cancellation`은 주인의 프로세스 id를 기록한다. 주인이 그것을 drop하면 주인은 CORE-106의 잠금을 얻고, 상태 파일을 지우고 이어서 lock 파일을 지운 뒤 자기
+  descriptor를 닫는다. fork된 자식은 같은 object를 가진다. 자식은 주인처럼 lock 파일을 거쳐 읽고 쓰되 자기가 연 descriptor를 쓰며, object를 drop하거나 끝날 때 두 파일
+  중 어느 것도 지우지 않는다. 수명 잠금은 open file description에 속하고 fork된 자식은 그것을 상속하므로, 정리는 주인과 그런 자식이 모두 그것을 닫을 때까지 상태 파일을 남긴다. 주인이
+  파일을 지운 뒤 자식의 연산은 kind `config`의 오류다.
+- **CORE-109** 상태 파일이나 lock 파일의 생성, 잠금, 읽기, 쓰기의 모든 실패는 kind `config`의 오류이고 메시지는 단계와 경로를 적는다. PHP binding은
+  `Cancellation`을 코어의 취소와 잇는다: `Cancellation`을 받은 `Db::with_cancel`은 `Cancellation`과 프로세스마다 코어의 cancel 값 하나를 handle에 주고,
+  binding은 그 handle의 문장마다 그 전에 표시를 읽어 `1`이면 그 값을 발화시킨다. 그래서 그 문장은 CORE-46대로 실패한다.
+- **CORE-110** 이 형식은 legacy PHP client의 형식을 대신하며, 두 형식을 모두 읽는 구현은 없다. legacy의 상태 파일은 flags 바이트 하나와 connection slot마다 바이트
+  하나다. legacy 형식을 읽거나 쓰는 모든 코드는 첫 구현과 함께 바뀐다: `legacy/packages/php/src/Cancellation.php`; 문장을 시작하고 끝내며 경로와 slot을 SQLite
+  helper에 주는 `legacy/packages/php/src/Db.php`의 `send`; `legacy/packages/php/src/SqliteCancellation.php`와, flags 바이트와
+  slot 바이트를 잠금 없이 읽는 `legacy/packages/php/src/native/sqlite_cancel.c`; 같은 class의 두 번째 구현인
+  `legacy/packages/php-ext/src/native_classes.c`의 native class; `statePath`와 `registerCancelQuery`를 호출하고 slot을 가진
+  `legacy/packages/php-ext/src/db.c`; 파일의 바이트를 비교하는 `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`.
+  구현되지 않았다: CORE-41~CORE-43과 CORE-106~CORE-109의 규칙을 따르는 코드는 없고, legacy client는 자기 형식을 쓴다.
 
 - **CORE-45** `Db::with_cancel(cancel)`은 취소 `cancel`을 가진 같은 pool의 handle을 돌려준다. 호출된 handle의 어떤
   것도 바꾸지 않는다. 그 handle에 연결된 모델, 그 handle이 시작한 트랜잭션, 그 트랜잭션의 `Tx`는 같은 취소를 가진다.
