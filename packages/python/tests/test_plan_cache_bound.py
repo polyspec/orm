@@ -176,7 +176,8 @@ class PlanCacheBoundTest(unittest.TestCase):
                 self.assertEqual(params, ["where", page * 20, 20])
                 cached = db.plan(planned)
                 step = cached["plan"]["steps"][0]
-                expected = [0, 1, 2] if driver == "mysql" else [0, 2, 1]
+                # Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                expected = [0, 2, 1]
                 self.assertEqual(
                     [slot["param"] for slot in step["bind_slots"]], expected
                 )

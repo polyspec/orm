@@ -425,14 +425,9 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 				sb.WriteString(p.D.Limit(0, 1))
 			case q.Limit != nil:
 				if q.Limit.OffsetP != nil && q.Limit.CountP != nil {
-					var offset, count string
-					if p.D.Name() == "mysql" {
-						offset = b.param(*q.Limit.OffsetP, "i64")
-						count = b.param(*q.Limit.CountP, "i64")
-					} else {
-						count = b.param(*q.Limit.CountP, "i64")
-						offset = b.param(*q.Limit.OffsetP, "i64")
-					}
+					// Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+					count := b.param(*q.Limit.CountP, "i64")
+					offset := b.param(*q.Limit.OffsetP, "i64")
 					sb.WriteString(p.D.LimitParams(offset, count))
 				} else {
 					sb.WriteString(p.D.Limit(q.Limit.Offset, q.Limit.Count))

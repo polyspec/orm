@@ -401,13 +401,9 @@ impl<'m> Planner<'m> {
         match limit {
             ir::Limit::Literal { offset, count } => Ok(self.d.limit(*offset, *count)),
             ir::Limit::Params { offset_p, count_p } => {
-                let (offset, count) = if self.d == Dialect::MySql {
-                    (b.param(*offset_p, "i64"), b.param(*count_p, "i64"))
-                } else {
-                    let count = b.param(*count_p, "i64");
-                    let offset = b.param(*offset_p, "i64");
-                    (offset, count)
-                };
+                // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                let count = b.param(*count_p, "i64");
+                let offset = b.param(*offset_p, "i64");
                 Ok(self.d.limit_params(&offset, &count))
             }
         }

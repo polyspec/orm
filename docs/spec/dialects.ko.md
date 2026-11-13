@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 137f43bbe95a71112490ff7107da5ce8f23dea0690719063ba5bcfe888914382 -->
+<!-- source-sha256: 0f4a12d004ee29d02ce00474ac1a7194abdb7411d0f23e279155188c0fbb1c3e -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -196,7 +196,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
-- **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`
+- **DIA-3** LIMIT — 모든 dialect(MySQL 8.0.2+와 MariaDB, PostgreSQL 12+, SQLite 3.46+): `LIMIT n OFFSET off`. 그래서 count가 offset보다 먼저 bind되고, paged read의 bind slot은 모든 database에서 한 순서를 갖는다
 - **DIA-4** `Lk` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `F(col) LIKE F(?)`, F는 `A`–`Z` 각각을 소문자로 바꾸는 `REPLACE` 26겹: column의 `utf8mb4_0900_bin`은 code point로 비교하고, `LOWER`나 `_ci` collation은 ASCII 밖까지 접는다(probe `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`); PostgreSQL 12+: `COLLATE "C"` 아래의 `ILIKE`(probe `postgres.ilike.c_collation_ascii_only`); SQLite 3.46+: `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음, probe `sqlite.like.ascii_only`)
 - **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.binary_collation_code_point`): `LIKE` (binary collation `utf8mb4_0900_bin`, code point로 비교한다. `LIKE BINARY`는 MySQL 8.0.27부터 deprecated다. probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
 - **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, 값은 그대로 bind한다. 두 함수 모두 항 주변의 공백을 건너뛰기 때문이다. boolean 값은 transform `fulltext_text`(PRT-32)로 bind한다. 이 transform은 값을 바꾸지 않고, MySQL transform의 항 기준으로 항이 없는 값을 `IR_INVALID`로 실패시킨다. 그래서 빈 boolean 검색은 두 server에서 한 답이다; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)

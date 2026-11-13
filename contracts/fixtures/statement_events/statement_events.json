@@ -198,7 +198,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1"
+                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 1 OFFSET 0"
                         }
                       ],
                       [
@@ -290,7 +290,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1"
+                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 1 OFFSET 0"
                         }
                       ],
                       [
@@ -389,7 +389,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1"
+                          "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 1 OFFSET 0"
                         }
                       ],
                       [

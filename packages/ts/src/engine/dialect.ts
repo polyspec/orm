@@ -178,7 +178,7 @@ const mysql: Dialect = {
   quote: ident => quoteWith('`', ident),
   placeholder: () => '?',
   like: (col, ph) => `${asciiLower(col)} LIKE ${asciiLower(ph)}`,
-  limit: (offset, count) => ` LIMIT ${offset}, ${count}`,
+  limit: (offset, count) => ` LIMIT ${count} OFFSET ${offset}`,
   forceIndex: name => ` FORCE INDEX (${quoteWith('`', name)})`,
   insertReturningId: false,
   upsert: (_, assigns) => ` ON DUPLICATE KEY UPDATE ${assigns}`,

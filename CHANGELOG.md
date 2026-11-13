@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Breaking (0.x): MySQL and MariaDB render a paged read as `LIMIT n OFFSET off`, as PostgreSQL and SQLite do (T426-7, DIA-3), in the planner of every runtime. The count binds before the offset on every database, so the bind slots of a plan, the binds of `getQuery` and the statement events have one order; before, MySQL rendered `LIMIT off, n` and bound the offset first. The rows read are unchanged.
+
 ## 0.0.33
 
 - The request hook of TypeScript and Rust may be asynchronous, and the client awaits it before it plans the request (T441, INT-78). TypeScript `RequestHook` returns the request or a promise of it; Rust `RequestHook` returns a `HookFuture`, which the client awaits, so `with_request_hook` takes `|r, p| Box::pin(async move { ...; Ok(()) })` (breaking in 0.x). A hook of every client can so read on a second connection, with a row lock, before the client plans the request: the shared cases of `contracts/fixtures/request_hook` run such a read in six runtimes on five databases, where MySQL and PostgreSQL refuse a held row with `LOCK_NOT_AVAILABLE` and SQLite and flowmark end the second writer with `CANCELED` at the busy timeout (DIA-221). A hook action that a recipe helper does not know now fails in Go, as in the other runtimes.

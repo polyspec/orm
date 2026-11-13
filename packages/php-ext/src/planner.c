@@ -2525,16 +2525,9 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
                     zend_string *type = zend_string_init("i64", sizeof("i64") - 1, 0);
                     zend_string *empty = ZSTR_EMPTY_ALLOC();
                     zend_string *offset, *count;
-                    zval name_rv;
-                    zval *name = zend_read_property(Z_OBJCE_P(c->dialect), Z_OBJ_P(c->dialect), "name", sizeof("name") - 1, 0, &name_rv);
-                    bool mysql = name != NULL && Z_TYPE_P(name) == IS_STRING && zend_string_equals_literal(Z_STR_P(name), "mysql");
-                    if (mysql) {
-                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
-                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
-                    } else {
-                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
-                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
-                    }
+                    /* Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3). */
+                    count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
+                    offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
                     zend_string_release(type);
                     zend_string_release(empty);
                     if (offset == NULL || count == NULL) return NULL;

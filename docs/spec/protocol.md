@@ -168,7 +168,7 @@ An `insert` with a `where` writes its rows only when a condition holds for them.
 {
   "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
-    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20", "tables": ["author", "service"],
+    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 20 OFFSET 0", "tables": ["author", "service"],
      "bind_slots": [{"from": "param", "param": 0}],
      "assemble": {"entity": "author", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],

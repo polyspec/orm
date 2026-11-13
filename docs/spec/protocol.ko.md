@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 3c5eaf397189dc4f422c6b2a1b2eaedf568145fb5314de7583b58f85d01c5543 -->
+<!-- source-sha256: 577abec844c2983b544860fddca972172e6ac4f1dfbf73626aac362b695a3d4e -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -169,7 +169,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 {
   "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
-    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20", "tables": ["author", "service"],
+    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 20 OFFSET 0", "tables": ["author", "service"],
      "bind_slots": [{"from": "param", "param": 0}],
      "assemble": {"entity": "author", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],

@@ -172,8 +172,8 @@ step 0  query   (root with three IN subqueries; no filter joins or grouping)
          OR `a`.`seq` IN (SELECT `s3`.`product_seq` FROM `product_lang` AS `s3`
                           WHERE MATCH(`s3`.`name`, `s3`.`short_description`, `s3`.`content`) AGAINST (? IN BOOLEAN MODE)))
   ORDER BY `a`.`like_count` DESC, `a`.`seq` DESC
-  LIMIT ?, ?
-  binds: [cat1, cat2, cat3, cat3, service_seq, 0, 1, 1, 0, kw', kw', kw', offset, 20]
+  LIMIT ? OFFSET ?
+  binds: [cat1, cat2, cat3, cat3, service_seq, 0, 1, 1, 0, kw', kw', kw', 20, offset]
          (kw' = keyword converted by the boolean full-text rule to "+w1 +w2*")
 
 step 0c count  SELECT COUNT(*) FROM `product` AS `a` WHERE … same conditions (without ORDER/LIMIT), requested by getsPage

@@ -75,7 +75,7 @@ func TestSelectAll(t *testing.T) {
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
 		// MySQL also does not decode hex in SQL: the executor reads it correctly with HostDecode (docs/spec/codec.md).
 		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
-		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 100 OFFSET 0",
 	}
 	for _, w := range wantParts {
 		if !strings.Contains(sql, w) {
@@ -118,7 +118,7 @@ func TestRowLock(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author","lock":"update","limit":{"offset":0,"count":1}`)
-	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 0, 1 FOR UPDATE") {
+	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 1 OFFSET 0 FOR UPDATE") {
 		t.Fatalf("mysql row lock: %s", p.Steps[0].SQL)
 	}
 
@@ -193,7 +193,7 @@ func TestWrites(t *testing.T) {
 		t.Errorf("delete: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"paginate","entity":"author","where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":2}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":20}`)
-	if len(p.Steps) != 2 || p.Steps[1].Role != "count" || !strings.HasPrefix(p.Steps[1].SQL, "SELECT COUNT(*)") || !strings.HasSuffix(p.Steps[0].SQL, "LIMIT 20, 20") {
+	if len(p.Steps) != 2 || p.Steps[1].Role != "count" || !strings.HasPrefix(p.Steps[1].SQL, "SELECT COUNT(*)") || !strings.HasSuffix(p.Steps[0].SQL, "LIMIT 20 OFFSET 20") {
 		t.Errorf("paginate: %+v", p.Steps)
 	}
 }
@@ -418,7 +418,7 @@ func TestRelations(t *testing.T) {
 	}
 	main := p.Steps[0]
 	// mode none = PK + FK; is_close is added because the user relation's if_parent needs it
-	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`is_close` AS `a__is_close`, `service`.`seq` AS `service__seq`, `service`.`name` AS `service__name` FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20"; main.SQL != want {
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`is_close` AS `a__is_close`, `service`.`seq` AS `service__seq`, `service`.`name` AS `service__name` FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 20 OFFSET 0"; main.SQL != want {
 		t.Errorf("main:\n got  %s\n want %s", main.SQL, want)
 	}
 	// step 1: user rows for the authors (parent index 1 = user_seq), only for closed authors
