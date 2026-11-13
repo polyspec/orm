@@ -2822,6 +2822,92 @@
             "path": "polyspec_orm::Query::for_share_no_wait",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.add_all_columns",
+          "name": [
+            "add",
+            "all",
+            "columns"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::add_all_columns",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.remove_all_columns",
+          "name": [
+            "remove",
+            "all",
+            "columns"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::remove_all_columns",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.add_column",
+          "name": [
+            "add",
+            "column"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::add_column",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.remove_column",
+          "name": [
+            "remove",
+            "column"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::remove_column",
+            "receiver": "&mut self"
+          }
         }
       ]
     }
@@ -2922,6 +3008,26 @@
       "member": "query.for_share_no_wait",
       "file": "contracts/interface/core.json",
       "group": "query.for_share_no_wait"
+    },
+    {
+      "member": "query.add_all_columns",
+      "file": "contracts/interface/core.json",
+      "group": "query.add_all_columns"
+    },
+    {
+      "member": "query.remove_all_columns",
+      "file": "contracts/interface/core.json",
+      "group": "query.remove_all_columns"
+    },
+    {
+      "member": "query.add_column",
+      "file": "contracts/interface/core.json",
+      "group": "query.add_column"
+    },
+    {
+      "member": "query.remove_column",
+      "file": "contracts/interface/core.json",
+      "group": "query.remove_column"
     },
     {
       "alias": "orm_value",

@@ -138,6 +138,49 @@ impl Query {
         self.core.lock("share_nowait");
     }
 
+    /// Reads every column of the entity (CORE-87).
+    pub fn add_all_columns(&mut self) {
+        self.core.add_all_columns();
+    }
+
+    /// Reads only the columns of the primary key and of the foreign keys (CORE-87).
+    pub fn remove_all_columns(&mut self) {
+        self.core.remove_all_columns();
+    }
+
+    /// Adds the column `column` to the columns that a row reads (CORE-87). A name that is no column of the entity is
+    /// `config` at the next terminal.
+    pub fn add_column(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.add_column(column);
+        }
+    }
+
+    /// Removes the column `column` from the columns that a row reads (CORE-87). A name that is no column of the entity
+    /// is `config` at the next terminal.
+    pub fn remove_column(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.remove_column(column);
+        }
+    }
+
+    /// Whether `column` is a column of the entity; a name that is none fails the query with `config`, which the next
+    /// terminal returns (CORE-87).
+    fn known_column(&mut self, column: &str) -> bool {
+        match self.is_column(column) {
+            Ok(true) => true,
+            Ok(false) => {
+                let message = format!("{column} is not a column of {}", self.entity());
+                self.core.fail(message);
+                false
+            }
+            Err(error) => {
+                self.core.fail_err(error);
+                false
+            }
+        }
+    }
+
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
     fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();

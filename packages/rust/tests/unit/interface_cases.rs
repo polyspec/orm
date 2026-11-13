@@ -237,6 +237,22 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.for_share_no_wait();
             Returned::Value(Value::Null)
         }
+        ("query.add_all_columns", Some(Instance::Query(query))) => {
+            query.add_all_columns();
+            Returned::Value(Value::Null)
+        }
+        ("query.remove_all_columns", Some(Instance::Query(query))) => {
+            query.remove_all_columns();
+            Returned::Value(Value::Null)
+        }
+        ("query.add_column", Some(Instance::Query(query))) => {
+            query.add_column(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.remove_column", Some(Instance::Query(query))) => {
+            query.remove_column(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)
