@@ -1,310 +1,323 @@
-// The tests of scripts/test-servers-container.mts (T444). They run the script against a stand-in container program that
-// each test writes into its own directory: the program keeps one file per container under its state directory and
-// prints the log lines of a ready MySQL server, so the tests need no container runtime and no image. Each test names
+// The tests of scripts/test-servers-container.mts (BAY1, T444). They run the script against a stand-in bay and a stand-in
+// container engine that each test writes into its own directory, so they need no container and no image. The stand-in
+// bay keeps one file per project under its state directory: up reads the project name from compose.yaml of its working
+// directory and records the project, down removes that file, and logs prints one line. brief --json prints the form of
+// a service address with a suffix of the stand-in alone, and status --json prints each recorded project with the
+// address of each service in that form, so a script that holds a suffix of its own fails. Each call of both stand-ins is a
+// line of calls.log. Neither stand-in starts a process that stays, so nothing outlives a test (HR-87). Each test names
 // two checkouts by two directories of its own.
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { EventEmitter, once } from 'node:events';
-import { createServer, type Socket } from 'node:net';
+import { X509Certificate } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts';
-import { containerName, remove, run, start, type Context } from './test-servers-container.mts';
-import { ORM_ACCOUNTS_SQL, REPLICA_PARTIAL_REVOKES_SQL } from './test-servers.mts';
+import { remove, run, start, type Context } from './test-servers-container.mts';
+import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
-// standIn writes the stand-in container program into dir and returns its path and the directory of its containers. Its
-// run is attached, as the script runs the container: it records the container with its process ID, prints the log lines
-// of a ready MySQL server and runs until stop ends that process. Each exec appends its container and its command to the
-// file exec.log of its directory.
-//
-// A run connects to the Unix socket lifeline and ends when that connection closes, so that no stand-in outlives the
-// process that listens on lifeline, also when the runner ends that process at its deadline: the kernel closes each
-// connection of a process that dies. removing listens on it for the test, unless hold is false and a process of the test
-// listens. A run also connects to the Unix socket alive when a test listens on it, and writes its ready lines once the
-// test answered, so the test knows each run and sees its end as the end of its connection. hold runs no server and only
-// connects to lifeline, so the shell stand-in of a test stays until its lifeline closes.
-interface StandIn { program: string; state: string; lifeline: string; alive: string; hold: boolean }
+// ADDRESS is the IPv4 address that the stand-in bay reports for every service, and SUFFIX the suffix of its service
+// addresses, which no bay has.
+const ADDRESS = '192.168.64.9';
+const SUFFIX = 'stand-in.test';
 
-function standIn(dir: string, { hold = true }: { hold?: boolean } = {}): StandIn {
-  const state = join(dir, 'containers');
-  mkdirSync(state, { recursive: true });
-  const [lifeline, alive] = [join(dir, 'lifeline'), join(dir, 'alive')];
-  const program = join(dir, 'container.mjs');
-  writeFileSync(program, `#!${process.execPath}
-import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { connect } from 'node:net';
-import { join } from 'node:path';
-const state = ${JSON.stringify(state)};
-const holdLifeline = () => connect(${JSON.stringify(lifeline)}).on('close', () => process.exit(0)).on('error', () => {});
-const execs = ${JSON.stringify(join(dir, 'exec.log'))};
-const [command, ...rest] = process.argv.slice(2);
-const named = name => { if (!existsSync(join(state, name))) { console.error('container ' + name + ' does not exist'); process.exit(1); } };
-if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
-else if (command === 'run') {
-  const name = rest[rest.indexOf('--name') + 1];
-  if (existsSync(join(state, name))) { console.error('container ' + name + ' exists'); process.exit(1); }
-  writeFileSync(join(state, name), String(process.pid));
-  process.on('SIGTERM', () => process.exit(0));
-  holdLifeline();
-  let said = false;
-  const ready = () => {
-    if (said) return;
-    said = true;
-    console.log('MySQL init process done. Ready for start up.');
-    console.log('[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  socket: /var/run/mysqld/mysqld.sock  port: 3306');
+// StandIn has the paths of the stand-in programs of a test, the directory of the projects that the stand-in bay holds,
+// and the files that change what the stand-ins do: while upFails exists, up records its project and exits with 1, and
+// while absent exists, image inspect exits with 1 as the engine does for an image that is not on the machine, and while
+// renamed exists, status reports each service at another address than brief states.
+interface StandIn { bay: string; engine: string; state: string; calls: string; upFails: string; absent: string; renamed: string }
+
+function standIn(dir: string): StandIn {
+  const stand: StandIn = {
+    bay: join(dir, 'bay.mjs'), engine: join(dir, 'engine.mjs'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), renamed: join(dir, 'renamed'),
   };
-  connect(${JSON.stringify(alive)}).on('data', ready).on('error', ready);
-  setInterval(() => {}, 2 ** 30);
-} else if (command === 'hold') holdLifeline(); else if (command === 'exec') { named(rest[0]); appendFileSync(execs, JSON.stringify(rest) + '\\n'); }
-else if (command === 'stop') {
-  named(rest[0]);
-  const pid = Number(readFileSync(join(state, rest[0]), 'utf8'));
-  // A container that ended already is stopped, as container stop takes it.
-  try { if (pid > 0) process.kill(pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+  mkdirSync(stand.state, { recursive: true });
+  writeFileSync(stand.calls, '');
+  const record = `appendFileSync(${JSON.stringify(stand.calls)}, JSON.stringify({ program, cwd: process.cwd(), args: process.argv.slice(2) }) + '\\n');`;
+  writeFileSync(stand.bay, `#!${process.execPath}
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+const program = 'bay';
+${record}
+const [command, ...rest] = process.argv.slice(2);
+const project = () => {
+  const name = /^name: "([^"]+)"$/m.exec(readFileSync('compose.yaml', 'utf8'))?.[1];
+  if (!name) { console.error('compose.yaml names no project'); process.exit(1); }
+  return join(${JSON.stringify(stand.state)}, name);
+};
+if (command === 'up' && rest.length === 0) {
+  if (existsSync(project())) { console.error('the project is up'); process.exit(1); }
+  writeFileSync(project(), process.cwd());
+  if (existsSync(${JSON.stringify(stand.upFails)})) { console.error('service mysql is unhealthy'); process.exit(1); }
+  console.log('all services accept connections');
+} else if (command === 'down' && rest.length === 0) rmSync(project(), { force: true });
+else if (command === 'logs') console.log('the last lines of ' + rest.at(-1));
+else if (command === 'brief' && rest.join(' ') === '--json') console.log(JSON.stringify({ schemaVersion: '1', serviceAddress: '<project>-<service>.${SUFFIX}:<port>' }));
+else if (command === 'status' && rest.join(' ') === '--json') {
+  const suffix = existsSync(${JSON.stringify(stand.renamed)}) ? 'renamed.test' : '${SUFFIX}';
+  const groups = readdirSync(${JSON.stringify(stand.state)}).map(name => {
+    const directory = readFileSync(join(${JSON.stringify(stand.state)}, name), 'utf8');
+    if (directory === '') return { name, stackPath: '', services: null };
+    const text = readFileSync(join(directory, 'compose.yaml'), 'utf8');
+    const services = [...text.matchAll(/^ {2}([a-z-]+):\n(?: {4}.*\n)*? {4}expose: \["(\d+)"\]$/gm)].map(([, service, port]) =>
+      ({ name: service, container: name + '-' + service, state: 'running', ipv4: '${ADDRESS}', address: name + '-' + service + '.' + suffix + ':' + port, accepting: true }));
+    return { name, stackPath: join(directory, 'compose.yaml'), services };
+  });
+  console.log(JSON.stringify({ machine: {}, groups }));
 }
-else if (command === 'inspect') { named(rest[0]); console.log(JSON.stringify([{ status: { networks: [{ ipv4Address: '192.168.64.9/24' }] } }])); }
-else if (command === 'delete') { named(rest[0]); rmSync(join(state, rest[0])); }
 else { console.error('unknown command ' + command); process.exit(2); }
 `);
-  chmodSync(program, 0o755);
-  return { program, state, lifeline, alive, hold };
+  writeFileSync(stand.engine, `#!${process.execPath}
+import { appendFileSync, existsSync } from 'node:fs';
+const program = 'engine';
+${record}
+const [noun, verb] = process.argv.slice(2);
+if (noun === 'image' && verb === 'inspect') { if (existsSync(${JSON.stringify(stand.absent)})) { console.error('Error: image not found'); process.exit(1); } }
+else if (noun === 'image' && verb === 'pull') {}
+else { console.error('unknown command ' + noun + ' ' + verb); process.exit(2); }
+`);
+  for (const program of [stand.bay, stand.engine]) chmodSync(program, 0o755);
+  return stand;
 }
 
-// Listener is a Unix socket server of a test: it counts the connections it accepted, answers each when greet is set,
-// and its idle resolves once no accepted connection is open.
-interface Listener { accepted: () => number; idle: () => Promise<void>; close: () => Promise<void> }
+// Call is a line of calls.log: the stand-in that ran, its working directory and its arguments.
+interface Call { program: string; cwd: string; args: string[] }
 
-async function listen(path: string, greet: boolean): Promise<Listener> {
-  const open = new Set<Socket>();
-  let accepted = 0;
-  let waiting: (() => void)[] = [];
-  const server = createServer(socket => {
-    accepted += 1;
-    open.add(socket);
-    socket.on('error', () => {});
-    socket.on('close', () => {
-      open.delete(socket);
-      if (open.size === 0) { for (const resolveIdle of waiting) resolveIdle(); waiting = []; }
-    });
-    if (greet) socket.write('ok');
+function calls(stand: StandIn): Call[] {
+  return readFileSync(stand.calls, 'utf8').split('\n').filter(line => line !== '').map(line => {
+    const parsed: unknown = JSON.parse(line);
+    if (typeof parsed !== 'object' || parsed === null || !('program' in parsed) || !('cwd' in parsed) || !('args' in parsed)) throw new Error(`calls.log holds no call: ${line}`);
+    const { program, cwd, args } = parsed;
+    if (typeof program !== 'string' || typeof cwd !== 'string' || !Array.isArray(args) || !args.every((item): item is string => typeof item === 'string')) throw new Error(`calls.log holds no call: ${line}`);
+    return { program, cwd, args };
   });
-  await new Promise<void>((resolveListening, rejectListening) => server.once('error', rejectListening).listen(path, resolveListening));
-  return {
-    accepted: () => accepted,
-    idle: () => open.size === 0 ? Promise.resolve() : new Promise(resolveIdle => { waiting.push(resolveIdle); }),
-    close: () => {
-      for (const socket of open) socket.destroy();
-      return new Promise(resolveClosed => server.close(() => resolveClosed()));
-    },
-  };
 }
 
-// strings is the JSON list of strings of a line of exec.log.
-function strings(line: string): string[] {
-  const parsed: unknown = JSON.parse(line);
-  if (!Array.isArray(parsed) || !parsed.every((item): item is string => typeof item === 'string')) throw new Error(`exec.log holds no list of strings: ${line}`);
-  return parsed;
-}
+// commands are the calls of the stand-in bay as the first argument of each.
+const commands = (stand: StandIn) => calls(stand).filter(call => call.program === 'bay').map(call => call.args[0]);
 
-// removing listens on the lifeline of the stand-in, runs the body of a test and then removes the containers of its
-// checkouts and closes the lifeline, also when the body fails, so that no process of the stand-in outlives the test.
-async function removing(stand: StandIn, contexts: Context[], body: () => Promise<void>): Promise<void> {
-  const lifeline = stand.hold ? await listen(stand.lifeline, false) : undefined;
+// removing runs the body of a test and then removes the projects of its checkouts, also when the body fails.
+async function removing(contexts: Context[], body: () => Promise<void>): Promise<void> {
   try {
     await body();
   } finally {
-    try {
-      for (const context of contexts) remove(context);
-    } finally {
-      await lifeline?.close();
-    }
+    for (const context of contexts) remove(context);
   }
 }
 
-const checkouts = (dir: string, program: string): [Context, Context] => {
+const checkouts = (dir: string, stand: StandIn): [Context, Context] => {
   const [first, second] = [join(dir, 'first'), join(dir, 'second')];
   for (const root of [first, second]) mkdirSync(root, { recursive: true });
-  return [{ root: first, program }, { root: second, program }];
+  const context = (root: string): Context => ({ root, bay: stand.bay, engine: stand.engine });
+  return [context(first), context(second)];
 };
 
-caseTest('two checkouts start a server of the same kind at once, each in a container of its own (T444)', COMPUTE, () =>
+const containers = (root: string) => join(root, '.runtime/containers');
+
+// projects are the names of the project directories of a checkout: orm-<checkout>-<run>.
+function projects(root: string): string[] {
+  if (!existsSync(containers(root))) return [];
+  return readdirSync(containers(root)).filter(name => /^orm-[0-9a-f]{12}-[0-9a-f]{8}$/.test(name)).sort();
+}
+
+// only is the one project of a checkout.
+function only(root: string): string {
+  const [project, ...others] = projects(root);
+  if (project === undefined || others.length > 0) throw new Error(`${root} has not one project: ${projects(root).join(' ')}`);
+  return project;
+}
+
+const compose = (root: string, project: string) => readFileSync(join(containers(root), project, 'compose.yaml'), 'utf8');
+
+caseTest('two checkouts start a server of the same kind at once, each as a project of its own (BAY1, T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const { program, state } = stand;
-    const [first, second] = checkouts(dir, program);
-    await removing(stand, [first, second], async () => {
-      // A container of another name, such as one that an earlier form of the script started, is never touched.
-      writeFileSync(join(state, 'polyspec-orm-test-mysql'), '0');
-      assert.notEqual(containerName(first.root, 'mysql'), containerName(second.root, 'mysql'));
+    const [first, second] = checkouts(dir, stand);
+    await removing([first, second], async () => {
+      // A project of another name, such as one of another tool, is never removed.
+      writeFileSync(join(stand.state, 'another-project'), '');
       await Promise.all([start('mysql', first), start('mysql', second)]);
-      const both = (root: string) => [containerName(root, 'mysql'), `${containerName(root, 'mysql')}-replica`];
-      assert.deepEqual(readdirSync(state).sort(), [...both(first.root), ...both(second.root), 'polyspec-orm-test-mysql'].sort());
-      for (const { root } of [first, second]) assert.ok(existsSync(join(root, '.runtime/containers/mysql.env')), `${root} has no environment file`);
+      const [one, two] = [only(first.root), only(second.root)];
+      assert.notEqual(one.slice(0, 16), two.slice(0, 16), 'two checkouts have the same identifier in their project names');
+      assert.deepEqual(readdirSync(stand.state).sort(), ['another-project', one, two].sort());
+      assert.equal(readFileSync(join(stand.state, one), 'utf8'), join(containers(first.root), one), 'bay up did not run in the directory of the project');
+      for (const { root } of [first, second]) assert.ok(existsSync(join(containers(root), 'mysql.env')), `${root} has no environment file`);
       remove(first);
-      assert.deepEqual(readdirSync(state).sort(), [...both(second.root), 'polyspec-orm-test-mysql'].sort());
-      assert.ok(!existsSync(join(first.root, '.runtime/containers/mysql.env')), 'remove leaves the environment file of its checkout');
-      assert.ok(existsSync(join(second.root, '.runtime/containers/mysql.env')), 'remove of one checkout removes the environment file of another');
+      assert.deepEqual(readdirSync(stand.state).sort(), ['another-project', two].sort());
+      assert.deepEqual(projects(first.root), [], 'remove leaves the directory of its project');
+      assert.ok(!existsSync(join(containers(first.root), 'mysql.env')), 'remove leaves the environment file of its checkout');
+      assert.ok(existsSync(join(containers(second.root), 'mysql.env')), 'remove of one checkout removes the environment file of another');
       remove(second);
-      assert.deepEqual(readdirSync(state), ['polyspec-orm-test-mysql']);
+      assert.deepEqual(readdirSync(stand.state), ['another-project']);
     });
   }));
 
-caseTest('a start of MySQL starts its replica, which follows the primary from the first binary log, before the databases (T444)', COMPUTE, () =>
+caseTest('the Compose file of MySQL has a service for each server, pinned images, a healthcheck over TCP and no published port (BAY1)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const { program } = stand;
-    const [context] = checkouts(dir, program);
-    await removing(stand, [context], async () => {
-      const primary = containerName(context.root, 'mysql');
-      const replica = `${primary}-replica`;
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
       const variables = await start('mysql', context);
-      assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@192.168.64.9:3306/orm_test');
-      assert.match(readFileSync(join(context.root, '.runtime/containers/mysql.env'), 'utf8'), /^export ORM_TEST_MYSQL_REPLICA_DSN='mysql:\/\/root@192\.168\.64\.9:3306\/orm_test'$/m);
-      const execs = readFileSync(join(dir, 'exec.log'), 'utf8').trim().split('\n').map(strings);
-      assert.deepEqual(execs.map(([name, , , , sql]) => [name, sql?.split(';')[0]]), [
-        [primary, 'RESET BINARY LOGS AND GTIDS'],
-        [replica, "CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.64.9', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1"],
-        [primary, 'CREATE DATABASE orm_test'],
-      ], 'the replica does not follow the primary before the databases are created');
-      // As the native servers have them: the replica refuses a catalog row change through partial_revokes (INT-119), and the
-      // primary has the accounts of the user orm.
-      const [, replicaSql, databasesSql] = execs.map(([, , , , sql]) => sql ?? '');
-      assert.ok(replicaSql?.includes(REPLICA_PARTIAL_REVOKES_SQL), `the replica does not enable partial_revokes: ${replicaSql}`);
-      assert.ok(databasesSql?.includes(ORM_ACCOUNTS_SQL), `the primary has no accounts of the user orm: ${databasesSql}`);
-      remove(context);
+      const project = only(context.root);
+      const text = compose(context.root, project);
+      assert.match(text, new RegExp(`^name: "${project}"$`, 'm'));
+      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica'], 'the project has another service than one per server');
+      assert.deepEqual([...text.matchAll(/^ {4}image: "(.*)"$/gm)].map(match => /^docker\.io\/library\/mysql@sha256:[0-9a-f]{64}$/.test(match[1] ?? '')), [true, true], 'an image is not pinned by its digest');
+      assert.equal([...text.matchAll(/^ {4}expose: \["3306"\]$/gm)].length, 2);
+      assert.ok(!/^\s*ports:/m.test(text), 'a service publishes a port');
+      assert.equal([...text.matchAll(/^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--protocol=TCP", "--silent"\]$/gm)].length, 2, 'a server has no healthcheck with mysqladmin ping over TCP');
+      assert.match(text, /^ {4}depends_on:\n {6}mysql:\n {8}condition: "service_healthy"$/m, 'the replica does not wait for a healthy primary');
+      assert.ok(!text.includes('--skip-replica-start'), 'the replica does not start its replication when its server starts');
+      // The DSNs name each server by the address that bay reports for its service, and the mismatch DSN by its IPv4 address.
+      const host = `${project}-mysql.${SUFFIX}`;
+      assert.equal(variables['ORM_TEST_MYSQL_DSN'], `mysql://root@${host}:3306/orm_test`);
+      assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], `mysql://root@${project}-mysql-replica.${SUFFIX}:3306/orm_test`);
+      const tls = join(containers(context.root), project, 'tls');
+      assert.equal(variables['ORM_TEST_MYSQL_TLS_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/ca.pem`);
+      assert.equal(variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'], `mysql://root@${ADDRESS}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/ca.pem`);
+      assert.ok(!('ORM_TEST_MYSQL_SOCKET' in variables), 'the environment names a Unix socket, which bay does not publish');
+      assert.match(readFileSync(join(containers(context.root), 'mysql.env'), 'utf8'), new RegExp(`^export ORM_TEST_MYSQL_DSN='mysql://root@${host}:3306/orm_test'$`, 'm'));
+      // The setup of each server is a file of the initialization directory of its image.
+      const primary = readFileSync(join(containers(context.root), project, 'mysql-init/orm.sql'), 'utf8');
+      const order = ['RESET BINARY LOGS AND GTIDS', 'CREATE DATABASE orm_test', 'CREATE DATABASE orm_tools', ORM_ACCOUNTS_SQL].map(statement => primary.indexOf(statement));
+      assert.ok(order.every((at, index) => at >= 0 && (index === 0 || at > (order[index - 1] ?? -1))), `the primary does not reset its binary log before the databases and the accounts: ${primary}`);
+      const replica = readFileSync(join(containers(context.root), project, 'mysql-replica-init/orm.sql'), 'utf8');
+      assert.ok(replica.includes(`CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1;`), `the replica does not name the primary: ${replica}`);
+      for (const setting of ['SET PERSIST partial_revokes = ON;', 'SET PERSIST super_read_only = ON;']) assert.ok(replica.includes(setting), `the replica misses ${setting}: ${replica}`);
+      for (const service of ['mysql', 'mysql-replica']) assert.ok(text.includes(`"./${service}-init:/docker-entrypoint-initdb.d:ro"`), `${service} does not mount its initialization files`);
+      // The script reads the form of a service address before it issues the certificate, asks the engine for the image
+      // before bay up, and reads the addresses of its services after it.
+      assert.deepEqual(calls(stand).map(call => `${call.program} ${call.args.slice(0, 2).join(' ')}`), ['bay brief --json', 'engine image inspect', 'bay up', 'bay status --json']);
+      const certificate = new X509Certificate(readFileSync(join(tls, 'mysql-cert.pem')));
+      assert.equal(certificate.subjectAltName, `DNS:${host}`, 'the certificate does not name the address that bay reports');
     });
   }));
 
-caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T444)', COMPUTE, () =>
+caseTest('the Compose files of PostgreSQL and MariaDB run the readiness program of their server and escape each dollar sign (BAY1)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const { program, state } = stand;
-    const [context] = checkouts(dir, program);
-    await removing(stand, [context], async () => {
+    const [postgres, mariadb] = checkouts(dir, stand);
+    await removing([postgres, mariadb], async () => {
+      const variables = await start('postgres', postgres);
+      const project = only(postgres.root);
+      const text = compose(postgres.root, project);
+      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['postgres', 'postgres-replica']);
+      assert.equal([...text.matchAll(/^ {6}test: \["CMD", "pg_isready", "--host=127\.0\.0\.1", "--username=orm", "--dbname=postgres"\]$/gm)].length, 2);
+      assert.match(text, /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"$/m);
+      // Compose reads $NAME in a value as a variable of the environment of bay, so a dollar sign of a command is written twice.
+      assert.ok(text.includes('exec docker-entrypoint.sh \\"$$@\\"'), 'the command of PostgreSQL keeps a single dollar sign');
+      assert.ok(!/(^|[^$])\$([^$]|$)/m.test(text), 'the Compose file has a dollar sign that is not escaped');
+      assert.ok(text.includes(`host=${project}-postgres.${SUFFIX} port=5432 user=orm application_name=orm_replica`), 'the standby does not copy the primary by its name');
+      const init = readFileSync(join(containers(postgres.root), project, 'postgres-init/orm.sh'), 'utf8');
+      assert.ok(init.indexOf("host replication orm all trust") >= 0 && init.includes('CREATE DATABASE orm_test') && init.includes('CREATE DATABASE orm_tools'), `the primary does not allow replication and create the databases: ${init}`);
+      assert.equal(variables['ORM_TEST_POSTGRES_DSN'], `postgres://orm@${project}-postgres.${SUFFIX}:5432/orm_test`);
+      assert.equal(variables['ORM_TEST_POSTGRES_REPLICA_DSN'], `postgres://orm@${project}-postgres-replica.${SUFFIX}:5432/orm_test`);
+
+      const mariadbVariables = await start('mariadb', mariadb);
+      const mariadbProject = only(mariadb.root);
+      const mariadbText = compose(mariadb.root, mariadbProject);
+      assert.deepEqual([...mariadbText.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mariadb']);
+      assert.match(mariadbText, /^ {6}test: \["CMD", "healthcheck\.sh", "--connect", "--innodb_initialized"\]$/m);
+      assert.ok(readFileSync(join(containers(mariadb.root), mariadbProject, 'mariadb-init/orm.sql'), 'utf8').includes(ORM_ACCOUNTS_SQL), 'the MariaDB primary has no accounts of the user orm');
+      assert.equal(mariadbVariables['ORM_TEST_MARIADB_DSN'], `mysql://root@${mariadbProject}-mariadb.${SUFFIX}:3306/orm_test`);
+      assert.ok(!('ORM_TEST_MARIADB_SOCKET' in mariadbVariables));
+    });
+  }));
+
+caseTest('a run removes its project when its command ends, fails or gets SIGINT or SIGTERM (BAY1, T444)', COMPUTE, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
       const node = process.execPath;
-      const ended = await run('mysql', [node, '-e', 'if (!process.env.ORM_TEST_MYSQL_DSN) process.exit(9)'], context);
+      const left = (when: string) => {
+        assert.deepEqual(readdirSync(stand.state), [], `a run that ${when} leaves its project`);
+        assert.deepEqual(projects(context.root), [], `a run that ${when} leaves the directory of its project`);
+        assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), `a run that ${when} writes an environment file`);
+      };
+      const ended = await run('mysql', [node, '-e', 'if (!/^mysql:\\/\\/root@orm-[0-9a-f]{12}-[0-9a-f]{8}-mysql\\.stand-in\\.test:3306\\/orm_test$/.test(process.env.ORM_TEST_MYSQL_DSN)) process.exit(9)'], context);
       assert.deepEqual(ended, { code: 0, signal: null }, 'the command does not read the DSN of its server');
-      assert.deepEqual(readdirSync(state), [], 'a run that ended leaves its container');
+      left('ended');
       const failed = await run('mysql', [node, '-e', 'process.exit(3)'], context);
       assert.deepEqual(failed, { code: 3, signal: null });
-      assert.deepEqual(readdirSync(state), [], 'a run that failed leaves its container');
+      left('failed');
       for (const signal of ['SIGINT', 'SIGTERM'] as const) {
         const signals = new EventEmitter();
         // The run calls started once its command has spawned; the test sends the signal then, and the run forwards it.
-        const waiting = run('mysql', [node, '-e', 'setInterval(() => {}, 2 ** 30)'], context, {
-          signals, started: () => signals.emit(signal),
-        });
+        const waiting = run('mysql', [node, '-e', 'setInterval(() => {}, 2 ** 30)'], context, { signals, started: () => signals.emit(signal) });
         assert.deepEqual(await waiting, { code: null, signal }, `a run that got ${signal} does not end its command with it`);
-        assert.deepEqual(readdirSync(state), [], `a run that got ${signal} leaves its container`);
-        assert.ok(!existsSync(join(context.root, '.runtime/containers/mysql.env')), `a run that got ${signal} leaves its environment file`);
+        left(`got ${signal}`);
       }
+      assert.deepEqual(commands(stand).filter(command => command === 'up' || command === 'down'), ['up', 'down', 'up', 'down', 'up', 'down', 'up', 'down'], 'a run does not remove its project with bay down');
     });
   }));
 
-caseTest('a start that fails removes the container that it started (T444)', COMPUTE, () =>
+caseTest('two runs of one kind in one checkout have a project each, and a second start of a kind is refused (BAY1)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const { program, state } = stand;
-    const [context] = checkouts(dir, program);
-    await removing(stand, [context], async () => {
-      // This stand-in records the container, and its attached run ends without the line of a ready server, so the start fails.
-      writeFileSync(join(dir, 'container.mjs'), `#!${process.execPath}
-import { readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-const state = ${JSON.stringify(state)};
-const [command, ...rest] = process.argv.slice(2);
-if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
-else if (command === 'run') { writeFileSync(join(state, rest[rest.indexOf('--name') + 1]), '0'); console.log('the server stopped'); process.exit(1); }
-else if (command === 'stop') {}
-else if (command === 'delete') rmSync(join(state, rest[0]));
-else process.exit(2);
-`);
-      await assert.rejects(start('mysql', context), /stopped with 1 before it was ready/);
-      assert.deepEqual(readdirSync(state), [], 'a failed start leaves its container');
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      const node = process.execPath;
+      const both = await Promise.all([run('mysql', [node, '-e', ''], context), run('mysql', [node, '-e', ''], context)]);
+      assert.deepEqual(both, [{ code: 0, signal: null }, { code: 0, signal: null }]);
+      const ups = calls(stand).filter(call => call.program === 'bay' && call.args[0] === 'up').map(call => call.cwd);
+      assert.equal(new Set(ups).size, 2, 'two runs share a project');
+      assert.deepEqual(readdirSync(stand.state), []);
+      await start('mysql', context);
+      await assert.rejects(start('mysql', context), /mysql is started in this checkout; run make orm-test-container-stop, which removes it/);
+      assert.equal(projects(context.root).length, 1, 'a refused start leaves a project');
+      await start('postgres', context);
+      assert.equal(projects(context.root).length, 2, 'two kinds do not run together');
     });
   }));
 
-caseTest('a start reads the lines that the container writes before the watch of its log takes effect (T445)', COMPUTE, () =>
+caseTest('a start whose bay up fails prints the last lines of each service and removes its project (BAY1, T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const { state } = stand;
-    const [context] = checkouts(dir, join(dir, 'container.sh'));
-    await removing(stand, [context], async () => {
-      const written = join(dir, 'written');
-      execFileSync('mkfifo', [written]);
-      // The run of this stand-in writes both lines, tells the test through the FIFO written, and then stays quiet, as a
-      // server does after its ready line, by holding the lifeline of the stand-in in the same process, until stop ends its
-      // process or the test closes the lifeline. Only the primary tells the test, which reads written once; the
-      // replica writes its lines when the test no longer waits.
-      writeFileSync(join(dir, 'container.sh'), `#!/bin/sh
-state=${JSON.stringify(state)}
-command=$1; shift
-case $command in
-  run)
-    name=; previous=
-    for argument in "$@"; do [ "$previous" = --name ] && name=$argument; previous=$argument; done
-    printf '%s' $$ > "$state/$name"
-    printf 'MySQL init process done. Ready for start up.\\n[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  port: 3306\\n'
-    case $name in *-replica) ;; *) printf 'written' > ${JSON.stringify(written)} ;; esac
-    exec ${JSON.stringify(join(dir, 'container.mjs'))} hold ;;
-  *) exec ${JSON.stringify(join(dir, 'container.mjs'))} "$command" "$@" ;;
-esac
-`);
-      chmodSync(join(dir, 'container.sh'), 0o755);
-      const started = start('mysql', context);
-      // The spawn of the container queued its spawn event before this tick, so the start has read the empty log when this
-      // tick runs, and the poll phase that registers the watch of the log comes after it: the tick holds the loop until the
-      // stand-in has written its lines, so they come before the watch takes effect.
-      process.nextTick(() => readFileSync(written, 'utf8'));
-      await started;
-      assert.deepEqual(readdirSync(state).sort(), [containerName(context.root, 'mysql'), `${containerName(context.root, 'mysql')}-replica`].sort());
-      remove(context);
-      assert.deepEqual(readdirSync(state), []);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      writeFileSync(stand.upFails, '');
+      await assert.rejects(start('mysql', context), /bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1/);
+      assert.deepEqual(calls(stand).filter(call => call.program === 'bay').map(call => call.args.join(' ')), ['brief --json', 'up', 'logs -n 50 mysql', 'logs -n 50 mysql-replica', 'down']);
+      assert.deepEqual(readdirSync(stand.state), [], 'a failed start leaves its project');
+      assert.deepEqual(projects(context.root), [], 'a failed start leaves the directory of its project');
+      assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), 'a failed start leaves an environment file');
     });
   }));
 
-caseTest('the stand-in containers end when the process that started them dies without removing them (T444)', COMPUTE, () =>
+caseTest('a start pulls no image: an absent image fails naming the install target, before bay runs (BAY1)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir, { hold: false });
-    const [context] = checkouts(dir, stand.program);
-    await removing(stand, [context], async () => {
-      // The test listens on alive, so it knows each run; the driver listens on the lifeline, starts MySQL, says so, and
-      // waits. SIGKILL ends it as the runner ends a test process at its deadline, so no finally of its own removes the
-      // containers.
-      const alive = await listen(stand.alive, true);
-      try {
-        const driver = spawn(process.execPath, ['--input-type=module', '-e', `
-import { createServer } from 'node:net';
-import { start } from ${JSON.stringify(join(import.meta.dirname, 'test-servers-container.mts'))};
-await new Promise(resolve => createServer().listen(${JSON.stringify(stand.lifeline)}, resolve));
-await start('mysql', ${JSON.stringify(context)});
-process.stdout.write('started\\n');
-setInterval(() => {}, 2 ** 30);
-`], { stdio: ['ignore', 'pipe', 'inherit'] });
-        const exited = once(driver, 'exit');
-        let output = '';
-        driver.stdout.setEncoding('utf8');
-        await new Promise<void>((resolveStarted, rejectStarted) => {
-          driver.stdout.on('data', (chunk: string) => { output += chunk; if (output.includes('started\n')) resolveStarted(); });
-          void exited.then(([code, signal]) => rejectStarted(new Error(`the driver ended with ${String(code ?? signal)} before it started MySQL: ${output}`)));
-        });
-        // Each run writes its ready lines after the test answered its connection, so the start has its runs counted.
-        assert.equal(alive.accepted(), readdirSync(stand.state).length, 'a run of the stand-in did not connect to alive');
-        driver.kill('SIGKILL');
-        await exited;
-        await alive.idle();
-      } finally {
-        await alive.close();
-      }
-      const running = readdirSync(stand.state).filter(name => {
-        try {
-          process.kill(Number(readFileSync(join(stand.state, name), 'utf8')), 0);
-          return true;
-        } catch (error) {
-          if (error instanceof Error && 'code' in error && error.code === 'ESRCH') return false;
-          throw error;
-        }
-      });
-      assert.deepEqual(running, [], 'a stand-in container outlived the process that started it');
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      writeFileSync(stand.absent, '');
+      await assert.rejects(start('mysql', context), /the image docker\.io\/library\/mysql@sha256:[0-9a-f]{64} of mysql is not on this machine; run make orm-install-container-images, which pulls the images of config\/containers\.json/);
+      assert.ok(!commands(stand).includes('up'), 'bay up ran for an image that is not on the machine');
+      assert.deepEqual(projects(context.root), [], 'a start with an absent image leaves a directory');
+    });
+  }));
+
+caseTest('a start with a missing program fails naming the program and what provides it, and creates nothing (BAY1)', COMPUTE, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      const missing = join(dir, 'missing');
+      await assert.rejects(start('mysql', { ...context, bay: missing }), new RegExp(`${missing} is missing: it is the program bay, which runs the Compose project of the servers; install bay at that path`));
+      await assert.rejects(start('mysql', { ...context, engine: missing }), new RegExp(`${missing} is missing: it is the container engine, which holds the images of the servers; install`));
+      assert.deepEqual(projects(context.root), [], 'a start with a missing program leaves a directory');
+      assert.ok(!commands(stand).includes('up'), 'a start with a missing program ran bay up');
+    });
+  }));
+
+caseTest('a start reads each address from bay: a service that bay reports at another address fails the start and removes its project (BAY1)', COMPUTE, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      writeFileSync(stand.renamed, '');
+      await assert.rejects(start('mysql', context), /bay status reports the service mysql of orm-[0-9a-f]{12}-[0-9a-f]{8} at orm-[0-9a-f-]+-mysql\.renamed\.test:3306, and bay brief states orm-[0-9a-f-]+-mysql\.stand-in\.test:3306/);
+      assert.deepEqual(readdirSync(stand.state), [], 'a start with another address leaves its project');
+      assert.deepEqual(projects(context.root), []);
     });
   }));
