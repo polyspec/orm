@@ -2750,6 +2750,78 @@
             "path": "polyspec_orm::Query::limit",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.for_update",
+          "name": [
+            "for",
+            "update"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::for_update",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.for_share",
+          "name": [
+            "for",
+            "share"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::for_share",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.for_update_no_wait",
+          "name": [
+            "for",
+            "update",
+            "no",
+            "wait"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::for_update_no_wait",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.for_share_no_wait",
+          "name": [
+            "for",
+            "share",
+            "no",
+            "wait"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::for_share_no_wait",
+            "receiver": "&mut self"
+          }
         }
       ]
     }
@@ -2830,6 +2902,26 @@
       "member": "query.limit",
       "file": "contracts/interface/core.json",
       "group": "query.limit"
+    },
+    {
+      "member": "query.for_update",
+      "file": "contracts/interface/core.json",
+      "group": "query.for_update"
+    },
+    {
+      "member": "query.for_share",
+      "file": "contracts/interface/core.json",
+      "group": "query.for_share"
+    },
+    {
+      "member": "query.for_update_no_wait",
+      "file": "contracts/interface/core.json",
+      "group": "query.for_update_no_wait"
+    },
+    {
+      "member": "query.for_share_no_wait",
+      "file": "contracts/interface/core.json",
+      "group": "query.for_share_no_wait"
     },
     {
       "alias": "orm_value",

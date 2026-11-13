@@ -139,9 +139,9 @@ fn the_four_locks_set_the_lock_of_the_request() {
     assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
 }
 
-// Requirements: CORE-86. SQLite takes the lock of a read in a transaction, and refuses a lock outside one.
+// Requirements: CORE-86. A lock outside a transaction is config, and a locked read inside one reads its row.
 #[tokio::test]
-async fn a_lock_on_sqlite_needs_a_transaction() {
+async fn a_lock_needs_a_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let scratch = Scratch::new("orm-rust-query-lock");
     let schema = account_schema();
@@ -149,7 +149,7 @@ async fn a_lock_on_sqlite_needs_a_transaction() {
     let mut outside = query(&schema, "account", &db);
     outside.for_update();
     let error = failure(outside.get().await, "a lock outside a transaction");
-    assert_eq!(error.to_string(), "config: SQLite row locks require an ORM transaction");
+    assert_eq!(error.to_string(), "config: row locks are allowed only inside a transaction");
     let locked = db
         .transaction(
             |tx| {

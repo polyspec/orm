@@ -225,9 +225,9 @@ the core that differ from the rules that the language implementations of `legacy
   the members `forUpdate`, `forShare`, `forUpdateNoWait` and `forShareNoWait` of the language implementations
   (DSL-123). Each sets the lock `update`, `share`, `update_nowait` or `share_nowait` of the request, and the last one
   called holds. A lock applies to `get` and `gets`, of the root `Query` or of a `Query` given to `relation` or
-  `relations`, whose own statement then takes it (PRT-8); `get_count` with a lock is `ir_invalid`. SQLite has no lock
-  clause and takes its lock in the transaction (INT-49), so a lock outside a transaction on SQLite is `config` with the
-  message `SQLite row locks require an ORM transaction`.
+  `relations`, whose own statement then takes it (PRT-8); `get_count` with a lock is `ir_invalid`. A lock outside a
+  transaction is `config` with the message `row locks are allowed only inside a transaction` on every database;
+  SQLite, which has no lock clause, takes its lock in the transaction (INT-49).
 - **CORE-87** The columns that a row of a `Query` reads (PRT-9): `add_all_columns` reads every column,
   `remove_all_columns` keeps the columns of the primary key and of the foreign keys, `add_column(column)` adds one
   column and `remove_column(column)` removes one (DSL-72, DSL-75 to DSL-77). A column is named by its name in the

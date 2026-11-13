@@ -221,6 +221,22 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.order_by(&text(args, "spec", member));
             Returned::Value(Value::Null)
         }
+        ("query.for_update", Some(Instance::Query(query))) => {
+            query.for_update();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_share", Some(Instance::Query(query))) => {
+            query.for_share();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_update_no_wait", Some(Instance::Query(query))) => {
+            query.for_update_no_wait();
+            Returned::Value(Value::Null)
+        }
+        ("query.for_share_no_wait", Some(Instance::Query(query))) => {
+            query.for_share_no_wait();
+            Returned::Value(Value::Null)
+        }
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)

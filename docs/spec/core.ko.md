@@ -193,8 +193,8 @@
   member `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait`이다(DSL-123). 각각 요청의 lock `update`, `share`,
   `update_nowait`, `share_nowait`을 정하고, 마지막에 부른 것이 남는다. lock은 root `Query`나 `relation`·`relations`에
   준 `Query`의 `get`과 `gets`에 걸리며, 그 경우 그 `Query`의 statement가 lock을 잡는다(PRT-8). lock을 가진
-  `get_count`는 `ir_invalid`다. SQLite에는 lock 절이 없고 transaction 안에서 lock을 잡으므로(INT-49), SQLite에서
-  transaction 밖의 lock은 `config`이고 메시지는 `SQLite row locks require an ORM transaction`이다.
+  `get_count`는 `ir_invalid`다. transaction 밖의 lock은 모든 database에서 `config`이고 메시지는 `row locks are allowed
+  only inside a transaction`이다. lock 절이 없는 SQLite는 transaction 안에서 lock을 잡는다(INT-49).
 - **CORE-87** `Query`의 행이 읽는 열(PRT-9): `add_all_columns`는 모든 열을 읽고, `remove_all_columns`는 primary key와
   foreign key의 열만 남기며, `add_column(column)`은 열 하나를 더하고 `remove_column(column)`은 열 하나를 뺀다(DSL-72,
   DSL-75~DSL-77). 열은 `value`처럼 dbspec 문서의 이름으로 부른다. 엔티티의 열이 아닌 이름은 다음 terminal에서

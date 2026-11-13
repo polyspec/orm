@@ -114,6 +114,30 @@ impl Query {
         self.core.limit(offset, count);
     }
 
+    /// Locks the rows that `get` and `gets` read with the lock `update`, the member `forUpdate` of the language
+    /// implementations (CORE-86). The last lock called holds.
+    pub fn for_update(&mut self) {
+        self.core.lock("update");
+    }
+
+    /// Locks the rows that `get` and `gets` read with the lock `share`, the member `forShare` of the language
+    /// implementations (CORE-86). The last lock called holds.
+    pub fn for_share(&mut self) {
+        self.core.lock("share");
+    }
+
+    /// Locks the rows that `get` and `gets` read with the lock `update_nowait`, the member `forUpdateNoWait` of the language
+    /// implementations (CORE-86). The last lock called holds.
+    pub fn for_update_no_wait(&mut self) {
+        self.core.lock("update_nowait");
+    }
+
+    /// Locks the rows that `get` and `gets` read with the lock `share_nowait`, the member `forShareNoWait` of the language
+    /// implementations (CORE-86). The last lock called holds.
+    pub fn for_share_no_wait(&mut self) {
+        self.core.lock("share_nowait");
+    }
+
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
     fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();
