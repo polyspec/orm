@@ -184,13 +184,16 @@ the core that differ from the rules that the language implementations of `legacy
 
 - **CORE-80** `Schema::load(manifest_text, external_text, manifest_hash)` makes the schema value of INT-133 at run
   time. Text that is no manifest is `schema_invalid` and text that does not hash to `manifest_hash` is
-  `schema_hash_mismatch`, both before any connection. The process keeps the text of a loaded schema until it ends, one
-  copy per manifest text, external text and hash, because a request and a cached plan refer to their schema for the
-  life of the process; a refused text is not kept.
+  `schema_hash_mismatch`, both before any connection. A loaded schema owns its texts and its runtime model, and the
+  values that refer to it share them: the schema value and its copies, each `Query` of it and the rows of that
+  `Query`, each request of such a `Query`, and each connection on which the schema is registered, until that
+  connection is dropped. When the last of them is dropped the memory of the schema is returned; the process keeps
+  no loaded schema. A schema of generated code is a static of that code and is not counted.
 - **CORE-81** `Query` is the query and the row state of one entity that is chosen by its name:
   `Query::new(schema, entity)`. An entity that the schema does not have is `entity_unknown`. A `Query` runs after
   `connect(connection)`, where the connection is a `Db` or a `Tx` (CORE-20); a terminal of a `Query` with no connection
-  is `config`. The process keeps one descriptor per entity of a schema that a `Query` named.
+  is `config`. The descriptor of the entity of a `Query` is shared by that `Query`, its copies and its rows and is
+  dropped with the last of them (CORE-80).
 - **CORE-82** `where(chain, values)` adds the conditions of a chain name of DSL-36 and DSL-37, such as
   `GtServiceSeqAndIsClose`, with one value per key. The values are `orm_value` (CORE-62): `null` is the null of a
   condition, a `list` is the list of values of a key with no operator or with `Ne`, the pair of a `Between` key when

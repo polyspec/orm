@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 2214fe6a31c1c7d21942162a7303273eee052fea6b2b6d1d246579c697444d1c -->
+<!-- source-sha256: d36a7945fd0072f50afd5bfd5be651ee5a8b0592704204fd784dfb0808d7c913 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -158,13 +158,14 @@
 
 - **CORE-80** `Schema::load(manifest_text, external_text, manifest_hash)`는 INT-133의 schema 값을 실행 시에 만든다.
   manifest가 아닌 텍스트는 `schema_invalid`이고 `manifest_hash`로 hash되지 않는 텍스트는 `schema_hash_mismatch`이며,
-  둘 다 어떤 연결보다 앞선다. 프로세스는 불러온 schema의 텍스트를 끝날 때까지 가지며 manifest 텍스트, external 텍스트,
-  hash마다 사본 하나를 둔다. 요청과 cache된 plan이 프로세스의 수명 동안 자기 schema를 가리키기 때문이다. 거부된
-  텍스트는 두지 않는다.
+  둘 다 어떤 연결보다 앞선다. 불러온 schema는 자기 텍스트와 runtime model을 소유하고, 그것을 가리키는 값들이 그것을
+  공유한다: schema 값과 그 사본, 그 schema의 `Query`와 그 `Query`의 행, 그런 `Query`의 요청, 그리고 그 schema가
+  등록된 연결(그 연결이 놓일 때까지)이다. 그 가운데 마지막이 놓이면 schema의 메모리가 돌아오며, 프로세스는 불러온
+  schema를 두지 않는다. 생성된 코드의 schema는 그 코드의 static이고 세지 않는다.
 - **CORE-81** `Query`는 이름으로 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
   엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
-  연결이 없는 `Query`의 terminal은 `config`다. 프로세스는 `Query`가 이름한 schema의 엔티티마다 descriptor 하나를
-  가진다.
+  연결이 없는 `Query`의 terminal은 `config`다. `Query`의 엔티티 descriptor는 그 `Query`와 그 사본, 그 행이 공유하고 그 가운데
+  마지막과 함께 놓인다(CORE-80).
 - **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `GtServiceSeqAndIsClose`)의 조건을 key마다 값
   하나로 더한다. 값은 `orm_value`다(CORE-62): `null`은 조건의 null이고, `list`는 연산자가 없거나 `Ne`인 key의 값
   목록, 값이 둘일 때 `Between` key의 쌍, tuple key의 값 묶음 목록이며, `map`과 `nested:json_value`를 뺀 다른 kind는 값
