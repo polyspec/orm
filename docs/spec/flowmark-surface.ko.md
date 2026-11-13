@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: e32c0c6f647852e4bfa18ca1305aac39d2fcf1e69515d2167d588275a4c8b049 -->
+<!-- source-sha256: bc69c490f19933476c0b01bf77ce51e5681d589fa13fd9ad0e6cf96a2ca4961f -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -277,7 +277,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   하나이고(`Dialect::parse`), 다른 텍스트는 `config`다. 이 member는 `Planner.Compile`을 전달한다. field `M`과 `D`를
   가진 struct `Planner`는 handle과 인자 `dialect`이고, 구현 `MySQL`, `Postgres`, `SQLite`를 가진 `engine/dialect`의
   interface `Dialect`는 dialect의 텍스트다. legacy 모듈의 `Compile`은 검증 없이 plan을 세우고, 이 member는 먼저
-  검증한다. 구현되지 않았다.
+  검증한다. 검증은 모든 dialect가 plan을 세우는 연산자, 함수, 행 잠금만 받아들인다. 그래서 이 member는
+  `operator_unknown`도 `capability_unsupported`도 내지 않고, 그 `raises`에 둘 다 없다. 구현되지 않았다.
 - **FMS-42** `db.execute(step, params)`는 `Db::execute`처럼(`packages/rust/src/db.rs`) 행을 읽지 않는 plan의
   statement 하나를 실행한다. `step`은 step의 JSON 텍스트이고(`plan.schema.json`의 `#/$defs/step`), `params`는
   `orm_value`로 준 요청의 parameter다(CORE-62). 그 형식의 step이 아닌 텍스트는 `config`이고, `params` 안의 list, map,
@@ -477,6 +478,9 @@ impl Db {
   10. statement: `Db::execute_text`는 `Manifest::compile`이 쓴 step으로 SQLite 데이터베이스에 행 하나를 넣는다.
 - **FMS-82** `packages/rust/interface.json`에 FMS-7의 unit과 member를 선언하는 일, `contracts/interface/core.json`의
   그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. 선언은 작성되었고, 코어의 case runner가
-  부르는 member 18개의 case가 있다. `dbspec.read_set`, `db.connect_schema`, `db.execute`는 case가 없다: case 형식에는
-  파일의 path나 데이터베이스의 값이 없다(CORE-72). 선언한 member의 `raises` 가운데 kind 65개는 case가 없다(OM-1.5-2). FMS-81의 schema 시험은 `polyspec-orm-schema`처럼
+  부르는 member 19개의 case가 있다. unit `dbspec`, `runtime_model`, `codec`의 member는 입력이 일으키는 `raises`의
+  kind마다 case를 가진다. `dbspec.read_set`의 `config`는 Unicode 텍스트가 아닌 path에서 나오고, case는 그런 path를
+  줄 수 없다. `dbspec.read_set`과 `db.execute`는 case가 없고, `db.connect_schema`는 `config`의 case만 있다:
+  `read_set`의 결과는 시험의 디렉터리를 담은 텍스트여서 case가 적을 수 없고, case 형식에는 데이터베이스의 값이
+  없다(CORE-72, OM-1.5-3). FMS-81의 schema 시험은 `polyspec-orm-schema`처럼
   `polyspec-orm`의 시험 dependency인 `jsonschema`로 schema를 읽는다. 생성된 바인딩과 flowmark의 Go 코드는 구현되지 않았다.

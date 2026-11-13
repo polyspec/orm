@@ -289,7 +289,9 @@ hold for every member that this document names.
   (`Dialect::parse`); another text is `config`. The member carries `Planner.Compile`. The struct `Planner` with its
   fields `M` and `D` is the handle and the argument `dialect`, and the interface `Dialect` of `engine/dialect` with its
   implementations `MySQL`, `Postgres` and `SQLite` is the text of the dialect. `Compile` of the legacy module plans
-  without validating; this member validates first. Not implemented.
+  without validating; this member validates first. The validation accepts only an operator, a function and a row lock
+  that every dialect plans, so the member raises neither `operator_unknown` nor `capability_unsupported`, and its
+  `raises` names neither. Not implemented.
 - **FMS-42** `db.execute(step, params)` runs one statement of a plan that reads no rows, as `Db::execute` does
   (`packages/rust/src/db.rs`). `step` is the JSON text of a step (`#/$defs/step` of `plan.schema.json`), and `params`
   are the parameters of the request as `orm_value` (CORE-62). A text that is no step of the form is `config`, and a
@@ -493,7 +495,10 @@ impl Db {
   10. A statement: `Db::execute_text` inserts a row on a SQLite database with a step that `Manifest::compile` wrote.
 - **FMS-82** The declarations of the units and members of FMS-7 in `packages/rust/interface.json`, their cases in
   `contracts/interface/core.json` (CORE-71), the generated bindings and the Go code of flowmark follow the functions of
-  FMS-80. The declarations are written, with the cases of 18 members that the case runner of the core calls.
-  `dbspec.read_set`, `db.connect_schema` and `db.execute` have no case, because the case form has no value for a path of
-  a file or for a database (CORE-72), and 65 kinds of the `raises` of the declared members have no case (OM-1.5-2). The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
+  FMS-80. The declarations are written, with the cases of 19 members that the case runner of the core calls.
+  Each member of the units `dbspec`, `runtime_model` and `codec` has a case of each kind of its `raises` that an input
+  raises; `config` of `dbspec.read_set` is raised for a path that is no Unicode text, which a case cannot give.
+  `dbspec.read_set` and `db.execute` have no case, and `db.connect_schema` has a case of `config` alone: the result of
+  `read_set` is a text that names the directory of the test, which a case cannot state, and the case form has no value
+  for a database (CORE-72, OM-1.5-3). The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
   `polyspec-orm-schema`. The generated bindings and the Go code of flowmark are not implemented.

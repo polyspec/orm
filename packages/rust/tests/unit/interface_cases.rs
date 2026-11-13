@@ -356,6 +356,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("db.connect", None) => Returned::Instance(Instance::Db(
             Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
         )),
+        ("db.connect_schema", None) => {
+            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
+                panic!("{member}: schema is no instance of schema")
+            };
+            Returned::Instance(Instance::Db(
+                Db::connect_schema(&text(args, "dsn", member), &schema, uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
+            ))
+        }
         ("aes_keyring.constructor", None) => Returned::Instance(Instance::Keyring(AesKeyring::new(
             keyed_texts(field(args, "keys", member), member),
             int(field(args, "current", member), member),

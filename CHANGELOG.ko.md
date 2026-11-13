@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1968cdd01612b26b7d198d38debc0e29a389071fd2363d34e2a84642d7597588 -->
+<!-- source-sha256: e521d29ad27ed91794af8d9332f52f7ef6352d0fde62a64536d5310aec8a268b -->
 # 변경 이력
 
 ## Unreleased
 
+- unit `dbspec`, `runtime_model`, `codec`의 member는 입력이 일으키는 `raises`의 kind마다 `contracts/interface/core.json`에 case를 가진다(OM-1.5-2, FMS-82, CORE-71). case 40개를 추가했고, `make test-rust CASES=interface_cases`의 시험 하나가 case 없는 kind에서 실패한다. 전에는 kind 42개의 case가 없었다. `runtime_model.compile`의 `raises`에서 `operator_unknown`과 `capability_unsupported`를 뺐다(FMS-41). 검증은 모든 dialect가 plan을 세우는 연산자, 함수, 행 잠금만 받아들인다. `db.connect_schema`는 `config`의 case를 가진다. 코어의 case runner는 모든 case를 끝까지 실행하고, 실패한 case마다 member가 일으키거나 돌려준 것을 적는다. 전에는 첫 실패에서 멈췄다. `dbspec.read_set`, `db.execute`, 그리고 `db.connect_schema`의 kind 5개는 case가 없는 채로 남는다(OM-1.5-3).
 - benchmarks/rust/Cargo.lock은 `polyspec-binding-core`를 root Cargo.lock이 고정한 release로 고정한다(OM-1.5-1). benchmark workspace는 `binding_core::OutValues`가 없는 이전 것을 가지고 있어서, benchmarks/rust의 `cargo clippy`가 packages/rust/src/orm_value.rs를 E0432로 compile하지 못했다. `dbspec::canonical_literal`은 default 규칙의 답을 `ok`로 돌려주고, JSON surface의 source는 `cargo fmt`의 형식을 가진다.
 
 - contracts/implementations.json은 Rust 코어만 가진 surface의 unit test 파일 여덟 개를 각각 이유와 함께 선언한다(OM-1.5-1, FCV-2). flowmark_surface.rs 두 파일과 packages/rust/tests/unit의 query.rs, query_members.rs, query_step.rs, orm_value.rs, interface_cases.rs, cancel.rs다. `node scripts/features/check.mts`는 오류 23개를 보고했고 이제 15개를 보고하며, 그것은 row T464다. scripts/repo/check.test.mts의 `startLogged` case는 start가 이제 처음에 쓰는 줄을 기대한다.

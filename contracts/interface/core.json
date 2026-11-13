@@ -1990,6 +1990,150 @@
         "category": "value",
         "message": "column_unknown: note.nothing"
       }
+    },
+    {
+      "id": "no_index",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "raises": {
+        "kind": "index_unknown",
+        "category": "value",
+        "message": "index_unknown: note.nope"
+      }
+    },
+    {
+      "id": "an_output_named_as_a_column",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "raises": {
+        "kind": "column_alias_conflict",
+        "category": "value",
+        "message": "column_alias_conflict: note.label is already a row name"
+      }
+    },
+    {
+      "id": "no_value_function",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "raises": {
+        "kind": "function_unknown",
+        "category": "value",
+        "message": "function_unknown: nope"
+      }
+    },
+    {
+      "id": "an_operator_that_the_column_does_not_take",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "operator_not_allowed",
+        "category": "value",
+        "message": "operator_not_allowed: contains on note.seq (i64)"
+      }
+    },
+    {
+      "id": "a_group_that_starts_with_or",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "or_at_group_start",
+        "category": "value",
+        "message": "or_at_group_start: a group may not start with OR"
+      }
+    },
+    {
+      "id": "an_in_without_a_value",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: note.seq"
+      }
+    },
+    {
+      "id": "a_reference_to_no_join",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "raises": {
+        "kind": "entity_not_joined",
+        "category": "value",
+        "message": "entity_not_joined: note.other"
+      }
+    },
+    {
+      "id": "a_limit_in_a_relation",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "raises": {
+        "kind": "limit_in_relation",
+        "category": "value",
+        "message": "limit_in_relation: kids: use limit_per_parent"
+      }
+    },
+    {
+      "id": "a_write_of_an_external_table",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":true}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: note is owned by another document set"
+      }
     }
   ],
   "runtime_model.param_uses": [
@@ -2019,6 +2163,214 @@
         "kind": "ir_invalid",
         "category": "value",
         "message": "ir_invalid: request is no object"
+      }
+    },
+    {
+      "id": "another_version",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "raises": {
+        "kind": "version_mismatch",
+        "category": "value",
+        "message": "version_mismatch: ir_version 2, engine 1"
+      }
+    },
+    {
+      "id": "another_manifest",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: client x, engine h"
+      }
+    },
+    {
+      "id": "no_entity",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: nobody"
+      }
+    },
+    {
+      "id": "no_column",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: note.nothing"
+      }
+    },
+    {
+      "id": "no_index",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "raises": {
+        "kind": "index_unknown",
+        "category": "value",
+        "message": "index_unknown: note.nope"
+      }
+    },
+    {
+      "id": "an_output_named_as_a_column",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "raises": {
+        "kind": "column_alias_conflict",
+        "category": "value",
+        "message": "column_alias_conflict: note.label is already a row name"
+      }
+    },
+    {
+      "id": "no_value_function",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "raises": {
+        "kind": "function_unknown",
+        "category": "value",
+        "message": "function_unknown: nope"
+      }
+    },
+    {
+      "id": "an_operator_that_the_column_does_not_take",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "operator_not_allowed",
+        "category": "value",
+        "message": "operator_not_allowed: contains on note.seq (i64)"
+      }
+    },
+    {
+      "id": "a_group_that_starts_with_or",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "or_at_group_start",
+        "category": "value",
+        "message": "or_at_group_start: a group may not start with OR"
+      }
+    },
+    {
+      "id": "an_in_without_a_value",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: note.seq"
+      }
+    },
+    {
+      "id": "a_reference_to_no_join",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "raises": {
+        "kind": "entity_not_joined",
+        "category": "value",
+        "message": "entity_not_joined: note.other"
+      }
+    },
+    {
+      "id": "a_limit_in_a_relation",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "raises": {
+        "kind": "limit_in_relation",
+        "category": "value",
+        "message": "limit_in_relation: kids: use limit_per_parent"
+      }
+    },
+    {
+      "id": "a_write_of_an_external_table",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":true}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: note is owned by another document set"
       }
     }
   ],
@@ -2053,6 +2405,22 @@
         "kind": "entity_unknown",
         "category": "value",
         "message": "entity_unknown: nobody"
+      }
+    },
+    {
+      "id": "no_column",
+      "rule": "FMS-34",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"deleted_ts\",\"type\":{\"kind\":\"datetime\",\"precision\":6},\"nullable\":true,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false,\"soft_delete\":\"deleted_ts\"}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":2,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]},\"set\":[{\"column\":\"nothing\",\"p\":1}]}",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: note.nothing"
       }
     }
   ],
@@ -2089,6 +2457,227 @@
         "kind": "ir_invalid",
         "category": "value",
         "message": "ir_invalid: request is no object"
+      }
+    },
+    {
+      "id": "another_version",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "version_mismatch",
+        "category": "value",
+        "message": "version_mismatch: ir_version 2, engine 1"
+      }
+    },
+    {
+      "id": "another_manifest",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: client x, engine h"
+      }
+    },
+    {
+      "id": "no_entity",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: nobody"
+      }
+    },
+    {
+      "id": "no_column",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: note.nothing"
+      }
+    },
+    {
+      "id": "no_index",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "index_unknown",
+        "category": "value",
+        "message": "index_unknown: note.nope"
+      }
+    },
+    {
+      "id": "an_output_named_as_a_column",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "column_alias_conflict",
+        "category": "value",
+        "message": "column_alias_conflict: note.label is already a row name"
+      }
+    },
+    {
+      "id": "no_value_function",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "function_unknown",
+        "category": "value",
+        "message": "function_unknown: nope"
+      }
+    },
+    {
+      "id": "an_operator_that_the_column_does_not_take",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "operator_not_allowed",
+        "category": "value",
+        "message": "operator_not_allowed: contains on note.seq (i64)"
+      }
+    },
+    {
+      "id": "a_group_that_starts_with_or",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "or_at_group_start",
+        "category": "value",
+        "message": "or_at_group_start: a group may not start with OR"
+      }
+    },
+    {
+      "id": "an_in_without_a_value",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: note.seq"
+      }
+    },
+    {
+      "id": "a_reference_to_no_join",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "entity_not_joined",
+        "category": "value",
+        "message": "entity_not_joined: note.other"
+      }
+    },
+    {
+      "id": "a_limit_in_a_relation",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "limit_in_relation",
+        "category": "value",
+        "message": "limit_in_relation: kids: use limit_per_parent"
+      }
+    },
+    {
+      "id": "an_aes_column_without_a_version_column",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[\"aes\"]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "schema_invalid",
+        "category": "value",
+        "message": "schema_invalid: note: AES column requires the aes_version setting"
       }
     }
   ],
@@ -2189,6 +2778,22 @@
         "category": "value",
         "message": "codec_decode: the cell of a codec function is a text, bytes or null"
       }
+    },
+    {
+      "id": "no_stage",
+      "rule": "FMS-50",
+      "stages": [
+        "zip"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "hi"
+      },
+      "raises": {
+        "kind": "codec_unsupported",
+        "category": "value",
+        "message": "codec_unsupported: style zip"
+      }
     }
   ],
   "codec.host_encode": [
@@ -2241,6 +2846,23 @@
         "category": "value",
         "message": "codec_unsupported: host style zip"
       }
+    },
+    {
+      "id": "no_key",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "text",
+        "value": "hi"
+      },
+      "stages": [
+        "aes"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: secret aes not configured"
+      }
     }
   ],
   "codec.host_decode": [
@@ -2275,6 +2897,42 @@
         "kind": "codec_decode",
         "category": "value",
         "message": "codec_decode: the cell of a codec function is a text, bytes or null"
+      }
+    },
+    {
+      "id": "no_host_stage",
+      "rule": "FMS-50",
+      "cell": {
+        "kind": "text",
+        "value": "hi"
+      },
+      "stages": [
+        "zip"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "codec_unsupported",
+        "category": "value",
+        "message": "codec_unsupported: host style zip"
+      }
+    },
+    {
+      "id": "no_key",
+      "rule": "FMS-50",
+      "cell": {
+        "kind": "bytes",
+        "value": {
+          "hex": "00"
+        }
+      },
+      "stages": [
+        "aes"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: secret aes not configured"
       }
     }
   ],
@@ -2315,6 +2973,28 @@
         "kind": "codec_encode",
         "category": "value",
         "message": "codec_encode: the value of a codec function is a text, bytes or null"
+      }
+    }
+  ],
+  "db.connect_schema": [
+    {
+      "id": "no_uri",
+      "rule": "CFG-20",
+      "dsn": "not a uri",
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "pool_size": 1,
+      "cfg": {},
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://"
       }
     }
   ]

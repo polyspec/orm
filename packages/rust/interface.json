@@ -4081,8 +4081,6 @@
             "polyspec_orm::Kind::EntityNotJoined",
             "polyspec_orm::Kind::LimitInRelation",
             "polyspec_orm::Kind::Config",
-            "polyspec_orm::Kind::OperatorUnknown",
-            "polyspec_orm::Kind::CapabilityUnsupported",
             "polyspec_orm::Kind::SchemaInvalid",
             "polyspec_orm::Kind::Internal"
           ],
@@ -4321,6 +4319,11 @@
       "member": "db.connect",
       "file": "contracts/interface/core.json",
       "group": "db.connect"
+    },
+    {
+      "member": "db.connect_schema",
+      "file": "contracts/interface/core.json",
+      "group": "db.connect_schema"
     },
     {
       "member": "aes_keyring.constructor",
