@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6c3fe268ebc0f44d5160719c6facda999a87f5f25573fa16873ab5f9b1b1b76b -->
+<!-- source-sha256: cd4e0fc482c42260efcdf55da050a94c5f8d911231226b19ad11e2f17f7018d3 -->
 # 변경 이력
 
 ## Unreleased
@@ -42,6 +42,7 @@
 - legacy Go 모듈의 `internal/buildconstraints`와 `engine/dbspec` 테스트, 그리고 `TestCaseHarnessReportsOnlyFailure`의 fixture가 디렉터리 수를 세지 않고 `testcase.RepositoryRoot`와 `testcase.LegacyRoot`로 root를 찾습니다. `TestGoTestTagsAreReadFromTheRunner`와 `TestNoBuildTagLeavesATestOut`은 `legacy/go.work`와 `legacy/tests/go-test.mts`를 열다 실패했습니다(T447).
 - Go recipe runner의 `interface.symbols` 단계가 interface check를 저장소 root(`testcase.RepositoryRoot`)에서 시작합니다. 이전에는 recipe에서 세 단계 위인 `legacy`에서 시작해 node가 `tests/interfaces/check/main.mts`를 찾지 못했습니다(T448).
 - legacy 모듈과 `tests` 모듈의 Go 테스트가 패키지 디렉터리에서 `../`를 세지 않고 `testcase.RepositoryPath`와 `testcase.LegacyPath`로 checkout의 파일을 읽으며, 그런 파일을 읽는 각 패키지는 그 테스트를 저장소 root에서도 실행합니다(`TestPathsFromAnyDirectory`). `TestExternalModuleCanImportClient`는 `legacy/packages/go`를 복사하고 `contracts/interfaces.json`을 저장소 root에서 읽으며, `TestCTableAgreesWithGo`와 `TestPythonTableAgreesWithGo`는 `legacy` 아래의 생성된 표를 읽습니다. 이 세 테스트는 이전에 실패했습니다(T448).
+- `make test-go`가 `tests/go-test.mts`의 `GO_TEST_TAGS` build tag로, `orm-codes`가 모든 구현의 error 파일을 쓴 뒤에 Go 테스트를 실행합니다(T449). tag `ormtest`가 없어 `TestRecipeTransactionsSqlite`의 case 7개가 `fault.next_rollback needs the ormtest build tag` 또는 `fault.next_statement needs the ormtest build tag`로 실패했고, `affected_counts`와 `a_write_reports_the_rows_it_matched`는 `db.last_affected`를 읽지 못했습니다. `TestRecipePublicInterfaceNone`의 `interface_symbols`는 다른 target이 `legacy/packages/php/src/Code.php`를 쓴 적이 없는 checkout에서 그 파일을 열다 실패했습니다. `TestAnalyzers`가 읽는 `testcase` stub은 그 package의 module 경로인 `tests/analyzers/testdata/src/github.com/polyspec/orm/legacy/packages/go/testcase`에 있습니다. 이전에는 `testcasestart`가 그곳에서 package를 찾지 못했습니다.
 
 ## 0.0.31
 

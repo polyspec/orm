@@ -327,8 +327,12 @@ build-ts: ## Build the TypeScript package with tsc; offline
 	$(RUN_LONG) typescript-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots legacy/packages/ts -- node_modules/.bin/tsc -p tsconfig.build.json
 # The unit tests of a runtime with the name filter CASES=<pattern>, with the runner arguments that kit 0.0.98 passed (kit K1094,
 # K1106): one go test over the Go modules, one test at a time in cargo and node, and the 30 s test timeout of node.
-test-go: ## Run the unit tests of the Go modules with CASES=<pattern>, then those of the Go binding packages/go; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0
+# The Go tests build with the tags of GO_TEST_TAGS of tests/go-test.mts, as every other go test of the repository does: without
+# ormtest the recipe steps fault.next_rollback, fault.next_statement and db.last_affected fail. The interface_symbols case of
+# the Go recipe runs interfaces/error-catalogs, which reads the error file of every implementation, so orm-codes writes them (T449).
+GO_TEST_TAGS = $(shell sed -n "s/^export const GO_TEST_TAGS = \[\(.*\)\];$$/\1/p" tests/go-test.mts | tr -d "' ")
+test-go: orm-codes ## Run the unit tests of the Go modules with CASES=<pattern>, then those of the Go binding packages/go; offline
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0 -tags=$(GO_TEST_TAGS)
 	$(MAKE) --no-print-directory test-go-bindings
 test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
