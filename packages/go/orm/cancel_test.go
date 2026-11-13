@@ -20,9 +20,11 @@ import (
 // handle was derived from stays usable. The running statement is an update of
 // the table that another connection holds (holdRows), so it waits for that
 // lock until the context is cancelled once the server reports the statement
-// waiting for the lock. SQLite waits for a lock in its busy handler, which a
-// cancelled context does not interrupt, so on SQLite the context is cancelled
-// before the statement and the statement does not start. TestWithContextCancelsMariadb
+// waiting for the lock. SQLite keeps no list of the statements that wait for its
+// lock, so on SQLite the context is cancelled sqliteCancelAfter after the statement
+// starts: the holder keeps the lock, so a statement that returns CANCELED after that
+// delay and before the busy timeout of CFG-12 was waiting and the cancellation
+// ended it. TestWithContextCancelsMariadb
 // is the case on MariaDB, a server of the MySQL dialect (DIA-200), which make
 // mariadb-recipes-check/go runs.
 // Requirements: CFG-9.
@@ -57,7 +59,7 @@ func withContextCancels(t *testing.T, drivers ...string) {
 		defer cancel()
 		waiting := make(chan error, 1)
 		if driver == "sqlite" {
-			cancel()
+			time.AfterFunc(sqliteCancelAfter, cancel)
 			waiting <- nil
 		} else {
 			monitor := openNative(t, driver, serverSession(t, driver, dsn))
@@ -78,8 +80,12 @@ func withContextCancels(t *testing.T, drivers ...string) {
 			t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
 		}
 		// The statement returned CANCELED while the other connection still held the rows (release runs at the end
-		// of the case), so the cancellation ended it, not a released lock; its duration is printed, not judged.
-		t.Logf("the cancelled statement returned after %s", time.Since(started))
+		// of the case), so the cancellation ended it, not a released lock.
+		elapsed := time.Since(started)
+		t.Logf("the cancelled statement returned after %s", elapsed)
+		if driver == "sqlite" && (elapsed < sqliteCancelAfter || elapsed >= 5*time.Second) {
+			t.Fatalf("the SQLite statement returned after %s; want the cancellation at %s to end its wait, before the busy timeout of 5s", elapsed, sqliteCancelAfter)
+		}
 		if err := <-waiting; err != nil {
 			t.Fatal(err)
 		}
@@ -134,6 +140,9 @@ func holdRows(t *testing.T, driver, dsn, table string) func() {
 	t.Cleanup(release)
 	return release
 }
+
+// sqliteCancelAfter is how long after the start of the statement the SQLite case cancels it (TestWithContextCancels).
+const sqliteCancelAfter = 200 * time.Millisecond
 
 // mysqlFamily reports whether driver names a server of the MySQL dialect: MySQL or MariaDB (DIA-200).
 func mysqlFamily(driver string) bool { return driver == "mysql" || driver == "mariadb" }

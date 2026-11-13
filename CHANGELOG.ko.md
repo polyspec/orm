@@ -1,8 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9818527b6995ceed7536218b33116a00e785f4f8d179a01b9a4b9c7d4f84aba0 -->
+<!-- source-sha256: 889af3bcba6af894638b8779aad32bd40be501982a5132d4085dccadbf2cfc7c -->
 # 변경 이력
 
 ## Unreleased
+
+- `make interface-check`는 시험 전에 TypeScript client를 build한다. hung-extractor case는 extractor를 시작하기 전에 끝난 checker의 출력과 함께 곧바로 실패하고, 5분 deadline까지 기다리지 않는다(T443).
+
+- Go와 Rust의 취소 case는 서버에서처럼 다른 연결의 lock을 기다리는 SQLite statement를 취소한다(T426-9, CFG-9). Go case는 SQLite에서 더는 statement 전에 취소하지 않고, Rust case는 SQLite를 더는 건너뛰거나 timer에서 버리지 않는다. Python에서 SQLite lock 대기 중에 취소해도 statement는 busy timeout에야 끝난다(T426-11, 열림).
 
 - test harness는 한 형식이 있는 곳에서 모든 database를 그 형식으로 준비한다(T426-8). Go apply pair는 `dbspec$plans`를 인용 없이 읽는다. TypeScript와 Python의 case database는 Go, PHP, Rust처럼 인용 없이 만든다. SQLite 시험 DSN은 CFG-12의 busy_timeout을 더는 적지 않으므로 기본값이 시험된다. TypeScript cancellation handle case는 모든 database에서 case database로 돈다. checklist는 harness와 recipe runner의 database 분기를 모두 종류와 함께 적는다. SQLite의 실행 중 취소(T426-9)와 catalog 행 변경의 SQLite commit(T426-10)은 열려 있다.
 

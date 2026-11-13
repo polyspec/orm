@@ -2286,7 +2286,7 @@ decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-instal
 # unit rules into the dbspec entity order that the TypeScript client build (packages/ts/dist) reads.
 .PHONY: interface-check/tests interface-check/self-test interface-api-binding-unit-check interface-typescript-extractor-check native-api-equivalence-check
 interface-check: interface-check/tests interface-check/self-test
-interface-check/tests: php-vendor-check
+interface-check/tests: php-vendor-check typescript-current
 	$(NODE) --test tests/interfaces/check/*.test.mts
 interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
